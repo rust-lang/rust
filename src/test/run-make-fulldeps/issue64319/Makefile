@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # Different optimization levels imply different values for `-Zshare-generics`,
 # so try out a whole bunch of combinations to make sure everything is compatible

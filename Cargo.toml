@@ -1,6 +1,5 @@
 [workspace]
 members = [
-  "src/bootstrap",
   "compiler/rustc",
   "library/std",
   "library/test",
@@ -12,6 +11,7 @@ members = [
   "src/tools/error_index_generator",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
+  "src/tools/miropt-test-tools",
   "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",
@@ -34,15 +34,20 @@ members = [
   "src/tools/unicode-table-generator",
   "src/tools/expand-yaml-anchors",
   "src/tools/jsondocck",
+  "src/tools/jsondoclint",
   "src/tools/html-checker",
   "src/tools/bump-stage0",
+  "src/tools/replace-version-placeholder",
   "src/tools/lld-wrapper",
+  "src/tools/collect-license-metadata",
+  "src/tools/generate-copyright",
 ]
 
 exclude = [
   "build",
   "compiler/rustc_codegen_cranelift",
   "compiler/rustc_codegen_gcc",
+  "src/bootstrap",
   "src/test/rustdoc-gui",
   # HACK(eddyb) This hardcodes the fact that our CI uses `/checkout/obj`.
   "obj",
@@ -60,7 +65,7 @@ exclude = [
 # verify that this is the case. This requires, however, that the crate is built
 # without overflow checks and debug assertions. Forcefully disable debug
 # assertions and overflow checks here which should ensure that even if these
-# assertions are enabled for libstd we won't enable then for compiler_builtins
+# assertions are enabled for libstd we won't enable them for compiler_builtins
 # which should ensure we still link everything correctly.
 debug-assertions = false
 overflow-checks = false
@@ -95,30 +100,6 @@ adler.debug = 0
 gimli.debug = 0
 miniz_oxide.debug = 0
 object.debug = 0
-
-# The only package that ever uses debug builds is bootstrap.
-# We care a lot about bootstrap's compile times, so don't include debug info for
-# dependencies, only bootstrap itself.
-[profile.dev]
-debug = 0
-[profile.dev.package]
-# Only use debuginfo=1 to further reduce compile times.
-bootstrap.debug = 1
-
-# We want the RLS to use the version of Cargo that we've got vendored in this
-# repository to ensure that the same exact version of Cargo is used by both the
-# RLS and the Cargo binary itself. The RLS depends on Cargo as a git repository
-# so we use a `[patch]` here to override the github repository with our local
-# vendored copy.
-[patch."https://github.com/rust-lang/cargo"]
-cargo = { path = "src/tools/cargo" }
-cargo-util = { path = "src/tools/cargo/crates/cargo-util" }
-
-[patch."https://github.com/rust-lang/rustfmt"]
-# Similar to Cargo above we want the RLS to use a vendored version of `rustfmt`
-# that we're shipping as well (to ensure that the rustfmt in RLS and the
-# `rustfmt` executable are the same exact version).
-rustfmt-nightly = { path = "src/tools/rustfmt" }
 
 [patch.crates-io]
 # See comments in `src/tools/rustc-workspace-hack/README.md` for what's going on

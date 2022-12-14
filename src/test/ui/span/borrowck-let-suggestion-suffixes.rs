@@ -18,9 +18,9 @@ fn f() {
 
     v3.push(&id('x'));           // statement 6
     //~^ ERROR temporary value dropped while borrowed
-    //~| NOTE creates a temporary which is freed while still in use
+    //~| NOTE creates a temporary value which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
     {
 
@@ -28,7 +28,7 @@ fn f() {
 
         v4.push(&id('y'));
         //~^ ERROR temporary value dropped while borrowed
-        //~| NOTE creates a temporary which is freed while still in use
+        //~| NOTE creates a temporary value which is freed while still in use
         //~| NOTE temporary value is freed at the end of this statement
         //~| NOTE consider using a `let` binding to create a longer lived value
         v4.use_ref();
@@ -39,9 +39,9 @@ fn f() {
 
     v5.push(&id('z'));
     //~^ ERROR temporary value dropped while borrowed
-    //~| NOTE creates a temporary which is freed while still in use
+    //~| NOTE creates a temporary value which is freed while still in use
     //~| NOTE temporary value is freed at the end of this statement
-    //~| NOTE consider using a `let` binding to create a longer lived value
+    //~| HELP consider using a `let` binding to create a longer lived value
 
     v1.push(&old[0]);
 

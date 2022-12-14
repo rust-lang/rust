@@ -1,15 +1,29 @@
-//
-// compile-flags: -C no-prepopulate-passes
-// only-riscv64
-// only-linux
+// compile-flags: --target riscv64gc-unknown-linux-gnu -O -C no-prepopulate-passes
+// needs-llvm-components: riscv
+
 #![crate_type = "lib"]
+#![no_core]
+#![feature(no_core, lang_items)]
 #![allow(improper_ctypes)]
+
+#[lang = "sized"]
+trait Sized {}
+#[lang = "copy"]
+trait Copy {}
+impl Copy for bool {}
+impl Copy for i8 {}
+impl Copy for u8 {}
+impl Copy for i32 {}
+impl Copy for i64 {}
+impl Copy for u64 {}
+impl Copy for f32 {}
+impl Copy for f64 {}
 
 // CHECK: define void @f_void()
 #[no_mangle]
 pub extern "C" fn f_void() {}
 
-// CHECK: define zeroext i1 @f_scalar_0(i1 zeroext %a)
+// CHECK: define noundef zeroext i1 @f_scalar_0(i1 noundef zeroext %a)
 #[no_mangle]
 pub extern "C" fn f_scalar_0(a: bool) -> bool {
     a
@@ -70,8 +84,6 @@ pub struct Tiny {
 // CHECK: define void @f_agg_tiny(i64 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_tiny(mut e: Tiny) {
-    e.a += e.b;
-    e.c += e.d;
 }
 
 // CHECK: define i64 @f_agg_tiny_ret()
@@ -89,14 +101,12 @@ pub struct Small {
 // CHECK: define void @f_agg_small([2 x i64] %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small(mut x: Small) {
-    x.a += unsafe { *x.b };
-    x.b = &mut x.a;
 }
 
 // CHECK: define [2 x i64] @f_agg_small_ret()
 #[no_mangle]
 pub extern "C" fn f_agg_small_ret() -> Small {
-    Small { a: 1, b: core::ptr::null_mut() }
+    Small { a: 1, b: 0 as *mut _ }
 }
 
 #[repr(C)]
@@ -107,7 +117,6 @@ pub struct SmallAligned {
 // CHECK: define void @f_agg_small_aligned(i128 %0)
 #[no_mangle]
 pub extern "C" fn f_agg_small_aligned(mut x: SmallAligned) {
-    x.a += x.a;
 }
 
 #[repr(C)]
@@ -118,19 +127,18 @@ pub struct Large {
     d: i64,
 }
 
-// CHECK: define void @f_agg_large(%Large* {{.*}}%x)
+// CHECK: define void @f_agg_large({{%Large\*|ptr}} {{.*}}%x)
 #[no_mangle]
 pub extern "C" fn f_agg_large(mut x: Large) {
-    x.a = x.b + x.c + x.d;
 }
 
-// CHECK: define void @f_agg_large_ret(%Large* {{.*}}sret{{.*}}, i32 signext %i, i8 signext %j)
+// CHECK: define void @f_agg_large_ret({{%Large\*|ptr}} {{.*}}sret{{.*}}, i32 signext %i, i8 signext %j)
 #[no_mangle]
 pub extern "C" fn f_agg_large_ret(i: i32, j: i8) -> Large {
     Large { a: 1, b: 2, c: 3, d: 4 }
 }
 
-// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, %Large* {{.*}}%d, i8 zeroext %e, i8 signext %f, i8 %g, i8 %h)
+// CHECK: define void @f_scalar_stack_1(i64 %0, [2 x i64] %1, i128 %2, {{%Large\*|ptr}} {{.*}}%d, i8 zeroext %e, i8 signext %f, i8 %g, i8 %h)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_1(
     a: Tiny,
@@ -144,7 +152,7 @@ pub extern "C" fn f_scalar_stack_1(
 ) {
 }
 
-// CHECK: define void @f_scalar_stack_2(%Large* {{.*}}sret{{.*}} %0, i64 %a, i128 %1, i128 %2, i64 %d, i8 zeroext %e, i8 %f, i8 %g)
+// CHECK: define void @f_scalar_stack_2({{%Large\*|ptr}} {{.*}}sret{{.*}} %0, i64 %a, i128 %1, i128 %2, i64 %d, i8 zeroext %e, i8 %f, i8 %g)
 #[no_mangle]
 pub extern "C" fn f_scalar_stack_2(
     a: u64,
@@ -164,7 +172,7 @@ extern "C" {
 
 #[no_mangle]
 pub unsafe extern "C" fn f_va_caller() {
-    // CHECK: call signext i32 (i32, ...) @f_va_callee(i32 signext 1, i32 signext 2, i64 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, %Large* {{.*}})
+    // CHECK: call signext i32 (i32, ...) @f_va_callee(i32 signext 1, i32 signext 2, i64 3, double {{.*}}, double {{.*}}, i64 {{.*}}, [2 x i64] {{.*}}, i128 {{.*}}, {{%Large\*|ptr}} {{.*}})
     f_va_callee(
         1,
         2i32,
@@ -172,7 +180,7 @@ pub unsafe extern "C" fn f_va_caller() {
         4.0f64,
         5.0f64,
         Tiny { a: 1, b: 2, c: 3, d: 4 },
-        Small { a: 10, b: core::ptr::null_mut() },
+        Small { a: 10, b: 0 as *mut _ },
         SmallAligned { a: 11 },
         Large { a: 12, b: 13, c: 14, d: 15 },
     );

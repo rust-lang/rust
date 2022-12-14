@@ -1,0 +1,14 @@
+error[E0782]: trait objects must include the `dyn` keyword
+  --> $DIR/generic-with-implicit-hrtb-without-dyn.rs:6:24
+   |
+LL | fn ice() -> impl AsRef<Fn(&())> {
+   |                        ^^^^^^^
+   |
+help: add `dyn` keyword before this trait
+   |
+LL | fn ice() -> impl AsRef<dyn Fn(&())> {
+   |                        +++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0782`.

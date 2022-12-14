@@ -98,22 +98,20 @@ pub fn escape_default(c: u8) -> EscapeDefault {
         b'\'' => ([b'\\', b'\'', 0, 0], 2),
         b'"' => ([b'\\', b'"', 0, 0], 2),
         b'\x20'..=b'\x7e' => ([c, 0, 0, 0], 1),
-        _ => ([b'\\', b'x', hexify(c >> 4), hexify(c & 0xf)], 4),
+        _ => {
+            let hex_digits: &[u8; 16] = b"0123456789abcdef";
+            ([b'\\', b'x', hex_digits[(c >> 4) as usize], hex_digits[(c & 0xf) as usize]], 4)
+        }
     };
 
     return EscapeDefault { range: 0..len, data };
-
-    fn hexify(b: u8) -> u8 {
-        match b {
-            0..=9 => b'0' + b,
-            _ => b'a' + b - 10,
-        }
-    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = u8;
+
+    #[inline]
     fn next(&mut self) -> Option<u8> {
         self.range.next().map(|i| self.data[i as usize])
     }

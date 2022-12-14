@@ -1,0 +1,385 @@
+error: expected identifier, found `$`
+  --> $DIR/syntax-errors.rs:17:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count($i) } };
+   |                                 ^^^^^ - help: try removing `$`
+
+error: expected identifier, found `$`
+  --> $DIR/syntax-errors.rs:23:26
+   |
+LL |     ( $i:ident ) => { ${ count($i) } };
+   |                          ^^^^^ - help: try removing `$`
+
+error: unexpected token: $
+  --> $DIR/syntax-errors.rs:53:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:53:8
+   |
+LL |     ( $$ $a:ident ) => {
+   |        ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:60:19
+   |
+LL |         ${count() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:60:19
+   |
+LL |         ${count() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:63:19
+   |
+LL |         ${count(i a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:63:19
+   |
+LL |         ${count(i a b c)}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:65:22
+   |
+LL |         ${count(i, 1 a b c)}
+   |                      ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:65:22
+   |
+LL |         ${count(i, 1 a b c)}
+   |                      ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:67:20
+   |
+LL |         ${count(i) a b c}
+   |                    ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:67:20
+   |
+LL |         ${count(i) a b c}
+   |                    ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:70:21
+   |
+LL |         ${ignore(i) a b c}
+   |                     ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:70:21
+   |
+LL |         ${ignore(i) a b c}
+   |                     ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:72:20
+   |
+LL |         ${ignore(i a b c)}
+   |                    ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:72:20
+   |
+LL |         ${ignore(i a b c)}
+   |                    ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:75:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:75:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:77:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:77:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:80:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:80:19
+   |
+LL |         ${index() a b c}
+   |                   ^
+
+error: unexpected token: a
+  --> $DIR/syntax-errors.rs:82:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+   |
+note: meta-variable expression must not have trailing tokens
+  --> $DIR/syntax-errors.rs:82:19
+   |
+LL |         ${index(1 a b c)}
+   |                   ^
+
+error: meta-variable expression depth must be a literal
+  --> $DIR/syntax-errors.rs:89:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(IDX) } };
+   |                                 ^^^^^
+
+error: unexpected token: {
+  --> $DIR/syntax-errors.rs:95:8
+   |
+LL |     ( ${ length() } ) => {
+   |        ^^^^^^^^^^^^
+
+note: `$$` and meta-variable expressions are not allowed inside macro parameter definitions
+  --> $DIR/syntax-errors.rs:95:8
+   |
+LL |     ( ${ length() } ) => {
+   |        ^^^^^^^^^^^^
+
+error: expected one of: `*`, `+`, or `?`
+  --> $DIR/syntax-errors.rs:95:8
+   |
+LL |     ( ${ length() } ) => {
+   |        ^^^^^^^^^^^^
+
+error: expected identifier
+  --> $DIR/syntax-errors.rs:102:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
+   |                                 ^^^^^^
+
+error: only unsuffixes integer literals are supported in meta-variable expressions
+  --> $DIR/syntax-errors.rs:108:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
+   |                                 ^^^^^
+
+error: meta-variable expression parameter must be wrapped in parentheses
+  --> $DIR/syntax-errors.rs:114:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
+   |                                 ^^^^^
+
+error: expected identifier
+  --> $DIR/syntax-errors.rs:120:31
+   |
+LL |     ( $( $i:ident ),* ) => { ${ {} } };
+   |                               ^^^^^^
+
+error: unrecognized meta-variable expression
+  --> $DIR/syntax-errors.rs:140:33
+   |
+LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
+   |                                 ^^^^^^^^^^^^^^ help: supported expressions are count, ignore, index and length
+
+error: `count` can not be placed inside the inner-most repetition
+  --> $DIR/syntax-errors.rs:12:24
+   |
+LL |     ( $i:ident ) => { ${ count(i) } };
+   |                        ^^^^^^^^^^^^
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:17:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count($i) } };
+   |                              ^ expected expression
+...
+LL |     curly__rhs_dollar__round!(a, b, c);
+   |     ---------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `curly__rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:23:23
+   |
+LL |     ( $i:ident ) => { ${ count($i) } };
+   |                       ^ expected expression
+...
+LL |     curly__rhs_dollar__no_round!(a);
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `curly__rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: variable 'i' is still repeating at this depth
+  --> $DIR/syntax-errors.rs:41:36
+   |
+LL |     ( $( $i:ident ),* ) => { count($i) };
+   |                                    ^^
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:60:9
+   |
+LL |         ${count() a b c}
+   |         ^ expected expression
+...
+LL |     extra_garbage_after_metavar!(a);
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `extra_garbage_after_metavar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:89:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(IDX) } };
+   |                              ^ expected expression
+...
+LL |     metavar_depth_is_not_literal!(a);
+   |     -------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `metavar_depth_is_not_literal` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:102:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ ignore() } };
+   |                              ^ expected expression
+...
+LL |     metavar_token_without_ident!(a);
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `metavar_token_without_ident` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:108:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ index(1u32) } };
+   |                              ^ expected expression
+...
+LL |     metavar_with_literal_suffix!(a);
+   |     ------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `metavar_with_literal_suffix` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:114:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ count{i} } };
+   |                              ^ expected expression
+...
+LL |     metavar_without_parens!(a);
+   |     -------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `metavar_without_parens` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:120:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ {} } };
+   |                              ^ expected expression
+...
+LL |     open_brackets_without_tokens!(a);
+   |     -------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `open_brackets_without_tokens` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: variable `foo` is not recognized in meta-variable expression
+  --> $DIR/syntax-errors.rs:127:17
+   |
+LL |         ${count(foo)}
+   |                 ^^^
+
+error: variable `bar` is not recognized in meta-variable expression
+  --> $DIR/syntax-errors.rs:134:18
+   |
+LL |         ${ignore(bar)}
+   |                  ^^^
+
+error: expected expression, found `$`
+  --> $DIR/syntax-errors.rs:140:30
+   |
+LL |     ( $( $i:ident ),* ) => { ${ aaaaaaaaaaaaaa(i) } };
+   |                              ^ expected expression
+...
+LL |     unknown_metavar!(a);
+   |     ------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `unknown_metavar` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/syntax-errors.rs:29:36
+   |
+LL |     ( $( $i:ident ),* ) => { count(i) };
+   |                                    ^ not found in this scope
+...
+LL |     no_curly__no_rhs_dollar__round!(a, b, c);
+   |     ---------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `i` in this scope
+  --> $DIR/syntax-errors.rs:35:29
+   |
+LL |     ( $i:ident ) => { count(i) };
+   |                             ^ not found in this scope
+...
+LL |     no_curly__no_rhs_dollar__no_round!(a);
+   |     ------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find value `a` in this scope
+  --> $DIR/syntax-errors.rs:153:37
+   |
+LL |     no_curly__rhs_dollar__no_round!(a);
+   |                                     ^ not found in this scope
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/syntax-errors.rs:29:30
+   |
+LL |     ( $( $i:ident ),* ) => { count(i) };
+   |                              ^^^^^ not found in this scope
+...
+LL |     no_curly__no_rhs_dollar__round!(a, b, c);
+   |     ---------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/syntax-errors.rs:35:23
+   |
+LL |     ( $i:ident ) => { count(i) };
+   |                       ^^^^^ not found in this scope
+...
+LL |     no_curly__no_rhs_dollar__no_round!(a);
+   |     ------------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__no_rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0425]: cannot find function `count` in this scope
+  --> $DIR/syntax-errors.rs:46:23
+   |
+LL |     ( $i:ident ) => { count($i) };
+   |                       ^^^^^ not found in this scope
+...
+LL |     no_curly__rhs_dollar__no_round!(a);
+   |     ---------------------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `no_curly__rhs_dollar__no_round` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 40 previous errors
+
+For more information about this error, try `rustc --explain E0425`.

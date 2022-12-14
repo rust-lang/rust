@@ -16,9 +16,11 @@ function showHelp() {
     console.log("  --debug                    : show extra information about script run");
     console.log("  --show-text                : render font in pages");
     console.log("  --no-headless              : disable headless mode");
+    console.log("  --no-sandbox               : disable sandbox mode");
     console.log("  --help                     : show this message then quit");
     console.log("  --tests-folder [PATH]      : location of the .GOML tests folder");
     console.log("  --jobs [NUMBER]            : number of threads to run tests on");
+    console.log("  --executable-path [PATH]   : path of the browser's executable to be used");
 }
 
 function isNumeric(s) {
@@ -34,6 +36,8 @@ function parseOptions(args) {
         "show_text": false,
         "no_headless": false,
         "jobs": -1,
+        "executable_path": null,
+        "no_sandbox": false,
     };
     var correspondances = {
         "--doc-folder": "doc_folder",
@@ -41,13 +45,16 @@ function parseOptions(args) {
         "--debug": "debug",
         "--show-text": "show_text",
         "--no-headless": "no_headless",
+        "--executable-path": "executable_path",
+        "--no-sandbox": "no_sandbox",
     };
 
     for (var i = 0; i < args.length; ++i) {
         if (args[i] === "--doc-folder"
             || args[i] === "--tests-folder"
             || args[i] === "--file"
-            || args[i] === "--jobs") {
+            || args[i] === "--jobs"
+            || args[i] === "--executable-path") {
             i += 1;
             if (i >= args.length) {
                 console.log("Missing argument after `" + args[i - 1] + "` option.");
@@ -68,6 +75,9 @@ function parseOptions(args) {
         } else if (args[i] === "--help") {
             showHelp();
             process.exit(0);
+        } else if (args[i] === "--no-sandbox") {
+            console.log("`--no-sandbox` is being used. Be very careful!");
+            opts[correspondances[args[i]]] = true;
         } else if (correspondances[args[i]]) {
             opts[correspondances[args[i]]] = true;
         } else {
@@ -133,13 +143,13 @@ async function main(argv) {
     // Print successful tests too
     let debug = false;
     // Run tests in sequentially
-    let no_headless = false;
+    let headless = true;
     const options = new Options();
     try {
         // This is more convenient that setting fields one by one.
         let args = [
-            "--no-screenshot",
-            "--variable", "DOC_PATH", opts["doc_folder"],
+            "--variable", "DOC_PATH", opts["doc_folder"], "--enable-fail-on-js-error",
+            "--allow-file-access-from-files",
         ];
         if (opts["debug"]) {
             debug = true;
@@ -148,9 +158,16 @@ async function main(argv) {
         if (opts["show_text"]) {
             args.push("--show-text");
         }
+        if (opts["no_sandbox"]) {
+            args.push("--no-sandbox");
+        }
         if (opts["no_headless"]) {
             args.push("--no-headless");
-            no_headless = true;
+            headless = false;
+        }
+        if (opts["executable_path"] !== null) {
+            args.push("--executable-path");
+            args.push(opts["executable_path"]);
         }
         options.parseArguments(args);
     } catch (error) {
@@ -172,13 +189,31 @@ async function main(argv) {
     }
     files.sort();
 
+    if (!headless) {
+        opts["jobs"] = 1;
+        console.log("`--no-headless` option is active, disabling concurrency for running tests.");
+    }
+
     console.log(`Running ${files.length} rustdoc-gui (${opts["jobs"]} concurrently) ...`);
 
     if (opts["jobs"] < 1) {
         process.setMaxListeners(files.length + 1);
-    } else {
+    } else if (headless) {
         process.setMaxListeners(opts["jobs"] + 1);
     }
+
+    // We catch this "event" to display a nicer message in case of unexpected exit (because of a
+    // missing `--no-sandbox`).
+    const exitHandling = (code) => {
+        if (!opts["no_sandbox"]) {
+            console.log("");
+            console.log(
+                "`browser-ui-test` crashed unexpectedly. Please try again with adding `--test-args \
+--no-sandbox` at the end. For example: `x.py test src/test/rustdoc-gui --test-args --no-sandbox`");
+            console.log("");
+        }
+    };
+    process.on('exit', exitHandling);
 
     const tests_queue = [];
     let results = {
@@ -194,7 +229,7 @@ async function main(argv) {
             .then(out => {
                 const [output, nb_failures] = out;
                 results[nb_failures === 0 ? "successful" : "failed"].push({
-                    file_name: file_name,
+                    file_name: testPath,
                     output: output,
                 });
                 if (nb_failures > 0) {
@@ -206,7 +241,7 @@ async function main(argv) {
             })
             .catch(err => {
                 results.errored.push({
-                    file_name: file_name,
+                    file_name: testPath + file_name,
                     output: err,
                 });
                 status_bar.erroneous();
@@ -217,16 +252,17 @@ async function main(argv) {
                 tests_queue.splice(tests_queue.indexOf(callback), 1);
             });
         tests_queue.push(callback);
-        if (no_headless) {
-            await tests_queue[i];
-        } else if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
+        if (opts["jobs"] > 0 && tests_queue.length >= opts["jobs"]) {
             await Promise.race(tests_queue);
         }
     }
-    if (!no_headless && tests_queue.length > 0) {
+    if (tests_queue.length > 0) {
         await Promise.all(tests_queue);
     }
     status_bar.finish();
+
+    // We don't need this listener anymore.
+    process.removeListener("exit", exitHandling);
 
     if (debug) {
         results.successful.sort(by_filename);
@@ -239,7 +275,7 @@ async function main(argv) {
         console.log("");
         results.failed.sort(by_filename);
         results.failed.forEach(r => {
-            console.log(r.output);
+            console.log(r.file_name, r.output);
         });
     }
     if (results.errored.length > 0) {
@@ -247,7 +283,7 @@ async function main(argv) {
         // print run errors on the bottom so developers see them better
         results.errored.sort(by_filename);
         results.errored.forEach(r => {
-            console.error(r.output);
+            console.error(r.file_name, r.output);
         });
     }
 

@@ -1,0 +1,105 @@
+SOURCE_FILE@0..118
+  IMPL@0..117
+    IMPL_KW@0..4 "impl"
+    WHITESPACE@4..5 " "
+    PATH_TYPE@5..6
+      PATH@5..6
+        PATH_SEGMENT@5..6
+          NAME_REF@5..6
+            IDENT@5..6 "T"
+    WHITESPACE@6..7 " "
+    FOR_KW@7..10 "for"
+    WHITESPACE@10..11 " "
+    TUPLE_TYPE@11..13
+      L_PAREN@11..12 "("
+      R_PAREN@12..13 ")"
+    WHITESPACE@13..14 " "
+    ASSOC_ITEM_LIST@14..117
+      L_CURLY@14..15 "{"
+      WHITESPACE@15..20 "\n    "
+      FN@20..31
+        FN_KW@20..22 "fn"
+        WHITESPACE@22..23 " "
+        NAME@23..26
+          IDENT@23..26 "foo"
+        PARAM_LIST@26..28
+          L_PAREN@26..27 "("
+          R_PAREN@27..28 ")"
+        WHITESPACE@28..29 " "
+        BLOCK_EXPR@29..31
+          STMT_LIST@29..31
+            L_CURLY@29..30 "{"
+            R_CURLY@30..31 "}"
+      WHITESPACE@31..36 "\n    "
+      FN@36..51
+        VISIBILITY@36..39
+          PUB_KW@36..39 "pub"
+        WHITESPACE@39..40 " "
+        FN_KW@40..42 "fn"
+        WHITESPACE@42..43 " "
+        NAME@43..46
+          IDENT@43..46 "bar"
+        PARAM_LIST@46..48
+          L_PAREN@46..47 "("
+          R_PAREN@47..48 ")"
+        WHITESPACE@48..49 " "
+        BLOCK_EXPR@49..51
+          STMT_LIST@49..51
+            L_CURLY@49..50 "{"
+            R_CURLY@50..51 "}"
+      WHITESPACE@51..56 "\n    "
+      TYPE_ALIAS@56..81
+        VISIBILITY@56..66
+          PUB_KW@56..59 "pub"
+          L_PAREN@59..60 "("
+          PATH@60..65
+            PATH_SEGMENT@60..65
+              NAME_REF@60..65
+                CRATE_KW@60..65 "crate"
+          R_PAREN@65..66 ")"
+        WHITESPACE@66..67 " "
+        TYPE_KW@67..71 "type"
+        WHITESPACE@71..72 " "
+        NAME@72..75
+          IDENT@72..75 "Baz"
+        WHITESPACE@75..76 " "
+        EQ@76..77 "="
+        WHITESPACE@77..78 " "
+        TUPLE_TYPE@78..80
+          L_PAREN@78..79 "("
+          R_PAREN@79..80 ")"
+        SEMICOLON@80..81 ";"
+      WHITESPACE@81..86 "\n    "
+      CONST@86..115
+        VISIBILITY@86..96
+          PUB_KW@86..89 "pub"
+          L_PAREN@89..90 "("
+          PATH@90..95
+            PATH_SEGMENT@90..95
+              NAME_REF@90..95
+                CRATE_KW@90..95 "crate"
+          R_PAREN@95..96 ")"
+        WHITESPACE@96..97 " "
+        CONST_KW@97..102 "const"
+        WHITESPACE@102..103 " "
+        NAME@103..104
+          IDENT@103..104 "C"
+        COLON@104..105 ":"
+        WHITESPACE@105..106 " "
+        PATH_TYPE@106..109
+          PATH@106..109
+            PATH_SEGMENT@106..109
+              NAME_REF@106..109
+                IDENT@106..109 "i32"
+        WHITESPACE@109..110 " "
+        EQ@110..111 "="
+        WHITESPACE@111..112 " "
+        LITERAL@112..114
+          INT_NUMBER@112..114 "92"
+        SEMICOLON@114..115 ";"
+      WHITESPACE@115..116 "\n"
+      R_CURLY@116..117 "}"
+  WHITESPACE@117..118 "\n"
+error 36..39: Unnecessary visibility qualifier
+error 56..66: Unnecessary visibility qualifier
+error 86..96: Unnecessary visibility qualifier

@@ -4,29 +4,29 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
-ena = "0.14"
-indexmap = "1.5.1"
-tracing = "0.1"
-jobserver_crate = { version = "0.1.13", package = "jobserver" }
-rustc_serialize = { path = "../rustc_serialize" }
-rustc_macros = { path = "../rustc_macros" }
-rustc_graphviz = { path = "../rustc_graphviz" }
-cfg-if = "0.1.2"
-stable_deref_trait = "1.0.0"
-rayon = { version = "0.3.1", package = "rustc-rayon" }
-rayon-core = { version = "0.3.1", package = "rustc-rayon-core" }
-rustc-hash = "1.1.0"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
-rustc_index = { path = "../rustc_index", package = "rustc_index" }
 bitflags = "1.2.1"
-measureme = "10.0.0"
+cfg-if = "0.1.2"
+ena = "0.14"
+indexmap = { version = "1.9.1" }
+jobserver_crate = { version = "0.1.13", package = "jobserver" }
 libc = "0.2"
-stacker = "0.1.14"
+measureme = "10.0.0"
+rayon-core = { version = "0.4.0", package = "rustc-rayon-core", optional = true }
+rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+rustc_graphviz = { path = "../rustc_graphviz" }
+rustc-hash = "1.1.0"
+rustc_index = { path = "../rustc_index", package = "rustc_index" }
+rustc_macros = { path = "../rustc_macros" }
+rustc_serialize = { path = "../rustc_serialize" }
+smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
+stable_deref_trait = "1.0.0"
+stacker = "0.1.15"
 tempfile = "3.2"
+thin-vec = "0.2.9"
+tracing = "0.1"
 
 [dependencies.parking_lot]
 version = "0.11"
@@ -36,3 +36,6 @@ winapi = { version = "0.3", features = ["fileapi", "psapi", "winerror"] }
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 memmap2 = "0.2.1"
+
+[features]
+rustc_use_parallel_compiler = ["indexmap/rustc-rayon", "rayon", "rayon-core"]

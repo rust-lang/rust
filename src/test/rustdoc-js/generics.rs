@@ -24,3 +24,5 @@ pub trait TraitCat {}
 pub trait TraitDog {}
 
 pub fn gamma<T: TraitCat + TraitDog>(t: T) {}
+
+pub fn super_soup(s: Result<String, i32>) -> Result<String, i32> { s }

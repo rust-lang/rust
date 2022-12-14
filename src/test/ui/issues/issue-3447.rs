@@ -2,7 +2,6 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
 #![allow(non_camel_case_types)]
-#![feature(box_syntax)]
 
 use std::cell::RefCell;
 
@@ -20,7 +19,7 @@ impl<T:'static> list<T> {
             next: None
         };
 
-        self.next = Some(box RefCell::new(newList));
+        self.next = Some(Box::new(RefCell::new(newList)));
     }
 }
 

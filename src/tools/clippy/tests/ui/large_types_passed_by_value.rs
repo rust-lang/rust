@@ -37,7 +37,7 @@ pub trait PubLargeTypeDevourer {
     fn devoure_array_in_public(&self, array: [u8; 6666]);
 }
 
-struct S {}
+struct S;
 impl LargeTypeDevourer for S {
     fn devoure_array(&self, array: [u8; 6666]) {
         todo!();

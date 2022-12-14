@@ -1,0 +1,16 @@
+error: Undefined Behavior: accessing memory with alignment ALIGN, but alignment ALIGN is required
+  --> $DIR/unaligned_ptr_addr_of.rs:LL:CC
+   |
+LL |         let _x = unsafe { ptr::addr_of!(*x) };
+   |                           ^^^^^^^^^^^^^^^^^ accessing memory with alignment ALIGN, but alignment ALIGN is required
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at RUSTLIB/core/src/ptr/mod.rs:LL:CC
+   = note: this error originates in the macro `ptr::addr_of` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

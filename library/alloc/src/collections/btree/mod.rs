@@ -10,6 +10,7 @@ mod node;
 mod remove;
 mod search;
 pub mod set;
+mod set_val;
 mod split;
 
 #[doc(hidden)]

@@ -1,16 +1,25 @@
 [relabel]
 allow-unauthenticated = [
-    "C-*", "A-*", "E-*", "NLL-*", "O-*", "S-*", "T-*", "WG-*", "F-*",
+    "A-*",
+    "C-*",
     "D-*",
-    "requires-nightly",
+    "E-*",
+    "F-*",
+    "I-*",
+    "NLL-*",
+    "O-*",
+    "S-*",
+    "T-*",
+    "WG-*",
+    "const-hack",
+    "llvm-main",
+    "needs-fcp",
+    "relnotes",
+    "requires-*",
     "regression-*",
     "perf-*",
-    # I-* without I-*nominated
-    "I-*", "!I-*nominated",
     "AsyncAwait-OnDeck",
 ]
-
-[assign]
 
 [glacier]
 
@@ -71,6 +80,20 @@ Thanks! <3
 """
 label = "O-riscv"
 
+[ping.fuchsia]
+message = """\
+Hey friends of Fuchsia! This issue could use some guidance on how this should be
+resolved/implemented on Fuchsia. Could one of you weigh in?
+"""
+label = "O-fuchsia"
+
+[ping.macos]
+message = """\
+Hey MacOS Group! This issue or PR could use some MacOS-specific guidance. Could one
+of you weigh in? Thanks <3
+"""
+label = "O-macos"
+
 [prioritize]
 label = "I-prioritize"
 
@@ -88,6 +111,143 @@ exclude_labels = [
     "T-release",
     "requires-nightly",
 ]
+
+[autolabel."T-rustdoc"]
+trigger_files = [
+    # Source code
+    "src/librustdoc",
+    "src/tools/rustdoc",
+    "src/rustdoc-json-types",
+
+    # Tests
+    "src/test/rustdoc",
+    "src/test/rustdoc-ui",
+    "src/test/rustdoc-gui",
+    "src/test/rustdoc-js",
+    "src/test/rustdoc-js-std",
+    "src/test/rustdoc-json",
+
+    # Internal tooling
+    "src/etc/htmldocck.py",
+    "src/tools/jsondocck",
+    "src/tools/jsondoclint",
+    "src/tools/rustdoc-gui",
+    "src/tools/rustdoc-js",
+    "src/tools/rustdoc-themes",
+]
+exclude_labels = [
+    "T-*",
+]
+
+[autolabel."A-rustdoc-json"]
+trigger_files = [
+    "src/librustdoc/json/",
+    "src/rustdoc-json-types",
+    "src/test/rustdoc-json",
+    "src/tools/jsondocck",
+    "src/tools/jsondoclint",
+]
+
+[autolabel."T-compiler"]
+trigger_files = [
+    # Source code
+    "compiler",
+
+    # Tests
+    "src/test/ui",
+]
+exclude_labels = [
+    "T-*",
+]
+
+[autolabel."T-libs"]
+trigger_files = [
+    "library/alloc",
+    "library/core",
+    "library/panic_abort",
+    "library/panic_unwind",
+    "library/std",
+    "library/stdarch",
+    "library/term",
+    "library/test",
+]
+exclude_labels = [
+    "T-*",
+]
+
+[autolabel."A-bootstrap"]
+trigger_files = [
+    "x.py",
+    "x",
+    "x.ps1",
+    "src/bootstrap",
+    "src/tools/rust-installer",
+    "src/tools/x",
+    "configure",
+    "Cargo.toml",
+    "Cargo.lock",
+    "config.toml.example",
+    "src/stage0.json"
+]
+
+[autolabel."T-infra"]
+trigger_files = [
+    "src/ci",
+    "src/tools/bump-stage0",
+]
+
+[autolabel."T-style"]
+trigger_files = [
+    "src/doc/style-guide",
+]
+
+[autolabel."A-translation"]
+trigger_files = [
+    "compiler/rustc_error_messages",
+    "compiler/rustc_errors/src/translation.rs",
+    "compiler/rustc_macros/src/diagnostics"
+]
+
+[autolabel."A-query-system"]
+trigger_files = [
+    "compiler/rustc_query_system",
+    "compiler/rustc_query_impl",
+    "compiler/rustc_macros/src/query.rs"
+]
+
+[autolabel."A-testsuite"]
+trigger_files = [
+    "src/ci",
+    "src/tools/compiletest",
+    "src/tools/cargotest",
+    "src/tools/tidy",
+    "src/tools/remote-test-server",
+    "src/tools/remote-test-client",
+    "src/tools/tier-check"
+]
+
+[autolabel."A-meta"]
+trigger_files = [
+    "triagebot.toml",
+    "rustfmt.toml",
+    "LICENSES",
+    "README.md",
+    "CONTRIBUTING.md",
+    ".reuse",
+    ".mailmap",
+    ".git-blame-ignore-revs",
+    ".editorconfig"
+]
+
+[autolabel."T-release"]
+trigger_files = [
+    "RELEASES.md",
+    "src/stage0.json",
+    "src/version"
+]
+
+[autolabel."S-waiting-on-review"]
+new_pr = true
 
 [notify-zulip."I-prioritize"]
 zulip_stream = 245100 # #t-compiler/wg-prioritization/alerts
@@ -114,6 +274,16 @@ message_on_add = """\
 """
 message_on_remove = "Issue #{number}'s nomination request has been removed."
 
+[notify-zulip."I-types-nominated"]
+zulip_stream = 326866 # #T-types/nominated
+topic = "#{number}: {title}"
+message_on_add = """\
+@*T-types* issue #{number} "{title}" has been nominated for team discussion.
+"""
+message_on_remove = "Issue #{number}'s nomination has been removed. Thanks all for participating!"
+message_on_close = "Issue #{number} has been closed. Thanks for participating!"
+message_on_reopen = "Issue #{number} has been reopened. Pinging @*T-types*."
+
 [notify-zulip."A-edition-2021"]
 required_labels = ["C-bug"]
 zulip_stream = 268952 # #edition 2021
@@ -129,3 +299,315 @@ changelog-path = "RELEASES.md"
 changelog-branch = "master"
 
 [shortcut]
+
+
+[mentions."compiler/rustc_apfloat"]
+message = """
+Changes rustc_apfloat. rustc_apfloat is currently in limbo and you almost \
+certainly don't want to change it (see #55993).
+"""
+cc = ["@eddyb"]
+
+[mentions."compiler/rustc_codegen_cranelift"]
+cc = ["@bjorn3"]
+
+[mentions."compiler/rustc_codegen_gcc"]
+cc = ["@antoyo"]
+
+[mentions."compiler/rustc_const_eval/src/interpret"]
+message = "Some changes occurred to the CTFE / Miri engine"
+cc = ["@rust-lang/miri"]
+
+[mentions."compiler/rustc_infer/src/infer/error_reporting/need_type_info.rs"]
+message = "Some changes occurred in need_type_info.rs"
+cc = ["@lcnr"]
+
+[mentions."compiler/rustc_middle/src/mir/interpret"]
+message = "Some changes occurred to the CTFE / Miri engine"
+cc = ["@rust-lang/miri"]
+
+[mentions."compiler/rustc_mir_transform/src/"]
+message = "Some changes occurred to MIR optimizations"
+cc = ["@rust-lang/wg-mir-opt"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/const_evaluatable.rs"]
+message = "Some changes occurred in `const_evaluatable.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_middle/src/ty/abstract_const.rs"]
+message = "Some changes occured in `abstract_const.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_ty_utils/src/consts.rs"]
+message = "Some changes occured in `rustc_ty_utils::consts.rs`"
+cc = ["@BoxyUwU"]
+
+[mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
+message = """
+Some changes occurred in engine.rs, potentially modifying the public API \
+of `ObligationCtxt`.
+"""
+cc = ["@lcnr"]
+
+[mentions."compiler/rustc_error_codes/src/error_codes.rs"]
+message = "Some changes occurred in diagnostic error codes"
+cc = ["@GuillaumeGomez"]
+
+[mentions."library"]
+message = """
+Hey! It looks like you've submitted a new PR for the library teams!
+
+If this PR contains changes to any `rust-lang/rust` public library APIs then \
+please comment with `@rustbot label +T-libs-api -T-libs` to tag it \
+appropriately. If this PR contains changes to any unstable APIs please edit \
+the PR description to add a link to the relevant [API Change \
+Proposal](https://std-dev-guide.rust-lang.org/feature-lifecycle/api-change-proposals.html) \
+or [create one](https://github.com/rust-lang/libs-team/issues/new?assignees=&labels=api-change-proposal%2C+T-libs-api&template=api-change-proposal.md&title=%28My+API+Change+Proposal%29) \
+if you haven't already. If you're unsure where your change falls no worries, \
+just leave it as is and the reviewer will take a look and make a decision to \
+forward on if necessary.
+
+Examples of `T-libs-api` changes:
+
+* Stabilizing library features
+* Introducing insta-stable changes such as new implementations of existing \
+  stable traits on existing stable types
+* Introducing new or changing existing unstable library APIs (excluding \
+  permanently unstable features / features without a tracking issue)
+* Changing public documentation in ways that create new stability guarantees
+* Changing observable runtime behavior of library APIs
+"""
+
+[mentions."src/librustdoc/clean/types.rs"]
+cc = ["@camelid"]
+
+[mentions."src/librustdoc/html/static"]
+message = "Some changes occurred in HTML/CSS/JS."
+cc = [
+    "@GuillaumeGomez",
+    "@Folyd",
+    "@jsha",
+]
+
+[mentions."src/librustdoc/html/static/css/themes"]
+message = "Some changes occurred in HTML/CSS themes."
+cc = ["@GuillaumeGomez"]
+
+[mentions."src/librustdoc/html/static/css/themes/ayu.css"]
+message = "A change occurred in the Ayu theme."
+cc = ["@Cldfire"]
+
+[mentions."src/rustdoc-json-types"]
+message = """
+rustdoc-json-types is a **public** (although nightly-only) API. \
+If possible, consider changing `src/librustdoc/json/conversions.rs`; \
+otherwise, make sure you bump the `FORMAT_VERSION` constant.
+"""
+cc = [
+    "@CraftSpider",
+    "@aDotInTheVoid",
+    "@Enselic",
+    "@obi1kenobi",
+]
+
+[mentions."src/tools/cargo"]
+cc = ["@ehuss"]
+
+[mentions."src/tools/clippy"]
+cc = ["@rust-lang/clippy"]
+
+[mentions."src/tools/miri"]
+message = "The Miri subtree was changed"
+cc = ["@rust-lang/miri"]
+
+[mentions."src/tools/rust-analyzer"]
+cc = ["@rust-lang/wg-rls-2"]
+
+[mentions."src/tools/rustfmt"]
+cc = ["@rust-lang/rustfmt"]
+
+[mentions."compiler/rustc_middle/src/mir/syntax.rs"]
+message = "This PR changes MIR"
+cc = ["@oli-obk", "@RalfJung", "@JakobDegen", "@davidtwco", "@celinval", "@vakaras"]
+
+[mentions."compiler/rustc_error_messages"]
+message = "`rustc_error_messages` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_errors/src/translation.rs"]
+message = "`rustc_errors::translation` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_macros/src/diagnostics"]
+message = "`rustc_macros::diagnostics` was changed"
+cc = ["@davidtwco", "@compiler-errors", "@JohnTitor", "@estebank", "@TaKO8Ki"]
+
+[mentions."compiler/rustc_target/src/spec"]
+message = """
+These commits modify **compiler targets**.
+(See the [Target Tier Policy](https://doc.rust-lang.org/nightly/rustc/target-tier-policy.html).)
+"""
+
+[assign]
+warn_non_default_branch = true
+contributing_url = "https://rustc-dev-guide.rust-lang.org/contributing.html"
+
+[assign.adhoc_groups]
+compiler-team = [
+    "@cjgillot",
+    "@estebank",
+    "@petrochenkov",
+    "@davidtwco",
+    "@oli-obk",
+    "@lcnr",
+    "@nagisa",
+    "@wesleywiser",
+]
+compiler-team-contributors = [
+    "@compiler-errors",
+    "@eholk",
+    "@jackh726",
+    "@fee1-dead",
+    "@TaKO8Ki",
+    "@Nilstrieb",
+]
+compiler = [
+    "compiler-team",
+    "compiler-team-contributors",
+]
+libs = [
+    "@joshtriplett",
+    "@Mark-Simulacrum",
+    "@m-ou-se",
+    "@thomcc",
+]
+bootstrap = [
+    "@Mark-Simulacrum",
+    "@jyn514",
+]
+infra-ci = [
+    "@Mark-Simulacrum",
+    "@pietroalbini",
+    "@jyn514",
+]
+rustdoc = [
+    "@jsha",
+    "@GuillaumeGomez",
+    "@CraftSpider",
+    "@notriddle",
+]
+docs = [
+    "@ehuss",
+    "@GuillaumeGomez",
+    "@JohnTitor",
+]
+query-system = [
+    "@cjgillot",
+]
+incremental = [
+    "@michaelwoerister",
+    "@wesleywiser",
+]
+diagnostics = [
+    "@compiler-errors",
+    "@davidtwco",
+    "@estebank",
+    "@oli-obk",
+    "@TaKO8Ki",
+]
+parser = [
+    "@davidtwco",
+    "@estebank",
+    "@nnethercote",
+    "@petrochenkov",
+]
+lexer = [
+    "@nnethercote",
+    "@petrochenkov",
+]
+mir = [
+    "@davidtwco",
+    "@oli-obk",
+]
+mir-opt = [
+    "@nagisa",
+    "@oli-obk",
+    "@wesleywiser",
+]
+types = [
+    "@compiler-errors",
+    "@jackh726",
+    "@lcnr",
+    "@oli-obk",
+    "@spastorino",
+]
+borrowck = [
+    "@davidtwco",
+    "@pnkfelix",
+]
+ast_lowering = [
+    "@spastorino",
+]
+fallback = [
+    "@Mark-Simulacrum"
+]
+
+[assign.owners]
+"/.github/workflows" =                       ["infra-ci"]
+"/Cargo.lock" =                              ["@Mark-Simulacrum"]
+"/Cargo.toml" =                              ["@Mark-Simulacrum"]
+"/compiler" =                                ["compiler"]
+"/compiler/rustc_apfloat" =                  ["@eddyb"]
+"/compiler/rustc_ast" =                      ["compiler", "parser"]
+"/compiler/rustc_ast_lowering" =             ["compiler", "ast_lowering"]
+"/compiler/rustc_hir_analysis" =             ["compiler", "types"]
+"/compiler/rustc_lexer" =                    ["compiler", "lexer"]
+"/compiler/rustc_llvm" =                     ["@cuviper"]
+"/compiler/rustc_middle/src/mir" =           ["compiler", "mir"]
+"/compiler/rustc_middle/src/traits" =        ["compiler", "types"]
+"/compiler/rustc_const_eval/src/interpret" = ["compiler", "mir"]
+"/compiler/rustc_const_eval/src/transform" = ["compiler", "mir-opt"]
+"/compiler/rustc_mir_build/src/build" =      ["compiler", "mir"]
+"/compiler/rustc_parse" =                    ["compiler", "parser"]
+"/compiler/rustc_parse/src/lexer" =          ["compiler", "lexer"]
+"/compiler/rustc_query_impl" =               ["compiler", "query-system"]
+"/compiler/rustc_query_system" =             ["compiler", "query-system"]
+"/compiler/rustc_trait_selection" =          ["compiler", "types"]
+"/compiler/rustc_traits" =                   ["compiler", "types"]
+"/compiler/rustc_type_ir" =                  ["compiler", "types"]
+"/library/alloc" =                           ["libs"]
+"/library/core" =                            ["libs", "@scottmcm"]
+"/library/panic_abort" =                     ["libs"]
+"/library/panic_unwind" =                    ["libs"]
+"/library/proc_macro" =                      ["@petrochenkov"]
+"/library/std" =                             ["libs"]
+"/library/std/src/sys/windows" =             ["@ChrisDenton", "@thomcc"]
+"/library/stdarch" =                         ["libs"]
+"/library/test" =                            ["libs"]
+"/src/bootstrap" =                           ["bootstrap"]
+"/src/ci" =                                  ["infra-ci"]
+"/src/doc" =                                 ["docs"]
+"/src/doc/book" =                            ["@ehuss"]
+"/src/doc/edition-guide" =                   ["@ehuss"]
+"/src/doc/embedded-book" =                   ["@ehuss"]
+"/src/doc/nomicon" =                         ["@ehuss"]
+"/src/doc/reference" =                       ["@ehuss"]
+"/src/doc/rust-by-example" =                 ["@ehuss"]
+"/src/doc/rustc-dev-guide" =                 ["@ehuss"]
+"/src/doc/rustdoc" =                         ["rustdoc"]
+"/src/etc" =                                 ["@Mark-Simulacrum"]
+"/src/librustdoc" =                          ["rustdoc"]
+"/src/llvm-project" =                        ["@cuviper"]
+"/src/rustdoc-json-types" =                  ["rustdoc"]
+"/src/stage0.json" =                         ["bootstrap"]
+"/src/test/ui" =                             ["compiler"]
+"/src/tools/cargo" =                         ["@ehuss", "@joshtriplett"]
+"/src/tools/compiletest" =                   ["bootstrap"]
+"/src/tools/linkchecker" =                   ["@ehuss"]
+"/src/tools/rust-installer" =                ["bootstrap"]
+"/src/tools/rustbook" =                      ["@ehuss"]
+"/src/tools/rustdoc" =                       ["rustdoc"]
+"/src/tools/rustdoc-js" =                    ["rustdoc"]
+"/src/tools/rustdoc-themes" =                ["rustdoc"]
+"/src/tools/tidy" =                          ["bootstrap"]
+"/src/tools/x" =                             ["bootstrap"]

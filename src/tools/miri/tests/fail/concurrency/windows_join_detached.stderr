@@ -1,0 +1,22 @@
+error: Undefined Behavior: trying to join a detached thread
+  --> RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+   |
+LL |         let rc = unsafe { c::WaitForSingleObject(self.handle.as_raw_handle(), c::INFINITE) };
+   |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ trying to join a detached thread
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `std::sys::PLATFORM::thread::Thread::join` at RUSTLIB/std/src/sys/PLATFORM/thread.rs:LL:CC
+   = note: inside `std::thread::JoinInner::<'_, ()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+   = note: inside `std::thread::JoinHandle::<()>::join` at RUSTLIB/std/src/thread/mod.rs:LL:CC
+note: inside `main`
+  --> $DIR/windows_join_detached.rs:LL:CC
+   |
+LL |     thread.join().unwrap();
+   |     ^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -1,5 +1,5 @@
-// Checks that declaring a lang item with the wrong number
-// of generic arguments errors rather than crashing (issue #83893, #87573, part of #9307, #79559).
+// Checks that declaring a lang item with the wrong number of generic arguments errors rather than
+// crashing (issue #83474, #83893, #87573, part of #9307, #79559).
 
 #![feature(lang_items, no_core)]
 #![no_core]
@@ -22,8 +22,10 @@ trait MyIndex<'a, T> {}
 #[lang = "phantom_data"]
 //~^ ERROR `phantom_data` language item must be applied to a struct with 1 generic argument
 struct MyPhantomData<T, U>;
-//~^ ERROR parameter `T` is never used
-//~| ERROR parameter `U` is never used
+
+#[lang = "owned_box"]
+//~^ ERROR `owned_box` language item must be applied to a struct with at least 1 generic argument
+struct Foo;
 
 // When the `start` lang item is missing generics very odd things can happen, especially when
 // it comes to cross-crate monomorphization
@@ -48,6 +50,9 @@ fn ice() {
 
     // Use phantomdata
     let _ = MyPhantomData::<(), i32>;
+
+    // Use Foo
+    let _: () = Foo;
 }
 
 // use `start`

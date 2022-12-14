@@ -69,4 +69,29 @@ mod issue4326 {
     }
 }
 
+// Issue #7360
+struct Foo<T, U>
+where
+    T: Clone,
+    U: Clone,
+{
+    t: T,
+    u: U,
+}
+
+// Check for the `?` in `?Sized`
+pub fn f<T: ?Sized>()
+where
+    T: Clone,
+{
+}
+pub fn g<T: Clone>()
+where
+    T: ?Sized,
+{
+}
+
+// This should not lint
+fn impl_trait(_: impl AsRef<str>, _: impl AsRef<str>) {}
+
 fn main() {}

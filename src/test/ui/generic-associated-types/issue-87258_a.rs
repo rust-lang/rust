@@ -1,5 +1,4 @@
 #![feature(type_alias_impl_trait)]
-#![feature(generic_associated_types)]
 
 // See https://github.com/rust-lang/rust/issues/87258#issuecomment-883293367
 
@@ -16,7 +15,8 @@ pub trait Trait2 {
 
 impl<'c, S: Trait2> Trait2 for &'c mut S {
     type FooFuture<'a> = impl Trait1;
-    fn foo<'a>() -> Self::FooFuture<'a> { //~ ERROR
+    //~^ ERROR unconstrained opaque type
+    fn foo<'a>() -> Self::FooFuture<'a> {
         Struct(unimplemented!())
     }
 }

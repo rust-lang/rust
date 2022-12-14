@@ -3,9 +3,6 @@
 // outlive the location in which the type appears, even when the
 // constraint is in a where clause not a bound. Issue #22246.
 
-// revisions: migrate nll
-//[nll]compile-flags: -Z borrowck=mir
-
 #![allow(dead_code)]
 
 pub trait TheTrait {
@@ -31,8 +28,7 @@ fn with_assoc<'a,'b>() {
     // which is &'b (), must outlive 'a.
 
     let _: &'a WithAssoc<TheType<'b>> = loop { };
-    //[migrate]~^ ERROR reference has a longer lifetime
-    //[nll]~^^ ERROR lifetime may not live long enough
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

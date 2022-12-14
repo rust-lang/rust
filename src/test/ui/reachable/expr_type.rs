@@ -6,7 +6,7 @@
 
 fn a() {
     // the cast is unreachable:
-    let x = {return}: !; //~ ERROR unreachable
+    let x = type_ascribe!({return}, !); //~ ERROR unreachable
 }
 
 fn main() { }

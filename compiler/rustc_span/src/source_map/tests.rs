@@ -251,7 +251,7 @@ fn t10() {
         non_narrow_chars,
         normalized_pos,
         start_pos,
-        end_pos,
+        0,
     );
 
     assert!(
@@ -311,4 +311,217 @@ impl SourceMapExtension for SourceMap {
             i += 1;
         }
     }
+}
+
+// Takes a unix-style path and returns a platform specific path.
+fn path(p: &str) -> PathBuf {
+    path_str(p).into()
+}
+
+// Takes a unix-style path and returns a platform specific path.
+fn path_str(p: &str) -> String {
+    #[cfg(not(windows))]
+    {
+        return p.into();
+    }
+
+    #[cfg(windows)]
+    {
+        let mut path = p.replace('/', "\\");
+        if let Some(rest) = path.strip_prefix('\\') {
+            path = ["X:\\", rest].concat();
+        }
+
+        path
+    }
+}
+
+fn map_path_prefix(mapping: &FilePathMapping, p: &str) -> String {
+    // It's important that we convert to a string here because that's what
+    // later stages do too (e.g. in the backend), and comparing `Path` values
+    // won't catch some differences at the string level, e.g. "abc" and "abc/"
+    // compare as equal.
+    mapping.map_prefix(path(p)).0.to_string_lossy().to_string()
+}
+
+#[test]
+fn path_prefix_remapping() {
+    // Relative to relative
+    {
+        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("foo"))]);
+
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("foo"));
+    }
+
+    // Relative to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![(path("abc/def"), path("/foo"))]);
+
+        assert_eq!(map_path_prefix(mapping, "abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "abc/def"), path_str("/foo"));
+    }
+
+    // Absolute to relative
+    {
+        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("foo"))]);
+
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("foo"));
+    }
+
+    // Absolute to absolute
+    {
+        let mapping = &FilePathMapping::new(vec![(path("/abc/def"), path("/foo"))]);
+
+        assert_eq!(map_path_prefix(mapping, "/abc/def/src/main.rs"), path_str("/foo/src/main.rs"));
+        assert_eq!(map_path_prefix(mapping, "/abc/def"), path_str("/foo"));
+    }
+}
+
+#[test]
+fn path_prefix_remapping_expand_to_absolute() {
+    // "virtual" working directory is relative path
+    let mapping =
+        &FilePathMapping::new(vec![(path("/foo"), path("FOO")), (path("/bar"), path("BAR"))]);
+    let working_directory = path("/foo");
+    let working_directory = RealFileName::Remapped {
+        local_path: Some(working_directory.clone()),
+        virtual_name: mapping.map_prefix(working_directory).0,
+    };
+
+    assert_eq!(working_directory.remapped_path_if_available(), path("FOO"));
+
+    // Unmapped absolute path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/foo/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
+
+    // Unmapped absolute path with unrelated working directory
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/bar/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
+    );
+
+    // Unmapped absolute path that does not match any prefix
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("/quux/src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::LocalPath(path("/quux/src/main.rs")),
+    );
+
+    // Unmapped relative path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
+
+    // Unmapped relative path with `./`
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("./src/main.rs")),
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
+
+    // Unmapped relative path that does not match any prefix
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::LocalPath(path("quux/src/main.rs")),
+            &RealFileName::LocalPath(path("/abc")),
+        ),
+        RealFileName::LocalPath(path("/abc/quux/src/main.rs")),
+    );
+
+    // Already remapped absolute path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped {
+                local_path: Some(path("/foo/src/main.rs")),
+                virtual_name: path("FOO/src/main.rs"),
+            },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("FOO/src/main.rs") }
+    );
+
+    // Already remapped absolute path, with unrelated working directory
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped {
+                local_path: Some(path("/bar/src/main.rs")),
+                virtual_name: path("BAR/src/main.rs"),
+            },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("BAR/src/main.rs") }
+    );
+
+    // Already remapped relative path
+    assert_eq!(
+        mapping.to_embeddable_absolute_path(
+            RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") },
+            &working_directory
+        ),
+        RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
+    );
+}
+
+#[test]
+fn test_next_point() {
+    let sm = SourceMap::new(FilePathMapping::empty());
+    sm.new_source_file(PathBuf::from("example.rs").into(), "a…b".to_string());
+
+    // Dummy spans don't advance.
+    let span = DUMMY_SP;
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 0);
+    assert_eq!(span.hi().0, 0);
+
+    // Span advance respect multi-byte character
+    let span = Span::with_root_ctxt(BytePos(0), BytePos(1));
+    assert_eq!(sm.span_to_snippet(span), Ok("a".to_string()));
+    let span = sm.next_point(span);
+    assert_eq!(sm.span_to_snippet(span), Ok("…".to_string()));
+    assert_eq!(span.lo().0, 1);
+    assert_eq!(span.hi().0, 4);
+
+    // An empty span pointing just before a multi-byte character should
+    // advance to contain the multi-byte character.
+    let span = Span::with_root_ctxt(BytePos(1), BytePos(1));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 1);
+    assert_eq!(span.hi().0, 4);
+
+    let span = Span::with_root_ctxt(BytePos(1), BytePos(4));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 4);
+    assert_eq!(span.hi().0, 5);
+
+    // Reaching to the end of file, return a span that will get error with `span_to_snippet`
+    let span = Span::with_root_ctxt(BytePos(4), BytePos(5));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 5);
+    assert_eq!(span.hi().0, 6);
+    assert!(sm.span_to_snippet(span).is_err());
+
+    // Reaching to the end of file, return a span that will get error with `span_to_snippet`
+    let span = Span::with_root_ctxt(BytePos(5), BytePos(5));
+    let span = sm.next_point(span);
+    assert_eq!(span.lo().0, 5);
+    assert_eq!(span.hi().0, 6);
+    assert!(sm.span_to_snippet(span).is_err());
 }

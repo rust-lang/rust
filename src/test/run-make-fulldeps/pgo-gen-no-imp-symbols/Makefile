@@ -1,6 +1,6 @@
 # needs-profiler-support
 
--include ../tools.mk
+include ../tools.mk
 
 COMPILE_FLAGS=-O -Ccodegen-units=1 -Cprofile-generate="$(TMPDIR)"
 

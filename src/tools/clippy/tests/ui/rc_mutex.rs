@@ -1,5 +1,5 @@
 #![warn(clippy::rc_mutex)]
-#![allow(unused, clippy::blacklisted_name)]
+#![allow(unused, clippy::disallowed_names)]
 
 use std::rc::Rc;
 use std::sync::Mutex;

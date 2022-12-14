@@ -1,10 +1,12 @@
 //! Random access inspection of the results of a dataflow analysis.
 
+use crate::framework::BitSetExt;
+
 use std::borrow::Borrow;
 use std::cmp::Ordering;
 
+#[cfg(debug_assertions)]
 use rustc_index::bit_set::BitSet;
-use rustc_index::vec::Idx;
 use rustc_middle::mir::{self, BasicBlock, Location};
 
 use super::{Analysis, Direction, Effect, EffectIndex, Results};
@@ -107,7 +109,7 @@ where
     /// For backward analyses, this is the state that will be propagated to its
     /// predecessors (ignoring edge-specific effects).
     pub fn seek_to_block_start(&mut self, block: BasicBlock) {
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             self.seek_to_block_entry(block)
         } else {
             self.seek_after(Location { block, statement_index: 0 }, Effect::Primary)
@@ -121,7 +123,7 @@ where
     /// For forward analyses, this is the state that will be propagated to its
     /// successors (ignoring edge-specific effects).
     pub fn seek_to_block_end(&mut self, block: BasicBlock) {
-        if A::Direction::is_backward() {
+        if A::Direction::IS_BACKWARD {
             self.seek_to_block_entry(block)
         } else {
             self.seek_after(self.body.terminator_loc(block), Effect::Primary)
@@ -155,7 +157,7 @@ where
             self.seek_to_block_entry(target.block);
         } else if let Some(curr_effect) = self.pos.curr_effect_index {
             let mut ord = curr_effect.statement_index.cmp(&target.statement_index);
-            if A::Direction::is_backward() {
+            if A::Direction::IS_BACKWARD {
                 ord = ord.reverse()
             }
 
@@ -171,7 +173,7 @@ where
         debug_assert_eq!(target.block, self.pos.block);
 
         let block_data = &self.body[target.block];
-        let next_effect = if A::Direction::is_forward() {
+        let next_effect = if A::Direction::IS_FORWARD {
             #[rustfmt::skip]
             self.pos.curr_effect_index.map_or_else(
                 || Effect::Before.at_index(0),
@@ -209,13 +211,13 @@ where
     }
 }
 
-impl<'mir, 'tcx, A, R, T> ResultsCursor<'mir, 'tcx, A, R>
+impl<'mir, 'tcx, A, R> ResultsCursor<'mir, 'tcx, A, R>
 where
-    A: Analysis<'tcx, Domain = BitSet<T>>,
-    T: Idx,
+    A: crate::GenKillAnalysis<'tcx>,
+    A::Domain: BitSetExt<A::Idx>,
     R: Borrow<Results<'tcx, A>>,
 {
-    pub fn contains(&self, elem: T) -> bool {
+    pub fn contains(&self, elem: A::Idx) -> bool {
         self.get().contains(elem)
     }
 }

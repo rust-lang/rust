@@ -3,7 +3,7 @@ use clippy_utils::visitors::is_local_used;
 use if_chain::if_chain;
 use rustc_hir::{Impl, ImplItem, ImplItemKind, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -29,25 +29,39 @@ declare_clippy_lint! {
     ///     fn method() {}
     /// }
     /// ```
+    #[clippy::version = "1.40.0"]
     pub UNUSED_SELF,
     pedantic,
     "methods that contain a `self` argument but don't use it"
 }
 
-declare_lint_pass!(UnusedSelf => [UNUSED_SELF]);
+pub struct UnusedSelf {
+    avoid_breaking_exported_api: bool,
+}
+
+impl_lint_pass!(UnusedSelf => [UNUSED_SELF]);
+
+impl UnusedSelf {
+    pub fn new(avoid_breaking_exported_api: bool) -> Self {
+        Self {
+            avoid_breaking_exported_api,
+        }
+    }
+}
 
 impl<'tcx> LateLintPass<'tcx> for UnusedSelf {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &ImplItem<'_>) {
         if impl_item.span.from_expansion() {
             return;
         }
-        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id());
+        let parent = cx.tcx.hir().get_parent_item(impl_item.hir_id()).def_id;
         let parent_item = cx.tcx.hir().expect_item(parent);
-        let assoc_item = cx.tcx.associated_item(impl_item.def_id);
+        let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         if_chain! {
             if let ItemKind::Impl(Impl { of_trait: None, .. }) = parent_item.kind;
             if assoc_item.fn_has_self_parameter;
             if let ImplItemKind::Fn(.., body_id) = &impl_item.kind;
+            if !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) || !self.avoid_breaking_exported_api;
             let body = cx.tcx.hir().body(*body_id);
             if let [self_param, ..] = body.params;
             if !is_local_used(cx, body, self_param.pat.hir_id);

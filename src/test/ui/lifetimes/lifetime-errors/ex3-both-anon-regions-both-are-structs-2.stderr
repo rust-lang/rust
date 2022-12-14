@@ -1,11 +1,12 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:7:11
+error: lifetime may not live long enough
+  --> $DIR/ex3-both-anon-regions-both-are-structs-2.rs:7:5
    |
 LL | fn foo(mut x: Ref, y: Ref) {
-   |               ---     --- these two types are declared with different lifetimes...
+   |        -----       - has type `Ref<'_, '1>`
+   |        |
+   |        has type `Ref<'_, '2>`
 LL |     x.b = y.b;
-   |           ^^^ ...but data from `y` flows into `x` here
+   |     ^^^^^^^^^ assignment requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

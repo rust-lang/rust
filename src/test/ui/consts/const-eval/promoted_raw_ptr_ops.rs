@@ -1,5 +1,3 @@
-#![feature(const_raw_ptr_deref)]
-
 fn main() {
     let x: &'static bool = &(42 as *const i32 == 43 as *const i32);
     //~^ ERROR temporary value dropped while borrowed

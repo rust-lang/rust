@@ -8,15 +8,18 @@ use rustc_middle::ty::{self, Ty, TyCtxt};
 pub struct RevealAll;
 
 impl<'tcx> MirPass<'tcx> for RevealAll {
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 3 || super::inline::Inline.is_enabled(sess)
+    }
+
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // This pass must run before inlining, since we insert callee bodies in RevealAll mode.
         // Do not apply this transformation to generators.
-        if (tcx.sess.mir_opt_level() >= 3 || !super::inline::is_enabled(tcx))
-            && body.generator.is_none()
-        {
-            let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
-            RevealAllVisitor { tcx, param_env }.visit_body(body);
+        if body.generator.is_some() {
+            return;
         }
+
+        let param_env = tcx.param_env_reveal_all_normalized(body.source.def_id());
+        RevealAllVisitor { tcx, param_env }.visit_body_preserves_cfg(body);
     }
 }
 
@@ -33,26 +36,9 @@ impl<'tcx> MutVisitor<'tcx> for RevealAllVisitor<'tcx> {
 
     #[inline]
     fn visit_ty(&mut self, ty: &mut Ty<'tcx>, _: TyContext) {
-        *ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-    }
-
-    #[inline]
-    fn process_projection_elem(
-        &mut self,
-        elem: PlaceElem<'tcx>,
-        _: Location,
-    ) -> Option<PlaceElem<'tcx>> {
-        match elem {
-            PlaceElem::Field(field, ty) => {
-                let new_ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-                if ty != new_ty { Some(PlaceElem::Field(field, new_ty)) } else { None }
-            }
-            // None of those contain a Ty.
-            PlaceElem::Index(..)
-            | PlaceElem::Deref
-            | PlaceElem::ConstantIndex { .. }
-            | PlaceElem::Subslice { .. }
-            | PlaceElem::Downcast(..) => None,
-        }
+        // We have to use `try_normalize_erasing_regions` here, since it's
+        // possible that we visit impossible-to-satisfy where clauses here,
+        // see #91745
+        *ty = self.tcx.try_normalize_erasing_regions(self.param_env, *ty).unwrap_or(*ty);
     }
 }

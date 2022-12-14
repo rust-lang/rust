@@ -2,7 +2,12 @@ error[E0282]: type annotations needed for `Result<(), E>`
   --> $DIR/cannot-infer-closure-circular.rs:7:14
    |
 LL |     let x = |r| {
-   |              ^ consider giving this closure parameter the explicit type `Result<(), E>`, where the type parameter `E` is specified
+   |              ^
+   |
+help: consider giving this closure parameter an explicit type, where the type for type parameter `E` is specified
+   |
+LL |     let x = |r: Result<(), E>| {
+   |               +++++++++++++++
 
 error: aborting due to previous error
 

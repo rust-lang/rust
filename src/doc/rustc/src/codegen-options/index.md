@@ -1,4 +1,4 @@
-# Codegen options
+# Codegen Options
 
 All of these options are passed to `rustc` via the `-C` flag, short for "codegen." You can see
 a version of this list for your exact compiler by running `rustc -C help`.
@@ -177,6 +177,15 @@ The default depends on the [opt-level](#opt-level):
 | s         | 75 |
 | z         | 25 |
 
+## instrument-coverage
+
+This option enables instrumentation-based code coverage support. See the
+chapter on [instrumentation-based code coverage] for more information.
+
+Note that while the `-C instrument-coverage` option is stable, the profile data
+format produced by the resulting instrumentation may change, and may not work
+with coverage tools other than those built and shipped with the compiler.
+
 ## link-arg
 
 This flag lets you append a single extra argument to the linker invocation.
@@ -201,8 +210,8 @@ metrics.
 
 ## link-self-contained
 
-On targets that support it this flag controls whether the linker will use libraries and objects
-shipped with Rust instead or those in the system.
+On `windows-gnu`, `linux-musl`, and `wasi` targets, this flag controls whether the
+linker will use libraries and objects shipped with Rust instead or those in the system.
 It takes one of the following values:
 
 * no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
@@ -522,8 +531,41 @@ platforms. Possible values are:
   debug information. On other Unix platforms this means that `*.dwo` files will
   contain debug information.
 
-Note that `packed` and `unpacked` are gated behind `-Z unstable-options` on
-non-macOS platforms at this time.
+Note that all three options are supported on Linux and Apple platforms,
+`packed` is supported on Windows-MSVC, and all other platforms support `off`.
+Attempting to use an unsupported option requires using the nightly channel
+with the `-Z unstable-options` flag.
+
+## strip
+
+The option `-C strip=val` controls stripping of debuginfo and similar auxiliary
+data from binaries during linking.
+
+Supported values for this option are:
+
+- `none` - debuginfo and symbols (if they exist) are copied to the produced
+  binary or separate files depending on the target (e.g. `.pdb` files in case
+  of MSVC).
+- `debuginfo` - debuginfo sections and debuginfo symbols from the symbol table
+  section are stripped at link time and are not copied to the produced binary
+  or separate files.
+- `symbols` - same as `debuginfo`, but the rest of the symbol table section is
+  stripped as well if the linker supports it.
+
+## symbol-mangling-version
+
+This option controls the [name mangling] format for encoding Rust item names
+for the purpose of generating object code and linking.
+
+Supported values for this option are:
+
+* `v0` — The "v0" mangling scheme. The specific format is not specified at
+  this time.
+
+The default if not specified will use a compiler-chosen default which may
+change in the future.
+
+[name mangling]: https://en.wikipedia.org/wiki/Name_mangling
 
 ## target-cpu
 
@@ -581,5 +623,6 @@ effective only for x86 targets.
 
 [option-emit]: ../command-line-arguments.md#option-emit
 [option-o-optimize]: ../command-line-arguments.md#option-o-optimize
+[instrumentation-based code coverage]: ../instrument-coverage.md
 [profile-guided optimization]: ../profile-guided-optimization.md
 [option-g-debug]: ../command-line-arguments.md#option-g-debug

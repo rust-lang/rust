@@ -11,6 +11,8 @@ struct Test {
     packages: &'static [&'static str],
     features: Option<&'static [&'static str]>,
     manifest_path: Option<&'static str>,
+    /// `filters` are passed to libtest (i.e., after a `--` in the `cargo test` invocation).
+    filters: &'static [&'static str],
 }
 
 const TEST_REPOS: &[Test] = &[
@@ -22,15 +24,17 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "ripgrep",
         repo: "https://github.com/BurntSushi/ripgrep",
-        sha: "3de31f752729525d85a3d1575ac1978733b3f7e7",
+        sha: "ced5b92aa93eb47e892bd2fd26ab454008721730",
         lock: None,
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "tokei",
@@ -40,6 +44,7 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "xsv",
@@ -49,17 +54,33 @@ const TEST_REPOS: &[Test] = &[
         packages: &[],
         features: None,
         manifest_path: None,
+        // Many tests here use quickcheck and some of them can fail randomly, so only run deterministic tests.
+        filters: &[
+            "test_flatten::",
+            "test_fmt::",
+            "test_headers::",
+            "test_index::",
+            "test_join::",
+            "test_partition::",
+            "test_search::",
+            "test_select::",
+            "test_slice::",
+            "test_split::",
+            "test_stats::",
+            "test_table::",
+        ],
     },
     Test {
         name: "servo",
         repo: "https://github.com/servo/servo",
-        sha: "caac107ae8145ef2fd20365e2b8fadaf09c2eb3b",
+        sha: "785a344e32db58d4e631fd3cae17fd1f29a721ab",
         lock: None,
         // Only test Stylo a.k.a. Quantum CSS, the parts of Servo going into Firefox.
         // This takes much less time to build than all of Servo and supports stable Rust.
         packages: &["selectors"],
         features: None,
         manifest_path: None,
+        filters: &[],
     },
     Test {
         name: "diesel",
@@ -67,7 +88,7 @@ const TEST_REPOS: &[Test] = &[
         sha: "91493fe47175076f330ce5fc518f0196c0476f56",
         lock: None,
         packages: &[],
-        // Test the embeded sqlite variant of diesel
+        // Test the embedded sqlite variant of diesel
         // This does not require any dependency to be present,
         // sqlite will be compiled as part of the build process
         features: Some(&["sqlite", "libsqlite3-sys/bundled"]),
@@ -75,6 +96,7 @@ const TEST_REPOS: &[Test] = &[
         // not any other crate present in the diesel workspace
         // (This is required to set the feature flags above)
         manifest_path: Some("diesel/Cargo.toml"),
+        filters: &[],
     },
 ];
 
@@ -97,7 +119,8 @@ fn test_repo(cargo: &Path, out_dir: &Path, test: &Test) {
     if let Some(lockfile) = test.lock {
         fs::write(&dir.join("Cargo.lock"), lockfile).unwrap();
     }
-    if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path) {
+    if !run_cargo_test(cargo, &dir, test.packages, test.features, test.manifest_path, test.filters)
+    {
         panic!("tests failed for {}", test.repo);
     }
 }
@@ -155,6 +178,7 @@ fn run_cargo_test(
     packages: &[&str],
     features: Option<&[&str]>,
     manifest_path: Option<&str>,
+    filters: &[&str],
 ) -> bool {
     let mut command = Command::new(cargo_path);
     command.arg("test");
@@ -174,11 +198,18 @@ fn run_cargo_test(
         command.arg("-p").arg(name);
     }
 
+    command.arg("--");
+    command.args(filters);
+
     let status = command
         // Disable rust-lang/cargo's cross-compile tests
         .env("CFG_DISABLE_CROSS_TESTS", "1")
         // Relax #![deny(warnings)] in some crates
         .env("RUSTFLAGS", "--cap-lints warn")
+        // servo tries to use 'lld-link.exe' on windows, but we don't
+        // have lld on our PATH in CI. Override it to use 'link.exe'
+        .env("CARGO_TARGET_X86_64_PC_WINDOWS_MSVC_LINKER", "link.exe")
+        .env("CARGO_TARGET_I686_PC_WINDOWS_MSVC_LINKER", "link.exe")
         .current_dir(crate_path)
         .status()
         .unwrap();

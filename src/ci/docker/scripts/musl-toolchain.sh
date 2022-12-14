@@ -38,12 +38,21 @@ shift
 
 # Ancient binutils versions don't understand debug symbols produced by more recent tools.
 # Apparently applying `-fPIC` everywhere allows them to link successfully.
-export CFLAGS="-fPIC $CFLAGS"
+# Enable debug info. If we don't do so, users can't debug into musl code,
+# debuggers can't walk the stack, etc. Fixes #90103.
+export CFLAGS="-fPIC -g1 $CFLAGS"
 
 git clone https://github.com/richfelker/musl-cross-make # -b v0.9.9
 cd musl-cross-make
 # A few commits ahead of v0.9.9 to include the cowpatch fix:
 git checkout a54eb56f33f255dfca60be045f12a5cfaf5a72a9
+
+# Fix the cfi detection script in musl's configure so cfi is generated
+# when debug info is asked for. This patch is derived from
+# https://git.musl-libc.org/cgit/musl/commit/?id=c4d4028dde90562f631edf559fbc42d8ec1b29de.
+# When we upgrade to a version that includes this commit, we can remove the patch.
+mkdir patches/musl-1.1.24
+cp ../musl-patch-configure.diff patches/musl-1.1.24/0001-fix-cfi-detection.diff
 
 hide_output make -j$(nproc) TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE
 hide_output make install TARGET=$TARGET MUSL_VER=1.1.24 LINUX_HEADERS_SITE=$LINUX_HEADERS_SITE OUTPUT=$OUTPUT

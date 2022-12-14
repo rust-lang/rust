@@ -10,7 +10,7 @@
 // [aarch64_thirunsafeck] needs-llvm-components: aarch64
 // [aarch64_mirunsafeck] needs-llvm-components: aarch64
 
-#![feature(no_core, lang_items, rustc_attrs)]
+#![feature(no_core, lang_items, rustc_attrs, asm_const)]
 #![no_core]
 
 #[rustc_builtin_macro]
@@ -49,6 +49,7 @@ fn main() {
         //[aarch64_thirunsafeck,aarch64_mirunsafeck]~^ ERROR invalid reference to argument at index 0
         asm!("{:foo}", in(reg) foo);
         //~^ ERROR asm template modifier must be a single character
+        //~| WARN formatting may not be suitable for sub-register argument [asm_sub_register]
         asm!("", in(reg) 0, in(reg) 1);
         //~^ ERROR multiple unused asm arguments
     }

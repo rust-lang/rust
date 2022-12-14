@@ -1,7 +1,9 @@
 use crate::abi::{self, Abi, Align, FieldsShape, Size};
 use crate::abi::{HasDataLayout, TyAbiInterface, TyAndLayout};
 use crate::spec::{self, HasTargetSpec};
+use rustc_span::Symbol;
 use std::fmt;
+use std::str::FromStr;
 
 mod aarch64;
 mod amdgpu;
@@ -9,11 +11,11 @@ mod arm;
 mod avr;
 mod bpf;
 mod hexagon;
+mod loongarch;
 mod m68k;
 mod mips;
 mod mips64;
 mod msp430;
-mod nvptx;
 mod nvptx64;
 mod powerpc;
 mod powerpc64;
@@ -26,7 +28,7 @@ mod x86;
 mod x86_64;
 mod x86_win64;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
+#[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub enum PassMode {
     /// Ignore the argument.
     ///
@@ -40,13 +42,14 @@ pub enum PassMode {
     ///
     /// The argument has a layout abi of `ScalarPair`.
     Pair(ArgAttributes, ArgAttributes),
-    /// Pass the argument after casting it, to either
-    /// a single uniform or a pair of registers.
-    Cast(CastTarget),
+    /// Pass the argument after casting it, to either a single uniform or a
+    /// pair of registers. The bool indicates if a `Reg::i32()` dummy argument
+    /// is emitted before the real argument.
+    Cast(Box<CastTarget>, bool),
     /// Pass the argument indirectly via a hidden pointer.
     /// The `extra_attrs` value, if any, is for the extra data (vtable or length)
     /// which indicates that it refers to an unsized rvalue.
-    /// `on_stack` defines that the the value should be passed at a fixed
+    /// `on_stack` defines that the value should be passed at a fixed
     /// stack offset in accordance to the ABI rather than passed using a
     /// pointer. This corresponds to the `byval` LLVM argument attribute.
     Indirect { attrs: ArgAttributes, extra_attrs: Option<ArgAttributes>, on_stack: bool },
@@ -68,9 +71,12 @@ mod attr_impl {
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
-            // NoAlias on &mut arguments can only be used with LLVM >= 12 due to miscompiles
-            // in earlier versions. FIXME: Remove this distinction once possible.
+            // Due to past miscompiles in LLVM, we use a separate attribute for
+            // &mut arguments, so that the codegen backend can decide whether
+            // or not to actually emit the attribute. It can also be controlled
+            // with the `-Zmutable-noalias` debugging option.
             const NoAliasMutRef = 1 << 6;
+            const NoUndef = 1 << 7;
         }
     }
 }
@@ -212,9 +218,9 @@ impl Uniform {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct CastTarget {
-    pub prefix: [Option<RegKind>; 8],
-    pub prefix_chunk_size: Size,
+    pub prefix: [Option<Reg>; 8],
     pub rest: Uniform,
+    pub attrs: ArgAttributes,
 }
 
 impl From<Reg> for CastTarget {
@@ -225,29 +231,48 @@ impl From<Reg> for CastTarget {
 
 impl From<Uniform> for CastTarget {
     fn from(uniform: Uniform) -> CastTarget {
-        CastTarget { prefix: [None; 8], prefix_chunk_size: Size::ZERO, rest: uniform }
+        CastTarget {
+            prefix: [None; 8],
+            rest: uniform,
+            attrs: ArgAttributes {
+                regular: ArgAttribute::default(),
+                arg_ext: ArgExtension::None,
+                pointee_size: Size::ZERO,
+                pointee_align: None,
+            },
+        }
     }
 }
 
 impl CastTarget {
     pub fn pair(a: Reg, b: Reg) -> CastTarget {
         CastTarget {
-            prefix: [Some(a.kind), None, None, None, None, None, None, None],
-            prefix_chunk_size: a.size,
+            prefix: [Some(a), None, None, None, None, None, None, None],
             rest: Uniform::from(b),
+            attrs: ArgAttributes {
+                regular: ArgAttribute::default(),
+                arg_ext: ArgExtension::None,
+                pointee_size: Size::ZERO,
+                pointee_align: None,
+            },
         }
     }
 
-    pub fn size<C: HasDataLayout>(&self, cx: &C) -> Size {
-        (self.prefix_chunk_size * self.prefix.iter().filter(|x| x.is_some()).count() as u64)
-            .align_to(self.rest.align(cx))
-            + self.rest.total
+    pub fn size<C: HasDataLayout>(&self, _cx: &C) -> Size {
+        let mut size = self.rest.total;
+        for i in 0..self.prefix.iter().count() {
+            match self.prefix[i] {
+                Some(v) => size += v.size,
+                None => {}
+            }
+        }
+        return size;
     }
 
     pub fn align<C: HasDataLayout>(&self, cx: &C) -> Align {
         self.prefix
             .iter()
-            .filter_map(|x| x.map(|kind| Reg { kind, size: self.prefix_chunk_size }.align(cx)))
+            .filter_map(|x| x.map(|reg| reg.align(cx)))
             .fold(cx.data_layout().aggregate_align.abi.max(self.rest.align(cx)), |acc, align| {
                 acc.max(align)
             })
@@ -325,7 +350,7 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 
             // The primitive for this algorithm.
             Abi::Scalar(scalar) => {
-                let kind = match scalar.value {
+                let kind = match scalar.primitive() {
                     abi::Int(..) | abi::Pointer => RegKind::Integer,
                     abi::F32 | abi::F64 => RegKind::Float,
                 };
@@ -441,10 +466,6 @@ impl<'a, Ty> TyAndLayout<'a, Ty> {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct ArgAbi<'a, Ty> {
     pub layout: TyAndLayout<'a, Ty>,
-
-    /// Dummy argument, which is emitted before the real argument.
-    pub pad: Option<Reg>,
-
     pub mode: PassMode,
 }
 
@@ -459,12 +480,12 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
             Abi::Scalar(scalar) => PassMode::Direct(scalar_attrs(&layout, scalar, Size::ZERO)),
             Abi::ScalarPair(a, b) => PassMode::Pair(
                 scalar_attrs(&layout, a, Size::ZERO),
-                scalar_attrs(&layout, b, a.value.size(cx).align_to(b.value.align(cx).abi)),
+                scalar_attrs(&layout, b, a.size(cx).align_to(b.align(cx).abi)),
             ),
             Abi::Vector { .. } => PassMode::Direct(ArgAttributes::new()),
             Abi::Aggregate { .. } => PassMode::Direct(ArgAttributes::new()),
         };
-        ArgAbi { layout, pad: None, mode }
+        ArgAbi { layout, mode }
     }
 
     fn indirect_pass_mode(layout: &TyAndLayout<'a, Ty>) -> PassMode {
@@ -473,7 +494,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
         // For non-immediate arguments the callee gets its own copy of
         // the value on the stack, so there are no aliases. It's also
         // program-invisible so can't possibly capture
-        attrs.set(ArgAttribute::NoAlias).set(ArgAttribute::NoCapture).set(ArgAttribute::NonNull);
+        attrs
+            .set(ArgAttribute::NoAlias)
+            .set(ArgAttribute::NoCapture)
+            .set(ArgAttribute::NonNull)
+            .set(ArgAttribute::NoUndef);
         attrs.pointee_size = layout.size;
         // FIXME(eddyb) We should be doing this, but at least on
         // i686-pc-windows-msvc, it results in wrong stack offsets.
@@ -507,7 +532,7 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     pub fn extend_integer_width_to(&mut self, bits: u64) {
         // Only integers have signedness
         if let Abi::Scalar(scalar) = self.layout.abi {
-            if let abi::Int(i, signed) = scalar.value {
+            if let abi::Int(i, signed) = scalar.primitive() {
                 if i.size().bits() < bits {
                     if let PassMode::Direct(ref mut attrs) = self.mode {
                         if signed {
@@ -522,11 +547,11 @@ impl<'a, Ty> ArgAbi<'a, Ty> {
     }
 
     pub fn cast_to<T: Into<CastTarget>>(&mut self, target: T) {
-        self.mode = PassMode::Cast(target.into());
+        self.mode = PassMode::Cast(Box::new(target.into()), false);
     }
 
-    pub fn pad_with(&mut self, reg: Reg) {
-        self.pad = Some(reg);
+    pub fn cast_to_and_pad_i32<T: Into<CastTarget>>(&mut self, target: T, pad_i32: bool) {
+        self.mode = PassMode::Cast(Box::new(target.into()), pad_i32);
     }
 
     pub fn is_indirect(&self) -> bool {
@@ -552,6 +577,11 @@ pub enum Conv {
     // should have its own backend (e.g. LLVM) support.
     C,
     Rust,
+
+    /// For things unlikely to be called, where smaller caller codegen is
+    /// preferred over raw speed.
+    /// Stronger than just `#[cold]` because `fn` pointers might be incompatible.
+    RustCold,
 
     // Target-specific calling conventions.
     ArmAapcs,
@@ -583,7 +613,7 @@ pub enum Conv {
 #[derive(PartialEq, Eq, Hash, Debug, HashStable_Generic)]
 pub struct FnAbi<'a, Ty> {
     /// The LLVM types of each argument.
-    pub args: Vec<ArgAbi<'a, Ty>>,
+    pub args: Box<[ArgAbi<'a, Ty>]>,
 
     /// LLVM return type.
     pub ret: ArgAbi<'a, Ty>,
@@ -594,7 +624,7 @@ pub struct FnAbi<'a, Ty> {
     ///
     /// Should only be different from args.len() when c_variadic is true.
     /// This can be used to know whether an argument is variadic or not.
-    pub fixed_count: usize,
+    pub fixed_count: u32,
 
     pub conv: Conv,
 
@@ -602,10 +632,10 @@ pub struct FnAbi<'a, Ty> {
 }
 
 /// Error produced by attempting to adjust a `FnAbi`, for a "foreign" ABI.
-#[derive(Clone, Debug, HashStable_Generic)]
+#[derive(Copy, Clone, Debug, HashStable_Generic)]
 pub enum AdjustForForeignAbiError {
     /// Target architecture doesn't support "foreign" (i.e. non-Rust) ABIs.
-    Unsupported { arch: String, abi: spec::abi::Abi },
+    Unsupported { arch: Symbol, abi: spec::abi::Abi },
 }
 
 impl fmt::Display for AdjustForForeignAbiError {
@@ -637,26 +667,38 @@ impl<'a, Ty> FnAbi<'a, Ty> {
 
         match &cx.target_spec().arch[..] {
             "x86" => {
-                let flavor = if abi == spec::abi::Abi::Fastcall {
-                    x86::Flavor::Fastcall
+                let flavor = if let spec::abi::Abi::Fastcall { .. }
+                | spec::abi::Abi::Vectorcall { .. } = abi
+                {
+                    x86::Flavor::FastcallOrVectorcall
                 } else {
                     x86::Flavor::General
                 };
                 x86::compute_abi_info(cx, self, flavor);
             }
-            "x86_64" => {
-                if abi == spec::abi::Abi::SysV64 {
-                    x86_64::compute_abi_info(cx, self);
-                } else if abi == spec::abi::Abi::Win64 || cx.target_spec().is_like_windows {
-                    x86_win64::compute_abi_info(self);
-                } else {
-                    x86_64::compute_abi_info(cx, self);
+            "x86_64" => match abi {
+                spec::abi::Abi::SysV64 { .. } => x86_64::compute_abi_info(cx, self),
+                spec::abi::Abi::Win64 { .. } => x86_win64::compute_abi_info(self),
+                _ => {
+                    if cx.target_spec().is_like_windows {
+                        x86_win64::compute_abi_info(self)
+                    } else {
+                        x86_64::compute_abi_info(cx, self)
+                    }
                 }
+            },
+            "aarch64" => {
+                let param_policy = if cx.target_spec().is_like_osx {
+                    aarch64::ParamExtension::ExtendTo32Bits
+                } else {
+                    aarch64::ParamExtension::NoExtension
+                };
+                aarch64::compute_abi_info(cx, self, param_policy)
             }
-            "aarch64" => aarch64::compute_abi_info(cx, self),
             "amdgpu" => amdgpu::compute_abi_info(cx, self),
             "arm" => arm::compute_abi_info(cx, self),
             "avr" => avr::compute_abi_info(self),
+            "loongarch64" => loongarch::compute_abi_info(cx, self),
             "m68k" => m68k::compute_abi_info(self),
             "mips" => mips::compute_abi_info(cx, self),
             "mips64" => mips64::compute_abi_info(cx, self),
@@ -666,8 +708,13 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "msp430" => msp430::compute_abi_info(self),
             "sparc" => sparc::compute_abi_info(cx, self),
             "sparc64" => sparc64::compute_abi_info(cx, self),
-            "nvptx" => nvptx::compute_abi_info(self),
-            "nvptx64" => nvptx64::compute_abi_info(self),
+            "nvptx64" => {
+                if cx.target_spec().adjust_abi(abi) == spec::abi::Abi::PtxKernel {
+                    nvptx64::compute_ptx_kernel_abi_info(cx, self)
+                } else {
+                    nvptx64::compute_abi_info(self)
+                }
+            }
             "hexagon" => hexagon::compute_abi_info(self),
             "riscv32" | "riscv64" => riscv::compute_abi_info(cx, self),
             "wasm32" | "wasm64" => {
@@ -680,10 +727,51 @@ impl<'a, Ty> FnAbi<'a, Ty> {
             "asmjs" => wasm::compute_c_abi_info(cx, self),
             "bpf" => bpf::compute_abi_info(self),
             arch => {
-                return Err(AdjustForForeignAbiError::Unsupported { arch: arch.to_string(), abi });
+                return Err(AdjustForForeignAbiError::Unsupported {
+                    arch: Symbol::intern(arch),
+                    abi,
+                });
             }
         }
 
         Ok(())
     }
+}
+
+impl FromStr for Conv {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "C" => Ok(Conv::C),
+            "Rust" => Ok(Conv::Rust),
+            "RustCold" => Ok(Conv::Rust),
+            "ArmAapcs" => Ok(Conv::ArmAapcs),
+            "CCmseNonSecureCall" => Ok(Conv::CCmseNonSecureCall),
+            "Msp430Intr" => Ok(Conv::Msp430Intr),
+            "PtxKernel" => Ok(Conv::PtxKernel),
+            "X86Fastcall" => Ok(Conv::X86Fastcall),
+            "X86Intr" => Ok(Conv::X86Intr),
+            "X86Stdcall" => Ok(Conv::X86Stdcall),
+            "X86ThisCall" => Ok(Conv::X86ThisCall),
+            "X86VectorCall" => Ok(Conv::X86VectorCall),
+            "X86_64SysV" => Ok(Conv::X86_64SysV),
+            "X86_64Win64" => Ok(Conv::X86_64Win64),
+            "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
+            "AvrInterrupt" => Ok(Conv::AvrInterrupt),
+            "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
+            _ => Err(format!("'{}' is not a valid value for entry function call convetion.", s)),
+        }
+    }
+}
+
+// Some types are used a lot. Make sure they don't unintentionally get bigger.
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+mod size_asserts {
+    use super::*;
+    use rustc_data_structures::static_assert_size;
+    // tidy-alphabetical-start
+    static_assert_size!(ArgAbi<'_, usize>, 56);
+    static_assert_size!(FnAbi<'_, usize>, 80);
+    // tidy-alphabetical-end
 }

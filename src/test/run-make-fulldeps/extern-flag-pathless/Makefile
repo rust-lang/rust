@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test mixing pathless --extern with paths.
 

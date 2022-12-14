@@ -6,7 +6,7 @@ LL |     call(foo);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Fn<()>` is not implemented for `fn() {foo}`
+   = help: the trait `Fn<()>` is not implemented for fn item `fn() {foo}`
    = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call`
@@ -23,7 +23,7 @@ LL |     call_mut(foo);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnMut<()>` is not implemented for `fn() {foo}`
+   = help: the trait `FnMut<()>` is not implemented for fn item `fn() {foo}`
    = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_mut`
@@ -40,7 +40,7 @@ LL |     call_once(foo);
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `fn() {foo}`
+   = help: the trait `FnOnce<()>` is not implemented for fn item `fn() {foo}`
    = note: wrap the `fn() {foo}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_once`
@@ -53,11 +53,11 @@ error[E0277]: expected a `Fn<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:28:10
    |
 LL |     call(foo_unsafe);
-   |     ---- ^^^^^^^^^^ expected an `Fn<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     ---- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `Fn<()>` is not implemented for `unsafe fn() {foo_unsafe}`
+   = help: the trait `Fn<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call`
@@ -70,11 +70,11 @@ error[E0277]: expected a `FnMut<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:30:14
    |
 LL |     call_mut(foo_unsafe);
-   |     -------- ^^^^^^^^^^ expected an `FnMut<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     -------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnMut<()>` is not implemented for `unsafe fn() {foo_unsafe}`
+   = help: the trait `FnMut<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_mut`
@@ -87,11 +87,11 @@ error[E0277]: expected a `FnOnce<()>` closure, found `unsafe fn() {foo_unsafe}`
   --> $DIR/fn-traits.rs:32:15
    |
 LL |     call_once(foo_unsafe);
-   |     --------- ^^^^^^^^^^ expected an `FnOnce<()>` closure, found `unsafe fn() {foo_unsafe}`
+   |     --------- ^^^^^^^^^^ call the function in a closure: `|| unsafe { /* code */ }`
    |     |
    |     required by a bound introduced by this call
    |
-   = help: the trait `FnOnce<()>` is not implemented for `unsafe fn() {foo_unsafe}`
+   = help: the trait `FnOnce<()>` is not implemented for fn item `unsafe fn() {foo_unsafe}`
    = note: wrap the `unsafe fn() {foo_unsafe}` in a closure with no arguments: `|| { /* code */ }`
    = note: `#[target_feature]` functions do not implement the `Fn` traits
 note: required by a bound in `call_once`

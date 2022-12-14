@@ -1,107 +1,91 @@
 .setting-line {
-	padding: 5px;
+	margin: 0.6em 0 0.6em 0.3em;
 	position: relative;
 }
 
-.setting-line > div {
-	display: inline-block;
-	vertical-align: top;
-	font-size: 17px;
-	padding-top: 2px;
+.setting-line .choices {
+	display: flex;
+	flex-wrap: wrap;
 }
 
-.setting-line > .title {
-	font-size: 19px;
+.setting-line .radio-line input,
+.setting-line .toggle input {
+	margin-right: 0.3em;
+	height: 1.2rem;
+	width: 1.2rem;
+	color: inherit;
+	border: 1px solid currentColor;
+	outline: none;
+	-webkit-appearance: none;
+	cursor: pointer;
+}
+.setting-line .radio-line input {
+	border-radius: 50%;
+}
+.setting-line .toggle input:checked {
+	content: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">\
+		<path d="M7,25L17,32L33,12" fill="none" stroke="black" stroke-width="5"/>\
+		<path d="M7,23L17,30L33,10" fill="none" stroke="white" stroke-width="5"/></svg>');
+}
+
+.setting-line .radio-line input + span,
+.setting-line .toggle span {
+	padding-bottom: 1px;
+}
+
+.radio-line .setting-name {
 	width: 100%;
-	max-width: none;
-	border-bottom: 1px solid;
+}
+
+.radio-line .choice {
+	margin-top: 0.1em;
+	margin-bottom: 0.1em;
+	min-width: 3.8em;
+	padding: 0.3em;
+	display: flex;
+	align-items: center;
+	cursor: pointer;
+}
+.radio-line .choice + .choice {
+	margin-left: 0.5em;
 }
 
 .toggle {
 	position: relative;
-	display: inline-block;
-	width: 45px;
-	height: 27px;
-	margin-right: 20px;
-}
-
-.toggle input {
-	opacity: 0;
-	position: absolute;
-}
-
-.select-wrapper {
-	float: right;
-	position: relative;
-	height: 27px;
-	min-width: 25%;
-}
-
-.select-wrapper select {
-	appearance: none;
-	-moz-appearance: none;
-	-webkit-appearance: none;
-	background: none;
-	border: 2px solid #ccc;
-	padding-right: 28px;
 	width: 100%;
-}
-
-.select-wrapper img {
-	pointer-events: none;
-	position: absolute;
-	right: 0;
-	bottom: 0;
-	background: #ccc;
-	height: 100%;
-	width: 28px;
-	padding: 0px 4px;
-}
-
-.select-wrapper select option {
-	color: initial;
-}
-
-.slider {
-	position: absolute;
+	margin-right: 20px;
+	display: flex;
+	align-items: center;
 	cursor: pointer;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background-color: #ccc;
-	-webkit-transition: .3s;
-	transition: .3s;
-}
-
-.slider:before {
-	position: absolute;
-	content: "";
-	height: 19px;
-	width: 19px;
-	left: 4px;
-	bottom: 4px;
-	background-color: white;
-	-webkit-transition: .3s;
-	transition: .3s;
-}
-
-input:checked + .slider {
-	background-color: #2196F3;
-}
-
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-input:checked + .slider:before {
-	-webkit-transform: translateX(19px);
-	-ms-transform: translateX(19px);
-	transform: translateX(19px);
 }
 
 .setting-line > .sub-settings {
 	padding-left: 42px;
 	width: 100%;
 	display: block;
+}
+
+#settings .setting-line {
+	margin: 1.2em 0.6em;
+}
+
+.setting-line .radio-line input:checked {
+	box-shadow: inset 0 0 0 3px var(--main-background-color);
+	background-color: var(--settings-input-color);
+}
+.setting-line .toggle input:checked {
+	background-color: var(--settings-input-color);
+}
+.setting-line .radio-line input:focus,
+.setting-line .toggle input:focus {
+	box-shadow: 0 0 1px 1px var(--settings-input-color);
+}
+/* In here we combine both `:focus` and `:checked` properties. */
+.setting-line .radio-line input:checked:focus {
+	box-shadow: inset 0 0 0 3px var(--main-background-color),
+		0 0 2px 2px var(--settings-input-color);
+}
+.setting-line .radio-line input:hover,
+.setting-line .toggle input:hover {
+	border-color: var(--settings-input-color) !important;
 }

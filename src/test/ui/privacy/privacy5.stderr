@@ -373,7 +373,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:91:20
@@ -390,7 +390,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:92:20
@@ -407,7 +407,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:95:16
@@ -424,7 +424,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:96:16
@@ -441,7 +441,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:97:22
@@ -458,7 +458,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:98:22
@@ -475,7 +475,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:100:16
@@ -492,7 +492,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:101:16
@@ -509,7 +509,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:102:22
@@ -526,7 +526,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:103:22
@@ -543,7 +543,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:104:22
@@ -560,7 +560,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:105:16
@@ -577,7 +577,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:107:16
@@ -594,7 +594,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:108:16
@@ -611,7 +611,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:109:16
@@ -628,7 +628,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:110:16
@@ -645,7 +645,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:111:22
@@ -662,7 +662,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:112:22
@@ -679,7 +679,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:113:22
@@ -696,7 +696,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:114:22
@@ -713,7 +713,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `A` is private
   --> $DIR/privacy5.rs:122:21
@@ -730,7 +730,7 @@ note: the tuple struct constructor `A` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:1:1
    |
 LL | pub struct A(());
-   | ^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `B` is private
   --> $DIR/privacy5.rs:123:21
@@ -747,7 +747,7 @@ note: the tuple struct constructor `B` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:2:1
    |
 LL | pub struct B(isize);
-   | ^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error[E0603]: tuple struct constructor `C` is private
   --> $DIR/privacy5.rs:124:21
@@ -764,7 +764,7 @@ note: the tuple struct constructor `C` is defined here
   --> $DIR/auxiliary/privacy_tuple_struct.rs:3:1
    |
 LL | pub struct C(pub isize, isize);
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^
 
 error: aborting due to 48 previous errors
 

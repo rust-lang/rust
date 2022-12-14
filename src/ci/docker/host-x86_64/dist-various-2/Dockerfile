@@ -32,10 +32,16 @@ RUN add-apt-repository -y 'deb https://apt.dilos.org/dilos dilos2 main'
 ENV \
     AR_x86_64_fuchsia=x86_64-fuchsia-ar \
     CC_x86_64_fuchsia=x86_64-fuchsia-clang \
+    CFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
     CXX_x86_64_fuchsia=x86_64-fuchsia-clang++ \
+    CXXFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib" \
     AR_aarch64_fuchsia=aarch64-fuchsia-ar \
     CC_aarch64_fuchsia=aarch64-fuchsia-clang \
+    CFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
     CXX_aarch64_fuchsia=aarch64-fuchsia-clang++ \
+    CXXFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -I/usr/local/core-linux-amd64-fuchsia-sdk/pkg/fdio/include" \
+    LDFLAGS_aarch64_fuchsia="--target=aarch64-fuchsia --sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot -L/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib" \
     AR_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-ar \
     CC_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-gcc \
     CXX_sparcv9_sun_solaris=sparcv9-sun-solaris2.10-g++ \
@@ -52,9 +58,15 @@ ENV \
     CFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
     CXX_x86_64_fortanix_unknown_sgx=clang++-11 \
     CXXFLAGS_x86_64_fortanix_unknown_sgx="-D__ELF__ -isystem/usr/include/x86_64-linux-gnu -mlvi-hardening -mllvm -x86-experimental-lvi-inline-asm-hardening" \
-    AR_i686_unknown_freebsd=i686-unknown-freebsd11-ar \
-    CC_i686_unknown_freebsd=i686-unknown-freebsd11-clang \
-    CXX_i686_unknown_freebsd=i686-unknown-freebsd11-clang++ \
+    AR_i686_unknown_freebsd=i686-unknown-freebsd12-ar \
+    CC_i686_unknown_freebsd=i686-unknown-freebsd12-clang \
+    CXX_i686_unknown_freebsd=i686-unknown-freebsd12-clang++ \
+    CC_aarch64_unknown_uefi=clang-11 \
+    CXX_aarch64_unknown_uefi=clang++-11 \
+    CC_i686_unknown_uefi=clang-11 \
+    CXX_i686_unknown_uefi=clang++-11 \
+    CC_x86_64_unknown_uefi=clang-11 \
+    CXX_x86_64_unknown_uefi=clang++-11 \
     CC=gcc-8 \
     CXX=g++-8
 
@@ -89,14 +101,14 @@ RUN sh /scripts/sccache.sh
 
 ENV CARGO_TARGET_X86_64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/x86_64-fuchsia \
--C link-arg=-L/usr/local/x86_64-fuchsia/lib \
--C link-arg=-L/usr/local/lib/x86_64-fuchsia/lib
+-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/sysroot/lib \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/x64/lib
 ENV CARGO_TARGET_AARCH64_FUCHSIA_AR /usr/local/bin/llvm-ar
 ENV CARGO_TARGET_AARCH64_FUCHSIA_RUSTFLAGS \
--C link-arg=--sysroot=/usr/local/aarch64-fuchsia \
--C link-arg=-L/usr/local/aarch64-fuchsia/lib \
--C link-arg=-L/usr/local/lib/aarch64-fuchsia/lib
+-C link-arg=--sysroot=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/sysroot/lib \
+-Lnative=/usr/local/core-linux-amd64-fuchsia-sdk/arch/arm64/lib
 
 ENV TARGETS=x86_64-fuchsia
 ENV TARGETS=$TARGETS,aarch64-fuchsia
@@ -111,6 +123,10 @@ ENV TARGETS=$TARGETS,nvptx64-nvidia-cuda
 ENV TARGETS=$TARGETS,armv7-unknown-linux-gnueabi
 ENV TARGETS=$TARGETS,armv7-unknown-linux-musleabi
 ENV TARGETS=$TARGETS,i686-unknown-freebsd
+ENV TARGETS=$TARGETS,x86_64-unknown-none
+ENV TARGETS=$TARGETS,aarch64-unknown-uefi
+ENV TARGETS=$TARGETS,i686-unknown-uefi
+ENV TARGETS=$TARGETS,x86_64-unknown-uefi
 
 # As per https://bugs.launchpad.net/ubuntu/+source/gcc-defaults/+bug/1300211
 # we need asm in the search path for gcc-8 (for gnux32) but not in the search path of the

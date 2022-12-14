@@ -1,0 +1,24 @@
+// run-rustfix
+#![warn(clippy::cast_slice_from_raw_parts)]
+
+#[allow(unused_imports, unused_unsafe)]
+fn main() {
+    let mut vec = vec![0u8; 1];
+    let ptr: *const u8 = vec.as_ptr();
+    let mptr = vec.as_mut_ptr();
+    let _: *const [u8] = unsafe { core::ptr::slice_from_raw_parts(ptr, 1) };
+    let _: *const [u8] = unsafe { core::ptr::slice_from_raw_parts_mut(mptr, 1) };
+    let _: *const [u8] = core::ptr::slice_from_raw_parts(ptr, 1);
+    {
+        use core::slice;
+        let _: *const [u8] = core::ptr::slice_from_raw_parts(ptr, 1);
+        use slice as one;
+        let _: *const [u8] = core::ptr::slice_from_raw_parts(ptr, 1);
+    }
+    {
+        use std::slice;
+        let _: *const [u8] = core::ptr::slice_from_raw_parts(ptr, 1);
+        use slice as one;
+        let _: *const [u8] = core::ptr::slice_from_raw_parts(ptr, 1);
+    }
+}

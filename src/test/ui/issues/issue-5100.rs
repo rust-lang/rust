@@ -1,5 +1,5 @@
 #![feature(box_patterns)]
-#![feature(box_syntax)]
+
 
 enum A { B, C }
 

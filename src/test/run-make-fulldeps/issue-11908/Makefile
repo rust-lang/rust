@@ -5,7 +5,7 @@
 # and then our aux-built libraries will collide with liburl (they have
 # the same version listed)
 
--include ../tools.mk
+include ../tools.mk
 
 all:
 	mkdir $(TMPDIR)/other

@@ -4,8 +4,8 @@
 fn main() {
     match true {
         true if true => (),
-        false if false => unsafe { },
-        true => { }
+        false if false => unsafe {},
+        true => {}
         false => (),
     }
 }

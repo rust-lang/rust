@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{meets_msrv, msrvs};
+use clippy_utils::msrvs::{self, Msrv};
 use rustc_ast::ast::{FloatTy, LitFloatType, LitKind};
 use rustc_hir::{Expr, ExprKind};
-use rustc_lint::{LateContext, LateLintPass, LintContext};
+use rustc_lint::{LateContext, LateLintPass};
 use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol;
@@ -28,11 +28,12 @@ declare_clippy_lint! {
     /// let x = 3.14;
     /// let y = 1_f64 / x;
     /// ```
-    /// Use predefined constants instead:
+    /// Use instead:
     /// ```rust
     /// let x = std::f32::consts::PI;
     /// let y = std::f64::consts::FRAC_1_PI;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub APPROX_CONSTANT,
     correctness,
     "the approximate of a known float constant (in `std::fXX::consts`)"
@@ -62,12 +63,12 @@ const KNOWN_CONSTS: [(f64, &str, usize, Option<RustcVersion>); 19] = [
 ];
 
 pub struct ApproxConstant {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ApproxConstant {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 
@@ -86,14 +87,12 @@ impl ApproxConstant {
         let s = s.as_str();
         if s.parse::<f64>().is_ok() {
             for &(constant, name, min_digits, msrv) in &KNOWN_CONSTS {
-                if is_approx_const(constant, &s, min_digits)
-                    && msrv.as_ref().map_or(true, |msrv| meets_msrv(self.msrv.as_ref(), msrv))
-                {
+                if is_approx_const(constant, s, min_digits) && msrv.map_or(true, |msrv| self.msrv.meets(msrv)) {
                     span_lint_and_help(
                         cx,
                         APPROX_CONSTANT,
                         e.span,
-                        &format!("approximate value of `{}::consts::{}` found", module, &name),
+                        &format!("approximate value of `{module}::consts::{}` found", &name),
                         None,
                         "consider using the constant directly",
                     );
@@ -127,7 +126,7 @@ fn is_approx_const(constant: f64, value: &str, min_digits: usize) -> bool {
         // The value is a truncated constant
         true
     } else {
-        let round_const = format!("{:.*}", value.len() - 2, constant);
+        let round_const = format!("{constant:.*}", value.len() - 2);
         value == round_const
     }
 }

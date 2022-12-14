@@ -1,0 +1,38 @@
+error: attribute should be applied to a static
+  --> $DIR/non-static.rs:4:1
+   |
+LL | #[thread_local]
+   | ^^^^^^^^^^^^^^^
+LL |
+LL | const A: u32 = 0;
+   | ----------------- not a static
+
+error: attribute should be applied to a static
+  --> $DIR/non-static.rs:8:1
+   |
+LL |   #[thread_local]
+   |   ^^^^^^^^^^^^^^^
+LL |
+LL | / fn main() {
+LL | |     #[thread_local] || {};
+LL | |
+LL | | }
+   | |_- not a static
+
+error: attribute should be applied to a static
+  --> $DIR/non-static.rs:11:5
+   |
+LL |     #[thread_local] || {};
+   |     ^^^^^^^^^^^^^^^ ----- not a static
+
+error: attribute should be applied to a static
+  --> $DIR/non-static.rs:16:5
+   |
+LL |     #[thread_local]
+   |     ^^^^^^^^^^^^^^^
+LL |
+LL |     a: String,
+   |     --------- not a static
+
+error: aborting due to 4 previous errors
+

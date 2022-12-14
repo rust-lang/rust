@@ -6,8 +6,9 @@ fn unwrap_option() {
 }
 
 fn unwrap_result() {
-    let res: Result<u8, ()> = Ok(0);
+    let res: Result<u8, u8> = Ok(0);
     let _ = res.unwrap();
+    let _ = res.unwrap_err();
 }
 
 fn main() {

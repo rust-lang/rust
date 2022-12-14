@@ -7,8 +7,6 @@
 // there's a potential confusion factor here, and we would prefer to keep patterns
 // and expressions in-sync. As such, we do not allow `...X` in patterns either.
 
-#![feature(half_open_range_patterns)]
-
 fn main() {}
 
 #[cfg(FALSE)]

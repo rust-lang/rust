@@ -1,43 +1,52 @@
+use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::ty::is_copy;
 use clippy_utils::usage::mutated_variables;
-use clippy_utils::{is_lang_ctor, is_trait_method, path_to_local_id};
+use clippy_utils::visitors::{for_each_expr, Descend};
+use clippy_utils::{is_res_lang_ctor, is_trait_method, path_res, path_to_local_id};
+use core::ops::ControlFlow;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
-use rustc_middle::ty::{self, TyS};
+use rustc_middle::ty;
 use rustc_span::sym;
 
 use super::UNNECESSARY_FILTER_MAP;
+use super::UNNECESSARY_FIND_MAP;
 
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<'_>) {
+pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'tcx>, arg: &'tcx hir::Expr<'tcx>, name: &str) {
     if !is_trait_method(cx, expr, sym::Iterator) {
         return;
     }
 
-    if let hir::ExprKind::Closure(_, _, body_id, ..) = arg.kind {
-        let body = cx.tcx.hir().body(body_id);
+    if let hir::ExprKind::Closure(&hir::Closure { body, .. }) = arg.kind {
+        let body = cx.tcx.hir().body(body);
         let arg_id = body.params[0].pat.hir_id;
-        let mutates_arg =
-            mutated_variables(&body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
+        let mutates_arg = mutated_variables(body.value, cx).map_or(true, |used_mutably| used_mutably.contains(&arg_id));
+        let (clone_or_copy_needed, _) = clone_or_copy_needed(cx, body.params[0].pat, body.value);
 
-        let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, &body.value);
+        let (mut found_mapping, mut found_filtering) = check_expression(cx, arg_id, body.value);
 
-        let mut return_visitor = ReturnVisitor::new(cx, arg_id);
-        return_visitor.visit_expr(&body.value);
-        found_mapping |= return_visitor.found_mapping;
-        found_filtering |= return_visitor.found_filtering;
+        let _: Option<!> = for_each_expr(body.value, |e| {
+            if let hir::ExprKind::Ret(Some(e)) = &e.kind {
+                let (found_mapping_res, found_filtering_res) = check_expression(cx, arg_id, e);
+                found_mapping |= found_mapping_res;
+                found_filtering |= found_filtering_res;
+                ControlFlow::Continue(Descend::No)
+            } else {
+                ControlFlow::Continue(Descend::Yes)
+            }
+        });
 
+        let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
         let sugg = if !found_filtering {
-            "map"
-        } else if !found_mapping && !mutates_arg {
-            let in_ty = cx.typeck_results().node_type(body.params[0].hir_id);
-            match cx.typeck_results().expr_ty(&body.value).kind() {
+            if name == "filter_map" { "map" } else { "map(..).next()" }
+        } else if !found_mapping && !mutates_arg && (!clone_or_copy_needed || is_copy(cx, in_ty)) {
+            match cx.typeck_results().expr_ty(body.value).kind() {
                 ty::Adt(adt, subst)
-                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did) && TyS::same_type(in_ty, subst.type_at(0)) =>
+                    if cx.tcx.is_diagnostic_item(sym::Option, adt.did()) && in_ty == subst.type_at(0) =>
                 {
-                    "filter"
+                    if name == "filter_map" { "filter" } else { "find" }
                 },
                 _ => return,
             }
@@ -46,24 +55,26 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, arg: &hir::Expr<
         };
         span_lint(
             cx,
-            UNNECESSARY_FILTER_MAP,
+            if name == "filter_map" {
+                UNNECESSARY_FILTER_MAP
+            } else {
+                UNNECESSARY_FIND_MAP
+            },
             expr.span,
-            &format!("this `.filter_map` can be written more simply using `.{}`", sugg),
+            &format!("this `.{name}` can be written more simply using `.{sugg}`"),
         );
     }
 }
 
 // returns (found_mapping, found_filtering)
 fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tcx hir::Expr<'_>) -> (bool, bool) {
-    match &expr.kind {
+    match expr.kind {
         hir::ExprKind::Call(func, args) => {
-            if let hir::ExprKind::Path(ref path) = func.kind {
-                if is_lang_ctor(cx, path, OptionSome) {
-                    if path_to_local_id(&args[0], arg_id) {
-                        return (false, false);
-                    }
-                    return (true, false);
+            if is_res_lang_ctor(cx, path_res(cx, func), OptionSome) {
+                if path_to_local_id(&args[0], arg_id) {
+                    return (false, false);
                 }
+                return (true, false);
             }
             (true, true)
         },
@@ -74,7 +85,7 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
         hir::ExprKind::Match(_, arms, _) => {
             let mut found_mapping = false;
             let mut found_filtering = false;
-            for arm in *arms {
+            for arm in arms {
                 let (m, f) = check_expression(cx, arg_id, arm.body);
                 found_mapping |= m;
                 found_filtering |= f;
@@ -87,45 +98,9 @@ fn check_expression<'tcx>(cx: &LateContext<'tcx>, arg_id: hir::HirId, expr: &'tc
             let else_check = check_expression(cx, arg_id, else_arm);
             (if_check.0 | else_check.0, if_check.1 | else_check.1)
         },
-        hir::ExprKind::Path(path) if is_lang_ctor(cx, path, OptionNone) => (false, true),
+        hir::ExprKind::Path(ref path) if is_res_lang_ctor(cx, cx.qpath_res(path, expr.hir_id), OptionNone) => {
+            (false, true)
+        },
         _ => (true, true),
-    }
-}
-
-struct ReturnVisitor<'a, 'tcx> {
-    cx: &'a LateContext<'tcx>,
-    arg_id: hir::HirId,
-    // Found a non-None return that isn't Some(input)
-    found_mapping: bool,
-    // Found a return that isn't Some
-    found_filtering: bool,
-}
-
-impl<'a, 'tcx> ReturnVisitor<'a, 'tcx> {
-    fn new(cx: &'a LateContext<'tcx>, arg_id: hir::HirId) -> ReturnVisitor<'a, 'tcx> {
-        ReturnVisitor {
-            cx,
-            arg_id,
-            found_mapping: false,
-            found_filtering: false,
-        }
-    }
-}
-
-impl<'a, 'tcx> Visitor<'tcx> for ReturnVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        if let hir::ExprKind::Ret(Some(expr)) = &expr.kind {
-            let (found_mapping, found_filtering) = check_expression(self.cx, self.arg_id, expr);
-            self.found_mapping |= found_mapping;
-            self.found_filtering |= found_filtering;
-        } else {
-            walk_expr(self, expr);
-        }
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

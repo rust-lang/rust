@@ -1,6 +1,7 @@
 // run-pass
-// compile-flags: -Z force-overflow-checks=on
+// compile-flags: -C overflow-checks=on
 // ignore-emscripten no threads support
+// needs-unwind
 
 use std::thread;
 

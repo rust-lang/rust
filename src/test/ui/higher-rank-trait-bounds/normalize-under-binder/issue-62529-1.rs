@@ -1,3 +1,5 @@
+// check-pass
+
 // FamilyType (GAT workaround)
 pub trait FamilyLt<'a> {
     type Out;
@@ -77,9 +79,7 @@ where P: Execute + 'static {
 }
 
 fn main() {
-    task(annotate( //~ type mismatch
-        //~^ the size
-        //~^^ the trait bound
+    task(annotate(
         Annotate::<RefMutFamily<usize>>::new(),
         |value: &mut usize| {
             *value = 2;

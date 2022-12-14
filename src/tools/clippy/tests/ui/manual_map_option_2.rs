@@ -53,4 +53,23 @@ fn main() {
         }),
         None => None,
     };
+
+    // Issue #7820
+    unsafe fn f(x: u32) -> u32 {
+        x
+    }
+    unsafe {
+        let _ = match Some(0) {
+            Some(x) => Some(f(x)),
+            None => None,
+        };
+    }
+    let _ = match Some(0) {
+        Some(x) => unsafe { Some(f(x)) },
+        None => None,
+    };
+    let _ = match Some(0) {
+        Some(x) => Some(unsafe { f(x) }),
+        None => None,
+    };
 }

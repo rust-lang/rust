@@ -37,7 +37,7 @@ fn main() {
 
 use std::cmp::{Ordering, PartialEq, PartialOrd};
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, Eq, PartialOrd)]
 pub struct U(u64);
 
 impl PartialEq<u32> for U {

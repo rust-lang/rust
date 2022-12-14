@@ -1,5 +1,5 @@
 #![allow(unused)]
-struct Mappable {}
+struct Mappable;
 
 impl Mappable {
     pub fn map(&self) {}

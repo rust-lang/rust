@@ -7,6 +7,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 mod converts;
+mod count;
 mod error;
 mod iter;
 mod traits;
@@ -21,9 +22,9 @@ use crate::slice::{self, SliceIndex};
 
 pub mod pattern;
 
-#[unstable(feature = "str_internals", issue = "none")]
-#[allow(missing_docs)]
-pub mod lossy;
+mod lossy;
+#[unstable(feature = "utf8_chunks", issue = "99543")]
+pub use lossy::{Utf8Chunk, Utf8Chunks};
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use converts::{from_utf8, from_utf8_unchecked};
@@ -75,20 +76,37 @@ use iter::MatchIndicesInternal;
 use iter::SplitInternal;
 use iter::{MatchesInternal, SplitNInternal};
 
-use validations::truncate_to_char_boundary;
-
 #[inline(never)]
 #[cold]
 #[track_caller]
-fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+#[rustc_allow_const_fn_unstable(const_eval_select)]
+const fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
+    // SAFETY: panics for both branches
+    unsafe {
+        crate::intrinsics::const_eval_select(
+            (s, begin, end),
+            slice_error_fail_ct,
+            slice_error_fail_rt,
+        )
+    }
+}
+
+#[track_caller]
+const fn slice_error_fail_ct(_: &str, _: usize, _: usize) -> ! {
+    panic!("failed to slice string");
+}
+
+#[track_caller]
+fn slice_error_fail_rt(s: &str, begin: usize, end: usize) -> ! {
     const MAX_DISPLAY_LENGTH: usize = 256;
-    let (truncated, s_trunc) = truncate_to_char_boundary(s, MAX_DISPLAY_LENGTH);
-    let ellipsis = if truncated { "[...]" } else { "" };
+    let trunc_len = s.floor_char_boundary(MAX_DISPLAY_LENGTH);
+    let s_trunc = &s[..trunc_len];
+    let ellipsis = if trunc_len < s.len() { "[...]" } else { "" };
 
     // 1. out of bounds
     if begin > s.len() || end > s.len() {
         let oob_index = if begin > s.len() { begin } else { end };
-        panic!("byte index {} is out of bounds of `{}`{}", oob_index, s_trunc, ellipsis);
+        panic!("byte index {oob_index} is out of bounds of `{s_trunc}`{ellipsis}");
     }
 
     // 2. begin <= end
@@ -104,10 +122,7 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     // 3. character boundary
     let index = if !s.is_char_boundary(begin) { begin } else { end };
     // find the character
-    let mut char_start = index;
-    while !s.is_char_boundary(char_start) {
-        char_start -= 1;
-    }
+    let char_start = s.floor_char_boundary(index);
     // `char_start` must be less than len and a char boundary
     let ch = s[char_start..].chars().next().unwrap();
     let char_range = char_start..char_start + ch.len_utf8();
@@ -117,7 +132,6 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
     );
 }
 
-#[lang = "str"]
 #[cfg(not(test))]
 impl str {
     /// Returns the length of `self`.
@@ -192,8 +206,9 @@ impl str {
     /// ```
     #[must_use]
     #[stable(feature = "is_char_boundary", since = "1.9.0")]
+    #[rustc_const_unstable(feature = "const_is_char_boundary", issue = "none")]
     #[inline]
-    pub fn is_char_boundary(&self, index: usize) -> bool {
+    pub const fn is_char_boundary(&self, index: usize) -> bool {
         // 0 is always ok.
         // Test for 0 explicitly so that it can optimize out the check
         // easily and skip reading string data for that case.
@@ -214,8 +229,80 @@ impl str {
             // code on higher opt-levels. See PR #84751 for more details.
             None => index == self.len(),
 
-            // This is bit magic equivalent to: b < 128 || b >= 192
-            Some(&b) => (b as i8) >= -0x40,
+            Some(&b) => b.is_utf8_char_boundary(),
+        }
+    }
+
+    /// Finds the closest `x` not exceeding `index` where `is_char_boundary(x)` is `true`.
+    ///
+    /// This method can help you truncate a string so that it's still valid UTF-8, but doesn't
+    /// exceed a given number of bytes. Note that this is done purely at the character level
+    /// and can still visually split graphemes, even though the underlying characters aren't
+    /// split. For example, the emoji 🧑‍🔬 (scientist) could be split so that the string only
+    /// includes 🧑 (person) instead.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_char_boundary)]
+    /// let s = "❤️🧡💛💚💙💜";
+    /// assert_eq!(s.len(), 26);
+    /// assert!(!s.is_char_boundary(13));
+    ///
+    /// let closest = s.floor_char_boundary(13);
+    /// assert_eq!(closest, 10);
+    /// assert_eq!(&s[..closest], "❤️🧡");
+    /// ```
+    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[inline]
+    pub fn floor_char_boundary(&self, index: usize) -> usize {
+        if index >= self.len() {
+            self.len()
+        } else {
+            let lower_bound = index.saturating_sub(3);
+            let new_index = self.as_bytes()[lower_bound..=index]
+                .iter()
+                .rposition(|b| b.is_utf8_char_boundary());
+
+            // SAFETY: we know that the character boundary will be within four bytes
+            unsafe { lower_bound + new_index.unwrap_unchecked() }
+        }
+    }
+
+    /// Finds the closest `x` not below `index` where `is_char_boundary(x)` is `true`.
+    ///
+    /// This method is the natural complement to [`floor_char_boundary`]. See that method
+    /// for more details.
+    ///
+    /// [`floor_char_boundary`]: str::floor_char_boundary
+    ///
+    /// # Panics
+    ///
+    /// Panics if `index > self.len()`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(round_char_boundary)]
+    /// let s = "❤️🧡💛💚💙💜";
+    /// assert_eq!(s.len(), 26);
+    /// assert!(!s.is_char_boundary(13));
+    ///
+    /// let closest = s.ceil_char_boundary(13);
+    /// assert_eq!(closest, 14);
+    /// assert_eq!(&s[..closest], "❤️🧡💛");
+    /// ```
+    #[unstable(feature = "round_char_boundary", issue = "93743")]
+    #[inline]
+    pub fn ceil_char_boundary(&self, index: usize) -> usize {
+        if index > self.len() {
+            slice_error_fail(self, index, index)
+        } else {
+            let upper_bound = Ord::min(index + 4, self.len());
+            self.as_bytes()[index..upper_bound]
+                .iter()
+                .position(|b| b.is_utf8_char_boundary())
+                .map_or(upper_bound, |pos| pos + index)
         }
     }
 
@@ -309,7 +396,7 @@ impl str {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_const_stable(feature = "rustc_str_as_ptr", since = "1.32.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_ptr(&self) -> *const u8 {
         self as *const str as *const u8
     }
@@ -324,7 +411,7 @@ impl str {
     /// modified in a way that it remains valid UTF-8.
     #[stable(feature = "str_as_mut_ptr", since = "1.36.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub fn as_mut_ptr(&mut self) -> *mut u8 {
         self as *mut str as *mut u8
     }
@@ -349,8 +436,9 @@ impl str {
     /// assert!(v.get(..42).is_none());
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub fn get<I: SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
+    pub const fn get<I: ~const SliceIndex<str>>(&self, i: I) -> Option<&I::Output> {
         i.get(self)
     }
 
@@ -381,8 +469,9 @@ impl str {
     /// assert_eq!("HEllo", v);
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub fn get_mut<I: SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
+    pub const fn get_mut<I: ~const SliceIndex<str>>(&mut self, i: I) -> Option<&mut I::Output> {
         i.get_mut(self)
     }
 
@@ -413,10 +502,11 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked<I: SliceIndex<str>>(&self, i: I) -> &I::Output {
+    pub const unsafe fn get_unchecked<I: ~const SliceIndex<str>>(&self, i: I) -> &I::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`;
-        // the slice is dereferencable because `self` is a safe reference.
+        // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &*i.get_unchecked(self) }
     }
@@ -448,10 +538,14 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "str_checked_slicing", since = "1.20.0")]
+    #[rustc_const_unstable(feature = "const_slice_index", issue = "none")]
     #[inline]
-    pub unsafe fn get_unchecked_mut<I: SliceIndex<str>>(&mut self, i: I) -> &mut I::Output {
+    pub const unsafe fn get_unchecked_mut<I: ~const SliceIndex<str>>(
+        &mut self,
+        i: I,
+    ) -> &mut I::Output {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`;
-        // the slice is dereferencable because `self` is a safe reference.
+        // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &mut *i.get_unchecked_mut(self) }
     }
@@ -499,12 +593,12 @@ impl str {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked(begin..end)` instead")]
+    #[deprecated(since = "1.29.0", note = "use `get_unchecked(begin..end)` instead")]
     #[must_use]
     #[inline]
     pub unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked`;
-        // the slice is dereferencable because `self` is a safe reference.
+        // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &*(begin..end).get_unchecked(self) }
     }
@@ -533,11 +627,11 @@ impl str {
     /// * `begin` and `end` must be byte positions within the string slice.
     /// * `begin` and `end` must lie on UTF-8 sequence boundaries.
     #[stable(feature = "str_slice_mut", since = "1.5.0")]
-    #[rustc_deprecated(since = "1.29.0", reason = "use `get_unchecked_mut(begin..end)` instead")]
+    #[deprecated(since = "1.29.0", note = "use `get_unchecked_mut(begin..end)` instead")]
     #[inline]
     pub unsafe fn slice_mut_unchecked(&mut self, begin: usize, end: usize) -> &mut str {
         // SAFETY: the caller must uphold the safety contract for `get_unchecked_mut`;
-        // the slice is dereferencable because `self` is a safe reference.
+        // the slice is dereferenceable because `self` is a safe reference.
         // The returned pointer is safe because impls of `SliceIndex` have to guarantee that it is.
         unsafe { &mut *(begin..end).get_unchecked_mut(self) }
     }
@@ -808,9 +902,16 @@ impl str {
     ///
     /// assert_eq!(None, iter.next());
     /// ```
+    ///
+    /// If the string is empty or all whitespace, the iterator yields no string slices:
+    /// ```
+    /// assert_eq!("".split_whitespace().next(), None);
+    /// assert_eq!("   ".split_whitespace().next(), None);
+    /// ```
     #[must_use = "this returns the split string as an iterator, \
                   without modifying the original"]
     #[stable(feature = "split_whitespace", since = "1.1.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_split_whitespace")]
     #[inline]
     pub fn split_whitespace(&self) -> SplitWhitespace<'_> {
         SplitWhitespace { inner: self.split(IsWhitespace).filter(IsNotEmpty) }
@@ -850,6 +951,12 @@ impl str {
     /// assert_eq!(Some("lamb"), iter.next());
     ///
     /// assert_eq!(None, iter.next());
+    /// ```
+    ///
+    /// If the string is empty or all ASCII whitespace, the iterator yields no string slices:
+    /// ```
+    /// assert_eq!("".split_ascii_whitespace().next(), None);
+    /// assert_eq!("   ".split_ascii_whitespace().next(), None);
     /// ```
     #[must_use = "this returns the split string as an iterator, \
                   without modifying the original"]
@@ -907,7 +1014,7 @@ impl str {
 
     /// An iterator over the lines of a string.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.4.0", reason = "use lines() instead now")]
+    #[deprecated(since = "1.4.0", note = "use lines() instead now")]
     #[inline]
     #[allow(deprecated)]
     pub fn lines_any(&self) -> LinesAny<'_> {
@@ -1065,7 +1172,7 @@ impl str {
         pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
-    /// Returns the byte index for the first character of the rightmost match of the pattern in
+    /// Returns the byte index for the first character of the last match of the pattern in
     /// this string slice.
     ///
     /// Returns [`None`] if the pattern doesn't match.
@@ -1539,6 +1646,7 @@ impl str {
     ///
     /// ```
     /// assert_eq!("cfg".split_once('='), None);
+    /// assert_eq!("cfg=".split_once('='), Some(("cfg", "")));
     /// assert_eq!("cfg=foo".split_once('='), Some(("cfg", "foo")));
     /// assert_eq!("cfg=foo=bar".split_once('='), Some(("cfg", "foo=bar")));
     /// ```
@@ -1738,14 +1846,14 @@ impl str {
     /// Returns a string slice with leading and trailing whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
+    /// let s = "\n Hello\tworld\t\n";
     ///
     /// assert_eq!("Hello\tworld", s.trim());
     /// ```
@@ -1753,6 +1861,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a slice, \
                   without modifying the original"]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim")]
     pub fn trim(&self) -> &str {
         self.trim_matches(|c: char| c.is_whitespace())
     }
@@ -1760,7 +1869,7 @@ impl str {
     /// Returns a string slice with leading whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Text directionality
     ///
@@ -1774,8 +1883,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
-    /// assert_eq!("Hello\tworld\t", s.trim_start());
+    /// let s = "\n Hello\tworld\t\n";
+    /// assert_eq!("Hello\tworld\t\n", s.trim_start());
     /// ```
     ///
     /// Directionality:
@@ -1791,6 +1900,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_start")]
     pub fn trim_start(&self) -> &str {
         self.trim_start_matches(|c: char| c.is_whitespace())
     }
@@ -1798,7 +1908,7 @@ impl str {
     /// Returns a string slice with trailing whitespace removed.
     ///
     /// 'Whitespace' is defined according to the terms of the Unicode Derived
-    /// Core Property `White_Space`.
+    /// Core Property `White_Space`, which includes newlines.
     ///
     /// # Text directionality
     ///
@@ -1812,8 +1922,8 @@ impl str {
     /// Basic usage:
     ///
     /// ```
-    /// let s = " Hello\tworld\t";
-    /// assert_eq!(" Hello\tworld", s.trim_end());
+    /// let s = "\n Hello\tworld\t\n";
+    /// assert_eq!("\n Hello\tworld", s.trim_end());
     /// ```
     ///
     /// Directionality:
@@ -1829,6 +1939,7 @@ impl str {
     #[must_use = "this returns the trimmed string as a new slice, \
                   without modifying the original"]
     #[stable(feature = "trim_direction", since = "1.30.0")]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "str_trim_end")]
     pub fn trim_end(&self) -> &str {
         self.trim_end_matches(|c: char| c.is_whitespace())
     }
@@ -1868,11 +1979,7 @@ impl str {
                   without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
-        since = "1.33.0",
-        reason = "superseded by `trim_start`",
-        suggestion = "trim_start"
-    )]
+    #[deprecated(since = "1.33.0", note = "superseded by `trim_start`", suggestion = "trim_start")]
     pub fn trim_left(&self) -> &str {
         self.trim_start()
     }
@@ -1912,11 +2019,7 @@ impl str {
                   without modifying the original"]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
-        since = "1.33.0",
-        reason = "superseded by `trim_end`",
-        suggestion = "trim_end"
-    )]
+    #[deprecated(since = "1.33.0", note = "superseded by `trim_end`", suggestion = "trim_end")]
     pub fn trim_right(&self) -> &str {
         self.trim_end()
     }
@@ -2144,9 +2247,9 @@ impl str {
     /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.33.0",
-        reason = "superseded by `trim_start_matches`",
+        note = "superseded by `trim_start_matches`",
         suggestion = "trim_start_matches"
     )]
     pub fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
@@ -2187,9 +2290,9 @@ impl str {
     /// assert_eq!("1fooX".trim_right_matches(|c| c == '1' || c == 'X'), "1foo");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.33.0",
-        reason = "superseded by `trim_end_matches`",
+        note = "superseded by `trim_end_matches`",
         suggestion = "trim_end_matches"
     )]
     pub fn trim_right_matches<'a, P>(&'a self, pat: P) -> &'a str
@@ -2264,7 +2367,7 @@ impl str {
     #[inline]
     pub fn is_ascii(&self) -> bool {
         // We can treat each byte as character here: all multibyte characters
-        // start with a byte that is not in the ascii range, so we will stop
+        // start with a byte that is not in the ASCII range, so we will stop
         // there already.
         self.as_bytes().is_ascii()
     }
@@ -2310,7 +2413,7 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_uppercase(&mut self) {
-        // SAFETY: safe because we transmute two types with the same layout.
+        // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_uppercase()
     }
@@ -2337,7 +2440,7 @@ impl str {
     #[stable(feature = "ascii_methods_on_intrinsics", since = "1.23.0")]
     #[inline]
     pub fn make_ascii_lowercase(&mut self) {
-        // SAFETY: safe because we transmute two types with the same layout.
+        // SAFETY: changing ASCII letters only does not invalidate UTF-8.
         let me = unsafe { self.as_bytes_mut() };
         me.make_ascii_lowercase()
     }
@@ -2353,7 +2456,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_debug() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -2399,7 +2502,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_default() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -2437,7 +2540,7 @@ impl str {
     ///
     /// ```
     /// for c in "❤\n!".escape_unicode() {
-    ///     print!("{}", c);
+    ///     print!("{c}");
     /// }
     /// println!();
     /// ```
@@ -2549,3 +2652,6 @@ impl_fn_for_zst! {
         unsafe { from_utf8_unchecked(bytes) }
     };
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl !crate::error::Error for &str {}

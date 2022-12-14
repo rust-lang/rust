@@ -1,5 +1,5 @@
 // compile-flags: --edition 2018
-#![feature(label_break_value, try_blocks)]
+#![feature(try_blocks)]
 
 // run-pass
 fn main() {
@@ -9,4 +9,11 @@ fn main() {
             break 'foo;
         }
     };
+
+    'foo: {
+        let _: Result<(), ()> = try {
+            Err(())?;
+            break 'foo;
+        };
+    }
 }

@@ -33,18 +33,15 @@ use crate::MirPass;
 pub struct RenameReturnPlace;
 
 impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
-        if tcx.sess.mir_opt_level() == 0 {
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() > 0
+    }
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut mir::Body<'tcx>) {
         let def_id = body.source.def_id();
-        let returned_local = match local_eligible_for_nrvo(body) {
-            Some(l) => l,
-            None => {
-                debug!("`{:?}` was ineligible for NRVO", def_id);
-                return;
-            }
+        let Some(returned_local) = local_eligible_for_nrvo(body) else {
+            debug!("`{:?}` was ineligible for NRVO", def_id);
+            return;
         };
 
         if !tcx.consider_optimizing(|| format!("RenameReturnPlace {:?}", def_id)) {
@@ -56,10 +53,10 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
             def_id, returned_local
         );
 
-        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body(body);
+        RenameToReturnPlace { tcx, to_rename: returned_local }.visit_body_preserves_cfg(body);
 
         // Clean up the `NOP`s we inserted for statements made useless by our renaming.
-        for block_data in body.basic_blocks_mut() {
+        for block_data in body.basic_blocks.as_mut_preserves_cfg() {
             block_data.statements.retain(|stmt| stmt.kind != mir::StatementKind::Nop);
         }
 
@@ -67,7 +64,7 @@ impl<'tcx> MirPass<'tcx> for RenameReturnPlace {
         let (renamed_decl, ret_decl) =
             body.local_decls.pick2_mut(returned_local, mir::RETURN_PLACE);
 
-        // Sometimes, the return place is assigned a local of a different but coercable type, for
+        // Sometimes, the return place is assigned a local of a different but coercible type, for
         // example `&mut T` instead of `&T`. Overwriting the `LocalInfo` for the return place means
         // its type may no longer match the return type of its function. This doesn't cause a
         // problem in codegen because these two types are layout-compatible, but may be unexpected.
@@ -92,7 +89,7 @@ fn local_eligible_for_nrvo(body: &mut mir::Body<'_>) -> Option<Local> {
     }
 
     let mut copied_to_return_place = None;
-    for block in body.basic_blocks().indices() {
+    for block in body.basic_blocks.indices() {
         // Look for blocks with a `Return` terminator.
         if !matches!(body[block].terminator().kind, mir::TerminatorKind::Return) {
             continue;
@@ -125,7 +122,7 @@ fn find_local_assigned_to_return_place(
     body: &mut mir::Body<'_>,
 ) -> Option<Local> {
     let mut block = start;
-    let mut seen = HybridBitSet::new_empty(body.basic_blocks().len());
+    let mut seen = HybridBitSet::new_empty(body.basic_blocks.len());
 
     // Iterate as long as `block` has exactly one predecessor that we have not yet visited.
     while seen.insert(block) {
@@ -136,7 +133,7 @@ fn find_local_assigned_to_return_place(
             return local;
         }
 
-        match body.predecessors()[block].as_slice() {
+        match body.basic_blocks.predecessors()[block].as_slice() {
             &[pred] => block = pred,
             _ => return None,
         }
@@ -165,7 +162,7 @@ struct RenameToReturnPlace<'tcx> {
 }
 
 /// Replaces all uses of `self.to_rename` with `_0`.
-impl MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for RenameToReturnPlace<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -221,8 +218,8 @@ impl IsReturnPlaceRead {
     }
 }
 
-impl Visitor<'tcx> for IsReturnPlaceRead {
-    fn visit_local(&mut self, &l: &Local, ctxt: PlaceContext, _: Location) {
+impl<'tcx> Visitor<'tcx> for IsReturnPlaceRead {
+    fn visit_local(&mut self, l: Local, ctxt: PlaceContext, _: Location) {
         if l == mir::RETURN_PLACE && ctxt.is_use() && !ctxt.is_place_assignment() {
             self.0 = true;
         }

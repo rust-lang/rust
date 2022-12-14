@@ -4,11 +4,11 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
 rustc_arena = { path = "../rustc_arena" }
 tracing = "0.1"
+either = "1"
 rustc_middle = { path = "../rustc_middle" }
 rustc_apfloat = { path = "../rustc_apfloat" }
 rustc_attr = { path = "../rustc_attr" }
@@ -23,4 +23,4 @@ rustc_span = { path = "../rustc_span" }
 rustc_target = { path = "../rustc_target" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ast = { path = "../rustc_ast" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }

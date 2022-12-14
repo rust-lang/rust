@@ -16,7 +16,7 @@ mod foo {
 
 fn correct() {
     foo::Pub {};
-    //~^ ERROR cannot construct `Pub` with struct literal syntax due to inaccessible fields
+    //~^ ERROR cannot construct `Pub` with struct literal syntax due to private fields
 }
 
 fn wrong() {

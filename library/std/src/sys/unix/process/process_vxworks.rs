@@ -1,12 +1,11 @@
-use crate::convert::{TryFrom, TryInto};
 use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::num::NonZeroI32;
-use crate::os::raw::NonZero_c_int;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
 use crate::sys_common::thread;
+use core::ffi::NonZero_c_int;
 use libc::RTP_ID;
 use libc::{self, c_char, c_int};
 
@@ -24,9 +23,9 @@ impl Command {
         let envp = self.capture_env();
 
         if self.saw_nul() {
-            return Err(io::Error::new_const(
+            return Err(io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"nul byte found in provided data",
+                "nul byte found in provided data",
             ));
         }
         let (ours, theirs) = self.setup_io(default, needs_stdin)?;
@@ -142,9 +141,9 @@ impl Process {
         // and used for another process, and we probably shouldn't be killing
         // random processes, so just return an error.
         if self.status.is_some() {
-            Err(Error::new_const(
+            Err(io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"invalid argument: can't kill an exited process",
+                "invalid argument: can't kill an exited process",
             ))
         } else {
             cvt(unsafe { libc::kill(self.pid, libc::SIGKILL) }).map(drop)
@@ -239,10 +238,10 @@ impl From<c_int> for ExitStatus {
 impl fmt::Display for ExitStatus {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         if let Some(code) = self.code() {
-            write!(f, "exit code: {}", code)
+            write!(f, "exit code: {code}")
         } else {
             let signal = self.signal().unwrap();
-            write!(f, "signal: {}", signal)
+            write!(f, "signal: {signal}")
         }
     }
 }

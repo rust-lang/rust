@@ -1,5 +1,6 @@
-FROM ubuntu:16.04
+FROM ubuntu:22.04
 
+ARG DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && apt-get install -y --no-install-recommends \
   g++-multilib \
   make \
@@ -14,14 +15,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   gdb \
   zlib1g-dev \
   lib32z1-dev \
-  xz-utils
+  xz-utils \
+  && rm -rf /var/lib/apt/lists/*
 
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV RUST_CONFIGURE_ARGS --build=i686-unknown-linux-gnu
 # Exclude some tests that are unlikely to be platform specific, to speed up

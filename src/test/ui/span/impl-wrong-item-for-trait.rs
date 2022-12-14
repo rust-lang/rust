@@ -29,12 +29,10 @@ impl Foo for FooTypeForMethod {
     //~^ ERROR E0046
     type bar = u64;
     //~^ ERROR E0325
-    //~| ERROR E0437
     const MY_CONST: u32 = 1;
 }
 
-impl Debug for FooTypeForMethod {
-}
-//~^^ ERROR E0046
+impl Debug for FooTypeForMethod {}
+//~^ ERROR E0046
 
-fn main () {}
+fn main() {}

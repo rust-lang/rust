@@ -18,5 +18,21 @@ LL |     let z = x & &y;
    |                 |
    |                 help: use the right value directly: `y`
 
-error: aborting due to 2 previous errors
+error: taken reference of right operand
+  --> $DIR/op_ref.rs:89:17
+   |
+LL |         let _ = one * &self;
+   |                 ^^^^^^-----
+   |                       |
+   |                       help: use the right value directly: `self`
+
+error: taken reference of right operand
+  --> $DIR/op_ref.rs:90:17
+   |
+LL |         let _ = two + &three;
+   |                 ^^^^^^------
+   |                       |
+   |                       help: use the right value directly: `three`
+
+error: aborting due to 4 previous errors
 

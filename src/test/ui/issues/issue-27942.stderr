@@ -4,8 +4,8 @@ error[E0308]: mismatched types
 LL |     fn select(&self) -> BufferViewHandle<R>;
    |                         ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Resources<'_>`
-              found type `Resources<'a>`
+   = note: expected trait `Resources<'_>`
+              found trait `Resources<'a>`
 note: the anonymous lifetime defined here...
   --> $DIR/issue-27942.rs:5:15
    |
@@ -23,8 +23,8 @@ error[E0308]: mismatched types
 LL |     fn select(&self) -> BufferViewHandle<R>;
    |                         ^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected type `Resources<'_>`
-              found type `Resources<'a>`
+   = note: expected trait `Resources<'_>`
+              found trait `Resources<'a>`
 note: the lifetime `'a` as defined here...
   --> $DIR/issue-27942.rs:3:18
    |

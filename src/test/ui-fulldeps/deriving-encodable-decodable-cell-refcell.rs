@@ -9,8 +9,8 @@ extern crate rustc_macros;
 extern crate rustc_serialize;
 
 use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::json;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::opaque::{MemDecoder, MemEncoder};
+use rustc_serialize::{Decodable, Encodable, Encoder};
 use std::cell::{Cell, RefCell};
 
 #[derive(Encodable, Decodable)]
@@ -26,8 +26,14 @@ struct B {
 
 fn main() {
     let obj = B { foo: Cell::new(true), bar: RefCell::new(A { baz: 2 }) };
-    let s = json::encode(&obj).unwrap();
-    let obj2: B = json::decode(&s).unwrap();
+
+    let mut encoder = MemEncoder::new();
+    obj.encode(&mut encoder);
+    let data = encoder.finish();
+
+    let mut decoder = MemDecoder::new(&data, 0);
+    let obj2 = B::decode(&mut decoder);
+
     assert_eq!(obj.foo.get(), obj2.foo.get());
     assert_eq!(obj.bar.borrow().baz, obj2.bar.borrow().baz);
 }

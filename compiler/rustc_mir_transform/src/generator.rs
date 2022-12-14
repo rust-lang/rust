@@ -11,20 +11,20 @@
 //! generator in the MIR, since it is used to create the drop glue for the generator. We'd get
 //! infinite recursion otherwise.
 //!
-//! This pass creates the implementation for the Generator::resume function and the drop shim
-//! for the generator based on the MIR input. It converts the generator argument from Self to
-//! &mut Self adding derefs in the MIR as needed. It computes the final layout of the generator
-//! struct which looks like this:
+//! This pass creates the implementation for either the `Generator::resume` or `Future::poll`
+//! function and the drop shim for the generator based on the MIR input.
+//! It converts the generator argument from Self to &mut Self adding derefs in the MIR as needed.
+//! It computes the final layout of the generator struct which looks like this:
 //!     First upvars are stored
 //!     It is followed by the generator state field.
 //!     Then finally the MIR locals which are live across a suspension point are stored.
-//!
+//!     ```ignore (illustrative)
 //!     struct Generator {
 //!         upvars...,
 //!         state: u32,
 //!         mir_locals...,
 //!     }
-//!
+//!     ```
 //! This pass computes the meaning of the state field and the MIR locals which are live
 //! across a suspension point. There are however three hardcoded generator states:
 //!     0 - Generator have not been resumed yet
@@ -32,14 +32,15 @@
 //!     2 - Generator has been poisoned
 //!
 //! It also rewrites `return x` and `yield y` as setting a new generator state and returning
-//! GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
+//! `GeneratorState::Complete(x)` and `GeneratorState::Yielded(y)`,
+//! or `Poll::Ready(x)` and `Poll::Pending` respectively.
 //! MIR locals which are live across a suspension point are moved to the generator struct
 //! with references to them being updated with references to the generator struct.
 //!
 //! The pass creates two functions which have a switch on the generator state giving
 //! the action to take.
 //!
-//! One of them is the implementation of Generator::resume.
+//! One of them is the implementation of `Generator::resume` / `Future::poll`.
 //! For generators with state 0 (unresumed) it starts the execution of the generator.
 //! For generators with state 1 (returned) and state 2 (poisoned) it panics.
 //! Otherwise it continues the execution from the last suspension point.
@@ -49,24 +50,25 @@
 //! For generators with state 1 (returned) and state 2 (poisoned) it does nothing.
 //! Otherwise it drops all the values in scope at the last suspension point.
 
+use crate::deref_separator::deref_finder;
 use crate::simplify;
 use crate::util::expand_aggregate;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_hir::lang_items::LangItem;
-use rustc_index::bit_set::{BitMatrix, BitSet};
+use rustc_hir::GeneratorKind;
+use rustc_index::bit_set::{BitMatrix, BitSet, GrowableBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::dump_mir;
 use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::*;
-use rustc_middle::ty::subst::{Subst, SubstsRef};
-use rustc_middle::ty::GeneratorSubsts;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
+use rustc_middle::ty::{GeneratorSubsts, SubstsRef};
 use rustc_mir_dataflow::impls::{
     MaybeBorrowedLocals, MaybeLiveLocals, MaybeRequiresStorage, MaybeStorageLive,
 };
-use rustc_mir_dataflow::storage;
+use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::PanicStrategy;
@@ -194,6 +196,11 @@ const RETURNED: usize = GeneratorSubsts::RETURNED;
 /// Generator has panicked and is poisoned.
 const POISONED: usize = GeneratorSubsts::POISONED;
 
+/// Number of variants to reserve in generator state. Corresponds to
+/// `UNRESUMED` (beginning of a generator) and `RETURNED`/`POISONED`
+/// (end of a generator) states.
+const RESERVED_VARIANTS: usize = 3;
+
 /// A `yield` point in the generator.
 struct SuspensionPoint<'tcx> {
     /// State discriminant used when suspending or resuming at this point.
@@ -205,12 +212,13 @@ struct SuspensionPoint<'tcx> {
     /// Which block to jump to if the generator is dropped in this state.
     drop: Option<BasicBlock>,
     /// Set of locals that have live storage while at this suspension point.
-    storage_liveness: BitSet<Local>,
+    storage_liveness: GrowableBitSet<Local>,
 }
 
 struct TransformVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
-    state_adt_ref: &'tcx AdtDef,
+    is_async_kind: bool,
+    state_adt_ref: AdtDef<'tcx>,
     state_substs: SubstsRef<'tcx>,
 
     // The type of the discriminant in the generator struct
@@ -227,35 +235,64 @@ struct TransformVisitor<'tcx> {
     suspension_points: Vec<SuspensionPoint<'tcx>>,
 
     // The set of locals that have no `StorageLive`/`StorageDead` annotations.
-    always_live_locals: storage::AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
 
     // The original RETURN_PLACE local
     new_ret_local: Local,
 }
 
-impl TransformVisitor<'tcx> {
-    // Make a GeneratorState variant assignment. `core::ops::GeneratorState` only has single
-    // element tuple variants, so we can just write to the downcasted first field and then set the
+impl<'tcx> TransformVisitor<'tcx> {
+    // Make a `GeneratorState` or `Poll` variant assignment.
+    //
+    // `core::ops::GeneratorState` only has single element tuple variants,
+    // so we can just write to the downcasted first field and then set the
     // discriminant to the appropriate variant.
     fn make_state(
         &self,
-        idx: VariantIdx,
         val: Operand<'tcx>,
         source_info: SourceInfo,
-    ) -> impl Iterator<Item = Statement<'tcx>> {
-        let kind = AggregateKind::Adt(self.state_adt_ref, idx, self.state_substs, None, None);
-        assert_eq!(self.state_adt_ref.variants[idx].fields.len(), 1);
+        is_return: bool,
+        statements: &mut Vec<Statement<'tcx>>,
+    ) {
+        let idx = VariantIdx::new(match (is_return, self.is_async_kind) {
+            (true, false) => 1,  // GeneratorState::Complete
+            (false, false) => 0, // GeneratorState::Yielded
+            (true, true) => 0,   // Poll::Ready
+            (false, true) => 1,  // Poll::Pending
+        });
+
+        let kind = AggregateKind::Adt(self.state_adt_ref.did(), idx, self.state_substs, None, None);
+
+        // `Poll::Pending`
+        if self.is_async_kind && idx == VariantIdx::new(1) {
+            assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 0);
+
+            // FIXME(swatinem): assert that `val` is indeed unit?
+            statements.extend(expand_aggregate(
+                Place::return_place(),
+                std::iter::empty(),
+                kind,
+                source_info,
+                self.tcx,
+            ));
+            return;
+        }
+
+        // else: `Poll::Ready(x)`, `GeneratorState::Yielded(x)` or `GeneratorState::Complete(x)`
+        assert_eq!(self.state_adt_ref.variant(idx).fields.len(), 1);
+
         let ty = self
             .tcx
-            .type_of(self.state_adt_ref.variants[idx].fields[0].did)
+            .bound_type_of(self.state_adt_ref.variant(idx).fields[0].did)
             .subst(self.tcx, self.state_substs);
-        expand_aggregate(
+
+        statements.extend(expand_aggregate(
             Place::return_place(),
             std::iter::once((val, ty)),
             kind,
             source_info,
             self.tcx,
-        )
+        ));
     }
 
     // Create a Place referencing a generator struct field
@@ -295,7 +332,7 @@ impl TransformVisitor<'tcx> {
     }
 }
 
-impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
+impl<'tcx> MutVisitor<'tcx> for TransformVisitor<'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -326,25 +363,22 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
         });
 
         let ret_val = match data.terminator().kind {
-            TerminatorKind::Return => Some((
-                VariantIdx::new(1),
-                None,
-                Operand::Move(Place::from(self.new_ret_local)),
-                None,
-            )),
+            TerminatorKind::Return => {
+                Some((true, None, Operand::Move(Place::from(self.new_ret_local)), None))
+            }
             TerminatorKind::Yield { ref value, resume, resume_arg, drop } => {
-                Some((VariantIdx::new(0), Some((resume, resume_arg)), value.clone(), drop))
+                Some((false, Some((resume, resume_arg)), value.clone(), drop))
             }
             _ => None,
         };
 
-        if let Some((state_idx, resume, v, drop)) = ret_val {
+        if let Some((is_return, resume, v, drop)) = ret_val {
             let source_info = data.terminator().source_info;
             // We must assign the value first in case it gets declared dead below
-            data.statements.extend(self.make_state(state_idx, v, source_info));
+            self.make_state(v, source_info, is_return, &mut data.statements);
             let state = if let Some((resume, mut resume_arg)) = resume {
                 // Yield
-                let state = 3 + self.suspension_points.len();
+                let state = RESERVED_VARIANTS + self.suspension_points.len();
 
                 // The resume arg target location might itself be remapped if its base local is
                 // live across a yield.
@@ -361,7 +395,7 @@ impl MutVisitor<'tcx> for TransformVisitor<'tcx> {
                     resume,
                     resume_arg,
                     drop,
-                    storage_liveness: self.storage_liveness[block].clone().unwrap(),
+                    storage_liveness: self.storage_liveness[block].clone().unwrap().into(),
                 });
 
                 VariantIdx::new(state)
@@ -446,10 +480,10 @@ struct LivenessInfo {
     storage_liveness: IndexVec<BasicBlock, Option<BitSet<Local>>>,
 }
 
-fn locals_live_across_suspend_points(
+fn locals_live_across_suspend_points<'tcx>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    always_live_locals: &storage::AlwaysLiveLocals,
+    always_live_locals: &BitSet<Local>,
     movable: bool,
 ) -> LivenessInfo {
     let body_ref: &Body<'_> = &body;
@@ -463,10 +497,8 @@ fn locals_live_across_suspend_points(
 
     // Calculate the MIR locals which have been previously
     // borrowed (even if they are still active).
-    let borrowed_locals_results = MaybeBorrowedLocals::all_borrows()
-        .into_engine(tcx, body_ref)
-        .pass_name("generator")
-        .iterate_to_fixpoint();
+    let borrowed_locals_results =
+        MaybeBorrowedLocals.into_engine(tcx, body_ref).pass_name("generator").iterate_to_fixpoint();
 
     let mut borrowed_locals_cursor =
         rustc_mir_dataflow::ResultsCursor::new(body_ref, &borrowed_locals_results);
@@ -486,23 +518,24 @@ fn locals_live_across_suspend_points(
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);
 
-    let mut storage_liveness_map = IndexVec::from_elem(None, body.basic_blocks());
+    let mut storage_liveness_map = IndexVec::from_elem(None, &body.basic_blocks);
     let mut live_locals_at_suspension_points = Vec::new();
     let mut source_info_at_suspension_points = Vec::new();
     let mut live_locals_at_any_suspension_point = BitSet::new_empty(body.local_decls.len());
 
-    for (block, data) in body.basic_blocks().iter_enumerated() {
+    for (block, data) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::Yield { .. } = data.terminator().kind {
             let loc = Location { block, statement_index: data.statements.len() };
 
             liveness.seek_to_block_end(block);
-            let mut live_locals = liveness.get().clone();
+            let mut live_locals: BitSet<_> = BitSet::new_empty(body.local_decls.len());
+            live_locals.union(liveness.get());
 
             if !movable {
                 // The `liveness` variable contains the liveness of MIR locals ignoring borrows.
                 // This is correct for movable generators since borrows cannot live across
                 // suspension points. However for immovable generators we need to account for
-                // borrows, so we conseratively assume that all borrowed locals are live until
+                // borrows, so we conservatively assume that all borrowed locals are live until
                 // we find a StorageDead statement referencing the locals.
                 // To do this we just union our `liveness` result with `borrowed_locals`, which
                 // contains all the locals which has been borrowed before this suspension point.
@@ -613,10 +646,10 @@ impl ops::Deref for GeneratorSavedLocals {
 /// time. Generates a bitset for every local of all the other locals that may be
 /// StorageLive simultaneously with that local. This is used in the layout
 /// computation; see `GeneratorLayout` for more.
-fn compute_storage_conflicts(
+fn compute_storage_conflicts<'mir, 'tcx>(
     body: &'mir Body<'tcx>,
     saved_locals: &GeneratorSavedLocals,
-    always_live_locals: storage::AlwaysLiveLocals,
+    always_live_locals: BitSet<Local>,
     requires_storage: rustc_mir_dataflow::Results<'tcx, MaybeRequiresStorage<'mir, 'tcx>>,
 ) -> BitMatrix<GeneratorSavedLocal, GeneratorSavedLocal> {
     assert_eq!(body.local_decls.len(), saved_locals.domain_size());
@@ -626,7 +659,7 @@ fn compute_storage_conflicts(
 
     // Locals that are always live or ones that need to be stored across
     // suspension points are not eligible for overlap.
-    let mut ineligible_locals = always_live_locals.into_inner();
+    let mut ineligible_locals = always_live_locals;
     ineligible_locals.intersect(&**saved_locals);
 
     // Compute the storage conflicts for all eligible locals.
@@ -672,7 +705,9 @@ struct StorageConflictVisitor<'mir, 'tcx, 's> {
     local_conflicts: BitMatrix<Local, Local>,
 }
 
-impl rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'mir, 'tcx, '_> {
+impl<'mir, 'tcx> rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx>
+    for StorageConflictVisitor<'mir, 'tcx, '_>
+{
     type FlowState = BitSet<Local>;
 
     fn visit_statement_before_primary_effect(
@@ -694,10 +729,10 @@ impl rustc_mir_dataflow::ResultsVisitor<'mir, 'tcx> for StorageConflictVisitor<'
     }
 }
 
-impl<'body, 'tcx, 's> StorageConflictVisitor<'body, 'tcx, 's> {
+impl StorageConflictVisitor<'_, '_, '_> {
     fn apply_state(&mut self, flow_state: &BitSet<Local>, loc: Location) {
         // Ignore unreachable blocks.
-        if self.body.basic_blocks()[loc.block].terminator().kind == TerminatorKind::Unreachable {
+        if self.body.basic_blocks[loc.block].terminator().kind == TerminatorKind::Unreachable {
             return;
         }
 
@@ -724,9 +759,13 @@ fn sanitize_witness<'tcx>(
     saved_locals: &GeneratorSavedLocals,
 ) {
     let did = body.source.def_id();
-    let allowed_upvars = tcx.erase_regions(upvars);
+    let param_env = tcx.param_env(did);
+
+    let allowed_upvars = tcx.normalize_erasing_regions(param_env, upvars);
     let allowed = match witness.kind() {
-        &ty::GeneratorWitness(s) => tcx.erase_late_bound_regions(s),
+        &ty::GeneratorWitness(interior_tys) => {
+            tcx.normalize_erasing_late_bound_regions(param_env, interior_tys)
+        }
         _ => {
             tcx.sess.delay_span_bug(
                 body.span,
@@ -735,8 +774,6 @@ fn sanitize_witness<'tcx>(
             return;
         }
     };
-
-    let param_env = tcx.param_env(did);
 
     for (local, decl) in body.local_decls.iter_enumerated() {
         // Ignore locals which are internal or not saved between yields.
@@ -788,7 +825,6 @@ fn compute_layout<'tcx>(
     // Leave empty variants for the UNRESUMED, RETURNED, and POISONED states.
     // In debuginfo, these will correspond to the beginning (UNRESUMED) or end
     // (RETURNED, POISONED) of the function.
-    const RESERVED_VARIANTS: usize = 3;
     let body_span = body.source_scopes[OUTERMOST_SOURCE_SCOPE].span;
     let mut variant_source_info: IndexVec<VariantIdx, SourceInfo> = [
         SourceInfo::outermost(body_span.shrink_to_lo()),
@@ -841,11 +877,7 @@ fn insert_switch<'tcx>(
     let (assign, discr) = transform.get_discr(body);
     let switch_targets =
         SwitchTargets::new(cases.iter().map(|(i, bb)| ((*i) as u128, *bb)), default_block);
-    let switch = TerminatorKind::SwitchInt {
-        discr: Operand::Move(discr),
-        switch_ty: transform.discr_ty,
-        targets: switch_targets,
-    };
+    let switch = TerminatorKind::SwitchInt { discr: Operand::Move(discr), targets: switch_targets };
 
     let source_info = SourceInfo::outermost(body.span);
     body.basic_blocks_mut().raw.insert(
@@ -878,7 +910,7 @@ fn elaborate_generator_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
     let mut elaborator = DropShimElaborator { body, patch: MirPatch::new(body), tcx, param_env };
 
-    for (block, block_data) in body.basic_blocks().iter_enumerated() {
+    for (block, block_data) in body.basic_blocks.iter_enumerated() {
         let (target, unwind, source_info) = match block_data.terminator() {
             Terminator { source_info, kind: TerminatorKind::Drop { place, target, unwind } } => {
                 if let Some(local) = place.as_local() {
@@ -949,22 +981,12 @@ fn create_generator_drop_shim<'tcx>(
         tcx.mk_ptr(ty::TypeAndMut { ty: gen_ty, mutbl: hir::Mutability::Mut }),
         source_info,
     );
-    if tcx.sess.opts.debugging_opts.mir_emit_retag {
-        // Alias tracking must know we changed the type
-        body.basic_blocks_mut()[START_BLOCK].statements.insert(
-            0,
-            Statement {
-                source_info,
-                kind: StatementKind::Retag(RetagKind::Raw, Box::new(Place::from(SELF_ARG))),
-            },
-        )
-    }
 
     // Make sure we remove dead blocks to remove
     // unrelated code from the resume part of the function
     simplify::remove_dead_blocks(tcx, &mut body);
 
-    dump_mir(tcx, None, "generator_drop", &0, &body, |_, _| Ok(()));
+    dump_mir(tcx, false, "generator_drop", &0, &body, |_, _| Ok(()));
 
     body
 }
@@ -983,12 +1005,12 @@ fn insert_panic_block<'tcx>(
     body: &mut Body<'tcx>,
     message: AssertMessage<'tcx>,
 ) -> BasicBlock {
-    let assert_block = BasicBlock::new(body.basic_blocks().len());
+    let assert_block = BasicBlock::new(body.basic_blocks.len());
     let term = TerminatorKind::Assert {
         cond: Operand::Constant(Box::new(Constant {
             span: body.span,
             user_ty: None,
-            literal: ty::Const::from_bool(tcx, false).into(),
+            literal: ConstantKind::from_bool(tcx, false),
         })),
         expected: true,
         msg: message,
@@ -1008,12 +1030,12 @@ fn insert_panic_block<'tcx>(
 
 fn can_return<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>, param_env: ty::ParamEnv<'tcx>) -> bool {
     // Returning from a function with an uninhabited return type is undefined behavior.
-    if tcx.conservative_is_privately_uninhabited(param_env.and(body.return_ty())) {
+    if body.return_ty().is_privately_uninhabited(tcx, param_env) {
         return false;
     }
 
     // If there's a return terminator the function may return.
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         if let TerminatorKind::Return = block.terminator().kind {
             return true;
         }
@@ -1030,7 +1052,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
     }
 
     // Unwinds can only start at certain terminators.
-    for block in body.basic_blocks() {
+    for block in body.basic_blocks.iter() {
         match block.terminator().kind {
             // These never unwind.
             TerminatorKind::Goto { .. }
@@ -1040,8 +1062,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             | TerminatorKind::Unreachable
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::FalseUnwind { .. }
-            | TerminatorKind::InlineAsm { .. } => {}
+            | TerminatorKind::FalseUnwind { .. } => {}
 
             // Resume will *continue* unwinding, but if there's no other unwinding terminator it
             // will never be reached.
@@ -1055,6 +1076,7 @@ fn can_unwind<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) -> bool {
             TerminatorKind::Drop { .. }
             | TerminatorKind::DropAndReplace { .. }
             | TerminatorKind::Call { .. }
+            | TerminatorKind::InlineAsm { .. }
             | TerminatorKind::Assert { .. } => return true,
         }
     }
@@ -1135,7 +1157,7 @@ fn create_generator_resume_function<'tcx>(
     // unrelated code from the drop part of the function
     simplify::remove_dead_blocks(tcx, body);
 
-    dump_mir(tcx, None, "generator_resume", &0, body, |_, _| Ok(()));
+    dump_mir(tcx, false, "generator_resume", &0, body, |_, _| Ok(()));
 }
 
 fn insert_clean_drop(body: &mut Body<'_>) -> BasicBlock {
@@ -1233,9 +1255,7 @@ fn create_cases<'tcx>(
 
 impl<'tcx> MirPass<'tcx> for StateTransform {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let yield_ty = if let Some(yield_ty) = body.yield_ty() {
-            yield_ty
-        } else {
+        let Some(yield_ty) = body.yield_ty() else {
             // This only applies to generators
             return;
         };
@@ -1263,10 +1283,20 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             }
         };
 
-        // Compute GeneratorState<yield_ty, return_ty>
-        let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
-        let state_adt_ref = tcx.adt_def(state_did);
-        let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
+        let is_async_kind = body.generator_kind().unwrap() != GeneratorKind::Gen;
+        let (state_adt_ref, state_substs) = if is_async_kind {
+            // Compute Poll<return_ty>
+            let state_did = tcx.require_lang_item(LangItem::Poll, None);
+            let state_adt_ref = tcx.adt_def(state_did);
+            let state_substs = tcx.intern_substs(&[body.return_ty().into()]);
+            (state_adt_ref, state_substs)
+        } else {
+            // Compute GeneratorState<yield_ty, return_ty>
+            let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+            let state_adt_ref = tcx.adt_def(state_did);
+            let state_substs = tcx.intern_substs(&[yield_ty.into(), body.return_ty().into()]);
+            (state_adt_ref, state_substs)
+        };
         let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
 
         // We rename RETURN_PLACE which has type mir.return_ty to new_ret_local
@@ -1295,14 +1325,14 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
             },
         );
 
-        let always_live_locals = storage::AlwaysLiveLocals::new(&body);
+        let always_live_locals = always_storage_live_locals(&body);
 
         let liveness_info =
             locals_live_across_suspend_points(tcx, body, &always_live_locals, movable);
 
         sanitize_witness(tcx, body, interior, upvars, &liveness_info.saved_locals);
 
-        if tcx.sess.opts.debugging_opts.validate_mir {
+        if tcx.sess.opts.unstable_opts.validate_mir {
             let mut vis = EnsureGeneratorFieldAssignmentsNeverAlias {
                 assigned_local: None,
                 saved_locals: &liveness_info.saved_locals,
@@ -1322,9 +1352,11 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // Run the transformation which converts Places from Local to generator struct
         // accesses for locals in `remap`.
         // It also rewrites `return x` and `yield y` as writing a new generator state and returning
-        // GeneratorState::Complete(x) and GeneratorState::Yielded(y) respectively.
+        // either GeneratorState::Complete(x) and GeneratorState::Yielded(y),
+        // or Poll::Ready(x) and Poll::Pending respectively depending on `is_async_kind`.
         let mut transform = TransformVisitor {
             tcx,
+            is_async_kind,
             state_adt_ref,
             state_substs,
             remap,
@@ -1348,22 +1380,25 @@ impl<'tcx> MirPass<'tcx> for StateTransform {
         // This is expanded to a drop ladder in `elaborate_generator_drops`.
         let drop_clean = insert_clean_drop(body);
 
-        dump_mir(tcx, None, "generator_pre-elab", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "generator_pre-elab", &0, body, |_, _| Ok(()));
 
         // Expand `drop(generator_struct)` to a drop ladder which destroys upvars.
         // If any upvars are moved out of, drop elaboration will handle upvar destruction.
         // However we need to also elaborate the code generated by `insert_clean_drop`.
         elaborate_generator_drops(tcx, body);
 
-        dump_mir(tcx, None, "generator_post-transform", &0, body, |_, _| Ok(()));
+        dump_mir(tcx, false, "generator_post-transform", &0, body, |_, _| Ok(()));
 
         // Create a copy of our MIR and use it to create the drop shim for the generator
         let drop_shim = create_generator_drop_shim(tcx, &transform, gen_ty, body, drop_clean);
 
         body.generator.as_mut().unwrap().generator_drop = Some(drop_shim);
 
-        // Create the Generator::resume function
+        // Create the Generator::resume / Future::poll function
         create_generator_resume_function(tcx, transform, body, can_return);
+
+        // Run derefer to fix Derefs that are not in the first place
+        deref_finder(tcx, body);
     }
 }
 
@@ -1394,7 +1429,7 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
         self.saved_locals.get(place.local)
     }
 
-    fn check_assigned_place(&mut self, place: Place<'tcx>, f: impl FnOnce(&mut Self)) {
+    fn check_assigned_place(&mut self, place: Place<'_>, f: impl FnOnce(&mut Self)) {
         if let Some(assigned_local) = self.saved_local_for_direct_place(place) {
             assert!(self.assigned_local.is_none(), "`check_assigned_place` must not recurse");
 
@@ -1405,24 +1440,18 @@ impl EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     }
 }
 
-impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
+impl<'tcx> Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, location: Location) {
-        let lhs = match self.assigned_local {
-            Some(l) => l,
-            None => {
-                // This visitor only invokes `visit_place` for the right-hand side of an assignment
-                // and only after setting `self.assigned_local`. However, the default impl of
-                // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
-                // with debuginfo. Ignore them here.
-                assert!(!context.is_use());
-                return;
-            }
+        let Some(lhs) = self.assigned_local else {
+            // This visitor only invokes `visit_place` for the right-hand side of an assignment
+            // and only after setting `self.assigned_local`. However, the default impl of
+            // `Visitor::super_body` may call `visit_place` with a `NonUseContext` for places
+            // with debuginfo. Ignore them here.
+            assert!(!context.is_use());
+            return;
         };
 
-        let rhs = match self.saved_local_for_direct_place(*place) {
-            Some(l) => l,
-            None => return,
-        };
+        let Some(rhs) = self.saved_local_for_direct_place(*place) else { return };
 
         if !self.storage_conflicts.contains(lhs, rhs) {
             bug!(
@@ -1441,17 +1470,15 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
                 self.check_assigned_place(*lhs, |this| this.visit_rvalue(rhs, location));
             }
 
-            // FIXME: Does `llvm_asm!` have any aliasing requirements?
-            StatementKind::LlvmInlineAsm(_) => {}
-
             StatementKind::FakeRead(..)
             | StatementKind::SetDiscriminant { .. }
+            | StatementKind::Deinit(..)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(..)
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -1463,12 +1490,13 @@ impl Visitor<'tcx> for EnsureGeneratorFieldAssignmentsNeverAlias<'_> {
             TerminatorKind::Call {
                 func,
                 args,
-                destination: Some((dest, _)),
+                destination,
+                target: Some(_),
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
             } => {
-                self.check_assigned_place(*dest, |this| {
+                self.check_assigned_place(*destination, |this| {
                     this.visit_operand(func, location);
                     for arg in args {
                         this.visit_operand(arg, location);

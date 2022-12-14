@@ -1,15 +1,12 @@
-error[E0201]: duplicate definitions with name `bar`:
+error[E0592]: duplicate definitions with name `bar`
   --> $DIR/issue-4265.rs:10:5
    |
-LL | /     fn bar() {
-LL | |         Foo { baz: 0 }.bar();
-LL | |     }
-   | |_____- previous definition of `bar` here
-LL | 
-LL | /     fn bar() {
-LL | |     }
-   | |_____^ duplicate definition
+LL |     fn bar() {
+   |     -------- other definition for `bar`
+...
+LL |     fn bar() {
+   |     ^^^^^^^^ duplicate definitions for `bar`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0201`.
+For more information about this error, try `rustc --explain E0592`.

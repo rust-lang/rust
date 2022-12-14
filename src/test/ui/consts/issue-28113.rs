@@ -2,7 +2,7 @@
 
 const X: u8 =
     || -> u8 { 5 }()
-    //~^ ERROR calls in constants are limited to constant functions
+    //~^ ERROR cannot call non-const closure
 ;
 
 fn main() {}

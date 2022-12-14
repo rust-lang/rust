@@ -83,6 +83,7 @@ impl<'a> Location<'a> {
     #[stable(feature = "track_caller", since = "1.46.0")]
     #[rustc_const_unstable(feature = "const_caller_location", issue = "76156")]
     #[track_caller]
+    #[inline]
     pub const fn caller() -> &'static Location<'static> {
         crate::intrinsics::caller_location()
     }
@@ -122,7 +123,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn file(&self) -> &str {
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[inline]
+    pub const fn file(&self) -> &str {
         self.file
     }
 
@@ -145,7 +148,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_hooks", since = "1.10.0")]
-    pub fn line(&self) -> u32 {
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[inline]
+    pub const fn line(&self) -> u32 {
         self.line
     }
 
@@ -168,7 +173,9 @@ impl<'a> Location<'a> {
     /// ```
     #[must_use]
     #[stable(feature = "panic_col", since = "1.25.0")]
-    pub fn column(&self) -> u32 {
+    #[rustc_const_unstable(feature = "const_location_fields", issue = "102911")]
+    #[inline]
+    pub const fn column(&self) -> u32 {
         self.col
     }
 }

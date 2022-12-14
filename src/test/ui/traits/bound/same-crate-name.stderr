@@ -10,8 +10,9 @@ help: trait impl with same name found
   --> $DIR/auxiliary/crate_a2.rs:5:1
    |
 LL | impl Bar for Foo {}
-   | ^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^
    = note: perhaps two different versions of crate `crate_a2` are being used?
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
    |
@@ -26,6 +27,7 @@ LL |         a::try_foo(implements_no_traits);
    |         |
    |         required by a bound introduced by this call
    |
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
    |
@@ -44,8 +46,9 @@ help: trait impl with same name found
   --> $DIR/auxiliary/crate_a2.rs:13:1
    |
 LL | impl Bar for ImplementsWrongTraitConditionally<isize> {}
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    = note: perhaps two different versions of crate `crate_a2` are being used?
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
    |
@@ -60,8 +63,7 @@ LL |         a::try_foo(other_variant_implements_correct_trait);
    |         |
    |         required by a bound introduced by this call
    |
-   = help: the following implementations were found:
-             <ImplementsTraitForUsize<usize> as main::a::Bar>
+   = help: the trait `main::a::Bar` is implemented for `ImplementsTraitForUsize<usize>`
 note: required by a bound in `try_foo`
   --> $DIR/auxiliary/crate_a1.rs:3:24
    |

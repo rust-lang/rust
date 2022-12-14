@@ -7,7 +7,7 @@
 //
 // See issue #59123 for a full explanation.
 
-// ignore-emscripten (sizes don't match)
+// needs-unwind Size of Futures change on panic=abort
 // run-pass
 
 // edition:2018
@@ -17,7 +17,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 
 const BIG_FUT_SIZE: usize = 1024;
-struct BigFut([u8; BIG_FUT_SIZE]);
+struct BigFut(#[allow(unused_tuple_struct_fields)] [u8; BIG_FUT_SIZE]);
 
 impl BigFut {
     fn new() -> Self {
@@ -112,7 +112,7 @@ async fn mixed_sizes() {
 fn main() {
     assert_eq!(1025, std::mem::size_of_val(&single()));
     assert_eq!(1026, std::mem::size_of_val(&single_with_noop()));
-    assert_eq!(3078, std::mem::size_of_val(&joined()));
-    assert_eq!(3079, std::mem::size_of_val(&joined_with_noop()));
-    assert_eq!(7181, std::mem::size_of_val(&mixed_sizes()));
+    assert_eq!(3076, std::mem::size_of_val(&joined()));
+    assert_eq!(3076, std::mem::size_of_val(&joined_with_noop()));
+    assert_eq!(6157, std::mem::size_of_val(&mixed_sizes()));
 }

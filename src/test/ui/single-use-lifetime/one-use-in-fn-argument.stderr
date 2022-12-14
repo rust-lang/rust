@@ -15,7 +15,7 @@ help: elide the single-use lifetime
    |
 LL - fn a<'a>(x: &'a u32) {
 LL + fn a(x: &u32) {
-   | 
+   |
 
 error: lifetime parameter `'m` only used once
   --> $DIR/one-use-in-fn-argument.rs:15:11
@@ -29,7 +29,7 @@ help: elide the single-use lifetime
    |
 LL - fn center<'m>(_: Single<'m>) {}
 LL + fn center(_: Single<'_>) {}
-   | 
+   |
 
 error: lifetime parameter `'y` only used once
   --> $DIR/one-use-in-fn-argument.rs:17:13
@@ -41,7 +41,7 @@ help: elide the single-use lifetime
    |
 LL - fn left<'x, 'y>(foo: Double<'x, 'y>) -> &'x u32 { foo.f }
 LL + fn left<'x>(foo: Double<'x, '_>) -> &'x u32 { foo.f }
-   | 
+   |
 
 error: lifetime parameter `'x` only used once
   --> $DIR/one-use-in-fn-argument.rs:19:10
@@ -53,7 +53,7 @@ help: elide the single-use lifetime
    |
 LL - fn right<'x, 'y>(foo: Double<'x, 'y>) -> &'y u32 { foo.f }
 LL + fn right<'y>(foo: Double<'_, 'y>) -> &'y u32 { foo.f }
-   | 
+   |
 
 error: aborting due to 4 previous errors
 

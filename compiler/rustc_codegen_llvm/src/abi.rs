@@ -1,7 +1,7 @@
+use crate::attributes;
 use crate::builder::Builder;
 use crate::context::CodegenCx;
-use crate::llvm::{self, AttributePlace};
-use crate::llvm_util;
+use crate::llvm::{self, Attribute, AttributePlace};
 use crate::type_::Type;
 use crate::type_of::LayoutLlvmExt;
 use crate::value::Value;
@@ -14,33 +14,15 @@ use rustc_middle::bug;
 use rustc_middle::ty::layout::LayoutOf;
 pub use rustc_middle::ty::layout::{FAT_PTR_ADDR, FAT_PTR_EXTRA};
 use rustc_middle::ty::Ty;
+use rustc_session::config;
 use rustc_target::abi::call::ArgAbi;
 pub use rustc_target::abi::call::*;
 use rustc_target::abi::{self, HasDataLayout, Int};
 pub use rustc_target::spec::abi::Abi;
+use rustc_target::spec::SanitizerSet;
 
 use libc::c_uint;
-
-macro_rules! for_each_kind {
-    ($flags: ident, $f: ident, $($kind: ident),+) => ({
-        $(if $flags.contains(ArgAttribute::$kind) { $f(llvm::Attribute::$kind) })+
-    })
-}
-
-trait ArgAttributeExt {
-    fn for_each_kind<F>(&self, f: F)
-    where
-        F: FnMut(llvm::Attribute);
-}
-
-impl ArgAttributeExt for ArgAttribute {
-    fn for_each_kind<F>(&self, mut f: F)
-    where
-        F: FnMut(llvm::Attribute),
-    {
-        for_each_kind!(self, f, NoAlias, NoCapture, NonNull, ReadOnly, InReg)
-    }
-}
+use smallvec::SmallVec;
 
 pub trait ArgAttributesExt {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value);
@@ -53,47 +35,78 @@ pub trait ArgAttributesExt {
 }
 
 fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
-    // LLVM prior to version 12 has known miscompiles in the presence of
-    // noalias attributes (see #54878). Only enable mutable noalias by
-    // default for versions we believe to be safe.
-    cx.tcx
-        .sess
-        .opts
-        .debugging_opts
-        .mutable_noalias
-        .unwrap_or_else(|| llvm_util::get_version() >= (12, 0, 0))
+    // LLVM prior to version 12 had known miscompiles in the presence of
+    // noalias attributes (see #54878), but we don't support earlier
+    // versions at all anymore. We now enable mutable noalias by default.
+    cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true)
+}
+
+const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
+    [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
+
+const OPTIMIZATION_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 5] = [
+    (ArgAttribute::NoAlias, llvm::AttributeKind::NoAlias),
+    (ArgAttribute::NoCapture, llvm::AttributeKind::NoCapture),
+    (ArgAttribute::NonNull, llvm::AttributeKind::NonNull),
+    (ArgAttribute::ReadOnly, llvm::AttributeKind::ReadOnly),
+    (ArgAttribute::NoUndef, llvm::AttributeKind::NoUndef),
+];
+
+fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'ll Attribute; 8]> {
+    let mut regular = this.regular;
+
+    let mut attrs = SmallVec::new();
+
+    // ABI-affecting attributes must always be applied
+    for (attr, llattr) in ABI_AFFECTING_ATTRIBUTES {
+        if regular.contains(attr) {
+            attrs.push(llattr.create_attr(cx.llcx));
+        }
+    }
+    if let Some(align) = this.pointee_align {
+        attrs.push(llvm::CreateAlignmentAttr(cx.llcx, align.bytes()));
+    }
+    match this.arg_ext {
+        ArgExtension::None => {}
+        ArgExtension::Zext => attrs.push(llvm::AttributeKind::ZExt.create_attr(cx.llcx)),
+        ArgExtension::Sext => attrs.push(llvm::AttributeKind::SExt.create_attr(cx.llcx)),
+    }
+
+    // Only apply remaining attributes when optimizing
+    if cx.sess().opts.optimize != config::OptLevel::No {
+        let deref = this.pointee_size.bytes();
+        if deref != 0 {
+            if regular.contains(ArgAttribute::NonNull) {
+                attrs.push(llvm::CreateDereferenceableAttr(cx.llcx, deref));
+            } else {
+                attrs.push(llvm::CreateDereferenceableOrNullAttr(cx.llcx, deref));
+            }
+            regular -= ArgAttribute::NonNull;
+        }
+        for (attr, llattr) in OPTIMIZATION_ATTRIBUTES {
+            if regular.contains(attr) {
+                attrs.push(llattr.create_attr(cx.llcx));
+            }
+        }
+        if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
+            attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
+        }
+    } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
+        // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
+        // memory sanitizer's behavior.
+
+        if regular.contains(ArgAttribute::NoUndef) {
+            attrs.push(llvm::AttributeKind::NoUndef.create_attr(cx.llcx));
+        }
+    }
+
+    attrs
 }
 
 impl ArgAttributesExt for ArgAttributes {
     fn apply_attrs_to_llfn(&self, idx: AttributePlace, cx: &CodegenCx<'_, '_>, llfn: &Value) {
-        let mut regular = self.regular;
-        unsafe {
-            let deref = self.pointee_size.bytes();
-            if deref != 0 {
-                if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableAttr(llfn, idx.as_uint(), deref);
-                } else {
-                    llvm::LLVMRustAddDereferenceableOrNullAttr(llfn, idx.as_uint(), deref);
-                }
-                regular -= ArgAttribute::NonNull;
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentAttr(llfn, idx.as_uint(), align.bytes() as u32);
-            }
-            regular.for_each_kind(|attr| attr.apply_llfn(idx, llfn));
-            if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-                llvm::Attribute::NoAlias.apply_llfn(idx, llfn);
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => {
-                    llvm::Attribute::ZExt.apply_llfn(idx, llfn);
-                }
-                ArgExtension::Sext => {
-                    llvm::Attribute::SExt.apply_llfn(idx, llfn);
-                }
-            }
-        }
+        let attrs = get_attrs(self, cx);
+        attributes::apply_to_llfn(llfn, idx, &attrs);
     }
 
     fn apply_attrs_to_callsite(
@@ -102,51 +115,17 @@ impl ArgAttributesExt for ArgAttributes {
         cx: &CodegenCx<'_, '_>,
         callsite: &Value,
     ) {
-        let mut regular = self.regular;
-        unsafe {
-            let deref = self.pointee_size.bytes();
-            if deref != 0 {
-                if regular.contains(ArgAttribute::NonNull) {
-                    llvm::LLVMRustAddDereferenceableCallSiteAttr(callsite, idx.as_uint(), deref);
-                } else {
-                    llvm::LLVMRustAddDereferenceableOrNullCallSiteAttr(
-                        callsite,
-                        idx.as_uint(),
-                        deref,
-                    );
-                }
-                regular -= ArgAttribute::NonNull;
-            }
-            if let Some(align) = self.pointee_align {
-                llvm::LLVMRustAddAlignmentCallSiteAttr(
-                    callsite,
-                    idx.as_uint(),
-                    align.bytes() as u32,
-                );
-            }
-            regular.for_each_kind(|attr| attr.apply_callsite(idx, callsite));
-            if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-                llvm::Attribute::NoAlias.apply_callsite(idx, callsite);
-            }
-            match self.arg_ext {
-                ArgExtension::None => {}
-                ArgExtension::Zext => {
-                    llvm::Attribute::ZExt.apply_callsite(idx, callsite);
-                }
-                ArgExtension::Sext => {
-                    llvm::Attribute::SExt.apply_callsite(idx, callsite);
-                }
-            }
-        }
+        let attrs = get_attrs(self, cx);
+        attributes::apply_to_callsite(callsite, idx, &attrs);
     }
 }
 
 pub trait LlvmType {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type;
 }
 
 impl LlvmType for Reg {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         match self.kind {
             RegKind::Integer => cx.type_ix(self.size.bits()),
             RegKind::Float => match self.size.bits() {
@@ -160,7 +139,7 @@ impl LlvmType for Reg {
 }
 
 impl LlvmType for CastTarget {
-    fn llvm_type(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
+    fn llvm_type<'ll>(&self, cx: &CodegenCx<'ll, '_>) -> &'ll Type {
         let rest_ll_unit = self.rest.unit.llvm_type(cx);
         let (rest_count, rem_bytes) = if self.rest.unit.size.bytes() == 0 {
             (0, 0)
@@ -187,9 +166,7 @@ impl LlvmType for CastTarget {
         let mut args: Vec<_> = self
             .prefix
             .iter()
-            .flat_map(|option_kind| {
-                option_kind.map(|kind| Reg { kind, size: self.prefix_chunk_size }.llvm_type(cx))
-            })
+            .flat_map(|option_reg| option_reg.map(|reg| reg.llvm_type(cx)))
             .chain((0..rest_count).map(|_| rest_ll_unit))
             .collect();
 
@@ -220,7 +197,7 @@ pub trait ArgAbiExt<'ll, 'tcx> {
     );
 }
 
-impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     /// Gets the LLVM type for a place of the original Rust type of
     /// this argument/return, i.e., the result of `type_of::type_of`.
     fn memory_ty(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
@@ -244,7 +221,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             OperandValue::Ref(val, None, self.layout.align.abi).store(bx, dst)
         } else if self.is_unsized_indirect() {
             bug!("unsized `ArgAbi` must be handled through `store_fn_arg`");
-        } else if let PassMode::Cast(cast) = self.mode {
+        } else if let PassMode::Cast(cast, _) = &self.mode {
             // FIXME(eddyb): Figure out when the simpler Store is safe, clang
             // uses it for i16 -> {i8, i8}, but not for i24 -> {i8, i8, i8}.
             let can_store_through_cast_ptr = false;
@@ -295,7 +272,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
 
     fn store_fn_arg(
         &self,
-        bx: &mut Builder<'a, 'll, 'tcx>,
+        bx: &mut Builder<'_, 'll, 'tcx>,
         idx: &mut usize,
         dst: PlaceRef<'tcx, &'ll Value>,
     ) {
@@ -314,7 +291,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
             }
             PassMode::Direct(_)
             | PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ }
-            | PassMode::Cast(_) => {
+            | PassMode::Cast(..) => {
                 let next_arg = next();
                 self.store(bx, next_arg, dst);
             }
@@ -322,7 +299,7 @@ impl ArgAbiExt<'ll, 'tcx> for ArgAbi<'tcx, Ty<'tcx>> {
     }
 }
 
-impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
+impl<'ll, 'tcx> ArgAbiMethods<'tcx> for Builder<'_, 'll, 'tcx> {
     fn store_fn_arg(
         &mut self,
         arg_abi: &ArgAbi<'tcx, Ty<'tcx>>,
@@ -344,32 +321,30 @@ impl ArgAbiMethods<'tcx> for Builder<'a, 'll, 'tcx> {
     }
 }
 
-pub trait FnAbiLlvmExt<'tcx> {
+pub trait FnAbiLlvmExt<'ll, 'tcx> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn ptr_to_llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type;
     fn llvm_cconv(&self) -> llvm::CallConv;
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value);
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value);
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value);
 }
 
-impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
+impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     fn llvm_type(&self, cx: &CodegenCx<'ll, 'tcx>) -> &'ll Type {
         // Ignore "extra" args from the call site for C variadic functions.
         // Only the "fixed" args are part of the LLVM function signature.
-        let args = if self.c_variadic { &self.args[..self.fixed_count] } else { &self.args };
+        let args =
+            if self.c_variadic { &self.args[..self.fixed_count as usize] } else { &self.args };
 
-        let args_capacity: usize = args.iter().map(|arg|
-            if arg.pad.is_some() { 1 } else { 0 } +
-            if let PassMode::Pair(_, _) = arg.mode { 2 } else { 1 }
-        ).sum();
+        // This capacity calculation is approximate.
         let mut llargument_tys = Vec::with_capacity(
-            if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 } + args_capacity,
+            self.args.len() + if let PassMode::Indirect { .. } = self.ret.mode { 1 } else { 0 },
         );
 
-        let llreturn_ty = match self.ret.mode {
+        let llreturn_ty = match &self.ret.mode {
             PassMode::Ignore => cx.type_void(),
             PassMode::Direct(_) | PassMode::Pair(..) => self.ret.layout.immediate_llvm_type(cx),
-            PassMode::Cast(cast) => cast.llvm_type(cx),
+            PassMode::Cast(cast, _) => cast.llvm_type(cx),
             PassMode::Indirect { .. } => {
                 llargument_tys.push(cx.type_ptr_to(self.ret.memory_ty(cx)));
                 cx.type_void()
@@ -377,12 +352,7 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
         };
 
         for arg in args {
-            // add padding
-            if let Some(ty) = arg.pad {
-                llargument_tys.push(ty.llvm_type(cx));
-            }
-
-            let llarg_ty = match arg.mode {
+            let llarg_ty = match &arg.mode {
                 PassMode::Ignore => continue,
                 PassMode::Direct(_) => arg.layout.immediate_llvm_type(cx),
                 PassMode::Pair(..) => {
@@ -397,7 +367,13 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
                     llargument_tys.push(ptr_layout.scalar_pair_element_llvm_type(cx, 1, true));
                     continue;
                 }
-                PassMode::Cast(cast) => cast.llvm_type(cx),
+                PassMode::Cast(cast, pad_i32) => {
+                    // add padding
+                    if *pad_i32 {
+                        llargument_tys.push(Reg::i32().llvm_type(cx));
+                    }
+                    cast.llvm_type(cx)
+                }
                 PassMode::Indirect { attrs: _, extra_attrs: None, on_stack: _ } => {
                     cx.type_ptr_to(arg.memory_ty(cx))
                 }
@@ -422,8 +398,194 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn llvm_cconv(&self) -> llvm::CallConv {
-        match self.conv {
+        self.conv.into()
+    }
+
+    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
+        let mut func_attrs = SmallVec::<[_; 2]>::new();
+        if self.ret.layout.abi.is_uninhabited() {
+            func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(cx.llcx));
+        }
+        if !self.can_unwind {
+            func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(cx.llcx));
+        }
+        attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &{ func_attrs });
+
+        let mut i = 0;
+        let mut apply = |attrs: &ArgAttributes| {
+            attrs.apply_attrs_to_llfn(llvm::AttributePlace::Argument(i), cx, llfn);
+            i += 1;
+            i - 1
+        };
+        match &self.ret.mode {
+            PassMode::Direct(attrs) => {
+                attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+            }
+            PassMode::Indirect { attrs, extra_attrs: _, on_stack } => {
+                assert!(!on_stack);
+                let i = apply(attrs);
+                let sret = llvm::CreateStructRetAttr(cx.llcx, self.ret.layout.llvm_type(cx));
+                attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[sret]);
+            }
+            PassMode::Cast(cast, _) => {
+                cast.attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
+            }
+            _ => {}
+        }
+        for arg in self.args.iter() {
+            match &arg.mode {
+                PassMode::Ignore => {}
+                PassMode::Indirect { attrs, extra_attrs: None, on_stack: true } => {
+                    let i = apply(attrs);
+                    let byval = llvm::CreateByValAttr(cx.llcx, arg.layout.llvm_type(cx));
+                    attributes::apply_to_llfn(llfn, llvm::AttributePlace::Argument(i), &[byval]);
+                }
+                PassMode::Direct(attrs)
+                | PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
+                    apply(attrs);
+                }
+                PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack } => {
+                    assert!(!on_stack);
+                    apply(attrs);
+                    apply(extra_attrs);
+                }
+                PassMode::Pair(a, b) => {
+                    apply(a);
+                    apply(b);
+                }
+                PassMode::Cast(cast, pad_i32) => {
+                    if *pad_i32 {
+                        apply(&ArgAttributes::new());
+                    }
+                    apply(&cast.attrs);
+                }
+            }
+        }
+    }
+
+    fn apply_attrs_callsite(&self, bx: &mut Builder<'_, 'll, 'tcx>, callsite: &'ll Value) {
+        let mut func_attrs = SmallVec::<[_; 2]>::new();
+        if self.ret.layout.abi.is_uninhabited() {
+            func_attrs.push(llvm::AttributeKind::NoReturn.create_attr(bx.cx.llcx));
+        }
+        if !self.can_unwind {
+            func_attrs.push(llvm::AttributeKind::NoUnwind.create_attr(bx.cx.llcx));
+        }
+        attributes::apply_to_callsite(callsite, llvm::AttributePlace::Function, &{ func_attrs });
+
+        let mut i = 0;
+        let mut apply = |cx: &CodegenCx<'_, '_>, attrs: &ArgAttributes| {
+            attrs.apply_attrs_to_callsite(llvm::AttributePlace::Argument(i), cx, callsite);
+            i += 1;
+            i - 1
+        };
+        match &self.ret.mode {
+            PassMode::Direct(attrs) => {
+                attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
+            }
+            PassMode::Indirect { attrs, extra_attrs: _, on_stack } => {
+                assert!(!on_stack);
+                let i = apply(bx.cx, attrs);
+                let sret = llvm::CreateStructRetAttr(bx.cx.llcx, self.ret.layout.llvm_type(bx));
+                attributes::apply_to_callsite(callsite, llvm::AttributePlace::Argument(i), &[sret]);
+            }
+            PassMode::Cast(cast, _) => {
+                cast.attrs.apply_attrs_to_callsite(
+                    llvm::AttributePlace::ReturnValue,
+                    &bx.cx,
+                    callsite,
+                );
+            }
+            _ => {}
+        }
+        if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
+            // If the value is a boolean, the range is 0..2 and that ultimately
+            // become 0..0 when the type becomes i1, which would be rejected
+            // by the LLVM verifier.
+            if let Int(..) = scalar.primitive() {
+                if !scalar.is_bool() && !scalar.is_always_valid(bx) {
+                    bx.range_metadata(callsite, scalar.valid_range(bx));
+                }
+            }
+        }
+        for arg in self.args.iter() {
+            match &arg.mode {
+                PassMode::Ignore => {}
+                PassMode::Indirect { attrs, extra_attrs: None, on_stack: true } => {
+                    let i = apply(bx.cx, attrs);
+                    let byval = llvm::CreateByValAttr(bx.cx.llcx, arg.layout.llvm_type(bx));
+                    attributes::apply_to_callsite(
+                        callsite,
+                        llvm::AttributePlace::Argument(i),
+                        &[byval],
+                    );
+                }
+                PassMode::Direct(attrs)
+                | PassMode::Indirect { attrs, extra_attrs: None, on_stack: false } => {
+                    apply(bx.cx, attrs);
+                }
+                PassMode::Indirect { attrs, extra_attrs: Some(extra_attrs), on_stack: _ } => {
+                    apply(bx.cx, attrs);
+                    apply(bx.cx, extra_attrs);
+                }
+                PassMode::Pair(a, b) => {
+                    apply(bx.cx, a);
+                    apply(bx.cx, b);
+                }
+                PassMode::Cast(cast, pad_i32) => {
+                    if *pad_i32 {
+                        apply(bx.cx, &ArgAttributes::new());
+                    }
+                    apply(bx.cx, &cast.attrs);
+                }
+            }
+        }
+
+        let cconv = self.llvm_cconv();
+        if cconv != llvm::CCallConv {
+            llvm::SetInstructionCallConv(callsite, cconv);
+        }
+
+        if self.conv == Conv::CCmseNonSecureCall {
+            // This will probably get ignored on all targets but those supporting the TrustZone-M
+            // extension (thumbv8m targets).
+            let cmse_nonsecure_call = llvm::CreateAttrString(bx.cx.llcx, "cmse_nonsecure_call");
+            attributes::apply_to_callsite(
+                callsite,
+                llvm::AttributePlace::Function,
+                &[cmse_nonsecure_call],
+            );
+        }
+
+        // Some intrinsics require that an elementtype attribute (with the pointee type of a
+        // pointer argument) is added to the callsite.
+        let element_type_index = unsafe { llvm::LLVMRustGetElementTypeArgIndex(callsite) };
+        if element_type_index >= 0 {
+            let arg_ty = self.args[element_type_index as usize].layout.ty;
+            let pointee_ty = arg_ty.builtin_deref(true).expect("Must be pointer argument").ty;
+            let element_type_attr = unsafe {
+                llvm::LLVMRustCreateElementTypeAttr(bx.llcx, bx.layout_of(pointee_ty).llvm_type(bx))
+            };
+            attributes::apply_to_callsite(
+                callsite,
+                llvm::AttributePlace::Argument(element_type_index as u32),
+                &[element_type_attr],
+            );
+        }
+    }
+}
+
+impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
+    fn get_param(&mut self, index: usize) -> Self::Value {
+        llvm::get_param(self.llfn(), index as c_uint)
+    }
+}
+
+impl From<Conv> for llvm::CallConv {
+    fn from(conv: Conv) -> Self {
+        match conv {
             Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
+            Conv::RustCold => llvm::ColdCallConv,
             Conv::AmdGpuKernel => llvm::AmdGpuKernel,
             Conv::AvrInterrupt => llvm::AvrInterrupt,
             Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
@@ -438,182 +600,5 @@ impl<'tcx> FnAbiLlvmExt<'tcx> for FnAbi<'tcx, Ty<'tcx>> {
             Conv::X86_64SysV => llvm::X86_64_SysV,
             Conv::X86_64Win64 => llvm::X86_64_Win64,
         }
-    }
-
-    fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
-        // FIXME(eddyb) can this also be applied to callsites?
-        if self.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_llfn(llvm::AttributePlace::Function, llfn);
-        }
-
-        // FIXME(eddyb, wesleywiser): apply this to callsites as well?
-        if !self.can_unwind {
-            llvm::Attribute::NoUnwind.apply_llfn(llvm::AttributePlace::Function, llfn);
-        }
-
-        let mut i = 0;
-        let mut apply = |attrs: &ArgAttributes| {
-            attrs.apply_attrs_to_llfn(llvm::AttributePlace::Argument(i), cx, llfn);
-            i += 1;
-            i - 1
-        };
-        match self.ret.mode {
-            PassMode::Direct(ref attrs) => {
-                attrs.apply_attrs_to_llfn(llvm::AttributePlace::ReturnValue, cx, llfn);
-            }
-            PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
-                assert!(!on_stack);
-                let i = apply(attrs);
-                unsafe {
-                    llvm::LLVMRustAddStructRetAttr(
-                        llfn,
-                        llvm::AttributePlace::Argument(i).as_uint(),
-                        self.ret.layout.llvm_type(cx),
-                    );
-                }
-            }
-            _ => {}
-        }
-        for arg in &self.args {
-            if arg.pad.is_some() {
-                apply(&ArgAttributes::new());
-            }
-            match arg.mode {
-                PassMode::Ignore => {}
-                PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
-                    let i = apply(attrs);
-                    unsafe {
-                        llvm::LLVMRustAddByValAttr(
-                            llfn,
-                            llvm::AttributePlace::Argument(i).as_uint(),
-                            arg.layout.llvm_type(cx),
-                        );
-                    }
-                }
-                PassMode::Direct(ref attrs)
-                | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
-                    apply(attrs);
-                }
-                PassMode::Indirect { ref attrs, extra_attrs: Some(ref extra_attrs), on_stack } => {
-                    assert!(!on_stack);
-                    apply(attrs);
-                    apply(extra_attrs);
-                }
-                PassMode::Pair(ref a, ref b) => {
-                    apply(a);
-                    apply(b);
-                }
-                PassMode::Cast(_) => {
-                    apply(&ArgAttributes::new());
-                }
-            }
-        }
-    }
-
-    fn apply_attrs_callsite(&self, bx: &mut Builder<'a, 'll, 'tcx>, callsite: &'ll Value) {
-        if self.ret.layout.abi.is_uninhabited() {
-            llvm::Attribute::NoReturn.apply_callsite(llvm::AttributePlace::Function, callsite);
-        }
-        if !self.can_unwind {
-            llvm::Attribute::NoUnwind.apply_callsite(llvm::AttributePlace::Function, callsite);
-        }
-
-        let mut i = 0;
-        let mut apply = |cx: &CodegenCx<'_, '_>, attrs: &ArgAttributes| {
-            attrs.apply_attrs_to_callsite(llvm::AttributePlace::Argument(i), cx, callsite);
-            i += 1;
-            i - 1
-        };
-        match self.ret.mode {
-            PassMode::Direct(ref attrs) => {
-                attrs.apply_attrs_to_callsite(llvm::AttributePlace::ReturnValue, bx.cx, callsite);
-            }
-            PassMode::Indirect { ref attrs, extra_attrs: _, on_stack } => {
-                assert!(!on_stack);
-                let i = apply(bx.cx, attrs);
-                unsafe {
-                    llvm::LLVMRustAddStructRetCallSiteAttr(
-                        callsite,
-                        llvm::AttributePlace::Argument(i).as_uint(),
-                        self.ret.layout.llvm_type(bx),
-                    );
-                }
-            }
-            _ => {}
-        }
-        if let abi::Abi::Scalar(scalar) = self.ret.layout.abi {
-            // If the value is a boolean, the range is 0..2 and that ultimately
-            // become 0..0 when the type becomes i1, which would be rejected
-            // by the LLVM verifier.
-            if let Int(..) = scalar.value {
-                if !scalar.is_bool() && !scalar.is_always_valid(bx) {
-                    bx.range_metadata(callsite, scalar.valid_range);
-                }
-            }
-        }
-        for arg in &self.args {
-            if arg.pad.is_some() {
-                apply(bx.cx, &ArgAttributes::new());
-            }
-            match arg.mode {
-                PassMode::Ignore => {}
-                PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: true } => {
-                    let i = apply(bx.cx, attrs);
-                    unsafe {
-                        llvm::LLVMRustAddByValCallSiteAttr(
-                            callsite,
-                            llvm::AttributePlace::Argument(i).as_uint(),
-                            arg.layout.llvm_type(bx),
-                        );
-                    }
-                }
-                PassMode::Direct(ref attrs)
-                | PassMode::Indirect { ref attrs, extra_attrs: None, on_stack: false } => {
-                    apply(bx.cx, attrs);
-                }
-                PassMode::Indirect {
-                    ref attrs,
-                    extra_attrs: Some(ref extra_attrs),
-                    on_stack: _,
-                } => {
-                    apply(bx.cx, attrs);
-                    apply(bx.cx, extra_attrs);
-                }
-                PassMode::Pair(ref a, ref b) => {
-                    apply(bx.cx, a);
-                    apply(bx.cx, b);
-                }
-                PassMode::Cast(_) => {
-                    apply(bx.cx, &ArgAttributes::new());
-                }
-            }
-        }
-
-        let cconv = self.llvm_cconv();
-        if cconv != llvm::CCallConv {
-            llvm::SetInstructionCallConv(callsite, cconv);
-        }
-
-        if self.conv == Conv::CCmseNonSecureCall {
-            // This will probably get ignored on all targets but those supporting the TrustZone-M
-            // extension (thumbv8m targets).
-            unsafe {
-                llvm::AddCallSiteAttrString(
-                    callsite,
-                    llvm::AttributePlace::Function,
-                    cstr::cstr!("cmse_nonsecure_call"),
-                );
-            }
-        }
-    }
-}
-
-impl AbiBuilderMethods<'tcx> for Builder<'a, 'll, 'tcx> {
-    fn apply_attrs_callsite(&mut self, fn_abi: &FnAbi<'tcx, Ty<'tcx>>, callsite: Self::Value) {
-        fn_abi.apply_attrs_callsite(self, callsite)
-    }
-
-    fn get_param(&self, index: usize) -> Self::Value {
-        llvm::get_param(self.llfn(), index as c_uint)
     }
 }

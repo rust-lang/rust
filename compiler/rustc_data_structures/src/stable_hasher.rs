@@ -3,6 +3,7 @@ use rustc_index::bit_set;
 use rustc_index::vec;
 use smallvec::SmallVec;
 use std::hash::{BuildHasher, Hash, Hasher};
+use std::marker::PhantomData;
 use std::mem;
 
 #[cfg(test)]
@@ -42,6 +43,7 @@ impl StableHasher {
 }
 
 impl StableHasherResult for u128 {
+    #[inline]
     fn finish(hasher: StableHasher) -> Self {
         let (_0, _1) = hasher.finalize();
         u128::from(_0) | (u128::from(_1) << 64)
@@ -49,6 +51,7 @@ impl StableHasherResult for u128 {
 }
 
 impl StableHasherResult for u64 {
+    #[inline]
     fn finish(hasher: StableHasher) -> Self {
         hasher.finalize().0
     }
@@ -72,28 +75,39 @@ impl Hasher for StableHasher {
     }
 
     #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.state.write_str(s);
+    }
+
+    #[inline]
+    fn write_length_prefix(&mut self, len: usize) {
+        // Our impl for `usize` will extend it if needed.
+        self.write_usize(len);
+    }
+
+    #[inline]
     fn write_u8(&mut self, i: u8) {
         self.state.write_u8(i);
     }
 
     #[inline]
     fn write_u16(&mut self, i: u16) {
-        self.state.write_u16(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u32(&mut self, i: u32) {
-        self.state.write_u32(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u64(&mut self, i: u64) {
-        self.state.write_u64(i.to_le());
+        self.state.short_write(i.to_le_bytes());
     }
 
     #[inline]
     fn write_u128(&mut self, i: u128) {
-        self.state.write_u128(i.to_le());
+        self.state.write(&i.to_le_bytes());
     }
 
     #[inline]
@@ -101,7 +115,7 @@ impl Hasher for StableHasher {
         // Always treat usize as u64 so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
         // for example.
-        self.state.write_u64((i as u64).to_le());
+        self.state.short_write((i as u64).to_le_bytes());
     }
 
     #[inline]
@@ -111,31 +125,59 @@ impl Hasher for StableHasher {
 
     #[inline]
     fn write_i16(&mut self, i: i16) {
-        self.state.write_i16(i.to_le());
+        self.state.short_write((i as u16).to_le_bytes());
     }
 
     #[inline]
     fn write_i32(&mut self, i: i32) {
-        self.state.write_i32(i.to_le());
+        self.state.short_write((i as u32).to_le_bytes());
     }
 
     #[inline]
     fn write_i64(&mut self, i: i64) {
-        self.state.write_i64(i.to_le());
+        self.state.short_write((i as u64).to_le_bytes());
     }
 
     #[inline]
     fn write_i128(&mut self, i: i128) {
-        self.state.write_i128(i.to_le());
+        self.state.write(&(i as u128).to_le_bytes());
     }
 
     #[inline]
     fn write_isize(&mut self, i: isize) {
-        // Always treat isize as i64 so we get the same results on 32 and 64 bit
+        // Always treat isize as a 64-bit number so we get the same results on 32 and 64 bit
         // platforms. This is important for symbol hashes when cross compiling,
         // for example. Sign extending here is preferable as it means that the
         // same negative number hashes the same on both 32 and 64 bit platforms.
-        self.state.write_i64((i as i64).to_le());
+        let value = i as u64;
+
+        // Cold path
+        #[cold]
+        #[inline(never)]
+        fn hash_value(state: &mut SipHasher128, value: u64) {
+            state.write_u8(0xFF);
+            state.short_write(value.to_le_bytes());
+        }
+
+        // `isize` values often seem to have a small (positive) numeric value in practice.
+        // To exploit this, if the value is small, we will hash a smaller amount of bytes.
+        // However, we cannot just skip the leading zero bytes, as that would produce the same hash
+        // e.g. if you hash two values that have the same bit pattern when they are swapped.
+        // See https://github.com/rust-lang/rust/pull/93014 for context.
+        //
+        // Therefore, we employ the following strategy:
+        // 1) When we encounter a value that fits within a single byte (the most common case), we
+        // hash just that byte. This is the most common case that is being optimized. However, we do
+        // not do this for the value 0xFF, as that is a reserved prefix (a bit like in UTF-8).
+        // 2) When we encounter a larger value, we hash a "marker" 0xFF and then the corresponding
+        // 8 bytes. Since this prefix cannot occur when we hash a single byte, when we hash two
+        // `isize`s that fit within a different amount of bytes, they should always produce a different
+        // byte stream for the hasher.
+        if value < 0xFF {
+            self.state.write_u8(value as u8);
+        } else {
+            hash_value(&mut self.state, value);
+        }
     }
 }
 
@@ -177,10 +219,43 @@ pub trait ToStableHashKey<HCX> {
     fn to_stable_hash_key(&self, hcx: &HCX) -> Self::KeyType;
 }
 
-// Implement HashStable by just calling `Hash::hash()`. This works fine for
-// self-contained values that don't depend on the hashing context `CTX`.
-#[macro_export]
-macro_rules! impl_stable_hash_via_hash {
+/// Trait for marking a type as having a sort order that is
+/// stable across compilation session boundaries. More formally:
+///
+/// ```txt
+/// Ord::cmp(a1, b1) == Ord:cmp(a2, b2)
+///    where a2 = decode(encode(a1, context1), context2)
+///          b2 = decode(encode(b1, context1), context2)
+/// ```
+///
+/// i.e. the result of `Ord::cmp` is not influenced by encoding
+/// the values in one session and then decoding them in another
+/// session.
+///
+/// This is trivially true for types where encoding and decoding
+/// don't change the bytes of the values that are used during
+/// comparison and comparison only depends on these bytes (as
+/// opposed to some non-local state). Examples are u32, String,
+/// Path, etc.
+///
+/// But it is not true for:
+///  - `*const T` and `*mut T` because the values of these pointers
+///    will change between sessions.
+///  - `DefIndex`, `CrateNum`, `LocalDefId`, because their concrete
+///    values depend on state that might be different between
+///    compilation sessions.
+pub unsafe trait StableOrd: Ord {}
+
+/// Implement HashStable by just calling `Hash::hash()`. Also implement `StableOrd` for the type since
+/// that has the same requirements.
+///
+/// **WARNING** This is only valid for types that *really* don't need any context for fingerprinting.
+/// But it is easy to misuse this macro (see [#96013](https://github.com/rust-lang/rust/issues/96013)
+/// for examples). Therefore this macro is not exported and should only be used in the limited cases
+/// here in this module.
+///
+/// Use `#[derive(HashStable_Generic)]` instead.
+macro_rules! impl_stable_traits_for_trivial_type {
     ($t:ty) => {
         impl<CTX> $crate::stable_hasher::HashStable<CTX> for $t {
             #[inline]
@@ -188,26 +263,28 @@ macro_rules! impl_stable_hash_via_hash {
                 ::std::hash::Hash::hash(self, hasher);
             }
         }
+
+        unsafe impl $crate::stable_hasher::StableOrd for $t {}
     };
 }
 
-impl_stable_hash_via_hash!(i8);
-impl_stable_hash_via_hash!(i16);
-impl_stable_hash_via_hash!(i32);
-impl_stable_hash_via_hash!(i64);
-impl_stable_hash_via_hash!(isize);
+impl_stable_traits_for_trivial_type!(i8);
+impl_stable_traits_for_trivial_type!(i16);
+impl_stable_traits_for_trivial_type!(i32);
+impl_stable_traits_for_trivial_type!(i64);
+impl_stable_traits_for_trivial_type!(isize);
 
-impl_stable_hash_via_hash!(u8);
-impl_stable_hash_via_hash!(u16);
-impl_stable_hash_via_hash!(u32);
-impl_stable_hash_via_hash!(u64);
-impl_stable_hash_via_hash!(usize);
+impl_stable_traits_for_trivial_type!(u8);
+impl_stable_traits_for_trivial_type!(u16);
+impl_stable_traits_for_trivial_type!(u32);
+impl_stable_traits_for_trivial_type!(u64);
+impl_stable_traits_for_trivial_type!(usize);
 
-impl_stable_hash_via_hash!(u128);
-impl_stable_hash_via_hash!(i128);
+impl_stable_traits_for_trivial_type!(u128);
+impl_stable_traits_for_trivial_type!(i128);
 
-impl_stable_hash_via_hash!(char);
-impl_stable_hash_via_hash!(());
+impl_stable_traits_for_trivial_type!(char);
+impl_stable_traits_for_trivial_type!(());
 
 impl<CTX> HashStable<CTX> for ! {
     fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {
@@ -215,13 +292,19 @@ impl<CTX> HashStable<CTX> for ! {
     }
 }
 
+impl<CTX, T> HashStable<CTX> for PhantomData<T> {
+    fn hash_stable(&self, _ctx: &mut CTX, _hasher: &mut StableHasher) {}
+}
+
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroU32 {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)
     }
 }
 
 impl<CTX> HashStable<CTX> for ::std::num::NonZeroUsize {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.get().hash_stable(ctx, hasher)
     }
@@ -242,12 +325,14 @@ impl<CTX> HashStable<CTX> for f64 {
 }
 
 impl<CTX> HashStable<CTX> for ::std::cmp::Ordering {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         (*self as i8).hash_stable(ctx, hasher);
     }
 }
 
 impl<T1: HashStable<CTX>, CTX> HashStable<CTX> for (T1,) {
+    #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         let (ref _0,) = *self;
         _0.hash_stable(ctx, hasher);
@@ -311,7 +396,7 @@ impl<CTX> HashStable<CTX> for [u8] {
 impl<T: HashStable<CTX>, CTX> HashStable<CTX> for Vec<T> {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        (&self[..]).hash_stable(ctx, hasher);
+        self[..].hash_stable(ctx, hasher);
     }
 }
 
@@ -344,13 +429,13 @@ where
     }
 }
 
-impl<A, CTX> HashStable<CTX> for SmallVec<[A; 1]>
+impl<A, const N: usize, CTX> HashStable<CTX> for SmallVec<[A; N]>
 where
     A: HashStable<CTX>,
 {
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        (&self[..]).hash_stable(ctx, hasher);
+        self[..].hash_stable(ctx, hasher);
     }
 }
 
@@ -377,18 +462,21 @@ impl<T: ?Sized + HashStable<CTX>, CTX> HashStable<CTX> for ::std::sync::Arc<T> {
 
 impl<CTX> HashStable<CTX> for str {
     #[inline]
-    fn hash_stable(&self, _: &mut CTX, hasher: &mut StableHasher) {
-        self.len().hash(hasher);
-        self.as_bytes().hash(hasher);
+    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
+        self.as_bytes().hash_stable(ctx, hasher);
     }
 }
 
 impl<CTX> HashStable<CTX> for String {
     #[inline]
     fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
-        (&self[..]).hash_stable(hcx, hasher);
+        self[..].hash_stable(hcx, hasher);
     }
 }
+
+// Safety: String comparison only depends on their contents and the
+// contents are not changed by (de-)serialization.
+unsafe impl StableOrd for String {}
 
 impl<HCX> ToStableHashKey<HCX> for String {
     type KeyType = String;
@@ -405,6 +493,9 @@ impl<CTX> HashStable<CTX> for bool {
     }
 }
 
+// Safety: sort order of bools is not changed by (de-)serialization.
+unsafe impl StableOrd for bool {}
+
 impl<T, CTX> HashStable<CTX> for Option<T>
 where
     T: HashStable<CTX>,
@@ -419,6 +510,9 @@ where
         }
     }
 }
+
+// Safety: the Option wrapper does not add instability to comparison.
+unsafe impl<T: StableOrd> StableOrd for Option<T> {}
 
 impl<T1, T2, CTX> HashStable<CTX> for Result<T1, T2>
 where
@@ -476,14 +570,14 @@ where
 }
 
 impl<I: vec::Idx, CTX> HashStable<CTX> for bit_set::BitSet<I> {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.words().hash_stable(ctx, hasher);
+    fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
+        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
 impl<R: vec::Idx, C: vec::Idx, CTX> HashStable<CTX> for bit_set::BitMatrix<R, C> {
-    fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
-        self.words().hash_stable(ctx, hasher);
+    fn hash_stable(&self, _ctx: &mut CTX, hasher: &mut StableHasher) {
+        ::std::hash::Hash::hash(self, hasher);
     }
 }
 
@@ -496,8 +590,8 @@ where
     }
 }
 
-impl_stable_hash_via_hash!(::std::path::Path);
-impl_stable_hash_via_hash!(::std::path::PathBuf);
+impl_stable_traits_for_trivial_type!(::std::path::Path);
+impl_stable_traits_for_trivial_type!(::std::path::PathBuf);
 
 impl<K, V, R, HCX> HashStable<HCX> for ::std::collections::HashMap<K, V, R>
 where
@@ -507,7 +601,11 @@ where
 {
     #[inline]
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        hash_stable_hashmap(hcx, hasher, self, ToStableHashKey::to_stable_hash_key);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, (key, value)| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+            value.hash_stable(hcx, hasher);
+        });
     }
 }
 
@@ -517,49 +615,75 @@ where
     R: BuildHasher,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut keys: Vec<_> = self.iter().map(|k| k.to_stable_hash_key(hcx)).collect();
-        keys.sort_unstable();
-        keys.hash_stable(hcx, hasher);
+        stable_hash_reduce(hcx, hasher, self.iter(), self.len(), |hasher, hcx, key| {
+            let key = key.to_stable_hash_key(hcx);
+            key.hash_stable(hcx, hasher);
+        });
     }
 }
 
 impl<K, V, HCX> HashStable<HCX> for ::std::collections::BTreeMap<K, V>
 where
-    K: ToStableHashKey<HCX>,
+    K: HashStable<HCX> + StableOrd,
     V: HashStable<HCX>,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut entries: Vec<_> =
-            self.iter().map(|(k, v)| (k.to_stable_hash_key(hcx), v)).collect();
-        entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-        entries.hash_stable(hcx, hasher);
+        self.len().hash_stable(hcx, hasher);
+        for entry in self.iter() {
+            entry.hash_stable(hcx, hasher);
+        }
     }
 }
 
 impl<K, HCX> HashStable<HCX> for ::std::collections::BTreeSet<K>
 where
-    K: ToStableHashKey<HCX>,
+    K: HashStable<HCX> + StableOrd,
 {
     fn hash_stable(&self, hcx: &mut HCX, hasher: &mut StableHasher) {
-        let mut keys: Vec<_> = self.iter().map(|k| k.to_stable_hash_key(hcx)).collect();
-        keys.sort_unstable();
-        keys.hash_stable(hcx, hasher);
+        self.len().hash_stable(hcx, hasher);
+        for entry in self.iter() {
+            entry.hash_stable(hcx, hasher);
+        }
     }
 }
 
-pub fn hash_stable_hashmap<HCX, K, V, R, SK, F>(
+fn stable_hash_reduce<HCX, I, C, F>(
     hcx: &mut HCX,
     hasher: &mut StableHasher,
-    map: &::std::collections::HashMap<K, V, R>,
-    to_stable_hash_key: F,
+    mut collection: C,
+    length: usize,
+    hash_function: F,
 ) where
-    K: Eq,
-    V: HashStable<HCX>,
-    R: BuildHasher,
-    SK: HashStable<HCX> + Ord,
-    F: Fn(&K, &HCX) -> SK,
+    C: Iterator<Item = I>,
+    F: Fn(&mut StableHasher, &mut HCX, I),
 {
-    let mut entries: Vec<_> = map.iter().map(|(k, v)| (to_stable_hash_key(k, hcx), v)).collect();
-    entries.sort_unstable_by(|&(ref sk1, _), &(ref sk2, _)| sk1.cmp(sk2));
-    entries.hash_stable(hcx, hasher);
+    length.hash_stable(hcx, hasher);
+
+    match length {
+        1 => {
+            hash_function(hasher, hcx, collection.next().unwrap());
+        }
+        _ => {
+            let hash = collection
+                .map(|value| {
+                    let mut hasher = StableHasher::new();
+                    hash_function(&mut hasher, hcx, value);
+                    hasher.finish::<u128>()
+                })
+                .reduce(|accum, value| accum.wrapping_add(value));
+            hash.hash_stable(hcx, hasher);
+        }
+    }
+}
+
+/// Controls what data we do or do not hash.
+/// Whenever a `HashStable` implementation caches its
+/// result, it needs to include `HashingControls` as part
+/// of the key, to ensure that it does not produce an incorrect
+/// result (for example, using a `Fingerprint` produced while
+/// hashing `Span`s when a `Fingerprint` without `Span`s is
+/// being requested)
+#[derive(Clone, Hash, Eq, PartialEq, Debug)]
+pub struct HashingControls {
+    pub hash_spans: bool,
 }

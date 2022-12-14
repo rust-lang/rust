@@ -1,5 +1,3 @@
-#![feature(destructuring_assignment)]
-
 fn main() {
   let (mut a, mut b);
   [a, .., b, ..] = [0, 1]; //~ ERROR `..` can only be used once per slice pattern

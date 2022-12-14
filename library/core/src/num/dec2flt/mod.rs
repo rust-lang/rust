@@ -112,21 +112,23 @@ macro_rules! from_str_float_impl {
             /// * '2.5E-10'
             /// * '5.'
             /// * '.5', or, equivalently, '0.5'
-            /// * 'inf', '-inf', 'NaN'
+            /// * 'inf', '-inf', '+infinity', 'NaN'
+            ///
+            /// Note that alphabetical characters are not case-sensitive.
             ///
             /// Leading and trailing whitespace represent an error.
             ///
             /// # Grammar
             ///
-            /// All strings that adhere to the following [EBNF] grammar
-            /// will result in an [`Ok`] being returned:
+            /// All strings that adhere to the following [EBNF] grammar when
+            /// lowercased will result in an [`Ok`] being returned:
             ///
             /// ```txt
-            /// Float  ::= Sign? ( 'inf' | 'NaN' | Number )
+            /// Float  ::= Sign? ( 'inf' | 'infinity' | 'nan' | Number )
             /// Number ::= ( Digit+ |
             ///              Digit+ '.' Digit* |
             ///              Digit* '.' Digit+ ) Exp?
-            /// Exp    ::= [eE] Sign? Digit+
+            /// Exp    ::= 'e' Sign? Digit+
             /// Sign   ::= [+-]
             /// Digit  ::= [0-9]
             /// ```
@@ -140,8 +142,10 @@ macro_rules! from_str_float_impl {
             /// # Return value
             ///
             /// `Err(ParseFloatError)` if the string did not represent a valid
-            /// number. Otherwise, `Ok(n)` where `n` is the floating-point
-            /// number represented by `src`.
+            /// number. Otherwise, `Ok(n)` where `n` is the closest
+            /// representable floating-point number to the number represented
+            /// by `src` (following the same rules for rounding as for the
+            /// results of primitive operations).
             #[inline]
             fn from_str(src: &str) -> Result<Self, ParseFloatError> {
                 dec2flt(src)
@@ -163,7 +167,7 @@ from_str_float_impl!(f64);
 /// use std::str::FromStr;
 ///
 /// if let Err(e) = f64::from_str("a.12") {
-///     println!("Failed conversion to f64: {}", e);
+///     println!("Failed conversion to f64: {e}");
 /// }
 /// ```
 #[derive(Debug, Clone, PartialEq, Eq)]

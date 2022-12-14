@@ -1,4 +1,3 @@
-// compile-flags: -Zborrowck=mir
 // check-pass
 
 #![allow(warnings)]

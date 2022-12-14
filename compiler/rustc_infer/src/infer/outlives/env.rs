@@ -1,9 +1,9 @@
 use crate::infer::free_regions::FreeRegionMap;
 use crate::infer::{GenericKind, InferCtxt};
 use crate::traits::query::OutlivesBound;
-use rustc_data_structures::fx::FxHashMap;
-use rustc_hir as hir;
-use rustc_middle::ty;
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_data_structures::transitive_relation::TransitiveRelationBuilder;
+use rustc_middle::ty::{self, ReEarlyBound, ReFree, ReVar, Region};
 
 use super::explicit_outlives_bounds;
 
@@ -31,9 +31,7 @@ pub struct OutlivesEnvironment<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
     free_region_map: FreeRegionMap<'tcx>,
 
-    // Contains, for each body B that we are checking (that is, the fn
-    // item, but also any nested closures), the set of implied region
-    // bounds that are in scope in that particular body.
+    // Contains the implied region bounds in scope for our current body.
     //
     // Example:
     //
@@ -43,43 +41,60 @@ pub struct OutlivesEnvironment<'tcx> {
     // } // body B0
     // ```
     //
-    // Here, for body B0, the list would be `[T: 'a]`, because we
+    // Here, when checking the body B0, the list would be `[T: 'a]`, because we
     // infer that `T` must outlive `'a` from the implied bounds on the
     // fn declaration.
     //
-    // For the body B1, the list would be `[T: 'a, T: 'b]`, because we
+    // For the body B1 however, the list would be `[T: 'a, T: 'b]`, because we
     // also can see that -- within the closure body! -- `T` must
     // outlive `'b`. This is not necessarily true outside the closure
     // body, since the closure may never be called.
-    //
-    // We collect this map as we descend the tree. We then use the
-    // results when proving outlives obligations like `T: 'x` later
-    // (e.g., if `T: 'x` must be proven within the body B1, then we
-    // know it is true if either `'a: 'x` or `'b: 'x`).
-    region_bound_pairs_map: FxHashMap<hir::HirId, RegionBoundPairs<'tcx>>,
+    region_bound_pairs: RegionBoundPairs<'tcx>,
+}
 
-    // Used to compute `region_bound_pairs_map`: contains the set of
-    // in-scope region-bound pairs thus far.
-    region_bound_pairs_accum: RegionBoundPairs<'tcx>,
+/// Builder of OutlivesEnvironment.
+#[derive(Debug)]
+struct OutlivesEnvironmentBuilder<'tcx> {
+    param_env: ty::ParamEnv<'tcx>,
+    region_relation: TransitiveRelationBuilder<Region<'tcx>>,
+    region_bound_pairs: RegionBoundPairs<'tcx>,
 }
 
 /// "Region-bound pairs" tracks outlives relations that are known to
 /// be true, either because of explicit where-clauses like `T: 'a` or
 /// because of implied bounds.
-pub type RegionBoundPairs<'tcx> = Vec<(ty::Region<'tcx>, GenericKind<'tcx>)>;
+pub type RegionBoundPairs<'tcx> =
+    FxIndexSet<ty::OutlivesPredicate<GenericKind<'tcx>, Region<'tcx>>>;
 
-impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
-    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
-        let mut env = OutlivesEnvironment {
+impl<'tcx> OutlivesEnvironment<'tcx> {
+    /// Create a builder using `ParamEnv` and add explicit outlives bounds into it.
+    fn builder(param_env: ty::ParamEnv<'tcx>) -> OutlivesEnvironmentBuilder<'tcx> {
+        let mut builder = OutlivesEnvironmentBuilder {
             param_env,
-            free_region_map: Default::default(),
-            region_bound_pairs_map: Default::default(),
-            region_bound_pairs_accum: vec![],
+            region_relation: Default::default(),
+            region_bound_pairs: Default::default(),
         };
 
-        env.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
+        builder.add_outlives_bounds(None, explicit_outlives_bounds(param_env));
 
-        env
+        builder
+    }
+
+    #[inline]
+    /// Create a new `OutlivesEnvironment` without extra outlives bounds.
+    pub fn new(param_env: ty::ParamEnv<'tcx>) -> Self {
+        Self::builder(param_env).build()
+    }
+
+    /// Create a new `OutlivesEnvironment` with extra outlives bounds.
+    pub fn with_bounds(
+        param_env: ty::ParamEnv<'tcx>,
+        infcx: Option<&InferCtxt<'tcx>>,
+        extra_bounds: impl IntoIterator<Item = OutlivesBound<'tcx>>,
+    ) -> Self {
+        let mut builder = Self::builder(param_env);
+        builder.add_outlives_bounds(infcx, extra_bounds);
+        builder.build()
     }
 
     /// Borrows current value of the `free_region_map`.
@@ -87,62 +102,21 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         &self.free_region_map
     }
 
-    /// Borrows current value of the `region_bound_pairs`.
-    pub fn region_bound_pairs_map(&self) -> &FxHashMap<hir::HirId, RegionBoundPairs<'tcx>> {
-        &self.region_bound_pairs_map
+    /// Borrows current `region_bound_pairs`.
+    pub fn region_bound_pairs(&self) -> &RegionBoundPairs<'tcx> {
+        &self.region_bound_pairs
     }
+}
 
-    /// This is a hack to support the old-skool regionck, which
-    /// processes region constraints from the main function and the
-    /// closure together. In that context, when we enter a closure, we
-    /// want to be able to "save" the state of the surrounding a
-    /// function. We can then add implied bounds and the like from the
-    /// closure arguments into the environment -- these should only
-    /// apply in the closure body, so once we exit, we invoke
-    /// `pop_snapshot_post_closure` to remove them.
-    ///
-    /// Example:
-    ///
-    /// ```
-    /// fn foo<T>() {
-    ///    callback(for<'a> |x: &'a T| {
-    ///         // ^^^^^^^ not legal syntax, but probably should be
-    ///         // within this closure body, `T: 'a` holds
-    ///    })
-    /// }
-    /// ```
-    ///
-    /// This "containment" of closure's effects only works so well. In
-    /// particular, we (intentionally) leak relationships between free
-    /// regions that are created by the closure's bounds. The case
-    /// where this is useful is when you have (e.g.) a closure with a
-    /// signature like `for<'a, 'b> fn(x: &'a &'b u32)` -- in this
-    /// case, we want to keep the relationship `'b: 'a` in the
-    /// free-region-map, so that later if we have to take `LUB('b,
-    /// 'a)` we can get the result `'b`.
-    ///
-    /// I have opted to keep **all modifications** to the
-    /// free-region-map, however, and not just those that concern free
-    /// variables bound in the closure. The latter seems more correct,
-    /// but it is not the existing behavior, and I could not find a
-    /// case where the existing behavior went wrong. In any case, it
-    /// seems like it'd be readily fixed if we wanted. There are
-    /// similar leaks around givens that seem equally suspicious, to
-    /// be honest. --nmatsakis
-    pub fn push_snapshot_pre_closure(&self) -> usize {
-        self.region_bound_pairs_accum.len()
-    }
-
-    /// See `push_snapshot_pre_closure`.
-    pub fn pop_snapshot_post_closure(&mut self, len: usize) {
-        self.region_bound_pairs_accum.truncate(len);
-    }
-
-    /// Save the current set of region-bound pairs under the given `body_id`.
-    pub fn save_implied_bounds(&mut self, body_id: hir::HirId) {
-        let old =
-            self.region_bound_pairs_map.insert(body_id, self.region_bound_pairs_accum.clone());
-        assert!(old.is_none());
+impl<'tcx> OutlivesEnvironmentBuilder<'tcx> {
+    #[inline]
+    #[instrument(level = "debug")]
+    fn build(self) -> OutlivesEnvironment<'tcx> {
+        OutlivesEnvironment {
+            param_env: self.param_env,
+            free_region_map: FreeRegionMap { relation: self.region_relation.freeze() },
+            region_bound_pairs: self.region_bound_pairs,
+        }
     }
 
     /// Processes outlives bounds that are known to hold, whether from implied or other sources.
@@ -151,11 +125,8 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
     /// contain inference variables, it must be supplied, in which
     /// case we will register "givens" on the inference context. (See
     /// `RegionConstraintData`.)
-    pub fn add_outlives_bounds<I>(
-        &mut self,
-        infcx: Option<&InferCtxt<'a, 'tcx>>,
-        outlives_bounds: I,
-    ) where
+    fn add_outlives_bounds<I>(&mut self, infcx: Option<&InferCtxt<'tcx>>, outlives_bounds: I)
+    where
         I: IntoIterator<Item = OutlivesBound<'tcx>>,
     {
         // Record relationships such as `T:'x` that don't go into the
@@ -163,31 +134,38 @@ impl<'a, 'tcx> OutlivesEnvironment<'tcx> {
         for outlives_bound in outlives_bounds {
             debug!("add_outlives_bounds: outlives_bound={:?}", outlives_bound);
             match outlives_bound {
-                OutlivesBound::RegionSubRegion(
-                    r_a @ (&ty::ReEarlyBound(_) | &ty::ReFree(_)),
-                    &ty::ReVar(vid_b),
-                ) => {
-                    infcx.expect("no infcx provided but region vars found").add_given(r_a, vid_b);
-                }
                 OutlivesBound::RegionSubParam(r_a, param_b) => {
-                    self.region_bound_pairs_accum.push((r_a, GenericKind::Param(param_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Param(param_b), r_a));
                 }
                 OutlivesBound::RegionSubProjection(r_a, projection_b) => {
-                    self.region_bound_pairs_accum
-                        .push((r_a, GenericKind::Projection(projection_b)));
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Projection(projection_b), r_a));
+                }
+                OutlivesBound::RegionSubOpaque(r_a, def_id, substs) => {
+                    self.region_bound_pairs
+                        .insert(ty::OutlivesPredicate(GenericKind::Opaque(def_id, substs), r_a));
                 }
                 OutlivesBound::RegionSubRegion(r_a, r_b) => {
-                    // In principle, we could record (and take
-                    // advantage of) every relationship here, but
-                    // we are also free not to -- it simply means
-                    // strictly less that we can successfully type
-                    // check. Right now we only look for things
-                    // relationships between free regions. (It may
-                    // also be that we should revise our inference
-                    // system to be more general and to make use
-                    // of *every* relationship that arises here,
-                    // but presently we do not.)
-                    self.free_region_map.relate_regions(r_a, r_b);
+                    if let (ReEarlyBound(_) | ReFree(_), ReVar(vid_b)) = (r_a.kind(), r_b.kind()) {
+                        infcx
+                            .expect("no infcx provided but region vars found")
+                            .add_given(r_a, vid_b);
+                    } else {
+                        // In principle, we could record (and take
+                        // advantage of) every relationship here, but
+                        // we are also free not to -- it simply means
+                        // strictly less that we can successfully type
+                        // check. Right now we only look for things
+                        // relationships between free regions. (It may
+                        // also be that we should revise our inference
+                        // system to be more general and to make use
+                        // of *every* relationship that arises here,
+                        // but presently we do not.)
+                        if r_a.is_free_or_static() && r_b.is_free() {
+                            self.region_relation.add(r_a, r_b)
+                        }
+                    }
                 }
             }
         }

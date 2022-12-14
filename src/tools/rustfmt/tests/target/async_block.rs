@@ -22,4 +22,14 @@ fn baz() {
         action();
         Ok(())
     });
+
+    spawn(a, static async || {
+        action();
+        Ok(())
+    });
+
+    spawn(a, static async move || {
+        action();
+        Ok(())
+    });
 }

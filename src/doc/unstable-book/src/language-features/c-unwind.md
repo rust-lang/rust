@@ -6,9 +6,20 @@ The tracking issue for this feature is: [#74990]
 
 ------------------------
 
-Introduces four new ABI strings: "C-unwind", "stdcall-unwind",
-"thiscall-unwind", and "system-unwind". These enable unwinding from other
-languages (such as C++) into Rust frames and from Rust into other languages.
+Introduces new ABI strings:
+- "C-unwind"
+- "cdecl-unwind"
+- "stdcall-unwind"
+- "fastcall-unwind"
+- "vectorcall-unwind"
+- "thiscall-unwind"
+- "aapcs-unwind"
+- "win64-unwind"
+- "sysv64-unwind"
+- "system-unwind"
+
+These enable unwinding from other languages (such as C++) into Rust frames and
+from Rust into other languages.
 
 See [RFC 2945] for more information.
 

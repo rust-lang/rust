@@ -19,6 +19,15 @@ fn main() {
     q as *const [i32]; //~ ERROR cannot cast
 
     // #21397
-    let t: *mut (dyn Trait + 'static) = 0 as *mut _; //~ ERROR casting
-    let mut fail: *const str = 0 as *const str; //~ ERROR casting
+    let t: *mut (dyn Trait + 'static) = 0 as *mut _;
+    //~^ ERROR cannot cast `usize` to a pointer that is wide
+    let mut fail: *const str = 0 as *const str;
+    //~^ ERROR cannot cast `usize` to a pointer that is wide
+    let mut fail2: *const str = 0isize as *const str;
+    //~^ ERROR cannot cast `isize` to a pointer that is wide
+}
+
+fn foo<T: ?Sized>() {
+    let s = 0 as *const T;
+    //~^ ERROR cannot cast `usize` to a pointer that may be wide
 }

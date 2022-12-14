@@ -1,71 +1,71 @@
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:6:23
+  --> $DIR/top-level-alternation.rs:4:23
    |
 LL |     while let 0..=2 | 1 = 0 {}
    |                       ^
    |
 note: the lint level is defined here
-  --> $DIR/top-level-alternation.rs:3:9
+  --> $DIR/top-level-alternation.rs:1:9
    |
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:7:20
+  --> $DIR/top-level-alternation.rs:5:20
    |
 LL |     if let 0..=2 | 1 = 0 {}
    |                    ^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:11:15
+  --> $DIR/top-level-alternation.rs:9:15
    |
 LL |             | 0 => {}
    |               ^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:16:15
+  --> $DIR/top-level-alternation.rs:14:15
    |
 LL |             | Some(0) => {}
    |               ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:21:9
+  --> $DIR/top-level-alternation.rs:19:9
    |
 LL |         (0, 0) => {}
    |         ^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:41:9
+  --> $DIR/top-level-alternation.rs:39:9
    |
 LL |         _ => {}
    |         ^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:45:9
+  --> $DIR/top-level-alternation.rs:43:9
    |
 LL |         Some(_) => {}
    |         ^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:46:9
+  --> $DIR/top-level-alternation.rs:44:9
    |
 LL |         None => {}
    |         ^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:51:9
+  --> $DIR/top-level-alternation.rs:49:9
    |
 LL |         None | Some(_) => {}
    |         ^^^^^^^^^^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:55:9
+  --> $DIR/top-level-alternation.rs:53:9
    |
 LL |         1..=2 => {},
    |         ^^^^^
 
 error: unreachable pattern
-  --> $DIR/top-level-alternation.rs:58:14
+  --> $DIR/top-level-alternation.rs:56:14
    |
 LL |     let (0 | 0) = 0 else { return };
    |              ^

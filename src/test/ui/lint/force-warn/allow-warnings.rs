@@ -6,6 +6,6 @@
 #![allow(warnings)]
 
 fn dead_function() {}
-//~^ WARN function is never used
+//~^ WARN function `dead_function` is never used
 
 fn main() {}

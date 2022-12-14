@@ -1,8 +1,10 @@
+use core::num::{Saturating, Wrapping};
+
 use crate::boxed::Box;
 
 #[rustc_specialization_trait]
 pub(super) unsafe trait IsZero {
-    /// Whether this value is zero
+    /// Whether this value's representation is all zeros
     fn is_zero(&self) -> bool;
 }
 
@@ -17,12 +19,14 @@ macro_rules! impl_is_zero {
     };
 }
 
+impl_is_zero!(i8, |x| x == 0); // It is needed to impl for arrays and tuples of i8.
 impl_is_zero!(i16, |x| x == 0);
 impl_is_zero!(i32, |x| x == 0);
 impl_is_zero!(i64, |x| x == 0);
 impl_is_zero!(i128, |x| x == 0);
 impl_is_zero!(isize, |x| x == 0);
 
+impl_is_zero!(u8, |x| x == 0); // It is needed to impl for arrays and tuples of u8.
 impl_is_zero!(u16, |x| x == 0);
 impl_is_zero!(u32, |x| x == 0);
 impl_is_zero!(u64, |x| x == 0);
@@ -48,6 +52,46 @@ unsafe impl<T> IsZero for *mut T {
         (*self).is_null()
     }
 }
+
+unsafe impl<T: IsZero, const N: usize> IsZero for [T; N] {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        // Because this is generated as a runtime check, it's not obvious that
+        // it's worth doing if the array is really long.  The threshold here
+        // is largely arbitrary, but was picked because as of 2022-07-01 LLVM
+        // fails to const-fold the check in `vec![[1; 32]; n]`
+        // See https://github.com/rust-lang/rust/pull/97581#issuecomment-1166628022
+        // Feel free to tweak if you have better evidence.
+
+        N <= 16 && self.iter().all(IsZero::is_zero)
+    }
+}
+
+// This is recursive macro.
+macro_rules! impl_for_tuples {
+    // Stopper
+    () => {
+        // No use for implementing for empty tuple because it is ZST.
+    };
+    ($first_arg:ident $(,$rest:ident)*) => {
+        unsafe impl <$first_arg: IsZero, $($rest: IsZero,)*> IsZero for ($first_arg, $($rest,)*){
+            #[inline]
+            fn is_zero(&self) -> bool{
+                // Destructure tuple to N references
+                // Rust allows to hide generic params by local variable names.
+                #[allow(non_snake_case)]
+                let ($first_arg, $($rest,)*) = self;
+
+                $first_arg.is_zero()
+                    $( && $rest.is_zero() )*
+            }
+        }
+
+        impl_for_tuples!($($rest),*);
+    }
+}
+
+impl_for_tuples!(A, B, C, D, E, F, G, H);
 
 // `Option<&T>` and `Option<Box<T>>` are guaranteed to represent `None` as null.
 // For fat pointers, the bytes that would be the pointer metadata in the `Some`
@@ -102,3 +146,39 @@ impl_is_zero_option_of_nonzero!(
     NonZeroUsize,
     NonZeroIsize,
 );
+
+unsafe impl<T: IsZero> IsZero for Wrapping<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
+unsafe impl<T: IsZero> IsZero for Saturating<T> {
+    #[inline]
+    fn is_zero(&self) -> bool {
+        self.0.is_zero()
+    }
+}
+
+macro_rules! impl_for_optional_bool {
+    ($($t:ty,)+) => {$(
+        unsafe impl IsZero for $t {
+            #[inline]
+            fn is_zero(&self) -> bool {
+                // SAFETY: This is *not* a stable layout guarantee, but
+                // inside `core` we're allowed to rely on the current rustc
+                // behaviour that options of bools will be one byte with
+                // no padding, so long as they're nested less than 254 deep.
+                let raw: u8 = unsafe { core::mem::transmute(*self) };
+                raw == 0
+            }
+        }
+    )+};
+}
+impl_for_optional_bool! {
+    Option<bool>,
+    Option<Option<bool>>,
+    Option<Option<Option<bool>>>,
+    // Could go further, but not worth the metadata overhead
+}

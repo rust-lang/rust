@@ -1,4 +1,4 @@
-// @has issue_16265_2/index.html '[src]'
+// @hasraw issue_16265_2/index.html 'source'
 
 trait Y {}
-impl Y for Option<u32>{}
+impl Y for Option<u32> {}

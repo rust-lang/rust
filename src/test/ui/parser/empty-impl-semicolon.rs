@@ -1,1 +1,4 @@
-impl Foo; //~ ERROR expected one of `!`, `(`, `+`, `::`, `<`, `for`, `where`, or `{`, found `;`
+struct Foo;
+impl Foo; //~ ERROR expected `{}`, found `;`
+
+fn main() {}

@@ -1,3 +1,5 @@
+use crate::back::link::are_upstream_rust_objects_already_included;
+use crate::back::metadata::create_compressed_metadata_file;
 use crate::back::write::{
     compute_per_cgu_lto_type, start_async_codegen, submit_codegened_module_to_llvm,
     submit_post_lto_module_to_llvm, submit_pre_lto_module_to_llvm, ComputedLtoType, OngoingCodegen,
@@ -8,31 +10,37 @@ use crate::mir;
 use crate::mir::operand::OperandValue;
 use crate::mir::place::PlaceRef;
 use crate::traits::*;
-use crate::{CachedModuleCodegen, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
+use crate::{CachedModuleCodegen, CompiledModule, CrateInfo, MemFlags, ModuleCodegen, ModuleKind};
 
 use rustc_attr as attr;
-use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
-use rustc_data_structures::sync::{par_iter, ParallelIterator};
+
+use rustc_data_structures::sync::par_iter;
+#[cfg(parallel_compiler)]
+use rustc_data_structures::sync::ParallelIterator;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::lang_items::LangItem;
 use rustc_index::vec::Idx;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrs;
+use rustc_middle::middle::exported_symbols;
+use rustc_middle::middle::exported_symbols::SymbolExportKind;
 use rustc_middle::middle::lang_items;
 use rustc_middle::mir::mono::{CodegenUnit, CodegenUnitNameBuilder, MonoItem};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf, TyAndLayout};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, Instance, Ty, TyCtxt};
 use rustc_session::cgu_reuse_tracker::CguReuse;
-use rustc_session::config::{self, EntryFnType};
+use rustc_session::config::{self, CrateType, EntryFnType, OutputType};
 use rustc_session::Session;
 use rustc_span::symbol::sym;
-use rustc_target::abi::{Align, VariantIdx};
+use rustc_span::Symbol;
+use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
+use rustc_target::abi::{Align, Size, VariantIdx};
 
-use std::convert::TryFrom;
-use std::ops::{Deref, DerefMut};
+use std::collections::BTreeSet;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;
@@ -141,10 +149,16 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Array(_, len), &ty::Slice(_)) => {
             cx.const_usize(len.eval_usize(cx.tcx(), ty::ParamEnv::reveal_all()))
         }
-        (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+        (
+            &ty::Dynamic(ref data_a, _, src_dyn_kind),
+            &ty::Dynamic(ref data_b, _, target_dyn_kind),
+        ) => {
+            assert_eq!(src_dyn_kind, target_dyn_kind);
+
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
+                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
                 return old_info;
             }
 
@@ -156,6 +170,7 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             if let Some(entry_idx) = vptr_entry_idx {
                 let ptr_ty = cx.type_i8p();
                 let ptr_align = cx.tcx().data_layout.pointer_align.abi;
+                let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
                 let llvtable = bx.pointercast(old_info, bx.type_ptr_to(ptr_ty));
                 let gep = bx.inbounds_gep(
                     ptr_ty,
@@ -164,23 +179,37 @@ pub fn unsized_info<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 );
                 let new_vptr = bx.load(ptr_ty, gep, ptr_align);
                 bx.nonnull_metadata(new_vptr);
-                // Vtable loads are invariant.
+                // VTable loads are invariant.
                 bx.set_invariant_load(new_vptr);
-                new_vptr
+                bx.pointercast(new_vptr, vtable_ptr_ty)
             } else {
                 old_info
             }
         }
-        (_, &ty::Dynamic(ref data, ..)) => {
-            let vtable_ptr_ty = cx.scalar_pair_element_backend_type(
-                cx.layout_of(cx.tcx().mk_mut_ptr(target)),
-                1,
-                true,
-            );
+        (_, &ty::Dynamic(ref data, _, target_dyn_kind)) => {
+            let vtable_ptr_ty = vtable_ptr_ty(cx, target, target_dyn_kind);
             cx.const_ptrcast(meth::get_vtable(cx, source, data.principal()), vtable_ptr_ty)
         }
         _ => bug!("unsized_info: invalid unsizing {:?} -> {:?}", source, target),
     }
+}
+
+// Returns the vtable pointer type of a `dyn` or `dyn*` type
+fn vtable_ptr_ty<'tcx, Cx: CodegenMethods<'tcx>>(
+    cx: &Cx,
+    target: Ty<'tcx>,
+    kind: ty::DynKind,
+) -> <Cx as BackendTypes>::Type {
+    cx.scalar_pair_element_backend_type(
+        cx.layout_of(match kind {
+            // vtable is the second field of `*mut dyn Trait`
+            ty::Dyn => cx.tcx().mk_mut_ptr(target),
+            // vtable is the second field of `dyn* Trait`
+            ty::DynStar => target,
+        }),
+        1,
+        true,
+    )
 }
 
 /// Coerces `src` to `dst_ty`. `src_ty` must be a pointer.
@@ -209,11 +238,12 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let mut result = None;
             for i in 0..src_layout.fields.count() {
                 let src_f = src_layout.field(bx.cx(), i);
-                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
-                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 if src_f.is_zst() {
                     continue;
                 }
+
+                assert_eq!(src_layout.fields.offset(i).bytes(), 0);
+                assert_eq!(dst_layout.fields.offset(i).bytes(), 0);
                 assert_eq!(src_layout.size, src_f.size);
 
                 let dst_f = dst_layout.field(bx.cx(), i);
@@ -229,6 +259,29 @@ pub fn unsize_ptr<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
         _ => bug!("unsize_ptr: called on bad types"),
     }
+}
+
+/// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
+pub fn cast_to_dyn_star<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
+    bx: &mut Bx,
+    src: Bx::Value,
+    src_ty_and_layout: TyAndLayout<'tcx>,
+    dst_ty: Ty<'tcx>,
+    old_info: Option<Bx::Value>,
+) -> (Bx::Value, Bx::Value) {
+    debug!("cast_to_dyn_star: {:?} => {:?}", src_ty_and_layout.ty, dst_ty);
+    assert!(
+        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+        "destination type must be a dyn*"
+    );
+    // FIXME(dyn-star): this is probably not the best way to check if this is
+    // a pointer, and really we should ensure that the value is a suitable
+    // pointer earlier in the compilation process.
+    let src = match src_ty_and_layout.pointee_info_at(bx.cx(), Size::ZERO) {
+        Some(_) => bx.ptrtoint(src, bx.cx().type_isize()),
+        None => bx.bitcast(src, bx.type_isize()),
+    };
+    (src, unsized_info(bx, src_ty_and_layout.ty, dst_ty, old_info))
 }
 
 /// Coerces `src`, which is a reference to a value of type `src_ty`,
@@ -253,7 +306,7 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variants[VariantIdx::new(0)].fields.len() {
+            for i in 0..def_a.variant(VariantIdx::new(0)).fields.len() {
                 let src_f = src.project_field(bx, i);
                 let dst_f = dst.project_field(bx, i);
 
@@ -282,40 +335,26 @@ pub fn coerce_unsized_into<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
 pub fn cast_shift_expr_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
-    op: hir::BinOpKind,
-    lhs: Bx::Value,
-    rhs: Bx::Value,
-) -> Bx::Value {
-    cast_shift_rhs(bx, op, lhs, rhs)
-}
-
-fn cast_shift_rhs<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
-    bx: &mut Bx,
-    op: hir::BinOpKind,
     lhs: Bx::Value,
     rhs: Bx::Value,
 ) -> Bx::Value {
     // Shifts may have any size int on the rhs
-    if op.is_shift() {
-        let mut rhs_llty = bx.cx().val_ty(rhs);
-        let mut lhs_llty = bx.cx().val_ty(lhs);
-        if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
-            rhs_llty = bx.cx().element_type(rhs_llty)
-        }
-        if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
-            lhs_llty = bx.cx().element_type(lhs_llty)
-        }
-        let rhs_sz = bx.cx().int_width(rhs_llty);
-        let lhs_sz = bx.cx().int_width(lhs_llty);
-        if lhs_sz < rhs_sz {
-            bx.trunc(rhs, lhs_llty)
-        } else if lhs_sz > rhs_sz {
-            // FIXME (#1877: If in the future shifting by negative
-            // values is no longer undefined then this is wrong.
-            bx.zext(rhs, lhs_llty)
-        } else {
-            rhs
-        }
+    let mut rhs_llty = bx.cx().val_ty(rhs);
+    let mut lhs_llty = bx.cx().val_ty(lhs);
+    if bx.cx().type_kind(rhs_llty) == TypeKind::Vector {
+        rhs_llty = bx.cx().element_type(rhs_llty)
+    }
+    if bx.cx().type_kind(lhs_llty) == TypeKind::Vector {
+        lhs_llty = bx.cx().element_type(lhs_llty)
+    }
+    let rhs_sz = bx.cx().int_width(rhs_llty);
+    let lhs_sz = bx.cx().int_width(lhs_llty);
+    if lhs_sz < rhs_sz {
+        bx.trunc(rhs, lhs_llty)
+    } else if lhs_sz > rhs_sz {
+        // FIXME (#1877: If in the future shifting by negative
+        // values is no longer undefined then this is wrong.
+        bx.zext(rhs, lhs_llty)
     } else {
         rhs
     }
@@ -381,15 +420,14 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     let main_llfn = cx.get_fn_addr(instance);
 
-    let use_start_lang_item = EntryFnType::Start != entry_type;
-    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, use_start_lang_item);
+    let entry_fn = create_entry_fn::<Bx>(cx, main_llfn, main_def_id, entry_type);
     return Some(entry_fn);
 
     fn create_entry_fn<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         cx: &'a Bx::CodegenCx,
         rust_main: Bx::Value,
         rust_main_def_id: DefId,
-        use_start_lang_item: bool,
+        entry_type: EntryFnType,
     ) -> Bx::Function {
         // The entry function is either `int main(void)` or `int main(int argc, char **argv)`,
         // depending on whether the target needs `argc` and `argv` to be passed in.
@@ -405,20 +443,20 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = cx.tcx().erase_regions(main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = cx.tcx().normalize_erasing_regions(
+            ty::ParamEnv::reveal_all(),
+            main_ret_ty.no_bound_vars().unwrap(),
+        );
 
-        let llfn = match cx.declare_c_main(llfty) {
-            Some(llfn) => llfn,
-            None => {
-                // FIXME: We should be smart and show a better diagnostic here.
-                let span = cx.tcx().def_span(rust_main_def_id);
-                cx.sess()
-                    .struct_span_err(span, "entry symbol `main` declared multiple times")
-                    .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
-                    .emit();
-                cx.sess().abort_if_errors();
-                bug!();
-            }
+        let Some(llfn) = cx.declare_c_main(llfty) else {
+            // FIXME: We should be smart and show a better diagnostic here.
+            let span = cx.tcx().def_span(rust_main_def_id);
+            cx.sess()
+                .struct_span_err(span, "entry symbol `main` declared multiple times")
+                .help("did you use `#[no_mangle]` on `fn main`? Use `#[start]` instead")
+                .emit();
+            cx.sess().abort_if_errors();
+            bug!();
         };
 
         // `main` should respect same config for frame pointer elimination as rest of code
@@ -434,7 +472,7 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         let i8pp_ty = cx.type_ptr_to(cx.type_i8p());
         let (arg_argc, arg_argv) = get_argc_argv(cx, &mut bx);
 
-        let (start_fn, start_ty, args) = if use_start_lang_item {
+        let (start_fn, start_ty, args) = if let EntryFnType::Main { sigpipe } = entry_type {
             let start_def_id = cx.tcx().require_lang_item(LangItem::Start, None);
             let start_fn = cx.get_fn_addr(
                 ty::Instance::resolve(
@@ -446,15 +484,20 @@ pub fn maybe_create_entry_wrapper<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
                 .unwrap()
                 .unwrap(),
             );
-            let start_ty = cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty], isize_ty);
-            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv])
+
+            let i8_ty = cx.type_i8();
+            let arg_sigpipe = bx.const_u8(sigpipe);
+
+            let start_ty =
+                cx.type_func(&[cx.val_ty(rust_main), isize_ty, i8pp_ty, i8_ty], isize_ty);
+            (start_fn, start_ty, vec![rust_main, arg_argc, arg_argv, arg_sigpipe])
         } else {
             debug!("using user-defined start fn");
             let start_ty = cx.type_func(&[isize_ty, i8pp_ty], isize_ty);
             (rust_main, start_ty, vec![arg_argc, arg_argv])
         };
 
-        let result = bx.call(start_ty, start_fn, &args, None);
+        let result = bx.call(start_ty, None, start_fn, &args, None);
         let cast = bx.intcast(result, cx.type_int(), true);
         bx.ret(cast);
 
@@ -482,16 +525,39 @@ fn get_argc_argv<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     }
 }
 
+/// This function returns all of the debugger visualizers specified for the
+/// current crate as well as all upstream crates transitively that match the
+/// `visualizer_type` specified.
+pub fn collect_debugger_visualizers_transitive(
+    tcx: TyCtxt<'_>,
+    visualizer_type: DebuggerVisualizerType,
+) -> BTreeSet<DebuggerVisualizerFile> {
+    tcx.debugger_visualizers(LOCAL_CRATE)
+        .iter()
+        .chain(
+            tcx.crates(())
+                .iter()
+                .filter(|&cnum| {
+                    let used_crate_source = tcx.used_crate_source(*cnum);
+                    used_crate_source.rlib.is_some() || used_crate_source.rmeta.is_some()
+                })
+                .flat_map(|&cnum| tcx.debugger_visualizers(cnum)),
+        )
+        .filter(|visualizer| visualizer.visualizer_type == visualizer_type)
+        .cloned()
+        .collect::<BTreeSet<_>>()
+}
+
 pub fn codegen_crate<B: ExtraBackendMethods>(
     backend: B,
-    tcx: TyCtxt<'tcx>,
+    tcx: TyCtxt<'_>,
     target_cpu: String,
     metadata: EncodedMetadata,
     need_metadata_module: bool,
 ) -> OngoingCodegen<B> {
     // Skip crate items and just output metadata in -Z no-codegen mode.
-    if tcx.sess.opts.debugging_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
-        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, 1);
+    if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
+        let ongoing_codegen = start_async_codegen(backend, tcx, target_cpu, metadata, None, 1);
 
         ongoing_codegen.codegen_finished(tcx);
 
@@ -517,9 +583,41 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         }
     }
 
-    let ongoing_codegen =
-        start_async_codegen(backend.clone(), tcx, target_cpu, metadata, codegen_units.len());
-    let ongoing_codegen = AbortCodegenOnDrop::<B>(Some(ongoing_codegen));
+    let metadata_module = if need_metadata_module {
+        // Emit compressed metadata object.
+        let metadata_cgu_name =
+            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
+        tcx.sess.time("write_compressed_metadata", || {
+            let file_name =
+                tcx.output_filenames(()).temp_path(OutputType::Metadata, Some(&metadata_cgu_name));
+            let data = create_compressed_metadata_file(
+                tcx.sess,
+                &metadata,
+                &exported_symbols::metadata_symbol_name(tcx),
+            );
+            if let Err(err) = std::fs::write(&file_name, data) {
+                tcx.sess.fatal(&format!("error writing metadata object file: {}", err));
+            }
+            Some(CompiledModule {
+                name: metadata_cgu_name,
+                kind: ModuleKind::Metadata,
+                object: Some(file_name),
+                dwarf_object: None,
+                bytecode: None,
+            })
+        })
+    } else {
+        None
+    };
+
+    let ongoing_codegen = start_async_codegen(
+        backend.clone(),
+        tcx,
+        target_cpu,
+        metadata,
+        metadata_module,
+        codegen_units.len(),
+    );
 
     // Codegen an allocator shim, if necessary.
     //
@@ -538,14 +636,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     } else if let Some(kind) = tcx.allocator_kind(()) {
         let llmod_id =
             cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("allocator")).to_string();
-        let mut module_llvm = backend.new_metadata(tcx, &llmod_id);
-        tcx.sess.time("write_allocator_module", || {
+        let module_llvm = tcx.sess.time("write_allocator_module", || {
             backend.codegen_allocator(
                 tcx,
-                &mut module_llvm,
                 &llmod_id,
                 kind,
-                tcx.lang_items().oom().is_some(),
+                // If allocator_kind is Some then alloc_error_handler_kind must
+                // also be Some.
+                tcx.alloc_error_handler_kind(()).unwrap(),
             )
         });
 
@@ -556,27 +654,6 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     if let Some(allocator_module) = allocator_module {
         ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, allocator_module);
-    }
-
-    if need_metadata_module {
-        // Codegen the encoded metadata.
-        let metadata_cgu_name =
-            cgu_name_builder.build_cgu_name(LOCAL_CRATE, &["crate"], Some("metadata")).to_string();
-        let mut metadata_llvm_module = backend.new_metadata(tcx, &metadata_cgu_name);
-        tcx.sess.time("write_compressed_metadata", || {
-            backend.write_compressed_metadata(
-                tcx,
-                &ongoing_codegen.metadata,
-                &mut metadata_llvm_module,
-            );
-        });
-
-        let metadata_module = ModuleCodegen {
-            name: metadata_cgu_name,
-            module_llvm: metadata_llvm_module,
-            kind: ModuleKind::Metadata,
-        };
-        ongoing_codegen.submit_pre_codegened_module_to_llvm(tcx, metadata_module);
     }
 
     // For better throughput during parallel processing by LLVM, we used to sort
@@ -598,6 +675,14 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
         second_half.iter().rev().interleave(first_half).copied().collect()
     };
 
+    // Calculate the CGU reuse
+    let cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
+        codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect::<Vec<_>>()
+    });
+
+    let mut total_codegen_time = Duration::new(0, 0);
+    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
+
     // The non-parallel compiler can only translate codegen units to LLVM IR
     // on a single thread, leading to a staircase effect where the N LLVM
     // threads have to wait on the single codegen threads to generate work
@@ -608,69 +693,51 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     // This likely is a temporary measure. Once we don't have to support the
     // non-parallel compiler anymore, we can compile CGUs end-to-end in
     // parallel and get rid of the complicated scheduling logic.
-    let pre_compile_cgus = |cgu_reuse: &[CguReuse]| {
-        if cfg!(parallel_compiler) {
-            tcx.sess.time("compile_first_CGU_batch", || {
-                // Try to find one CGU to compile per thread.
-                let cgus: Vec<_> = cgu_reuse
-                    .iter()
-                    .enumerate()
-                    .filter(|&(_, reuse)| reuse == &CguReuse::No)
-                    .take(tcx.sess.threads())
-                    .collect();
+    let mut pre_compiled_cgus = if cfg!(parallel_compiler) {
+        tcx.sess.time("compile_first_CGU_batch", || {
+            // Try to find one CGU to compile per thread.
+            let cgus: Vec<_> = cgu_reuse
+                .iter()
+                .enumerate()
+                .filter(|&(_, reuse)| reuse == &CguReuse::No)
+                .take(tcx.sess.threads())
+                .collect();
 
-                // Compile the found CGUs in parallel.
-                let start_time = Instant::now();
+            // Compile the found CGUs in parallel.
+            let start_time = Instant::now();
 
-                let pre_compiled_cgus = par_iter(cgus)
-                    .map(|(i, _)| {
-                        let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
-                        (i, module)
-                    })
-                    .collect();
+            let pre_compiled_cgus = par_iter(cgus)
+                .map(|(i, _)| {
+                    let module = backend.compile_codegen_unit(tcx, codegen_units[i].name());
+                    (i, module)
+                })
+                .collect();
 
-                (pre_compiled_cgus, start_time.elapsed())
-            })
-        } else {
-            (FxHashMap::default(), Duration::new(0, 0))
-        }
+            total_codegen_time += start_time.elapsed();
+
+            pre_compiled_cgus
+        })
+    } else {
+        FxHashMap::default()
     };
-
-    let mut cgu_reuse = Vec::new();
-    let mut pre_compiled_cgus: Option<FxHashMap<usize, _>> = None;
-    let mut total_codegen_time = Duration::new(0, 0);
-    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
 
     for (i, cgu) in codegen_units.iter().enumerate() {
         ongoing_codegen.wait_for_signal_to_codegen_item();
         ongoing_codegen.check_for_errors(tcx.sess);
 
-        // Do some setup work in the first iteration
-        if pre_compiled_cgus.is_none() {
-            // Calculate the CGU reuse
-            cgu_reuse = tcx.sess.time("find_cgu_reuse", || {
-                codegen_units.iter().map(|cgu| determine_cgu_reuse(tcx, &cgu)).collect()
-            });
-            // Pre compile some CGUs
-            let (compiled_cgus, codegen_time) = pre_compile_cgus(&cgu_reuse);
-            pre_compiled_cgus = Some(compiled_cgus);
-            total_codegen_time += codegen_time;
-        }
-
         let cgu_reuse = cgu_reuse[i];
-        tcx.sess.cgu_reuse_tracker.set_actual_reuse(&cgu.name().as_str(), cgu_reuse);
+        tcx.sess.cgu_reuse_tracker.set_actual_reuse(cgu.name().as_str(), cgu_reuse);
 
         match cgu_reuse {
             CguReuse::No => {
-                let (module, cost) =
-                    if let Some(cgu) = pre_compiled_cgus.as_mut().unwrap().remove(&i) {
-                        cgu
-                    } else {
-                        let start_time = Instant::now();
-                        let module = backend.compile_codegen_unit(tcx, cgu.name());
-                        total_codegen_time += start_time.elapsed();
-                        module
-                    };
+                let (module, cost) = if let Some(cgu) = pre_compiled_cgus.remove(&i) {
+                    cgu
+                } else {
+                    let start_time = Instant::now();
+                    let module = backend.compile_codegen_unit(tcx, cgu.name());
+                    total_codegen_time += start_time.elapsed();
+                    module
+                };
                 // This will unwind if there are errors, which triggers our `AbortCodegenOnDrop`
                 // guard. Unfortunately, just skipping the `submit_codegened_module_to_llvm` makes
                 // compilation hang on post-monomorphization errors.
@@ -678,7 +745,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
                 submit_codegened_module_to_llvm(
                     &backend,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     module,
                     cost,
                 );
@@ -688,10 +755,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
                 submit_pre_lto_module_to_llvm(
                     &backend,
                     tcx,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
+                        source: cgu.previous_work_product(tcx),
                     },
                 );
                 true
@@ -699,10 +766,10 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
             CguReuse::PostLto => {
                 submit_post_lto_module_to_llvm(
                     &backend,
-                    &ongoing_codegen.coordinator_send,
+                    &ongoing_codegen.coordinator.sender,
                     CachedModuleCodegen {
                         name: cgu.name().to_string(),
-                        source: cgu.work_product(tcx),
+                        source: cgu.previous_work_product(tcx),
                     },
                 );
                 true
@@ -726,55 +793,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     }
 
     ongoing_codegen.check_for_errors(tcx.sess);
-
-    ongoing_codegen.into_inner()
-}
-
-/// A curious wrapper structure whose only purpose is to call `codegen_aborted`
-/// when it's dropped abnormally.
-///
-/// In the process of working on rust-lang/rust#55238 a mysterious segfault was
-/// stumbled upon. The segfault was never reproduced locally, but it was
-/// suspected to be related to the fact that codegen worker threads were
-/// sticking around by the time the main thread was exiting, causing issues.
-///
-/// This structure is an attempt to fix that issue where the `codegen_aborted`
-/// message will block until all workers have finished. This should ensure that
-/// even if the main codegen thread panics we'll wait for pending work to
-/// complete before returning from the main thread, hopefully avoiding
-/// segfaults.
-///
-/// If you see this comment in the code, then it means that this workaround
-/// worked! We may yet one day track down the mysterious cause of that
-/// segfault...
-struct AbortCodegenOnDrop<B: ExtraBackendMethods>(Option<OngoingCodegen<B>>);
-
-impl<B: ExtraBackendMethods> AbortCodegenOnDrop<B> {
-    fn into_inner(mut self) -> OngoingCodegen<B> {
-        self.0.take().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> Deref for AbortCodegenOnDrop<B> {
-    type Target = OngoingCodegen<B>;
-
-    fn deref(&self) -> &OngoingCodegen<B> {
-        self.0.as_ref().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> DerefMut for AbortCodegenOnDrop<B> {
-    fn deref_mut(&mut self) -> &mut OngoingCodegen<B> {
-        self.0.as_mut().unwrap()
-    }
-}
-
-impl<B: ExtraBackendMethods> Drop for AbortCodegenOnDrop<B> {
-    fn drop(&mut self) {
-        if let Some(codegen) = self.0.take() {
-            codegen.codegen_aborted();
-        }
-    }
+    ongoing_codegen
 }
 
 impl CrateInfo {
@@ -784,6 +803,12 @@ impl CrateInfo {
             .crate_types()
             .iter()
             .map(|&c| (c, crate::back::linker::exported_symbols(tcx, c)))
+            .collect();
+        let linked_symbols = tcx
+            .sess
+            .crate_types()
+            .iter()
+            .map(|&c| (c, crate::back::linker::linked_symbols(tcx, c)))
             .collect();
         let local_crate_name = tcx.crate_name(LOCAL_CRATE);
         let crate_attrs = tcx.hir().attrs(rustc_hir::CRATE_HIR_ID);
@@ -807,19 +832,30 @@ impl CrateInfo {
         //
         // In order to get this left-to-right dependency ordering, we use the reverse
         // postorder of all crates putting the leaves at the right-most positions.
-        let used_crates = tcx
+        let mut compiler_builtins = None;
+        let mut used_crates: Vec<_> = tcx
             .postorder_cnums(())
             .iter()
             .rev()
             .copied()
-            .filter(|&cnum| !tcx.dep_kind(cnum).macros_only())
+            .filter(|&cnum| {
+                let link = !tcx.dep_kind(cnum).macros_only();
+                if link && tcx.is_compiler_builtins(cnum) {
+                    compiler_builtins = Some(cnum);
+                    return false;
+                }
+                link
+            })
             .collect();
+        // `compiler_builtins` are always placed last to ensure that they're linked correctly.
+        used_crates.extend(compiler_builtins);
 
         let mut info = CrateInfo {
             target_cpu,
             exported_symbols,
+            linked_symbols,
             local_crate_name,
-            compiler_builtins: None,
+            compiler_builtins,
             profiler_runtime: None,
             is_no_builtins: Default::default(),
             native_libraries: Default::default(),
@@ -827,46 +863,88 @@ impl CrateInfo {
             crate_name: Default::default(),
             used_crates,
             used_crate_source: Default::default(),
-            lang_item_to_crate: Default::default(),
-            missing_lang_items: Default::default(),
-            dependency_formats: tcx.dependency_formats(()),
+            dependency_formats: tcx.dependency_formats(()).clone(),
             windows_subsystem,
+            natvis_debugger_visualizers: Default::default(),
         };
-        let lang_items = tcx.lang_items();
-
         let crates = tcx.crates(());
 
         let n_crates = crates.len();
         info.native_libraries.reserve(n_crates);
         info.crate_name.reserve(n_crates);
         info.used_crate_source.reserve(n_crates);
-        info.missing_lang_items.reserve(n_crates);
 
         for &cnum in crates.iter() {
             info.native_libraries
                 .insert(cnum, tcx.native_libraries(cnum).iter().map(Into::into).collect());
-            info.crate_name.insert(cnum, tcx.crate_name(cnum).to_string());
-            info.used_crate_source.insert(cnum, tcx.used_crate_source(cnum));
-            if tcx.is_compiler_builtins(cnum) {
-                info.compiler_builtins = Some(cnum);
-            }
+            info.crate_name.insert(cnum, tcx.crate_name(cnum));
+
+            let used_crate_source = tcx.used_crate_source(cnum);
+            info.used_crate_source.insert(cnum, used_crate_source.clone());
             if tcx.is_profiler_runtime(cnum) {
                 info.profiler_runtime = Some(cnum);
             }
             if tcx.is_no_builtins(cnum) {
                 info.is_no_builtins.insert(cnum);
             }
-            let missing = tcx.missing_lang_items(cnum);
-            for &item in missing.iter() {
-                if let Ok(id) = lang_items.require(item) {
-                    info.lang_item_to_crate.insert(item, id.krate);
-                }
-            }
+        }
 
-            // No need to look for lang items that don't actually need to exist.
-            let missing =
-                missing.iter().cloned().filter(|&l| lang_items::required(tcx, l)).collect();
-            info.missing_lang_items.insert(cnum, missing);
+        // Handle circular dependencies in the standard library.
+        // See comment before `add_linked_symbol_object` function for the details.
+        // If global LTO is enabled then almost everything (*) is glued into a single object file,
+        // so this logic is not necessary and can cause issues on some targets (due to weak lang
+        // item symbols being "privatized" to that object file), so we disable it.
+        // (*) Native libs, and `#[compiler_builtins]` and `#[no_builtins]` crates are not glued,
+        // and we assume that they cannot define weak lang items. This is not currently enforced
+        // by the compiler, but that's ok because all this stuff is unstable anyway.
+        let target = &tcx.sess.target;
+        if !are_upstream_rust_objects_already_included(tcx.sess) {
+            let missing_weak_lang_items: FxHashSet<Symbol> = info
+                .used_crates
+                .iter()
+                .flat_map(|&cnum| tcx.missing_lang_items(cnum))
+                .filter(|l| l.is_weak())
+                .filter_map(|&l| {
+                    let name = l.link_name()?;
+                    lang_items::required(tcx, l).then_some(name)
+                })
+                .collect();
+            let prefix = if target.is_like_windows && target.arch == "x86" { "_" } else { "" };
+            info.linked_symbols
+                .iter_mut()
+                .filter(|(crate_type, _)| {
+                    !matches!(crate_type, CrateType::Rlib | CrateType::Staticlib)
+                })
+                .for_each(|(_, linked_symbols)| {
+                    linked_symbols.extend(
+                        missing_weak_lang_items
+                            .iter()
+                            .map(|item| (format!("{prefix}{item}"), SymbolExportKind::Text)),
+                    )
+                });
+        }
+
+        let embed_visualizers = tcx.sess.crate_types().iter().any(|&crate_type| match crate_type {
+            CrateType::Executable | CrateType::Dylib | CrateType::Cdylib => {
+                // These are crate types for which we invoke the linker and can embed
+                // NatVis visualizers.
+                true
+            }
+            CrateType::ProcMacro => {
+                // We could embed NatVis for proc macro crates too (to improve the debugging
+                // experience for them) but it does not seem like a good default, since
+                // this is a rare use case and we don't want to slow down the common case.
+                false
+            }
+            CrateType::Staticlib | CrateType::Rlib => {
+                // We don't invoke the linker for these, so we don't need to collect the NatVis for them.
+                false
+            }
+        });
+
+        if target.is_like_msvc && embed_visualizers {
+            info.natvis_debugger_visualizers =
+                collect_debugger_visualizers_transitive(tcx, DebuggerVisualizerType::Natvis);
         }
 
         info

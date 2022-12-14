@@ -21,13 +21,15 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// // format!() returns a `String`
     /// let s: String = format!("hello").into();
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let s: String = format!("hello");
     /// ```
+    #[clippy::version = "1.45.0"]
     pub USELESS_CONVERSION,
     complexity,
     "calls to `Into`, `TryInto`, `From`, `TryFrom`, or `IntoIter` which perform useless conversions to the same type"
@@ -40,7 +42,7 @@ pub struct UselessConversion {
 
 impl_lint_pass!(UselessConversion => [USELESS_CONVERSION]);
 
-#[allow(clippy::too_many_lines)]
+#[expect(clippy::too_many_lines)]
 impl<'tcx> LateLintPass<'tcx> for UselessConversion {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if e.span.from_expansion() {
@@ -53,26 +55,25 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
 
         match e.kind {
             ExprKind::Match(_, arms, MatchSource::TryDesugar) => {
-                let e = match arms[0].body.kind {
-                    ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e)) => e,
-                    _ => return,
+                let (ExprKind::Ret(Some(e)) | ExprKind::Break(_, Some(e))) = arms[0].body.kind else {
+                     return
                 };
-                if let ExprKind::Call(_, args) = e.kind {
-                    self.try_desugar_arm.push(args[0].hir_id);
+                if let ExprKind::Call(_, [arg, ..]) = e.kind {
+                    self.try_desugar_arm.push(arg.hir_id);
                 }
             },
 
-            ExprKind::MethodCall(name, .., args, _) => {
-                if is_trait_method(cx, e, sym::Into) && &*name.ident.as_str() == "into" {
+            ExprKind::MethodCall(name, recv, ..) => {
+                if is_trait_method(cx, e, sym::Into) && name.ident.as_str() == "into" {
                     let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(&args[0]);
+                    let b = cx.typeck_results().expr_ty(recv);
                     if same_type_and_consts(a, b) {
-                        let sugg = snippet_with_macro_callsite(cx, args[0].span, "<expr>").to_string();
+                        let sugg = snippet_with_macro_callsite(cx, recv.span, "<expr>").to_string();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{}`", b),
+                            &format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -88,14 +89,14 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
                     }
                     let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(&args[0]);
+                    let b = cx.typeck_results().expr_ty(recv);
                     if same_type_and_consts(a, b) {
-                        let sugg = snippet(cx, args[0].span, "<expr>").into_owned();
+                        let sugg = snippet(cx, recv.span, "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{}`", b),
+                            &format!("useless conversion to the same type: `{b}`"),
                             "consider removing `.into_iter()`",
                             sugg,
                             Applicability::MachineApplicable, // snippet
@@ -105,7 +106,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 if_chain! {
                     if is_trait_method(cx, e, sym::TryInto) && name.ident.name == sym::try_into;
                     let a = cx.typeck_results().expr_ty(e);
-                    let b = cx.typeck_results().expr_ty(&args[0]);
+                    let b = cx.typeck_results().expr_ty(recv);
                     if is_type_diagnostic_item(cx, a, sym::Result);
                     if let ty::Adt(_, substs) = a.kind();
                     if let Some(a_type) = substs.types().next();
@@ -116,7 +117,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                             cx,
                             USELESS_CONVERSION,
                             e.span,
-                            &format!("useless conversion to the same type: `{}`", b),
+                            &format!("useless conversion to the same type: `{b}`"),
                             None,
                             "consider removing `.try_into()`",
                         );
@@ -124,14 +125,13 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                 }
             },
 
-            ExprKind::Call(path, args) => {
+            ExprKind::Call(path, [arg]) => {
                 if_chain! {
-                    if args.len() == 1;
                     if let ExprKind::Path(ref qpath) = path.kind;
                     if let Some(def_id) = cx.qpath_res(qpath, path.hir_id).opt_def_id();
                     then {
                         let a = cx.typeck_results().expr_ty(e);
-                        let b = cx.typeck_results().expr_ty(&args[0]);
+                        let b = cx.typeck_results().expr_ty(arg);
                         if_chain! {
                             if match_def_path(cx, def_id, &paths::TRY_FROM);
                             if is_type_diagnostic_item(cx, a, sym::Result);
@@ -145,7 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                                     cx,
                                     USELESS_CONVERSION,
                                     e.span,
-                                    &format!("useless conversion to the same type: `{}`", b),
+                                    &format!("useless conversion to the same type: `{b}`"),
                                     None,
                                     &hint,
                                 );
@@ -153,18 +153,18 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                         }
 
                         if_chain! {
-                            if match_def_path(cx, def_id, &paths::FROM_FROM);
+                            if Some(def_id) == cx.tcx.lang_items().from_fn();
                             if same_type_and_consts(a, b);
 
                             then {
-                                let sugg = Sugg::hir_with_macro_callsite(cx, &args[0], "<expr>").maybe_par();
+                                let sugg = Sugg::hir_with_macro_callsite(cx, arg, "<expr>").maybe_par();
                                 let sugg_msg =
                                     format!("consider removing `{}()`", snippet(cx, path.span, "From::from"));
                                 span_lint_and_sugg(
                                     cx,
                                     USELESS_CONVERSION,
                                     e.span,
-                                    &format!("useless conversion to the same type: `{}`", b),
+                                    &format!("useless conversion to the same type: `{b}`"),
                                     &sugg_msg,
                                     sugg.to_string(),
                                     Applicability::MachineApplicable, // snippet

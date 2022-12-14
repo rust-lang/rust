@@ -4,7 +4,7 @@
 
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
+
 
 struct Font {
     fontbuf: usize,
@@ -26,5 +26,5 @@ fn Font() -> Font {
 }
 
 pub fn main() {
-    let _f: Box<_> = box Font();
+    let _f: Box<_> = Box::new(Font());
 }

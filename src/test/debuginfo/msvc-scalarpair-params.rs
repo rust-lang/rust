@@ -18,12 +18,10 @@
 // cdb-command: g
 
 // cdb-command: dx o1
-// cdb-check:o1               : Some [Type: enum$<core::option::Option<u32> >]
-// cdb-check:    [variant]        : Some
+// cdb-check:o1               : Some [Type: enum2$<core::option::Option<u32> >]
 // cdb-check:    [+0x004] __0              : 0x4d2 [Type: [...]]
 // cdb-command: dx o2
-// cdb-check:o2               : Some [Type: enum$<core::option::Option<u64> >]
-// cdb-check:    [variant]        : Some
+// cdb-check:o2               : Some [Type: enum2$<core::option::Option<u64> >]
 // cdb-check:    [+0x008] __0              : 0x162e [Type: unsigned __int64]
 
 // cdb-command: g
@@ -40,14 +38,14 @@
 // cdb-command: g
 
 // cdb-command: dx s
-// cdb-check:s                : "this is a static str" [Type: str]
+// cdb-check:s                : "this is a static str" [Type: ref$<str$>]
 // cdb-check:    [len]            : 0x14 [Type: unsigned [...]]
 // cdb-check:    [chars]
 
 // cdb-command: g
 
 // cdb-command: dx s
-// cdb-check:s                : { len=0x5 } [Type: slice$<u8>]
+// cdb-check:s                : { len=0x5 } [Type: ref$<slice2$<u8> >]
 // cdb-check:    [len]            : 0x5 [Type: unsigned [...]]
 // cdb-check:    [0]              : 0x1 [Type: unsigned char]
 // cdb-check:    [1]              : 0x2 [Type: unsigned char]
@@ -89,7 +87,7 @@ fn slice(s: &[u8]) {
     zzz(); // #break
 }
 
-fn zzz() { }
+fn zzz() {}
 
 fn main() {
     range(10..12, 20..30);

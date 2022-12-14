@@ -1,4 +1,4 @@
-error: function is never used: `foo`
+error: function `foo` is never used
   --> $DIR/basic.rs:4:4
    |
 LL | fn foo() {

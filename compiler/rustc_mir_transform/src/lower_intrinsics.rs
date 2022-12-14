@@ -6,35 +6,35 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
 pub struct LowerIntrinsics;
 
 impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        for block in basic_blocks {
+        let local_decls = &body.local_decls;
+        for block in body.basic_blocks.as_mut() {
             let terminator = block.terminator.as_mut().unwrap();
-            if let TerminatorKind::Call { func, args, destination, .. } = &mut terminator.kind {
+            if let TerminatorKind::Call { func, args, destination, target, .. } =
+                &mut terminator.kind
+            {
                 let func_ty = func.ty(local_decls, tcx);
-                let (intrinsic_name, substs) = match resolve_rust_intrinsic(tcx, func_ty) {
-                    None => continue,
-                    Some(it) => it,
+                let Some((intrinsic_name, substs)) = resolve_rust_intrinsic(tcx, func_ty) else {
+                    continue;
                 };
                 match intrinsic_name {
                     sym::unreachable => {
                         terminator.kind = TerminatorKind::Unreachable;
                     }
                     sym::forget => {
-                        if let Some((destination, target)) = *destination {
+                        if let Some(target) = *target {
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
-                                    destination,
+                                    *destination,
                                     Rvalue::Use(Operand::Constant(Box::new(Constant {
                                         span: terminator.source_info.span,
                                         user_ty: None,
-                                        literal: ty::Const::zero_sized(tcx, tcx.types.unit).into(),
+                                        literal: ConstantKind::zero_sized(tcx.types.unit),
                                     }))),
                                 ))),
                             });
@@ -42,16 +42,35 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         }
                     }
                     sym::copy_nonoverlapping => {
-                        let target = destination.unwrap().1;
+                        let target = target.unwrap();
                         let mut args = args.drain(..);
                         block.statements.push(Statement {
                             source_info: terminator.source_info,
-                            kind: StatementKind::CopyNonOverlapping(Box::new(
-                                rustc_middle::mir::CopyNonOverlapping {
-                                    src: args.next().unwrap(),
-                                    dst: args.next().unwrap(),
-                                    count: args.next().unwrap(),
-                                },
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::CopyNonOverlapping(
+                                    rustc_middle::mir::CopyNonOverlapping {
+                                        src: args.next().unwrap(),
+                                        dst: args.next().unwrap(),
+                                        count: args.next().unwrap(),
+                                    },
+                                ),
+                            )),
+                        });
+                        assert_eq!(
+                            args.next(),
+                            None,
+                            "Extra argument for copy_non_overlapping intrinsic"
+                        );
+                        drop(args);
+                        terminator.kind = TerminatorKind::Goto { target };
+                    }
+                    sym::assume => {
+                        let target = target.unwrap();
+                        let mut args = args.drain(..);
+                        block.statements.push(Statement {
+                            source_info: terminator.source_info,
+                            kind: StatementKind::Intrinsic(Box::new(
+                                NonDivergingIntrinsic::Assume(args.next().unwrap()),
                             )),
                         });
                         assert_eq!(
@@ -63,7 +82,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         terminator.kind = TerminatorKind::Goto { target };
                     }
                     sym::wrapping_add | sym::wrapping_sub | sym::wrapping_mul => {
-                        if let Some((destination, target)) = *destination {
+                        if let Some(target) = *target {
                             let lhs;
                             let rhs;
                             {
@@ -80,7 +99,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
-                                    destination,
+                                    *destination,
                                     Rvalue::BinaryOp(bin_op, Box::new((lhs, rhs))),
                                 ))),
                             });
@@ -93,7 +112,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         // during codegen. Issue #35310.
                     }
                     sym::size_of | sym::min_align_of => {
-                        if let Some((destination, target)) = *destination {
+                        if let Some(target) = *target {
                             let tp_ty = substs.type_at(0);
                             let null_op = match intrinsic_name {
                                 sym::size_of => NullOp::SizeOf,
@@ -103,7 +122,7 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
-                                    destination,
+                                    *destination,
                                     Rvalue::NullaryOp(null_op, tp_ty),
                                 ))),
                             });
@@ -111,14 +130,12 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
                         }
                     }
                     sym::discriminant_value => {
-                        if let (Some((destination, target)), Some(arg)) =
-                            (*destination, args[0].place())
-                        {
+                        if let (Some(target), Some(arg)) = (*target, args[0].place()) {
                             let arg = tcx.mk_place_deref(arg);
                             block.statements.push(Statement {
                                 source_info: terminator.source_info,
                                 kind: StatementKind::Assign(Box::new((
-                                    destination,
+                                    *destination,
                                     Rvalue::Discriminant(arg),
                                 ))),
                             });
@@ -135,20 +152,19 @@ impl<'tcx> MirPass<'tcx> for LowerIntrinsics {
     }
 }
 
-fn resolve_rust_intrinsic(
+fn resolve_rust_intrinsic<'tcx>(
     tcx: TyCtxt<'tcx>,
     func_ty: Ty<'tcx>,
 ) -> Option<(Symbol, SubstsRef<'tcx>)> {
     if let ty::FnDef(def_id, substs) = *func_ty.kind() {
-        let fn_sig = func_ty.fn_sig(tcx);
-        if let Abi::RustIntrinsic | Abi::PlatformIntrinsic = fn_sig.abi() {
+        if tcx.is_intrinsic(def_id) {
             return Some((tcx.item_name(def_id), substs));
         }
     }
     None
 }
 
-fn validate_simd_shuffle(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
+fn validate_simd_shuffle<'tcx>(tcx: TyCtxt<'tcx>, args: &[Operand<'tcx>], span: Span) {
     match &args[2] {
         Operand::Constant(_) => {} // all good
         _ => {

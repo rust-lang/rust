@@ -25,7 +25,7 @@ pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
 
 pub mod reexport {
     // @has issue_20727_4/reexport/trait.Index.html
-    // @has - '//*[@class="rust trait"]' 'trait Index<Idx> where Idx: ?Sized, {'
+    // @has - '//*[@class="rust trait"]' 'trait Index<Idx>where Idx: ?Sized,{'
     // @has - '//*[@class="rust trait"]' 'type Output: ?Sized'
     // @has - '//*[@class="rust trait"]' \
     //        'fn index(&self, index: Idx) -> &Self::Output'
@@ -33,7 +33,7 @@ pub mod reexport {
 
     // @has issue_20727_4/reexport/trait.IndexMut.html
     // @has - '//*[@class="rust trait"]' \
-    //        'trait IndexMut<Idx>: Index<Idx> where Idx: ?Sized, {'
+    //        'trait IndexMut<Idx>: Index<Idx>where Idx: ?Sized,{'
     // @has - '//*[@class="rust trait"]' \
     //        'fn index_mut(&mut self, index: Idx) -> &mut Self::Output;'
     pub use issue_20727::IndexMut;

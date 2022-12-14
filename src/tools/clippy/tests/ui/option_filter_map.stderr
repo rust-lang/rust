@@ -1,5 +1,5 @@
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:8:27
+  --> $DIR/option_filter_map.rs:6:27
    |
 LL |     let _ = Some(Some(1)).filter(Option::is_some).map(Option::unwrap);
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
@@ -7,37 +7,37 @@ LL |     let _ = Some(Some(1)).filter(Option::is_some).map(Option::unwrap);
    = note: `-D clippy::option-filter-map` implied by `-D warnings`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:9:27
+  --> $DIR/option_filter_map.rs:7:27
    |
 LL |     let _ = Some(Some(1)).filter(|o| o.is_some()).map(|o| o.unwrap());
    |                           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:10:35
+  --> $DIR/option_filter_map.rs:8:35
    |
 LL |     let _ = Some(1).map(odds_out).filter(Option::is_some).map(Option::unwrap);
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:11:35
+  --> $DIR/option_filter_map.rs:9:35
    |
 LL |     let _ = Some(1).map(odds_out).filter(|o| o.is_some()).map(|o| o.unwrap());
    |                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:13:39
+  --> $DIR/option_filter_map.rs:11:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(Option::is_some).map(Option::unwrap);
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:14:39
+  --> $DIR/option_filter_map.rs:12:39
    |
 LL |     let _ = vec![Some(1)].into_iter().filter(|o| o.is_some()).map(|o| o.unwrap());
    |                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:18:10
+  --> $DIR/option_filter_map.rs:16:10
    |
 LL |           .filter(Option::is_some)
    |  __________^
@@ -45,7 +45,7 @@ LL | |         .map(Option::unwrap);
    | |____________________________^ help: consider using `flatten` instead: `flatten()`
 
 error: `filter` for `Some` followed by `unwrap`
-  --> $DIR/option_filter_map.rs:23:10
+  --> $DIR/option_filter_map.rs:21:10
    |
 LL |           .filter(|o| o.is_some())
    |  __________^

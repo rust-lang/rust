@@ -1,0 +1,20 @@
+error: Undefined Behavior: entering unreachable code
+  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+   |
+LL |             std::hint::unreachable_unchecked();
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ entering unreachable code
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `test_cpp20_rwc_syncs` at $DIR/cpp20_rwc_syncs.rs:LL:CC
+note: inside `main`
+  --> $DIR/cpp20_rwc_syncs.rs:LL:CC
+   |
+LL |         test_cpp20_rwc_syncs();
+   |         ^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

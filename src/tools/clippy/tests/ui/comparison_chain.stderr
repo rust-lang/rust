@@ -8,8 +8,8 @@ LL | |         b()
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::comparison-chain` implied by `-D warnings`
    = help: consider rewriting the `if` chain to use `cmp` and `match`
+   = note: `-D clippy::comparison-chain` implied by `-D warnings`
 
 error: `if` chain can be rewritten with `match`
   --> $DIR/comparison_chain.rs:27:5

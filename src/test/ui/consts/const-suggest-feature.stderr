@@ -1,11 +1,11 @@
-error[E0658]: dereferencing raw pointers in constants is unstable
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
   --> $DIR/const-suggest-feature.rs:2:5
    |
 LL |     *std::ptr::null_mut() = 0;
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to previous error
 

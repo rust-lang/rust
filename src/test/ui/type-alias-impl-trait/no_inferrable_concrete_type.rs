@@ -1,15 +1,19 @@
 // Issue 52985: user code provides no use case that allows a type alias `impl Trait`
-// We now emit a 'could not find defining uses' error
+// We now emit a 'unconstrained opaque type' error
 
 #![feature(type_alias_impl_trait)]
 
-type Foo = impl Copy; //~ could not find defining uses
+mod foo {
+    pub type Foo = impl Copy;
+    //~^ ERROR unconstrained opaque type
 
-// make compiler happy about using 'Foo'
-fn bar(x: Foo) -> Foo {
-    x
+    // make compiler happy about using 'Foo'
+    pub fn bar(x: Foo) -> Foo {
+        x
+    }
 }
 
 fn main() {
-    let _: Foo = std::mem::transmute(0u8);
+    let _: foo::Foo = std::mem::transmute(0u8);
+    //~^ ERROR cannot transmute between types of different sizes, or dependently-sized types
 }

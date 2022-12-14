@@ -8,7 +8,6 @@
     dead_code,
     unused_must_use
 )]
-#![feature(custom_inner_attributes)]
 
 struct TO {
     magic: Option<usize>,
@@ -124,4 +123,17 @@ macro_rules! some_and_qmark_in_macro {
 pub fn test2() {
     let x = Some(3);
     let _x = some_and_qmark_in_macro!(x?);
+}
+
+async fn async_option_bad(to: TO) -> Option<usize> {
+    let _ = Some(3);
+    Some(to.magic?)
+}
+
+async fn async_deref_ref(s: Option<&String>) -> Option<&str> {
+    Some(s?)
+}
+
+async fn async_result_bad(s: TR) -> Result<usize, bool> {
+    Ok(s.magic?)
 }

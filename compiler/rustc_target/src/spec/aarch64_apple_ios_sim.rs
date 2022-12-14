@@ -1,23 +1,19 @@
-use super::apple_sdk_base::{opts, Arch};
+use super::apple_base::{ios_sim_llvm_target, opts, Arch};
 use crate::spec::{FramePointer, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("ios", Arch::Arm64_sim);
-
-    // Clang automatically chooses a more specific target based on
-    // IPHONEOS_DEPLOYMENT_TARGET.
-    // This is required for the simulator target to pick the right
-    // MACH-O commands, so we do too.
-    let arch = "arm64";
-    let llvm_target = super::apple_base::ios_sim_llvm_target(arch);
-
+    let arch = Arch::Arm64_sim;
     Target {
-        llvm_target: llvm_target,
+        // Clang automatically chooses a more specific target based on
+        // IPHONEOS_DEPLOYMENT_TARGET.
+        // This is required for the simulator target to pick the right
+        // MACH-O commands, so we do too.
+        llvm_target: ios_sim_llvm_target(arch).into(),
         pointer_width: 64,
-        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".to_string(),
-        arch: "aarch64".to_string(),
+        data_layout: "e-m:o-i64:64-i128:128-n32:64-S128".into(),
+        arch: arch.target_arch(),
         options: TargetOptions {
-            features: "+neon,+fp-armv8,+apple-a7".to_string(),
+            features: "+neon,+fp-armv8,+apple-a7".into(),
             max_atomic_width: Some(128),
             forces_embed_bitcode: true,
             frame_pointer: FramePointer::NonLeaf,
@@ -31,8 +27,8 @@ pub fn target() -> Target {
                 -target-abi\0\
                 darwinpcs\0\
                 -Os\0"
-                .to_string(),
-            ..base
+                .into(),
+            ..opts("ios", arch)
         },
     }
 }

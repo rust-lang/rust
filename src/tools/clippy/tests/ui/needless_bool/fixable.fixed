@@ -41,6 +41,15 @@ fn main() {
     x;
     !x;
     !(x && y);
+    let a = 0;
+    let b = 1;
+
+    a != b;
+    a == b;
+    a >= b;
+    a > b;
+    a <= b;
+    a < b;
     if x {
         x
     } else {
@@ -53,6 +62,7 @@ fn main() {
     needless_bool(x);
     needless_bool2(x);
     needless_bool3(x);
+    needless_bool_condition();
 }
 
 fn bool_ret3(x: bool) -> bool {
@@ -97,4 +107,20 @@ fn needless_bool_in_the_suggestion_wraps_the_predicate_of_if_else_statement_in_b
     let x = if b {
         true
     } else { !returns_bool() };
+}
+
+unsafe fn no(v: u8) -> u8 {
+    v
+}
+
+#[allow(clippy::unnecessary_operation)]
+fn needless_bool_condition() -> bool {
+    (unsafe { no(4) } & 1 != 0);
+    let _brackets_unneeded = unsafe { no(4) } & 1 != 0;
+    fn foo() -> bool {
+        // parentheses are needed here
+        (unsafe { no(4) } & 1 != 0)
+    }
+
+    foo()
 }

@@ -85,8 +85,8 @@ LL | fn is_send<T: Send>(val: T) {}
    |               ^^^^ required by this bound in `is_send`
 help: consider further restricting this bound
    |
-LL | fn use_bound_and_where<S: Sync>(val: S) where S: std::fmt::Debug + std::marker::Send {
-   |                                                                  +++++++++++++++++++
+LL | fn use_bound_and_where<S: Sync + std::marker::Send>(val: S) where S: std::fmt::Debug {
+   |                                +++++++++++++++++++
 
 error[E0277]: `S` cannot be sent between threads safely
   --> $DIR/restrict-type-argument.rs:28:13

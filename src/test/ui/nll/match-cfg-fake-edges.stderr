@@ -1,8 +1,19 @@
-error[E0381]: use of possibly-uninitialized variable: `x`
+error[E0381]: used binding `x` isn't initialized
   --> $DIR/match-cfg-fake-edges.rs:21:13
    |
+LL |     let x;
+   |         - binding declared here but left uninitialized
+...
+LL |         _ if { x = 2; true } => 1,
+   |                ----- binding initialized here in some conditions
+LL |         _ if {
 LL |             x;
-   |             ^ use of possibly-uninitialized `x`
+   |             ^ `x` used here but it isn't initialized
+   |
+help: consider assigning a value
+   |
+LL |     let x = 0;
+   |           +++
 
 error[E0382]: use of moved value: `x`
   --> $DIR/match-cfg-fake-edges.rs:35:13
@@ -15,6 +26,11 @@ LL |         false if { drop(x); true } => 1,
 LL |         true => {
 LL |             x;
    |             ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         false if { drop(x.clone()); true } => 1,
+   |                          ++++++++
 
 error: aborting due to 2 previous errors
 

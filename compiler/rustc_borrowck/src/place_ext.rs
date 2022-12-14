@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::borrow_set::LocalsStateAtExit;
 use rustc_hir as hir;
 use rustc_middle::mir::ProjectionElem;
@@ -5,7 +7,7 @@ use rustc_middle::mir::{Body, Mutability, Place};
 use rustc_middle::ty::{self, TyCtxt};
 
 /// Extension methods for the `Place` type.
-crate trait PlaceExt<'tcx> {
+pub(crate) trait PlaceExt<'tcx> {
     /// Returns `true` if we can safely ignore borrows of this place.
     /// This is true whenever there is no action that the user can do
     /// to the place `self` that would invalidate the borrow. This is true

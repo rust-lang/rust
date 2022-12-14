@@ -9,9 +9,9 @@
 #
 # This is regression test for https://github.com/rust-lang/rust/issues/67276.
 
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
-COMMON_ARGS=-Cprefer-dynamic -Zshare-generics=yes -Ccodegen-units=1 -Zsymbol-mangling-version=v0
+COMMON_ARGS=-Cprefer-dynamic -Zshare-generics=yes -Ccodegen-units=1 -Csymbol-mangling-version=v0
 
 all:
 	$(RUSTC) instance_provider_a.rs $(COMMON_ARGS) --crate-type=rlib

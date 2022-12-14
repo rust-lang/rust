@@ -74,20 +74,16 @@ impl fmt::Display for TestName {
     }
 }
 
-/// Represents a benchmark function.
-pub trait TDynBenchFn: Send {
-    fn run(&self, harness: &mut Bencher);
-}
-
 // A function that runs a test. If the function returns successfully,
-// the test succeeds; if the function panics then the test fails. We
-// may need to come up with a more clever definition of test in order
-// to support isolation of tests into threads.
+// the test succeeds; if the function panics or returns Result::Err
+// then the test fails. We may need to come up with a more clever
+// definition of test in order to support isolation of tests into
+// threads.
 pub enum TestFn {
-    StaticTestFn(fn()),
-    StaticBenchFn(fn(&mut Bencher)),
-    DynTestFn(Box<dyn FnOnce() + Send>),
-    DynBenchFn(Box<dyn TDynBenchFn + 'static>),
+    StaticTestFn(fn() -> Result<(), String>),
+    StaticBenchFn(fn(&mut Bencher) -> Result<(), String>),
+    DynTestFn(Box<dyn FnOnce() -> Result<(), String> + Send>),
+    DynBenchFn(Box<dyn Fn(&mut Bencher) -> Result<(), String> + Send>),
 }
 
 impl TestFn {
@@ -122,8 +118,8 @@ pub struct TestId(pub usize);
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
+    pub ignore_message: Option<&'static str>,
     pub should_panic: options::ShouldPanic,
-    pub allow_fail: bool,
     pub compile_fail: bool,
     pub no_run: bool,
     pub test_type: TestType,
@@ -154,9 +150,6 @@ impl TestDesc {
                 return Some("should panic");
             }
             options::ShouldPanic::No => {}
-        }
-        if self.allow_fail {
-            return Some("allow fail");
         }
         if self.compile_fail {
             return Some("compile fail");

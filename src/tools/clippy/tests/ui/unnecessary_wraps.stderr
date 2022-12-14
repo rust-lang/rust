@@ -23,7 +23,8 @@ LL |     if a {
 LL |         Some(-1);
 LL ~         2
 LL |     } else {
- ...
+LL ~         return 1337;
+   |
 
 error: this function's return value is unnecessarily wrapped by `Option`
   --> $DIR/unnecessary_wraps.rs:21:1
@@ -122,7 +123,8 @@ LL |     if a {
 LL |         Some(());
 LL ~         
 LL |     } else {
- ...
+LL ~         return ;
+   |
 
 error: this function's return value is unnecessary
   --> $DIR/unnecessary_wraps.rs:117:1

@@ -1,0 +1,115 @@
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:13:8
+   |
+LL |     if let first = &opt && let Some(ref second) = first && let None = second.start {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+note: the lint level is defined here
+  --> $DIR/irrefutable-lets.rs:6:30
+   |
+LL | #![cfg_attr(disallowed, deny(irrefutable_let_patterns))]
+   |                              ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: irrefutable `if let` patterns
+  --> $DIR/irrefutable-lets.rs:19:8
+   |
+LL |     if let first = &opt && let (a, b) = (1, 2) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the `if let` is useless
+   = help: consider replacing the `if let` with a `let`
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:22:8
+   |
+LL |     if let first = &opt && let Some(ref second) = first && let None = second.start && let v = 0 {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: trailing irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:22:87
+   |
+LL |     if let first = &opt && let Some(ref second) = first && let None = second.start && let v = 0 {}
+   |                                                                                       ^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it into the body
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:26:37
+   |
+LL |     if let Some(ref first) = opt && let second = first && let _third = second {}
+   |                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:29:8
+   |
+LL |     if let Range { start: local_start, end: _ } = (None..Some(1)) && let None = local_start {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:32:8
+   |
+LL |     if let (a, b, c) = (Some(1), Some(1), Some(1)) && let None = Some(1) {}
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: leading irrefutable pattern in let chain
+  --> $DIR/irrefutable-lets.rs:35:8
+   |
+LL |     if let first = &opt && let None = Some(1) {}
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = note: this pattern will always match
+   = help: consider moving it outside of the construct
+
+error: irrefutable `if let` guard patterns
+  --> $DIR/irrefutable-lets.rs:44:28
+   |
+LL |         Some(ref first) if let second = first && let _third = second && let v = 4 + 4 => {},
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:59:16
+   |
+LL |             && let v = local_end && let w = v => {},
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: irrefutable `while let` patterns
+  --> $DIR/irrefutable-lets.rs:68:11
+   |
+LL |     while let first = &opt && let (a, b) = (1, 2) {}
+   |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match, so the loop will never exit
+   = help: consider instead using a `loop { ... }` with a `let` inside it
+
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:71:40
+   |
+LL |     while let Some(ref first) = opt && let second = first && let _third = second {}
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: these patterns will always match
+   = help: consider moving them into the body
+
+error: aborting due to 12 previous errors
+

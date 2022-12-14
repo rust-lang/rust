@@ -1,13 +1,13 @@
 mod m1 {
-    pub use ::E::V; //~ ERROR `V` is private, and cannot be re-exported
+    pub use ::E::V; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 }
 
 mod m2 {
-    pub use ::E::{V}; //~ ERROR `V` is private, and cannot be re-exported
+    pub use ::E::{V}; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 }
 
 mod m3 {
-    pub use ::E::V::{self}; //~ ERROR `V` is private, and cannot be re-exported
+    pub use ::E::V::{self}; //~ ERROR `V` is only public within the crate, and cannot be re-exported outside
 }
 
 #[deny(unused_imports)]

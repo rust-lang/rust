@@ -2,7 +2,7 @@ error[E0599]: no method named `b` found for reference `&Self` in the current sco
   --> $DIR/issue-3563.rs:3:17
    |
 LL |         || self.b()
-   |                 ^ help: there is an associated function with a similar name: `a`
+   |                 ^ help: there is a method with a similar name: `a`
 
 error: aborting due to previous error
 

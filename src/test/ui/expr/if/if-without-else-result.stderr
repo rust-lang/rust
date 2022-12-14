@@ -5,7 +5,7 @@ LL |     let a = if true { true };
    |             ^^^^^^^^^^----^^
    |             |         |
    |             |         found here
-   |             expected `()`, found `bool`
+   |             expected `bool`, found `()`
    |
    = note: `if` expressions without `else` evaluate to `()`
    = help: consider adding an `else` block that evaluates to the expected type

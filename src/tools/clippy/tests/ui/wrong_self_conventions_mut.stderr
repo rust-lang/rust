@@ -4,8 +4,8 @@ error: methods with the following characteristics: (`to_*` and `self` type is no
 LL |         pub fn to_many(&mut self) -> Option<&mut [T]> {
    |                        ^^^^^^^^^
    |
-   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
    = help: consider choosing a less ambiguous name
+   = note: `-D clippy::wrong-self-convention` implied by `-D warnings`
 
 error: methods with the following characteristics: (`to_*` and `*_mut`) usually take `self` by mutable reference
   --> $DIR/wrong_self_conventions_mut.rs:22:28

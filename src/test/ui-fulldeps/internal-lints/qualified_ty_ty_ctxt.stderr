@@ -2,7 +2,7 @@ error: usage of qualified `ty::Ty<'_>`
   --> $DIR/qualified_ty_ty_ctxt.rs:25:11
    |
 LL |     ty_q: ty::Ty<'_>,
-   |           ^^^^^^^^^^ help: try using it unqualified: `Ty<'_>`
+   |           ^^^^^^^^^^ help: try importing it and using it unqualified: `Ty<'_>`
    |
 note: the lint level is defined here
   --> $DIR/qualified_ty_ty_ctxt.rs:4:9
@@ -14,7 +14,7 @@ error: usage of qualified `ty::TyCtxt<'_>`
   --> $DIR/qualified_ty_ty_ctxt.rs:27:16
    |
 LL |     ty_ctxt_q: ty::TyCtxt<'_>,
-   |                ^^^^^^^^^^^^^^ help: try using it unqualified: `TyCtxt<'_>`
+   |                ^^^^^^^^^^^^^^ help: try importing it and using it unqualified: `TyCtxt<'_>`
 
 error: aborting due to 2 previous errors
 

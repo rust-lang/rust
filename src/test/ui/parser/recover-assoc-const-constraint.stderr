@@ -1,20 +1,21 @@
-error: cannot constrain an associated constant to a value
+error[E0658]: associated const equality is incomplete
   --> $DIR/recover-assoc-const-constraint.rs:3:11
    |
 LL |     bar::<Item = 42>();
-   |           ----^^^--
-   |           |      |
-   |           |      ...cannot be constrained to this value
-   |           this associated constant...
+   |           ^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
 
-error: cannot constrain an associated constant to a value
-  --> $DIR/recover-assoc-const-constraint.rs:4:11
+error[E0658]: associated const equality is incomplete
+  --> $DIR/recover-assoc-const-constraint.rs:5:11
    |
 LL |     bar::<Item = { 42 }>();
-   |           ----^^^------
-   |           |      |
-   |           |      ...cannot be constrained to this value
-   |           this associated constant...
+   |           ^^^^^^^^^^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0658`.

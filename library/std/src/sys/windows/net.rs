@@ -2,13 +2,13 @@
 
 use crate::cmp;
 use crate::io::{self, IoSlice, IoSliceMut, Read};
-use crate::lazy::SyncOnceCell;
 use crate::mem;
 use crate::net::{Shutdown, SocketAddr};
 use crate::os::windows::io::{
     AsRawSocket, AsSocket, BorrowedSocket, FromRawSocket, IntoRawSocket, OwnedSocket, RawSocket,
 };
 use crate::ptr;
+use crate::sync::OnceLock;
 use crate::sys;
 use crate::sys::c;
 use crate::sys_common::net;
@@ -29,7 +29,7 @@ pub mod netc {
 
 pub struct Socket(OwnedSocket);
 
-static WSA_CLEANUP: SyncOnceCell<unsafe extern "system" fn() -> i32> = SyncOnceCell::new();
+static WSA_CLEANUP: OnceLock<unsafe extern "system" fn() -> i32> = OnceLock::new();
 
 /// Checks whether the Windows socket interface has been started already, and
 /// if not, starts it.
@@ -134,7 +134,7 @@ impl Socket {
 
             unsafe {
                 let socket = Self::from_raw_socket(socket);
-                socket.set_no_inherit()?;
+                socket.0.set_no_inherit()?;
                 Ok(socket)
             }
         }
@@ -143,8 +143,8 @@ impl Socket {
     pub fn connect_timeout(&self, addr: &SocketAddr, timeout: Duration) -> io::Result<()> {
         self.set_nonblocking(true)?;
         let result = {
-            let (addrp, len) = addr.into_inner();
-            let result = unsafe { c::connect(self.as_raw_socket(), addrp, len) };
+            let (addr, len) = addr.into_inner();
+            let result = unsafe { c::connect(self.as_raw_socket(), addr.as_ptr(), len) };
             cvt(result).map(drop)
         };
         self.set_nonblocking(false)?;
@@ -152,9 +152,9 @@ impl Socket {
         match result {
             Err(ref error) if error.kind() == io::ErrorKind::WouldBlock => {
                 if timeout.as_secs() == 0 && timeout.subsec_nanos() == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
 
@@ -185,9 +185,7 @@ impl Socket {
                 };
 
                 match count {
-                    0 => {
-                        Err(io::Error::new_const(io::ErrorKind::TimedOut, &"connection timed out"))
-                    }
+                    0 => Err(io::const_io_error!(io::ErrorKind::TimedOut, "connection timed out")),
                     _ => {
                         if writefds.fd_count != 1 {
                             if let Some(e) = self.take_error()? {
@@ -213,52 +211,7 @@ impl Socket {
     }
 
     pub fn duplicate(&self) -> io::Result<Socket> {
-        let mut info = unsafe { mem::zeroed::<c::WSAPROTOCOL_INFO>() };
-        let result = unsafe {
-            c::WSADuplicateSocketW(self.as_raw_socket(), c::GetCurrentProcessId(), &mut info)
-        };
-        cvt(result)?;
-        let socket = unsafe {
-            c::WSASocketW(
-                info.iAddressFamily,
-                info.iSocketType,
-                info.iProtocol,
-                &mut info,
-                0,
-                c::WSA_FLAG_OVERLAPPED | c::WSA_FLAG_NO_HANDLE_INHERIT,
-            )
-        };
-
-        if socket != c::INVALID_SOCKET {
-            unsafe { Ok(Self::from_inner(OwnedSocket::from_raw_socket(socket))) }
-        } else {
-            let error = unsafe { c::WSAGetLastError() };
-
-            if error != c::WSAEPROTOTYPE && error != c::WSAEINVAL {
-                return Err(io::Error::from_raw_os_error(error));
-            }
-
-            let socket = unsafe {
-                c::WSASocketW(
-                    info.iAddressFamily,
-                    info.iSocketType,
-                    info.iProtocol,
-                    &mut info,
-                    0,
-                    c::WSA_FLAG_OVERLAPPED,
-                )
-            };
-
-            if socket == c::INVALID_SOCKET {
-                return Err(last_error());
-            }
-
-            unsafe {
-                let socket = Self::from_inner(OwnedSocket::from_raw_socket(socket));
-                socket.set_no_inherit()?;
-                Ok(socket)
-            }
-        }
+        Ok(Self(self.0.try_clone()?))
     }
 
     fn recv_with_flags(&self, buf: &mut [u8], flags: c_int) -> io::Result<usize> {
@@ -398,9 +351,9 @@ impl Socket {
             Some(dur) => {
                 let timeout = sys::dur2timeout(dur);
                 if timeout == 0 {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::InvalidInput,
-                        &"cannot set a 0 duration timeout",
+                        "cannot set a 0 duration timeout",
                     ));
                 }
                 timeout
@@ -419,19 +372,6 @@ impl Socket {
             let nsec = (raw % 1000) * 1000000;
             Ok(Some(Duration::new(secs as u64, nsec as u32)))
         }
-    }
-
-    #[cfg(not(target_vendor = "uwp"))]
-    fn set_no_inherit(&self) -> io::Result<()> {
-        sys::cvt(unsafe {
-            c::SetHandleInformation(self.as_raw_socket() as c::HANDLE, c::HANDLE_FLAG_INHERIT, 0)
-        })
-        .map(drop)
-    }
-
-    #[cfg(target_vendor = "uwp")]
-    fn set_no_inherit(&self) -> io::Result<()> {
-        Err(io::Error::new_const(io::ErrorKind::Unsupported, &"Unavailable on UWP"))
     }
 
     pub fn shutdown(&self, how: Shutdown) -> io::Result<()> {
@@ -467,11 +407,11 @@ impl Socket {
     }
 
     pub fn set_nodelay(&self, nodelay: bool) -> io::Result<()> {
-        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BYTE)
+        net::setsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY, nodelay as c::BOOL)
     }
 
     pub fn nodelay(&self) -> io::Result<bool> {
-        let raw: c::BYTE = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
+        let raw: c::BOOL = net::getsockopt(self, c::IPPROTO_TCP, c::TCP_NODELAY)?;
         Ok(raw != 0)
     }
 

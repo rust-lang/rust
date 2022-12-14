@@ -31,6 +31,7 @@ declare_clippy_lint! {
     ///     Baz
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub EXHAUSTIVE_ENUMS,
     restriction,
     "detects exported enums that have not been marked #[non_exhaustive]"
@@ -60,6 +61,7 @@ declare_clippy_lint! {
     ///     baz: String,
     /// }
     /// ```
+    #[clippy::version = "1.51.0"]
     pub EXHAUSTIVE_STRUCTS,
     restriction,
     "detects exported structs that have not been marked #[non_exhaustive]"
@@ -71,12 +73,15 @@ impl LateLintPass<'_> for ExhaustiveItems {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &Item<'_>) {
         if_chain! {
             if let ItemKind::Enum(..) | ItemKind::Struct(..) = item.kind;
-            if cx.access_levels.is_exported(item.def_id);
+            if cx.effective_visibilities.is_exported(item.owner_id.def_id);
             let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|a| a.has_name(sym::non_exhaustive));
             then {
                 let (lint, msg) = if let ItemKind::Struct(ref v, ..) = item.kind {
-                    if v.fields().iter().any(|f| !f.vis.node.is_pub()) {
+                    if v.fields().iter().any(|f| {
+                        let def_id = cx.tcx.hir().local_def_id(f.hir_id);
+                        !cx.tcx.visibility(def_id).is_public()
+                    }) {
                         // skip structs with private fields
                         return;
                     }
@@ -92,7 +97,7 @@ impl LateLintPass<'_> for ExhaustiveItems {
                     item.span,
                     msg,
                     |diag| {
-                        let sugg = format!("#[non_exhaustive]\n{}", indent);
+                        let sugg = format!("#[non_exhaustive]\n{indent}");
                         diag.span_suggestion(suggestion_span,
                                              "try adding #[non_exhaustive]",
                                              sugg,

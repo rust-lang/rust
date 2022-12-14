@@ -88,7 +88,7 @@ where
         classify_ret(cx, &mut fn_abi.ret, vfp);
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

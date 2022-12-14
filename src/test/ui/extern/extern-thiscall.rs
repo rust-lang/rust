@@ -1,5 +1,5 @@
 // run-pass
-// only-i686
+// only-x86
 
 #![feature(abi_thiscall)]
 

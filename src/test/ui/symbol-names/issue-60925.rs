@@ -1,7 +1,7 @@
 // build-fail
 // revisions: legacy v0
-//[legacy]compile-flags: -Z symbol-mangling-version=legacy
-    //[v0]compile-flags: -Z symbol-mangling-version=v0
+//[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
+    //[v0]compile-flags: -C symbol-mangling-version=v0
 
 #![feature(rustc_attrs)]
 
@@ -22,8 +22,8 @@ mod foo {
         //[legacy]~^ ERROR symbol-name(_ZN11issue_609253foo37Foo$LT$issue_60925..llv$u6d$..Foo$GT$3foo
         //[legacy]~| ERROR demangling(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo
         //[legacy]~| ERROR demangling-alt(issue_60925::foo::Foo<issue_60925::llvm::Foo>::foo)
-         //[v0]~^^^^ ERROR symbol-name(_RNvMNtCs8dUWfuENynB_11issue_609253fooINtB2_3FooNtNtB4_4llvm3FooE3foo)
-            //[v0]~| ERROR demangling(<issue_60925[5fcbb46c6fac4139]::foo::Foo<issue_60925[5fcbb46c6fac4139]::llvm::Foo>>::foo)
+         //[v0]~^^^^ ERROR symbol-name
+            //[v0]~| ERROR demangling
             //[v0]~| ERROR demangling-alt(<issue_60925::foo::Foo<issue_60925::llvm::Foo>>::foo)
         pub(crate) fn foo() {
             for _ in 0..0 {

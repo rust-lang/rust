@@ -2,6 +2,7 @@
 
 pub mod internal {
     // @has 'raw_ident_eliminate_r_hashtag/internal/struct.mod.html'
+    #[allow(non_camel_case_types)]
     pub struct r#mod;
 
     /// See [name], [other name]

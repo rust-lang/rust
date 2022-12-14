@@ -10,7 +10,7 @@ LL |         Empty1() => ()
   ::: $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
-   | --------------------- similarly named tuple struct `XEmpty6` defined here
+   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
 help: use struct pattern syntax instead
    |
@@ -33,7 +33,7 @@ LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
 LL | pub struct XEmpty2;
 LL | pub struct XEmpty6();
-   | --------------------- similarly named tuple struct `XEmpty6` defined here
+   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
 help: use struct pattern syntax instead
    |
@@ -56,7 +56,7 @@ LL |         Empty1(..) => ()
   ::: $DIR/auxiliary/empty-struct.rs:3:1
    |
 LL | pub struct XEmpty6();
-   | --------------------- similarly named tuple struct `XEmpty6` defined here
+   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
 help: use struct pattern syntax instead
    |
@@ -79,7 +79,7 @@ LL | pub struct XEmpty1 {}
    | ------------------ `XEmpty1` defined here
 LL | pub struct XEmpty2;
 LL | pub struct XEmpty6();
-   | --------------------- similarly named tuple struct `XEmpty6` defined here
+   | ------------------ similarly named tuple struct `XEmpty6` defined here
    |
 help: use struct pattern syntax instead
    |

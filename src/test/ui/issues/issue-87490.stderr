@@ -1,0 +1,14 @@
+error[E0308]: mismatched types
+  --> $DIR/issue-87490.rs:9:5
+   |
+LL | fn follow(_: &str) -> <&str as StreamOnce>::Position {
+   |                       ------------------------------ expected `usize` because of return type
+LL |     String::new
+   |     ^^^^^^^^^^^ expected `usize`, found fn item
+   |
+   = note: expected type `usize`
+           found fn item `fn() -> String {String::new}`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

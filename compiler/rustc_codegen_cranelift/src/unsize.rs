@@ -25,10 +25,16 @@ pub(crate) fn unsized_info<'tcx>(
             .bcx
             .ins()
             .iconst(fx.pointer_type, len.eval_usize(fx.tcx, ParamEnv::reveal_all()) as i64),
-        (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+        (
+            &ty::Dynamic(ref data_a, _, src_dyn_kind),
+            &ty::Dynamic(ref data_b, _, target_dyn_kind),
+        ) => {
+            assert_eq!(src_dyn_kind, target_dyn_kind);
+
             let old_info =
                 old_info.expect("unsized_info: missing old info for trait upcasting coercion");
             if data_a.principal_def_id() == data_b.principal_def_id() {
+                // A NOP cast that doesn't actually change anything, should be allowed even with invalid vtables.
                 return old_info;
             }
 
@@ -66,7 +72,7 @@ fn unsize_ptr<'tcx>(
         (&ty::Ref(_, a, _), &ty::Ref(_, b, _))
         | (&ty::Ref(_, a, _), &ty::RawPtr(ty::TypeAndMut { ty: b, .. }))
         | (&ty::RawPtr(ty::TypeAndMut { ty: a, .. }), &ty::RawPtr(ty::TypeAndMut { ty: b, .. })) => {
-            (src, unsized_info(fx, a, b, old_info))
+            (src, unsized_info(fx, *a, *b, old_info))
         }
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) if def_a.is_box() && def_b.is_box() => {
             let (a, b) = (src_layout.ty.boxed_ty(), dst_layout.ty.boxed_ty());
@@ -100,6 +106,21 @@ fn unsize_ptr<'tcx>(
     }
 }
 
+/// Coerces `src` to `dst_ty` which is guaranteed to be a `dyn*` type.
+pub(crate) fn cast_to_dyn_star<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    src: Value,
+    src_ty_and_layout: TyAndLayout<'tcx>,
+    dst_ty: Ty<'tcx>,
+    old_info: Option<Value>,
+) -> (Value, Value) {
+    assert!(
+        matches!(dst_ty.kind(), ty::Dynamic(_, _, ty::DynStar)),
+        "destination type must be a dyn*"
+    );
+    (src, unsized_info(fx, src_ty_and_layout.ty, dst_ty, old_info))
+}
+
 /// Coerce `src`, which is a reference to a value of type `src_ty`,
 /// to a value of type `dst_ty` and store the result in `dst`
 pub(crate) fn coerce_unsized_into<'tcx>(
@@ -127,7 +148,7 @@ pub(crate) fn coerce_unsized_into<'tcx>(
         (&ty::Adt(def_a, _), &ty::Adt(def_b, _)) => {
             assert_eq!(def_a, def_b);
 
-            for i in 0..def_a.variants[VariantIdx::new(0)].fields.len() {
+            for i in 0..def_a.variant(VariantIdx::new(0)).fields.len() {
                 let src_f = src.value_field(fx, mir::Field::new(i));
                 let dst_f = dst.place_field(fx, mir::Field::new(i));
 
@@ -146,6 +167,24 @@ pub(crate) fn coerce_unsized_into<'tcx>(
     }
 }
 
+pub(crate) fn coerce_dyn_star<'tcx>(
+    fx: &mut FunctionCx<'_, '_, 'tcx>,
+    src: CValue<'tcx>,
+    dst: CPlace<'tcx>,
+) {
+    let (data, extra) = if let ty::Dynamic(_, _, ty::DynStar) = src.layout().ty.kind() {
+        let (data, vtable) = src.load_scalar_pair(fx);
+        (data, Some(vtable))
+    } else {
+        let data = src.load_scalar(fx);
+        (data, None)
+    };
+
+    let (data, vtable) = cast_to_dyn_star(fx, data, src.layout(), dst.layout().ty, extra);
+
+    dst.write_cvalue(fx, CValue::by_val_pair(data, vtable, dst.layout()));
+}
+
 // Adapted from https://github.com/rust-lang/rust/blob/2a663555ddf36f6b041445894a8c175cd1bc718c/src/librustc_codegen_ssa/glue.rs
 
 pub(crate) fn size_and_align_of_dst<'tcx>(
@@ -153,11 +192,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
     layout: TyAndLayout<'tcx>,
     info: Value,
 ) -> (Value, Value) {
-    if !layout.is_unsized() {
-        let size = fx.bcx.ins().iconst(fx.pointer_type, layout.size.bytes() as i64);
-        let align = fx.bcx.ins().iconst(fx.pointer_type, layout.align.abi.bytes() as i64);
-        return (size, align);
-    }
+    assert!(layout.is_unsized() || layout.abi == Abi::Uninhabited);
     match layout.ty.kind() {
         ty::Dynamic(..) => {
             // load size/align from vtable
@@ -200,7 +235,7 @@ pub(crate) fn size_and_align_of_dst<'tcx>(
 
             // Packed types ignore the alignment of their fields.
             if let ty::Adt(def, _) = layout.ty.kind() {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     unsized_align = sized_align;
                 }
             }

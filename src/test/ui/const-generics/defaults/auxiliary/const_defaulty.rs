@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 pub struct Defaulted<const N: usize=3>;
 impl Defaulted {
     pub fn new() -> Self {

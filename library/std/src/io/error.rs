@@ -1,6 +1,16 @@
 #[cfg(test)]
 mod tests;
 
+#[cfg(target_pointer_width = "64")]
+mod repr_bitpacked;
+#[cfg(target_pointer_width = "64")]
+use repr_bitpacked::Repr;
+
+#[cfg(not(target_pointer_width = "64"))]
+mod repr_unpacked;
+#[cfg(not(target_pointer_width = "64"))]
+use repr_unpacked::Repr;
+
 use crate::convert::From;
 use crate::error;
 use crate::fmt;
@@ -66,15 +76,66 @@ impl fmt::Debug for Error {
     }
 }
 
-enum Repr {
-    Os(i32),
-    Simple(ErrorKind),
-    // &str is a fat pointer, but &&str is a thin pointer.
-    SimpleMessage(ErrorKind, &'static &'static str),
-    Custom(Box<Custom>),
+#[stable(feature = "rust1", since = "1.0.0")]
+impl From<alloc::ffi::NulError> for Error {
+    /// Converts a [`alloc::ffi::NulError`] into a [`Error`].
+    fn from(_: alloc::ffi::NulError) -> Error {
+        const_io_error!(ErrorKind::InvalidInput, "data provided contains a nul byte")
+    }
 }
 
+// Only derive debug in tests, to make sure it
+// doesn't accidentally get printed.
+#[cfg_attr(test, derive(Debug))]
+enum ErrorData<C> {
+    Os(i32),
+    Simple(ErrorKind),
+    SimpleMessage(&'static SimpleMessage),
+    Custom(C),
+}
+
+// `#[repr(align(4))]` is probably redundant, it should have that value or
+// higher already. We include it just because repr_bitpacked.rs's encoding
+// requires an alignment >= 4 (note that `#[repr(align)]` will not reduce the
+// alignment required by the struct, only increase it).
+//
+// If we add more variants to ErrorData, this can be increased to 8, but it
+// should probably be behind `#[cfg_attr(target_pointer_width = "64", ...)]` or
+// whatever cfg we're using to enable the `repr_bitpacked` code, since only the
+// that version needs the alignment, and 8 is higher than the alignment we'll
+// have on 32 bit platforms.
+//
+// (For the sake of being explicit: the alignment requirement here only matters
+// if `error/repr_bitpacked.rs` is in use — for the unpacked repr it doesn't
+// matter at all)
+#[repr(align(4))]
 #[derive(Debug)]
+pub(crate) struct SimpleMessage {
+    kind: ErrorKind,
+    message: &'static str,
+}
+
+impl SimpleMessage {
+    pub(crate) const fn new(kind: ErrorKind, message: &'static str) -> Self {
+        Self { kind, message }
+    }
+}
+
+/// Create and return an `io::Error` for a given `ErrorKind` and constant
+/// message. This doesn't allocate.
+pub(crate) macro const_io_error($kind:expr, $message:expr $(,)?) {
+    $crate::io::error::Error::from_static_message({
+        const MESSAGE_DATA: $crate::io::error::SimpleMessage =
+            $crate::io::error::SimpleMessage::new($kind, $message);
+        &MESSAGE_DATA
+    })
+}
+
+// As with `SimpleMessage`: `#[repr(align(4))]` here is just because
+// repr_bitpacked's encoding requires it. In practice it almost certainly be
+// already be this high or higher.
+#[derive(Debug)]
+#[repr(align(4))]
 struct Custom {
     kind: ErrorKind,
     error: Box<dyn error::Error + Send + Sync>,
@@ -88,6 +149,19 @@ struct Custom {
 /// It is used with the [`io::Error`] type.
 ///
 /// [`io::Error`]: Error
+///
+/// # Handling errors and matching on `ErrorKind`
+///
+/// In application code, use `match` for the `ErrorKind` values you are
+/// expecting; use `_` to match "all other errors".
+///
+/// In comprehensive and thorough tests that want to verify that a test doesn't
+/// return any known incorrect error kind, you may want to cut-and-paste the
+/// current full list of errors from here into your test code, and then match
+/// `_` as the correct case. This seems counterintuitive, but it will make your
+/// tests more robust. In particular, if you want to verify that your code does
+/// produce an unrecognized error kind, the robust solution is to check for all
+/// the recognized error kinds and fail in those cases.
 #[derive(Clone, Copy, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated)]
@@ -243,12 +317,11 @@ pub enum ErrorKind {
     /// The filesystem does not support making so many hardlinks to the same file.
     #[unstable(feature = "io_error_more", issue = "86442")]
     TooManyLinks,
-    /// Filename too long.
+    /// A filename was invalid.
     ///
-    /// The limit might be from the underlying filesystem or API, or an administratively imposed
-    /// resource limit.
+    /// This error can also cause if it exceeded the filename length limit.
     #[unstable(feature = "io_error_more", issue = "86442")]
-    FilenameTooLong,
+    InvalidFilename,
     /// Program argument list too long.
     ///
     /// When trying to run an external program, a system or process limit on the size of the
@@ -314,7 +387,7 @@ pub enum ErrorKind {
 impl ErrorKind {
     pub(crate) fn as_str(&self) -> &'static str {
         use ErrorKind::*;
-        // Strictly alphabetical, please.  (Sadly rustfmt cannot do this yet.)
+        // tidy-alphabetical-start
         match *self {
             AddrInUse => "address in use",
             AddrNotAvailable => "address not available",
@@ -329,12 +402,12 @@ impl ErrorKind {
             DirectoryNotEmpty => "directory not empty",
             ExecutableFileBusy => "executable file busy",
             FileTooLarge => "file too large",
-            FilenameTooLong => "filename too long",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
             FilesystemQuotaExceeded => "filesystem quota exceeded",
             HostUnreachable => "host unreachable",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
+            InvalidFilename => "invalid filename",
             InvalidInput => "invalid input parameter",
             IsADirectory => "is a directory",
             NetworkDown => "network down",
@@ -358,6 +431,23 @@ impl ErrorKind {
             WouldBlock => "operation would block",
             WriteZero => "write zero",
         }
+        // tidy-alphabetical-end
+    }
+}
+
+#[stable(feature = "io_errorkind_display", since = "1.60.0")]
+impl fmt::Display for ErrorKind {
+    /// Shows a human-readable description of the `ErrorKind`.
+    ///
+    /// This is similar to `impl Display for Error`, but doesn't require first converting to Error.
+    ///
+    /// # Examples
+    /// ```
+    /// use std::io::ErrorKind;
+    /// assert_eq!("entity not found", ErrorKind::NotFound.to_string());
+    /// ```
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt.write_str(self.as_str())
     }
 }
 
@@ -367,7 +457,7 @@ impl ErrorKind {
 impl From<ErrorKind> for Error {
     /// Converts an [`ErrorKind`] into an [`Error`].
     ///
-    /// This conversion allocates a new error with a simple representation of error kind.
+    /// This conversion creates a new error with a simple representation of error kind.
     ///
     /// # Examples
     ///
@@ -376,11 +466,11 @@ impl From<ErrorKind> for Error {
     ///
     /// let not_found = ErrorKind::NotFound;
     /// let error = Error::from(not_found);
-    /// assert_eq!("entity not found", format!("{}", error));
+    /// assert_eq!("entity not found", format!("{error}"));
     /// ```
     #[inline]
     fn from(kind: ErrorKind) -> Error {
-        Error { repr: Repr::Simple(kind) }
+        Error { repr: Repr::new_simple(kind) }
     }
 }
 
@@ -392,6 +482,10 @@ impl Error {
     /// originate from the OS itself. The `error` argument is an arbitrary
     /// payload which will be contained in this [`Error`].
     ///
+    /// Note that this function allocates memory on the heap.
+    /// If no extra payload is required, use the `From` conversion from
+    /// `ErrorKind`.
+    ///
     /// # Examples
     ///
     /// ```
@@ -402,6 +496,9 @@ impl Error {
     ///
     /// // errors can also be created from other errors
     /// let custom_error2 = Error::new(ErrorKind::Interrupted, custom_error);
+    ///
+    /// // creating an error without payload (and without memory allocation)
+    /// let eof_error = Error::from(ErrorKind::UnexpectedEof);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<E>(kind: ErrorKind, error: E) -> Error
@@ -411,21 +508,50 @@ impl Error {
         Self::_new(kind, error.into())
     }
 
-    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
-        Error { repr: Repr::Custom(Box::new(Custom { kind, error })) }
+    /// Creates a new I/O error from an arbitrary error payload.
+    ///
+    /// This function is used to generically create I/O errors which do not
+    /// originate from the OS itself. It is a shortcut for [`Error::new`]
+    /// with [`ErrorKind::Other`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_error_other)]
+    ///
+    /// use std::io::Error;
+    ///
+    /// // errors can be created from strings
+    /// let custom_error = Error::other("oh no!");
+    ///
+    /// // errors can also be created from other errors
+    /// let custom_error2 = Error::other(custom_error);
+    /// ```
+    #[unstable(feature = "io_error_other", issue = "91946")]
+    pub fn other<E>(error: E) -> Error
+    where
+        E: Into<Box<dyn error::Error + Send + Sync>>,
+    {
+        Self::_new(ErrorKind::Other, error.into())
     }
 
-    /// Creates a new I/O error from a known kind of error as well as a
-    /// constant message.
+    fn _new(kind: ErrorKind, error: Box<dyn error::Error + Send + Sync>) -> Error {
+        Error { repr: Repr::new_custom(Box::new(Custom { kind, error })) }
+    }
+
+    /// Creates a new I/O error from a known kind of error as well as a constant
+    /// message.
     ///
     /// This function does not allocate.
     ///
-    /// This function should maybe change to
-    /// `new_const<const MSG: &'static str>(kind: ErrorKind)`
-    /// in the future, when const generics allow that.
+    /// You should not use this directly, and instead use the `const_io_error!`
+    /// macro: `io::const_io_error!(ErrorKind::Something, "some_message")`.
+    ///
+    /// This function should maybe change to `from_static_message<const MSG: &'static
+    /// str>(kind: ErrorKind)` in the future, when const generics allow that.
     #[inline]
-    pub(crate) const fn new_const(kind: ErrorKind, message: &'static &'static str) -> Error {
-        Self { repr: Repr::SimpleMessage(kind, message) }
+    pub(crate) const fn from_static_message(msg: &'static SimpleMessage) -> Error {
+        Self { repr: Repr::new_simple_message(msg) }
     }
 
     /// Returns an error representing the last OS error which occurred.
@@ -434,14 +560,22 @@ impl Error {
     /// `GetLastError` on Windows) and will return a corresponding instance of
     /// [`Error`] for the error code.
     ///
+    /// This should be called immediately after a call to a platform function,
+    /// otherwise the state of the error value is indeterminate. In particular,
+    /// other standard library functions may call platform functions that may
+    /// (or may not) reset the error value even if they succeed.
+    ///
     /// # Examples
     ///
     /// ```
     /// use std::io::Error;
     ///
-    /// println!("last OS error: {:?}", Error::last_os_error());
+    /// let os_error = Error::last_os_error();
+    /// println!("last OS error: {os_error:?}");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[doc(alias = "GetLastError")]
+    #[doc(alias = "errno")]
     #[must_use]
     #[inline]
     pub fn last_os_error() -> Error {
@@ -477,7 +611,7 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn from_raw_os_error(code: i32) -> Error {
-        Error { repr: Repr::Os(code) }
+        Error { repr: Repr::new_os(code) }
     }
 
     /// Returns the OS error that this error represents (if any).
@@ -496,7 +630,7 @@ impl Error {
     ///
     /// fn print_os_error(err: &Error) {
     ///     if let Some(raw_os_err) = err.raw_os_error() {
-    ///         println!("raw OS error: {:?}", raw_os_err);
+    ///         println!("raw OS error: {raw_os_err:?}");
     ///     } else {
     ///         println!("Not an OS error");
     ///     }
@@ -513,11 +647,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn raw_os_error(&self) -> Option<i32> {
-        match self.repr {
-            Repr::Os(i) => Some(i),
-            Repr::Custom(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
+        match self.repr.data() {
+            ErrorData::Os(i) => Some(i),
+            ErrorData::Custom(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
         }
     }
 
@@ -535,7 +669,7 @@ impl Error {
     ///
     /// fn print_error(err: &Error) {
     ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {:?}", inner_err);
+    ///         println!("Inner error: {inner_err:?}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -552,11 +686,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn get_ref(&self) -> Option<&(dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => Some(&*c.error),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(&*c.error),
         }
     }
 
@@ -609,7 +743,7 @@ impl Error {
     ///
     /// fn print_error(err: &Error) {
     ///     if let Some(inner_err) = err.get_ref() {
-    ///         println!("Inner error: {}", inner_err);
+    ///         println!("Inner error: {inner_err}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -626,11 +760,11 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn get_mut(&mut self) -> Option<&mut (dyn error::Error + Send + Sync + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref mut c) => Some(&mut *c.error),
+        match self.repr.data_mut() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(&mut *c.error),
         }
     }
 
@@ -648,7 +782,7 @@ impl Error {
     ///
     /// fn print_error(err: Error) {
     ///     if let Some(inner_err) = err.into_inner() {
-    ///         println!("Inner error: {}", inner_err);
+    ///         println!("Inner error: {inner_err}");
     ///     } else {
     ///         println!("No inner error");
     ///     }
@@ -665,11 +799,73 @@ impl Error {
     #[must_use = "`self` will be dropped if the result is not used"]
     #[inline]
     pub fn into_inner(self) -> Option<Box<dyn error::Error + Send + Sync>> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(c) => Some(c.error),
+        match self.repr.into_data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => Some(c.error),
+        }
+    }
+
+    /// Attempt to downgrade the inner error to `E` if any.
+    ///
+    /// If this [`Error`] was constructed via [`new`] then this function will
+    /// attempt to perform downgrade on it, otherwise it will return [`Err`].
+    ///
+    /// If downgrade succeeds, it will return [`Ok`], otherwise it will also
+    /// return [`Err`].
+    ///
+    /// [`new`]: Error::new
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(io_error_downcast)]
+    ///
+    /// use std::fmt;
+    /// use std::io;
+    /// use std::error::Error;
+    ///
+    /// #[derive(Debug)]
+    /// enum E {
+    ///     Io(io::Error),
+    ///     SomeOtherVariant,
+    /// }
+    ///
+    /// impl fmt::Display for E {
+    ///    // ...
+    /// #    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    /// #        todo!()
+    /// #    }
+    /// }
+    /// impl Error for E {}
+    ///
+    /// impl From<io::Error> for E {
+    ///     fn from(err: io::Error) -> E {
+    ///         err.downcast::<E>()
+    ///             .map(|b| *b)
+    ///             .unwrap_or_else(E::Io)
+    ///     }
+    /// }
+    /// ```
+    #[unstable(feature = "io_error_downcast", issue = "99262")]
+    pub fn downcast<E>(self) -> result::Result<Box<E>, Self>
+    where
+        E: error::Error + Send + Sync + 'static,
+    {
+        match self.repr.into_data() {
+            ErrorData::Custom(b) if b.error.is::<E>() => {
+                let res = (*b).error.downcast::<E>();
+
+                // downcast is a really trivial and is marked as inline, so
+                // it's likely be inlined here.
+                //
+                // And the compiler should be able to eliminate the branch
+                // that produces `Err` here since b.error.is::<E>()
+                // returns true.
+                Ok(res.unwrap())
+            }
+            repr_data => Err(Self { repr: Repr::new(repr_data) }),
         }
     }
 
@@ -695,29 +891,31 @@ impl Error {
     #[must_use]
     #[inline]
     pub fn kind(&self) -> ErrorKind {
-        match self.repr {
-            Repr::Os(code) => sys::decode_error_kind(code),
-            Repr::Custom(ref c) => c.kind,
-            Repr::Simple(kind) => kind,
-            Repr::SimpleMessage(kind, _) => kind,
+        match self.repr.data() {
+            ErrorData::Os(code) => sys::decode_error_kind(code),
+            ErrorData::Custom(c) => c.kind,
+            ErrorData::Simple(kind) => kind,
+            ErrorData::SimpleMessage(m) => m.kind,
         }
     }
 }
 
 impl fmt::Debug for Repr {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            Repr::Os(code) => fmt
+        match self.data() {
+            ErrorData::Os(code) => fmt
                 .debug_struct("Os")
                 .field("code", &code)
                 .field("kind", &sys::decode_error_kind(code))
                 .field("message", &sys::os::error_string(code))
                 .finish(),
-            Repr::Custom(ref c) => fmt::Debug::fmt(&c, fmt),
-            Repr::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
-            Repr::SimpleMessage(kind, &message) => {
-                fmt.debug_struct("Error").field("kind", &kind).field("message", &message).finish()
-            }
+            ErrorData::Custom(c) => fmt::Debug::fmt(&c, fmt),
+            ErrorData::Simple(kind) => fmt.debug_tuple("Kind").field(&kind).finish(),
+            ErrorData::SimpleMessage(msg) => fmt
+                .debug_struct("Error")
+                .field("kind", &msg.kind)
+                .field("message", &msg.message)
+                .finish(),
         }
     }
 }
@@ -725,14 +923,14 @@ impl fmt::Debug for Repr {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.repr {
-            Repr::Os(code) => {
+        match self.repr.data() {
+            ErrorData::Os(code) => {
                 let detail = sys::os::error_string(code);
-                write!(fmt, "{} (os error {})", detail, code)
+                write!(fmt, "{detail} (os error {code})")
             }
-            Repr::Custom(ref c) => c.error.fmt(fmt),
-            Repr::Simple(kind) => write!(fmt, "{}", kind.as_str()),
-            Repr::SimpleMessage(_, &msg) => msg.fmt(fmt),
+            ErrorData::Custom(ref c) => c.error.fmt(fmt),
+            ErrorData::Simple(kind) => write!(fmt, "{}", kind.as_str()),
+            ErrorData::SimpleMessage(msg) => msg.message.fmt(fmt),
         }
     }
 }
@@ -741,29 +939,29 @@ impl fmt::Display for Error {
 impl error::Error for Error {
     #[allow(deprecated, deprecated_in_future)]
     fn description(&self) -> &str {
-        match self.repr {
-            Repr::Os(..) | Repr::Simple(..) => self.kind().as_str(),
-            Repr::SimpleMessage(_, &msg) => msg,
-            Repr::Custom(ref c) => c.error.description(),
+        match self.repr.data() {
+            ErrorData::Os(..) | ErrorData::Simple(..) => self.kind().as_str(),
+            ErrorData::SimpleMessage(msg) => msg.message,
+            ErrorData::Custom(c) => c.error.description(),
         }
     }
 
     #[allow(deprecated)]
     fn cause(&self) -> Option<&dyn error::Error> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.cause(),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => c.error.cause(),
         }
     }
 
     fn source(&self) -> Option<&(dyn error::Error + 'static)> {
-        match self.repr {
-            Repr::Os(..) => None,
-            Repr::Simple(..) => None,
-            Repr::SimpleMessage(..) => None,
-            Repr::Custom(ref c) => c.error.source(),
+        match self.repr.data() {
+            ErrorData::Os(..) => None,
+            ErrorData::Simple(..) => None,
+            ErrorData::SimpleMessage(..) => None,
+            ErrorData::Custom(c) => c.error.source(),
         }
     }
 }

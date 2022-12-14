@@ -40,22 +40,29 @@ impl<A: Iterator, B: Iterator> Zip<A, B> {
 /// # Examples
 ///
 /// ```
-/// #![feature(iter_zip)]
 /// use std::iter::zip;
 ///
 /// let xs = [1, 2, 3];
 /// let ys = [4, 5, 6];
-/// for (x, y) in zip(&xs, &ys) {
-///     println!("x:{}, y:{}", x, y);
-/// }
+///
+/// let mut iter = zip(xs, ys);
+///
+/// assert_eq!(iter.next().unwrap(), (1, 4));
+/// assert_eq!(iter.next().unwrap(), (2, 5));
+/// assert_eq!(iter.next().unwrap(), (3, 6));
+/// assert!(iter.next().is_none());
 ///
 /// // Nested zips are also possible:
 /// let zs = [7, 8, 9];
-/// for ((x, y), z) in zip(zip(&xs, &ys), &zs) {
-///     println!("x:{}, y:{}, z:{}", x, y, z);
-/// }
+///
+/// let mut iter = zip(zip(xs, ys), zs);
+///
+/// assert_eq!(iter.next().unwrap(), ((1, 4), 7));
+/// assert_eq!(iter.next().unwrap(), ((2, 5), 8));
+/// assert_eq!(iter.next().unwrap(), ((3, 6), 9));
+/// assert!(iter.next().is_none());
 /// ```
-#[unstable(feature = "iter_zip", issue = "83574")]
+#[stable(feature = "iter_zip", since = "1.59.0")]
 pub fn zip<A, B>(a: A, b: B) -> Zip<A::IntoIter, B::IntoIter>
 where
     A: IntoIterator,
@@ -88,7 +95,6 @@ where
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -509,7 +515,7 @@ impl<A: Debug + TrustedRandomAccessNoCoerce, B: Debug + TrustedRandomAccessNoCoe
 /// * It must also be safe to drop `self` after calling `self.__iterator_get_unchecked(idx)`.
 /// * If `T` is a subtype of `Self`, then it must be safe to coerce `self` to `T`.
 //
-// FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SouceIter::as_inner`
+// FIXME: Clarify interaction with SourceIter/InPlaceIterable. Calling `SourceIter::as_inner`
 // after `__iterator_get_unchecked` is supposed to be allowed.
 #[doc(hidden)]
 #[unstable(feature = "trusted_random_access", issue = "none")]
@@ -547,6 +553,7 @@ pub unsafe trait TrustedRandomAccessNoCoerce: Sized {
 ///
 /// Same requirements calling `get_unchecked` directly.
 #[doc(hidden)]
+#[inline]
 pub(in crate::iter::adapters) unsafe fn try_get_unchecked<I>(it: &mut I, idx: usize) -> I::Item
 where
     I: Iterator,
@@ -569,6 +576,7 @@ unsafe impl<I: Iterator> SpecTrustedRandomAccess for I {
 }
 
 unsafe impl<I: Iterator + TrustedRandomAccessNoCoerce> SpecTrustedRandomAccess for I {
+    #[inline]
     unsafe fn try_get_unchecked(&mut self, index: usize) -> Self::Item {
         // SAFETY: the caller must uphold the contract for
         // `Iterator::__iterator_get_unchecked`.

@@ -12,8 +12,10 @@ FIRST_FIELD = "__1"
 def unwrap_unique_or_non_null(unique_or_nonnull):
     # BACKCOMPAT: rust 1.32
     # https://github.com/rust-lang/rust/commit/7a0911528058e87d22ea305695f4047572c5e067
+    # BACKCOMPAT: rust 1.60
+    # https://github.com/rust-lang/rust/commit/2a91eeac1a2d27dd3de1bf55515d765da20fd86f
     ptr = unique_or_nonnull["pointer"]
-    return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ZERO_FIELD]
+    return ptr if ptr.type.code == gdb.TYPE_CODE_PTR else ptr[ptr.type.fields()[0]]
 
 
 class EnumProvider:
@@ -142,20 +144,16 @@ class StdVecDequeProvider:
     def __init__(self, valobj):
         self.valobj = valobj
         self.head = int(valobj["head"])
-        self.tail = int(valobj["tail"])
+        self.size = int(valobj["len"])
         self.cap = int(valobj["buf"]["cap"])
         self.data_ptr = unwrap_unique_or_non_null(valobj["buf"]["ptr"])
-        if self.head >= self.tail:
-            self.size = self.head - self.tail
-        else:
-            self.size = self.cap + self.head - self.tail
 
     def to_string(self):
         return "VecDeque(size={})".format(self.size)
 
     def children(self):
         return _enumerate_array_elements(
-            (self.data_ptr + ((self.tail + index) % self.cap)) for index in xrange(self.size)
+            (self.data_ptr + ((self.head + index) % self.cap)) for index in xrange(self.size)
         )
 
     @staticmethod
@@ -227,6 +225,17 @@ class StdRefCellProvider:
     def children(self):
         yield "value", self.value
         yield "borrow", self.borrow
+
+
+class StdNonZeroNumberProvider:
+    def __init__(self, valobj):
+        fields = valobj.type.fields()
+        assert len(fields) == 1
+        field = list(fields)[0]
+        self.value = str(valobj[field.name])
+
+    def to_string(self):
+        return self.value
 
 
 # Yields children (in a provider's sense of the word) for a BTreeMap.

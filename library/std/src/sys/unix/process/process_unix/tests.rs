@@ -14,8 +14,8 @@ fn exitstatus_display_tests() {
 
     let t = |v, s| assert_eq!(s, format!("{}", <ExitStatus as ExitStatusExt>::from_raw(v)));
 
-    t(0x0000f, "signal: 15");
-    t(0x0008b, "signal: 11 (core dumped)");
+    t(0x0000f, "signal: 15 (SIGTERM)");
+    t(0x0008b, "signal: 11 (SIGSEGV) (core dumped)");
     t(0x00000, "exit status: 0");
     t(0x0ff00, "exit status: 255");
 
@@ -24,7 +24,7 @@ fn exitstatus_display_tests() {
     // The purpose of this test is to test our string formatting, not our understanding of the wait
     // status magic numbers.  So restrict these to Linux.
     if cfg!(target_os = "linux") {
-        t(0x0137f, "stopped (not terminated) by signal: 19");
+        t(0x0137f, "stopped (not terminated) by signal: 19 (SIGSTOP)");
         t(0x0ffff, "continued (WIFCONTINUED)");
     }
 
@@ -53,5 +53,10 @@ fn test_command_fork_no_unwind() {
     let status = got.expect("panic unexpectedly propagated");
     dbg!(status);
     let signal = status.signal().expect("expected child process to die of signal");
-    assert!(signal == libc::SIGABRT || signal == libc::SIGILL || signal == libc::SIGTRAP);
+    assert!(
+        signal == libc::SIGABRT
+            || signal == libc::SIGILL
+            || signal == libc::SIGTRAP
+            || signal == libc::SIGSEGV
+    );
 }

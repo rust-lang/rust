@@ -106,9 +106,6 @@ pub trait DoubleEndedIterator: Iterator {
     /// Calling `advance_back_by(0)` can do meaningful work, for example [`Flatten`] can advance its
     /// outer iterator until it finds an inner iterator that is not empty, which then often
     /// allows it to return a more accurate `size_hint()` than in its initial state.
-    /// `advance_back_by(0)` may either return `Ok()` or `Err(0)`. The former conveys no information
-    /// whether the iterator is or is not exhausted, the latter can be treated as if [`next_back`]
-    /// had returned `None`. Replacing a `Err(0)` with `Ok` is only correct for `n = 0`.
     ///
     /// [`advance_by`]: Iterator::advance_by
     /// [`Flatten`]: crate::iter::Flatten
@@ -284,7 +281,7 @@ pub trait DoubleEndedIterator: Iterator {
     /// let zero = "0".to_string();
     ///
     /// let result = numbers.iter().rfold(zero, |acc, &x| {
-    ///     format!("({} + {})", x, acc)
+    ///     format!("({x} + {acc})")
     /// });
     ///
     /// assert_eq!(result, "(1 + (2 + (3 + (4 + (5 + 0)))))");

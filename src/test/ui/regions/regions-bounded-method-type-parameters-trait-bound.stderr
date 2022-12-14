@@ -1,12 +1,18 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:7
+error: lifetime may not live long enough
+  --> $DIR/regions-bounded-method-type-parameters-trait-bound.rs:20:5
    |
 LL | fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
-   |                                -------     ------- these two types are declared with different lifetimes...
+   |            -- -- lifetime `'b` defined here
+   |            |
+   |            lifetime `'a` defined here
 LL |     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
 LL |     f.method(b);
-   |       ^^^^^^ ...but data from `b` flows into `a` here
+   |     ^^^^^^^^^^^ argument requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
+   = note: requirement occurs because of the type `Inv<'_>`, which makes the generic argument `'_` invariant
+   = note: the struct `Inv<'a>` is invariant over the parameter `'a`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

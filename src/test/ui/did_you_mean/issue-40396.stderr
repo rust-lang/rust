@@ -4,7 +4,7 @@ error: comparison operators cannot be chained
 LL |     (0..13).collect<Vec<i32>>();
    |                    ^   ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     (0..13).collect::<Vec<i32>>();
    |                    ++
@@ -15,7 +15,7 @@ error: comparison operators cannot be chained
 LL |     Vec<i32>::new();
    |        ^   ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     Vec::<i32>::new();
    |        ++
@@ -26,7 +26,7 @@ error: comparison operators cannot be chained
 LL |     (0..13).collect<Vec<i32>();
    |                    ^   ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     (0..13).collect::<Vec<i32>();
    |                    ++
@@ -37,7 +37,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `else`, `{`, or an operator, fo
 LL |     let x = std::collections::HashMap<i128, i128>::new();
    |                                           ^ expected one of 8 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     let x = std::collections::HashMap::<i128, i128>::new();
    |                                      ++
@@ -48,7 +48,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |         std::collections::HashMap<i128, i128>::new()
    |                                       ^ expected one of 8 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |         std::collections::HashMap::<i128, i128>::new()
    |                                  ++
@@ -59,7 +59,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |         std::collections::HashMap<i128, i128>::new();
    |                                       ^ expected one of 8 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |         std::collections::HashMap::<i128, i128>::new();
    |                                  ++
@@ -70,7 +70,7 @@ error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found
 LL |         std::collections::HashMap<i128, i128>::new(1, 2);
    |                                       ^ expected one of 8 possible tokens
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |         std::collections::HashMap::<i128, i128>::new(1, 2);
    |                                  ++

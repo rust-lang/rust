@@ -2,7 +2,7 @@
 // compile-flags: -Z query-dep-graph
 // aux-build:cached_hygiene.rs
 
-// This tests the folllowing scenario
+// This tests the following scenario
 // 1. A foreign crate is compiled with incremental compilation.
 //    This causes hygiene information to be saved to the incr cache.
 // 2. One function is the foreign crate is modified. This causes the

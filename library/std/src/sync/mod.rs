@@ -19,7 +19,7 @@
 //!         B = 4;
 //!         A = A + B;
 //!         C = B;
-//!         println!("{} {} {}", A, B, C);
+//!         println!("{A} {B} {C}");
 //!         C = A;
 //!     }
 //! }
@@ -155,6 +155,8 @@
 pub use alloc_crate::sync::{Arc, Weak};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use core::sync::atomic;
+#[unstable(feature = "exclusive_wrapper", issue = "98407")]
+pub use core::sync::Exclusive;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::barrier::{Barrier, BarrierWaitResult};
@@ -170,11 +172,19 @@ pub use self::poison::{LockResult, PoisonError, TryLockError, TryLockResult};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::rwlock::{RwLock, RwLockReadGuard, RwLockWriteGuard};
 
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use self::lazy_lock::LazyLock;
+#[unstable(feature = "once_cell", issue = "74465")]
+pub use self::once_lock::OnceLock;
+
 pub mod mpsc;
 
 mod barrier;
 mod condvar;
+mod lazy_lock;
+mod mpmc;
 mod mutex;
 mod once;
+mod once_lock;
 mod poison;
 mod rwlock;

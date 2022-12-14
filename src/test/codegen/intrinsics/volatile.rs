@@ -8,21 +8,21 @@ use std::intrinsics;
 // CHECK-LABEL: @volatile_copy_memory
 #[no_mangle]
 pub unsafe fn volatile_copy_memory(a: *mut u8, b: *const u8) {
-    // CHECK: llvm.memmove.p0i8.p0i8.{{\w*(.*true)}}
+    // CHECK: llvm.memmove.{{\w*(.*true)}}
     intrinsics::volatile_copy_memory(a, b, 1)
 }
 
 // CHECK-LABEL: @volatile_copy_nonoverlapping_memory
 #[no_mangle]
 pub unsafe fn volatile_copy_nonoverlapping_memory(a: *mut u8, b: *const u8) {
-    // CHECK: llvm.memcpy.p0i8.p0i8.{{\w*(.*true)}}
+    // CHECK: llvm.memcpy.{{\w*(.*true)}}
     intrinsics::volatile_copy_nonoverlapping_memory(a, b, 1)
 }
 
 // CHECK-LABEL: @volatile_set_memory
 #[no_mangle]
 pub unsafe fn volatile_set_memory(a: *mut u8, b: u8) {
-    // CHECK: llvm.memset.p0i8.{{\w*(.*true)}}
+    // CHECK: llvm.memset.{{\w*(.*true)}}
     intrinsics::volatile_set_memory(a, b, 1)
 }
 

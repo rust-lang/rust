@@ -3,6 +3,7 @@
 
 // revisions:rpass1 cfail2
 // compile-flags: -Z query-dep-graph
+// [cfail2] compile-flags: -Z query-dep-graph -Z assert-incr-state=loaded
 
 #![feature(rustc_attrs)]
 

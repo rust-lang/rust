@@ -33,7 +33,7 @@ pub struct DeleteNonCodegenStatements<'tcx> {
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         let mut delete = DeleteNonCodegenStatements { tcx };
-        delete.visit_body(body);
+        delete.visit_body_preserves_cfg(body);
         body.user_type_annotations.raw.clear();
 
         for decl in &mut body.local_decls {

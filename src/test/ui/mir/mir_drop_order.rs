@@ -1,5 +1,5 @@
 // run-pass
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 use std::cell::RefCell;
 use std::panic;

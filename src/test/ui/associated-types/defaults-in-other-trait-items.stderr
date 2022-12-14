@@ -5,13 +5,15 @@ LL |     type A = ();
    |     ------------ associated type defaults can't be assumed inside the trait defining them
 ...
 LL |         let () = p;
-   |             ^^ expected associated type, found `()`
+   |             ^^   - this expression has type `<Self as Tr>::A`
+   |             |
+   |             expected associated type, found `()`
    |
    = note: expected associated type `<Self as Tr>::A`
                     found unit type `()`
 
 error[E0308]: mismatched types
-  --> $DIR/defaults-in-other-trait-items.rs:35:25
+  --> $DIR/defaults-in-other-trait-items.rs:36:25
    |
 LL |     type Ty = u8;
    |     ------------- associated type defaults can't be assumed inside the trait defining them

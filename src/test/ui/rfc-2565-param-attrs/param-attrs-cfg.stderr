@@ -23,48 +23,6 @@ LL |     #[cfg_attr(nothing, cfg(nothing))] c: i32,
    |                                        ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `a`
-  --> $DIR/param-attrs-cfg.rs:107:27
-   |
-LL |         #[cfg(something)] a: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
-
-error: unused variable: `b`
-  --> $DIR/param-attrs-cfg.rs:113:27
-   |
-LL |         #[cfg(something)] b: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
-
-error: unused variable: `c`
-  --> $DIR/param-attrs-cfg.rs:115:44
-   |
-LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
-
-error: unused variable: `b`
-  --> $DIR/param-attrs-cfg.rs:67:27
-   |
-LL |         #[cfg(something)] b: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
-
-error: unused variable: `c`
-  --> $DIR/param-attrs-cfg.rs:69:44
-   |
-LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
-
-error: unused variable: `b`
-  --> $DIR/param-attrs-cfg.rs:75:27
-   |
-LL |         #[cfg(something)] b: i32,
-   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
-
-error: unused variable: `c`
-  --> $DIR/param-attrs-cfg.rs:77:44
-   |
-LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
-   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
-
-error: unused variable: `a`
   --> $DIR/param-attrs-cfg.rs:41:27
    |
 LL |         #[cfg(something)] a: i32,
@@ -95,6 +53,30 @@ LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
    |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
 
 error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:67:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:69:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:75:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:77:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
+
+error: unused variable: `b`
   --> $DIR/param-attrs-cfg.rs:86:27
    |
 LL |         #[cfg(something)] b: i32,
@@ -114,6 +96,24 @@ LL |         #[cfg(something)] b: i32,
 
 error: unused variable: `c`
   --> $DIR/param-attrs-cfg.rs:96:44
+   |
+LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
+   |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`
+
+error: unused variable: `a`
+  --> $DIR/param-attrs-cfg.rs:107:27
+   |
+LL |         #[cfg(something)] a: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_a`
+
+error: unused variable: `b`
+  --> $DIR/param-attrs-cfg.rs:113:27
+   |
+LL |         #[cfg(something)] b: i32,
+   |                           ^ help: if this is intentional, prefix it with an underscore: `_b`
+
+error: unused variable: `c`
+  --> $DIR/param-attrs-cfg.rs:115:44
    |
 LL |         #[cfg_attr(nothing, cfg(nothing))] c: i32,
    |                                            ^ help: if this is intentional, prefix it with an underscore: `_c`

@@ -12,7 +12,7 @@ use crate::slice::{self, Split as SliceSplit};
 use super::from_utf8_unchecked;
 use super::pattern::Pattern;
 use super::pattern::{DoubleEndedSearcher, ReverseSearcher, Searcher};
-use super::validations::{next_code_point, next_code_point_reverse, utf8_is_cont_byte};
+use super::validations::{next_code_point, next_code_point_reverse};
 use super::LinesAnyMap;
 use super::{BytesIsNotEmpty, UnsafeBytesToStr};
 use super::{CharEscapeDebugContinue, CharEscapeDefault, CharEscapeUnicode};
@@ -39,16 +39,14 @@ impl<'a> Iterator for Chars<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<char> {
-        next_code_point(&mut self.iter).map(|ch| {
-            // SAFETY: `str` invariant says `ch` is a valid Unicode Scalar Value.
-            unsafe { char::from_u32_unchecked(ch) }
-        })
+        // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
+        // the resulting `ch` is a valid Unicode Scalar Value.
+        unsafe { next_code_point(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
     }
 
     #[inline]
     fn count(self) -> usize {
-        // length in `char` is equal to the number of non-continuation bytes
-        self.iter.filter(|&&byte| !utf8_is_cont_byte(byte)).count()
+        super::count::count_chars(self.as_str())
     }
 
     #[inline]
@@ -81,10 +79,9 @@ impl fmt::Debug for Chars<'_> {
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
-        next_code_point_reverse(&mut self.iter).map(|ch| {
-            // SAFETY: `str` invariant says `ch` is a valid Unicode Scalar Value.
-            unsafe { char::from_u32_unchecked(ch) }
-        })
+        // SAFETY: `str` invariant says `self.iter` is a valid UTF-8 string and
+        // the resulting `ch` is a valid Unicode Scalar Value.
+        unsafe { next_code_point_reverse(&mut self.iter).map(|ch| char::from_u32_unchecked(ch)) }
     }
 }
 
@@ -301,7 +298,6 @@ impl Iterator for Bytes<'_> {
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> u8 {
         // SAFETY: the caller must uphold the safety contract
         // for `Iterator::__iterator_get_unchecked`.
@@ -750,7 +746,7 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> Split<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -771,7 +767,7 @@ impl<'a, P: Pattern<'a>> Split<'a, P> {
 }
 
 impl<'a, P: Pattern<'a>> RSplit<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -810,7 +806,7 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -831,7 +827,7 @@ impl<'a, P: Pattern<'a>> SplitTerminator<'a, P> {
 }
 
 impl<'a, P: Pattern<'a>> RSplitTerminator<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -933,7 +929,7 @@ generate_pattern_iterators! {
 }
 
 impl<'a, P: Pattern<'a>> SplitN<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -954,7 +950,7 @@ impl<'a, P: Pattern<'a>> SplitN<'a, P> {
 }
 
 impl<'a, P: Pattern<'a>> RSplitN<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -1132,7 +1128,7 @@ impl FusedIterator for Lines<'_> {}
 ///
 /// [`lines_any`]: str::lines_any
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.4.0", reason = "use lines()/Lines instead now")]
+#[deprecated(since = "1.4.0", note = "use lines()/Lines instead now")]
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[derive(Clone, Debug)]
 #[allow(deprecated)]
@@ -1238,7 +1234,7 @@ impl<'a> DoubleEndedIterator for SplitWhitespace<'a> {
 impl FusedIterator for SplitWhitespace<'_> {}
 
 impl<'a> SplitWhitespace<'a> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -1294,7 +1290,7 @@ impl<'a> DoubleEndedIterator for SplitAsciiWhitespace<'a> {
 impl FusedIterator for SplitAsciiWhitespace<'_> {}
 
 impl<'a> SplitAsciiWhitespace<'a> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///
@@ -1362,7 +1358,7 @@ impl<'a, P: Pattern<'a, Searcher: ReverseSearcher<'a>>> DoubleEndedIterator
 impl<'a, P: Pattern<'a>> FusedIterator for SplitInclusive<'a, P> {}
 
 impl<'a, P: Pattern<'a>> SplitInclusive<'a, P> {
-    /// Returns remainder of the splitted string
+    /// Returns remainder of the split string
     ///
     /// # Examples
     ///

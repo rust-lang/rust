@@ -33,6 +33,7 @@ declare_clippy_lint! {
     /// ```rust
     /// struct HttpResponse;
     /// ```
+    #[clippy::version = "1.51.0"]
     pub UPPER_CASE_ACRONYMS,
     style,
     "capitalized acronyms are against the naming convention"
@@ -78,7 +79,7 @@ fn correct_ident(ident: &str) -> String {
 
 fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     let span = ident.span;
-    let ident = &ident.as_str();
+    let ident = ident.as_str();
     let corrected = correct_ident(ident);
     // warn if we have pure-uppercase idents
     // assume that two-letter words are some kind of valid abbreviation like FP for false positive
@@ -86,13 +87,13 @@ fn check_ident(cx: &LateContext<'_>, ident: &Ident, be_aggressive: bool) {
     if (ident.chars().all(|c| c.is_ascii_uppercase()) && ident.len() > 2)
     // otherwise, warn if we have SOmeTHING lIKE THIs but only warn with the aggressive
     // upper-case-acronyms-aggressive config option enabled
-    || (be_aggressive && ident != &corrected)
+    || (be_aggressive && ident != corrected)
     {
         span_lint_and_sugg(
             cx,
             UPPER_CASE_ACRONYMS,
             span,
-            &format!("name `{}` contains a capitalized acronym", ident),
+            &format!("name `{ident}` contains a capitalized acronym"),
             "consider making the acronym lowercase, except the initial letter",
             corrected,
             Applicability::MaybeIncorrect,
@@ -104,7 +105,7 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
     fn check_item(&mut self, cx: &LateContext<'_>, it: &Item<'_>) {
         // do not lint public items or in macros
         if in_external_macro(cx.sess(), it.span)
-            || (self.avoid_breaking_exported_api && cx.access_levels.is_exported(it.def_id))
+            || (self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(it.owner_id.def_id))
         {
             return;
         }
@@ -113,7 +114,8 @@ impl LateLintPass<'_> for UpperCaseAcronyms {
                 check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
             },
             ItemKind::Enum(ref enumdef, _) => {
-                // check enum variants seperately because again we only want to lint on private enums and
+                check_ident(cx, &it.ident, self.upper_case_acronyms_aggressive);
+                // check enum variants separately because again we only want to lint on private enums and
                 // the fn check_variant does not know about the vis of the enum of its variants
                 enumdef
                     .variants

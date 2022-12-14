@@ -1,9 +1,10 @@
-error[E0621]: explicit lifetime required in the type of `x`
+error: lifetime may not live long enough
   --> $DIR/region-lbr-anon-does-not-outlive-static.rs:9:5
    |
+LL | fn foo(x: &u32) -> &'static u32 {
+   |           - let's call the lifetime of this reference `'1`
 LL |     &*x
-   |     ^^^ lifetime `ReStatic` required
+   |     ^^^ returning this value requires that `'1` must outlive `'static`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0621`.

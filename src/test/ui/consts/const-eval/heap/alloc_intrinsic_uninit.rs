@@ -2,7 +2,6 @@
 // compile-test
 #![feature(core_intrinsics)]
 #![feature(const_heap)]
-#![feature(const_raw_ptr_deref)]
 #![feature(const_mut_refs)]
 use std::intrinsics;
 

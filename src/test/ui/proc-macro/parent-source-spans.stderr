@@ -7,7 +7,7 @@ LL |     three!($a, $b);
 LL |     one!("hello", "world");
    |     ---------------------- in this macro invocation
    |
-   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: second final: "world"
   --> $DIR/parent-source-spans.rs:16:16
@@ -18,7 +18,7 @@ LL |     three!($a, $b);
 LL |     one!("hello", "world");
    |     ---------------------- in this macro invocation
    |
-   = note: this error originates in the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `two` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: first parent: "hello"
   --> $DIR/parent-source-spans.rs:10:5
@@ -148,9 +148,9 @@ LL |     one!("hello", "world");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:29:5
@@ -164,9 +164,9 @@ LL |     two!("yay", "rust");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0425]: cannot find value `ok` in this scope
   --> $DIR/parent-source-spans.rs:29:5
@@ -180,9 +180,9 @@ LL |     three!("hip", "hop");
   ::: $SRC_DIR/core/src/result.rs:LL:COL
    |
 LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     --------------------------------------------------- similarly named tuple variant `Ok` defined here
+   |     -- similarly named tuple variant `Ok` defined here
    |
-   = note: this error originates in the macro `parent_source_spans` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 21 previous errors
 

@@ -1,9 +1,0 @@
-error[E0425]: cannot find value `XEmpty1` in crate `empty_struct`
-  --> $DIR/no-link.rs:7:19
-   |
-LL |     empty_struct::XEmpty1;
-   |                   ^^^^^^^ not found in `empty_struct`
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0425`.

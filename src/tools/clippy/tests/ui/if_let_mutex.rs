@@ -27,7 +27,7 @@ fn if_let_option() {
     };
 }
 
-// When mutexs are different don't warn
+// When mutexes are different don't warn
 fn if_let_different_mutex() {
     let m = Mutex::new(Some(0_u8));
     let other = Mutex::new(None::<u8>);
@@ -36,6 +36,14 @@ fn if_let_different_mutex() {
     } else {
         let lock = other.lock().unwrap();
         do_stuff(lock);
+    };
+}
+
+fn mutex_ref(mutex: &Mutex<i32>) {
+    if let Ok(i) = mutex.lock() {
+        do_stuff(i);
+    } else {
+        let _x = mutex.lock();
     };
 }
 

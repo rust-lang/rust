@@ -45,7 +45,7 @@ impl ToOwned for Foo {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Bar;
 
 impl PartialEq<Foo> for Bar {
@@ -61,7 +61,7 @@ impl std::borrow::Borrow<Foo> for Bar {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Eq)]
 struct Baz;
 
 impl ToOwned for Baz {

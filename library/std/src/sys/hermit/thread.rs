@@ -5,6 +5,7 @@ use crate::ffi::CStr;
 use crate::io;
 use crate::mem;
 use crate::num::NonZeroUsize;
+use crate::ptr;
 use crate::sys::hermit::abi;
 use crate::sys::hermit::thread_local_dtor::run_dtors;
 use crate::time::Duration;
@@ -39,7 +40,7 @@ impl Thread {
             // The thread failed to start and as a result p was not consumed. Therefore, it is
             // safe to reconstruct the box so that it gets deallocated.
             drop(Box::from_raw(p));
-            Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"Unable to create thread!"))
+            Err(io::const_io_error!(io::ErrorKind::Uncategorized, "Unable to create thread!"))
         } else {
             Ok(Thread { tid: tid })
         };
@@ -47,7 +48,7 @@ impl Thread {
         extern "C" fn thread_start(main: usize) {
             unsafe {
                 // Finally, let's run some code.
-                Box::from_raw(main as *mut Box<dyn FnOnce()>)();
+                Box::from_raw(ptr::from_exposed_addr::<Box<dyn FnOnce()>>(main).cast_mut())();
 
                 // run all destructors
                 run_dtors();

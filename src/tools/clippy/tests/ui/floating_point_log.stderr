@@ -31,25 +31,31 @@ LL |     let _ = x.log(E);
    |             ^^^^^^^^ help: consider using: `x.ln()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_log.rs:17:13
+  --> $DIR/floating_point_log.rs:15:13
+   |
+LL |     let _ = (x as f32).log(2f32);
+   |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x as f32).log2()`
+
+error: logarithm for bases 2, 10 and e can be computed more accurately
+  --> $DIR/floating_point_log.rs:18:13
    |
 LL |     let _ = x.log(2f64);
    |             ^^^^^^^^^^^ help: consider using: `x.log2()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_log.rs:18:13
+  --> $DIR/floating_point_log.rs:19:13
    |
 LL |     let _ = x.log(10f64);
    |             ^^^^^^^^^^^^ help: consider using: `x.log10()`
 
 error: logarithm for bases 2, 10 and e can be computed more accurately
-  --> $DIR/floating_point_log.rs:19:13
+  --> $DIR/floating_point_log.rs:20:13
    |
 LL |     let _ = x.log(std::f64::consts::E);
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.ln()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:24:13
+  --> $DIR/floating_point_log.rs:25:13
    |
 LL |     let _ = (1f32 + 2.).ln();
    |             ^^^^^^^^^^^^^^^^ help: consider using: `2.0f32.ln_1p()`
@@ -57,118 +63,118 @@ LL |     let _ = (1f32 + 2.).ln();
    = note: `-D clippy::imprecise-flops` implied by `-D warnings`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:25:13
+  --> $DIR/floating_point_log.rs:26:13
    |
 LL |     let _ = (1f32 + 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `2.0f32.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:26:13
+  --> $DIR/floating_point_log.rs:27:13
    |
 LL |     let _ = (1.0 + x).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:27:13
+  --> $DIR/floating_point_log.rs:28:13
    |
 LL |     let _ = (1.0 + x / 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x / 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:28:13
+  --> $DIR/floating_point_log.rs:29:13
    |
 LL |     let _ = (1.0 + x.powi(3)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:29:13
+  --> $DIR/floating_point_log.rs:30:13
    |
 LL |     let _ = (1.0 + x.powi(3) / 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x.powi(3) / 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:30:13
+  --> $DIR/floating_point_log.rs:31:13
    |
 LL |     let _ = (1.0 + (std::f32::consts::E - 1.0)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `(std::f32::consts::E - 1.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:31:13
+  --> $DIR/floating_point_log.rs:32:13
    |
 LL |     let _ = (x + 1.0).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:32:13
+  --> $DIR/floating_point_log.rs:33:13
    |
 LL |     let _ = (x.powi(3) + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:33:13
+  --> $DIR/floating_point_log.rs:34:13
    |
 LL |     let _ = (x + 2.0 + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x + 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:34:13
+  --> $DIR/floating_point_log.rs:35:13
    |
 LL |     let _ = (x / 2.0 + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x / 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:42:13
+  --> $DIR/floating_point_log.rs:43:13
    |
 LL |     let _ = (1f64 + 2.).ln();
    |             ^^^^^^^^^^^^^^^^ help: consider using: `2.0f64.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:43:13
+  --> $DIR/floating_point_log.rs:44:13
    |
 LL |     let _ = (1f64 + 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^ help: consider using: `2.0f64.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:44:13
+  --> $DIR/floating_point_log.rs:45:13
    |
 LL |     let _ = (1.0 + x).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:45:13
+  --> $DIR/floating_point_log.rs:46:13
    |
 LL |     let _ = (1.0 + x / 2.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x / 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:46:13
+  --> $DIR/floating_point_log.rs:47:13
    |
 LL |     let _ = (1.0 + x.powi(3)).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:47:13
+  --> $DIR/floating_point_log.rs:48:13
    |
 LL |     let _ = (x + 1.0).ln();
    |             ^^^^^^^^^^^^^^ help: consider using: `x.ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:48:13
+  --> $DIR/floating_point_log.rs:49:13
    |
 LL |     let _ = (x.powi(3) + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider using: `x.powi(3).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:49:13
+  --> $DIR/floating_point_log.rs:50:13
    |
 LL |     let _ = (x + 2.0 + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x + 2.0).ln_1p()`
 
 error: ln(1 + x) can be computed more accurately
-  --> $DIR/floating_point_log.rs:50:13
+  --> $DIR/floating_point_log.rs:51:13
    |
 LL |     let _ = (x / 2.0 + 1.0).ln();
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider using: `(x / 2.0).ln_1p()`
 
-error: aborting due to 28 previous errors
+error: aborting due to 29 previous errors
 

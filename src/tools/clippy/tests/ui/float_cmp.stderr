@@ -4,8 +4,8 @@ error: strict comparison of `f32` or `f64`
 LL |     ONE as f64 != 2.0;
    |     ^^^^^^^^^^^^^^^^^ help: consider comparing them within some margin of error: `(ONE as f64 - 2.0).abs() > error_margin`
    |
-   = note: `-D clippy::float-cmp` implied by `-D warnings`
    = note: `f32::EPSILON` and `f64::EPSILON` are available for the `error_margin`
+   = note: `-D clippy::float-cmp` implied by `-D warnings`
 
 error: strict comparison of `f32` or `f64`
   --> $DIR/float_cmp.rs:62:5

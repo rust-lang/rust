@@ -9,6 +9,7 @@ struct Foo<'f> {
 }
 
 impl<'f> Foo<'f> { //~ ERROR `'f` only used once
+    //~^ HELP elide the single-use lifetime
     fn inherent_a<'a>(&self, data: &'a u32) { //~ ERROR `'a` only used once
         //~^ HELP elide the single-use lifetime
     }

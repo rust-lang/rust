@@ -1,0 +1,14 @@
+error: `S` does not live long enough
+  --> $DIR/snocat-regression.rs:7:5
+   |
+LL | /     || {
+LL | |
+LL | |         //
+LL | |         // FIXME(#98437). This regressed at some point and
+LL | |         // probably should work.
+LL | |         let _x = link;
+LL | |     };
+   | |_____^
+
+error: aborting due to previous error
+

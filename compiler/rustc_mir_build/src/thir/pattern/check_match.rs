@@ -6,23 +6,27 @@ use super::{PatCtxt, PatternError};
 
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
-use rustc_errors::{error_code, struct_span_err, Applicability, DiagnosticBuilder};
+use rustc_errors::{
+    error_code, pluralize, struct_span_err, Applicability, DelayDm, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed, MultiSpan,
+};
 use rustc_hir as hir;
 use rustc_hir::def::*;
 use rustc_hir::def_id::DefId;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{HirId, Pat};
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
 use rustc_session::lint::builtin::{
     BINDINGS_WITH_VARIANT_NAME, IRREFUTABLE_LET_PATTERNS, UNREACHABLE_PATTERNS,
 };
 use rustc_session::Session;
-use rustc_span::{DesugaringKind, ExpnKind, Span};
+use rustc_span::source_map::Spanned;
+use rustc_span::{BytePos, Span};
 
-crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
+pub(crate) fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     let body_id = match def_id.as_local() {
         None => return,
-        Some(id) => tcx.hir().body_owned_by(tcx.hir().local_def_id_to_hir_id(id)),
+        Some(def_id) => tcx.hir().body_owned_by(def_id),
     };
 
     let pattern_arena = TypedArena::default();
@@ -35,7 +39,11 @@ crate fn check_match(tcx: TyCtxt<'_>, def_id: DefId) {
     visitor.visit_body(tcx.hir().body(body_id));
 }
 
-fn create_e0004(sess: &Session, sp: Span, error_message: String) -> DiagnosticBuilder<'_> {
+fn create_e0004(
+    sess: &Session,
+    sp: Span,
+    error_message: String,
+) -> DiagnosticBuilder<'_, ErrorGuaranteed> {
     struct_span_err!(sess, sp, E0004, "{}", &error_message)
 }
 
@@ -54,39 +62,43 @@ struct MatchVisitor<'a, 'p, 'tcx> {
 }
 
 impl<'tcx> Visitor<'tcx> for MatchVisitor<'_, '_, 'tcx> {
-    type Map = intravisit::ErasedMap<'tcx>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_expr(&mut self, ex: &'tcx hir::Expr<'tcx>) {
         intravisit::walk_expr(self, ex);
         match &ex.kind {
-            hir::ExprKind::Match(scrut, arms, source) => self.check_match(scrut, arms, *source),
-            hir::ExprKind::Let(pat, scrut, span) => self.check_let(pat, scrut, *span),
+            hir::ExprKind::Match(scrut, arms, source) => {
+                self.check_match(scrut, arms, *source, ex.span)
+            }
+            hir::ExprKind::Let(hir::Let { pat, init, span, .. }) => {
+                self.check_let(pat, init, *span)
+            }
             _ => {}
         }
     }
 
     fn visit_local(&mut self, loc: &'tcx hir::Local<'tcx>) {
         intravisit::walk_local(self, loc);
+        let els = loc.els;
+        if let Some(init) = loc.init && els.is_some() {
+            // Build a span without the else { ... } as we don't want to underline
+            // the entire else block in the IDE setting.
+            let span = loc.span.with_hi(init.span.hi());
+            self.check_let(&loc.pat, init, span);
+        }
 
         let (msg, sp) = match loc.source {
             hir::LocalSource::Normal => ("local binding", Some(loc.span)),
-            hir::LocalSource::ForLoopDesugar => ("`for` loop binding", None),
             hir::LocalSource::AsyncFn => ("async fn binding", None),
             hir::LocalSource::AwaitDesugar => ("`await` future binding", None),
             hir::LocalSource::AssignDesugar(_) => ("destructuring assignment binding", None),
         };
-        self.check_irrefutable(&loc.pat, msg, sp);
-        self.check_patterns(&loc.pat, Irrefutable);
+        if els.is_none() {
+            self.check_irrefutable(&loc.pat, msg, sp);
+        }
     }
 
     fn visit_param(&mut self, param: &'tcx hir::Param<'tcx>) {
         intravisit::walk_param(self, param);
         self.check_irrefutable(&param.pat, "function argument", None);
-        self.check_patterns(&param.pat, Irrefutable);
     }
 }
 
@@ -151,34 +163,35 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
     }
 
-    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, expr: &hir::Expr<'_>, span: Span) {
+    fn check_let(&mut self, pat: &'tcx hir::Pat<'tcx>, scrutinee: &hir::Expr<'_>, span: Span) {
         self.check_patterns(pat, Refutable);
-        let mut cx = self.new_cx(expr.hir_id);
+        let mut cx = self.new_cx(scrutinee.hir_id);
         let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-        check_let_reachability(&mut cx, pat.hir_id, tpat, span);
+        self.check_let_reachability(&mut cx, pat.hir_id, tpat, span);
     }
 
     fn check_match(
         &mut self,
         scrut: &hir::Expr<'_>,
-        arms: &'tcx [hir::Arm<'tcx>],
+        hir_arms: &'tcx [hir::Arm<'tcx>],
         source: hir::MatchSource,
+        expr_span: Span,
     ) {
         let mut cx = self.new_cx(scrut.hir_id);
 
-        for arm in arms {
+        for arm in hir_arms {
             // Check the arm for some things unrelated to exhaustiveness.
             self.check_patterns(&arm.pat, Refutable);
-            if let Some(hir::Guard::IfLet(ref pat, _)) = arm.guard {
-                self.check_patterns(pat, Refutable);
-                let tpat = self.lower_pattern(&mut cx, pat, &mut false);
-                check_let_reachability(&mut cx, pat.hir_id, tpat, tpat.span());
+            if let Some(hir::Guard::IfLet(ref let_expr)) = arm.guard {
+                self.check_patterns(let_expr.pat, Refutable);
+                let tpat = self.lower_pattern(&mut cx, let_expr.pat, &mut false);
+                self.check_let_reachability(&mut cx, let_expr.pat.hir_id, tpat, tpat.span());
             }
         }
 
         let mut have_errors = false;
 
-        let arms: Vec<_> = arms
+        let arms: Vec<_> = hir_arms
             .iter()
             .map(|hir::Arm { pat, guard, .. }| MatchArm {
                 pat: self.lower_pattern(&mut cx, pat, &mut have_errors),
@@ -196,6 +209,9 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let report = compute_match_usefulness(&cx, &arms, scrut.hir_id, scrut_ty);
 
         match source {
+            // Don't report arm reachability of desugared `match $iter.into_iter() { iter => .. }`
+            // when the iterator is an uninhabited type. unreachable_code will trigger instead.
+            hir::MatchSource::ForLoopDesugar if arms.len() == 1 => {}
             hir::MatchSource::ForLoopDesugar | hir::MatchSource::Normal => {
                 report_arm_reachability(&cx, &report)
             }
@@ -205,11 +221,175 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         }
 
         // Check if the match is exhaustive.
-        let is_empty_match = arms.is_empty();
         let witnesses = report.non_exhaustiveness_witnesses;
         if !witnesses.is_empty() {
-            non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, is_empty_match);
+            if source == hir::MatchSource::ForLoopDesugar && hir_arms.len() == 2 {
+                // the for loop pattern is not irrefutable
+                let pat = hir_arms[1].pat.for_loop_some().unwrap();
+                self.check_irrefutable(pat, "`for` loop binding", None);
+            } else {
+                non_exhaustive_match(&cx, scrut_ty, scrut.span, witnesses, hir_arms, expr_span);
+            }
         }
+    }
+
+    fn check_let_reachability(
+        &mut self,
+        cx: &mut MatchCheckCtxt<'p, 'tcx>,
+        pat_id: HirId,
+        pat: &'p DeconstructedPat<'p, 'tcx>,
+        span: Span,
+    ) {
+        if self.check_let_chain(cx, pat_id) {
+            return;
+        }
+
+        if is_let_irrefutable(cx, pat_id, pat) {
+            irrefutable_let_pattern(cx.tcx, pat_id, span);
+        }
+    }
+
+    fn check_let_chain(&mut self, cx: &mut MatchCheckCtxt<'p, 'tcx>, pat_id: HirId) -> bool {
+        let hir = self.tcx.hir();
+        let parent = hir.get_parent_node(pat_id);
+
+        // First, figure out if the given pattern is part of a let chain,
+        // and if so, obtain the top node of the chain.
+        let mut top = parent;
+        let mut part_of_chain = false;
+        loop {
+            let new_top = hir.get_parent_node(top);
+            if let hir::Node::Expr(
+                hir::Expr {
+                    kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, lhs, rhs),
+                    ..
+                },
+                ..,
+            ) = hir.get(new_top)
+            {
+                // If this isn't the first iteration, we need to check
+                // if there is a let expr before us in the chain, so
+                // that we avoid doubly checking the let chain.
+
+                // The way a chain of &&s is encoded is ((let ... && let ...) && let ...) && let ...
+                // as && is left-to-right associative. Thus, we need to check rhs.
+                if part_of_chain && matches!(rhs.kind, hir::ExprKind::Let(..)) {
+                    return true;
+                }
+                // If there is a let at the lhs, and we provide the rhs, we don't do any checking either.
+                if !part_of_chain && matches!(lhs.kind, hir::ExprKind::Let(..)) && rhs.hir_id == top
+                {
+                    return true;
+                }
+            } else {
+                // We've reached the top.
+                break;
+            }
+
+            // Since this function is called within a let context, it is reasonable to assume that any parent
+            // `&&` infers a let chain
+            part_of_chain = true;
+            top = new_top;
+        }
+        if !part_of_chain {
+            return false;
+        }
+
+        // Second, obtain the refutabilities of all exprs in the chain,
+        // and record chain members that aren't let exprs.
+        let mut chain_refutabilities = Vec::new();
+        let hir::Node::Expr(top_expr) = hir.get(top) else {
+            // We ensure right above that it's an Expr
+            unreachable!()
+        };
+        let mut cur_expr = top_expr;
+        loop {
+            let mut add = |expr: &hir::Expr<'tcx>| {
+                let refutability = match expr.kind {
+                    hir::ExprKind::Let(hir::Let { pat, init, span, .. }) => {
+                        let mut ncx = self.new_cx(init.hir_id);
+                        let tpat = self.lower_pattern(&mut ncx, pat, &mut false);
+
+                        let refutable = !is_let_irrefutable(&mut ncx, pat.hir_id, tpat);
+                        Some((*span, refutable))
+                    }
+                    _ => None,
+                };
+                chain_refutabilities.push(refutability);
+            };
+            if let hir::Expr {
+                kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, lhs, rhs),
+                ..
+            } = cur_expr
+            {
+                add(rhs);
+                cur_expr = lhs;
+            } else {
+                add(cur_expr);
+                break;
+            }
+        }
+        chain_refutabilities.reverse();
+
+        // Third, emit the actual warnings.
+
+        if chain_refutabilities.iter().all(|r| matches!(*r, Some((_, false)))) {
+            // The entire chain is made up of irrefutable `let` statements
+            let let_source = let_source_parent(self.tcx, top, None);
+            irrefutable_let_patterns(
+                cx.tcx,
+                top,
+                let_source,
+                chain_refutabilities.len(),
+                top_expr.span,
+            );
+            return true;
+        }
+        let lint_affix = |affix: &[Option<(Span, bool)>], kind, suggestion| {
+            let span_start = affix[0].unwrap().0;
+            let span_end = affix.last().unwrap().unwrap().0;
+            let span = span_start.to(span_end);
+            let cnt = affix.len();
+            let s = pluralize!(cnt);
+            cx.tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                top,
+                span,
+                format!("{kind} irrefutable pattern{s} in let chain"),
+                |lint| {
+                    lint.note(format!(
+                        "{these} pattern{s} will always match",
+                        these = pluralize!("this", cnt),
+                    ))
+                    .help(format!(
+                        "consider moving {} {suggestion}",
+                        if cnt > 1 { "them" } else { "it" }
+                    ))
+                },
+            );
+        };
+        if let Some(until) = chain_refutabilities.iter().position(|r| !matches!(*r, Some((_, false)))) && until > 0 {
+            // The chain has a non-zero prefix of irrefutable `let` statements.
+
+            // Check if the let source is while, for there is no alternative place to put a prefix,
+            // and we shouldn't lint.
+            // For let guards inside a match, prefixes might use bindings of the match pattern,
+            // so can't always be moved out.
+            // FIXME: Add checking whether the bindings are actually used in the prefix,
+            // and lint if they are not.
+            let let_source = let_source_parent(self.tcx, top, None);
+            if !matches!(let_source, LetSource::WhileLet | LetSource::IfLetGuard) {
+                // Emit the lint
+                let prefix = &chain_refutabilities[..until];
+                lint_affix(prefix, "leading", "outside of the construct");
+            }
+        }
+        if let Some(from) = chain_refutabilities.iter().rposition(|r| !matches!(*r, Some((_, false)))) && from != (chain_refutabilities.len() - 1) {
+            // The chain has a non-empty suffix of irrefutable `let` statements
+            let suffix = &chain_refutabilities[from + 1..];
+            lint_affix(suffix, "trailing", "into the body");
+        }
+        true
     }
 
     fn check_irrefutable(&self, pat: &'tcx Pat<'tcx>, origin: &str, sp: Option<Span>) {
@@ -225,10 +405,14 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
         let witnesses = report.non_exhaustiveness_witnesses;
         if witnesses.is_empty() {
             // The pattern is irrefutable.
+            self.check_patterns(pat, Irrefutable);
             return;
         }
 
         let joined_patterns = joined_uncovered_patterns(&cx, &witnesses);
+
+        let mut bindings = vec![];
+
         let mut err = struct_span_err!(
             self.tcx.sess,
             pat.span,
@@ -245,6 +429,16 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 false
             }
             _ => {
+                pat.walk(&mut |pat: &hir::Pat<'_>| {
+                    match pat.kind {
+                        hir::PatKind::Binding(_, _, ident, _) => {
+                            bindings.push(ident);
+                        }
+                        _ => {}
+                    }
+                    true
+                });
+
                 err.span_label(pat.span, pattern_not_covered_label(&witnesses, &joined_patterns));
                 true
             }
@@ -255,13 +449,71 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
                  an `enum` with only one variant",
             );
-            if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-                err.span_suggestion(
-                    span,
-                    "you might want to use `if let` to ignore the variant that isn't matched",
-                    format!("if {} {{ /* */ }}", &snippet[..snippet.len() - 1]),
+            if self.tcx.sess.source_map().is_span_accessible(span) {
+                let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
+                let start_span = span.shrink_to_lo();
+                let end_span = semi_span.shrink_to_lo();
+                err.multipart_suggestion(
+                    &format!(
+                        "you might want to use `if let` to ignore the variant{} that {} matched",
+                        pluralize!(witnesses.len()),
+                        match witnesses.len() {
+                            1 => "isn't",
+                            _ => "aren't",
+                        },
+                    ),
+                    vec![
+                        match &bindings[..] {
+                            [] => (start_span, "if ".to_string()),
+                            [binding] => (start_span, format!("let {} = if ", binding)),
+                            bindings => (
+                                start_span,
+                                format!(
+                                    "let ({}) = if ",
+                                    bindings
+                                        .iter()
+                                        .map(|ident| ident.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                            ),
+                        },
+                        match &bindings[..] {
+                            [] => (semi_span, " { todo!() }".to_string()),
+                            [binding] => {
+                                (end_span, format!(" {{ {} }} else {{ todo!() }}", binding))
+                            }
+                            bindings => (
+                                end_span,
+                                format!(
+                                    " {{ ({}) }} else {{ todo!() }}",
+                                    bindings
+                                        .iter()
+                                        .map(|ident| ident.to_string())
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                ),
+                            ),
+                        },
+                    ],
                     Applicability::HasPlaceholders,
                 );
+                if !bindings.is_empty() {
+                    err.span_suggestion_verbose(
+                        semi_span.shrink_to_lo(),
+                        &format!(
+                            "alternatively, you might want to use \
+                             let else to handle the variant{} that {} matched",
+                            pluralize!(witnesses.len()),
+                            match witnesses.len() {
+                                1 => "isn't",
+                                _ => "aren't",
+                            },
+                        ),
+                        " else { todo!() }",
+                        Applicability::HasPlaceholders,
+                    );
+                }
             }
             err.note(
                 "for more information, visit \
@@ -277,12 +529,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
 /// A path pattern was interpreted as a constant, not a new variable.
 /// This caused an irrefutable match failure in e.g. `let`.
-fn const_not_var(
-    err: &mut DiagnosticBuilder<'_>,
-    tcx: TyCtxt<'_>,
-    pat: &Pat<'_>,
-    path: &hir::Path<'_>,
-) {
+fn const_not_var(err: &mut Diagnostic, tcx: TyCtxt<'_>, pat: &Pat<'_>, path: &hir::Path<'_>) {
     let descr = path.res.descr();
     err.span_label(
         pat.span,
@@ -310,47 +557,45 @@ fn check_for_bindings_named_same_as_variants(
     rf: RefutableFlag,
 ) {
     pat.walk_always(|p| {
-        if let hir::PatKind::Binding(_, _, ident, None) = p.kind {
-            if let Some(ty::BindByValue(hir::Mutability::Not)) =
+        if let hir::PatKind::Binding(_, _, ident, None) = p.kind
+            && let Some(ty::BindByValue(hir::Mutability::Not)) =
                 cx.typeck_results.extract_binding_mode(cx.tcx.sess, p.hir_id, p.span)
-            {
-                let pat_ty = cx.typeck_results.pat_ty(p).peel_refs();
-                if let ty::Adt(edef, _) = pat_ty.kind() {
-                    if edef.is_enum()
-                        && edef.variants.iter().any(|variant| {
-                            variant.ident == ident && variant.ctor_kind == CtorKind::Const
-                        })
-                    {
-                        let variant_count = edef.variants.len();
-                        cx.tcx.struct_span_lint_hir(
-                            BINDINGS_WITH_VARIANT_NAME,
-                            p.hir_id,
+            && let pat_ty = cx.typeck_results.pat_ty(p).peel_refs()
+            && let ty::Adt(edef, _) = pat_ty.kind()
+            && edef.is_enum()
+            && edef.variants().iter().any(|variant| {
+                variant.ident(cx.tcx) == ident && variant.ctor_kind() == Some(CtorKind::Const)
+            })
+        {
+            let variant_count = edef.variants().len();
+            cx.tcx.struct_span_lint_hir(
+                BINDINGS_WITH_VARIANT_NAME,
+                p.hir_id,
+                p.span,
+                DelayDm(|| format!(
+                    "pattern binding `{}` is named the same as one \
+                        of the variants of the type `{}`",
+                    ident, cx.tcx.def_path_str(edef.did())
+                )),
+                |lint| {
+                    let ty_path = cx.tcx.def_path_str(edef.did());
+                    lint.code(error_code!(E0170));
+
+                    // If this is an irrefutable pattern, and there's > 1 variant,
+                    // then we can't actually match on this. Applying the below
+                    // suggestion would produce code that breaks on `check_irrefutable`.
+                    if rf == Refutable || variant_count == 1 {
+                        lint.span_suggestion(
                             p.span,
-                            |lint| {
-                                let ty_path = cx.tcx.def_path_str(edef.did);
-                                let mut err = lint.build(&format!(
-                                    "pattern binding `{}` is named the same as one \
-                                                    of the variants of the type `{}`",
-                                    ident, ty_path
-                                ));
-                                err.code(error_code!(E0170));
-                                // If this is an irrefutable pattern, and there's > 1 variant,
-                                // then we can't actually match on this. Applying the below
-                                // suggestion would produce code that breaks on `check_irrefutable`.
-                                if rf == Refutable || variant_count == 1 {
-                                    err.span_suggestion(
-                                        p.span,
-                                        "to match on the variant, qualify the path",
-                                        format!("{}::{}", ty_path, ident),
-                                        Applicability::MachineApplicable,
-                                    );
-                                }
-                                err.emit();
-                            },
-                        )
+                            "to match on the variant, qualify the path",
+                            format!("{}::{}", ty_path, ident),
+                            Applicability::MachineApplicable,
+                        );
                     }
-                }
-            }
+
+                    lint
+                },
+            )
         }
     });
 }
@@ -366,18 +611,28 @@ fn pat_is_catchall(pat: &DeconstructedPat<'_, '_>) -> bool {
 }
 
 fn unreachable_pattern(tcx: TyCtxt<'_>, span: Span, id: HirId, catchall: Option<Span>) {
-    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, |lint| {
-        let mut err = lint.build("unreachable pattern");
+    tcx.struct_span_lint_hir(UNREACHABLE_PATTERNS, id, span, "unreachable pattern", |lint| {
         if let Some(catchall) = catchall {
             // We had a catchall pattern, hint at that.
-            err.span_label(span, "unreachable pattern");
-            err.span_label(catchall, "matches any value");
+            lint.span_label(span, "unreachable pattern");
+            lint.span_label(catchall, "matches any value");
         }
-        err.emit();
+        lint
     });
 }
 
 fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
+    let source = let_source(tcx, id);
+    irrefutable_let_patterns(tcx, id, source, 1, span);
+}
+
+fn irrefutable_let_patterns(
+    tcx: TyCtxt<'_>,
+    id: HirId,
+    source: LetSource,
+    count: usize,
+    span: Span,
+) {
     macro_rules! emit_diag {
         (
             $lint:expr,
@@ -385,19 +640,25 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
             $note_sufix:expr,
             $help_sufix:expr
         ) => {{
-            let mut diag = $lint.build(concat!("irrefutable ", $source_name, " pattern"));
-            diag.note(concat!("this pattern will always match, so the ", $note_sufix));
-            diag.help(concat!("consider ", $help_sufix));
-            diag.emit()
+            let s = pluralize!(count);
+            let these = pluralize!("this", count);
+            tcx.struct_span_lint_hir(
+                IRREFUTABLE_LET_PATTERNS,
+                id,
+                span,
+                format!("irrefutable {} pattern{s}", $source_name),
+                |lint| {
+                    lint.note(&format!(
+                        "{these} pattern{s} will always match, so the {}",
+                        $note_sufix
+                    ))
+                    .help(concat!("consider ", $help_sufix))
+                },
+            )
         }};
     }
 
-    let source = let_source(tcx, id);
-    let span = match source {
-        LetSource::LetElse(span) => span,
-        _ => span,
-    };
-    tcx.struct_span_lint_hir(IRREFUTABLE_LET_PATTERNS, id, span, |lint| match source {
+    match source {
         LetSource::GenericLet => {
             emit_diag!(lint, "`let`", "`let` is useless", "removing `let`");
         }
@@ -417,7 +678,7 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
                 "removing the guard and adding a `let` inside the match arm"
             );
         }
-        LetSource::LetElse(..) => {
+        LetSource::LetElse => {
             emit_diag!(
                 lint,
                 "`let...else`",
@@ -433,15 +694,14 @@ fn irrefutable_let_pattern(tcx: TyCtxt<'_>, id: HirId, span: Span) {
                 "instead using a `loop { ... }` with a `let` inside it"
             );
         }
-    });
+    };
 }
 
-fn check_let_reachability<'p, 'tcx>(
+fn is_let_irrefutable<'p, 'tcx>(
     cx: &mut MatchCheckCtxt<'p, 'tcx>,
     pat_id: HirId,
     pat: &'p DeconstructedPat<'p, 'tcx>,
-    span: Span,
-) {
+) -> bool {
     let arms = [MatchArm { pat, hir_id: pat_id, has_guard: false }];
     let report = compute_match_usefulness(&cx, &arms, pat_id, pat.ty());
 
@@ -450,10 +710,9 @@ fn check_let_reachability<'p, 'tcx>(
     // `is_uninhabited` check.
     report_arm_reachability(&cx, &report);
 
-    if report.non_exhaustiveness_witnesses.is_empty() {
-        // The match is exhaustive, i.e. the `if let` pattern is irrefutable.
-        irrefutable_let_pattern(cx.tcx, pat_id, span);
-    }
+    // If the list of witnesses is empty, the match is exhaustive,
+    // i.e. the `if let` pattern is irrefutable.
+    report.non_exhaustiveness_witnesses.is_empty()
 }
 
 /// Report unreachable arms, if any.
@@ -489,21 +748,26 @@ fn non_exhaustive_match<'p, 'tcx>(
     scrut_ty: Ty<'tcx>,
     sp: Span,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
-    is_empty_match: bool,
+    arms: &[hir::Arm<'tcx>],
+    expr_span: Span,
 ) {
+    let is_empty_match = arms.is_empty();
     let non_empty_enum = match scrut_ty.kind() {
-        ty::Adt(def, _) => def.is_enum() && !def.variants.is_empty(),
+        ty::Adt(def, _) => def.is_enum() && !def.variants().is_empty(),
         _ => false,
     };
     // In the case of an empty match, replace the '`_` not covered' diagnostic with something more
     // informative.
     let mut err;
+    let pattern;
+    let mut patterns_len = 0;
     if is_empty_match && !non_empty_enum {
         err = create_e0004(
             cx.tcx.sess,
             sp,
             format!("non-exhaustive patterns: type `{}` is non-empty", scrut_ty),
         );
+        pattern = "_".to_string();
     } else {
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
         err = create_e0004(
@@ -512,18 +776,24 @@ fn non_exhaustive_match<'p, 'tcx>(
             format!("non-exhaustive patterns: {} not covered", joined_patterns),
         );
         err.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
+        patterns_len = witnesses.len();
+        pattern = if witnesses.len() < 4 {
+            witnesses
+                .iter()
+                .map(|witness| witness.to_pat(cx).to_string())
+                .collect::<Vec<String>>()
+                .join(" | ")
+        } else {
+            "_".to_string()
+        };
     };
 
     let is_variant_list_non_exhaustive = match scrut_ty.kind() {
-        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did.is_local() => true,
+        ty::Adt(def, _) if def.is_variant_list_non_exhaustive() && !def.did().is_local() => true,
         _ => false,
     };
 
     adt_defined_here(cx, &mut err, scrut_ty, &witnesses);
-    err.help(
-        "ensure that all possible cases are being handled, \
-              possibly by adding wildcards or more match arms",
-    );
     err.note(&format!(
         "the matched value is of type `{}`{}",
         scrut_ty,
@@ -535,27 +805,117 @@ fn non_exhaustive_match<'p, 'tcx>(
         && matches!(witnesses[0].ctor(), Constructor::NonExhaustive)
     {
         err.note(&format!(
-            "`{}` does not have a fixed maximum value, \
-                so a wildcard `_` is necessary to match exhaustively",
+            "`{}` does not have a fixed maximum value, so a wildcard `_` is necessary to match \
+             exhaustively",
             scrut_ty,
         ));
         if cx.tcx.sess.is_nightly_build() {
             err.help(&format!(
-                "add `#![feature(precise_pointer_size_matching)]` \
-                    to the crate attributes to enable precise `{}` matching",
+                "add `#![feature(precise_pointer_size_matching)]` to the crate attributes to \
+                 enable precise `{}` matching",
                 scrut_ty,
             ));
         }
     }
     if let ty::Ref(_, sub_ty, _) = scrut_ty.kind() {
-        if cx.tcx.is_ty_uninhabited_from(cx.module, sub_ty, cx.param_env) {
+        if !sub_ty.is_inhabited_from(cx.tcx, cx.module, cx.param_env) {
             err.note("references are always considered inhabited");
         }
+    }
+
+    let mut suggestion = None;
+    let sm = cx.tcx.sess.source_map();
+    match arms {
+        [] if sp.eq_ctxt(expr_span) => {
+            // Get the span for the empty match body `{}`.
+            let (indentation, more) = if let Some(snippet) = sm.indentation_before(sp) {
+                (format!("\n{}", snippet), "    ")
+            } else {
+                (" ".to_string(), "")
+            };
+            suggestion = Some((
+                sp.shrink_to_hi().with_hi(expr_span.hi()),
+                format!(
+                    " {{{indentation}{more}{pattern} => todo!(),{indentation}}}",
+                    indentation = indentation,
+                    more = more,
+                    pattern = pattern,
+                ),
+            ));
+        }
+        [only] => {
+            let (pre_indentation, is_multiline) = if let Some(snippet) = sm.indentation_before(only.span)
+                && let Ok(with_trailing) = sm.span_extend_while(only.span, |c| c.is_whitespace() || c == ',')
+                && sm.is_multiline(with_trailing)
+            {
+                (format!("\n{}", snippet), true)
+            } else {
+                (" ".to_string(), false)
+            };
+            let comma = if matches!(only.body.kind, hir::ExprKind::Block(..))
+                && only.span.eq_ctxt(only.body.span)
+                && is_multiline
+            {
+                ""
+            } else {
+                ","
+            };
+            suggestion = Some((
+                only.span.shrink_to_hi(),
+                format!("{}{}{} => todo!()", comma, pre_indentation, pattern),
+            ));
+        }
+        [.., prev, last] if prev.span.eq_ctxt(last.span) => {
+            let comma = if matches!(last.body.kind, hir::ExprKind::Block(..))
+                && last.span.eq_ctxt(last.body.span)
+            {
+                ""
+            } else {
+                ","
+            };
+            let spacing = if sm.is_multiline(prev.span.between(last.span)) {
+                sm.indentation_before(last.span).map(|indent| format!("\n{indent}"))
+            } else {
+                Some(" ".to_string())
+            };
+            if let Some(spacing) = spacing {
+                suggestion = Some((
+                    last.span.shrink_to_hi(),
+                    format!("{}{}{} => todo!()", comma, spacing, pattern),
+                ));
+            }
+        }
+        _ => {}
+    }
+
+    let msg = format!(
+        "ensure that all possible cases are being handled by adding a match arm with a wildcard \
+         pattern{}{}",
+        if patterns_len > 1 && patterns_len < 4 && suggestion.is_some() {
+            ", a match arm with multiple or-patterns"
+        } else {
+            // we are either not suggesting anything, or suggesting `_`
+            ""
+        },
+        match patterns_len {
+            // non-exhaustive enum case
+            0 if suggestion.is_some() => " as shown",
+            0 => "",
+            1 if suggestion.is_some() => " or an explicit pattern as shown",
+            1 => " or an explicit pattern",
+            _ if suggestion.is_some() => " as shown, or multiple match arms",
+            _ => " or multiple match arms",
+        },
+    );
+    if let Some((span, sugg)) = suggestion {
+        err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
+    } else {
+        err.help(&msg);
     }
     err.emit();
 }
 
-crate fn joined_uncovered_patterns<'p, 'tcx>(
+pub(crate) fn joined_uncovered_patterns<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) -> String {
@@ -576,7 +936,7 @@ crate fn joined_uncovered_patterns<'p, 'tcx>(
     }
 }
 
-crate fn pattern_not_covered_label(
+pub(crate) fn pattern_not_covered_label(
     witnesses: &[DeconstructedPat<'_, '_>],
     joined_patterns: &str,
 ) -> String {
@@ -586,39 +946,49 @@ crate fn pattern_not_covered_label(
 /// Point at the definition of non-covered `enum` variants.
 fn adt_defined_here<'p, 'tcx>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    err: &mut DiagnosticBuilder<'_>,
+    err: &mut Diagnostic,
     ty: Ty<'tcx>,
     witnesses: &[DeconstructedPat<'p, 'tcx>],
 ) {
     let ty = ty.peel_refs();
     if let ty::Adt(def, _) = ty.kind() {
-        if let Some(sp) = cx.tcx.hir().span_if_local(def.did) {
-            err.span_label(sp, format!("`{}` defined here", ty));
-        }
-
-        if witnesses.len() < 4 {
-            for sp in maybe_point_at_variant(cx, def, witnesses.iter()) {
-                err.span_label(sp, "not covered");
+        let mut spans = vec![];
+        if witnesses.len() < 5 {
+            for sp in maybe_point_at_variant(cx, *def, witnesses.iter()) {
+                spans.push(sp);
             }
         }
+        let def_span = cx
+            .tcx
+            .hir()
+            .get_if_local(def.did())
+            .and_then(|node| node.ident())
+            .map(|ident| ident.span)
+            .unwrap_or_else(|| cx.tcx.def_span(def.did()));
+        let mut span: MultiSpan =
+            if spans.is_empty() { def_span.into() } else { spans.clone().into() };
+
+        span.push_span_label(def_span, "");
+        for pat in spans {
+            span.push_span_label(pat, "not covered");
+        }
+        err.span_note(span, &format!("`{}` defined here", ty));
     }
 }
 
 fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
     cx: &MatchCheckCtxt<'p, 'tcx>,
-    def: &AdtDef,
+    def: AdtDef<'tcx>,
     patterns: impl Iterator<Item = &'a DeconstructedPat<'p, 'tcx>>,
 ) -> Vec<Span> {
     use Constructor::*;
     let mut covered = vec![];
     for pattern in patterns {
         if let Variant(variant_index) = pattern.ctor() {
-            if let ty::Adt(this_def, _) = pattern.ty().kind() {
-                if this_def.did != def.did {
-                    continue;
-                }
+            if let ty::Adt(this_def, _) = pattern.ty().kind() && this_def.did() != def.did() {
+                continue;
             }
-            let sp = def.variants[*variant_index].ident.span;
+            let sp = def.variant(*variant_index).ident(cx.tcx).span;
             if covered.contains(&sp) {
                 // Don't point at variants that have already been covered due to other patterns to avoid
                 // visual clutter.
@@ -632,8 +1002,8 @@ fn maybe_point_at_variant<'a, 'p: 'a, 'tcx: 'a>(
 }
 
 /// Check if a by-value binding is by-value. That is, check if the binding's type is not `Copy`.
-fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId, span: Span) -> bool {
-    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx.at(span), cx.param_env)
+fn is_binding_by_move(cx: &MatchVisitor<'_, '_, '_>, hir_id: HirId) -> bool {
+    !cx.typeck_results.node_type(hir_id).is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
 
 /// Check that there are no borrow or move conflicts in `binding @ subpat` patterns.
@@ -659,7 +1029,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
 
     // Get the binding move, extract the mutability if by-ref.
     let mut_outer = match typeck_results.extract_binding_mode(sess, pat.hir_id, pat.span) {
-        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id, pat.span) => {
+        Some(ty::BindByValue(_)) if is_binding_by_move(cx, pat.hir_id) => {
             // We have `x @ pat` where `x` is by-move. Reject all borrows in `pat`.
             let mut conflicts_ref = Vec::new();
             sub.each_binding(|_, hir_id, span, _| {
@@ -674,11 +1044,19 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                     name,
                     typeck_results.node_type(pat.hir_id),
                 );
-                sess.struct_span_err(pat.span, "borrow of moved value")
-                    .span_label(binding_span, format!("value moved into `{}` here", name))
+                let mut err = sess.struct_span_err(pat.span, "borrow of moved value");
+                err.span_label(binding_span, format!("value moved into `{}` here", name))
                     .span_label(binding_span, occurs_because)
-                    .span_labels(conflicts_ref, "value borrowed here after move")
-                    .emit();
+                    .span_labels(conflicts_ref, "value borrowed here after move");
+                if pat.span.contains(binding_span) {
+                    err.span_suggestion_verbose(
+                        binding_span.shrink_to_lo(),
+                        "borrow this binding in the pattern to avoid moving the value",
+                        "ref ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                }
+                err.emit();
             }
             return;
         }
@@ -698,7 +1076,7 @@ fn check_borrow_conflicts_in_at_patterns(cx: &MatchVisitor<'_, '_, '_>, pat: &Pa
                 (Mutability::Mut, Mutability::Mut) => conflicts_mut_mut.push((span, name)), // 2x `ref mut`.
                 _ => conflicts_mut_ref.push((span, name)), // `ref` + `ref mut` in either direction.
             },
-            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id, span) => {
+            Some(ty::BindByValue(_)) if is_binding_by_move(cx, hir_id) => {
                 conflicts_move.push((span, name)) // `ref mut?` + by-move conflict.
             }
             Some(ty::BindByValue(_)) | None => {} // `ref mut?` + by-copy is fine.
@@ -755,30 +1133,43 @@ pub enum LetSource {
     GenericLet,
     IfLet,
     IfLetGuard,
-    LetElse(Span),
+    LetElse,
     WhileLet,
 }
 
 fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     let hir = tcx.hir();
+
     let parent = hir.get_parent_node(pat_id);
-    match hir.get(parent) {
+    let_source_parent(tcx, parent, Some(pat_id))
+}
+
+fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> LetSource {
+    let hir = tcx.hir();
+
+    let parent_node = hir.get(parent);
+
+    match parent_node {
         hir::Node::Arm(hir::Arm {
-            guard: Some(hir::Guard::IfLet(&hir::Pat { hir_id, .. }, _)),
+            guard: Some(hir::Guard::IfLet(&hir::Let { pat: hir::Pat { hir_id, .. }, .. })),
             ..
-        }) if hir_id == pat_id => {
+        }) if Some(*hir_id) == pat_id => {
             return LetSource::IfLetGuard;
-        }
-        hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Let(..), span, .. }) => {
-            let expn_data = span.ctxt().outer_expn_data();
-            if let ExpnKind::Desugaring(DesugaringKind::LetElse) = expn_data.kind {
-                return LetSource::LetElse(expn_data.call_site);
-            }
         }
         _ => {}
     }
+
     let parent_parent = hir.get_parent_node(parent);
     let parent_parent_node = hir.get(parent_parent);
+    match parent_parent_node {
+        hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), .. }) => {
+            return LetSource::LetElse;
+        }
+        hir::Node::Arm(hir::Arm { guard: Some(hir::Guard::If(_)), .. }) => {
+            return LetSource::IfLetGuard;
+        }
+        _ => {}
+    }
 
     let parent_parent_parent = hir.get_parent_node(parent_parent);
     let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);
@@ -789,12 +1180,12 @@ fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
         ..
     }) = parent_parent_parent_parent_node
     {
-        LetSource::WhileLet
-    } else if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If { .. }, .. }) =
-        parent_parent_node
-    {
-        LetSource::IfLet
-    } else {
-        LetSource::GenericLet
+        return LetSource::WhileLet;
     }
+
+    if let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::If(..), .. }) = parent_parent_node {
+        return LetSource::IfLet;
+    }
+
+    LetSource::GenericLet
 }

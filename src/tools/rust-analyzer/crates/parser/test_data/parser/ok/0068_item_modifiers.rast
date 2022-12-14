@@ -1,0 +1,238 @@
+SOURCE_FILE
+  FN
+    ASYNC_KW "async"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    ABI
+      EXTERN_KW "extern"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    CONST_KW "const"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    CONST_KW "const"
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C\""
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    ASYNC_KW "async"
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "foo"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n"
+  FN
+    CONST_KW "const"
+    WHITESPACE " "
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "bar"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        R_CURLY "}"
+  WHITESPACE "\n\n"
+  TRAIT
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  TRAIT
+    AUTO_KW "auto"
+    WHITESPACE " "
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  TRAIT
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    AUTO_KW "auto"
+    WHITESPACE " "
+    TRAIT_KW "trait"
+    WHITESPACE " "
+    NAME
+      IDENT "T"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  IMPL
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    DEFAULT_KW "default"
+    WHITESPACE " "
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"
+  IMPL
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    DEFAULT_KW "default"
+    WHITESPACE " "
+    IMPL_KW "impl"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "Foo"
+    WHITESPACE " "
+    ASSOC_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n\n"
+  EXTERN_BLOCK
+    UNSAFE_KW "unsafe"
+    WHITESPACE " "
+    ABI
+      EXTERN_KW "extern"
+      WHITESPACE " "
+      STRING "\"C++\""
+    WHITESPACE " "
+    EXTERN_ITEM_LIST
+      L_CURLY "{"
+      R_CURLY "}"
+  WHITESPACE "\n"

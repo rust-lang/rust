@@ -2,10 +2,13 @@ pub use self::Mode::*;
 
 use std::ffi::OsString;
 use std::fmt;
+use std::iter;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 use std::str::FromStr;
 
-use crate::util::PathBufExt;
+use crate::util::{add_dylib_path, PathBufExt};
+use lazycell::LazyCell;
 use test::ColorConfig;
 
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -118,7 +121,6 @@ pub enum FailMode {
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum CompareMode {
-    Nll,
     Polonius,
     Chalk,
     SplitDwarf,
@@ -128,7 +130,6 @@ pub enum CompareMode {
 impl CompareMode {
     pub(crate) fn to_str(&self) -> &'static str {
         match *self {
-            CompareMode::Nll => "nll",
             CompareMode::Polonius => "polonius",
             CompareMode::Chalk => "chalk",
             CompareMode::SplitDwarf => "split-dwarf",
@@ -138,7 +139,6 @@ impl CompareMode {
 
     pub fn parse(s: String) -> CompareMode {
         match s.as_str() {
-            "nll" => CompareMode::Nll,
             "polonius" => CompareMode::Polonius,
             "chalk" => CompareMode::Chalk,
             "split-dwarf" => CompareMode::SplitDwarf,
@@ -198,14 +198,14 @@ pub struct Config {
     /// The rust-demangler executable.
     pub rust_demangler_path: Option<PathBuf>,
 
-    /// The Python executable to use for LLDB.
-    pub lldb_python: String,
-
-    /// The Python executable to use for htmldocck.
-    pub docck_python: String,
+    /// The Python executable to use for LLDB and htmldocck.
+    pub python: String,
 
     /// The jsondocck executable.
     pub jsondocck_path: Option<String>,
+
+    /// The jsondoclint executable.
+    pub jsondoclint_path: Option<String>,
 
     /// The LLVM `FileCheck` binary path.
     pub llvm_filecheck: Option<PathBuf>,
@@ -230,6 +230,9 @@ pub struct Config {
     /// The directory where programs should be built
     pub build_base: PathBuf,
 
+    /// The directory containing the compiler sysroot
+    pub sysroot_base: PathBuf,
+
     /// The name of the stage being built (stage1, etc)
     pub stage_id: String,
 
@@ -249,6 +252,10 @@ pub struct Config {
     /// Only run tests that match these filters
     pub filters: Vec<String>,
 
+    /// Skip tests tests matching these substrings. Corresponds to
+    /// `test::TestOpts::skip`. `filter_exact` does not apply to these flags.
+    pub skip: Vec<String>,
+
     /// Exactly match the filter, rather than a substring
     pub filter_exact: bool,
 
@@ -266,14 +273,14 @@ pub struct Config {
     pub runtool: Option<String>,
 
     /// Flags to pass to the compiler when building for the host
-    pub host_rustcflags: Option<String>,
+    pub host_rustcflags: Vec<String>,
 
     /// Flags to pass to the compiler when building for the target
-    pub target_rustcflags: Option<String>,
+    pub target_rustcflags: Vec<String>,
 
-    /// What panic strategy the target is built with.  Unwind supports Abort, but
-    /// not vice versa.
-    pub target_panic: PanicStrategy,
+    /// Whether tests should be optimized by default. Individual test-suites and test files may
+    /// override this setting.
+    pub optimize_tests: bool,
 
     /// Target system to be tested
     pub target: String,
@@ -357,6 +364,7 @@ pub struct Config {
     pub cc: String,
     pub cxx: String,
     pub cflags: String,
+    pub cxxflags: String,
     pub ar: String,
     pub linker: Option<String>,
     pub llvm_components: String,
@@ -368,6 +376,8 @@ pub struct Config {
 
     /// Whether to rerun tests even if the inputs are unchanged.
     pub force_rerun: bool,
+
+    pub target_cfg: LazyCell<TargetCfg>,
 }
 
 impl Config {
@@ -376,6 +386,148 @@ impl Config {
             // Auto-detect whether to run based on the platform.
             !self.target.ends_with("-fuchsia")
         })
+    }
+
+    fn target_cfg(&self) -> &TargetCfg {
+        self.target_cfg.borrow_with(|| TargetCfg::new(self))
+    }
+
+    pub fn matches_arch(&self, arch: &str) -> bool {
+        self.target_cfg().arch == arch ||
+        // Shorthand for convenience. The arch for
+        // asmjs-unknown-emscripten is actually wasm32.
+        (arch == "asmjs" && self.target.starts_with("asmjs")) ||
+        // Matching all the thumb variants as one can be convenient.
+        // (thumbv6m, thumbv7em, thumbv7m, etc.)
+        (arch == "thumb" && self.target.starts_with("thumb"))
+    }
+
+    pub fn matches_os(&self, os: &str) -> bool {
+        self.target_cfg().os == os
+    }
+
+    pub fn matches_env(&self, env: &str) -> bool {
+        self.target_cfg().env == env
+    }
+
+    pub fn matches_abi(&self, abi: &str) -> bool {
+        self.target_cfg().abi == abi
+    }
+
+    pub fn matches_family(&self, family: &str) -> bool {
+        self.target_cfg().families.iter().any(|f| f == family)
+    }
+
+    pub fn is_big_endian(&self) -> bool {
+        self.target_cfg().endian == Endian::Big
+    }
+
+    pub fn get_pointer_width(&self) -> u32 {
+        *&self.target_cfg().pointer_width
+    }
+
+    pub fn can_unwind(&self) -> bool {
+        self.target_cfg().panic == PanicStrategy::Unwind
+    }
+
+    pub fn has_asm_support(&self) -> bool {
+        static ASM_SUPPORTED_ARCHS: &[&str] = &[
+            "x86", "x86_64", "arm", "aarch64", "riscv32",
+            "riscv64",
+            // These targets require an additional asm_experimental_arch feature.
+            // "nvptx64", "hexagon", "mips", "mips64", "spirv", "wasm32",
+        ];
+        ASM_SUPPORTED_ARCHS.contains(&self.target_cfg().arch.as_str())
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct TargetCfg {
+    arch: String,
+    os: String,
+    env: String,
+    abi: String,
+    families: Vec<String>,
+    pointer_width: u32,
+    endian: Endian,
+    panic: PanicStrategy,
+}
+
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub enum Endian {
+    Little,
+    Big,
+}
+
+impl TargetCfg {
+    fn new(config: &Config) -> TargetCfg {
+        let mut command = Command::new(&config.rustc_path);
+        add_dylib_path(&mut command, iter::once(&config.compile_lib_path));
+        let output = match command
+            .arg("--print=cfg")
+            .arg("--target")
+            .arg(&config.target)
+            .args(&config.target_rustcflags)
+            .output()
+        {
+            Ok(output) => output,
+            Err(e) => panic!("error: failed to get cfg info from {:?}: {e}", config.rustc_path),
+        };
+        if !output.status.success() {
+            panic!(
+                "error: failed to get cfg info from {:?}\n--- stdout\n{}\n--- stderr\n{}",
+                config.rustc_path,
+                String::from_utf8(output.stdout).unwrap(),
+                String::from_utf8(output.stderr).unwrap(),
+            );
+        }
+        let print_cfg = String::from_utf8(output.stdout).unwrap();
+        let mut arch = None;
+        let mut os = None;
+        let mut env = None;
+        let mut abi = None;
+        let mut families = Vec::new();
+        let mut pointer_width = None;
+        let mut endian = None;
+        let mut panic = None;
+        for line in print_cfg.lines() {
+            if let Some((name, value)) = line.split_once('=') {
+                let value = value.trim_matches('"');
+                match name {
+                    "target_arch" => arch = Some(value),
+                    "target_os" => os = Some(value),
+                    "target_env" => env = Some(value),
+                    "target_abi" => abi = Some(value),
+                    "target_family" => families.push(value.to_string()),
+                    "target_pointer_width" => pointer_width = Some(value.parse().unwrap()),
+                    "target_endian" => {
+                        endian = Some(match value {
+                            "little" => Endian::Little,
+                            "big" => Endian::Big,
+                            s => panic!("unexpected {s}"),
+                        })
+                    }
+                    "panic" => {
+                        panic = match value {
+                            "abort" => Some(PanicStrategy::Abort),
+                            "unwind" => Some(PanicStrategy::Unwind),
+                            s => panic!("unexpected {s}"),
+                        }
+                    }
+                    _ => {}
+                }
+            }
+        }
+        TargetCfg {
+            arch: arch.unwrap().to_string(),
+            os: os.unwrap().to_string(),
+            env: env.unwrap().to_string(),
+            abi: abi.unwrap().to_string(),
+            families,
+            pointer_width: pointer_width.unwrap(),
+            endian: endian.unwrap(),
+            panic: panic.unwrap(),
+        }
     }
 }
 

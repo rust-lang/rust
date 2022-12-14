@@ -1,16 +1,13 @@
 // run-rustfix
-
+#![warn(clippy::redundant_closure, clippy::redundant_closure_for_method_calls)]
+#![allow(unused)]
 #![allow(
-    unused,
-    clippy::no_effect,
-    clippy::redundant_closure_call,
+    clippy::needless_borrow,
     clippy::needless_pass_by_value,
-    clippy::option_map_unit_fn
-)]
-#![warn(
-    clippy::redundant_closure,
-    clippy::redundant_closure_for_method_calls,
-    clippy::needless_borrow
+    clippy::no_effect,
+    clippy::option_map_unit_fn,
+    clippy::redundant_closure_call,
+    clippy::uninlined_format_args
 )]
 
 use std::path::{Path, PathBuf};
@@ -214,6 +211,10 @@ fn mutable_closure_in_loop() {
     let mut closure = |n| value += n;
     for _ in 0..5 {
         Some(1).map(|n| closure(n));
+
+        let mut value = 0;
+        let mut in_loop = |n| value += n;
+        Some(1).map(|n| in_loop(n));
     }
 }
 
@@ -247,4 +248,93 @@ mod type_param_bound {
         take(|| X::fun());
         take(X::fun as fn());
     }
+}
+
+// #8073 Don't replace closure with `Arc<F>` or `Rc<F>`
+fn arc_fp() {
+    let rc = std::rc::Rc::new(|| 7);
+    let arc = std::sync::Arc::new(|n| n + 1);
+    let ref_arc = &std::sync::Arc::new(|_| 5);
+
+    true.then(|| rc());
+    (0..5).map(|n| arc(n));
+    Some(4).map(|n| ref_arc(n));
+}
+
+// #8460 Don't replace closures with params bounded as `ref`
+mod bind_by_ref {
+    struct A;
+    struct B;
+
+    impl From<&A> for B {
+        fn from(A: &A) -> Self {
+            B
+        }
+    }
+
+    fn test() {
+        // should not lint
+        Some(A).map(|a| B::from(&a));
+        // should not lint
+        Some(A).map(|ref a| B::from(a));
+    }
+}
+
+// #7812 False positive on coerced closure
+fn coerced_closure() {
+    fn function_returning_unit<F: FnMut(i32)>(f: F) {}
+    function_returning_unit(|x| std::process::exit(x));
+
+    fn arr() -> &'static [u8; 0] {
+        &[]
+    }
+    fn slice_fn(_: impl FnOnce() -> &'static [u8]) {}
+    slice_fn(|| arr());
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7861
+fn box_dyn() {
+    fn f(_: impl Fn(usize) -> Box<dyn std::any::Any>) {}
+    f(|x| Box::new(x));
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/5939
+fn not_general_enough() {
+    fn f(_: impl FnMut(&Path) -> std::io::Result<()>) {}
+    f(|path| std::fs::remove_file(path));
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/9369
+pub fn mutable_impl_fn_mut(mut f: impl FnMut(), mut f_used_once: impl FnMut()) -> impl FnMut() {
+    fn takes_fn_mut(_: impl FnMut()) {}
+    takes_fn_mut(|| f());
+
+    fn takes_fn_once(_: impl FnOnce()) {}
+    takes_fn_once(|| f());
+
+    f();
+
+    move || takes_fn_mut(|| f_used_once())
+}
+
+impl dyn TestTrait + '_ {
+    fn method_on_dyn(&self) -> bool {
+        false
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/7746
+fn angle_brackets_and_substs() {
+    let array_opt: Option<&[u8; 3]> = Some(&[4, 8, 7]);
+    array_opt.map(|a| a.as_slice());
+
+    let slice_opt: Option<&[u8]> = Some(b"slice");
+    slice_opt.map(|s| s.len());
+
+    let ptr_opt: Option<*const usize> = Some(&487);
+    ptr_opt.map(|p| p.is_null());
+
+    let test_struct = TestStruct { some_ref: &487 };
+    let dyn_opt: Option<&dyn TestTrait> = Some(&test_struct);
+    dyn_opt.map(|d| d.method_on_dyn());
 }

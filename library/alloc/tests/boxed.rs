@@ -1,9 +1,10 @@
-use std::cell::Cell;
-use std::mem::MaybeUninit;
-use std::ptr::NonNull;
+use core::alloc::{AllocError, Allocator, Layout};
+use core::cell::Cell;
+use core::mem::MaybeUninit;
+use core::ptr::NonNull;
 
 #[test]
-fn unitialized_zero_size_box() {
+fn uninitialized_zero_size_box() {
     assert_eq!(
         &*Box::<()>::new_uninit() as *const _,
         NonNull::<MaybeUninit<()>>::dangling().as_ptr(),
@@ -56,4 +57,140 @@ fn box_deref_lval() {
     let x = Box::new(Cell::new(5));
     x.set(1000);
     assert_eq!(x.get(), 1000);
+}
+
+pub struct ConstAllocator;
+
+unsafe impl const Allocator for ConstAllocator {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        match layout.size() {
+            0 => Ok(NonNull::slice_from_raw_parts(layout.dangling(), 0)),
+            _ => unsafe {
+                let ptr = core::intrinsics::const_allocate(layout.size(), layout.align());
+                Ok(NonNull::new_unchecked(ptr as *mut [u8; 0] as *mut [u8]))
+            },
+        }
+    }
+
+    unsafe fn deallocate(&self, _ptr: NonNull<u8>, layout: Layout) {
+        match layout.size() {
+            0 => { /* do nothing */ }
+            _ => { /* do nothing too */ }
+        }
+    }
+
+    fn allocate_zeroed(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        let ptr = self.allocate(layout)?;
+        if layout.size() > 0 {
+            unsafe {
+                ptr.as_mut_ptr().write_bytes(0, layout.size());
+            }
+        }
+        Ok(ptr)
+    }
+
+    unsafe fn grow(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        debug_assert!(
+            new_layout.size() >= old_layout.size(),
+            "`new_layout.size()` must be greater than or equal to `old_layout.size()`"
+        );
+
+        let new_ptr = self.allocate(new_layout)?;
+        if new_layout.size() > 0 {
+            // Safety: `new_ptr` is valid for writes and `ptr` for reads of
+            // `old_layout.size()`, because `new_layout.size() >=
+            // old_layout.size()` (which is an invariant that must be upheld by
+            // callers).
+            unsafe {
+                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), old_layout.size());
+            }
+            // Safety: `ptr` is never used again is also an invariant which must
+            // be upheld by callers.
+            unsafe {
+                self.deallocate(ptr, old_layout);
+            }
+        }
+        Ok(new_ptr)
+    }
+
+    unsafe fn grow_zeroed(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        // Safety: Invariants of `grow_zeroed` and `grow` are the same, and must
+        // be enforced by callers.
+        let new_ptr = unsafe { self.grow(ptr, old_layout, new_layout)? };
+        if new_layout.size() > 0 {
+            let old_size = old_layout.size();
+            let new_size = new_layout.size();
+            let raw_ptr = new_ptr.as_mut_ptr();
+            // Safety:
+            // - `grow` returned Ok, so the returned pointer must be valid for
+            //   `new_size` bytes
+            // - `new_size` must be larger than `old_size`, which is an
+            //   invariant which must be upheld by callers.
+            unsafe {
+                raw_ptr.add(old_size).write_bytes(0, new_size - old_size);
+            }
+        }
+        Ok(new_ptr)
+    }
+
+    unsafe fn shrink(
+        &self,
+        ptr: NonNull<u8>,
+        old_layout: Layout,
+        new_layout: Layout,
+    ) -> Result<NonNull<[u8]>, AllocError> {
+        debug_assert!(
+            new_layout.size() <= old_layout.size(),
+            "`new_layout.size()` must be smaller than or equal to `old_layout.size()`"
+        );
+
+        let new_ptr = self.allocate(new_layout)?;
+        if new_layout.size() > 0 {
+            // Safety: `new_ptr` and `ptr` are valid for reads/writes of
+            // `new_layout.size()` because of the invariants of shrink, which
+            // include `new_layout.size()` being smaller than (or equal to)
+            // `old_layout.size()`.
+            unsafe {
+                new_ptr.as_mut_ptr().copy_from_nonoverlapping(ptr.as_ptr(), new_layout.size());
+            }
+            // Safety: `ptr` is never used again is also an invariant which must
+            // be upheld by callers.
+            unsafe {
+                self.deallocate(ptr, old_layout);
+            }
+        }
+        Ok(new_ptr)
+    }
+
+    fn by_ref(&self) -> &Self
+    where
+        Self: Sized,
+    {
+        self
+    }
+}
+
+#[test]
+fn const_box() {
+    const VALUE: u32 = {
+        let mut boxed = Box::new_in(1u32, ConstAllocator);
+        assert!(*boxed == 1);
+
+        *boxed = 42;
+        assert!(*boxed == 42);
+
+        *Box::leak(boxed)
+    };
+
+    assert!(VALUE == 42);
 }

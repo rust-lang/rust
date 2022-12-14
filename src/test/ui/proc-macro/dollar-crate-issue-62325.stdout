@@ -30,12 +30,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: $DIR/dollar-crate-issue-62325.rs:19:30: 19:32 (#4),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:30: 19:31 (#4),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: $DIR/dollar-crate-issue-62325.rs:19:30: 19:32 (#4),
+                        span: $DIR/dollar-crate-issue-62325.rs:19:31: 19:32 (#4),
                     },
                     Ident {
                         ident: "S",
@@ -85,12 +85,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                     Punct {
                         ch: ':',
                         spacing: Joint,
-                        span: $DIR/auxiliary/dollar-crate-external.rs:21:30: 21:32 (#12),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:30: 21:31 (#12),
                     },
                     Punct {
                         ch: ':',
                         spacing: Alone,
-                        span: $DIR/auxiliary/dollar-crate-external.rs:21:30: 21:32 (#12),
+                        span: $DIR/auxiliary/dollar-crate-external.rs:21:31: 21:32 (#12),
                     },
                     Ident {
                         ident: "S",

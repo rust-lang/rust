@@ -3,7 +3,8 @@ fn bar<F>(blk: F) where F: FnOnce() + 'static {
 
 fn foo(x: &()) {
     bar(|| {
-        //~^ ERROR explicit lifetime required in the type of `x` [E0621]
+        //~^ ERROR borrowed data escapes
+        //~| ERROR closure may outlive
         let _ = x;
     })
 }

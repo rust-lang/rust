@@ -1,5 +1,4 @@
 #![crate_name = "test"]
-#![feature(box_syntax)]
 #![feature(rustc_private)]
 
 extern crate rustc_graphviz;
@@ -261,9 +260,9 @@ fn hello<X: SomeTrait>((z, a): (u32, String), ex: X) {
     let x = 32.0f32;
     let _ = (x + ((x * x) + 1.0).sqrt()).ln();
 
-    let s: Box<SomeTrait> = box some_fields { field1: 43 };
-    let s2: Box<some_fields> = box some_fields { field1: 43 };
-    let s3 = box nofields;
+    let s: Box<SomeTrait> = Box::new(some_fields { field1: 43 });
+    let s2: Box<some_fields> = Box::new(some_fields { field1: 43 });
+    let s3 = Box::new(nofields);
 
     s.Method(43);
     s3.Method(43);
@@ -317,7 +316,7 @@ mod macro_use_test {
 
 fn main() {
     // foo
-    let s = box some_fields { field1: 43 };
+    let s = Box::new(some_fields { field1: 43 });
     hello((43, "a".to_string()), *s);
     sub::sub2::hello();
     sub2::sub3::hello();
@@ -345,17 +344,17 @@ fn main() {
     let s4: msalias::nested_struct = sub::sub2::nested_struct { field2: 55 };
     let s4: msalias::nested_struct = sub2::nested_struct { field2: 55 };
     println(&s2.field1.to_string());
-    let s5: MyType = box some_fields { field1: 55 };
+    let s5: MyType = Box::new(some_fields { field1: 55 });
     let s = SameDir::SameStruct { name: "Bob".to_string() };
     let s = SubDir::SubStruct { name: "Bob".to_string() };
-    let s6: SomeEnum = SomeEnum::MyTypes(box s2.clone(), s5);
+    let s6: SomeEnum = SomeEnum::MyTypes(Box::new(s2.clone()), s5);
     let s7: SomeEnum = SomeEnum::Strings("one", "two", "three");
     matchSomeEnum(s6);
     matchSomeEnum(s7);
     let s8: SomeOtherEnum = SomeOtherEnum::SomeConst2;
     matchSomeOtherEnum(s8);
     let s9: SomeStructEnum =
-        SomeStructEnum::EnumStruct2 { f1: box some_fields { field1: 10 }, f2: box s2 };
+        SomeStructEnum::EnumStruct2 { f1: Box::new(some_fields { field1: 10 }), f2: Box::new(s2) };
     matchSomeStructEnum(s9);
 
     for x in &vec![1, 2, 3] {

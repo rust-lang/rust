@@ -1,7 +1,7 @@
 // pp-exact
 
-// Check that `fn f() -> () { }` does not print as `fn f() { }`.
+// Check that `fn f() -> () {}` does not print as `fn f() {}`.
 
-fn f() -> () { }
+fn f() -> () {}
 
-fn main() { }
+fn main() {}

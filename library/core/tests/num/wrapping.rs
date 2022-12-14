@@ -75,8 +75,6 @@ wrapping_test!(test_wrapping_u64, u64, u64::MIN, u64::MAX);
 wrapping_test!(test_wrapping_u128, u128, u128::MIN, u128::MAX);
 wrapping_test!(test_wrapping_usize, usize, usize::MIN, usize::MAX);
 
-// Don't warn about overflowing ops on 32-bit platforms
-#[cfg_attr(target_pointer_width = "32", allow(const_err))]
 #[test]
 fn wrapping_int_api() {
     assert_eq!(i8::MAX.wrapping_add(1), i8::MIN);
@@ -307,4 +305,14 @@ fn wrapping_int_api() {
             check_neg_wraps!(0x8000_0000_0000_0000_u64 as isize);
         }
     }
+}
+
+#[test]
+fn wrapping_const() {
+    // Specifically the wrapping behavior of division and remainder is subtle,
+    // see https://github.com/rust-lang/rust/pull/94512.
+    const _: () = {
+        assert!(i32::MIN.wrapping_div(-1) == i32::MIN);
+        assert!(i32::MIN.wrapping_rem(-1) == 0);
+    };
 }

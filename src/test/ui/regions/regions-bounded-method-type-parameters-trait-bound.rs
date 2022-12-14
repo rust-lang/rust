@@ -17,7 +17,8 @@ fn caller1<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
 
 fn caller2<'a,'b,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {
     // Here the value provided for 'y is 'b, and hence 'b:'a does not hold.
-    f.method(b); //~ ERROR lifetime mismatch [E0623]
+    f.method(b);
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn caller3<'a,'b:'a,F:Foo<'a>>(a: Inv<'a>, b: Inv<'b>, f: F) {

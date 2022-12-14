@@ -7,6 +7,7 @@
 use crate::fs::{self, Metadata, OpenOptions};
 use crate::io;
 use crate::path::Path;
+use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut};
 
@@ -158,6 +159,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const FILE_FLAG_DELETE_ON_CLOSE: u32 = 0x04000000; }
@@ -195,6 +197,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const FILE_ATTRIBUTE_HIDDEN: u32 = 2; }
@@ -236,6 +239,7 @@ pub trait OpenOptionsExt {
     /// # Examples
     ///
     /// ```no_run
+    /// # #![allow(unexpected_cfgs)]
     /// # #[cfg(for_demonstration_only)]
     /// extern crate winapi;
     /// # mod winapi { pub const SECURITY_IDENTIFICATION: u32 = 0; }
@@ -499,17 +503,20 @@ impl MetadataExt for Metadata {
 /// Windows-specific extensions to [`fs::FileType`].
 ///
 /// On Windows, a symbolic link knows whether it is a file or directory.
-#[unstable(feature = "windows_file_type_ext", issue = "none")]
-pub trait FileTypeExt {
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
+pub trait FileTypeExt: Sealed {
     /// Returns `true` if this file type is a symbolic link that is also a directory.
-    #[unstable(feature = "windows_file_type_ext", issue = "none")]
+    #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
     fn is_symlink_dir(&self) -> bool;
     /// Returns `true` if this file type is a symbolic link that is also a file.
-    #[unstable(feature = "windows_file_type_ext", issue = "none")]
+    #[stable(feature = "windows_file_type_ext", since = "1.64.0")]
     fn is_symlink_file(&self) -> bool;
 }
 
-#[unstable(feature = "windows_file_type_ext", issue = "none")]
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
+impl Sealed for fs::FileType {}
+
+#[stable(feature = "windows_file_type_ext", since = "1.64.0")]
 impl FileTypeExt for fs::FileType {
     fn is_symlink_dir(&self) -> bool {
         self.as_inner().is_symlink_dir()
@@ -543,6 +550,16 @@ impl FileTypeExt for fs::FileType {
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Limitations
+///
+/// Windows treats symlink creation as a [privileged action][symlink-security],
+/// therefore this function is likely to fail unless the user makes changes to
+/// their system to permit symlink creation. Users can try enabling Developer
+/// Mode, granting the `SeCreateSymbolicLinkPrivilege` privilege, or running
+/// the process as an administrator.
+///
+/// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), false)
@@ -572,6 +589,16 @@ pub fn symlink_file<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io:
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Limitations
+///
+/// Windows treats symlink creation as a [privileged action][symlink-security],
+/// therefore this function is likely to fail unless the user makes changes to
+/// their system to permit symlink creation. Users can try enabling Developer
+/// Mode, granting the `SeCreateSymbolicLinkPrivilege` privilege, or running
+/// the process as an administrator.
+///
+/// [symlink-security]: https://docs.microsoft.com/en-us/windows/security/threat-protection/security-policy-settings/create-symbolic-links
 #[stable(feature = "symlink", since = "1.1.0")]
 pub fn symlink_dir<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     sys::fs::symlink_inner(original.as_ref(), link.as_ref(), true)

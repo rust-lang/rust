@@ -4,7 +4,7 @@
 #![warn(clippy::zero_prefixed_literal)]
 #![warn(clippy::unseparated_literal_suffix)]
 #![warn(clippy::separated_literal_suffix)]
-#![allow(dead_code)]
+#![allow(dead_code, overflowing_literals)]
 
 fn main() {
     let ok1 = 0xABCD;
@@ -39,4 +39,11 @@ fn main() {
     let fail25 = 0b01_100_101;
     let ok26 = 0x6_A0_BF;
     let ok27 = 0b1_0010_0101;
+}
+
+fn issue9651() {
+    // lint but octal form is not possible here
+    let _ = 08;
+    let _ = 09;
+    let _ = 089;
 }

@@ -2,8 +2,7 @@
 
 #![allow(dead_code)]
 
-const TEST: u8 = MY_STATIC; //~ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+const TEST: u8 = MY_STATIC; //~ ERROR constant
 
 static MY_STATIC: u8 = 4;
 

@@ -3,7 +3,7 @@
 //! The features are detected using the `detect_features` function below.
 //! This function uses the CPUID instruction to read the feature flags from the
 //! CPU and encodes them in a `usize` where each bit position represents
-//! whether a feature is available (bit is set) or unavaiable (bit is cleared).
+//! whether a feature is available (bit is set) or unavailable (bit is cleared).
 //!
 //! The enum `Feature` is used to map bit positions to feature names, and the
 //! the `__crate::detect::check_for!` macro is used to map string literals (e.g.,

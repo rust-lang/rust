@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(stable_features)]
 
 // ignore-emscripten no threads support

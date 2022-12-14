@@ -15,11 +15,9 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
 
             super::ImplSource::Generator(ref d) => write!(f, "{:?}", d),
 
+            super::ImplSource::Future(ref d) => write!(f, "{:?}", d),
+
             super::ImplSource::FnPointer(ref d) => write!(f, "({:?})", d),
-
-            super::ImplSource::DiscriminantKind(ref d) => write!(f, "{:?}", d),
-
-            super::ImplSource::Pointee(ref d) => write!(f, "{:?}", d),
 
             super::ImplSource::Object(ref d) => write!(f, "{:?}", d),
 
@@ -33,7 +31,7 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSource<'tcx, N> {
 
             super::ImplSource::TraitUpcasting(ref d) => write!(f, "{:?}", d),
 
-            super::ImplSource::ConstDrop(ref d) => write!(f, "{:?}", d),
+            super::ImplSource::ConstDestruct(ref d) => write!(f, "{:?}", d),
         }
     }
 }
@@ -58,6 +56,16 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceGeneratorData<'tcx, N
     }
 }
 
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceFutureData<'tcx, N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "ImplSourceFutureData(generator_def_id={:?}, substs={:?}, nested={:?})",
+            self.generator_def_id, self.substs, self.nested
+        )
+    }
+}
+
 impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceClosureData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
@@ -74,7 +82,7 @@ impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceBuiltinData<N> {
     }
 }
 
-impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<'tcx, N> {
+impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitUpcastingData<'tcx, N> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
             f,
@@ -120,12 +128,8 @@ impl<'tcx, N: fmt::Debug> fmt::Debug for traits::ImplSourceTraitAliasData<'tcx, 
     }
 }
 
-///////////////////////////////////////////////////////////////////////////
-// Lift implementations
-
-TrivialTypeFoldableAndLiftImpls! {
-    super::IfExpressionCause,
-    super::ImplSourceDiscriminantKindData,
-    super::ImplSourcePointeeData,
-    super::ImplSourceConstDropData,
+impl<N: fmt::Debug> fmt::Debug for traits::ImplSourceConstDestructData<N> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "ImplSourceConstDestructData(nested={:?})", self.nested)
+    }
 }

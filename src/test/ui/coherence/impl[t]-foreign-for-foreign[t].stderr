@@ -1,4 +1,4 @@
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
   --> $DIR/impl[t]-foreign-for-foreign[t].rs:11:1
    |
 LL | impl Remote for Rc<Local> {
@@ -9,7 +9,7 @@ LL | impl Remote for Rc<Local> {
    |
    = note: define and implement a trait or new type instead
 
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+error[E0117]: only traits defined in the current crate can be implemented for types defined outside of the crate
   --> $DIR/impl[t]-foreign-for-foreign[t].rs:16:1
    |
 LL | impl<T> Remote for Arc<T> {

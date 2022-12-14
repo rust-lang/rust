@@ -97,6 +97,7 @@ E0184: include_str!("./error_codes/E0184.md"),
 E0185: include_str!("./error_codes/E0185.md"),
 E0186: include_str!("./error_codes/E0186.md"),
 E0191: include_str!("./error_codes/E0191.md"),
+E0192: include_str!("./error_codes/E0192.md"),
 E0193: include_str!("./error_codes/E0193.md"),
 E0195: include_str!("./error_codes/E0195.md"),
 E0197: include_str!("./error_codes/E0197.md"),
@@ -120,6 +121,7 @@ E0223: include_str!("./error_codes/E0223.md"),
 E0224: include_str!("./error_codes/E0224.md"),
 E0225: include_str!("./error_codes/E0225.md"),
 E0226: include_str!("./error_codes/E0226.md"),
+E0227: include_str!("./error_codes/E0227.md"),
 E0228: include_str!("./error_codes/E0228.md"),
 E0229: include_str!("./error_codes/E0229.md"),
 E0230: include_str!("./error_codes/E0230.md"),
@@ -157,6 +159,7 @@ E0307: include_str!("./error_codes/E0307.md"),
 E0308: include_str!("./error_codes/E0308.md"),
 E0309: include_str!("./error_codes/E0309.md"),
 E0310: include_str!("./error_codes/E0310.md"),
+E0311: include_str!("./error_codes/E0311.md"),
 E0312: include_str!("./error_codes/E0312.md"),
 E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
@@ -392,6 +395,7 @@ E0663: include_str!("./error_codes/E0663.md"),
 E0664: include_str!("./error_codes/E0664.md"),
 E0665: include_str!("./error_codes/E0665.md"),
 E0666: include_str!("./error_codes/E0666.md"),
+E0667: include_str!("./error_codes/E0667.md"),
 E0668: include_str!("./error_codes/E0668.md"),
 E0669: include_str!("./error_codes/E0669.md"),
 E0670: include_str!("./error_codes/E0670.md"),
@@ -427,6 +431,7 @@ E0720: include_str!("./error_codes/E0720.md"),
 E0722: include_str!("./error_codes/E0722.md"),
 E0724: include_str!("./error_codes/E0724.md"),
 E0725: include_str!("./error_codes/E0725.md"),
+E0726: include_str!("./error_codes/E0726.md"),
 E0727: include_str!("./error_codes/E0727.md"),
 E0728: include_str!("./error_codes/E0728.md"),
 E0729: include_str!("./error_codes/E0729.md"),
@@ -471,6 +476,7 @@ E0768: include_str!("./error_codes/E0768.md"),
 E0769: include_str!("./error_codes/E0769.md"),
 E0770: include_str!("./error_codes/E0770.md"),
 E0771: include_str!("./error_codes/E0771.md"),
+E0772: include_str!("./error_codes/E0772.md"),
 E0773: include_str!("./error_codes/E0773.md"),
 E0774: include_str!("./error_codes/E0774.md"),
 E0775: include_str!("./error_codes/E0775.md"),
@@ -484,12 +490,17 @@ E0782: include_str!("./error_codes/E0782.md"),
 E0783: include_str!("./error_codes/E0783.md"),
 E0784: include_str!("./error_codes/E0784.md"),
 E0785: include_str!("./error_codes/E0785.md"),
+E0786: include_str!("./error_codes/E0786.md"),
+E0787: include_str!("./error_codes/E0787.md"),
+E0788: include_str!("./error_codes/E0788.md"),
+E0790: include_str!("./error_codes/E0790.md"),
+E0791: include_str!("./error_codes/E0791.md"),
 ;
 //  E0006, // merged with E0005
 //  E0008, // cannot bind by-move into a pattern guard
-//  E0019, merged into E0015
-//  E0035, merged into E0087/E0089
-//  E0036, merged into E0087/E0089
+//  E0019, // merged into E0015
+//  E0035, // merged into E0087/E0089
+//  E0036, // merged into E0087/E0089
 //  E0068,
 //  E0085,
 //  E0086,
@@ -504,8 +515,8 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0134,
 //  E0135,
 //  E0141,
-//  E0153, unused error code
-//  E0157, unused error code
+//  E0153, // unused error code
+//  E0157, // unused error code
 //  E0159, // use of trait `{}` as struct constructor
 //  E0163, // merged into E0071
 //  E0167,
@@ -518,10 +529,9 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0188, // can not cast an immutable reference to a mutable pointer
 //  E0189, // deprecated: can only cast a boxed pointer to a boxed object
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
-//  E0192, // negative impl only applicable to auto traits
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0208,
+    E0208, // internal error code
 //  E0209, // builtin traits can only be implemented on structs or enums
 //  E0213, // associated types are not accepted in this context
 //  E0215, // angle-bracket notation is not stable with `Fn`
@@ -529,7 +539,6 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0217, // ambiguous associated type, defined in multiple supertraits
 //  E0218, // no associated type defined
 //  E0219, // associated type defined in higher-ranked supertrait
-    E0227, // ambiguous lifetime bound, explicit lifetime bound required
 //  E0233,
 //  E0234,
 //  E0235, // structure constructor specifies a structure of type but
@@ -552,7 +561,7 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0273, // on_unimplemented #1
 //  E0274, // on_unimplemented #2
 //  E0278, // requirement is not satisfied
-    E0279, // requirement is not satisfied
+//  E0279,
     E0280, // requirement is not satisfied
 //  E0285, // overflow evaluation builtin bounds
 //  E0296, // replaced with a generic attribute input check
@@ -561,7 +570,6 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
-    E0311, // thing may not live long enough
     E0313, // lifetime of borrowed pointer outlives lifetime of captured
            // variable
 //  E0314, // closure outlives stack frame
@@ -573,24 +581,24 @@ E0785: include_str!("./error_codes/E0785.md"),
            // between structures with the same definition
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
-//  E0406, merged into 420
-//  E0410, merged into 408
-//  E0413, merged into 530
-//  E0414, merged into 530
-//  E0417, merged into 532
-//  E0418, merged into 532
-//  E0419, merged into 531
-//  E0420, merged into 532
-//  E0421, merged into 531
-//  E0427, merged into 530
+//  E0406, // merged into 420
+//  E0410, // merged into 408
+//  E0413, // merged into 530
+//  E0414, // merged into 530
+//  E0417, // merged into 532
+//  E0418, // merged into 532
+//  E0419, // merged into 531
+//  E0420, // merged into 532
+//  E0421, // merged into 531
+//  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
     E0457, // plugin `..` only found in rlib format, but must be available...
     E0460, // found possibly newer version of crate `..`
     E0461, // couldn't find crate `..` with expected target triple ..
     E0462, // found staticlib `..` instead of rlib or dylib
     E0465, // multiple .. candidates for `..` found
-//  E0467, removed
-//  E0470, removed
+//  E0467, // removed
+//  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
     E0472, // llvm_asm! is unsupported on this target
 //  E0473, // dereference of reference outside its lifetime
@@ -610,8 +618,7 @@ E0785: include_str!("./error_codes/E0785.md"),
     E0490, // a value of type `..` is borrowed for too long
     E0514, // metadata version mismatch
     E0519, // local crate and dependency have same (crate-name, disambiguator)
-    // two dependencies have same (crate-name, disambiguator) but different SVH
-    E0523,
+    E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
 //  E0548, // replaced with a generic attribute input check
@@ -628,18 +635,16 @@ E0785: include_str!("./error_codes/E0785.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
-    E0640, // infer outlives requirements
+    E0640, // infer outlives requirements, internal error code
 //  E0645, // trait aliases not finished
-    E0667, // `impl Trait` in projections
 //  E0694, // an unknown tool name found in scoped attributes
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0711, // a feature has been declared with conflicting stability attributes
-    E0717, // rustc_promotable without stability attribute
+    E0711, // a feature has been declared with conflicting stability attributes, internal error code
+    E0717, // rustc_promotable without stability attribute, internal error code
 //  E0721, // `await` keyword
-//  E0723, unstable feature in `const` context
-    E0726, // non-explicit (not `'_`) elided lifetime in unsupported position
+//  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
-    E0772, // `'static' obligation coming from `impl dyn Trait {}` or `impl Foo for dyn Bar {}`.
+    E0789, // rustc_allowed_through_unstable_modules without stability attribute
 }

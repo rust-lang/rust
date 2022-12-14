@@ -6,7 +6,7 @@ mod targets;
 #[test]
 fn default_options() {
     let empty: Vec<String> = vec![];
-    let o = Opts::from_iter(&empty);
+    let o = Opts::parse_from(&empty);
     assert_eq!(false, o.quiet);
     assert_eq!(false, o.verbose);
     assert_eq!(false, o.version);
@@ -20,7 +20,7 @@ fn default_options() {
 
 #[test]
 fn good_options() {
-    let o = Opts::from_iter(&[
+    let o = Opts::parse_from(&[
         "test",
         "-q",
         "-p",
@@ -47,8 +47,8 @@ fn good_options() {
 #[test]
 fn unexpected_option() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "unexpected"])
+        Opts::command()
+            .try_get_matches_from(&["test", "unexpected"])
             .is_err()
     );
 }
@@ -56,8 +56,8 @@ fn unexpected_option() {
 #[test]
 fn unexpected_flag() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "--flag"])
+        Opts::command()
+            .try_get_matches_from(&["test", "--flag"])
             .is_err()
     );
 }
@@ -65,20 +65,20 @@ fn unexpected_flag() {
 #[test]
 fn mandatory_separator() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "--emit"])
+        Opts::command()
+            .try_get_matches_from(&["test", "--emit"])
             .is_err()
     );
     assert!(
-        !Opts::clap()
-            .get_matches_from_safe(&["test", "--", "--emit"])
+        !Opts::command()
+            .try_get_matches_from(&["test", "--", "--emit"])
             .is_err()
     );
 }
 
 #[test]
 fn multiple_packages_one_by_one() {
-    let o = Opts::from_iter(&[
+    let o = Opts::parse_from(&[
         "test",
         "-p",
         "package1",
@@ -92,7 +92,7 @@ fn multiple_packages_one_by_one() {
 
 #[test]
 fn multiple_packages_grouped() {
-    let o = Opts::from_iter(&[
+    let o = Opts::parse_from(&[
         "test",
         "--package",
         "package1",
@@ -106,14 +106,18 @@ fn multiple_packages_grouped() {
 
 #[test]
 fn empty_packages_1() {
-    assert!(Opts::clap().get_matches_from_safe(&["test", "-p"]).is_err());
+    assert!(
+        Opts::command()
+            .try_get_matches_from(&["test", "-p"])
+            .is_err()
+    );
 }
 
 #[test]
 fn empty_packages_2() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "-p", "--", "--check"])
+        Opts::command()
+            .try_get_matches_from(&["test", "-p", "--", "--check"])
             .is_err()
     );
 }
@@ -121,8 +125,8 @@ fn empty_packages_2() {
 #[test]
 fn empty_packages_3() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "-p", "--verbose"])
+        Opts::command()
+            .try_get_matches_from(&["test", "-p", "--verbose"])
             .is_err()
     );
 }
@@ -130,8 +134,8 @@ fn empty_packages_3() {
 #[test]
 fn empty_packages_4() {
     assert!(
-        Opts::clap()
-            .get_matches_from_safe(&["test", "-p", "--check"])
+        Opts::command()
+            .try_get_matches_from(&["test", "-p", "--check"])
             .is_err()
     );
 }

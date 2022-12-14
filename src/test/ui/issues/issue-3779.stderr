@@ -2,15 +2,15 @@ error[E0072]: recursive type `S` has infinite size
   --> $DIR/issue-3779.rs:1:1
    |
 LL | struct S {
-   | ^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^
 LL |
 LL |     element: Option<S>
-   |              --------- recursive without indirection
+   |                     - recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `S` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     element: Box<Option<S>>
-   |              ++++         +
+LL |     element: Option<Box<S>>
+   |                     ++++ +
 
 error: aborting due to previous error
 

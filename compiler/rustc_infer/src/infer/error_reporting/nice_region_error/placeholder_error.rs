@@ -3,20 +3,23 @@ use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::ValuePairs;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCause, ObligationCauseCode};
-use rustc_errors::DiagnosticBuilder;
+use rustc_data_structures::intern::Interned;
+use rustc_errors::{Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::{FmtPrinter, Print, RegionHighlightMode};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, RePlaceholder, ReVar, Region, TyCtxt};
 
 use std::fmt::{self, Write};
 
-impl NiceRegionError<'me, 'tcx> {
+impl<'tcx> NiceRegionError<'_, 'tcx> {
     /// When given a `ConcreteFailure` for a function with arguments containing a named region and
     /// an anonymous region, emit a descriptive diagnostic error.
-    pub(super) fn try_report_placeholder_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_placeholder_conflict(
+        &self,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         match &self.error {
             ///////////////////////////////////////////////////////////////////////////
             // NB. The ordering of cases in this match is very
@@ -31,14 +34,15 @@ impl NiceRegionError<'me, 'tcx> {
                 vid,
                 _,
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sub_placeholder @ ty::RePlaceholder(_),
+                sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
                 _,
-                sup_placeholder @ ty::RePlaceholder(_),
+                sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                Some(self.tcx().mk_region(ReVar(*vid))),
                 cause,
-                Some(sub_placeholder),
-                Some(sup_placeholder),
+                Some(*sub_placeholder),
+                Some(*sup_placeholder),
                 values,
             ),
 
@@ -46,13 +50,14 @@ impl NiceRegionError<'me, 'tcx> {
                 vid,
                 _,
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sub_placeholder @ ty::RePlaceholder(_),
+                sub_placeholder @ Region(Interned(RePlaceholder(_), _)),
+                _,
                 _,
                 _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                Some(self.tcx().mk_region(ReVar(*vid))),
                 cause,
-                Some(sub_placeholder),
+                Some(*sub_placeholder),
                 None,
                 values,
             ),
@@ -63,9 +68,10 @@ impl NiceRegionError<'me, 'tcx> {
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 _,
                 _,
-                sup_placeholder @ ty::RePlaceholder(_),
+                sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                Some(self.tcx().mk_region(ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -78,9 +84,10 @@ impl NiceRegionError<'me, 'tcx> {
                 _,
                 _,
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sup_placeholder @ ty::RePlaceholder(_),
+                sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
+                _,
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                Some(self.tcx().mk_region(ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -92,9 +99,9 @@ impl NiceRegionError<'me, 'tcx> {
                 _,
                 _,
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sup_placeholder @ ty::RePlaceholder(_),
+                sup_placeholder @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                Some(self.tcx().mk_region(ty::ReVar(*vid))),
+                Some(self.tcx().mk_region(ReVar(*vid))),
                 cause,
                 None,
                 Some(*sup_placeholder),
@@ -103,8 +110,8 @@ impl NiceRegionError<'me, 'tcx> {
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sub_region @ ty::RePlaceholder(_),
-                sup_region @ ty::RePlaceholder(_),
+                sub_region @ Region(Interned(RePlaceholder(_), _)),
+                sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
                 None,
                 cause,
@@ -115,12 +122,12 @@ impl NiceRegionError<'me, 'tcx> {
 
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
-                sub_region @ ty::RePlaceholder(_),
+                sub_region @ Region(Interned(RePlaceholder(_), _)),
                 sup_region,
             )) => self.try_report_trait_placeholder_mismatch(
-                (!sup_region.has_name()).then_some(sup_region),
+                (!sup_region.has_name()).then_some(*sup_region),
                 cause,
-                Some(sub_region),
+                Some(*sub_region),
                 None,
                 values,
             ),
@@ -128,12 +135,12 @@ impl NiceRegionError<'me, 'tcx> {
             Some(RegionResolutionError::ConcreteFailure(
                 SubregionOrigin::Subtype(box TypeTrace { cause, values }),
                 sub_region,
-                sup_region @ ty::RePlaceholder(_),
+                sup_region @ Region(Interned(RePlaceholder(_), _)),
             )) => self.try_report_trait_placeholder_mismatch(
-                (!sub_region.has_name()).then_some(sub_region),
+                (!sub_region.has_name()).then_some(*sub_region),
                 cause,
                 None,
-                Some(sup_region),
+                Some(*sup_region),
                 values,
             ),
 
@@ -143,12 +150,12 @@ impl NiceRegionError<'me, 'tcx> {
 
     fn try_report_trait_placeholder_mismatch(
         &self,
-        vid: Option<ty::Region<'tcx>>,
+        vid: Option<Region<'tcx>>,
         cause: &ObligationCause<'tcx>,
-        sub_placeholder: Option<ty::Region<'tcx>>,
-        sup_placeholder: Option<ty::Region<'tcx>>,
+        sub_placeholder: Option<Region<'tcx>>,
+        sup_placeholder: Option<Region<'tcx>>,
         value_pairs: &ValuePairs<'tcx>,
-    ) -> Option<DiagnosticBuilder<'tcx>> {
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (expected_substs, found_substs, trait_def_id) = match value_pairs {
             ValuePairs::TraitRefs(ExpectedFound { expected, found })
                 if expected.def_id == found.def_id =>
@@ -189,22 +196,25 @@ impl NiceRegionError<'me, 'tcx> {
     #[instrument(level = "debug", skip(self))]
     fn report_trait_placeholder_mismatch(
         &self,
-        vid: Option<ty::Region<'tcx>>,
+        vid: Option<Region<'tcx>>,
         cause: &ObligationCause<'tcx>,
-        sub_placeholder: Option<ty::Region<'tcx>>,
-        sup_placeholder: Option<ty::Region<'tcx>>,
+        sub_placeholder: Option<Region<'tcx>>,
+        sup_placeholder: Option<Region<'tcx>>,
         trait_def_id: DefId,
         expected_substs: SubstsRef<'tcx>,
         actual_substs: SubstsRef<'tcx>,
-    ) -> DiagnosticBuilder<'tcx> {
-        let span = cause.span(self.tcx());
+    ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
+        let span = cause.span();
         let msg = format!(
             "implementation of `{}` is not general enough",
             self.tcx().def_path_str(trait_def_id),
         );
         let mut err = self.tcx().sess.struct_span_err(span, &msg);
 
-        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id) = cause.code {
+        let leading_ellipsis = if let ObligationCauseCode::ItemObligation(def_id)
+        | ObligationCauseCode::ExprItemObligation(def_id, ..) =
+            *cause.code()
+        {
             err.span_label(span, "doesn't satisfy where-clause");
             err.span_label(
                 self.tcx().def_span(def_id),
@@ -216,12 +226,12 @@ impl NiceRegionError<'me, 'tcx> {
             false
         };
 
-        let expected_trait_ref = self.infcx.resolve_vars_if_possible(ty::TraitRef {
+        let expected_trait_ref = self.cx.resolve_vars_if_possible(ty::TraitRef {
             def_id: trait_def_id,
             substs: expected_substs,
         });
         let actual_trait_ref = self
-            .infcx
+            .cx
             .resolve_vars_if_possible(ty::TraitRef { def_id: trait_def_id, substs: actual_substs });
 
         // Search the expected and actual trait references to see (a)
@@ -301,14 +311,14 @@ impl NiceRegionError<'me, 'tcx> {
     /// due to the number of combinations we have to deal with.
     fn explain_actual_impl_that_was_found(
         &self,
-        err: &mut DiagnosticBuilder<'_>,
-        sub_placeholder: Option<ty::Region<'tcx>>,
-        sup_placeholder: Option<ty::Region<'tcx>>,
+        err: &mut Diagnostic,
+        sub_placeholder: Option<Region<'tcx>>,
+        sup_placeholder: Option<Region<'tcx>>,
         has_sub: Option<usize>,
         has_sup: Option<usize>,
         expected_trait_ref: ty::TraitRef<'tcx>,
         actual_trait_ref: ty::TraitRef<'tcx>,
-        vid: Option<ty::Region<'tcx>>,
+        vid: Option<Region<'tcx>>,
         expected_has_vid: Option<usize>,
         actual_has_vid: Option<usize>,
         any_self_ty_has_vid: bool,
@@ -318,7 +328,7 @@ impl NiceRegionError<'me, 'tcx> {
         #[derive(Copy, Clone)]
         struct Highlighted<'tcx, T> {
             tcx: TyCtxt<'tcx>,
-            highlight: RegionHighlightMode,
+            highlight: RegionHighlightMode<'tcx>,
             value: T,
         }
 
@@ -330,18 +340,19 @@ impl NiceRegionError<'me, 'tcx> {
 
         impl<'tcx, T> fmt::Display for Highlighted<'tcx, T>
         where
-            T: for<'a, 'b, 'c> Print<
+            T: for<'a> Print<
                 'tcx,
-                FmtPrinter<'a, 'tcx, &'b mut fmt::Formatter<'c>>,
+                FmtPrinter<'a, 'tcx>,
                 Error = fmt::Error,
+                Output = FmtPrinter<'a, 'tcx>,
             >,
         {
             fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                let mut printer = ty::print::FmtPrinter::new(self.tcx, f, Namespace::TypeNS);
+                let mut printer = ty::print::FmtPrinter::new(self.tcx, Namespace::TypeNS);
                 printer.region_highlight_mode = self.highlight;
 
-                self.value.print(printer)?;
-                Ok(())
+                let s = self.value.print(printer)?.into_buffer();
+                f.write_str(&s)
             }
         }
 
@@ -362,7 +373,7 @@ impl NiceRegionError<'me, 'tcx> {
 
         let highlight_trait_ref = |trait_ref| Highlighted {
             tcx: self.tcx(),
-            highlight: RegionHighlightMode::default(),
+            highlight: RegionHighlightMode::new(self.tcx()),
             value: trait_ref,
         };
 
@@ -388,10 +399,7 @@ impl NiceRegionError<'me, 'tcx> {
                 self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
 
                 if self_ty.value.is_closure()
-                    && self
-                        .tcx()
-                        .fn_trait_kind_from_lang_item(expected_trait_ref.value.def_id)
-                        .is_some()
+                    && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
                 {
                     let closure_sig = self_ty.map(|closure| {
                         if let ty::Closure(_, substs) = closure.kind() {

@@ -1,4 +1,4 @@
-error: unexpected token: `stringify!(b)`
+error: unexpected expression: `stringify!(b)`
   --> $DIR/key-value-expansion-on-mac.rs:11:17
    |
 LL | #[rustc_dummy = stringify!(b)]

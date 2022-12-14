@@ -1,1 +1,1 @@
-uint_module!(u16, u16);
+uint_module!(u16);

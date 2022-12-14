@@ -46,7 +46,7 @@ error: useless conversion to the same type: `std::string::String`
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
-error: useless conversion to the same type: `std::str::Lines`
+error: useless conversion to the same type: `std::str::Lines<'_>`
   --> $DIR/useless_conversion.rs:65:13
    |
 LL |     let _ = "".lines().into_iter();

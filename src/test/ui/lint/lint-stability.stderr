@@ -295,6 +295,14 @@ LL |         stable_mod::unstable();
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
 error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability.rs:194:9
+   |
+LL |         unstable_mod::deprecated();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
   --> $DIR/lint-stability.rs:195:9
    |
 LL |         unstable_mod::unstable();
@@ -307,6 +315,14 @@ error[E0658]: use of unstable library feature 'unstable_test_feature'
    |
 LL |         let _ = Unstable::UnstableVariant;
    |                 ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
+
+error[E0658]: use of unstable library feature 'unstable_test_feature'
+  --> $DIR/lint-stability.rs:198:17
+   |
+LL |         let _ = Unstable::StableVariant;
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
@@ -326,6 +342,6 @@ LL |             TypeUnstable = u8,
    |
    = help: add `#![feature(unstable_test_feature)]` to the crate attributes to enable
 
-error: aborting due to 41 previous errors
+error: aborting due to 43 previous errors
 
 For more information about this error, try `rustc --explain E0658`.

@@ -1,6 +1,10 @@
 //! Free functions to create `&[T]` and `&mut [T]`.
 
 use crate::array;
+use crate::intrinsics::{
+    assert_unsafe_precondition, is_aligned_and_not_null, is_valid_allocation_size,
+};
+use crate::ops::Range;
 use crate::ptr;
 
 /// Forms a slice from a pointer and a length.
@@ -83,12 +87,18 @@ use crate::ptr;
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_stable(feature = "const_slice_from_raw_parts", since = "1.64.0")]
+#[must_use]
 pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T] {
-    debug_check_data_len(data, len);
-
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts`.
-    unsafe { &*ptr::slice_from_raw_parts(data, len) }
+    unsafe {
+        assert_unsafe_precondition!(
+            "slice::from_raw_parts requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+            [T](data: *const T, len: usize) => is_aligned_and_not_null(data)
+                && is_valid_allocation_size::<T>(len)
+        );
+        &*ptr::slice_from_raw_parts(data, len)
+    }
 }
 
 /// Performs the same functionality as [`from_raw_parts`], except that a
@@ -122,51 +132,24 @@ pub const unsafe fn from_raw_parts<'a, T>(data: *const T, len: usize) -> &'a [T]
 /// [`NonNull::dangling()`]: ptr::NonNull::dangling
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
+#[rustc_const_unstable(feature = "const_slice_from_raw_parts_mut", issue = "67456")]
+#[must_use]
 pub const unsafe fn from_raw_parts_mut<'a, T>(data: *mut T, len: usize) -> &'a mut [T] {
-    debug_check_data_len(data as _, len);
-
     // SAFETY: the caller must uphold the safety contract for `from_raw_parts_mut`.
-    unsafe { &mut *ptr::slice_from_raw_parts_mut(data, len) }
-}
-
-// In debug builds checks that `data` pointer is aligned and non-null and that slice with given `len` would cover less than half the address space
-#[cfg(all(not(bootstrap), debug_assertions))]
-#[unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
-#[rustc_const_unstable(feature = "const_slice_from_raw_parts", issue = "67456")]
-const fn debug_check_data_len<T>(data: *const T, len: usize) {
-    fn rt_check<T>(data: *const T) {
-        use crate::intrinsics::is_aligned_and_not_null;
-
-        assert!(is_aligned_and_not_null(data), "attempt to create unaligned or null slice");
-    }
-
-    const fn noop<T>(_: *const T) {}
-
-    // SAFETY:
-    //
-    // `rt_check` is just a debug assert to hint users that they are causing UB,
-    // it is not required for safety (the safety must be guatanteed by
-    // the `from_raw_parts[_mut]` caller).
-    //
-    // Since the checks are not required, we ignore them in CTFE as they can't
-    // be done there (alignment does not make much sense there).
     unsafe {
-        crate::intrinsics::const_eval_select((data,), noop, rt_check);
+        assert_unsafe_precondition!(
+            "slice::from_raw_parts_mut requires the pointer to be aligned and non-null, and the total size of the slice not to exceed `isize::MAX`",
+            [T](data: *mut T, len: usize) => is_aligned_and_not_null(data)
+                && is_valid_allocation_size::<T>(len)
+        );
+        &mut *ptr::slice_from_raw_parts_mut(data, len)
     }
-
-    assert!(
-        crate::mem::size_of::<T>().saturating_mul(len) <= isize::MAX as usize,
-        "attempt to create slice covering at least half the address space"
-    );
 }
-
-#[cfg(not(all(not(bootstrap), debug_assertions)))]
-const fn debug_check_data_len<T>(_data: *const T, _len: usize) {}
 
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
-#[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[rustc_const_stable(feature = "const_slice_from_ref_shared", since = "1.63.0")]
+#[must_use]
 pub const fn from_ref<T>(s: &T) -> &[T] {
     array::from_ref(s)
 }
@@ -174,6 +157,141 @@ pub const fn from_ref<T>(s: &T) -> &[T] {
 /// Converts a reference to T into a slice of length 1 (without copying).
 #[stable(feature = "from_ref", since = "1.28.0")]
 #[rustc_const_unstable(feature = "const_slice_from_ref", issue = "90206")]
+#[must_use]
 pub const fn from_mut<T>(s: &mut T) -> &mut [T] {
     array::from_mut(s)
+}
+
+/// Forms a slice from a pointer range.
+///
+/// This function is useful for interacting with foreign interfaces which
+/// use two pointers to refer to a range of elements in memory, as is
+/// common in C++.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+///   to the first element of a slice.
+///
+/// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
+///   the last element, such that the offset from the end to the start pointer is
+///   the length of the slice.
+///
+/// * The range must contain `N` consecutive properly initialized values of type `T`:
+///
+///     * The entire memory range of this slice must be contained within a single allocated object!
+///       Slices can never span across multiple allocated objects.
+///
+/// * The memory referenced by the returned slice must not be mutated for the duration
+///   of lifetime `'a`, except inside an `UnsafeCell`.
+///
+/// * The total length of the range must be no larger than `isize::MAX`.
+///   See the safety documentation of [`pointer::offset`].
+///
+/// Note that a range created from [`slice::as_ptr_range`] fulfills these requirements.
+///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
+/// # Caveat
+///
+/// The lifetime for the returned slice is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the slice, or by explicit
+/// annotation.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(slice_from_ptr_range)]
+///
+/// use core::slice;
+///
+/// let x = [1, 2, 3];
+/// let range = x.as_ptr_range();
+///
+/// unsafe {
+///     assert_eq!(slice::from_ptr_range(range), &x);
+/// }
+/// ```
+///
+/// [valid]: ptr#safety
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+#[rustc_const_unstable(feature = "const_slice_from_ptr_range", issue = "89792")]
+pub const unsafe fn from_ptr_range<'a, T>(range: Range<*const T>) -> &'a [T] {
+    // SAFETY: the caller must uphold the safety contract for `from_ptr_range`.
+    unsafe { from_raw_parts(range.start, range.end.sub_ptr(range.start)) }
+}
+
+/// Forms a mutable slice from a pointer range.
+///
+/// This is the same functionality as [`from_ptr_range`], except that a
+/// mutable slice is returned.
+///
+/// This function is useful for interacting with foreign interfaces which
+/// use two pointers to refer to a range of elements in memory, as is
+/// common in C++.
+///
+/// # Safety
+///
+/// Behavior is undefined if any of the following conditions are violated:
+///
+/// * The `start` pointer of the range must be a [valid] and properly aligned pointer
+///   to the first element of a slice.
+///
+/// * The `end` pointer must be a [valid] and properly aligned pointer to *one past*
+///   the last element, such that the offset from the end to the start pointer is
+///   the length of the slice.
+///
+/// * The range must contain `N` consecutive properly initialized values of type `T`:
+///
+///     * The entire memory range of this slice must be contained within a single allocated object!
+///       Slices can never span across multiple allocated objects.
+///
+/// * The memory referenced by the returned slice must not be accessed through any other pointer
+///   (not derived from the return value) for the duration of lifetime `'a`.
+///   Both read and write accesses are forbidden.
+///
+/// * The total length of the range must be no larger than `isize::MAX`.
+///   See the safety documentation of [`pointer::offset`].
+///
+/// Note that a range created from [`slice::as_mut_ptr_range`] fulfills these requirements.
+///
+/// # Panics
+///
+/// This function panics if `T` is a Zero-Sized Type (“ZST”).
+///
+/// # Caveat
+///
+/// The lifetime for the returned slice is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the slice, or by explicit
+/// annotation.
+///
+/// # Examples
+///
+/// ```
+/// #![feature(slice_from_ptr_range)]
+///
+/// use core::slice;
+///
+/// let mut x = [1, 2, 3];
+/// let range = x.as_mut_ptr_range();
+///
+/// unsafe {
+///     assert_eq!(slice::from_mut_ptr_range(range), &mut [1, 2, 3]);
+/// }
+/// ```
+///
+/// [valid]: ptr#safety
+#[unstable(feature = "slice_from_ptr_range", issue = "89792")]
+#[rustc_const_unstable(feature = "const_slice_from_mut_ptr_range", issue = "89792")]
+pub const unsafe fn from_mut_ptr_range<'a, T>(range: Range<*mut T>) -> &'a mut [T] {
+    // SAFETY: the caller must uphold the safety contract for `from_mut_ptr_range`.
+    unsafe { from_raw_parts_mut(range.start, range.end.sub_ptr(range.start)) }
 }

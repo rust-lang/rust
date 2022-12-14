@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:20.04
 
 COPY scripts/cross-apt-packages.sh /scripts/
 RUN sh /scripts/cross-apt-packages.sh
@@ -18,9 +18,6 @@ USER root
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
-
-COPY scripts/cmake.sh /scripts/
-RUN /scripts/cmake.sh
 
 ENV PATH=$PATH:/x-tools/arm-unknown-linux-gnueabihf/bin
 

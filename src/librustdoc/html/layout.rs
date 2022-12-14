@@ -3,61 +3,63 @@ use std::path::PathBuf;
 use rustc_data_structures::fx::FxHashMap;
 
 use crate::externalfiles::ExternalHtml;
-use crate::html::escape::Escape;
 use crate::html::format::{Buffer, Print};
 use crate::html::render::{ensure_trailing_slash, StylePath};
 
-use serde::Serialize;
+use askama::Template;
 
-#[derive(Clone, Serialize)]
-crate struct Layout {
-    crate logo: String,
-    crate favicon: String,
-    crate external_html: ExternalHtml,
-    crate default_settings: FxHashMap<String, String>,
-    crate krate: String,
+use super::static_files::{StaticFiles, STATIC_FILES};
+
+#[derive(Clone)]
+pub(crate) struct Layout {
+    pub(crate) logo: String,
+    pub(crate) favicon: String,
+    pub(crate) external_html: ExternalHtml,
+    pub(crate) default_settings: FxHashMap<String, String>,
+    pub(crate) krate: String,
     /// The given user css file which allow to customize the generated
     /// documentation theme.
-    crate css_file_extension: Option<PathBuf>,
-    /// If false, the `select` element to have search filtering by crates on rendered docs
-    /// won't be generated.
-    crate generate_search_filter: bool,
+    pub(crate) css_file_extension: Option<PathBuf>,
     /// If true, then scrape-examples.js will be included in the output HTML file
-    crate scrape_examples_extension: bool,
+    pub(crate) scrape_examples_extension: bool,
 }
 
-#[derive(Serialize)]
-crate struct Page<'a> {
-    crate title: &'a str,
-    crate css_class: &'a str,
-    crate root_path: &'a str,
-    crate static_root_path: Option<&'a str>,
-    crate description: &'a str,
-    crate keywords: &'a str,
-    crate resource_suffix: &'a str,
-    crate extra_scripts: &'a [&'a str],
-    crate static_extra_scripts: &'a [&'a str],
+pub(crate) struct Page<'a> {
+    pub(crate) title: &'a str,
+    pub(crate) css_class: &'a str,
+    pub(crate) root_path: &'a str,
+    pub(crate) static_root_path: Option<&'a str>,
+    pub(crate) description: &'a str,
+    pub(crate) keywords: &'a str,
+    pub(crate) resource_suffix: &'a str,
 }
 
 impl<'a> Page<'a> {
-    crate fn get_static_root_path(&self) -> &str {
-        self.static_root_path.unwrap_or(self.root_path)
+    pub(crate) fn get_static_root_path(&self) -> String {
+        match self.static_root_path {
+            Some(s) => s.to_string(),
+            None => format!("{}static.files/", self.root_path),
+        }
     }
 }
 
-#[derive(Serialize)]
+#[derive(Template)]
+#[template(path = "page.html")]
 struct PageLayout<'a> {
-    static_root_path: &'a str,
+    static_root_path: String,
     page: &'a Page<'a>,
     layout: &'a Layout,
-    style_files: String,
+
+    files: &'static StaticFiles,
+
+    themes: Vec<String>,
     sidebar: String,
     content: String,
     krate_with_trailing_slash: String,
+    pub(crate) rustdoc_version: &'a str,
 }
 
-crate fn render<T: Print, S: Print>(
-    templates: &tera::Tera,
+pub(crate) fn render<T: Print, S: Print>(
     layout: &Layout,
     page: &Page<'_>,
     sidebar: S,
@@ -66,35 +68,28 @@ crate fn render<T: Print, S: Print>(
 ) -> String {
     let static_root_path = page.get_static_root_path();
     let krate_with_trailing_slash = ensure_trailing_slash(&layout.krate).to_string();
-    let style_files = style_files
-        .iter()
-        .filter_map(|t| t.path.file_stem().map(|stem| (stem, t.disabled)))
-        .filter_map(|t| t.0.to_str().map(|path| (path, t.1)))
-        .map(|t| {
-            format!(
-                r#"<link rel="stylesheet" type="text/css" href="{}.css" {} {}>"#,
-                Escape(&format!("{}{}{}", static_root_path, t.0, page.resource_suffix)),
-                if t.1 { "disabled" } else { "" },
-                if t.0 == "light" { "id=\"themeStyle\"" } else { "" }
-            )
-        })
-        .collect::<String>();
+    let mut themes: Vec<String> = style_files.iter().map(|s| s.basename().unwrap()).collect();
+    themes.sort();
+
+    let rustdoc_version = rustc_interface::util::version_str!().unwrap_or("unknown version");
     let content = Buffer::html().to_display(t); // Note: This must happen before making the sidebar.
     let sidebar = Buffer::html().to_display(sidebar);
-    let teractx = tera::Context::from_serialize(PageLayout {
+    PageLayout {
         static_root_path,
         page,
         layout,
-        style_files,
+        files: &STATIC_FILES,
+        themes,
         sidebar,
         content,
         krate_with_trailing_slash,
-    })
-    .unwrap();
-    templates.render("page.html", &teractx).unwrap()
+        rustdoc_version,
+    }
+    .render()
+    .unwrap()
 }
 
-crate fn redirect(url: &str) -> String {
+pub(crate) fn redirect(url: &str) -> String {
     // <script> triggers a redirect before refresh, so this is fine.
     format!(
         r##"<!DOCTYPE html>

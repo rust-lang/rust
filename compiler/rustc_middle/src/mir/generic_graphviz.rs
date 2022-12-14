@@ -56,11 +56,11 @@ impl<
         writeln!(w, "{} {}{} {{", kind, cluster, self.graphviz_name)?;
 
         // Global graph properties
-        let font = format!(r#"fontname="{}""#, tcx.sess.opts.debugging_opts.graphviz_font);
+        let font = format!(r#"fontname="{}""#, tcx.sess.opts.unstable_opts.graphviz_font);
         let mut graph_attrs = vec![&font[..]];
         let mut content_attrs = vec![&font[..]];
 
-        let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+        let dark_mode = tcx.sess.opts.unstable_opts.graphviz_dark_mode;
         if dark_mode {
             graph_attrs.push(r#"bgcolor="black""#);
             graph_attrs.push(r#"fontcolor="white""#);
@@ -126,7 +126,7 @@ impl<
             write!(
                 w,
                 r#"<tr><td align="left" balign="left">{}</td></tr>"#,
-                dot::escape_html(&section).replace("\n", "<br/>")
+                dot::escape_html(&section)
             )?;
         }
 
@@ -147,7 +147,7 @@ impl<
             let src = self.node(source);
             let trg = self.node(target);
             let escaped_edge_label = if let Some(edge_label) = edge_labels.get(index) {
-                dot::escape_html(edge_label).replace("\n", r#"<br align="left"/>"#)
+                dot::escape_html(edge_label)
             } else {
                 "".to_owned()
             };
@@ -162,8 +162,7 @@ impl<
     where
         W: Write,
     {
-        let lines = label.split('\n').map(|s| dot::escape_html(s)).collect::<Vec<_>>();
-        let escaped_label = lines.join(r#"<br align="left"/>"#);
+        let escaped_label = dot::escape_html(label);
         writeln!(w, r#"    label=<<br/><br/>{}<br align="left"/><br/><br/><br/>>;"#, escaped_label)
     }
 

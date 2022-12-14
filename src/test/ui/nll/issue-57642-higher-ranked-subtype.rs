@@ -1,8 +1,5 @@
 // Regression test for issue #57642
 // Tests that we reject a bad higher-ranked subtype
-// with `#![feature(nll)]`
-
-#![feature(nll)]
 
 trait X {
     type G;

@@ -1,8 +1,6 @@
 // Moving from a reference/raw pointer should be an error, even when they're
 // the field of a union.
 
-#![feature(untagged_unions)]
-
 union Pointers {
     a: &'static String,
     b: &'static mut String,

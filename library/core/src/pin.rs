@@ -175,7 +175,7 @@
 //! relies on pinning requires unsafe code, but be aware that deciding to make
 //! use of pinning in your type (for example by implementing some operation on
 //! <code>[Pin]<[&]Self></code> or <code>[Pin]<[&mut] Self></code>) has consequences for your
-//! [`Drop`][Drop]implementation as well: if an element of your type could have been pinned,
+//! [`Drop`][Drop] implementation as well: if an element of your type could have been pinned,
 //! you must treat [`Drop`][Drop] as implicitly taking <code>[Pin]<[&mut] Self></code>.
 //!
 //! For example, you could implement [`Drop`][Drop] as follows:
@@ -406,7 +406,14 @@ use crate::ops::{CoerceUnsized, Deref, DerefMut, DispatchFromDyn, Receiver};
 #[repr(transparent)]
 #[derive(Copy, Clone)]
 pub struct Pin<P> {
-    pointer: P,
+    // FIXME(#93176): this field is made `#[unstable] #[doc(hidden)] pub` to:
+    //   - deter downstream users from accessing it (which would be unsound!),
+    //   - let the `pin!` macro access it (such a macro requires using struct
+    //     literal syntax in order to benefit from lifetime extension).
+    // Long-term, `unsafe` fields or macro hygiene are expected to offer more robust alternatives.
+    #[unstable(feature = "unsafe_pin_internals", issue = "none")]
+    #[doc(hidden)]
+    pub pointer: P,
 }
 
 // The following implementations aren't derived in order to avoid soundness
@@ -536,7 +543,7 @@ impl<P: Deref> Pin<P> {
     ///         let p: Pin<&mut T> = Pin::new_unchecked(&mut a);
     ///         // This should mean the pointee `a` can never move again.
     ///     }
-    ///     mem::swap(&mut a, &mut b);
+    ///     mem::swap(&mut a, &mut b); // Potential UB down the road ⚠️
     ///     // The address of `a` changed to `b`'s stack slot, so `a` got moved even
     ///     // though we have previously pinned it! We have violated the pinning API contract.
     /// }
@@ -556,12 +563,65 @@ impl<P: Deref> Pin<P> {
     ///         // This should mean the pointee can never move again.
     ///     }
     ///     drop(pinned);
-    ///     let content = Rc::get_mut(&mut x).unwrap();
+    ///     let content = Rc::get_mut(&mut x).unwrap(); // Potential UB down the road ⚠️
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
     ///     // seen in the previous example. We have violated the pinning API contract.
     ///  }
     ///  ```
+    ///
+    /// ## Pinning of closure captures
+    ///
+    /// Particular care is required when using `Pin::new_unchecked` in a closure:
+    /// `Pin::new_unchecked(&mut var)` where `var` is a by-value (moved) closure capture
+    /// implicitly makes the promise that the closure itself is pinned, and that *all* uses
+    /// of this closure capture respect that pinning.
+    /// ```
+    /// use std::pin::Pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     // Create a closure that moves `x`, and then internally uses it in a pinned way.
+    ///     let mut closure = move || unsafe {
+    ///         let _ignore = Pin::new_unchecked(&mut x).poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else. This also moves `x`!
+    ///     let mut moved = closure;
+    ///     // Calling it again means we polled the future from two different locations,
+    ///     // violating the pinning API contract.
+    ///     moved(); // Potential UB ⚠️
+    /// }
+    /// ```
+    /// When passing a closure to another API, it might be moving the closure any time, so
+    /// `Pin::new_unchecked` on closure captures may only be used if the API explicitly documents
+    /// that the closure is pinned.
+    ///
+    /// The better alternative is to avoid all that trouble and do the pinning in the outer function
+    /// instead (here using the unstable `pin` macro):
+    /// ```
+    /// #![feature(pin_macro)]
+    /// use std::pin::pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     let mut x = pin!(x);
+    ///     // Create a closure that captures `x: Pin<&mut _>`, which is safe to move.
+    ///     let mut closure = move || {
+    ///         let _ignore = x.as_mut().poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else.
+    ///     let mut moved = closure;
+    ///     // Calling it again here is fine (except that we might be polling a future that already
+    ///     // returned `Poll::Ready`, but that is a separate problem).
+    ///     moved();
+    /// }
+    /// ```
     ///
     /// [`mem::swap`]: crate::mem::swap
     #[lang = "new_unchecked"]
@@ -798,7 +858,7 @@ impl<T: ?Sized> Pin<&'static T> {
     ///
     /// This is safe, because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
-    #[unstable(feature = "pin_static_ref", issue = "78186")]
+    #[stable(feature = "pin_static_ref", since = "1.61.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const fn static_ref(r: &'static T) -> Pin<&'static T> {
         // SAFETY: The 'static borrow guarantees the data will not be
@@ -851,7 +911,7 @@ impl<T: ?Sized> Pin<&'static mut T> {
     ///
     /// This is safe, because `T` is borrowed for the `'static` lifetime, which
     /// never ends.
-    #[unstable(feature = "pin_static_ref", issue = "78186")]
+    #[stable(feature = "pin_static_ref", since = "1.61.0")]
     #[rustc_const_unstable(feature = "const_pin", issue = "76654")]
     pub const fn static_mut(r: &'static mut T) -> Pin<&'static mut T> {
         // SAFETY: The 'static borrow guarantees the data will not be
@@ -909,3 +969,244 @@ impl<P, U> CoerceUnsized<Pin<U>> for Pin<P> where P: CoerceUnsized<U> {}
 
 #[stable(feature = "pin", since = "1.33.0")]
 impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
+
+/// Constructs a <code>[Pin]<[&mut] T></code>, by pinning[^1] a `value: T` _locally_[^2].
+///
+/// Unlike [`Box::pin`], this does not involve a heap allocation.
+///
+/// [^1]: If the (type `T` of the) given value does not implement [`Unpin`], then this
+/// effectively pins the `value` in memory, where it will be unable to be moved.
+/// Otherwise, <code>[Pin]<[&mut] T></code> behaves like <code>[&mut] T</code>, and operations such
+/// as [`mem::replace()`][crate::mem::replace] will allow extracting that value, and therefore,
+/// moving it.
+/// See [the `Unpin` section of the `pin` module][self#unpin] for more info.
+///
+/// [^2]: This is usually dubbed "stack"-pinning. And whilst local values are almost always located
+/// in the stack (_e.g._, when within the body of a non-`async` function), the truth is that inside
+/// the body of an `async fn` or block —more generally, the body of a generator— any locals crossing
+/// an `.await` point —a `yield` point— end up being part of the state captured by the `Future` —by
+/// the `Generator`—, and thus will be stored wherever that one is.
+///
+/// ## Examples
+///
+/// ### Basic usage
+///
+/// ```rust
+/// #![feature(pin_macro)]
+/// # use core::marker::PhantomPinned as Foo;
+/// use core::pin::{pin, Pin};
+///
+/// fn stuff(foo: Pin<&mut Foo>) {
+///     // …
+///     # let _ = foo;
+/// }
+///
+/// let pinned_foo = pin!(Foo { /* … */ });
+/// stuff(pinned_foo);
+/// // or, directly:
+/// stuff(pin!(Foo { /* … */ }));
+/// ```
+///
+/// ### Manually polling a `Future` (without `Unpin` bounds)
+///
+/// ```rust
+/// #![feature(pin_macro)]
+/// use std::{
+///     future::Future,
+///     pin::pin,
+///     task::{Context, Poll},
+///     thread,
+/// };
+/// # use std::{sync::Arc, task::Wake, thread::Thread};
+///
+/// # /// A waker that wakes up the current thread when called.
+/// # struct ThreadWaker(Thread);
+/// #
+/// # impl Wake for ThreadWaker {
+/// #     fn wake(self: Arc<Self>) {
+/// #         self.0.unpark();
+/// #     }
+/// # }
+/// #
+/// /// Runs a future to completion.
+/// fn block_on<Fut: Future>(fut: Fut) -> Fut::Output {
+///     let waker_that_unparks_thread = // …
+///         # Arc::new(ThreadWaker(thread::current())).into();
+///     let mut cx = Context::from_waker(&waker_that_unparks_thread);
+///     // Pin the future so it can be polled.
+///     let mut pinned_fut = pin!(fut);
+///     loop {
+///         match pinned_fut.as_mut().poll(&mut cx) {
+///             Poll::Pending => thread::park(),
+///             Poll::Ready(res) => return res,
+///         }
+///     }
+/// }
+/// #
+/// # assert_eq!(42, block_on(async { 42 }));
+/// ```
+///
+/// ### With `Generator`s
+///
+/// ```rust
+/// #![feature(generators, generator_trait, pin_macro)]
+/// use core::{
+///     ops::{Generator, GeneratorState},
+///     pin::pin,
+/// };
+///
+/// fn generator_fn() -> impl Generator<Yield = usize, Return = ()> /* not Unpin */ {
+///  // Allow generator to be self-referential (not `Unpin`)
+///  // vvvvvv        so that locals can cross yield points.
+///     static || {
+///         let foo = String::from("foo");
+///         let foo_ref = &foo; // ------+
+///         yield 0;                  // | <- crosses yield point!
+///         println!("{foo_ref}"); // <--+
+///         yield foo.len();
+///     }
+/// }
+///
+/// fn main() {
+///     let mut generator = pin!(generator_fn());
+///     match generator.as_mut().resume(()) {
+///         GeneratorState::Yielded(0) => {},
+///         _ => unreachable!(),
+///     }
+///     match generator.as_mut().resume(()) {
+///         GeneratorState::Yielded(3) => {},
+///         _ => unreachable!(),
+///     }
+///     match generator.resume(()) {
+///         GeneratorState::Yielded(_) => unreachable!(),
+///         GeneratorState::Complete(()) => {},
+///     }
+/// }
+/// ```
+///
+/// ## Remarks
+///
+/// Precisely because a value is pinned to local storage, the resulting <code>[Pin]<[&mut] T></code>
+/// reference ends up borrowing a local tied to that block: it can't escape it.
+///
+/// The following, for instance, fails to compile:
+///
+/// ```rust,compile_fail
+/// #![feature(pin_macro)]
+/// use core::pin::{pin, Pin};
+/// # use core::{marker::PhantomPinned as Foo, mem::drop as stuff};
+///
+/// let x: Pin<&mut Foo> = {
+///     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
+///     x
+/// }; // <- Foo is dropped
+/// stuff(x); // Error: use of dropped value
+/// ```
+///
+/// <details><summary>Error message</summary>
+///
+/// ```console
+/// error[E0716]: temporary value dropped while borrowed
+///   --> src/main.rs:9:28
+///    |
+/// 8  | let x: Pin<&mut Foo> = {
+///    |     - borrow later stored here
+/// 9  |     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
+///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
+/// 10 |     x
+/// 11 | }; // <- Foo is dropped
+///    | - temporary value is freed at the end of this statement
+///    |
+///    = note: consider using a `let` binding to create a longer lived value
+/// ```
+///
+/// </details>
+///
+/// This makes [`pin!`] **unsuitable to pin values when intending to _return_ them**. Instead, the
+/// value is expected to be passed around _unpinned_ until the point where it is to be consumed,
+/// where it is then useful and even sensible to pin the value locally using [`pin!`].
+///
+/// If you really need to return a pinned value, consider using [`Box::pin`] instead.
+///
+/// On the other hand, pinning to the stack[<sup>2</sup>](#fn2) using [`pin!`] is likely to be
+/// cheaper than pinning into a fresh heap allocation using [`Box::pin`]. Moreover, by virtue of not
+/// even needing an allocator, [`pin!`] is the main non-`unsafe` `#![no_std]`-compatible [`Pin`]
+/// constructor.
+///
+/// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
+#[unstable(feature = "pin_macro", issue = "93178")]
+#[rustc_macro_transparency = "semitransparent"]
+#[allow_internal_unstable(unsafe_pin_internals)]
+pub macro pin($value:expr $(,)?) {
+    // This is `Pin::new_unchecked(&mut { $value })`, so, for starters, let's
+    // review such a hypothetical macro (that any user-code could define):
+    //
+    // ```rust
+    // macro_rules! pin {( $value:expr ) => (
+    //     match &mut { $value } { at_value => unsafe { // Do not wrap `$value` in an `unsafe` block.
+    //         $crate::pin::Pin::<&mut _>::new_unchecked(at_value)
+    //     }}
+    // )}
+    // ```
+    //
+    // Safety:
+    //   - `type P = &mut _`. There are thus no pathological `Deref{,Mut}` impls
+    //     that would break `Pin`'s invariants.
+    //   - `{ $value }` is braced, making it a _block expression_, thus **moving**
+    //     the given `$value`, and making it _become an **anonymous** temporary_.
+    //     By virtue of being anonymous, it can no longer be accessed, thus
+    //     preventing any attempts to `mem::replace` it or `mem::forget` it, _etc._
+    //
+    // This gives us a `pin!` definition that is sound, and which works, but only
+    // in certain scenarios:
+    //   - If the `pin!(value)` expression is _directly_ fed to a function call:
+    //     `let poll = pin!(fut).poll(cx);`
+    //   - If the `pin!(value)` expression is part of a scrutinee:
+    //     ```rust
+    //     match pin!(fut) { pinned_fut => {
+    //         pinned_fut.as_mut().poll(...);
+    //         pinned_fut.as_mut().poll(...);
+    //     }} // <- `fut` is dropped here.
+    //     ```
+    // Alas, it doesn't work for the more straight-forward use-case: `let` bindings.
+    // ```rust
+    // let pinned_fut = pin!(fut); // <- temporary value is freed at the end of this statement
+    // pinned_fut.poll(...) // error[E0716]: temporary value dropped while borrowed
+    //                      // note: consider using a `let` binding to create a longer lived value
+    // ```
+    //   - Issues such as this one are the ones motivating https://github.com/rust-lang/rfcs/pull/66
+    //
+    // This makes such a macro incredibly unergonomic in practice, and the reason most macros
+    // out there had to take the path of being a statement/binding macro (_e.g._, `pin!(future);`)
+    // instead of featuring the more intuitive ergonomics of an expression macro.
+    //
+    // Luckily, there is a way to avoid the problem. Indeed, the problem stems from the fact that a
+    // temporary is dropped at the end of its enclosing statement when it is part of the parameters
+    // given to function call, which has precisely been the case with our `Pin::new_unchecked()`!
+    // For instance,
+    // ```rust
+    // let p = Pin::new_unchecked(&mut <temporary>);
+    // ```
+    // becomes:
+    // ```rust
+    // let p = { let mut anon = <temporary>; &mut anon };
+    // ```
+    //
+    // However, when using a literal braced struct to construct the value, references to temporaries
+    // can then be taken. This makes Rust change the lifespan of such temporaries so that they are,
+    // instead, dropped _at the end of the enscoping block_.
+    // For instance,
+    // ```rust
+    // let p = Pin { pointer: &mut <temporary> };
+    // ```
+    // becomes:
+    // ```rust
+    // let mut anon = <temporary>;
+    // let p = Pin { pointer: &mut anon };
+    // ```
+    // which is *exactly* what we want.
+    //
+    // See https://doc.rust-lang.org/1.58.1/reference/destructors.html#temporary-lifetime-extension
+    // for more info.
+    $crate::pin::Pin::<&mut _> { pointer: &mut { $value } }
+}

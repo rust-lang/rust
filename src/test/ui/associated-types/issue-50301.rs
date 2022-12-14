@@ -1,6 +1,5 @@
 // Tests that HRTBs are correctly accepted -- https://github.com/rust-lang/rust/issues/50301
 // check-pass
-// ignore-compare-mode-chalk
 trait Trait
 where
     for<'a> &'a Self::IntoIter: IntoIterator<Item = u32>,

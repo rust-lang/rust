@@ -7,7 +7,7 @@ pub trait Service {
     fn call(&self, _req: Self::Request);
 }
 
-pub struct S<T>(T);
+pub struct S<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl Service for ClientMap {
     type Request = S<Box<dyn Fn(i32)>>;

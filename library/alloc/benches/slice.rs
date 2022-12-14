@@ -1,8 +1,7 @@
 use std::{mem, ptr};
 
 use rand::distributions::{Alphanumeric, Standard};
-use rand::{thread_rng, Rng, SeedableRng};
-use rand_xorshift::XorShiftRng;
+use rand::Rng;
 use test::{black_box, Bencher};
 
 #[bench]
@@ -152,7 +151,7 @@ fn zero_1kb_mut_iter(b: &mut Bencher) {
 
 #[bench]
 fn random_inserts(b: &mut Bencher) {
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     b.iter(|| {
         let mut v = vec![(0, 0); 30];
         for _ in 0..100 {
@@ -164,7 +163,7 @@ fn random_inserts(b: &mut Bencher) {
 
 #[bench]
 fn random_removes(b: &mut Bencher) {
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     b.iter(|| {
         let mut v = vec![(0, 0); 130];
         for _ in 0..100 {
@@ -182,20 +181,18 @@ fn gen_descending(len: usize) -> Vec<u64> {
     (0..len as u64).rev().collect()
 }
 
-const SEED: [u8; 16] = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
-
 fn gen_random(len: usize) -> Vec<u64> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     (&mut rng).sample_iter(&Standard).take(len).collect()
 }
 
 fn gen_random_bytes(len: usize) -> Vec<u8> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     (&mut rng).sample_iter(&Standard).take(len).collect()
 }
 
 fn gen_mostly_ascending(len: usize) -> Vec<u64> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     let mut v = gen_ascending(len);
     for _ in (0usize..).take_while(|x| x * x <= len) {
         let x = rng.gen::<usize>() % len;
@@ -206,7 +203,7 @@ fn gen_mostly_ascending(len: usize) -> Vec<u64> {
 }
 
 fn gen_mostly_descending(len: usize) -> Vec<u64> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     let mut v = gen_descending(len);
     for _ in (0usize..).take_while(|x| x * x <= len) {
         let x = rng.gen::<usize>() % len;
@@ -217,7 +214,7 @@ fn gen_mostly_descending(len: usize) -> Vec<u64> {
 }
 
 fn gen_strings(len: usize) -> Vec<String> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     let mut v = vec![];
     for _ in 0..len {
         let n = rng.gen::<usize>() % 20 + 1;
@@ -227,7 +224,7 @@ fn gen_strings(len: usize) -> Vec<String> {
 }
 
 fn gen_big_random(len: usize) -> Vec<[u64; 16]> {
-    let mut rng = XorShiftRng::from_seed(SEED);
+    let mut rng = crate::bench_rng();
     (&mut rng).sample_iter(&Standard).map(|x| [x; 16]).take(len).collect()
 }
 

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Check that symbol names for methods include type names, instead of <impl>.
 

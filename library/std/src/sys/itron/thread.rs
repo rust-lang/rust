@@ -8,21 +8,27 @@ use super::{
 };
 use crate::{
     cell::UnsafeCell,
-    convert::TryFrom,
     ffi::CStr,
     hint, io,
     mem::ManuallyDrop,
+    ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
     sys::thread_local_dtor::run_dtors,
     time::Duration,
 };
 
 pub struct Thread {
-    inner: ManuallyDrop<Box<ThreadInner>>,
+    p_inner: NonNull<ThreadInner>,
 
     /// The ID of the underlying task.
     task: abi::ID,
 }
+
+// Safety: There's nothing in `Thread` that ties it to the original creator. It
+//         can be dropped by any threads.
+unsafe impl Send for Thread {}
+// Safety: `Thread` provides no methods that take `&self`.
+unsafe impl Sync for Thread {}
 
 /// State data shared between a parent thread and child thread. It's dropped on
 /// a transition to one of the final states.
@@ -77,25 +83,23 @@ const LIFECYCLE_DETACHED_OR_JOINED: usize = usize::MAX;
 const LIFECYCLE_EXITED_OR_FINISHED_OR_JOIN_FINALIZE: usize = usize::MAX;
 // there's no single value for `JOINING`
 
-pub const DEFAULT_MIN_STACK_SIZE: usize = 1024 * crate::mem::size_of::<usize>();
+// 64KiB for 32-bit ISAs, 128KiB for 64-bit ISAs.
+pub const DEFAULT_MIN_STACK_SIZE: usize = 0x4000 * crate::mem::size_of::<usize>();
 
 impl Thread {
     /// # Safety
     ///
     /// See `thread::Builder::spawn_unchecked` for safety requirements.
     pub unsafe fn new(stack: usize, p: Box<dyn FnOnce()>) -> io::Result<Thread> {
-        // Inherit the current task's priority
-        let current_task = task::try_current_task_id().map_err(|e| e.as_io_error())?;
-        let priority = task::try_task_priority(current_task).map_err(|e| e.as_io_error())?;
-
         let inner = Box::new(ThreadInner {
             start: UnsafeCell::new(ManuallyDrop::new(p)),
             lifecycle: AtomicUsize::new(LIFECYCLE_INIT),
         });
 
         unsafe extern "C" fn trampoline(exinf: isize) {
+            let p_inner: *mut ThreadInner = crate::ptr::from_exposed_addr_mut(exinf as usize);
             // Safety: `ThreadInner` is alive at this point
-            let inner = unsafe { &*(exinf as *const ThreadInner) };
+            let inner = unsafe { &*p_inner };
 
             // Safety: Since `trampoline` is called only once for each
             //         `ThreadInner` and only `trampoline` touches `start`,
@@ -123,13 +127,13 @@ impl Thread {
                     // No one will ever join, so we'll ask the collector task to
                     // delete the task.
 
-                    // In this case, `inner`'s ownership has been moved to us,
-                    // And we are responsible for dropping it. The acquire
+                    // In this case, `*p_inner`'s ownership has been moved to
+                    // us, and we are responsible for dropping it. The acquire
                     // ordering is not necessary because the parent thread made
-                    // no memory acccess needing synchronization since the call
+                    // no memory access needing synchronization since the call
                     // to `acre_tsk`.
                     // Safety: See above.
-                    let _ = unsafe { Box::from_raw(inner as *const _ as *mut ThreadInner) };
+                    let _ = unsafe { Box::from_raw(p_inner) };
 
                     // Safety: There are no pinned references to the stack
                     unsafe { terminate_and_delete_current_task() };
@@ -166,16 +170,18 @@ impl Thread {
             }
         }
 
-        let inner_ptr = (&*inner) as *const ThreadInner;
+        // Safety: `Box::into_raw` returns a non-null pointer
+        let p_inner = unsafe { NonNull::new_unchecked(Box::into_raw(inner)) };
 
         let new_task = ItronError::err_if_negative(unsafe {
             abi::acre_tsk(&abi::T_CTSK {
                 // Activate this task immediately
                 tskatr: abi::TA_ACT,
-                exinf: inner_ptr as abi::EXINF,
+                exinf: p_inner.as_ptr().expose_addr() as abi::EXINF,
                 // The entry point
                 task: Some(trampoline),
-                itskpri: priority,
+                // Inherit the calling task's base priority
+                itskpri: abi::TPRI_SELF,
                 stksz: stack,
                 // Let the kernel allocate the stack,
                 stk: crate::ptr::null_mut(),
@@ -183,7 +189,7 @@ impl Thread {
         })
         .map_err(|e| e.as_io_error())?;
 
-        Ok(Self { inner: ManuallyDrop::new(inner), task: new_task })
+        Ok(Self { p_inner, task: new_task })
     }
 
     pub fn yield_now() {
@@ -200,8 +206,9 @@ impl Thread {
         }
     }
 
-    pub fn join(mut self) {
-        let inner = &*self.inner;
+    pub fn join(self) {
+        // Safety: `ThreadInner` is alive at this point
+        let inner = unsafe { self.p_inner.as_ref() };
         // Get the current task ID. Panicking here would cause a resource leak,
         // so just abort on failure.
         let current_task = task::current_task_id_aborting();
@@ -246,8 +253,8 @@ impl Thread {
         unsafe { terminate_and_delete_task(self.task) };
 
         // In either case, we are responsible for dropping `inner`.
-        // Safety: The contents of `self.inner` will not be accessed hereafter
-        let _inner = unsafe { ManuallyDrop::take(&mut self.inner) };
+        // Safety: The contents of `*p_inner` will not be accessed hereafter
+        let _inner = unsafe { Box::from_raw(self.p_inner.as_ptr()) };
 
         // Skip the destructor (because it would attempt to detach the thread)
         crate::mem::forget(self);
@@ -256,15 +263,18 @@ impl Thread {
 
 impl Drop for Thread {
     fn drop(&mut self) {
+        // Safety: `ThreadInner` is alive at this point
+        let inner = unsafe { self.p_inner.as_ref() };
+
         // Detach the thread.
-        match self.inner.lifecycle.swap(LIFECYCLE_DETACHED_OR_JOINED, Ordering::Acquire) {
+        match inner.lifecycle.swap(LIFECYCLE_DETACHED_OR_JOINED, Ordering::Acquire) {
             LIFECYCLE_INIT => {
                 // [INIT → DETACHED]
                 // When the time comes, the child will figure out that no
                 // one will ever join it.
-                // The ownership of `self.inner` is moved to the child thread.
+                // The ownership of `*p_inner` is moved to the child thread.
                 // However, the release ordering is not necessary because we
-                // made no memory acccess needing synchronization since the call
+                // made no memory access needing synchronization since the call
                 // to `acre_tsk`.
             }
             LIFECYCLE_FINISHED => {
@@ -281,10 +291,9 @@ impl Drop for Thread {
                 //         delete by entering the `FINISHED` state.
                 unsafe { terminate_and_delete_task(self.task) };
 
-                // Wwe are responsible for dropping `inner`.
-                // Safety: The contents of `self.inner` will not be accessed
-                //         hereafter
-                unsafe { ManuallyDrop::drop(&mut self.inner) };
+                // Wwe are responsible for dropping `*p_inner`.
+                // Safety: The contents of `*p_inner` will not be accessed hereafter
+                let _ = unsafe { Box::from_raw(self.p_inner.as_ptr()) };
             }
             _ => unsafe { hint::unreachable_unchecked() },
         }

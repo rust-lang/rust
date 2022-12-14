@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `{integer}: Tweedledum`
 LL |     is_ee(4);
    |     ^^^^^
    |
-note: required because of the requirements on the impl of `Combo` for `{integer}`
+note: required for `{integer}` to implement `Combo`
   --> $DIR/simultaneous.rs:11:34
    |
 LL | impl<T: Tweedledee + Tweedledum> Combo for T {}

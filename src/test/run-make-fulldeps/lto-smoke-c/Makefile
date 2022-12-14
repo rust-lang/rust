@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Apparently older versions of GCC segfault if -g is passed...
 CC := $(CC:-g=)

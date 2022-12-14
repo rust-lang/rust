@@ -9,7 +9,6 @@ use rustc_span::def_id::DefId;
 /// A `query` provider for retrieving coverage information injected into MIR.
 pub(crate) fn provide(providers: &mut Providers) {
     providers.coverageinfo = |tcx, def_id| coverageinfo(tcx, def_id);
-    providers.covered_file_name = |tcx, def_id| covered_file_name(tcx, def_id);
     providers.covered_code_regions = |tcx, def_id| covered_code_regions(tcx, def_id);
 }
 
@@ -67,7 +66,7 @@ impl CoverageVisitor {
                 // The operand ID is outside the known range of counter IDs and also outside the
                 // known range of expression IDs. In either case, the result of a missing operand
                 // (if and when used in an expression) will be zero, so from a computation
-                // perspective, it doesn't matter whether it is interepretted as a counter or an
+                // perspective, it doesn't matter whether it is interpreted as a counter or an
                 // expression.
                 //
                 // However, the `num_counters` and `num_expressions` query results are used to
@@ -85,7 +84,7 @@ impl CoverageVisitor {
     }
 
     fn visit_body(&mut self, body: &Body<'_>) {
-        for bb_data in body.basic_blocks().iter() {
+        for bb_data in body.basic_blocks.iter() {
             for statement in bb_data.statements.iter() {
                 if let StatementKind::Coverage(box ref coverage) = statement.kind {
                     if is_inlined(body, statement) {
@@ -137,30 +136,11 @@ fn coverageinfo<'tcx>(tcx: TyCtxt<'tcx>, instance_def: ty::InstanceDef<'tcx>) ->
     coverage_visitor.info
 }
 
-fn covered_file_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<Symbol> {
-    if tcx.is_mir_available(def_id) {
-        let body = mir_body(tcx, def_id);
-        for bb_data in body.basic_blocks().iter() {
-            for statement in bb_data.statements.iter() {
-                if let StatementKind::Coverage(box ref coverage) = statement.kind {
-                    if let Some(code_region) = coverage.code_region.as_ref() {
-                        if is_inlined(body, statement) {
-                            continue;
-                        }
-                        return Some(code_region.file_name);
-                    }
-                }
-            }
-        }
-    }
-    return None;
-}
-
 fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx CodeRegion> {
     let body = mir_body(tcx, def_id);
-    body.basic_blocks()
+    body.basic_blocks
         .iter()
-        .map(|data| {
+        .flat_map(|data| {
             data.statements.iter().filter_map(|statement| match statement.kind {
                 StatementKind::Coverage(box ref coverage) => {
                     if is_inlined(body, statement) {
@@ -172,7 +152,6 @@ fn covered_code_regions<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Vec<&'tcx Cod
                 _ => None,
             })
         })
-        .flatten()
         .collect()
 }
 

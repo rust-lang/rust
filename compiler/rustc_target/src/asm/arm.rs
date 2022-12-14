@@ -1,12 +1,13 @@
 use super::{InlineAsmArch, InlineAsmType};
-use crate::spec::Target;
+use crate::spec::{RelocModel, Target};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_macros::HashStable_Generic;
+use rustc_span::{sym, Symbol};
 use std::fmt;
 
 def_reg_class! {
     Arm ArmInlineAsmRegClass {
         reg,
-        reg_thumb,
         sreg,
         sreg_low16,
         dreg,
@@ -45,31 +46,38 @@ impl ArmInlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
-            Self::reg | Self::reg_thumb => types! { _: I8, I16, I32, F32; },
-            Self::sreg | Self::sreg_low16 => types! { "vfp2": I32, F32; },
-            Self::dreg | Self::dreg_low16 | Self::dreg_low8 => types! {
-                "vfp2": I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
+            Self::reg => types! { _: I8, I16, I32, F32; },
+            Self::sreg | Self::sreg_low16 => types! { vfp2: I32, F32; },
+            Self::dreg_low16 | Self::dreg_low8 => types! {
+                vfp2: I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
+            },
+            Self::dreg => types! {
+                d32: I64, F64, VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2);
             },
             Self::qreg | Self::qreg_low8 | Self::qreg_low4 => types! {
-                "neon": VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4);
+                neon: VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4);
             },
         }
     }
 }
 
 // This uses the same logic as useR7AsFramePointer in LLVM
-fn frame_pointer_is_r7(mut has_feature: impl FnMut(&str) -> bool, target: &Target) -> bool {
-    target.is_like_osx || (!target.is_like_windows && has_feature("thumb-mode"))
+fn frame_pointer_is_r7(target_features: &FxHashSet<Symbol>, target: &Target) -> bool {
+    target.is_like_osx || (!target.is_like_windows && target_features.contains(&sym::thumb_mode))
 }
 
 fn frame_pointer_r11(
-    _arch: InlineAsmArch,
-    has_feature: impl FnMut(&str) -> bool,
+    arch: InlineAsmArch,
+    reloc_model: RelocModel,
+    target_features: &FxHashSet<Symbol>,
     target: &Target,
+    is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if !frame_pointer_is_r7(has_feature, target) {
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
+
+    if !frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r11) cannot be used as an operand for inline asm")
     } else {
         Ok(())
@@ -78,30 +86,67 @@ fn frame_pointer_r11(
 
 fn frame_pointer_r7(
     _arch: InlineAsmArch,
-    has_feature: impl FnMut(&str) -> bool,
+    _reloc_model: RelocModel,
+    target_features: &FxHashSet<Symbol>,
     target: &Target,
+    _is_clobber: bool,
 ) -> Result<(), &'static str> {
-    if frame_pointer_is_r7(has_feature, target) {
+    if frame_pointer_is_r7(target_features, target) {
         Err("the frame pointer (r7) cannot be used as an operand for inline asm")
     } else {
         Ok(())
     }
 }
 
+fn not_thumb1(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    target_features: &FxHashSet<Symbol>,
+    _target: &Target,
+    is_clobber: bool,
+) -> Result<(), &'static str> {
+    if !is_clobber
+        && target_features.contains(&sym::thumb_mode)
+        && !target_features.contains(&sym::thumb2)
+    {
+        Err("high registers (r8+) can only be used as clobbers in Thumb-1 code")
+    } else {
+        Ok(())
+    }
+}
+
+fn reserved_r9(
+    arch: InlineAsmArch,
+    reloc_model: RelocModel,
+    target_features: &FxHashSet<Symbol>,
+    target: &Target,
+    is_clobber: bool,
+) -> Result<(), &'static str> {
+    not_thumb1(arch, reloc_model, target_features, target, is_clobber)?;
+
+    match reloc_model {
+        RelocModel::Rwpi | RelocModel::RopiRwpi => {
+            Err("the RWPI static base register (r9) cannot be used as an operand for inline asm")
+        }
+        _ => Ok(()),
+    }
+}
+
 def_regs! {
     Arm ArmInlineAsmReg ArmInlineAsmRegClass {
-        r0: reg, reg_thumb = ["r0", "a1"],
-        r1: reg, reg_thumb = ["r1", "a2"],
-        r2: reg, reg_thumb = ["r2", "a3"],
-        r3: reg, reg_thumb = ["r3", "a4"],
-        r4: reg, reg_thumb = ["r4", "v1"],
-        r5: reg, reg_thumb = ["r5", "v2"],
-        r7: reg, reg_thumb = ["r7", "v4"] % frame_pointer_r7,
-        r8: reg = ["r8", "v5"],
-        r10: reg = ["r10", "sl"],
+        r0: reg = ["r0", "a1"],
+        r1: reg = ["r1", "a2"],
+        r2: reg = ["r2", "a3"],
+        r3: reg = ["r3", "a4"],
+        r4: reg = ["r4", "v1"],
+        r5: reg = ["r5", "v2"],
+        r7: reg = ["r7", "v4"] % frame_pointer_r7,
+        r8: reg = ["r8", "v5"] % not_thumb1,
+        r9: reg = ["r9", "v6", "rfp"] % reserved_r9,
+        r10: reg = ["r10", "sl"] % not_thumb1,
         r11: reg = ["r11", "fp"] % frame_pointer_r11,
-        r12: reg = ["r12", "ip"],
-        r14: reg = ["r14", "lr"],
+        r12: reg = ["r12", "ip"] % not_thumb1,
+        r14: reg = ["r14", "lr"] % not_thumb1,
         s0: sreg, sreg_low16 = ["s0"],
         s1: sreg, sreg_low16 = ["s1"],
         s2: sreg, sreg_low16 = ["s2"],
@@ -184,8 +229,6 @@ def_regs! {
         q15: qreg = ["q15"],
         #error = ["r6", "v3"] =>
             "r6 is used internally by LLVM and cannot be used as an operand for inline asm",
-        #error = ["r9", "v6", "rfp"] =>
-            "r9 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["r13", "sp"] =>
             "the stack pointer cannot be used as an operand for inline asm",
         #error = ["r15", "pc"] =>

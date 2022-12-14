@@ -1,16 +1,19 @@
-warning: unnecessary `unsafe` block
-  --> $DIR/union.rs:61:5
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:30:20
    |
-LL |     unsafe {
-   |     ^^^^^^ unnecessary `unsafe` block
+LL |         Foo { bar: _a } => {},
+   |                    ^^ access to union field
    |
-   = note: `#[warn(unused_unsafe)]` on by default
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-warning: unnecessary `unsafe` block
-  --> $DIR/union.rs:66:5
+error[E0133]: access to union field is unsafe and requires unsafe function or block
+  --> $DIR/union.rs:32:11
    |
-LL |     unsafe {
-   |     ^^^^^^ unnecessary `unsafe` block
+LL |     match foo {
+   |           ^^^ access to union field
+   |
+   = note: the field may not be properly initialized: using uninitialized data will cause undefined behavior
 
-warning: 2 warnings emitted
+error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0133`.

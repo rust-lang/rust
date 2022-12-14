@@ -1,0 +1,10 @@
+warning: unexpected `cfg` condition name
+  --> $DIR/check-cfg.rs:5:7
+   |
+LL | #[cfg(uniz)]
+   |       ^^^^ help: did you mean: `unix`
+   |
+   = note: `#[warn(unexpected_cfgs)]` on by default
+
+warning: 1 warning emitted
+

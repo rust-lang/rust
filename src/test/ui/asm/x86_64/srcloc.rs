@@ -1,7 +1,8 @@
 // only-x86_64
 // build-fail
 // compile-flags: -Ccodegen-units=1
-#![feature(asm)]
+
+use std::arch::asm;
 
 // Checks that inline asm errors are mapped to the correct line in the source code.
 
@@ -119,5 +120,12 @@ fn main() {
         //~^^^^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction2'
         //~^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction3'
         //~^^^^^^^^ ERROR: invalid instruction mnemonic 'invalid_instruction4'
+
+        asm!(
+            "",
+            "\n",
+            "invalid_instruction"
+        );
+        //~^^ ERROR: invalid instruction mnemonic 'invalid_instruction'
     }
 }

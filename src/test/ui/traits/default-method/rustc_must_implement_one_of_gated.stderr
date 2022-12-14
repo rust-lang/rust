@@ -1,0 +1,11 @@
+error[E0658]: the `#[rustc_must_implement_one_of]` attribute is used to change minimal complete definition of a trait, it's currently in experimental form and should be changed before being exposed outside of the std
+  --> $DIR/rustc_must_implement_one_of_gated.rs:1:1
+   |
+LL | #[rustc_must_implement_one_of(eq, neq)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(rustc_attrs)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

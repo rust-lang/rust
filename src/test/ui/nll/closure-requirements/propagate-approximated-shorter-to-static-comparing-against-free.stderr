@@ -1,16 +1,12 @@
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:21:15
    |
-LL |       foo(cell, |cell_a, cell_x| {
-   |  _______________^
-LL | |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
-LL | |
-LL | |     })
-   | |_____^
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case1::{closure#0} with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) u32>)),
+               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
                (),
            ]
 
@@ -27,29 +23,20 @@ LL |         cell_a.set(cell_x.get()); // forces 'x: 'a, error in closure
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:18:1
    |
-LL | / fn case1() {
-LL | |     let a = 0;
-LL | |     let cell = Cell::new(&a);
-LL | |     foo(cell, |cell_a, cell_x| {
-...  |
-LL | |     })
-LL | | }
-   | |_^
+LL | fn case1() {
+   | ^^^^^^^^^^
    |
    = note: defining type: case1
 
 note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:35:15
    |
-LL |       foo(cell, |cell_a, cell_x| {
-   |  _______________^
-LL | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
-LL | |     })
-   | |_____^
+LL |     foo(cell, |cell_a, cell_x| {
+   |               ^^^^^^^^^^^^^^^^
    |
    = note: defining type: case2::{closure#0} with closure substs [
                i32,
-               for<'r> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) u32>)),
+               for<Region(BrAnon(0, None))> extern "rust-call" fn((std::cell::Cell<&'_#1r u32>, std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) u32>)),
                (),
            ]
    = note: number of external vids: 2
@@ -58,28 +45,23 @@ LL | |     })
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:28:1
    |
-LL | / fn case2() {
-LL | |     let a = 0;
-LL | |     let cell = Cell::new(&a);
-LL | |
-...  |
-LL | |     })
-LL | | }
-   | |_^
+LL | fn case2() {
+   | ^^^^^^^^^^
    |
    = note: defining type: case2
 
 error[E0597]: `a` does not live long enough
   --> $DIR/propagate-approximated-shorter-to-static-comparing-against-free.rs:30:26
    |
-LL |     let cell = Cell::new(&a);
-   |                ----------^^-
-   |                |         |
-   |                |         borrowed value does not live long enough
-   |                argument requires that `a` is borrowed for `'static`
+LL |       let cell = Cell::new(&a);
+   |                            ^^ borrowed value does not live long enough
 ...
-LL | }
-   | - `a` dropped here while still borrowed
+LL | /     foo(cell, |cell_a, cell_x| {
+LL | |         cell_x.set(cell_a.get()); // forces 'a: 'x, implies 'a = 'static -> borrow error
+LL | |     })
+   | |______- argument requires that `a` is borrowed for `'static`
+LL |   }
+   |   - `a` dropped here while still borrowed
 
 error: aborting due to 2 previous errors
 

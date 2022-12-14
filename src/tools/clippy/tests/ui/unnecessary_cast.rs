@@ -1,12 +1,26 @@
+// run-rustfix
 #![warn(clippy::unnecessary_cast)]
-#![allow(clippy::no_effect)]
+#![allow(
+    unused_must_use,
+    clippy::borrow_as_ptr,
+    clippy::no_effect,
+    clippy::nonstandard_macro_braces,
+    clippy::unnecessary_operation
+)]
 
+#[rustfmt::skip]
 fn main() {
     // Test cast_unnecessary
     1i32 as i32;
     1f32 as f32;
     false as bool;
     &1i32 as &i32;
+
+    -1_i32 as i32;
+    - 1_i32 as i32;
+    -1f32 as f32;
+    1_i32 as i32;
+    1_f32 as f32;
 
     // macro version
     macro_rules! foo {
@@ -23,4 +37,96 @@ fn main() {
 
     // do not lint cast to cfg-dependant type
     1 as std::os::raw::c_char;
+
+    // do not lint cast to alias type
+    1 as I32Alias;
+    &1 as &I32Alias;
+
+    // issue #9960
+    macro_rules! bind_var {
+        ($id:ident, $e:expr) => {{
+            let $id = 0usize;
+            let _ = $e != 0usize;
+            let $id = 0isize;
+            let _ = $e != 0usize;
+        }}
+    }
+    bind_var!(x, (x as usize) + 1);
+}
+
+type I32Alias = i32;
+
+mod fixable {
+    #![allow(dead_code)]
+
+    fn main() {
+        // casting integer literal to float is unnecessary
+        100 as f32;
+        100 as f64;
+        100_i32 as f64;
+        let _ = -100 as f32;
+        let _ = -100 as f64;
+        let _ = -100_i32 as f64;
+        100. as f32;
+        100. as f64;
+        // Should not trigger
+        #[rustfmt::skip]
+        let v = vec!(1);
+        &v as &[i32];
+        0x10 as f32;
+        0o10 as f32;
+        0b10 as f32;
+        0x11 as f64;
+        0o11 as f64;
+        0b11 as f64;
+
+        1 as u32;
+        0x10 as i32;
+        0b10 as usize;
+        0o73 as u16;
+        1_000_000_000 as u32;
+
+        1.0 as f64;
+        0.5 as f32;
+
+        1.0 as u16;
+
+        let _ = -1 as i32;
+        let _ = -1.0 as f32;
+
+        let _ = 1 as I32Alias;
+        let _ = &1 as &I32Alias;
+
+        let x = 1i32;
+        let _ = &(x as i32);
+    }
+
+    type I32Alias = i32;
+
+    fn issue_9380() {
+        let _: i32 = -(1) as i32;
+        let _: f32 = -(1) as f32;
+        let _: i64 = -(1) as i64;
+        let _: i64 = -(1.0) as i64;
+
+        let _ = -(1 + 1) as i64;
+    }
+
+    fn issue_9563() {
+        let _: f64 = (-8.0 as f64).exp();
+        #[allow(clippy::precedence)]
+        let _: f64 = -(8.0 as f64).exp(); // should suggest `-8.0_f64.exp()` here not to change code behavior
+    }
+
+    fn issue_9562_non_literal() {
+        fn foo() -> f32 {
+            0.
+        }
+
+        let _num = foo() as f32;
+    }
+
+    fn issue_9603() {
+        let _: f32 = -0x400 as f32;
+    }
 }

@@ -7,7 +7,6 @@
 #![allow(unused)]
 
 use m::Foo;
-
 fn main() {
     let s = m::S;
     s.abc(); //~ ERROR no method named `abc`

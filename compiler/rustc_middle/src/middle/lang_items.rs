@@ -18,16 +18,19 @@ impl<'tcx> TyCtxt<'tcx> {
     /// Returns the `DefId` for a given `LangItem`.
     /// If not found, fatally aborts compilation.
     pub fn require_lang_item(self, lang_item: LangItem, span: Option<Span>) -> DefId {
-        self.lang_items().require(lang_item).unwrap_or_else(|msg| {
+        self.lang_items().require(lang_item).unwrap_or_else(|err| {
             if let Some(span) = span {
-                self.sess.span_fatal(span, &msg)
+                self.sess.span_fatal(span, err.to_string())
             } else {
-                self.sess.fatal(&msg)
+                self.sess.fatal(err.to_string())
             }
         })
     }
 
-    pub fn fn_trait_kind_from_lang_item(self, id: DefId) -> Option<ty::ClosureKind> {
+    /// Given a [`DefId`] of a [`Fn`], [`FnMut`] or [`FnOnce`] traits,
+    /// returns a corresponding [`ty::ClosureKind`].
+    /// For any other [`DefId`] return `None`.
+    pub fn fn_trait_kind_from_def_id(self, id: DefId) -> Option<ty::ClosureKind> {
         let items = self.lang_items();
         match Some(id) {
             x if x == items.fn_trait() => Some(ty::ClosureKind::Fn),
@@ -37,8 +40,9 @@ impl<'tcx> TyCtxt<'tcx> {
         }
     }
 
-    pub fn is_weak_lang_item(self, item_def_id: DefId) -> bool {
-        self.lang_items().is_weak_lang_item(item_def_id)
+    /// Returns `true` if `id` is a `DefId` of [`Fn`], [`FnMut`] or [`FnOnce`] traits.
+    pub fn is_fn_trait(self, id: DefId) -> bool {
+        self.fn_trait_kind_from_def_id(id).is_some()
     }
 }
 

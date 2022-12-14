@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `MyS2: MyTrait` is not satisfied in `(MyS2, MyS)`
-  --> $DIR/typeck-default-trait-impl-constituent-types-2.rs:17:5
+  --> $DIR/typeck-default-trait-impl-constituent-types-2.rs:17:18
    |
 LL |     is_mytrait::<(MyS2, MyS)>();
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ within `(MyS2, MyS)`, the trait `MyTrait` is not implemented for `MyS2`
+   |                  ^^^^^^^^^^^ within `(MyS2, MyS)`, the trait `MyTrait` is not implemented for `MyS2`
    |
    = note: required because it appears within the type `(MyS2, MyS)`
 note: required by a bound in `is_mytrait`

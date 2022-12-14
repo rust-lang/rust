@@ -1,7 +1,7 @@
 // run-pass
 
 #![allow(incomplete_features)]
-#![feature(inline_const)]
+#![feature(inline_const_pat)]
 const MMIO_BIT1: u8 = 4;
 const MMIO_BIT2: u8 = 5;
 

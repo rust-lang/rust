@@ -7,8 +7,8 @@ extern crate rustc_macros;
 extern crate rustc_serialize;
 
 use rustc_macros::{Decodable, Encodable};
-use rustc_serialize::json;
-use rustc_serialize::{Decodable, Encodable};
+use rustc_serialize::opaque::{MemDecoder, MemEncoder};
+use rustc_serialize::{Decodable, Encodable, Encoder};
 
 #[derive(Encodable, Decodable)]
 struct A {
@@ -17,7 +17,13 @@ struct A {
 
 fn main() {
     let obj = A { foo: Box::new([true, false]) };
-    let s = json::encode(&obj).unwrap();
-    let obj2: A = json::decode(&s).unwrap();
+
+    let mut encoder = MemEncoder::new();
+    obj.encode(&mut encoder);
+    let data = encoder.finish();
+
+    let mut decoder = MemDecoder::new(&data, 0);
+    let obj2 = A::decode(&mut decoder);
+
     assert_eq!(obj.foo, obj2.foo);
 }

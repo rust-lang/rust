@@ -1,5 +1,5 @@
 error[E0463]: can't find crate for `core`
-  --> $DIR/missing-std.rs:5:1
+  --> $DIR/missing-std.rs:6:1
    |
 LL | extern crate core;
    | ^^^^^^^^^^^^^^^^^^ can't find crate
@@ -8,6 +8,8 @@ LL | extern crate core;
    = help: consider downloading the target with `rustup target add x86_64-unknown-uefi`
    = help: consider building the standard library from source with `cargo build -Zbuild-std`
 
-error: aborting due to previous error
+error: requires `sized` lang_item
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0463`.

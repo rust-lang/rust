@@ -1,5 +1,5 @@
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:5:39
+  --> $DIR/needless_collect_indirect.rs:8:39
    |
 LL |     let indirect_iter = sample.iter().collect::<Vec<_>>();
    |                                       ^^^^^^^
@@ -14,7 +14,7 @@ LL ~     sample.iter().map(|x| (x, x + 1)).collect::<HashMap<_, _>>();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:7:38
+  --> $DIR/needless_collect_indirect.rs:10:38
    |
 LL |     let indirect_len = sample.iter().collect::<VecDeque<_>>();
    |                                      ^^^^^^^
@@ -28,7 +28,7 @@ LL ~     sample.iter().count();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:9:40
+  --> $DIR/needless_collect_indirect.rs:12:40
    |
 LL |     let indirect_empty = sample.iter().collect::<VecDeque<_>>();
    |                                        ^^^^^^^
@@ -42,7 +42,7 @@ LL ~     sample.iter().next().is_none();
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:11:43
+  --> $DIR/needless_collect_indirect.rs:14:43
    |
 LL |     let indirect_contains = sample.iter().collect::<VecDeque<_>>();
    |                                           ^^^^^^^
@@ -56,7 +56,7 @@ LL ~     sample.iter().any(|x| x == &5);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:23:48
+  --> $DIR/needless_collect_indirect.rs:26:48
    |
 LL |     let non_copy_contains = sample.into_iter().collect::<Vec<_>>();
    |                                                ^^^^^^^
@@ -70,7 +70,7 @@ LL ~     sample.into_iter().any(|x| x == a);
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:52:51
+  --> $DIR/needless_collect_indirect.rs:55:51
    |
 LL |         let buffer: Vec<&str> = string.split('/').collect();
    |                                                   ^^^^^^^
@@ -84,7 +84,7 @@ LL ~         string.split('/').count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:57:55
+  --> $DIR/needless_collect_indirect.rs:60:55
    |
 LL |         let indirect_len: VecDeque<_> = sample.iter().collect();
    |                                                       ^^^^^^^
@@ -98,7 +98,7 @@ LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:62:57
+  --> $DIR/needless_collect_indirect.rs:65:57
    |
 LL |         let indirect_len: LinkedList<_> = sample.iter().collect();
    |                                                         ^^^^^^^
@@ -112,7 +112,7 @@ LL ~         sample.iter().count()
    |
 
 error: avoid using `collect()` when not needed
-  --> $DIR/needless_collect_indirect.rs:67:57
+  --> $DIR/needless_collect_indirect.rs:70:57
    |
 LL |         let indirect_len: BinaryHeap<_> = sample.iter().collect();
    |                                                         ^^^^^^^
@@ -125,5 +125,122 @@ LL ~
 LL ~         sample.iter().count()
    |
 
-error: aborting due to 9 previous errors
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:130:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |             y.contains(&i);
+   |             -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             // Do lint
+LL ~             vec.iter().map(|k| k * k).any(|x| x == i);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:155:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |             y.contains(&n);
+   |             -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             // Do lint
+LL ~             vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:184:63
+   |
+LL |                 let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                               ^^^^^^^
+...
+LL |                 y.contains(&n);
+   |                 -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~                 
+LL |                 let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |                 // Do lint
+LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:220:59
+   |
+LL |             let y: Vec<usize> = vec.iter().map(|k| k * k).collect();
+   |                                                           ^^^^^^^
+...
+LL |                 y.contains(&n);
+   |                 -------------- the iterator could be used here instead
+   |
+help: check if the original Iterator contains an element instead of collecting then checking
+   |
+LL ~             
+LL |             let z: Vec<usize> = vec.iter().map(|k| k * k).collect();
+LL |             if n < 2 {
+LL |                 // Do lint
+LL ~                 vec.iter().map(|k| k * k).any(|x| x == n);
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:245:26
+   |
+LL |         let w = v.iter().collect::<Vec<_>>();
+   |                          ^^^^^^^
+LL |         // Do lint
+LL |         for _ in 0..w.len() {
+   |                     ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         for _ in 0..v.iter().count() {
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:267:30
+   |
+LL |         let mut w = v.iter().collect::<Vec<_>>();
+   |                              ^^^^^^^
+LL |         // Do lint
+LL |         while 1 == w.len() {
+   |                    ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         while 1 == v.iter().count() {
+   |
+
+error: avoid using `collect()` when not needed
+  --> $DIR/needless_collect_indirect.rs:289:30
+   |
+LL |         let mut w = v.iter().collect::<Vec<_>>();
+   |                              ^^^^^^^
+LL |         // Do lint
+LL |         while let Some(i) = Some(w.len()) {
+   |                                  ------- the iterator could be used here instead
+   |
+help: take the original Iterator's count instead of collecting it and finding the length
+   |
+LL ~         
+LL |         // Do lint
+LL ~         while let Some(i) = Some(v.iter().count()) {
+   |
+
+error: aborting due to 16 previous errors
 

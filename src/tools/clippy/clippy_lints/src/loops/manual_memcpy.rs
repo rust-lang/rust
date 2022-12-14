@@ -1,8 +1,8 @@
-use super::{get_span_of_entire_for_loop, IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
+use super::{IncrementVisitor, InitializeVisitor, MANUAL_MEMCPY};
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::is_copy;
 use clippy_utils::{get_enclosing_block, higher, path_to_local, sugg};
 use if_chain::if_chain;
 use rustc_ast::ast;
@@ -12,6 +12,7 @@ use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Pat, PatKind, StmtKind}
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::symbol::sym;
+use std::fmt::Display;
 use std::iter::Iterator;
 
 /// Checks for for loops that sequentially copy items from one slice-like
@@ -61,15 +62,15 @@ pub(super) fn check<'tcx>(
                         if_chain! {
                             if let ExprKind::Index(base_left, idx_left) = lhs.kind;
                             if let ExprKind::Index(base_right, idx_right) = rhs.kind;
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_left));
-                            if is_slice_like(cx, cx.typeck_results().expr_ty(base_right));
+                            if let Some(ty) = get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_left));
+                            if get_slice_like_element_ty(cx, cx.typeck_results().expr_ty(base_right)).is_some();
                             if let Some((start_left, offset_left)) = get_details_from_idx(cx, idx_left, &starts);
                             if let Some((start_right, offset_right)) = get_details_from_idx(cx, idx_right, &starts);
 
                             // Source and destination must be different
                             if path_to_local(base_left) != path_to_local(base_right);
                             then {
-                                Some((IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
+                                Some((ty, IndexExpr { base: base_left, idx: start_left, idx_offset: offset_left },
                                     IndexExpr { base: base_right, idx: start_right, idx_offset: offset_right }))
                             } else {
                                 None
@@ -77,7 +78,7 @@ pub(super) fn check<'tcx>(
                         }
                     })
                 })
-                .map(|o| o.map(|(dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, &dst, &src)))
+                .map(|o| o.map(|(ty, dst, src)| build_manual_memcpy_suggestion(cx, start, end, limits, ty, &dst, &src)))
                 .collect::<Option<Vec<_>>>()
                 .filter(|v| !v.is_empty())
                 .map(|v| v.join("\n    "));
@@ -86,7 +87,7 @@ pub(super) fn check<'tcx>(
                 span_lint_and_sugg(
                     cx,
                     MANUAL_MEMCPY,
-                    get_span_of_entire_for_loop(expr),
+                    expr.span,
                     "it looks like you're manually copying between slices",
                     "try replacing the loop by",
                     big_sugg,
@@ -104,11 +105,12 @@ fn build_manual_memcpy_suggestion<'tcx>(
     start: &Expr<'_>,
     end: &Expr<'_>,
     limits: ast::RangeLimits,
+    elem_ty: Ty<'tcx>,
     dst: &IndexExpr<'_>,
     src: &IndexExpr<'_>,
 ) -> String {
     fn print_offset(offset: MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        if offset.as_str() == "0" {
+        if offset.to_string() == "0" {
             sugg::EMPTY.into()
         } else {
             offset
@@ -117,13 +119,11 @@ fn build_manual_memcpy_suggestion<'tcx>(
 
     let print_limit = |end: &Expr<'_>, end_str: &str, base: &Expr<'_>, sugg: MinifyingSugg<'static>| {
         if_chain! {
-            if let ExprKind::MethodCall(method, _, len_args, _) = end.kind;
+            if let ExprKind::MethodCall(method, recv, [], _) = end.kind;
             if method.ident.name == sym::len;
-            if len_args.len() == 1;
-            if let Some(arg) = len_args.get(0);
-            if path_to_local(arg) == path_to_local(base);
+            if path_to_local(recv) == path_to_local(base);
             then {
-                if sugg.as_str() == end_str {
+                if sugg.to_string() == end_str {
                     sugg::EMPTY.into()
                 } else {
                     sugg
@@ -147,7 +147,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
             print_offset(apply_offset(&start_str, &idx_expr.idx_offset)).into_sugg(),
             print_limit(
                 end,
-                end_str.as_str(),
+                end_str.to_string().as_str(),
                 idx_expr.base,
                 apply_offset(&end_str, &idx_expr.idx_offset),
             )
@@ -159,7 +159,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
                 print_offset(apply_offset(&counter_start, &idx_expr.idx_offset)).into_sugg(),
                 print_limit(
                     end,
-                    end_str.as_str(),
+                    end_str.to_string().as_str(),
                     idx_expr.base,
                     apply_offset(&end_str, &idx_expr.idx_offset) + &counter_start - &start_str,
                 )
@@ -177,19 +177,17 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
         dst_base_str
     } else {
-        format!(
-            "{}[{}..{}]",
-            dst_base_str,
-            dst_offset.maybe_par(),
-            dst_limit.maybe_par()
-        )
-        .into()
+        format!("{dst_base_str}[{}..{}]", dst_offset.maybe_par(), dst_limit.maybe_par()).into()
+    };
+
+    let method_str = if is_copy(cx, elem_ty) {
+        "copy_from_slice"
+    } else {
+        "clone_from_slice"
     };
 
     format!(
-        "{}.clone_from_slice(&{}[{}..{}]);",
-        dst,
-        src_base_str,
+        "{dst}.{method_str}(&{src_base_str}[{}..{}]);",
         src_offset.maybe_par(),
         src_limit.maybe_par()
     )
@@ -202,15 +200,13 @@ fn build_manual_memcpy_suggestion<'tcx>(
 #[derive(Clone)]
 struct MinifyingSugg<'a>(Sugg<'a>);
 
-impl<'a> MinifyingSugg<'a> {
-    fn as_str(&self) -> &str {
-        // HACK: Don't sync to Clippy! Required because something with the `or_patterns` feature
-        // changed and this would now require parentheses.
-        match &self.0 {
-            Sugg::NonParen(s) | Sugg::MaybeParen(s) | Sugg::BinOp(_, s) => s.as_ref(),
-        }
+impl<'a> Display for MinifyingSugg<'a> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
+}
 
+impl<'a> MinifyingSugg<'a> {
     fn into_sugg(self) -> Sugg<'a> {
         self.0
     }
@@ -225,7 +221,7 @@ impl<'a> From<Sugg<'a>> for MinifyingSugg<'a> {
 impl std::ops::Add for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self.clone(),
             (_, _) => (&self.0 + &rhs.0).into(),
@@ -236,7 +232,7 @@ impl std::ops::Add for &MinifyingSugg<'static> {
 impl std::ops::Sub for &MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             (_, "0") => self.clone(),
             ("0", _) => (-rhs.0.clone()).into(),
             (x, y) if x == y => sugg::ZERO.into(),
@@ -248,7 +244,7 @@ impl std::ops::Sub for &MinifyingSugg<'static> {
 impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn add(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             ("0", _) => rhs.clone(),
             (_, "0") => self,
             (_, _) => (self.0 + &rhs.0).into(),
@@ -259,7 +255,7 @@ impl std::ops::Add<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
 impl std::ops::Sub<&MinifyingSugg<'static>> for MinifyingSugg<'static> {
     type Output = MinifyingSugg<'static>;
     fn sub(self, rhs: &MinifyingSugg<'static>) -> MinifyingSugg<'static> {
-        match (self.as_str(), rhs.as_str()) {
+        match (self.to_string().as_str(), rhs.to_string().as_str()) {
             (_, "0") => self,
             ("0", _) => (-rhs.0.clone()).into(),
             (x, y) if x == y => sugg::ZERO.into(),
@@ -325,22 +321,19 @@ struct Start<'hir> {
     kind: StartKind<'hir>,
 }
 
-fn is_slice_like<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'_>) -> bool {
-    let is_slice = match ty.kind() {
-        ty::Ref(_, subty, _) => is_slice_like(cx, subty),
-        ty::Slice(..) | ty::Array(..) => true,
-        _ => false,
-    };
-
-    is_slice || is_type_diagnostic_item(cx, ty, sym::Vec) || is_type_diagnostic_item(cx, ty, sym::VecDeque)
+fn get_slice_like_element_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
+    match ty.kind() {
+        ty::Adt(adt, subs) if cx.tcx.is_diagnostic_item(sym::Vec, adt.did()) => Some(subs.type_at(0)),
+        ty::Ref(_, subty, _) => get_slice_like_element_ty(cx, *subty),
+        ty::Slice(ty) | ty::Array(ty, _) => Some(*ty),
+        _ => None,
+    }
 }
 
 fn fetch_cloned_expr<'tcx>(expr: &'tcx Expr<'tcx>) -> &'tcx Expr<'tcx> {
     if_chain! {
-        if let ExprKind::MethodCall(method, _, args, _) = expr.kind;
+        if let ExprKind::MethodCall(method, arg, [], _) = expr.kind;
         if method.ident.name == sym::clone;
-        if args.len() == 1;
-        if let Some(arg) = args.get(0);
         then { arg } else { expr }
     }
 }
@@ -445,7 +438,7 @@ fn get_loop_counters<'a, 'tcx>(
                 let mut initialize_visitor = InitializeVisitor::new(cx, expr, var_id);
                 walk_block(&mut initialize_visitor, block);
 
-                initialize_visitor.get_result().map(|(_, initializer)| Start {
+                initialize_visitor.get_result().map(|(_, _, initializer)| Start {
                     id: var_id,
                     kind: StartKind::Counter { initializer },
                 })

@@ -10,6 +10,7 @@ using namespace llvm;
 
 struct LLVMRustCounterMappingRegion {
   coverage::Counter Count;
+  coverage::Counter FalseCount;
   uint32_t FileID;
   uint32_t ExpandedFileID;
   uint32_t LineStart;
@@ -23,17 +24,10 @@ extern "C" void LLVMRustCoverageWriteFilenamesSectionToBuffer(
     const char* const Filenames[],
     size_t FilenamesLen,
     RustStringRef BufferOut) {
-#if LLVM_VERSION_GE(13,0)
   SmallVector<std::string,32> FilenameRefs;
   for (size_t i = 0; i < FilenamesLen; i++) {
     FilenameRefs.push_back(std::string(Filenames[i]));
   }
-#else
-  SmallVector<StringRef,32> FilenameRefs;
-  for (size_t i = 0; i < FilenamesLen; i++) {
-    FilenameRefs.push_back(StringRef(Filenames[i]));
-  }
-#endif
   auto FilenamesWriter = coverage::CoverageFilenamesSectionWriter(
     makeArrayRef(FilenameRefs));
   RawRustStringOstream OS(BufferOut);
@@ -53,7 +47,7 @@ extern "C" void LLVMRustCoverageWriteMappingToBuffer(
   MappingRegions.reserve(NumMappingRegions);
   for (const auto &Region : makeArrayRef(RustMappingRegions, NumMappingRegions)) {
     MappingRegions.emplace_back(
-        Region.Count, Region.FileID, Region.ExpandedFileID,
+        Region.Count, Region.FalseCount, Region.FileID, Region.ExpandedFileID,
         Region.LineStart, Region.ColumnStart, Region.LineEnd, Region.ColumnEnd,
         Region.Kind);
   }
@@ -108,5 +102,5 @@ extern "C" void LLVMRustCoverageWriteMappingVarNameToString(RustStringRef Str) {
 }
 
 extern "C" uint32_t LLVMRustCoverageMappingVersion() {
-  return coverage::CovMapVersion::Version4;
+  return coverage::CovMapVersion::Version6;
 }

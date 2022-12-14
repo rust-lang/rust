@@ -22,7 +22,8 @@ fn use_<'short,'long>(c: Contravariant<'short>,
     // 'short <= 'long, this would be true if the Contravariant type were
     // covariant with respect to its parameter 'a.
 
-    let _: Contravariant<'long> = c; //~ ERROR E0623
+    let _: Contravariant<'long> = c;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

@@ -1,0 +1,44 @@
+error: unused variable: `xyza`
+  --> $DIR/issue-100584.rs:2:8
+   |
+LL | fn foo(xyza: &str) {
+   |        ^^^^ unused variable
+LL |
+LL |     let _ = "{xyza}";
+   |             -------- you might have meant to use string interpolation in this string literal
+   |
+note: the lint level is defined here
+  --> $DIR/issue-100584.rs:1:9
+   |
+LL | #![deny(unused)]
+   |         ^^^^^^
+   = note: `#[deny(unused_variables)]` implied by `#[deny(unused)]`
+help: string interpolation only works in `format!` invocations
+   |
+LL |     let _ = format!("{xyza}");
+   |             ++++++++        +
+help: if this is intentional, prefix it with an underscore
+   |
+LL | fn foo(_xyza: &str) {
+   |        ~~~~~
+
+error: unused variable: `xyza`
+  --> $DIR/issue-100584.rs:7:9
+   |
+LL | fn foo3(xyza: &str) {
+   |         ^^^^ unused variable
+LL |
+LL |     let _ = "aaa{xyza}bbb";
+   |             -------------- you might have meant to use string interpolation in this string literal
+   |
+help: string interpolation only works in `format!` invocations
+   |
+LL |     let _ = format!("aaa{xyza}bbb");
+   |             ++++++++              +
+help: if this is intentional, prefix it with an underscore
+   |
+LL | fn foo3(_xyza: &str) {
+   |         ~~~~~
+
+error: aborting due to 2 previous errors
+

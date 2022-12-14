@@ -4,9 +4,9 @@ warning: private trait `PrivNonPrincipal` in public interface (error E0445)
 LL | pub fn leak_dyn_nonprincipal() -> Box<dyn PubPrincipal + PrivNonPrincipal> { loop {} }
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `#[warn(private_in_public)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #34537 <https://github.com/rust-lang/rust/issues/34537>
+   = note: `#[warn(private_in_public)]` on by default
 
 error: missing documentation for an associated function
   --> $DIR/private-in-public-non-principal.rs:14:9

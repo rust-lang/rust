@@ -17,7 +17,9 @@ LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
 LL +             e.insert(v2);
- ...
+LL +         }
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry_with_else.rs:22:5
@@ -37,7 +39,9 @@ LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
 LL +             e.insert(v2);
- ...
+LL +         }
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry_with_else.rs:28:5
@@ -95,7 +99,9 @@ LL +             e.insert(v);
 LL +         }
 LL +         std::collections::hash_map::Entry::Occupied(mut e) => {
 LL +             e.insert(v2);
- ...
+LL +         }
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry_with_else.rs:46:5
@@ -115,7 +121,10 @@ LL +             if true { Some(e.insert(v)) } else { Some(e.insert(v2)) }
 LL +         }
 LL +         std::collections::hash_map::Entry::Vacant(e) => {
 LL +             e.insert(v);
- ...
+LL +             None
+LL +         }
+LL ~     };
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
   --> $DIR/entry_with_else.rs:52:5

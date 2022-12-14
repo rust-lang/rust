@@ -55,14 +55,14 @@ pub union Union {
 
 // @has 'toggle_item_contents/struct.PrivStruct.html'
 // @count - '//details[@class="rustdoc-toggle type-contents-toggle"]' 0
-// @has - '//div[@class="docblock item-decl"]' 'fields omitted'
+// @has - '//div[@class="item-decl"]' '/* private fields */'
 pub struct PrivStruct {
     a: usize,
     b: usize,
 }
 
 // @has 'toggle_item_contents/enum.Enum.html'
-// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]' ''
 pub enum Enum {
     A, B, C,
     D {
@@ -72,7 +72,7 @@ pub enum Enum {
 }
 
 // @has 'toggle_item_contents/enum.EnumStructVariant.html'
-// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]'
+// @!has - '//details[@class="rustdoc-toggle type-contents-toggle"]' ''
 pub enum EnumStructVariant {
     A, B, C,
     D {

@@ -1,13 +1,10 @@
 #![feature(const_trait_impl)]
 
-#[default_method_body_is_const] //~ ERROR attribute should be applied
+#[const_trait]
 trait A {
-    #[default_method_body_is_const] //~ ERROR attribute should be applied
-    fn no_body(self);
-
-    #[default_method_body_is_const]
-    fn correct_use(&self) {}
+    #[const_trait] //~ ERROR attribute should be applied
+    fn foo(self);
 }
 
-#[default_method_body_is_const] //~ ERROR attribute should be applied
+#[const_trait] //~ ERROR attribute should be applied
 fn main() {}

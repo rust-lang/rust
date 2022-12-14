@@ -1,8 +1,13 @@
-error: expected one of `,`, `:`, `=`, or `>`, found `;`
-  --> $DIR/lifetime-semicolon.rs:5:30
+error: expected one of `,` or `>`, found `;`
+  --> $DIR/lifetime-semicolon.rs:7:31
    |
-LL | fn foo<'a, 'b>(x: &mut Foo<'a; 'b>) {}
-   |                              ^ expected one of `,`, `:`, `=`, or `>`
+LL | fn foo<'a, 'b>(_x: &mut Foo<'a; 'b>) {}
+   |                               ^ expected one of `,` or `>`
+   |
+help: use a comma to separate type parameters
+   |
+LL | fn foo<'a, 'b>(_x: &mut Foo<'a, 'b>) {}
+   |                               ~
 
 error: aborting due to previous error
 

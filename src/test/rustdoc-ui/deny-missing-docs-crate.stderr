@@ -16,7 +16,7 @@ error: missing documentation for a struct
   --> $DIR/deny-missing-docs-crate.rs:3:1
    |
 LL | pub struct Foo;
-   | ^^^^^^^^^^^^^^^
+   | ^^^^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

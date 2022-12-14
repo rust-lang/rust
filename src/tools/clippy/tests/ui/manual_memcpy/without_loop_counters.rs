@@ -113,6 +113,17 @@ pub fn manual_copy(src: &[i32], dst: &mut [i32], dst2: &mut [i32]) {
     for i in 0.. {
         dst[i] = src[i];
     }
+
+    // VecDeque - ideally this would work, but would require something like `range_as_slices`
+    let mut dst = std::collections::VecDeque::from_iter([0; 5]);
+    let src = std::collections::VecDeque::from_iter([0, 1, 2, 3, 4]);
+    for i in 0..dst.len() {
+        dst[i] = src[i];
+    }
+    let src = vec![0, 1, 2, 3, 4];
+    for i in 0..dst.len() {
+        dst[i] = src[i];
+    }
 }
 
 #[warn(clippy::needless_range_loop, clippy::manual_memcpy)]

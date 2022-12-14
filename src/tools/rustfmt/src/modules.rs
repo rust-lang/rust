@@ -4,7 +4,6 @@ use std::path::{Path, PathBuf};
 
 use rustc_ast::ast;
 use rustc_ast::visit::Visitor;
-use rustc_ast::AstLike;
 use rustc_span::symbol::{self, sym, Symbol};
 use rustc_span::Span;
 use thiserror::Error;
@@ -12,11 +11,11 @@ use thiserror::Error;
 use crate::attr::MetaVisitor;
 use crate::config::FileName;
 use crate::items::is_mod_decl;
-use crate::syntux::parser::{
+use crate::parse::parser::{
     Directory, DirectoryOwnership, ModError, ModulePathSuccess, Parser, ParserError,
 };
-use crate::syntux::session::ParseSess;
-use crate::utils::contains_skip;
+use crate::parse::session::ParseSess;
+use crate::utils::{contains_skip, mk_sp};
 
 mod visitor;
 
@@ -27,7 +26,7 @@ type FileModMap<'ast> = BTreeMap<FileName, Module<'ast>>;
 pub(crate) struct Module<'a> {
     ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
     pub(crate) items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-    inner_attr: Vec<ast::Attribute>,
+    inner_attr: ast::AttrVec,
     pub(crate) span: Span,
 }
 
@@ -36,7 +35,7 @@ impl<'a> Module<'a> {
         mod_span: Span,
         ast_mod_kind: Option<Cow<'a, ast::ModKind>>,
         mod_items: Cow<'a, Vec<rustc_ast::ptr::P<ast::Item>>>,
-        mod_attrs: Cow<'a, Vec<ast::Attribute>>,
+        mod_attrs: Cow<'a, ast::AttrVec>,
     ) -> Self {
         let inner_attr = mod_attrs
             .iter()
@@ -50,18 +49,9 @@ impl<'a> Module<'a> {
             ast_mod_kind,
         }
     }
-}
 
-impl<'a> AstLike for Module<'a> {
-    const SUPPORTS_CUSTOM_INNER_ATTRS: bool = true;
-    fn attrs(&self) -> &[ast::Attribute] {
+    pub(crate) fn attrs(&self) -> &[ast::Attribute] {
         &self.inner_attr
-    }
-    fn visit_attrs(&mut self, f: impl FnOnce(&mut Vec<ast::Attribute>)) {
-        f(&mut self.inner_attr)
-    }
-    fn tokens_mut(&mut self) -> Option<&mut Option<rustc_ast::tokenstream::LazyTokenStream>> {
-        unimplemented!()
     }
 }
 
@@ -81,6 +71,7 @@ pub struct ModuleResolutionError {
     pub(crate) kind: ModuleResolutionErrorKind,
 }
 
+/// Defines variants similar to those of [rustc_expand::module::ModError]
 #[derive(Debug, Error)]
 pub(crate) enum ModuleResolutionErrorKind {
     /// Find a file that cannot be parsed.
@@ -89,6 +80,12 @@ pub(crate) enum ModuleResolutionErrorKind {
     /// File cannot be found.
     #[error("{file} does not exist")]
     NotFound { file: PathBuf },
+    /// File a.rs and a/mod.rs both exist
+    #[error("file for module found at both {default_path:?} and {secondary_path:?}")]
+    MultipleCandidates {
+        default_path: PathBuf,
+        secondary_path: PathBuf,
+    },
 }
 
 #[derive(Clone)]
@@ -124,7 +121,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         mut self,
         krate: &'ast ast::Crate,
     ) -> Result<FileModMap<'ast>, ModuleResolutionError> {
-        let root_filename = self.parse_sess.span_to_filename(krate.span);
+        let root_filename = self.parse_sess.span_to_filename(krate.spans.inner_span);
         self.directory.path = match root_filename {
             FileName::Real(ref p) => p.parent().unwrap_or(Path::new("")).to_path_buf(),
             _ => PathBuf::new(),
@@ -135,10 +132,12 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             self.visit_mod_from_ast(&krate.items)?;
         }
 
+        let snippet_provider = self.parse_sess.snippet_provider(krate.spans.inner_span);
+
         self.file_map.insert(
             root_filename,
             Module::new(
-                krate.span,
+                mk_sp(snippet_provider.start_pos(), snippet_provider.end_pos()),
                 None,
                 Cow::Borrowed(&krate.items),
                 Cow::Borrowed(&krate.attrs),
@@ -159,7 +158,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         module_item.item.span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
                         Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
@@ -186,7 +185,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                         span,
                         Some(Cow::Owned(sub_mod_kind.clone())),
                         Cow::Owned(vec![]),
-                        Cow::Owned(vec![]),
+                        Cow::Owned(ast::AttrVec::new()),
                     ),
                 )?;
             }
@@ -197,7 +196,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
     /// Visit modules from AST.
     fn visit_mod_from_ast(
         &mut self,
-        items: &'ast Vec<rustc_ast::ptr::P<ast::Item>>,
+        items: &'ast [rustc_ast::ptr::P<ast::Item>],
     ) -> Result<(), ModuleResolutionError> {
         for item in items {
             if is_cfg_if(item) {
@@ -290,7 +289,7 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 };
                 self.visit_sub_mod_after_directory_update(sub_mod, Some(directory))
             }
-            SubModKind::Internal(ref item) => {
+            SubModKind::Internal(item) => {
                 self.push_inline_mod_directory(item.ident, &item.attrs);
                 self.visit_sub_mod_after_directory_update(sub_mod, None)
             }
@@ -317,9 +316,11 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
         }
         match (sub_mod.ast_mod_kind, sub_mod.items) {
             (Some(Cow::Borrowed(ast::ModKind::Loaded(items, _, _))), _) => {
-                self.visit_mod_from_ast(&items)
+                self.visit_mod_from_ast(items)
             }
-            (Some(Cow::Owned(..)), Cow::Owned(items)) => self.visit_mod_outside_ast(items),
+            (Some(Cow::Owned(ast::ModKind::Loaded(items, _, _))), _) | (_, Cow::Owned(items)) => {
+                self.visit_mod_outside_ast(items)
+            }
             (_, _) => Ok(()),
         }
     }
@@ -435,25 +436,45 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
                 }
             }
             Err(mod_err) if !mods_outside_ast.is_empty() => {
-                if let ModError::ParserError(mut e) = mod_err {
+                if let ModError::ParserError(e) = mod_err {
                     e.cancel();
                 }
                 Ok(Some(SubModKind::MultiExternal(mods_outside_ast)))
             }
-            Err(_) => Err(ModuleResolutionError {
-                module: mod_name.to_string(),
-                kind: ModuleResolutionErrorKind::NotFound {
-                    file: self.directory.path.clone(),
-                },
-            }),
+            Err(e) => match e {
+                ModError::FileNotFound(_, default_path, _secondary_path) => {
+                    Err(ModuleResolutionError {
+                        module: mod_name.to_string(),
+                        kind: ModuleResolutionErrorKind::NotFound { file: default_path },
+                    })
+                }
+                ModError::MultipleCandidates(_, default_path, secondary_path) => {
+                    Err(ModuleResolutionError {
+                        module: mod_name.to_string(),
+                        kind: ModuleResolutionErrorKind::MultipleCandidates {
+                            default_path,
+                            secondary_path,
+                        },
+                    })
+                }
+                ModError::ParserError(_)
+                | ModError::CircularInclusion(_)
+                | ModError::ModInBlock(_) => Err(ModuleResolutionError {
+                    module: mod_name.to_string(),
+                    kind: ModuleResolutionErrorKind::ParseError {
+                        file: self.directory.path.clone(),
+                    },
+                }),
+            },
         }
     }
 
     fn push_inline_mod_directory(&mut self, id: symbol::Ident, attrs: &[ast::Attribute]) {
         if let Some(path) = find_path_value(attrs) {
-            self.directory.path.push(&*path.as_str());
+            self.directory.path.push(path.as_str());
             self.directory.ownership = DirectoryOwnership::Owned { relative: None };
         } else {
+            let id = id.as_str();
             // We have to push on the current module name in the case of relative
             // paths in order to ensure that any additional module paths from inline
             // `mod x { ... }` come after the relative extension.
@@ -463,10 +484,16 @@ impl<'ast, 'sess, 'c> ModResolver<'ast, 'sess> {
             if let DirectoryOwnership::Owned { relative } = &mut self.directory.ownership {
                 if let Some(ident) = relative.take() {
                     // remove the relative offset
-                    self.directory.path.push(&*ident.as_str());
+                    self.directory.path.push(ident.as_str());
+
+                    // In the case where there is an x.rs and an ./x directory we want
+                    // to prevent adding x twice. For example, ./x/x
+                    if self.directory.path.exists() && !self.directory.path.join(id).exists() {
+                        return;
+                    }
                 }
             }
-            self.directory.path.push(&*id.as_str());
+            self.directory.path.push(id);
         }
     }
 

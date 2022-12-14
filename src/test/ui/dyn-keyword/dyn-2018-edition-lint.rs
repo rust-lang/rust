@@ -6,6 +6,14 @@ fn function(x: &SomeTrait, y: Box<SomeTrait>) {
     //~| WARN this is accepted in the current edition
     //~| ERROR trait objects without an explicit `dyn` are deprecated
     //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
     let _x: &SomeTrait = todo!();
     //~^ ERROR trait objects without an explicit `dyn` are deprecated
     //~| WARN this is accepted in the current edition

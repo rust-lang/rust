@@ -4,7 +4,7 @@ use crate::sys::thread as imp;
 
 pub fn min_stack() -> usize {
     static MIN: atomic::AtomicUsize = atomic::AtomicUsize::new(0);
-    match MIN.load(Ordering::SeqCst) {
+    match MIN.load(Ordering::Relaxed) {
         0 => {}
         n => return n - 1,
     }
@@ -13,6 +13,6 @@ pub fn min_stack() -> usize {
 
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
-    MIN.store(amt + 1, Ordering::SeqCst);
+    MIN.store(amt + 1, Ordering::Relaxed);
     amt
 }

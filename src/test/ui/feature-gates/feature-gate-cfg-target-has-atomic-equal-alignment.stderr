@@ -1,0 +1,57 @@
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:2:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "8");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:4:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "16");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:6:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "32");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:8:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "64");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:10:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "128");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error[E0658]: `cfg(target_has_atomic_equal_alignment)` is experimental and subject to change
+  --> $DIR/feature-gate-cfg-target-has-atomic-equal-alignment.rs:12:10
+   |
+LL |     cfg!(target_has_atomic_equal_alignment = "ptr");
+   |          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #93822 <https://github.com/rust-lang/rust/issues/93822> for more information
+   = help: add `#![feature(cfg_target_has_atomic_equal_alignment)]` to the crate attributes to enable
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0658`.

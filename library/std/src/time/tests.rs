@@ -31,7 +31,8 @@ fn instant_monotonic_concurrent() -> crate::thread::Result<()> {
         .map(|_| {
             crate::thread::spawn(|| {
                 let mut old = Instant::now();
-                for _ in 0..5_000_000 {
+                let count = if cfg!(miri) { 1_000 } else { 5_000_000 };
+                for _ in 0..count {
                     let new = Instant::now();
                     assert!(new >= old);
                     old = new;
@@ -55,10 +56,10 @@ fn instant_elapsed() {
 fn instant_math() {
     let a = Instant::now();
     let b = Instant::now();
-    println!("a: {:?}", a);
-    println!("b: {:?}", b);
+    println!("a: {a:?}");
+    println!("b: {b:?}");
     let dur = b.duration_since(a);
-    println!("dur: {:?}", dur);
+    println!("dur: {dur:?}");
     assert_almost_eq!(b - dur, a);
     assert_almost_eq!(a + dur, b);
 
@@ -87,13 +88,20 @@ fn instant_math_is_associative() {
     // Changing the order of instant math shouldn't change the results,
     // especially when the expression reduces to X + identity.
     assert_eq!((now + offset) - now, (now - now) + offset);
+
+    // On any platform, `Instant` should have the same resolution as `Duration` (e.g. 1 nanosecond)
+    // or better. Otherwise, math will be non-associative (see #91417).
+    let now = Instant::now();
+    let provided_offset = Duration::from_nanos(1);
+    let later = now + provided_offset;
+    let measured_offset = later - now;
+    assert_eq!(measured_offset, provided_offset);
 }
 
 #[test]
-#[should_panic]
-fn instant_duration_since_panic() {
+fn instant_duration_since_saturates() {
     let a = Instant::now();
-    let _ = (a - Duration::SECOND).duration_since(a);
+    assert_eq!((a - Duration::SECOND).duration_since(a), Duration::ZERO);
 }
 
 #[test]
@@ -109,6 +117,7 @@ fn instant_checked_duration_since_nopanic() {
 #[test]
 fn instant_saturating_duration_since_nopanic() {
     let a = Instant::now();
+    #[allow(deprecated, deprecated_in_future)]
     let ret = (a - Duration::SECOND).saturating_duration_since(a);
     assert_eq!(ret, Duration::ZERO);
 }
@@ -190,31 +199,6 @@ fn since_epoch() {
     // Should give us ~70 years to fix this!
     let hundred_twenty_years = thirty_years * 4;
     assert!(a < hundred_twenty_years);
-}
-
-#[cfg(all(target_has_atomic = "64", not(target_has_atomic = "128")))]
-#[test]
-fn monotonizer_wrapping_backslide() {
-    use super::monotonic::inner::{monotonize_impl, ZERO};
-    use core::sync::atomic::AtomicU64;
-
-    let reference = AtomicU64::new(0);
-
-    let time = match ZERO.checked_add_duration(&Duration::from_secs(0xffff_ffff)) {
-        Some(time) => time,
-        None => {
-            // platform cannot represent u32::MAX seconds so it won't have to deal with this kind
-            // of overflow either
-            return;
-        }
-    };
-
-    let monotonized = monotonize_impl(&reference, time);
-    let expected = ZERO.checked_add_duration(&Duration::from_secs(1 << 32)).unwrap();
-    assert_eq!(
-        monotonized, expected,
-        "64bit monotonizer should handle overflows in the seconds part"
-    );
 }
 
 macro_rules! bench_instant_threaded {

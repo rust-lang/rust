@@ -1,0 +1,20 @@
+error: use of unit struct `S1` that will be deprecated in future version 99.99.99: effectively never
+  --> $DIR/staged-deprecation-in-future.rs:16:13
+   |
+LL |     let _ = S1;
+   |             ^^
+   |
+note: the lint level is defined here
+  --> $DIR/staged-deprecation-in-future.rs:1:9
+   |
+LL | #![deny(deprecated_in_future)]
+   |         ^^^^^^^^^^^^^^^^^^^^
+
+error: use of unit struct `S2` that will be deprecated in a future Rust version: literally never
+  --> $DIR/staged-deprecation-in-future.rs:17:13
+   |
+LL |     let _ = S2;
+   |             ^^
+
+error: aborting due to 2 previous errors
+

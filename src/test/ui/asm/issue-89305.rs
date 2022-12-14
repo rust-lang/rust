@@ -2,9 +2,11 @@
 // as both unused and possibly-uninitialized.
 
 // check-pass
+// needs-asm-support
 
-#![feature(asm)]
 #![warn(unused)]
+
+use std::arch::asm;
 
 fn main() {
     unsafe {

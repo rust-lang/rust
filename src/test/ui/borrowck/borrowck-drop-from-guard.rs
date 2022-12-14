@@ -1,5 +1,3 @@
-//compile-flags: -Z borrowck=mir
-
 fn foo(_:String) {}
 
 fn main()

@@ -6,7 +6,9 @@ trait X { }
 impl<'a, T> X for B<'a, T> {}
 
 fn g<'a, T: 'static>(v: Box<dyn A<T> + 'a>) -> Box<dyn X + 'static> {
-    Box::new(B(&*v)) as Box<dyn X> //~ ERROR E0759
+    Box::new(B(&*v)) as Box<dyn X>
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR cannot return value referencing local data `*v` [E0515]
 }
 
 fn main() { }

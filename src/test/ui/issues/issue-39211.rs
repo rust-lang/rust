@@ -1,5 +1,3 @@
-#![feature(associated_consts)]
-
 trait VecN {
     const DIM: usize;
 }

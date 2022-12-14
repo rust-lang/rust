@@ -1,13 +1,12 @@
 // Test for the behavior described in <https://github.com/rust-lang/rust/issues/87184>.
-#![feature(const_mut_refs, const_raw_ptr_deref)]
+#![feature(const_mut_refs)]
 
 const PARTIAL_OVERWRITE: () = {
     let mut p = &42;
     unsafe {
         let ptr: *mut _ = &mut p;
-        *(ptr as *mut u8) = 123; //~ ERROR any use of this value
+        *(ptr as *mut u8) = 123; //~ ERROR constant
         //~| unable to overwrite parts of a pointer
-        //~| WARN previously accepted
     }
     let x = *p;
 };

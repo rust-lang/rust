@@ -3,7 +3,7 @@
 // ignore-spirv
 // ignore-wasm32
 
-#![feature(asm)]
+use std::arch::asm;
 
 fn main() {
     unsafe {

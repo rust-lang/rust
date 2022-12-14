@@ -1,13 +1,14 @@
 use proc_macro2::TokenStream;
-use quote::quote;
+use quote::{quote, quote_spanned};
 use syn::parse_quote;
+use syn::spanned::Spanned;
 
 pub fn type_decodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
     let decoder_ty = quote! { __D };
     if !s.ast().generics.lifetimes().any(|lt| lt.lifetime.ident == "tcx") {
         s.add_impl_generic(parse_quote! { 'tcx });
     }
-    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_middle::ty::codec::TyDecoder<'tcx>});
+    s.add_impl_generic(parse_quote! {#decoder_ty: ::rustc_type_ir::codec::TyDecoder<I = ::rustc_middle::ty::TyCtxt<'tcx>>});
     s.add_bounds(synstructure::AddBounds::Generics);
 
     decodable_body(s, decoder_ty)
@@ -41,29 +42,14 @@ fn decodable_body(
     }
     let ty_name = s.ast().ident.to_string();
     let decode_body = match s.variants() {
-        [vi] => {
-            let construct = vi.construct(|field, index| decode_field(field, index, true));
-            quote! {
-                ::rustc_serialize::Decoder::read_struct(
-                    __decoder,
-                    |__decoder| { ::std::result::Result::Ok(#construct) },
-                )
-            }
-        }
+        [vi] => vi.construct(|field, _index| decode_field(field)),
         variants => {
             let match_inner: TokenStream = variants
                 .iter()
                 .enumerate()
                 .map(|(idx, vi)| {
-                    let construct = vi.construct(|field, index| decode_field(field, index, false));
-                    quote! { #idx => { ::std::result::Result::Ok(#construct) } }
-                })
-                .collect();
-            let names: TokenStream = variants
-                .iter()
-                .map(|vi| {
-                    let variant_name = vi.ast().ident.to_string();
-                    quote!(#variant_name,)
+                    let construct = vi.construct(|field, _index| decode_field(field));
+                    quote! { #idx => { #construct } }
                 })
                 .collect();
             let message = format!(
@@ -72,21 +58,10 @@ fn decodable_body(
                 variants.len()
             );
             quote! {
-                ::rustc_serialize::Decoder::read_enum(
-                    __decoder,
-                    |__decoder| {
-                        ::rustc_serialize::Decoder::read_enum_variant(
-                            __decoder,
-                            &[#names],
-                            |__decoder, __variant_idx| {
-                                match __variant_idx {
-                                    #match_inner
-                                    _ => return ::std::result::Result::Err(
-                                        ::rustc_serialize::Decoder::error(__decoder, #message)),
-                                }
-                            })
-                    }
-                )
+                match ::rustc_serialize::Decoder::read_usize(__decoder) {
+                    #match_inner
+                    _ => panic!(#message),
+                }
             }
         }
     };
@@ -94,41 +69,25 @@ fn decodable_body(
     s.bound_impl(
         quote!(::rustc_serialize::Decodable<#decoder_ty>),
         quote! {
-            fn decode(
-                __decoder: &mut #decoder_ty,
-            ) -> ::std::result::Result<Self, <#decoder_ty as ::rustc_serialize::Decoder>::Error> {
+            fn decode(__decoder: &mut #decoder_ty) -> Self {
                 #decode_body
             }
         },
     )
 }
 
-fn decode_field(field: &syn::Field, index: usize, is_struct: bool) -> proc_macro2::TokenStream {
+fn decode_field(field: &syn::Field) -> proc_macro2::TokenStream {
+    let field_span = field.ident.as_ref().map_or(field.ty.span(), |ident| ident.span());
+
     let decode_inner_method = if let syn::Type::Reference(_) = field.ty {
         quote! { ::rustc_middle::ty::codec::RefDecodable::decode }
     } else {
         quote! { ::rustc_serialize::Decodable::decode }
     };
-    let (decode_method, opt_field_name) = if is_struct {
-        let field_name = field.ident.as_ref().map_or_else(|| index.to_string(), |i| i.to_string());
-        (
-            proc_macro2::Ident::new("read_struct_field", proc_macro2::Span::call_site()),
-            quote! { #field_name, },
-        )
-    } else {
-        (
-            proc_macro2::Ident::new("read_enum_variant_arg", proc_macro2::Span::call_site()),
-            quote! {},
-        )
-    };
-
-    quote! {
-        match ::rustc_serialize::Decoder::#decode_method(
-            __decoder, #opt_field_name #decode_inner_method) {
-            ::std::result::Result::Ok(__res) => __res,
-            ::std::result::Result::Err(__err) => return ::std::result::Result::Err(__err),
-        }
-    }
+    let __decoder = quote! { __decoder };
+    // Use the span of the field for the method call, so
+    // that backtraces will point to the field.
+    quote_spanned! {field_span=> #decode_inner_method(#__decoder) }
 }
 
 pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2::TokenStream {
@@ -136,7 +95,7 @@ pub fn type_encodable_derive(mut s: synstructure::Structure<'_>) -> proc_macro2:
         s.add_impl_generic(parse_quote! {'tcx});
     }
     let encoder_ty = quote! { __E };
-    s.add_impl_generic(parse_quote! {#encoder_ty: ::rustc_middle::ty::codec::TyEncoder<'tcx>});
+    s.add_impl_generic(parse_quote! {#encoder_ty: ::rustc_type_ir::codec::TyEncoder<I = ::rustc_middle::ty::TyCtxt<'tcx>>});
     s.add_bounds(synstructure::AddBounds::Generics);
 
     encodable_body(s, encoder_ty, false)
@@ -181,88 +140,65 @@ fn encodable_body(
 
     let encode_body = match s.variants() {
         [_] => {
-            let mut field_idx = 0usize;
             let encode_inner = s.each_variant(|vi| {
                 vi.bindings()
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
-                        let field_name = binding
-                            .ast()
-                            .ident
-                            .as_ref()
-                            .map_or_else(|| field_idx.to_string(), |i| i.to_string());
-                        let first = field_idx == 0;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_struct_field(
+                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                #field_name,
-                                #first,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
-                            ) {
-                                ::std::result::Result::Ok(()) => (),
-                                ::std::result::Result::Err(__err)
-                                    => return ::std::result::Result::Err(__err),
-                            }
+                            );
                         };
-                        field_idx += 1;
                         result
                     })
                     .collect::<TokenStream>()
             });
-            let no_fields = field_idx == 0;
             quote! {
-                ::rustc_serialize::Encoder::emit_struct(__encoder, #no_fields, |__encoder| {
-                    ::std::result::Result::Ok(match *self { #encode_inner })
-                })
+                match *self { #encode_inner }
             }
         }
         _ => {
             let mut variant_idx = 0usize;
             let encode_inner = s.each_variant(|vi| {
-                let variant_name = vi.ast().ident.to_string();
-                let mut field_idx = 0usize;
-
                 let encode_fields: TokenStream = vi
                     .bindings()
                     .iter()
                     .map(|binding| {
                         let bind_ident = &binding.binding;
-                        let first = field_idx == 0;
                         let result = quote! {
-                            match ::rustc_serialize::Encoder::emit_enum_variant_arg(
+                            ::rustc_serialize::Encodable::<#encoder_ty>::encode(
+                                #bind_ident,
                                 __encoder,
-                                #first,
-                                |__encoder|
-                                ::rustc_serialize::Encodable::<#encoder_ty>::encode(#bind_ident, __encoder),
-                            ) {
-                                ::std::result::Result::Ok(()) => (),
-                                ::std::result::Result::Err(__err)
-                                    => return ::std::result::Result::Err(__err),
-                            }
+                            );
                         };
-                        field_idx += 1;
                         result
                     })
                     .collect();
 
-                let result = quote! { ::rustc_serialize::Encoder::emit_enum_variant(
-                    __encoder,
-                   #variant_name,
-                   #variant_idx,
-                   #field_idx,
-                   |__encoder| { ::std::result::Result::Ok({ #encode_fields }) }
-                ) };
+                let result = if !vi.bindings().is_empty() {
+                    quote! {
+                        ::rustc_serialize::Encoder::emit_enum_variant(
+                            __encoder,
+                            #variant_idx,
+                            |__encoder| { #encode_fields }
+                        )
+                    }
+                } else {
+                    quote! {
+                        ::rustc_serialize::Encoder::emit_fieldless_enum_variant::<#variant_idx>(
+                            __encoder,
+                        )
+                    }
+                };
                 variant_idx += 1;
                 result
             });
             quote! {
-                ::rustc_serialize::Encoder::emit_enum(__encoder, |__encoder| {
-                    match *self {
-                        #encode_inner
-                    }
-                })
+                match *self {
+                    #encode_inner
+                }
             }
         }
     };
@@ -279,7 +215,7 @@ fn encodable_body(
             fn encode(
                 &self,
                 __encoder: &mut #encoder_ty,
-            ) -> ::std::result::Result<(), <#encoder_ty as ::rustc_serialize::Encoder>::Error> {
+            ) {
                 #lints
                 #encode_body
             }

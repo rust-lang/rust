@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 struct Foo<const N: usize>;
 
 impl<const N: usize = 1> Foo<N> {}

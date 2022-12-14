@@ -21,7 +21,7 @@ enum Color {
 
 fn enum_with_single_missing_variant() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `Red` not covered
+    //~^ ERROR non-exhaustive patterns: `Color::Red` not covered
         Color::CustomRGBA { .. } => (),
         Color::Green => ()
     }
@@ -33,7 +33,7 @@ enum Direction {
 
 fn enum_with_multiple_missing_variants() {
     match Direction::North {
-    //~^ ERROR non-exhaustive patterns: `East`, `South` and `West` not covered
+    //~^ ERROR non-exhaustive patterns: `Direction::East`, `Direction::South` and `Direction::West` not covered
         Direction::North => ()
     }
 }
@@ -44,7 +44,7 @@ enum ExcessiveEnum {
 
 fn enum_with_excessive_missing_variants() {
     match ExcessiveEnum::First {
-    //~^ ERROR `Second`, `Third`, `Fourth` and 8 more not covered
+    //~^ ERROR `ExcessiveEnum::Second`, `ExcessiveEnum::Third`, `ExcessiveEnum::Fourth` and 8 more not covered
 
         ExcessiveEnum::First => ()
     }
@@ -52,7 +52,7 @@ fn enum_with_excessive_missing_variants() {
 
 fn enum_struct_variant() {
     match Color::Red {
-    //~^ ERROR non-exhaustive patterns: `CustomRGBA { a: true, .. }` not covered
+    //~^ ERROR non-exhaustive patterns: `Color::CustomRGBA { a: true, .. }` not covered
         Color::Red => (),
         Color::Green => (),
         Color::CustomRGBA { a: false, r: _, g: _, b: 0 } => (),
@@ -68,7 +68,7 @@ enum Enum {
 fn vectors_with_nested_enums() {
     let x: &'static [Enum] = &[Enum::First, Enum::Second(false)];
     match *x {
-    //~^ ERROR non-exhaustive patterns: `[Second(true), Second(false)]` not covered
+    //~^ ERROR non-exhaustive patterns: `[Enum::Second(true), Enum::Second(false)]` not covered
         [] => (),
         [_] => (),
         [Enum::First, _] => (),

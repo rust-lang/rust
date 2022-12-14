@@ -4,13 +4,13 @@ warning: `#[inline]` is ignored on constants
 LL |     #[inline]
    |     ^^^^^^^^^
    |
+   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
 note: the lint level is defined here
   --> $DIR/inline-trait-and-foreign-items.rs:4:9
    |
 LL | #![warn(unused_attributes)]
    |         ^^^^^^^^^^^^^^^^^
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: see issue #65833 <https://github.com/rust-lang/rust/issues/65833> for more information
 
 error[E0518]: attribute should be applied to function or closure
   --> $DIR/inline-trait-and-foreign-items.rs:11:5
@@ -61,11 +61,13 @@ LL |     #[inline]
 LL |     type T;
    |     ------- not a function or closure
 
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/inline-trait-and-foreign-items.rs:26:14
    |
 LL |     type U = impl Trait;
    |              ^^^^^^^^^^
+   |
+   = note: `U` must be used in combination with a concrete type within the same impl
 
 error: aborting due to 6 previous errors; 2 warnings emitted
 

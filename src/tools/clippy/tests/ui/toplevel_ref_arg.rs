@@ -1,7 +1,7 @@
 // run-rustfix
 // aux-build:macro_rules.rs
-
 #![warn(clippy::toplevel_ref_arg)]
+#![allow(clippy::uninlined_format_args)]
 
 #[macro_use]
 extern crate macro_rules;

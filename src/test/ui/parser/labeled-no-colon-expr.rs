@@ -1,5 +1,3 @@
-#![feature(label_break_value)]
-
 fn main() {
     'l0 while false {} //~ ERROR labeled expression must be followed by `:`
     'l1 for _ in 0..1 {} //~ ERROR labeled expression must be followed by `:`

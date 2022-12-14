@@ -14,7 +14,7 @@ use super::*;
 ///
 /// This is the `Body` that will be used by the `MockAnalysis` below. The shape of its CFG is not
 /// important.
-fn mock_body() -> mir::Body<'static> {
+fn mock_body<'tcx>() -> mir::Body<'tcx> {
     let source_info = mir::SourceInfo::outermost(DUMMY_SP);
 
     let mut blocks = IndexVec::new();
@@ -37,7 +37,8 @@ fn mock_body() -> mir::Body<'static> {
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
-            destination: Some((dummy_place.clone(), mir::START_BLOCK)),
+            destination: dummy_place.clone(),
+            target: Some(mir::START_BLOCK),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
@@ -50,7 +51,8 @@ fn mock_body() -> mir::Body<'static> {
         mir::TerminatorKind::Call {
             func: mir::Operand::Copy(dummy_place.clone()),
             args: vec![],
-            destination: Some((dummy_place.clone(), mir::START_BLOCK)),
+            destination: dummy_place.clone(),
+            target: Some(mir::START_BLOCK),
             cleanup: None,
             from_hir_call: false,
             fn_span: DUMMY_SP,
@@ -85,7 +87,7 @@ struct MockAnalysis<'tcx, D> {
     dir: PhantomData<D>,
 }
 
-impl<D: Direction> MockAnalysis<'tcx, D> {
+impl<D: Direction> MockAnalysis<'_, D> {
     const BASIC_BLOCK_OFFSET: usize = 100;
 
     /// The entry set for each `BasicBlock` is the ID of that block offset by a fixed amount to
@@ -98,9 +100,9 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
 
     fn mock_entry_sets(&self) -> IndexVec<BasicBlock, BitSet<usize>> {
         let empty = self.bottom_value(self.body);
-        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks());
+        let mut ret = IndexVec::from_elem(empty, &self.body.basic_blocks);
 
-        for (bb, _) in self.body.basic_blocks().iter_enumerated() {
+        for (bb, _) in self.body.basic_blocks.iter_enumerated() {
             ret[bb] = self.mock_entry_set(bb);
         }
 
@@ -138,7 +140,7 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
             SeekTarget::After(loc) => Effect::Primary.at_index(loc.statement_index),
         };
 
-        let mut pos = if D::is_forward() {
+        let mut pos = if D::IS_FORWARD {
             Effect::Before.at_index(0)
         } else {
             Effect::Before.at_index(self.body[block].statements.len())
@@ -151,7 +153,7 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
                 return ret;
             }
 
-            if D::is_forward() {
+            if D::IS_FORWARD {
                 pos = pos.next_in_forward_order();
             } else {
                 pos = pos.next_in_backward_order();
@@ -160,14 +162,14 @@ impl<D: Direction> MockAnalysis<'tcx, D> {
     }
 }
 
-impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
+impl<'tcx, D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     type Domain = BitSet<usize>;
     type Direction = D;
 
     const NAME: &'static str = "mock";
 
     fn bottom_value(&self, body: &mir::Body<'tcx>) -> Self::Domain {
-        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks().len())
+        BitSet::new_empty(Self::BASIC_BLOCK_OFFSET + body.basic_blocks.len())
     }
 
     fn initialize_start_block(&self, _: &mir::Body<'tcx>, _: &mut Self::Domain) {
@@ -175,7 +177,7 @@ impl<D: Direction> AnalysisDomain<'tcx> for MockAnalysis<'tcx, D> {
     }
 }
 
-impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
+impl<'tcx, D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
     fn apply_statement_effect(
         &self,
         state: &mut Self::Domain,
@@ -220,9 +222,7 @@ impl<D: Direction> Analysis<'tcx> for MockAnalysis<'tcx, D> {
         &self,
         _state: &mut Self::Domain,
         _block: BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _return_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
     }
 }
@@ -262,7 +262,7 @@ impl SeekTarget {
     }
 }
 
-fn test_cursor<D: Direction>(analysis: MockAnalysis<'tcx, D>) {
+fn test_cursor<D: Direction>(analysis: MockAnalysis<'_, D>) {
     let body = analysis.body;
 
     let mut cursor =
@@ -271,9 +271,7 @@ fn test_cursor<D: Direction>(analysis: MockAnalysis<'tcx, D>) {
     cursor.allow_unreachable();
 
     let every_target = || {
-        body.basic_blocks()
-            .iter_enumerated()
-            .flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
+        body.basic_blocks.iter_enumerated().flat_map(|(bb, _)| SeekTarget::iter_in_block(body, bb))
     };
 
     let mut seek_to_target = |targ| {

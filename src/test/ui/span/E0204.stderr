@@ -1,11 +1,11 @@
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/E0204.rs:5:6
+  --> $DIR/E0204.rs:5:15
    |
 LL |     foo: Vec<u32>,
    |     ------------- this field does not implement `Copy`
 ...
 LL | impl Copy for Foo { }
-   |      ^^^^
+   |               ^^^
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0204.rs:7:10
@@ -19,13 +19,13 @@ LL |     ty: &'a mut bool,
    = note: this error originates in the derive macro `Copy` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0204]: the trait `Copy` may not be implemented for this type
-  --> $DIR/E0204.rs:17:6
+  --> $DIR/E0204.rs:17:15
    |
 LL |     Bar { x: Vec<u32> },
    |           ----------- this field does not implement `Copy`
 ...
 LL | impl Copy for EFoo { }
-   |      ^^^^
+   |               ^^^^
 
 error[E0204]: the trait `Copy` may not be implemented for this type
   --> $DIR/E0204.rs:19:10

@@ -9,8 +9,7 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use build_helper::t;
-
+use crate::util::t;
 use crate::Build;
 
 pub fn clean(build: &Build, all: bool) {
@@ -75,10 +74,10 @@ fn rm_rf(path: &Path) {
             do_op(path, "remove dir", |p| {
                 fs::remove_dir(p).or_else(|e| {
                     // Check for dir not empty on Windows
+                    // FIXME: Once `ErrorKind::DirectoryNotEmpty` is stabilized,
+                    // match on `e.kind()` instead.
                     #[cfg(windows)]
-                    if matches!(e.kind(), std::io::ErrorKind::Other)
-                        && e.raw_os_error() == Some(145)
-                    {
+                    if e.raw_os_error() == Some(145) {
                         return Ok(());
                     }
 

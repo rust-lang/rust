@@ -56,43 +56,40 @@ pub use crate::hash::macros::Hash;
 #[doc(no_inline)]
 pub use crate::{
     assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, llvm_asm, log_syntax, module_path,
-    option_env, stringify, trace_macros,
+    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
+    stringify, trace_macros,
 };
 
 #[unstable(
-    feature = "asm",
-    issue = "72016",
-    reason = "inline assembly is not stable enough for use and is subject to change"
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 #[doc(no_inline)]
-pub use crate::arch::asm;
+pub use crate::concat_bytes;
 
-#[unstable(
-    feature = "global_asm",
-    issue = "35119",
-    reason = "`global_asm!` is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use crate::arch::global_asm;
-
+// Do not `doc(inline)` these `doc(hidden)` items.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated, deprecated_in_future)]
-#[doc(no_inline)]
-pub use crate::macros::builtin::{
-    bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
-};
+#[allow(deprecated)]
+pub use crate::macros::builtin::{RustcDecodable, RustcEncodable};
 
+// Do not `doc(no_inline)` so that they become doc items on their own
+// (no public module for them to be re-exported from).
+#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[doc(no_inline)]
-pub use crate::macros::builtin::derive;
+pub use crate::macros::builtin::alloc_error_handler;
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use crate::macros::builtin::{bench, derive, global_allocator, test, test_case};
+
+#[unstable(feature = "derive_const", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::derive_const;
 
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",
     reason = "`cfg_accessible` is not fully implemented"
 )]
-#[doc(no_inline)]
 pub use crate::macros::builtin::cfg_accessible;
 
 #[unstable(
@@ -100,5 +97,12 @@ pub use crate::macros::builtin::cfg_accessible;
     issue = "82679",
     reason = "`cfg_eval` is a recently implemented feature"
 )]
-#[doc(no_inline)]
 pub use crate::macros::builtin::cfg_eval;
+
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use crate::macros::builtin::type_ascribe;

@@ -5,16 +5,15 @@ use crate::cell::UnsafeCell;
 use crate::fmt;
 use crate::ops::{Deref, DerefMut};
 use crate::sync::{poison, LockResult, TryLockError, TryLockResult};
-use crate::sys_common::mutex as sys;
+use crate::sys::locks as sys;
 
 /// A mutual exclusion primitive useful for protecting shared data
 ///
 /// This mutex will block threads waiting for the lock to become available. The
-/// mutex can also be statically initialized or created via a [`new`]
-/// constructor. Each mutex has a type parameter which represents the data that
-/// it is protecting. The data can only be accessed through the RAII guards
-/// returned from [`lock`] and [`try_lock`], which guarantees that the data is only
-/// ever accessed when the mutex is locked.
+/// mutex can be created via a [`new`] constructor. Each mutex has a type parameter
+/// which represents the data that it is protecting. The data can only be accessed
+/// through the RAII guards returned from [`lock`] and [`try_lock`], which
+/// guarantees that the data is only ever accessed when the mutex is locked.
 ///
 /// # Poisoning
 ///
@@ -164,7 +163,7 @@ use crate::sys_common::mutex as sys;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), rustc_diagnostic_item = "Mutex")]
 pub struct Mutex<T: ?Sized> {
-    inner: sys::MovableMutex,
+    inner: sys::Mutex,
     poison: poison::Flag,
     data: UnsafeCell<T>,
 }
@@ -188,13 +187,12 @@ unsafe impl<T: ?Sized + Send> Sync for Mutex<T> {}
 /// [`lock`]: Mutex::lock
 /// [`try_lock`]: Mutex::try_lock
 #[must_use = "if unused the Mutex will immediately unlock"]
-#[cfg_attr(
-    not(bootstrap),
-    must_not_suspend = "holding a MutexGuard across suspend \
+#[must_not_suspend = "holding a MutexGuard across suspend \
                       points can cause deadlocks, delays, \
-                      and cause Futures to not implement `Send`"
-)]
+                      and cause Futures to not implement `Send`"]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[clippy::has_significant_drop]
+#[cfg_attr(not(test), rustc_diagnostic_item = "MutexGuard")]
 pub struct MutexGuard<'a, T: ?Sized + 'a> {
     lock: &'a Mutex<T>,
     poison: poison::Guard,
@@ -216,12 +214,10 @@ impl<T> Mutex<T> {
     /// let mutex = Mutex::new(0);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(t: T) -> Mutex<T> {
-        Mutex {
-            inner: sys::MovableMutex::new(),
-            poison: poison::Flag::new(),
-            data: UnsafeCell::new(t),
-        }
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
+    #[inline]
+    pub const fn new(t: T) -> Mutex<T> {
+        Mutex { inner: sys::Mutex::new(), poison: poison::Flag::new(), data: UnsafeCell::new(t) }
     }
 }
 
@@ -264,7 +260,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<'_, T>> {
         unsafe {
-            self.inner.raw_lock();
+            self.inner.lock();
             MutexGuard::new(self)
         }
     }
@@ -366,6 +362,45 @@ impl<T: ?Sized> Mutex<T> {
         self.poison.get()
     }
 
+    /// Clear the poisoned state from a mutex
+    ///
+    /// If the mutex is poisoned, it will remain poisoned until this function is called. This
+    /// allows recovering from a poisoned state and marking that it has recovered. For example, if
+    /// the value is overwritten by a known-good value, then the mutex can be marked as
+    /// un-poisoned. Or possibly, the value could be inspected to determine if it is in a
+    /// consistent state, and if so the poison is removed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(mutex_unpoison)]
+    ///
+    /// use std::sync::{Arc, Mutex};
+    /// use std::thread;
+    ///
+    /// let mutex = Arc::new(Mutex::new(0));
+    /// let c_mutex = Arc::clone(&mutex);
+    ///
+    /// let _ = thread::spawn(move || {
+    ///     let _lock = c_mutex.lock().unwrap();
+    ///     panic!(); // the mutex gets poisoned
+    /// }).join();
+    ///
+    /// assert_eq!(mutex.is_poisoned(), true);
+    /// let x = mutex.lock().unwrap_or_else(|mut e| {
+    ///     **e.get_mut() = 1;
+    ///     mutex.clear_poison();
+    ///     e.into_inner()
+    /// });
+    /// assert_eq!(mutex.is_poisoned(), false);
+    /// assert_eq!(*x, 1);
+    /// ```
+    #[inline]
+    #[unstable(feature = "mutex_unpoison", issue = "96469")]
+    pub fn clear_poison(&self) {
+        self.poison.clear();
+    }
+
     /// Consumes this mutex, returning the underlying data.
     ///
     /// # Errors
@@ -387,7 +422,7 @@ impl<T: ?Sized> Mutex<T> {
         T: Sized,
     {
         let data = self.data.into_inner();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 
     /// Returns a mutable reference to the underlying data.
@@ -412,7 +447,7 @@ impl<T: ?Sized> Mutex<T> {
     #[stable(feature = "mutex_get_mut", since = "1.6.0")]
     pub fn get_mut(&mut self) -> LockResult<&mut T> {
         let data = self.data.get_mut();
-        poison::map_result(self.poison.borrow(), |_| data)
+        poison::map_result(self.poison.borrow(), |()| data)
     }
 }
 
@@ -461,7 +496,7 @@ impl<T: ?Sized + fmt::Debug> fmt::Debug for Mutex<T> {
 
 impl<'mutex, T: ?Sized> MutexGuard<'mutex, T> {
     unsafe fn new(lock: &'mutex Mutex<T>) -> LockResult<MutexGuard<'mutex, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| MutexGuard { lock, poison: guard })
+        poison::map_result(lock.poison.guard(), |guard| MutexGuard { lock, poison: guard })
     }
 }
 
@@ -487,7 +522,7 @@ impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     fn drop(&mut self) {
         unsafe {
             self.lock.poison.done(&self.poison);
-            self.lock.inner.raw_unlock();
+            self.lock.inner.unlock();
         }
     }
 }
@@ -506,7 +541,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for MutexGuard<'_, T> {
     }
 }
 
-pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::MovableMutex {
+pub fn guard_lock<'a, T: ?Sized>(guard: &MutexGuard<'a, T>) -> &'a sys::Mutex {
     &guard.lock.inner
 }
 

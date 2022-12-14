@@ -26,10 +26,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::{env, iter};
 
-use build_helper::output;
-
 use crate::config::{Target, TargetSelection};
-use crate::{Build, GitRepo};
+use crate::util::output;
+use crate::{Build, CLang, GitRepo};
 
 // The `cc` crate doesn't provide a way to obtain a path to the detected archiver,
 // so use some simplified logic here. First we respect the environment variable `AR`, then
@@ -62,6 +61,30 @@ fn cc2ar(cc: &Path, target: TargetSelection) -> Option<PathBuf> {
     }
 }
 
+fn new_cc_build(build: &Build, target: TargetSelection) -> cc::Build {
+    let mut cfg = cc::Build::new();
+    cfg.cargo_metadata(false)
+        .opt_level(2)
+        .warnings(false)
+        .debug(false)
+        .target(&target.triple)
+        .host(&build.build.triple);
+    match build.crt_static(target) {
+        Some(a) => {
+            cfg.static_crt(a);
+        }
+        None => {
+            if target.contains("msvc") {
+                cfg.static_crt(true);
+            }
+            if target.contains("musl") {
+                cfg.static_flag(true);
+            }
+        }
+    }
+    cfg
+}
+
 pub fn find(build: &mut Build) {
     // For all targets we're going to need a C compiler for building some shims
     // and such as well as for being a linker for Rust code.
@@ -73,27 +96,7 @@ pub fn find(build: &mut Build) {
         .chain(iter::once(build.build))
         .collect::<HashSet<_>>();
     for target in targets.into_iter() {
-        let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false)
-            .opt_level(2)
-            .warnings(false)
-            .debug(false)
-            .target(&target.triple)
-            .host(&build.build.triple);
-        match build.crt_static(target) {
-            Some(a) => {
-                cfg.static_crt(a);
-            }
-            None => {
-                if target.contains("msvc") {
-                    cfg.static_crt(true);
-                }
-                if target.contains("musl") {
-                    cfg.static_flag(true);
-                }
-            }
-        }
-
+        let mut cfg = new_cc_build(build, target);
         let config = build.config.target_config.get(&target);
         if let Some(cc) = config.and_then(|c| c.cc.as_ref()) {
             cfg.compiler(cc);
@@ -109,19 +112,12 @@ pub fn find(build: &mut Build) {
         };
 
         build.cc.insert(target, compiler.clone());
-        let cflags = build.cflags(target, GitRepo::Rustc);
+        let cflags = build.cflags(target, GitRepo::Rustc, CLang::C);
 
         // If we use llvm-libunwind, we will need a C++ compiler as well for all targets
         // We'll need one anyways if the target triple is also a host triple
-        let mut cfg = cc::Build::new();
-        cfg.cargo_metadata(false)
-            .opt_level(2)
-            .warnings(false)
-            .debug(false)
-            .cpp(true)
-            .target(&target.triple)
-            .host(&build.build.triple);
-
+        let mut cfg = new_cc_build(build, target);
+        cfg.cpp(true);
         let cxx_configured = if let Some(cxx) = config.and_then(|c| c.cxx.as_ref()) {
             cfg.compiler(cxx);
             true
@@ -142,12 +138,17 @@ pub fn find(build: &mut Build) {
         build.verbose(&format!("CC_{} = {:?}", &target.triple, build.cc(target)));
         build.verbose(&format!("CFLAGS_{} = {:?}", &target.triple, cflags));
         if let Ok(cxx) = build.cxx(target) {
+            let cxxflags = build.cflags(target, GitRepo::Rustc, CLang::Cxx);
             build.verbose(&format!("CXX_{} = {:?}", &target.triple, cxx));
-            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target.triple, cflags));
+            build.verbose(&format!("CXXFLAGS_{} = {:?}", &target.triple, cxxflags));
         }
         if let Some(ar) = ar {
             build.verbose(&format!("AR_{} = {:?}", &target.triple, ar));
             build.ar.insert(target, ar);
+        }
+
+        if let Some(ranlib) = config.and_then(|c| c.ranlib.clone()) {
+            build.ranlib.insert(target, ranlib);
         }
     }
 }
@@ -165,14 +166,7 @@ fn set_compiler(
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let target = target
-                    .triple
-                    .replace("armv7neon", "arm")
-                    .replace("armv7", "arm")
-                    .replace("thumbv7neon", "arm")
-                    .replace("thumbv7", "arm");
-                let compiler = format!("{}-{}", target, compiler.clang());
-                cfg.compiler(ndk.join("bin").join(compiler));
+                cfg.compiler(ndk_compiler(compiler, &*target.triple, ndk));
             }
         }
 
@@ -224,8 +218,18 @@ fn set_compiler(
     }
 }
 
+pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> PathBuf {
+    let triple_translated = triple
+        .replace("armv7neon", "arm")
+        .replace("armv7", "arm")
+        .replace("thumbv7neon", "arm")
+        .replace("thumbv7", "arm");
+    let compiler = format!("{}-{}", triple_translated, compiler.clang());
+    ndk.join("bin").join(compiler)
+}
+
 /// The target programming language for a native compiler.
-enum Language {
+pub(crate) enum Language {
     /// The compiler is targeting C.
     C,
     /// The compiler is targeting C++.

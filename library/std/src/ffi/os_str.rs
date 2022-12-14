@@ -3,9 +3,10 @@ mod tests;
 
 use crate::borrow::{Borrow, Cow};
 use crate::cmp;
+use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::{Extend, FromIterator};
+use crate::iter::Extend;
 use crate::ops;
 use crate::rc::Rc;
 use crate::str::FromStr;
@@ -43,6 +44,22 @@ use crate::sys_common::{AsInner, FromInner, IntoInner};
 /// as just discussed, strings are also actually stored as a sequence of 8-bit
 /// values, encoded in a less-strict variant of UTF-8. This is useful to
 /// understand when handling capacity and length values.
+///
+/// # Capacity of `OsString`
+///
+/// Capacity uses units of UTF-8 bytes for OS strings which were created from valid unicode, and
+/// uses units of bytes in an unspecified encoding for other contents. On a given target, all
+/// `OsString` and `OsStr` values use the same units for capacity, so the following will work:
+/// ```
+/// use std::ffi::{OsStr, OsString};
+///
+/// fn concat_os_strings(a: &OsStr, b: &OsStr) -> OsString {
+///     let mut ret = OsString::with_capacity(a.len() + b.len()); // This will allocate
+///     ret.push(a); // This will not allocate further
+///     ret.push(b); // This will not allocate further
+///     ret
+/// }
+/// ```
 ///
 /// # Creating an `OsString`
 ///
@@ -179,13 +196,14 @@ impl OsString {
         self.inner.push_slice(&s.as_ref().inner)
     }
 
-    /// Creates a new `OsString` with the given capacity.
+    /// Creates a new `OsString` with at least the given capacity.
     ///
-    /// The string will be able to hold exactly `capacity` length units of other
-    /// OS strings without reallocating. If `capacity` is 0, the string will not
+    /// The string will be able to hold at least `capacity` length units of other
+    /// OS strings without reallocating. This method is allowed to allocate for
+    /// more units than `capacity`. If `capacity` is 0, the string will not
     /// allocate.
     ///
-    /// See main `OsString` documentation information about encoding.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -228,7 +246,7 @@ impl OsString {
 
     /// Returns the capacity this `OsString` can hold without reallocating.
     ///
-    /// See `OsString` introduction for information about encoding.
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -246,9 +264,12 @@ impl OsString {
     }
 
     /// Reserves capacity for at least `additional` more capacity to be inserted
-    /// in the given `OsString`.
+    /// in the given `OsString`. Does nothing if the capacity is
+    /// already sufficient.
     ///
-    /// The collection may reserve more space to avoid frequent reallocations.
+    /// The collection may reserve more space to speculatively avoid frequent reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -265,7 +286,46 @@ impl OsString {
         self.inner.reserve(additional)
     }
 
-    /// Reserves the minimum capacity for exactly `additional` more capacity to
+    /// Tries to reserve capacity for at least `additional` more length units
+    /// in the given `OsString`. The string may reserve more space to speculatively avoid
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional` if it returns `Ok(())`.
+    /// Does nothing if capacity is already sufficient. This method preserves
+    /// the contents even if an error occurs.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{OsStr, OsString};
+    /// use std::collections::TryReserveError;
+    ///
+    /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
+    ///     let mut s = OsString::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     s.try_reserve(OsStr::new(data).len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     s.push(data);
+    ///
+    ///     Ok(s)
+    /// }
+    /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
+    /// ```
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve(additional)
+    }
+
+    /// Reserves the minimum capacity for at least `additional` more capacity to
     /// be inserted in the given `OsString`. Does nothing if the capacity is
     /// already sufficient.
     ///
@@ -274,6 +334,8 @@ impl OsString {
     /// minimal. Prefer [`reserve`] if future insertions are expected.
     ///
     /// [`reserve`]: OsString::reserve
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -290,7 +352,53 @@ impl OsString {
         self.inner.reserve_exact(additional)
     }
 
+    /// Tries to reserve the minimum capacity for at least `additional`
+    /// more length units in the given `OsString`. After calling
+    /// `try_reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional` if it returns `Ok(())`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the `OsString` more space than it
+    /// requests. Therefore, capacity can not be relied upon to be precisely
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
+    ///
+    /// [`try_reserve`]: OsString::try_reserve
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::ffi::{OsStr, OsString};
+    /// use std::collections::TryReserveError;
+    ///
+    /// fn process_data(data: &str) -> Result<OsString, TryReserveError> {
+    ///     let mut s = OsString::new();
+    ///
+    ///     // Pre-reserve the memory, exiting if we can't
+    ///     s.try_reserve_exact(OsStr::new(data).len())?;
+    ///
+    ///     // Now we know this can't OOM in the middle of our complex work
+    ///     s.push(data);
+    ///
+    ///     Ok(s)
+    /// }
+    /// # process_data("123").expect("why is the test harness OOMing on 3 bytes?");
+    /// ```
+    #[stable(feature = "try_reserve_2", since = "1.63.0")]
+    #[inline]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.inner.try_reserve_exact(additional)
+    }
+
     /// Shrinks the capacity of the `OsString` to match its length.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -317,6 +425,8 @@ impl OsString {
     /// and the supplied value.
     ///
     /// If the current capacity is less than the lower limit, this is a no-op.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -371,6 +481,8 @@ impl From<String> for OsString {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + AsRef<OsStr>> From<&T> for OsString {
+    /// Copies any value implementing <code>[AsRef]&lt;[OsStr]&gt;</code>
+    /// into a newly allocated [`OsString`].
     fn from(s: &T) -> OsString {
         s.as_ref().to_os_string()
     }
@@ -532,6 +644,14 @@ impl Hash for OsString {
     }
 }
 
+#[stable(feature = "os_string_fmt_write", since = "1.64.0")]
+impl fmt::Write for OsString {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.push(s);
+        Ok(())
+    }
+}
+
 impl OsStr {
     /// Coerces into an `OsStr` slice.
     ///
@@ -689,6 +809,8 @@ impl OsStr {
     ///
     /// This number is simply useful for passing to other methods, like
     /// [`OsString::with_capacity`] to avoid reallocations.
+    ///
+    /// See the main `OsString` documentation information about encoding and capacity units.
     ///
     /// # Examples
     ///
@@ -861,6 +983,7 @@ impl OsStr {
 
 #[stable(feature = "box_from_os_str", since = "1.17.0")]
 impl From<&OsStr> for Box<OsStr> {
+    /// Copies the string into a newly allocated <code>[Box]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Box<OsStr> {
         let rw = Box::into_raw(s.inner.into_box()) as *mut OsStr;
@@ -870,6 +993,8 @@ impl From<&OsStr> for Box<OsStr> {
 
 #[stable(feature = "box_from_cow", since = "1.45.0")]
 impl From<Cow<'_, OsStr>> for Box<OsStr> {
+    /// Converts a `Cow<'a, OsStr>` into a <code>[Box]&lt;[OsStr]&gt;</code>,
+    /// by copying the contents if they are borrowed.
     #[inline]
     fn from(cow: Cow<'_, OsStr>) -> Box<OsStr> {
         match cow {
@@ -908,7 +1033,8 @@ impl Clone for Box<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Arc<OsStr> {
-    /// Converts an [`OsString`] into an <code>[Arc]<[OsStr]></code> without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Arc]<[OsStr]></code> by moving the [`OsString`]
+    /// data into a new [`Arc`] buffer.
     #[inline]
     fn from(s: OsString) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -918,6 +1044,7 @@ impl From<OsString> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&OsStr> for Arc<OsStr> {
+    /// Copies the string into a newly allocated <code>[Arc]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Arc<OsStr> {
         let arc = s.inner.into_arc();
@@ -927,7 +1054,8 @@ impl From<&OsStr> for Arc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<OsString> for Rc<OsStr> {
-    /// Converts an [`OsString`] into an <code>[Rc]<[OsStr]></code> without copying or allocating.
+    /// Converts an [`OsString`] into an <code>[Rc]<[OsStr]></code> by moving the [`OsString`]
+    /// data into a new [`Rc`] buffer.
     #[inline]
     fn from(s: OsString) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
@@ -937,6 +1065,7 @@ impl From<OsString> for Rc<OsStr> {
 
 #[stable(feature = "shared_from_slice2", since = "1.24.0")]
 impl From<&OsStr> for Rc<OsStr> {
+    /// Copies the string into a newly allocated <code>[Rc]&lt;[OsStr]&gt;</code>.
     #[inline]
     fn from(s: &OsStr) -> Rc<OsStr> {
         let rc = s.inner.into_rc();
@@ -946,6 +1075,7 @@ impl From<&OsStr> for Rc<OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<OsString> for Cow<'a, OsStr> {
+    /// Moves the string into a [`Cow::Owned`].
     #[inline]
     fn from(s: OsString) -> Cow<'a, OsStr> {
         Cow::Owned(s)
@@ -954,6 +1084,7 @@ impl<'a> From<OsString> for Cow<'a, OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
+    /// Converts the string reference into a [`Cow::Borrowed`].
     #[inline]
     fn from(s: &'a OsStr) -> Cow<'a, OsStr> {
         Cow::Borrowed(s)
@@ -962,6 +1093,7 @@ impl<'a> From<&'a OsStr> for Cow<'a, OsStr> {
 
 #[stable(feature = "cow_from_osstr", since = "1.28.0")]
 impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
+    /// Converts the string reference into a [`Cow::Borrowed`].
     #[inline]
     fn from(s: &'a OsString) -> Cow<'a, OsStr> {
         Cow::Borrowed(s.as_os_str())
@@ -970,6 +1102,8 @@ impl<'a> From<&'a OsString> for Cow<'a, OsStr> {
 
 #[stable(feature = "osstring_from_cow_osstr", since = "1.28.0")]
 impl<'a> From<Cow<'a, OsStr>> for OsString {
+    /// Converts a `Cow<'a, OsStr>` into an [`OsString`],
+    /// by copying the contents if they are borrowed.
     #[inline]
     fn from(s: Cow<'a, OsStr>) -> Self {
         s.into_owned()
@@ -1124,6 +1258,23 @@ impl fmt::Debug for OsStr {
 impl OsStr {
     pub(crate) fn display(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.inner, formatter)
+    }
+}
+
+#[unstable(feature = "slice_concat_ext", issue = "27747")]
+impl<S: Borrow<OsStr>> alloc::slice::Join<&OsStr> for [S] {
+    type Output = OsString;
+
+    fn join(slice: &Self, sep: &OsStr) -> OsString {
+        let Some((first, suffix)) = slice.split_first() else {
+            return OsString::new();
+        };
+        let first_owned = first.borrow().to_owned();
+        suffix.iter().fold(first_owned, |mut a, b| {
+            a.push(sep);
+            a.push(b.borrow());
+            a
+        })
     }
 }
 

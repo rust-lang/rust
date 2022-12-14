@@ -12,7 +12,7 @@ note: deref defined here
   --> $DIR/move-deref-coercion.rs:17:5
    |
 LL |     type Target = NotCopy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
 
 error[E0382]: borrow of partially moved value: `val`
   --> $DIR/move-deref-coercion.rs:30:5
@@ -28,7 +28,7 @@ note: deref defined here
   --> $DIR/move-deref-coercion.rs:17:5
    |
 LL |     type Target = NotCopy;
-   |     ^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

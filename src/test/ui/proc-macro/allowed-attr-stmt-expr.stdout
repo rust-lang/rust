@@ -14,7 +14,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/allowed-attr-stmt-expr.rs:49:20: 49:21 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Foo { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Foo {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -140,7 +140,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/allowed-attr-stmt-expr.rs:61:28: 61:29 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): second_make_stmt! (#[allow(dead_code)] struct Bar { }) ;
+PRINT-ATTR INPUT (DISPLAY): second_make_stmt! (#[allow(dead_code)] struct Bar {}) ;
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "second_make_stmt",
@@ -201,7 +201,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/allowed-attr-stmt-expr.rs:64:57: 64:58 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[allow(dead_code)] struct Bar { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[allow(dead_code)] struct Bar {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -257,7 +257,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/allowed-attr-stmt-expr.rs:64:54: 64:56 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Other { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] struct Other {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',

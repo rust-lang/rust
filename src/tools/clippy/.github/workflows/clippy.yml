@@ -6,14 +6,14 @@ on:
     branches-ignore:
       - auto
       - try
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
     - '**.md'
     - '**.txt'
   pull_request:
-    # Don't run Clippy tests, when only textfiles were modified
+    # Don't run Clippy tests, when only text files were modified
     paths-ignore:
     - 'COPYRIGHT'
     - 'LICENSE-*'
@@ -24,6 +24,8 @@ env:
   RUST_BACKTRACE: 1
   CARGO_TARGET_DIR: '${{ github.workspace }}/target'
   NO_FMT_TEST: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 jobs:
   base:
@@ -37,7 +39,7 @@ jobs:
         github_token: "${{ secrets.github_token }}"
 
     - name: Checkout
-      uses: actions/checkout@v2.3.3
+      uses: actions/checkout@v3.0.2
 
     - name: Install toolchain
       run: rustup show active-toolchain
@@ -49,14 +51,18 @@ jobs:
         echo "LD_LIBRARY_PATH=${SYSROOT}/lib${LD_LIBRARY_PATH+:${LD_LIBRARY_PATH}}" >> $GITHUB_ENV
 
     - name: Build
-      run: cargo build --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo build --features deny-warnings,internal
 
     - name: Test
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
 
     - name: Test clippy_lints
-      run: cargo test --features deny-warnings,internal-lints,metadata-collector-lint
+      run: cargo test --features deny-warnings,internal
       working-directory: clippy_lints
+
+    - name: Test clippy_utils
+      run: cargo test --features deny-warnings,internal
+      working-directory: clippy_utils
 
     - name: Test rustc_tools_util
       run: cargo test --features deny-warnings
@@ -66,22 +72,7 @@ jobs:
       run: cargo test --features deny-warnings
       working-directory: clippy_dev
 
-    - name: Test cargo-clippy
-      run: ../target/debug/cargo-clippy
-      working-directory: clippy_workspace_tests
-
-    - name: Test cargo-clippy --fix
-      run: ../target/debug/cargo-clippy clippy --fix
-      working-directory: clippy_workspace_tests
-
     - name: Test clippy-driver
       run: bash .github/driver.sh
       env:
         OS: ${{ runner.os }}
-
-    - name: Test cargo dev new lint
-      run: |
-        cargo dev new_lint --name new_early_pass --pass early
-        cargo dev new_lint --name new_late_pass --pass late
-        cargo check
-        git reset --hard HEAD

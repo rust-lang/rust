@@ -8,8 +8,8 @@ LL | |         println!("else if");
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::else-if-without-else` implied by `-D warnings`
    = help: add an `else` block here
+   = note: `-D clippy::else-if-without-else` implied by `-D warnings`
 
 error: `if` expression with an `else if`, but without a final `else`
   --> $DIR/else_if_without_else.rs:54:12

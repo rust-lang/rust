@@ -1,9 +1,9 @@
 //! New recursive solver modeled on Chalk's recursive solver. Most of
 //! the guts are broken up into modules; see the comments in those modules.
 
-#![feature(crate_visibility_modifier)]
-#![feature(in_band_lifetimes)]
-#![feature(nll)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+#![feature(let_chains)]
 #![recursion_limit = "256"]
 
 #[macro_use]
@@ -12,6 +12,7 @@ extern crate tracing;
 extern crate rustc_middle;
 
 mod chalk;
+mod codegen;
 mod dropck_outlives;
 mod evaluate_obligation;
 mod implied_outlives_bounds;
@@ -31,4 +32,5 @@ pub fn provide(p: &mut Providers) {
     normalize_projection_ty::provide(p);
     normalize_erasing_regions::provide(p);
     type_op::provide(p);
+    p.codegen_select_candidate = codegen::codegen_select_candidate;
 }

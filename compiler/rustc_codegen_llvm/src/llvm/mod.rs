@@ -31,20 +31,76 @@ impl LLVMRustResult {
     }
 }
 
-pub fn AddFunctionAttrStringValue(llfn: &'a Value, idx: AttributePlace, attr: &CStr, value: &CStr) {
+pub fn AddFunctionAttributes<'ll>(llfn: &'ll Value, idx: AttributePlace, attrs: &[&'ll Attribute]) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), value.as_ptr())
+        LLVMRustAddFunctionAttributes(llfn, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
 }
 
-pub fn AddFunctionAttrString(llfn: &'a Value, idx: AttributePlace, attr: &CStr) {
+pub fn AddCallSiteAttributes<'ll>(
+    callsite: &'ll Value,
+    idx: AttributePlace,
+    attrs: &[&'ll Attribute],
+) {
     unsafe {
-        LLVMRustAddFunctionAttrStringValue(llfn, idx.as_uint(), attr.as_ptr(), std::ptr::null())
+        LLVMRustAddCallSiteAttributes(callsite, idx.as_uint(), attrs.as_ptr(), attrs.len());
     }
 }
 
-pub fn AddCallSiteAttrString(callsite: &Value, idx: AttributePlace, attr: &CStr) {
-    unsafe { LLVMRustAddCallSiteAttrString(callsite, idx.as_uint(), attr.as_ptr()) }
+pub fn CreateAttrStringValue<'ll>(llcx: &'ll Context, attr: &str, value: &str) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            attr.as_ptr().cast(),
+            attr.len().try_into().unwrap(),
+            value.as_ptr().cast(),
+            value.len().try_into().unwrap(),
+        )
+    }
+}
+
+pub fn CreateAttrString<'ll>(llcx: &'ll Context, attr: &str) -> &'ll Attribute {
+    unsafe {
+        LLVMCreateStringAttribute(
+            llcx,
+            attr.as_ptr().cast(),
+            attr.len().try_into().unwrap(),
+            std::ptr::null(),
+            0,
+        )
+    }
+}
+
+pub fn CreateAlignmentAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateAlignmentAttr(llcx, bytes) }
+}
+
+pub fn CreateDereferenceableAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateDereferenceableAttr(llcx, bytes) }
+}
+
+pub fn CreateDereferenceableOrNullAttr(llcx: &Context, bytes: u64) -> &Attribute {
+    unsafe { LLVMRustCreateDereferenceableOrNullAttr(llcx, bytes) }
+}
+
+pub fn CreateByValAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+    unsafe { LLVMRustCreateByValAttr(llcx, ty) }
+}
+
+pub fn CreateStructRetAttr<'ll>(llcx: &'ll Context, ty: &'ll Type) -> &'ll Attribute {
+    unsafe { LLVMRustCreateStructRetAttr(llcx, ty) }
+}
+
+pub fn CreateUWTableAttr(llcx: &Context, async_: bool) -> &Attribute {
+    unsafe { LLVMRustCreateUWTableAttr(llcx, async_) }
+}
+
+pub fn CreateAllocSizeAttr(llcx: &Context, size_arg: u32) -> &Attribute {
+    unsafe { LLVMRustCreateAllocSizeAttr(llcx, size_arg) }
+}
+
+pub fn CreateAllocKindAttr(llcx: &Context, kind_arg: AllocKindFlags) -> &Attribute {
+    unsafe { LLVMRustCreateAllocKindAttr(llcx, kind_arg.bits()) }
 }
 
 #[derive(Copy, Clone)]
@@ -86,12 +142,12 @@ impl FromStr for ArchiveKind {
     }
 }
 
-pub fn SetInstructionCallConv(instr: &'a Value, cc: CallConv) {
+pub fn SetInstructionCallConv(instr: &Value, cc: CallConv) {
     unsafe {
         LLVMSetInstructionCallConv(instr, cc as c_uint);
     }
 }
-pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
+pub fn SetFunctionCallConv(fn_: &Value, cc: CallConv) {
     unsafe {
         LLVMSetFunctionCallConv(fn_, cc as c_uint);
     }
@@ -103,50 +159,36 @@ pub fn SetFunctionCallConv(fn_: &'a Value, cc: CallConv) {
 // value's name as the comdat value to make sure that it is in a 1-to-1 relationship to the
 // function.
 // For more details on COMDAT sections see e.g., https://www.airs.com/blog/archives/52
-pub fn SetUniqueComdat(llmod: &Module, val: &'a Value) {
+pub fn SetUniqueComdat(llmod: &Module, val: &Value) {
     unsafe {
         let name = get_value_name(val);
         LLVMRustSetComdat(llmod, val, name.as_ptr().cast(), name.len());
     }
 }
 
-pub fn UnsetComdat(val: &'a Value) {
-    unsafe {
-        LLVMRustUnsetComdat(val);
-    }
-}
-
-pub fn SetUnnamedAddress(global: &'a Value, unnamed: UnnamedAddr) {
+pub fn SetUnnamedAddress(global: &Value, unnamed: UnnamedAddr) {
     unsafe {
         LLVMSetUnnamedAddress(global, unnamed);
     }
 }
 
-pub fn set_thread_local_mode(global: &'a Value, mode: ThreadLocalMode) {
+pub fn set_thread_local_mode(global: &Value, mode: ThreadLocalMode) {
     unsafe {
         LLVMSetThreadLocalMode(global, mode);
     }
 }
 
-impl Attribute {
-    pub fn apply_llfn(&self, idx: AttributePlace, llfn: &Value) {
-        unsafe { LLVMRustAddFunctionAttribute(llfn, idx.as_uint(), *self) }
+impl AttributeKind {
+    /// Create an LLVM Attribute with no associated value.
+    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+        unsafe { LLVMRustCreateAttrNoValue(llcx, self) }
     }
+}
 
-    pub fn apply_callsite(&self, idx: AttributePlace, callsite: &Value) {
-        unsafe { LLVMRustAddCallSiteAttribute(callsite, idx.as_uint(), *self) }
-    }
-
-    pub fn unapply_llfn(&self, idx: AttributePlace, llfn: &Value) {
-        unsafe { LLVMRustRemoveFunctionAttributes(llfn, idx.as_uint(), *self) }
-    }
-
-    pub fn toggle_llfn(&self, idx: AttributePlace, llfn: &Value, set: bool) {
-        if set {
-            self.apply_llfn(idx, llfn);
-        } else {
-            self.unapply_llfn(idx, llfn);
-        }
+impl MemoryEffects {
+    /// Create an LLVM Attribute with these memory effects.
+    pub fn create_attr(self, llcx: &Context) -> &Attribute {
+        unsafe { LLVMRustCreateMemoryEffectsAttr(llcx, self) }
     }
 }
 
@@ -264,7 +306,7 @@ pub struct OperandBundleDef<'a> {
     pub raw: &'a mut ffi::OperandBundleDef<'a>,
 }
 
-impl OperandBundleDef<'a> {
+impl<'a> OperandBundleDef<'a> {
     pub fn new(name: &str, vals: &[&'a Value]) -> Self {
         let name = SmallCStr::new(name);
         let def = unsafe {
@@ -274,7 +316,7 @@ impl OperandBundleDef<'a> {
     }
 }
 
-impl Drop for OperandBundleDef<'a> {
+impl Drop for OperandBundleDef<'_> {
     fn drop(&mut self) {
         unsafe {
             LLVMRustFreeOperandBundleDef(&mut *(self.raw as *mut _));

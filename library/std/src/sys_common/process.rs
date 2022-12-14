@@ -39,22 +39,6 @@ impl CommandEnv {
         result
     }
 
-    // Apply these changes directly to the current environment
-    pub fn apply(&self) {
-        if self.clear {
-            for (k, _) in env::vars_os() {
-                env::remove_var(k);
-            }
-        }
-        for (key, maybe_val) in self.vars.iter() {
-            if let Some(ref val) = maybe_val {
-                env::set_var(key, val);
-            } else {
-                env::remove_var(key);
-            }
-        }
-    }
-
     pub fn is_unchanged(&self) -> bool {
         !self.clear && self.vars.is_empty()
     }

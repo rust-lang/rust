@@ -43,6 +43,7 @@ declare_clippy_lint! {
     ///     values: Vec<Foo>,
     /// }
     /// ```
+    #[clippy::version = "1.57.0"]
     pub BOX_COLLECTION,
     perf,
     "usage of `Box<Vec<T>>`, vector elements are already on the heap"
@@ -75,6 +76,7 @@ declare_clippy_lint! {
     ///     values: Vec<i32>,
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub VEC_BOX,
     complexity,
     "usage of `Vec<Box<T>>` where T: Sized, vector elements are already on the heap"
@@ -113,6 +115,7 @@ declare_clippy_lint! {
     ///     Contents::None
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OPTION_OPTION,
     pedantic,
     "usage of `Option<Option<T>>`"
@@ -152,6 +155,7 @@ declare_clippy_lint! {
     /// # use std::collections::LinkedList;
     /// let x: LinkedList<usize> = LinkedList::new();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LINKEDLIST,
     pedantic,
     "usage of LinkedList, usually a vector is faster, or a more specialized data structure like a `VecDeque`"
@@ -163,8 +167,9 @@ declare_clippy_lint! {
     /// Check the [Box documentation](https://doc.rust-lang.org/std/boxed/index.html) for more information.
     ///
     /// ### Why is this bad?
-    /// Any `&Box<T>` can also be a `&T`, which is more
-    /// general.
+    /// A `&Box<T>` parameter requires the function caller to box `T` first before passing it to a function.
+    /// Using `&T` defines a concrete type for the parameter and generalizes the function, this would also
+    /// auto-deref to `&T` at the function call site if passed a `&Box<T>`.
     ///
     /// ### Example
     /// ```rust,ignore
@@ -176,6 +181,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// fn foo(bar: &T) { ... }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BORROWED_BOX,
     complexity,
     "a borrow of a boxed type"
@@ -200,6 +206,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn foo(bar: &usize) {}
     /// ```
+    #[clippy::version = "1.44.0"]
     pub REDUNDANT_ALLOCATION,
     perf,
     "redundant allocation"
@@ -234,6 +241,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// fn foo(interned: Rc<str>) { ... }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub RC_BUFFER,
     restriction,
     "shared ownership of a buffer type"
@@ -255,6 +263,7 @@ declare_clippy_lint! {
     ///     inner: Rc<Vec<Vec<Box<(u32, u32, u32, u32)>>>>,
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TYPE_COMPLEXITY,
     complexity,
     "usage of very complex types that might be better factored into `type` definitions"
@@ -287,6 +296,7 @@ declare_clippy_lint! {
     /// use std::cell::RefCell
     /// fn foo(interned: Rc<RefCell<i32>>) { ... }
     /// ```
+    #[clippy::version = "1.55.0"]
     pub RC_MUTEX,
     restriction,
     "usage of `Rc<Mutex<T>>`"
@@ -302,14 +312,14 @@ impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BO
 
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
-        let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_item(id))
-        {
-            matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
-        } else {
-            false
-        };
+        let is_in_trait_impl =
+            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
+                matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+            } else {
+                false
+            };
 
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(id));
+        let is_exported = cx.effective_visibilities.is_exported(cx.tcx.hir().local_def_id(id));
 
         self.check_fn_decl(
             cx,
@@ -323,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
             ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(
@@ -341,21 +351,37 @@ impl<'tcx> LateLintPass<'tcx> for Types {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
-            ImplItemKind::Const(ty, _) | ImplItemKind::TyAlias(ty) => self.check_ty(
-                cx,
-                ty,
-                CheckTyContext {
-                    is_in_trait_impl: true,
-                    ..CheckTyContext::default()
-                },
-            ),
-            // methods are covered by check_fn
-            ImplItemKind::Fn(..) => (),
+            ImplItemKind::Const(ty, _) => {
+                let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
+                    .tcx
+                    .hir()
+                    .find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                {
+                    matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
+                } else {
+                    false
+                };
+
+                self.check_ty(
+                    cx,
+                    ty,
+                    CheckTyContext {
+                        is_in_trait_impl,
+                        ..CheckTyContext::default()
+                    },
+                );
+            },
+            // Methods are covered by check_fn.
+            // Type aliases are ignored because oftentimes it's impossible to
+            // make type alias declaration in trait simpler, see #1013
+            ImplItemKind::Fn(..) | ImplItemKind::Type(..) => (),
         }
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(field.hir_id));
+        let is_exported = cx
+            .effective_visibilities
+            .is_exported(cx.tcx.hir().local_def_id(field.hir_id));
 
         self.check_ty(
             cx,
@@ -368,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         let context = CheckTyContext {
             is_exported,
@@ -408,6 +434,14 @@ impl Types {
     }
 
     fn check_fn_decl(&mut self, cx: &LateContext<'_>, decl: &FnDecl<'_>, context: CheckTyContext) {
+        // Ignore functions in trait implementations as they are usually forced by the trait definition.
+        //
+        // FIXME: ideally we would like to warn *if the complicated type can be simplified*, but it's hard
+        // to check.
+        if context.is_in_trait_impl {
+            return;
+        }
+
         for input in decl.inputs {
             self.check_ty(cx, input, context);
         }
@@ -426,12 +460,12 @@ impl Types {
             return;
         }
 
-        if !context.is_nested_call && type_complexity::check(cx, hir_ty, self.type_complexity_threshold) {
+        // Skip trait implementations; see issue #605.
+        if context.is_in_trait_impl {
             return;
         }
 
-        // Skip trait implementations; see issue #605.
-        if context.is_in_trait_impl {
+        if !context.is_nested_call && type_complexity::check(cx, hir_ty, self.type_complexity_threshold) {
             return;
         }
 
@@ -505,7 +539,7 @@ impl Types {
                     QPath::LangItem(..) => {},
                 }
             },
-            TyKind::Rptr(ref lt, ref mut_ty) => {
+            TyKind::Rptr(lt, ref mut_ty) => {
                 context.is_nested_call = true;
                 if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
                     self.check_ty(cx, mut_ty.ty, context);

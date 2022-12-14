@@ -31,7 +31,7 @@ fn test_alignment_not_affected() {
     c();
 }
 
-// `String`, `u16` are not aligned at a one byte boundry and are thus affected by repr(packed).
+// `String`, `u16` are not aligned at a one byte boundary and are thus affected by repr(packed).
 //
 // Here we test that the closure doesn't capture a reference point to `foo.x` but
 // rather capture `foo` entirely.
@@ -48,6 +48,7 @@ fn test_alignment_affected() {
     //~^ ERROR: First Pass analysis includes:
     //~| ERROR: Min Capture analysis includes:
         let z1: &String = &foo.x;
+        //~^ NOTE: Capturing foo[] -> ImmBorrow
         let z2: &mut u16 = &mut foo.y;
         //~^ NOTE: Capturing foo[] -> MutBorrow
         //~| NOTE: Min Capture foo[] -> MutBorrow

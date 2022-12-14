@@ -16,7 +16,7 @@ extern crate rustc_target;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_codegen_ssa::{CodegenResults, CrateInfo};
 use rustc_data_structures::fx::FxHashMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_metadata::EncodedMetadata;
 use rustc_middle::dep_graph::{WorkProduct, WorkProductId};
 use rustc_middle::ty::TyCtxt;
@@ -46,7 +46,8 @@ impl CodegenBackend for TheBackend {
         &self,
         ongoing_codegen: Box<dyn Any>,
         _sess: &Session,
-    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorReported> {
+        _outputs: &OutputFilenames,
+    ) -> Result<(CodegenResults, FxHashMap<WorkProductId, WorkProduct>), ErrorGuaranteed> {
         let codegen_results = ongoing_codegen
             .downcast::<CodegenResults>()
             .expect("in join_codegen: ongoing_codegen is not a CodegenResults");
@@ -58,7 +59,7 @@ impl CodegenBackend for TheBackend {
         sess: &Session,
         codegen_results: CodegenResults,
         outputs: &OutputFilenames,
-    ) -> Result<(), ErrorReported> {
+    ) -> Result<(), ErrorGuaranteed> {
         use rustc_session::{config::CrateType, output::out_filename};
         use std::io::Write;
         let crate_name = codegen_results.crate_info.local_crate_name;
@@ -66,7 +67,7 @@ impl CodegenBackend for TheBackend {
             if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
-            let output_name = out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
+            let output_name = out_filename(sess, crate_type, &outputs, crate_name);
             let mut out_file = ::std::fs::File::create(output_name).unwrap();
             write!(out_file, "This has been \"compiled\" successfully.").unwrap();
         }

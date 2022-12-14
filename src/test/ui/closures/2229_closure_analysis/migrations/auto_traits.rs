@@ -20,8 +20,8 @@ fn test_send_trait() {
     let mut f = 10;
     let fptr = SendPointer(&mut f as *mut i32);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Send` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure implements `Send` as `fptr` implements `Send`, but in Rust 2021, this closure will no longer implement `Send` as `fptr.0` does not implement `Send`
+        //~^ ERROR: changes to closure capture
+        //~| NOTE: in Rust 2018, this closure implements `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0 = 20;
@@ -40,8 +40,9 @@ fn test_sync_trait() {
     let f = CustomInt(&mut f as *mut i32);
     let fptr = SyncPointer(f);
     thread::spawn(move || unsafe {
-        //~^ ERROR: `Sync`, `Send` trait implementation for closure
-        //~| NOTE: in Rust 2018, this closure implements `Sync`, `Send` as `fptr` implements `Sync`, `Send`, but in Rust 2021, this closure will no longer implement `Sync`, `Send` as `fptr.0.0` does not implement `Sync`, `Send`
+        //~^ ERROR: changes to closure capture
+        //~| NOTE: in Rust 2018, this closure implements `Sync`
+        //~| NOTE: in Rust 2018, this closure implements `Send`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `fptr` to be fully captured
         *fptr.0.0 = 20;
@@ -64,8 +65,8 @@ impl Clone for U {
 fn test_clone_trait() {
     let f = U(S(Foo(0)), T(0));
     let c = || {
-        //~^ ERROR: `Clone` trait implementation for closure and drop order
-        //~| NOTE: in Rust 2018, this closure implements `Clone` as `f` implements `Clone`, but in Rust 2021, this closure will no longer implement `Clone` as `f.1` does not implement `Clone`
+        //~^ ERROR: changes to closure capture in Rust 2021 will affect drop order and which traits the closure implements
+        //~| NOTE: in Rust 2018, this closure implements `Clone`
         //~| NOTE: for more information, see
         //~| HELP: add a dummy let to cause `f` to be fully captured
         let f_1 = f.1;

@@ -13,7 +13,7 @@ error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
   --> $DIR/move-out-of-array-ref.rs:13:27
    |
 LL |     let [_, s @ .. , _] = *a;
-   |             ------        ^^
+   |             -             ^^
    |             |             |
    |             |             cannot move out of here
    |             |             help: consider borrowing here: `&*a`
@@ -35,7 +35,7 @@ error[E0508]: cannot move out of type `[D; 4]`, a non-copy array
   --> $DIR/move-out-of-array-ref.rs:23:27
    |
 LL |     let [_, s @ .. , _] = *a;
-   |             ------        ^^
+   |             -             ^^
    |             |             |
    |             |             cannot move out of here
    |             |             help: consider borrowing here: `&*a`

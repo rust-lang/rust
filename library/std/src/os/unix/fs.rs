@@ -47,7 +47,7 @@ pub trait FileExt {
     ///
     ///     // We now read 8 bytes from the offset 10.
     ///     let num_bytes_read = file.read_at(&mut buf, 10)?;
-    ///     println!("read {} bytes: {:?}", num_bytes_read, buf);
+    ///     println!("read {num_bytes_read} bytes: {buf:?}");
     ///     Ok(())
     /// }
     /// ```
@@ -114,7 +114,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
+            Err(io::const_io_error!(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer",))
         } else {
             Ok(())
         }
@@ -196,9 +196,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {
@@ -861,7 +861,7 @@ pub trait DirEntryExt2: Sealed {
     ///     entries.sort_unstable_by(|a, b| a.file_name_ref().cmp(b.file_name_ref()));
     ///
     ///     for p in entries {
-    ///         println!("{:?}", p);
+    ///         println!("{p:?}");
     ///     }
     ///
     ///     Ok(())
@@ -966,7 +966,7 @@ pub fn chown<P: AsRef<Path>>(dir: P, uid: Option<u32>, gid: Option<u32>) -> io::
 ///
 /// fn main() -> std::io::Result<()> {
 ///     let f = std::fs::File::open("/file")?;
-///     fs::fchown(f, Some(0), Some(0))?;
+///     fs::fchown(&f, Some(0), Some(0))?;
 ///     Ok(())
 /// }
 /// ```

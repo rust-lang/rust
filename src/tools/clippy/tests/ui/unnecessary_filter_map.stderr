@@ -1,5 +1,5 @@
 error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:2:13
+  --> $DIR/unnecessary_filter_map.rs:4:13
    |
 LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -7,7 +7,7 @@ LL |     let _ = (0..4).filter_map(|x| if x > 1 { Some(x) } else { None });
    = note: `-D clippy::unnecessary-filter-map` implied by `-D warnings`
 
 error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:3:13
+  --> $DIR/unnecessary_filter_map.rs:5:13
    |
 LL |       let _ = (0..4).filter_map(|x| {
    |  _____________^
@@ -19,7 +19,7 @@ LL | |     });
    | |______^
 
 error: this `.filter_map` can be written more simply using `.filter`
-  --> $DIR/unnecessary_filter_map.rs:9:13
+  --> $DIR/unnecessary_filter_map.rs:11:13
    |
 LL |       let _ = (0..4).filter_map(|x| match x {
    |  _____________^
@@ -29,7 +29,7 @@ LL | |     });
    | |______^
 
 error: this `.filter_map` can be written more simply using `.map`
-  --> $DIR/unnecessary_filter_map.rs:14:13
+  --> $DIR/unnecessary_filter_map.rs:16:13
    |
 LL |     let _ = (0..4).filter_map(|x| Some(x + 1));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

@@ -1,0 +1,38 @@
+error: wasm import module must be of the form `wasm_import_module = "string"`
+  --> $DIR/wasm-import-module.rs:3:22
+   |
+LL | #[link(name = "...", wasm_import_module)]
+   |                      ^^^^^^^^^^^^^^^^^^
+
+error: wasm import module must be of the form `wasm_import_module = "string"`
+  --> $DIR/wasm-import-module.rs:6:22
+   |
+LL | #[link(name = "...", wasm_import_module(x))]
+   |                      ^^^^^^^^^^^^^^^^^^^^^
+
+error: wasm import module must be of the form `wasm_import_module = "string"`
+  --> $DIR/wasm-import-module.rs:9:22
+   |
+LL | #[link(name = "...", wasm_import_module())]
+   |                      ^^^^^^^^^^^^^^^^^^^^
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:12:8
+   |
+LL | #[link(wasm_import_module = "foo", name = "bar")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:15:8
+   |
+LL | #[link(wasm_import_module = "foo", kind = "dylib")]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `wasm_import_module` is incompatible with other arguments in `#[link]` attributes
+  --> $DIR/wasm-import-module.rs:18:8
+   |
+LL | #[link(wasm_import_module = "foo", cfg(FALSE))]
+   |        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 6 previous errors
+

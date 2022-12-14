@@ -1,7 +1,6 @@
 // check-fail
 
 #![feature(associated_type_defaults)]
-#![feature(generic_associated_types)]
 
 trait Family {
     // Fine, i32: PartialEq<i32>

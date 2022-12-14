@@ -4,6 +4,6 @@
 
 struct Test;
 
-impl !Send for Test { }
+impl !Send for Test {}
 
-pub fn main() { }
+pub fn main() {}

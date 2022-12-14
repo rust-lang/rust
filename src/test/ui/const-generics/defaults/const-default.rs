@@ -1,6 +1,4 @@
 // run-pass
-#![feature(const_generics_defaults)]
-
 pub struct ConstDefault<const N: usize = 3>;
 
 impl<const N: usize> ConstDefault<N> {

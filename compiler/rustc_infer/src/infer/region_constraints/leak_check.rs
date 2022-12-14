@@ -1,6 +1,7 @@
 use super::*;
 use crate::infer::CombinedSnapshot;
 use rustc_data_structures::{
+    fx::FxIndexMap,
     graph::{scc::Sccs, vec_graph::VecGraph},
     undo_log::UndoLogs,
 };
@@ -33,7 +34,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
     /// not entirely true. In particular, in the future, we may extend the
     /// environment with implied bounds or other info about how placeholders
     /// relate to regions in outer universes. In that case, `P1: R` for example
-    /// might become solveable.
+    /// might become solvable.
     ///
     /// # Summary of the implementation
     ///
@@ -66,7 +67,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
         tcx: TyCtxt<'tcx>,
         overly_polymorphic: bool,
         max_universe: ty::UniverseIndex,
-        snapshot: &CombinedSnapshot<'_, 'tcx>,
+        snapshot: &CombinedSnapshot<'tcx>,
     ) -> RelateResult<'tcx, ()> {
         debug!(
             "leak_check(max_universe={:?}, snapshot.universe={:?}, overly_polymorphic={:?})",
@@ -100,6 +101,7 @@ impl<'tcx> RegionConstraintCollector<'_, 'tcx> {
 struct LeakCheck<'me, 'tcx> {
     tcx: TyCtxt<'tcx>,
     universe_at_start_of_snapshot: ty::UniverseIndex,
+    /// Only used when reporting region errors.
     overly_polymorphic: bool,
     mini_graph: &'me MiniGraph<'tcx>,
     rcc: &'me RegionConstraintCollector<'me, 'tcx>,
@@ -154,17 +156,17 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             let scc = self.mini_graph.sccs.scc(*leak_check_node);
 
             // Set the universe of each SCC to be the minimum of its constituent universes
-            let universe = self.rcc.universe(region);
+            let universe = self.rcc.universe(*region);
             debug!(
                 "assign_placeholder_values: scc={:?} universe={:?} region={:?}",
                 scc, universe, region
             );
-            self.scc_universes[scc].take_min(universe, region);
+            self.scc_universes[scc].take_min(universe, *region);
 
             // Detect those SCCs that directly contain a placeholder
-            if let ty::RePlaceholder(placeholder) = region {
+            if let ty::RePlaceholder(placeholder) = **region {
                 if self.universe_at_start_of_snapshot.cannot_name(placeholder.universe) {
-                    self.assign_scc_value(scc, *placeholder)?;
+                    self.assign_scc_value(scc, placeholder)?;
                 }
             }
         }
@@ -209,7 +211,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
         // * `scc_placeholder[scc1]` stores the placeholder that `scc1` must
         //   be equal to (if any)
         //
-        // For each succssor `scc2` where `scc1: scc2`:
+        // For each successor `scc2` where `scc1: scc2`:
         //
         // * `scc_placeholder[scc2]` stores some placeholder `P` where
         //   `scc2: P` (if any)
@@ -242,7 +244,7 @@ impl<'me, 'tcx> LeakCheck<'me, 'tcx> {
             // Update minimum universe of scc1.
             self.scc_universes[scc1] = scc1_universe;
 
-            // At this point, `scc_placholder[scc1]` stores the placeholder that
+            // At this point, `scc_placeholders[scc1]` stores the placeholder that
             // `scc1` must be equal to, if any.
             if let Some(scc1_placeholder) = self.scc_placeholders[scc1] {
                 debug!(
@@ -370,7 +372,7 @@ rustc_index::newtype_index! {
 /// an edge `R1 -> R2` in the graph.
 struct MiniGraph<'tcx> {
     /// Map from a region to the index of the node in the graph.
-    nodes: FxHashMap<ty::Region<'tcx>, LeakCheckNode>,
+    nodes: FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
 
     /// Map from node index to SCC, and stores the successors of each SCC. All
     /// the regions in the same SCC are equal to one another, and if `S1 -> S2`,
@@ -387,7 +389,7 @@ impl<'tcx> MiniGraph<'tcx> {
     where
         'tcx: 'a,
     {
-        let mut nodes = FxHashMap::default();
+        let mut nodes = FxIndexMap::default();
         let mut edges = Vec::new();
 
         // Note that if `R2: R1`, we get a callback `r1, r2`, so `target` is first parameter.
@@ -437,7 +439,7 @@ impl<'tcx> MiniGraph<'tcx> {
     }
 
     fn add_node(
-        nodes: &mut FxHashMap<ty::Region<'tcx>, LeakCheckNode>,
+        nodes: &mut FxIndexMap<ty::Region<'tcx>, LeakCheckNode>,
         r: ty::Region<'tcx>,
     ) -> LeakCheckNode {
         let l = nodes.len();

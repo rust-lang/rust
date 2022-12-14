@@ -1,5 +1,5 @@
 #![crate_type = "lib"]
-pub struct V<S>(S);
+pub struct V<S>(#[allow(unused_tuple_struct_fields)] S);
 pub trait An {
     type U;
 }

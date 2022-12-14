@@ -1,3 +1,4 @@
+use crate::token::CommentKind;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{BytePos, CharPos, FileName, Pos, Symbol};
 
@@ -23,9 +24,17 @@ pub struct Comment {
     pub pos: BytePos,
 }
 
+/// A fast conservative estimate on whether the string can contain documentation links.
+/// A pair of square brackets `[]` must exist in the string, but we only search for the
+/// opening bracket because brackets always go in pairs in practice.
+#[inline]
+pub fn may_have_doc_links(s: &str) -> bool {
+    s.contains('[')
+}
+
 /// Makes a doc string more presentable to users.
 /// Used by rustdoc and perhaps other tools, but not by rustc.
-pub fn beautify_doc_string(data: Symbol) -> Symbol {
+pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
     fn get_vertical_trim(lines: &[&str]) -> Option<(usize, usize)> {
         let mut i = 0;
         let mut j = lines.len();
@@ -34,24 +43,39 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
             i += 1;
         }
 
-        while i < j && lines[i].trim().is_empty() {
-            i += 1;
-        }
         // like the first, a last line of all stars should be omitted
-        if j > i && lines[j - 1].chars().skip(1).all(|c| c == '*') {
-            j -= 1;
-        }
-
-        while j > i && lines[j - 1].trim().is_empty() {
+        if j > i && !lines[j - 1].is_empty() && lines[j - 1].chars().all(|c| c == '*') {
             j -= 1;
         }
 
         if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    fn get_horizontal_trim(lines: &[&str]) -> Option<usize> {
+    fn get_horizontal_trim<'a>(lines: &'a [&str], kind: CommentKind) -> Option<String> {
         let mut i = usize::MAX;
         let mut first = true;
+
+        // In case we have doc comments like `/**` or `/*!`, we want to remove stars if they are
+        // present. However, we first need to strip the empty lines so they don't get in the middle
+        // when we try to compute the "horizontal trim".
+        let lines = if kind == CommentKind::Block {
+            // Whatever happens, we skip the first line.
+            let mut i = lines
+                .get(0)
+                .map(|l| if l.trim_start().starts_with('*') { 0 } else { 1 })
+                .unwrap_or(0);
+            let mut j = lines.len();
+
+            while i < j && lines[i].trim().is_empty() {
+                i += 1;
+            }
+            while j > i && lines[j - 1].trim().is_empty() {
+                j -= 1;
+            }
+            &lines[i..j]
+        } else {
+            lines
+        };
 
         for line in lines {
             for (j, c) in line.chars().enumerate() {
@@ -72,7 +96,7 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
                 return None;
             }
         }
-        Some(i)
+        if lines.is_empty() { None } else { Some(lines[0][..i].into()) }
     }
 
     let data_s = data.as_str();
@@ -86,11 +110,18 @@ pub fn beautify_doc_string(data: Symbol) -> Symbol {
         } else {
             &mut lines
         };
-        if let Some(horizontal) = get_horizontal_trim(&lines) {
+        if let Some(horizontal) = get_horizontal_trim(lines, kind) {
             changes = true;
             // remove a "[ \t]*\*" block from each line, if possible
             for line in lines.iter_mut() {
-                *line = &line[horizontal + 1..];
+                if let Some(tmp) = line.strip_prefix(&horizontal) {
+                    *line = tmp;
+                    if kind == CommentKind::Block
+                        && (*line == "*" || line.starts_with("* ") || line.starts_with("**"))
+                    {
+                        *line = &line[1..];
+                    }
+                }
             }
         }
         if changes {
@@ -116,7 +147,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
 
 fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
     let len = s.len();
-    match all_whitespace(&s, col) {
+    match all_whitespace(s, col) {
         Some(col) => {
             if col < len {
                 &s[col..]
@@ -163,13 +194,13 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
     }
 
     for token in rustc_lexer::tokenize(&text[pos..]) {
-        let token_text = &text[pos..pos + token.len];
+        let token_text = &text[pos..pos + token.len as usize];
         match token.kind {
             rustc_lexer::TokenKind::Whitespace => {
                 if let Some(mut idx) = token_text.find('\n') {
                     code_to_the_left = false;
                     while let Some(next_newline) = &token_text[idx + 1..].find('\n') {
-                        idx = idx + 1 + next_newline;
+                        idx += 1 + next_newline;
                         comments.push(Comment {
                             style: CommentStyle::BlankLine,
                             lines: vec![],
@@ -180,8 +211,10 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
             }
             rustc_lexer::TokenKind::BlockComment { doc_style, .. } => {
                 if doc_style.is_none() {
-                    let code_to_the_right =
-                        !matches!(text[pos + token.len..].chars().next(), Some('\r' | '\n'));
+                    let code_to_the_right = !matches!(
+                        text[pos + token.len as usize..].chars().next(),
+                        Some('\r' | '\n')
+                    );
                     let style = match (code_to_the_left, code_to_the_right) {
                         (_, true) => CommentStyle::Mixed,
                         (false, false) => CommentStyle::Isolated,
@@ -215,7 +248,7 @@ pub fn gather_comments(sm: &SourceMap, path: FileName, src: String) -> Vec<Comme
                 code_to_the_left = true;
             }
         }
-        pos += token.len;
+        pos += token.len as usize;
     }
 
     comments

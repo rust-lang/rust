@@ -1,4 +1,4 @@
-warning: function is never used: `dead_function`
+warning: function `dead_function` is never used
   --> $DIR/allowed-warn-by-default-lint.rs:8:4
    |
 LL | fn dead_function() {}

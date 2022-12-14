@@ -2,7 +2,6 @@ use crate::{Category, ExpInt, IEK_INF, IEK_NAN, IEK_ZERO};
 use crate::{Float, FloatConvert, ParseError, Round, Status, StatusAnd};
 
 use core::cmp::{self, Ordering};
-use core::convert::TryFrom;
 use core::fmt::{self, Write};
 use core::marker::PhantomData;
 use core::mem;
@@ -461,7 +460,7 @@ impl<S: Semantics> fmt::Display for IeeeFloat<S> {
                 (combined / 10) as u32 as Limb
             });
 
-            // Reduce the sigificand to avoid wasting time dividing 0's.
+            // Reduce the significand to avoid wasting time dividing 0's.
             while sig.last() == Some(&0) {
                 sig.pop();
             }

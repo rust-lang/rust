@@ -1,5 +1,5 @@
 #![warn(clippy::manual_flatten)]
-#![allow(clippy::useless_vec)]
+#![allow(clippy::useless_vec, clippy::uninlined_format_args)]
 
 fn main() {
     // Test for loop over implicitly adjusted `Iterator` with `if let` expression
@@ -10,7 +10,7 @@ fn main() {
         }
     }
 
-    // Test for loop over implicitly implicitly adjusted `Iterator` with `if let` statement
+    // Test for loop over implicitly adjusted `Iterator` with `if let` statement
     let y: Vec<Result<i32, i32>> = vec![];
     for n in y.clone() {
         if let Ok(n) = n {
@@ -26,8 +26,6 @@ fn main() {
     }
 
     // Test for loop over an implicit reference
-    // Note: if `clippy::manual_flatten` is made autofixable, this case will
-    // lead to a follow-up lint `clippy::into_iter_on_ref`
     let z = &y;
     for n in z {
         if let Ok(n) = n {
@@ -107,5 +105,21 @@ fn main() {
     // Using manual flatten should not trigger the lint
     for n in vec![Some(1), Some(2), Some(3)].iter().flatten() {
         println!("{}", n);
+    }
+
+    run_unformatted_tests();
+}
+
+#[rustfmt::skip]
+fn run_unformatted_tests() {
+    // Skip rustfmt here on purpose so the suggestion does not fit in one line
+    for n in vec![
+        Some(1),
+        Some(2),
+        Some(3)
+    ].iter() {
+        if let Some(n) = n {
+            println!("{:?}", n);
+        }
     }
 }

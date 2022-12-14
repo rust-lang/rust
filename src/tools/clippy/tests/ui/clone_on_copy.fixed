@@ -7,7 +7,8 @@
     clippy::no_effect,
     clippy::unnecessary_operation,
     clippy::vec_init_then_push,
-    clippy::toplevel_ref_arg
+    clippy::toplevel_ref_arg,
+    clippy::needless_borrow
 )]
 
 use std::cell::RefCell;
@@ -20,7 +21,7 @@ fn is_ascii(ch: char) -> bool {
     ch.is_ascii()
 }
 
-fn clone_on_copy() {
+fn clone_on_copy() -> Option<(i32)> {
     42;
 
     vec![1].clone(); // ok, not a Copy type
@@ -70,4 +71,9 @@ fn clone_on_copy() {
     // Issue #5436
     let mut vec = Vec::new();
     vec.push(42);
+
+    //  Issue #9277
+    let opt: &Option<i32> = &None;
+    let value = (*opt)?; // operator precedence needed (*opt)?
+    None
 }

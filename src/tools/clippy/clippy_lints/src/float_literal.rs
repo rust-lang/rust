@@ -19,14 +19,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let v: f32 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let v: f64 = 0.123_456_789_9;
     /// println!("{}", v); //  0.123_456_789_9
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXCESSIVE_PRECISION,
     style,
     "excessive precision for float literal"
@@ -43,13 +45,15 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// let _: f32 = 16_777_217.0; // 16_777_216.0
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// let _: f32 = 16_777_216.0;
     /// let _: f64 = 16_777_217.0;
     /// ```
+    #[clippy::version = "1.43.0"]
     pub LOSSY_FLOAT_LITERAL,
     restriction,
     "lossy whole number float literals"
@@ -66,12 +70,12 @@ impl<'tcx> LateLintPass<'tcx> for FloatLiteral {
             if let LitKind::Float(sym, lit_float_ty) = lit.node;
             then {
                 let sym_str = sym.as_str();
-                let formatter = FloatFormat::new(&sym_str);
+                let formatter = FloatFormat::new(sym_str);
                 // Try to bail out if the float is for sure fine.
                 // If its within the 2 decimal digits of being out of precision we
                 // check if the parsed representation is the same as the string
                 // since we'll need the truncated string anyway.
-                let digits = count_digits(&sym_str);
+                let digits = count_digits(sym_str);
                 let max = max_digits(fty);
                 let type_suffix = match lit_float_ty {
                     LitFloatType::Suffixed(ast::FloatTy::F32) => Some("f32"),
@@ -169,9 +173,9 @@ impl FloatFormat {
         T: fmt::UpperExp + fmt::LowerExp + fmt::Display,
     {
         match self {
-            Self::LowerExp => format!("{:e}", f),
-            Self::UpperExp => format!("{:E}", f),
-            Self::Normal => format!("{}", f),
+            Self::LowerExp => format!("{f:e}"),
+            Self::UpperExp => format!("{f:E}"),
+            Self::Normal => format!("{f}"),
         }
     }
 }

@@ -1,0 +1,10 @@
+error: use of a disallowed/placeholder name `ducks`
+  --> $DIR/disallowed_names.rs:7:9
+   |
+LL |     let ducks = ["quack", "quack"];
+   |         ^^^^^
+   |
+   = note: `-D clippy::disallowed-names` implied by `-D warnings`
+
+error: aborting due to previous error
+

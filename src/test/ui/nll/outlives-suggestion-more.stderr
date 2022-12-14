@@ -1,24 +1,24 @@
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:7:5
+  --> $DIR/outlives-suggestion-more.rs:5:5
    |
 LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
    |         --      -- lifetime `'c` defined here
    |         |
    |         lifetime `'a` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |     ^^^^^^ function was supposed to return data with lifetime `'c` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'c`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:7:5
+  --> $DIR/outlives-suggestion-more.rs:5:5
    |
 LL | fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
    |             --      -- lifetime `'d` defined here
    |             |
    |             lifetime `'b` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'b` must outlive `'d`
+   |     ^^^^^^ function was supposed to return data with lifetime `'d` but it is returning data with lifetime `'b`
    |
    = help: consider adding the following bound: `'b: 'd`
 
@@ -28,19 +28,19 @@ help: the following changes may resolve your lifetime errors
    = help: add bound `'b: 'd`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:13:5
+  --> $DIR/outlives-suggestion-more.rs:11:5
    |
 LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) {
    |         --      -- lifetime `'c` defined here
    |         |
    |         lifetime `'a` defined here
 LL |     (x, y)
-   |     ^^^^^^ returning this value requires that `'a` must outlive `'c`
+   |     ^^^^^^ function was supposed to return data with lifetime `'c` but it is returning data with lifetime `'a`
    |
    = help: consider adding the following bound: `'a: 'c`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:13:5
+  --> $DIR/outlives-suggestion-more.rs:11:5
    |
 LL | fn foo2<'a, 'b, 'c>(x: &'a usize, y: &'b usize) -> (&'c usize, &'static usize) {
    |             -- lifetime `'b` defined here
@@ -53,7 +53,7 @@ help: the following changes may resolve your lifetime errors
    = help: replace `'b` with `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:23:5
+  --> $DIR/outlives-suggestion-more.rs:21:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
    |         --  -- lifetime `'b` defined here
@@ -66,7 +66,7 @@ LL |     (x, y, z)
    = help: consider adding the following bound: `'a: 'b`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:23:5
+  --> $DIR/outlives-suggestion-more.rs:21:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
    |         --  -- lifetime `'b` defined here
@@ -79,7 +79,7 @@ LL |     (x, y, z)
    = help: consider adding the following bound: `'b: 'a`
 
 error: lifetime may not live long enough
-  --> $DIR/outlives-suggestion-more.rs:23:5
+  --> $DIR/outlives-suggestion-more.rs:21:5
    |
 LL | fn foo3<'a, 'b, 'c, 'd, 'e>(
    |                 -- lifetime `'c` defined here

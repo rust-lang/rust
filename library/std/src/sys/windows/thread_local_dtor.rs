@@ -8,10 +8,14 @@
 #[thread_local]
 static mut DESTRUCTORS: Vec<(*mut u8, unsafe extern "C" fn(*mut u8))> = Vec::new();
 
+// Ensure this can never be inlined because otherwise this may break in dylibs.
+// See #44391.
+#[inline(never)]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     DESTRUCTORS.push((t, dtor));
 }
 
+#[inline(never)] // See comment above
 /// Runs destructors. This should not be called until thread exit.
 pub unsafe fn run_keyless_dtors() {
     // Drop all the destructors.

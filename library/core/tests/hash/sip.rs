@@ -8,33 +8,10 @@ use core::{mem, slice};
 struct Bytes<'a>(&'a [u8]);
 
 impl<'a> Hash for Bytes<'a> {
-    #[allow(unused_must_use)]
     fn hash<H: Hasher>(&self, state: &mut H) {
         let Bytes(v) = *self;
         state.write(v);
     }
-}
-
-macro_rules! u8to64_le {
-    ($buf:expr, $i:expr) => {
-        $buf[0 + $i] as u64
-            | ($buf[1 + $i] as u64) << 8
-            | ($buf[2 + $i] as u64) << 16
-            | ($buf[3 + $i] as u64) << 24
-            | ($buf[4 + $i] as u64) << 32
-            | ($buf[5 + $i] as u64) << 40
-            | ($buf[6 + $i] as u64) << 48
-            | ($buf[7 + $i] as u64) << 56
-    };
-    ($buf:expr, $i:expr, $len:expr) => {{
-        let mut t = 0;
-        let mut out = 0;
-        while t < $len {
-            out |= ($buf[t + $i] as u64) << t * 8;
-            t += 1;
-        }
-        out
-    }};
 }
 
 fn hash_with<H: Hasher, T: Hash>(mut st: H, x: &T) -> u64 {
@@ -44,6 +21,20 @@ fn hash_with<H: Hasher, T: Hash>(mut st: H, x: &T) -> u64 {
 
 fn hash<T: Hash>(x: &T) -> u64 {
     hash_with(SipHasher::new(), x)
+}
+
+#[test]
+const fn test_const_sip() {
+    let val1 = 0x45;
+    let val2 = 0xfeed;
+
+    const fn const_hash<T: ~const Hash>(x: &T) -> u64 {
+        let mut st = SipHasher::new();
+        x.hash(&mut st);
+        st.finish()
+    }
+
+    assert!(const_hash(&(val1)) != const_hash(&(val2)));
 }
 
 #[test]
@@ -123,7 +114,7 @@ fn test_siphash_1_3() {
     let mut state_inc = SipHasher13::new_with_keys(k0, k1);
 
     while t < 64 {
-        let vec = u8to64_le!(vecs[t], 0);
+        let vec = u64::from_le_bytes(vecs[t]);
         let out = hash_with(SipHasher13::new_with_keys(k0, k1), &Bytes(&buf));
         assert_eq!(vec, out);
 
@@ -217,7 +208,7 @@ fn test_siphash_2_4() {
     let mut state_inc = SipHasher::new_with_keys(k0, k1);
 
     while t < 64 {
-        let vec = u8to64_le!(vecs[t], 0);
+        let vec = u64::from_le_bytes(vecs[t]);
         let out = hash_with(SipHasher::new_with_keys(k0, k1), &Bytes(&buf));
         assert_eq!(vec, out);
 

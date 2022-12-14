@@ -9,7 +9,6 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     type Module: Send + Sync;
     type TargetMachine;
     type ModuleBuffer: ModuleBufferMethods;
-    type Context: ?Sized;
     type ThinData: Send + Sync;
     type ThinBuffer: ThinBufferMethods;
 
@@ -41,9 +40,13 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
         module: &ModuleCodegen<Self::Module>,
         config: &ModuleConfig,
     ) -> Result<(), FatalError>;
+    fn optimize_fat(
+        cgcx: &CodegenContext<Self>,
+        llmod: &mut ModuleCodegen<Self::Module>,
+    ) -> Result<(), FatalError>;
     unsafe fn optimize_thin(
         cgcx: &CodegenContext<Self>,
-        thin: &mut ThinModule<Self>,
+        thin: ThinModule<Self>,
     ) -> Result<ModuleCodegen<Self::Module>, FatalError>;
     unsafe fn codegen(
         cgcx: &CodegenContext<Self>,
@@ -53,12 +56,6 @@ pub trait WriteBackendMethods: 'static + Sized + Clone {
     ) -> Result<CompiledModule, FatalError>;
     fn prepare_thin(module: ModuleCodegen<Self::Module>) -> (String, Self::ThinBuffer);
     fn serialize_module(module: ModuleCodegen<Self::Module>) -> (String, Self::ModuleBuffer);
-    fn run_lto_pass_manager(
-        cgcx: &CodegenContext<Self>,
-        llmod: &ModuleCodegen<Self::Module>,
-        config: &ModuleConfig,
-        thin: bool,
-    ) -> Result<(), FatalError>;
 }
 
 pub trait ThinBufferMethods: Send + Sync {

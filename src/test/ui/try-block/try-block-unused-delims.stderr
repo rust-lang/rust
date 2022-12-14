@@ -13,7 +13,7 @@ help: remove these parentheses
    |
 LL -     consume((try {}));
 LL +     consume(try {});
-   | 
+   |
 
 warning: unnecessary braces around function argument
   --> $DIR/try-block-unused-delims.rs:14:13
@@ -30,7 +30,7 @@ help: remove these braces
    |
 LL -     consume({ try {} });
 LL +     consume(try {});
-   | 
+   |
 
 warning: unnecessary parentheses around `match` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:17:11
@@ -42,7 +42,7 @@ help: remove these parentheses
    |
 LL -     match (try {}) {
 LL +     match try {} {
-   | 
+   |
 
 warning: unnecessary parentheses around `let` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:22:22
@@ -54,7 +54,7 @@ help: remove these parentheses
    |
 LL -     if let Err(()) = (try {}) {}
 LL +     if let Err(()) = try {} {}
-   | 
+   |
 
 warning: unnecessary parentheses around `match` scrutinee expression
   --> $DIR/try-block-unused-delims.rs:25:11
@@ -66,7 +66,7 @@ help: remove these parentheses
    |
 LL -     match (try {}) {
 LL +     match try {} {
-   | 
+   |
 
 warning: 5 warnings emitted
 

@@ -1,5 +1,3 @@
-#![feature(crate_in_paths)]
-
 struct S;
 
 pub mod m {

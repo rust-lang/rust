@@ -3,7 +3,6 @@
 // compile-flags: -Z unpretty=expanded
 
 #![crate_type = "lib"]
-#![feature(const_generics_defaults)]
 
 trait Foo<const KIND: bool = true> {}
 

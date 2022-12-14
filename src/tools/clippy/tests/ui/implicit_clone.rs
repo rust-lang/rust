@@ -1,5 +1,6 @@
+// run-rustfix
 #![warn(clippy::implicit_clone)]
-#![allow(clippy::redundant_clone)]
+#![allow(clippy::clone_on_copy, clippy::redundant_clone)]
 use std::borrow::Borrow;
 use std::ffi::{OsStr, OsString};
 use std::path::PathBuf;
@@ -30,7 +31,7 @@ where
 }
 
 #[derive(Copy, Clone)]
-struct Kitten {}
+struct Kitten;
 impl Kitten {
     // badly named method
     fn to_vec(self) -> Kitten {
@@ -44,7 +45,7 @@ impl Borrow<BorrowedKitten> for Kitten {
     }
 }
 
-struct BorrowedKitten {}
+struct BorrowedKitten;
 impl ToOwned for BorrowedKitten {
     type Owned = Kitten;
     fn to_owned(&self) -> Kitten {
@@ -105,4 +106,13 @@ fn main() {
     let os_str = OsStr::new("foo");
     let _ = os_str.to_owned();
     let _ = os_str.to_os_string();
+
+    // issue #8227
+    let pathbuf_ref = &pathbuf;
+    let pathbuf_ref = &pathbuf_ref;
+    let _ = pathbuf_ref.to_owned(); // Don't lint. Returns `&PathBuf`
+    let _ = pathbuf_ref.to_path_buf();
+    let pathbuf_ref = &pathbuf_ref;
+    let _ = pathbuf_ref.to_owned(); // Don't lint. Returns `&&PathBuf`
+    let _ = pathbuf_ref.to_path_buf();
 }

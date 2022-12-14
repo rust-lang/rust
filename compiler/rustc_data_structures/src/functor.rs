@@ -1,35 +1,32 @@
 use rustc_index::vec::{Idx, IndexVec};
 use std::mem;
-use std::ptr;
 
-pub trait IdFunctor {
+pub trait IdFunctor: Sized {
     type Inner;
 
-    fn map_id<F>(self, f: F) -> Self
+    fn try_map_id<F, E>(self, f: F) -> Result<Self, E>
     where
-        F: FnMut(Self::Inner) -> Self::Inner;
+        F: FnMut(Self::Inner) -> Result<Self::Inner, E>;
 }
 
 impl<T> IdFunctor for Box<T> {
     type Inner = T;
 
     #[inline]
-    fn map_id<F>(self, mut f: F) -> Self
+    fn try_map_id<F, E>(self, mut f: F) -> Result<Self, E>
     where
-        F: FnMut(Self::Inner) -> Self::Inner,
+        F: FnMut(Self::Inner) -> Result<Self::Inner, E>,
     {
         let raw = Box::into_raw(self);
-        unsafe {
+        Ok(unsafe {
             // SAFETY: The raw pointer points to a valid value of type `T`.
-            let value = ptr::read(raw);
+            let value = raw.read();
             // SAFETY: Converts `Box<T>` to `Box<MaybeUninit<T>>` which is the
             // inverse of `Box::assume_init()` and should be safe.
-            let mut raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
+            let raw: Box<mem::MaybeUninit<T>> = Box::from_raw(raw.cast());
             // SAFETY: Write the mapped value back into the `Box`.
-            raw.write(f(value));
-            // SAFETY: We just initialized `raw`.
-            raw.assume_init()
-        }
+            Box::write(raw, f(value)?)
+        })
     }
 }
 
@@ -37,23 +34,11 @@ impl<T> IdFunctor for Vec<T> {
     type Inner = T;
 
     #[inline]
-    fn map_id<F>(mut self, mut f: F) -> Self
+    fn try_map_id<F, E>(self, f: F) -> Result<Self, E>
     where
-        F: FnMut(Self::Inner) -> Self::Inner,
+        F: FnMut(Self::Inner) -> Result<Self::Inner, E>,
     {
-        // FIXME: We don't really care about panics here and leak
-        // far more than we should, but that should be fine for now.
-        let len = self.len();
-        unsafe {
-            self.set_len(0);
-            let start = self.as_mut_ptr();
-            for i in 0..len {
-                let p = start.add(i);
-                ptr::write(p, f(ptr::read(p)));
-            }
-            self.set_len(len);
-        }
-        self
+        self.into_iter().map(f).collect()
     }
 }
 
@@ -61,11 +46,11 @@ impl<T> IdFunctor for Box<[T]> {
     type Inner = T;
 
     #[inline]
-    fn map_id<F>(self, f: F) -> Self
+    fn try_map_id<F, E>(self, f: F) -> Result<Self, E>
     where
-        F: FnMut(Self::Inner) -> Self::Inner,
+        F: FnMut(Self::Inner) -> Result<Self::Inner, E>,
     {
-        Vec::from(self).map_id(f).into()
+        Vec::from(self).try_map_id(f).map(Into::into)
     }
 }
 
@@ -73,10 +58,10 @@ impl<I: Idx, T> IdFunctor for IndexVec<I, T> {
     type Inner = T;
 
     #[inline]
-    fn map_id<F>(self, f: F) -> Self
+    fn try_map_id<F, E>(self, f: F) -> Result<Self, E>
     where
-        F: FnMut(Self::Inner) -> Self::Inner,
+        F: FnMut(Self::Inner) -> Result<Self::Inner, E>,
     {
-        IndexVec::from_raw(self.raw.map_id(f))
+        self.raw.try_map_id(f).map(IndexVec::from_raw)
     }
 }

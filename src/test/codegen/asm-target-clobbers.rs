@@ -3,7 +3,15 @@
 // [avx512]compile-flags: -C target-feature=+avx512f
 
 #![crate_type = "rlib"]
-#![feature(asm)]
+
+use std::arch::asm;
+
+// CHECK-LABEL: @amx_clobber
+// base: call void asm sideeffect inteldialect "", "~{tmm0}"()
+#[no_mangle]
+pub unsafe fn amx_clobber() {
+    asm!("", out("tmm0") _, options(nostack, nomem, preserves_flags));
+}
 
 // CHECK-LABEL: @avx512_clobber
 // base: call void asm sideeffect inteldialect "", "~{xmm31}"()

@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::nll::ToRegionVid;
 use crate::path_utils::allow_two_phase_borrow;
 use crate::place_ext::PlaceExt;
@@ -29,7 +31,7 @@ pub struct BorrowSet<'tcx> {
     /// Map from local to all the borrows on that local.
     pub local_map: FxHashMap<mir::Local, FxHashSet<BorrowIndex>>,
 
-    crate locals_state_at_exit: LocalsStateAtExit,
+    pub(crate) locals_state_at_exit: LocalsStateAtExit,
 }
 
 impl<'tcx> Index<BorrowIndex> for BorrowSet<'tcx> {
@@ -84,7 +86,7 @@ pub enum LocalsStateAtExit {
 }
 
 impl LocalsStateAtExit {
-    fn build(
+    fn build<'tcx>(
         locals_are_invalidated_at_exit: bool,
         body: &Body<'tcx>,
         move_data: &MoveData<'tcx>,
@@ -92,9 +94,9 @@ impl LocalsStateAtExit {
         struct HasStorageDead(BitSet<Local>);
 
         impl<'tcx> Visitor<'tcx> for HasStorageDead {
-            fn visit_local(&mut self, local: &Local, ctx: PlaceContext, _: Location) {
+            fn visit_local(&mut self, local: Local, ctx: PlaceContext, _: Location) {
                 if ctx == PlaceContext::NonUse(NonUseContext::StorageDead) {
-                    self.0.insert(*local);
+                    self.0.insert(local);
                 }
             }
         }
@@ -148,28 +150,24 @@ impl<'tcx> BorrowSet<'tcx> {
         }
     }
 
-    crate fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
+    pub(crate) fn activations_at_location(&self, location: Location) -> &[BorrowIndex] {
         self.activation_map.get(&location).map_or(&[], |activations| &activations[..])
     }
 
-    crate fn len(&self) -> usize {
+    pub(crate) fn len(&self) -> usize {
         self.location_map.len()
     }
 
-    crate fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
+    pub(crate) fn indices(&self) -> impl Iterator<Item = BorrowIndex> {
         BorrowIndex::from_usize(0)..BorrowIndex::from_usize(self.len())
     }
 
-    crate fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
+    pub(crate) fn iter_enumerated(&self) -> impl Iterator<Item = (BorrowIndex, &BorrowData<'tcx>)> {
         self.indices().zip(self.location_map.values())
     }
 
-    crate fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
+    pub(crate) fn get_index_of(&self, location: &Location) -> Option<BorrowIndex> {
         self.location_map.get_index_of(location).map(BorrowIndex::from)
-    }
-
-    crate fn contains(&self, location: &Location) -> bool {
-        self.location_map.contains_key(location)
     }
 }
 
@@ -200,7 +198,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         rvalue: &mir::Rvalue<'tcx>,
         location: mir::Location,
     ) {
-        if let mir::Rvalue::Ref(region, kind, ref borrowed_place) = *rvalue {
+        if let &mir::Rvalue::Ref(region, kind, borrowed_place) = rvalue {
             if borrowed_place.ignore_borrow(self.tcx, self.body, &self.locals_state_at_exit) {
                 debug!("ignoring_borrow of {:?}", borrowed_place);
                 return;
@@ -213,7 +211,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
                 region,
                 reserve_location: location,
                 activation_location: TwoPhaseActivation::NotTwoPhase,
-                borrowed_place: *borrowed_place,
+                borrowed_place,
                 assigned_place: *assigned_place,
             };
             let (idx, _) = self.location_map.insert_full(location, borrow);
@@ -227,7 +225,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         self.super_assign(assigned_place, rvalue, location)
     }
 
-    fn visit_local(&mut self, temp: &Local, context: PlaceContext, location: Location) {
+    fn visit_local(&mut self, temp: Local, context: PlaceContext, location: Location) {
         if !context.is_use() {
             return;
         }
@@ -236,7 +234,7 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
         // check whether we (earlier) saw a 2-phase borrow like
         //
         //     TMP = &mut place
-        if let Some(&borrow_index) = self.pending_activations.get(temp) {
+        if let Some(&borrow_index) = self.pending_activations.get(&temp) {
             let borrow_data = &mut self.location_map[borrow_index.as_usize()];
 
             // Watch out: the use of TMP in the borrow itself
@@ -275,14 +273,14 @@ impl<'a, 'tcx> Visitor<'tcx> for GatherBorrows<'a, 'tcx> {
     }
 
     fn visit_rvalue(&mut self, rvalue: &mir::Rvalue<'tcx>, location: mir::Location) {
-        if let mir::Rvalue::Ref(region, kind, ref place) = *rvalue {
+        if let &mir::Rvalue::Ref(region, kind, place) = rvalue {
             // double-check that we already registered a BorrowData for this
 
             let borrow_data = &self.location_map[&location];
             assert_eq!(borrow_data.reserve_location, location);
             assert_eq!(borrow_data.kind, kind);
             assert_eq!(borrow_data.region, region.to_region_vid());
-            assert_eq!(borrow_data.borrowed_place, *place);
+            assert_eq!(borrow_data.borrowed_place, place);
         }
 
         self.super_rvalue(rvalue, location)

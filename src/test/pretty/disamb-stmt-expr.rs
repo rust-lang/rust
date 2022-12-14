@@ -7,4 +7,4 @@
 fn id<F>(f: F) -> isize where F: Fn() -> isize { f() }
 
 fn wsucc(_n: isize) -> isize { id(|| { 1 }) - 0 }
-fn main() { }
+fn main() {}

@@ -1,5 +1,5 @@
 error: digits grouped inconsistently by underscores
-  --> $DIR/test.rs:18:18
+  --> $DIR/test.rs:19:18
    |
 LL |     let _fail1 = 100_200_300.123456789;
    |                  ^^^^^^^^^^^^^^^^^^^^^ help: consider: `100_200_300.123_456_789`

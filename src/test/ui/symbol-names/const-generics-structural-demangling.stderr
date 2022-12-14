@@ -1,10 +1,10 @@
-error: symbol-name(_RMCsno73SFvQKx_1cINtB0_7RefByteKRh7b_E)
+error: symbol-name(_RMCsCRATE_HASH_1cINtB<REF>_7RefByteKRh7b_E)
   --> $DIR/const-generics-structural-demangling.rs:14:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::RefByte<{&123u8}>>)
+error: demangling(<c[HASH]::RefByte<{&123u8}>>)
   --> $DIR/const-generics-structural-demangling.rs:14:1
    |
 LL | #[rustc_symbol_name]
@@ -16,13 +16,13 @@ error: demangling-alt(<c::RefByte<{&123}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs_Csno73SFvQKx_1cINtB2_6RefZstKRAEE)
+error: symbol-name(_RMs_CsCRATE_HASH_1cINtB<REF>_6RefZstKRAEE)
   --> $DIR/const-generics-structural-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::RefZst<{&[]}>>)
+error: demangling(<c[HASH]::RefZst<{&[]}>>)
   --> $DIR/const-generics-structural-demangling.rs:24:1
    |
 LL | #[rustc_symbol_name]
@@ -34,13 +34,13 @@ error: demangling-alt(<c::RefZst<{&[]}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs0_Csno73SFvQKx_1cINtB3_11Array3BytesKAh1_h2_h3_EE)
+error: symbol-name(_RMs0_CsCRATE_HASH_1cINtB<REF>_11Array3BytesKAh1_h2_h3_EE)
   --> $DIR/const-generics-structural-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Array3Bytes<{[1u8, 2u8, 3u8]}>>)
+error: demangling(<c[HASH]::Array3Bytes<{[1u8, 2u8, 3u8]}>>)
   --> $DIR/const-generics-structural-demangling.rs:32:1
    |
 LL | #[rustc_symbol_name]
@@ -52,13 +52,13 @@ error: demangling-alt(<c::Array3Bytes<{[1, 2, 3]}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs1_Csno73SFvQKx_1cINtB3_13TupleByteBoolKTh1_b0_EE)
+error: symbol-name(_RMs1_CsCRATE_HASH_1cINtB<REF>_13TupleByteBoolKTh1_b0_EE)
   --> $DIR/const-generics-structural-demangling.rs:40:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::TupleByteBool<{(1u8, false)}>>)
+error: demangling(<c[HASH]::TupleByteBool<{(1u8, false)}>>)
   --> $DIR/const-generics-structural-demangling.rs:40:1
    |
 LL | #[rustc_symbol_name]
@@ -70,13 +70,13 @@ error: demangling-alt(<c::TupleByteBool<{(1, false)}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs2_Csno73SFvQKx_1cINtB3_11OptionUsizeKVNtINtNtCs$HASH_4core6option6OptionjE4NoneUE)
+error: symbol-name(_RMs2_CsCRATE_HASH_1cINtB<REF>_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4NoneUE)
   --> $DIR/const-generics-structural-demangling.rs:50:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::OptionUsize<{core[$HASH_HEX]::option::Option::<usize>::None}>>)
+error: demangling(<c[HASH]::OptionUsize<{core[HASH]::option::Option::<usize>::None}>>)
   --> $DIR/const-generics-structural-demangling.rs:50:1
    |
 LL | #[rustc_symbol_name]
@@ -88,13 +88,13 @@ error: demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::None}>>)
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs3_Csno73SFvQKx_1cINtB3_11OptionUsizeKVNtINtNtCs$HASH_4core6option6OptionjE4SomeTj0_EE)
+error: symbol-name(_RMs3_CsCRATE_HASH_1cINtB<REF>_11OptionUsizeKVNtINtNtCsCRATE_HASH_4core6option6OptionjE4SomeTj0_EE)
   --> $DIR/const-generics-structural-demangling.rs:58:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::OptionUsize<{core[$HASH_HEX]::option::Option::<usize>::Some(0usize)}>>)
+error: demangling(<c[HASH]::OptionUsize<{core[HASH]::option::Option::<usize>::Some(0usize)}>>)
   --> $DIR/const-generics-structural-demangling.rs:58:1
    |
 LL | #[rustc_symbol_name]
@@ -106,13 +106,13 @@ error: demangling-alt(<c::OptionUsize<{core::option::Option::<usize>::Some(0)}>>
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs4_Csno73SFvQKx_1cINtB3_4Foo_KVNtB3_3FooS1sRe616263_2chc78_5sliceRAh1_h2_h3_EEE)
+error: symbol-name(_RMs4_CsCRATE_HASH_1cINtB<REF>_4Foo_KVNtB<REF>_3FooS1sRe616263_2chc78_5sliceRAh1_h2_h3_EEE)
   --> $DIR/const-generics-structural-demangling.rs:72:1
    |
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: demangling(<c[464da6a86cb672f]::Foo_<{c[464da6a86cb672f]::Foo { s: "abc", ch: 'x', slice: &[1u8, 2u8, 3u8] }}>>)
+error: demangling(<c[HASH]::Foo_<{c[HASH]::Foo { s: "abc", ch: 'x', slice: &[1u8, 2u8, 3u8] }}>>)
   --> $DIR/const-generics-structural-demangling.rs:72:1
    |
 LL | #[rustc_symbol_name]
@@ -124,7 +124,7 @@ error: demangling-alt(<c::Foo_<{c::Foo { s: "abc", ch: 'x', slice: &[1, 2, 3] }}
 LL | #[rustc_symbol_name]
    | ^^^^^^^^^^^^^^^^^^^^
 
-error: symbol-name(_RMs9_Csno73SFvQKx_1cINtB3_4Bar_KVNtB3_3BarS1xh7b_s_1xt1000_EE)
+error: symbol-name(_RMs9_CsCRATE_HASH_1cINtB<REF>_4Bar_KVNtB<REF>_3BarS1xh7b_s_1xt1000_EE)
   --> $DIR/const-generics-structural-demangling.rs:88:5
    |
 LL |     #[rustc_symbol_name]
@@ -135,7 +135,7 @@ LL | duplicate_field_name_test!(x);
    |
    = note: this error originates in the macro `duplicate_field_name_test` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: demangling(<c[464da6a86cb672f]::Bar_<{c[464da6a86cb672f]::Bar { x: 123u8, x: 4096u16 }}>>)
+error: demangling(<c[HASH]::Bar_<{c[HASH]::Bar { x: 123u8, x: 4096u16 }}>>)
   --> $DIR/const-generics-structural-demangling.rs:88:5
    |
 LL |     #[rustc_symbol_name]

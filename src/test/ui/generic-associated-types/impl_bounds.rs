@@ -1,4 +1,3 @@
-#![feature(generic_associated_types)]
 #![feature(associated_type_defaults)]
 
 trait Foo {
@@ -12,12 +11,12 @@ trait Foo {
 struct Fooy<T>(T);
 
 impl<T> Foo for Fooy<T> {
-    type A<'a> where Self: 'static = (&'a ());
-    //~^ ERROR `impl` associated type
-    type B<'a, 'b> where 'b: 'a = (&'a(), &'b ());
-    //~^ ERROR `impl` associated type
+    type A<'a> = (&'a ()) where Self: 'static;
+    //~^ ERROR impl has stricter requirements than trait
+    type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
+    //~^ ERROR impl has stricter requirements than trait
     //~| ERROR lifetime bound not satisfied
-    type C where Self: Copy = String;
+    type C = String where Self: Copy;
     //~^ ERROR the trait bound `T: Copy` is not satisfied
     fn d() where Self: Copy {}
     //~^ ERROR the trait bound `T: Copy` is not satisfied

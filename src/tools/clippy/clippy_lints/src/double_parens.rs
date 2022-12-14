@@ -13,25 +13,24 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// // Bad
     /// fn simple_double_parens() -> i32 {
     ///     ((0))
     /// }
     ///
-    /// // Good
+    /// # fn foo(bar: usize) {}
+    /// foo((0));
+    /// ```
+    ///
+    /// Use instead:
+    /// ```rust
     /// fn simple_no_parens() -> i32 {
     ///     0
     /// }
     ///
-    /// // or
-    ///
     /// # fn foo(bar: usize) {}
-    /// // Bad
-    /// foo((0));
-    ///
-    /// // Good
     /// foo(0);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DOUBLE_PARENS,
     complexity,
     "Warn on unnecessary double parentheses"
@@ -62,11 +61,10 @@ impl EarlyLintPass for DoubleParens {
                     }
                 }
             },
-            ExprKind::MethodCall(_, ref params, _) => {
-                if params.len() == 2 {
-                    let param = &params[1];
-                    if let ExprKind::Paren(_) = param.kind {
-                        span_lint(cx, DOUBLE_PARENS, param.span, msg);
+            ExprKind::MethodCall(ref call) => {
+                if let [ref arg] = call.args[..] {
+                    if let ExprKind::Paren(_) = arg.kind {
+                        span_lint(cx, DOUBLE_PARENS, arg.span, msg);
                     }
                 }
             },

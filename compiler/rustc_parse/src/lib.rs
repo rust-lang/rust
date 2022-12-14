@@ -1,22 +1,21 @@
 //! The main parser interface.
 
 #![feature(array_windows)]
-#![feature(crate_visibility_modifier)]
-#![feature(if_let_guard)]
 #![feature(box_patterns)]
+#![feature(if_let_guard)]
+#![feature(iter_intersperse)]
+#![feature(let_chains)]
+#![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate tracing;
 
 use rustc_ast as ast;
-use rustc_ast::token::{self, Nonterminal, Token, TokenKind};
-use rustc_ast::tokenstream::{self, AttributesData, CanSynthesizeMissingTokens, LazyTokenStream};
-use rustc_ast::tokenstream::{AttrAnnotatedTokenStream, AttrAnnotatedTokenTree};
-use rustc_ast::tokenstream::{Spacing, TokenStream};
-use rustc_ast::AstLike;
-use rustc_ast::Attribute;
-use rustc_ast::{AttrItem, MetaItem};
+use rustc_ast::token;
+use rustc_ast::tokenstream::TokenStream;
+use rustc_ast::{AttrItem, Attribute, MetaItem};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::{Applicability, Diagnostic, FatalError, Level, PResult};
@@ -24,7 +23,6 @@ use rustc_session::parse::ParseSess;
 use rustc_span::{FileName, SourceFile, Span};
 
 use std::path::Path;
-use std::str;
 
 pub const MACRO_ARGUMENTS: Option<&str> = Some("macro arguments");
 
@@ -34,12 +32,15 @@ use parser::{emit_unclosed_delims, make_unclosed_delims_error, Parser};
 pub mod lexer;
 pub mod validate_attr;
 
+mod errors;
+
 // A bunch of utility functions of the form `parse_<thing>_from_<source>`
 // where <thing> includes crate, expr, item, stmt, tts, and one that
 // uses a HOF to parse anything, and <source> includes file and
 // `source_str`.
 
-/// A variant of 'panictry!' that works on a Vec<Diagnostic> instead of a single DiagnosticBuilder.
+/// A variant of 'panictry!' that works on a `Vec<Diagnostic>` instead of a single
+/// `DiagnosticBuilder`.
 macro_rules! panictry_buffer {
     ($handler:expr, $e:expr) => {{
         use rustc_errors::FatalError;
@@ -47,8 +48,8 @@ macro_rules! panictry_buffer {
         match $e {
             Ok(e) => e,
             Err(errs) => {
-                for e in errs {
-                    $handler.emit_diagnostic(&e);
+                for mut e in errs {
+                    $handler.emit_diagnostic(&mut e);
                 }
                 FatalError.raise()
             }
@@ -64,7 +65,7 @@ pub fn parse_crate_from_file<'a>(input: &Path, sess: &'a ParseSess) -> PResult<'
 pub fn parse_crate_attrs_from_file<'a>(
     input: &Path,
     sess: &'a ParseSess,
-) -> PResult<'a, Vec<ast::Attribute>> {
+) -> PResult<'a, ast::AttrVec> {
     let mut parser = new_parser_from_file(sess, input, None);
     parser.parse_inner_attributes()
 }
@@ -81,7 +82,7 @@ pub fn parse_crate_attrs_from_source_str(
     name: FileName,
     source: String,
     sess: &ParseSess,
-) -> PResult<'_, Vec<ast::Attribute>> {
+) -> PResult<'_, ast::AttrVec> {
     new_parser_from_source_str(sess, name, source).parse_inner_attributes()
 }
 
@@ -118,12 +119,12 @@ pub fn new_parser_from_file<'a>(sess: &'a ParseSess, path: &Path, sp: Option<Spa
     source_file_to_parser(sess, file_to_source_file(sess, path, sp))
 }
 
-/// Given a `source_file` and config, returns a parser.
+/// Given a session and a `source_file`, returns a parser.
 fn source_file_to_parser(sess: &ParseSess, source_file: Lrc<SourceFile>) -> Parser<'_> {
     panictry_buffer!(&sess.span_diagnostic, maybe_source_file_to_parser(sess, source_file))
 }
 
-/// Given a `source_file` and config, return a parser. Returns any buffered errors from lexing the
+/// Given a session and a `source_file`, return a parser. Returns any buffered errors from lexing the
 /// initial token stream.
 fn maybe_source_file_to_parser(
     sess: &ParseSess,
@@ -165,8 +166,8 @@ fn try_file_to_source_file(
 fn file_to_source_file(sess: &ParseSess, path: &Path, spanopt: Option<Span>) -> Lrc<SourceFile> {
     match try_file_to_source_file(sess, path, spanopt) {
         Ok(source_file) => source_file,
-        Err(d) => {
-            sess.span_diagnostic.emit_diagnostic(&d);
+        Err(mut d) => {
+            sess.span_diagnostic.emit_diagnostic(&mut d);
             FatalError.raise();
         }
     }
@@ -238,92 +239,16 @@ pub fn parse_in<'a, T>(
     Ok(result)
 }
 
-// NOTE(Centril): The following probably shouldn't be here but it acknowledges the
-// fact that architecturally, we are using parsing (read on below to understand why).
-
-pub fn nt_to_tokenstream(
-    nt: &Nonterminal,
-    sess: &ParseSess,
-    synthesize_tokens: CanSynthesizeMissingTokens,
-) -> TokenStream {
-    // A `Nonterminal` is often a parsed AST item. At this point we now
-    // need to convert the parsed AST to an actual token stream, e.g.
-    // un-parse it basically.
-    //
-    // Unfortunately there's not really a great way to do that in a
-    // guaranteed lossless fashion right now. The fallback here is to just
-    // stringify the AST node and reparse it, but this loses all span
-    // information.
-    //
-    // As a result, some AST nodes are annotated with the token stream they
-    // came from. Here we attempt to extract these lossless token streams
-    // before we fall back to the stringification.
-
-    let convert_tokens =
-        |tokens: Option<&LazyTokenStream>| Some(tokens?.create_token_stream().to_tokenstream());
-
-    let tokens = match *nt {
-        Nonterminal::NtItem(ref item) => prepend_attrs(&item.attrs, item.tokens.as_ref()),
-        Nonterminal::NtBlock(ref block) => convert_tokens(block.tokens.as_ref()),
-        Nonterminal::NtStmt(ref stmt) if let ast::StmtKind::Empty = stmt.kind => {
-            let tokens = AttrAnnotatedTokenStream::new(vec![(
-                tokenstream::AttrAnnotatedTokenTree::Token(Token::new(
-                    TokenKind::Semi,
-                    stmt.span,
-                )),
-                Spacing::Alone,
-            )]);
-            prepend_attrs(&stmt.attrs(), Some(&LazyTokenStream::new(tokens)))
-        }
-        Nonterminal::NtStmt(ref stmt) => prepend_attrs(&stmt.attrs(), stmt.tokens()),
-        Nonterminal::NtPat(ref pat) => convert_tokens(pat.tokens.as_ref()),
-        Nonterminal::NtTy(ref ty) => convert_tokens(ty.tokens.as_ref()),
-        Nonterminal::NtIdent(ident, is_raw) => {
-            Some(tokenstream::TokenTree::token(token::Ident(ident.name, is_raw), ident.span).into())
-        }
-        Nonterminal::NtLifetime(ident) => {
-            Some(tokenstream::TokenTree::token(token::Lifetime(ident.name), ident.span).into())
-        }
-        Nonterminal::NtMeta(ref attr) => convert_tokens(attr.tokens.as_ref()),
-        Nonterminal::NtPath(ref path) => convert_tokens(path.tokens.as_ref()),
-        Nonterminal::NtVis(ref vis) => convert_tokens(vis.tokens.as_ref()),
-        Nonterminal::NtTT(ref tt) => Some(tt.clone().into()),
-        Nonterminal::NtExpr(ref expr) | Nonterminal::NtLiteral(ref expr) => {
-            prepend_attrs(&expr.attrs, expr.tokens.as_ref())
-        }
-    };
-
-    if let Some(tokens) = tokens {
-        return tokens;
-    } else if matches!(synthesize_tokens, CanSynthesizeMissingTokens::Yes) {
-        return fake_token_stream(sess, nt);
-    } else {
-        panic!(
-            "Missing tokens for nt {:?} at {:?}: {:?}",
-            nt,
-            nt.span(),
-            pprust::nonterminal_to_string(nt)
-        );
-    }
-}
-
-fn prepend_attrs(attrs: &[Attribute], tokens: Option<&LazyTokenStream>) -> Option<TokenStream> {
-    let tokens = tokens?;
-    if attrs.is_empty() {
-        return Some(tokens.create_token_stream().to_tokenstream());
-    }
-    let attr_data = AttributesData { attrs: attrs.to_vec().into(), tokens: tokens.clone() };
-    let wrapped = AttrAnnotatedTokenStream::new(vec![(
-        AttrAnnotatedTokenTree::Attributes(attr_data),
-        Spacing::Alone,
-    )]);
-    Some(wrapped.to_tokenstream())
-}
-
-pub fn fake_token_stream(sess: &ParseSess, nt: &Nonterminal) -> TokenStream {
-    let source = pprust::nonterminal_to_string(nt);
+pub fn fake_token_stream_for_item(sess: &ParseSess, item: &ast::Item) -> TokenStream {
+    let source = pprust::item_to_string(item);
     let filename = FileName::macro_expansion_source_code(&source);
-    parse_stream_from_source_str(filename, source, sess, Some(nt.span()))
+    parse_stream_from_source_str(filename, source, sess, Some(item.span))
+}
+
+pub fn fake_token_stream_for_crate(sess: &ParseSess, krate: &ast::Crate) -> TokenStream {
+    let source = pprust::crate_to_string_for_macros(krate);
+    let filename = FileName::macro_expansion_source_code(&source);
+    parse_stream_from_source_str(filename, source, sess, Some(krate.spans.inner_span))
 }
 
 pub fn parse_cfg_attr(
@@ -331,10 +256,12 @@ pub fn parse_cfg_attr(
     parse_sess: &ParseSess,
 ) -> Option<(MetaItem, Vec<(AttrItem, Span)>)> {
     match attr.get_normal_item().args {
-        ast::MacArgs::Delimited(dspan, delim, ref tts) if !tts.is_empty() => {
+        ast::AttrArgs::Delimited(ast::DelimArgs { dspan, delim, ref tokens })
+            if !tokens.is_empty() =>
+        {
             let msg = "wrong `cfg_attr` delimiters";
             crate::validate_attr::check_meta_bad_delim(parse_sess, dspan, delim, msg);
-            match parse_in(parse_sess, tts.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
+            match parse_in(parse_sess, tokens.clone(), "`cfg_attr` input", |p| p.parse_cfg_attr()) {
                 Ok(r) => return Some(r),
                 Err(mut e) => {
                     e.help(&format!("the valid syntax is `{}`", CFG_ATTR_GRAMMAR_HELP))
@@ -360,7 +287,7 @@ fn error_malformed_cfg_attr_missing(span: Span, parse_sess: &ParseSess) {
         .span_suggestion(
             span,
             "missing condition and attribute",
-            CFG_ATTR_GRAMMAR_HELP.to_string(),
+            CFG_ATTR_GRAMMAR_HELP,
             Applicability::HasPlaceholders,
         )
         .note(CFG_ATTR_NOTE_REF)

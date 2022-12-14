@@ -1,0 +1,13 @@
+error[E0507]: cannot move out of `foo` in pattern guard
+  --> $DIR/issue-27282-move-ref-mut-into-guard.rs:9:19
+   |
+LL |             if { (|| { let bar = foo; bar.take() })(); false } => {},
+   |                   ^^             --- move occurs because `foo` has type `&mut Option<&i32>`, which does not implement the `Copy` trait
+   |                   |
+   |                   move out of `foo` occurs here
+   |
+   = note: variables bound in patterns cannot be moved from until after the end of the pattern guard
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0507`.

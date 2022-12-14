@@ -22,11 +22,11 @@ error: expected one of `:` or `|`, found `)`
 LL | fn main((ؼ
    |           ^ expected one of `:` or `|`
 
-error: expected one of `->`, `;`, `where`, or `{`, found `<eof>`
+error: expected one of `->`, `where`, or `{`, found `<eof>`
   --> $DIR/missing_right_paren.rs:3:11
    |
 LL | fn main((ؼ
-   |           ^ expected one of `->`, `;`, `where`, or `{`
+   |           ^ expected one of `->`, `where`, or `{`
 
 error: aborting due to 4 previous errors
 

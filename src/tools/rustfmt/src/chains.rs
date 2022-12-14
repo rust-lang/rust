@@ -145,8 +145,8 @@ impl ChainItemKind {
 
     fn from_ast(context: &RewriteContext<'_>, expr: &ast::Expr) -> (ChainItemKind, Span) {
         let (kind, span) = match expr.kind {
-            ast::ExprKind::MethodCall(ref segment, ref expressions, _) => {
-                let types = if let Some(ref generic_args) = segment.args {
+            ast::ExprKind::MethodCall(ref call) => {
+                let types = if let Some(ref generic_args) = call.seg.args {
                     if let ast::GenericArgs::AngleBracketed(ref data) = **generic_args {
                         data.args
                             .iter()
@@ -163,8 +163,8 @@ impl ChainItemKind {
                 } else {
                     vec![]
                 };
-                let span = mk_sp(expressions[0].span.hi(), expr.span.hi());
-                let kind = ChainItemKind::MethodCall(segment.clone(), types, expressions.clone());
+                let span = mk_sp(call.receiver.span.hi(), expr.span.hi());
+                let kind = ChainItemKind::MethodCall(call.seg.clone(), types, call.args.clone());
                 (kind, span)
             }
             ast::ExprKind::Field(ref nested, field) => {
@@ -253,7 +253,7 @@ impl ChainItem {
             format!("::<{}>", type_list.join(", "))
         };
         let callee_str = format!(".{}{}", rewrite_ident(context, method_name), type_str);
-        rewrite_call(context, &callee_str, &args[1..], span, shape)
+        rewrite_call(context, &callee_str, &args, span, shape)
     }
 }
 
@@ -400,9 +400,7 @@ impl Chain {
     // is a try! macro, we'll convert it to shorthand when the option is set.
     fn pop_expr_chain(expr: &ast::Expr, context: &RewriteContext<'_>) -> Option<ast::Expr> {
         match expr.kind {
-            ast::ExprKind::MethodCall(_, ref expressions, _) => {
-                Some(Self::convert_try(&expressions[0], context))
-            }
+            ast::ExprKind::MethodCall(ref call) => Some(Self::convert_try(&call.receiver, context)),
             ast::ExprKind::Field(ref subexpr, _)
             | ast::ExprKind::Try(ref subexpr)
             | ast::ExprKind::Await(ref subexpr) => Some(Self::convert_try(subexpr, context)),
@@ -568,7 +566,7 @@ impl<'a> ChainFormatterShared<'a> {
         } else {
             self.rewrites
                 .iter()
-                .map(|rw| utils::unicode_str_width(&rw))
+                .map(|rw| utils::unicode_str_width(rw))
                 .sum()
         } + last.tries;
         let one_line_budget = if self.child_count == 1 {
@@ -673,7 +671,7 @@ impl<'a> ChainFormatterShared<'a> {
                 ChainItemKind::Comment(_, CommentPosition::Top) => result.push_str(&connector),
                 _ => result.push_str(&connector),
             }
-            result.push_str(&rewrite);
+            result.push_str(rewrite);
         }
 
         Some(result)

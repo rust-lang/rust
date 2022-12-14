@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::collections::VecDeque;
 use std::rc::Rc;
 
@@ -11,7 +14,7 @@ use rustc_middle::mir::visit::{MirVisitable, PlaceContext, Visitor};
 use rustc_middle::mir::{Body, Local, Location};
 use rustc_middle::ty::{RegionVid, TyCtxt};
 
-crate fn find<'tcx>(
+pub(crate) fn find<'tcx>(
     body: &Body<'tcx>,
     regioncx: &Rc<RegionInferenceContext<'tcx>>,
     tcx: TyCtxt<'tcx>,
@@ -67,8 +70,8 @@ impl<'cx, 'tcx> UseFinder<'cx, 'tcx> {
                             block_data
                                 .terminator()
                                 .successors()
-                                .filter(|&bb| Some(&Some(*bb)) != block_data.terminator().unwind())
-                                .map(|&bb| Location { statement_index: 0, block: bb }),
+                                .filter(|&bb| Some(&Some(bb)) != block_data.terminator().unwind())
+                                .map(|bb| Location { statement_index: 0, block: bb }),
                         );
                     }
                 }
@@ -106,7 +109,7 @@ enum DefUseResult {
 }
 
 impl<'cx, 'tcx> Visitor<'tcx> for DefUseVisitor<'cx, 'tcx> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, _: Location) {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, _: Location) {
         let local_ty = self.body.local_decls[local].ty;
 
         let mut found_it = false;

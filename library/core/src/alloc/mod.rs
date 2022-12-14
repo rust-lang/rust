@@ -10,9 +10,9 @@ pub use self::global::GlobalAlloc;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
 pub use self::layout::Layout;
 #[stable(feature = "alloc_layout", since = "1.28.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.52.0",
-    reason = "Name does not follow std convention, use LayoutError",
+    note = "Name does not follow std convention, use LayoutError",
     suggestion = "LayoutError"
 )]
 #[allow(deprecated, deprecated_in_future)]
@@ -21,6 +21,7 @@ pub use self::layout::LayoutErr;
 #[stable(feature = "alloc_layout_error", since = "1.50.0")]
 pub use self::layout::LayoutError;
 
+use crate::error::Error;
 use crate::fmt;
 use crate::ptr::{self, NonNull};
 
@@ -31,6 +32,13 @@ use crate::ptr::{self, NonNull};
 #[unstable(feature = "allocator_api", issue = "32838")]
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub struct AllocError;
+
+#[unstable(
+    feature = "allocator_api",
+    reason = "the precise API and guarantees it provides may be tweaked.",
+    issue = "32838"
+)]
+impl Error for AllocError {}
 
 // (we need this for downstream impl of trait Error)
 #[unstable(feature = "allocator_api", issue = "32838")]
@@ -97,6 +105,7 @@ impl fmt::Display for AllocError {
 ///
 /// [*currently allocated*]: #currently-allocated-memory
 #[unstable(feature = "allocator_api", issue = "32838")]
+#[const_trait]
 pub unsafe trait Allocator {
     /// Attempts to allocate a block of memory.
     ///
@@ -160,9 +169,9 @@ pub unsafe trait Allocator {
     /// this, the allocator may extend the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the return value
-    /// of this method.
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
+    /// allocation was grown in-place. The newly returned pointer is the only valid pointer
+    /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
@@ -172,6 +181,8 @@ pub unsafe trait Allocator {
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
     /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
     /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
+    ///
+    /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
@@ -234,6 +245,8 @@ pub unsafe trait Allocator {
     /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
     /// * `new_layout.size()` must be greater than or equal to `old_layout.size()`.
     ///
+    /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.
+    ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting
     ///
@@ -283,9 +296,9 @@ pub unsafe trait Allocator {
     /// this, the allocator may shrink the allocation referenced by `ptr` to fit the new layout.
     ///
     /// If this returns `Ok`, then ownership of the memory block referenced by `ptr` has been
-    /// transferred to this allocator. The memory may or may not have been freed, and should be
-    /// considered unusable unless it was transferred back to the caller again via the return value
-    /// of this method.
+    /// transferred to this allocator. Any access to the old `ptr` is Undefined Behavior, even if the
+    /// allocation was shrunk in-place. The newly returned pointer is the only valid pointer
+    /// for accessing this memory now.
     ///
     /// If this method returns `Err`, then ownership of the memory block has not been transferred to
     /// this allocator, and the contents of the memory block are unaltered.
@@ -295,6 +308,8 @@ pub unsafe trait Allocator {
     /// * `ptr` must denote a block of memory [*currently allocated*] via this allocator.
     /// * `old_layout` must [*fit*] that block of memory (The `new_layout` argument need not fit it.).
     /// * `new_layout.size()` must be smaller than or equal to `old_layout.size()`.
+    ///
+    /// Note that `new_layout.align()` need not be the same as `old_layout.align()`.
     ///
     /// [*currently allocated*]: #currently-allocated-memory
     /// [*fit*]: #memory-fitting

@@ -89,3 +89,12 @@ fn main() {
         }
     }
 }
+
+#[rustfmt::skip]
+#[allow(dead_code)]
+fn issue_7318() {
+    if true { println!("I've been resolved!")
+    }else{
+        if false {}
+    }
+}

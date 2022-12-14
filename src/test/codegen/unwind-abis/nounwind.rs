@@ -4,7 +4,7 @@
 #![crate_type = "lib"]
 #![feature(c_unwind)]
 
-// We disable optimizations to prevent LLVM from infering the attribute.
+// We disable optimizations to prevent LLVM from inferring the attribute.
 
 // CHECK: Function Attrs:{{.*}}nounwind
 // CHECK-NEXT: @foo

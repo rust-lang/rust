@@ -12,7 +12,7 @@ use crate::task::{Context, Poll};
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 #[must_use = "futures do nothing unless you `.await` or poll them"]
 pub struct Pending<T> {
-    _data: marker::PhantomData<T>,
+    _data: marker::PhantomData<fn() -> T>,
 }
 
 /// Creates a future which never resolves, representing a computation that never
@@ -42,9 +42,6 @@ impl<T> Future for Pending<T> {
         Poll::Pending
     }
 }
-
-#[stable(feature = "future_readiness_fns", since = "1.48.0")]
-impl<T> Unpin for Pending<T> {}
 
 #[stable(feature = "future_readiness_fns", since = "1.48.0")]
 impl<T> Debug for Pending<T> {

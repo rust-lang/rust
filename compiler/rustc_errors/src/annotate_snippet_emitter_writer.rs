@@ -7,16 +7,24 @@
 
 use crate::emitter::FileWithAnnotatedLines;
 use crate::snippet::Line;
-use crate::{CodeSuggestion, Diagnostic, DiagnosticId, Emitter, Level, SubDiagnostic};
+use crate::translation::{to_fluent_args, Translate};
+use crate::{
+    CodeSuggestion, Diagnostic, DiagnosticId, DiagnosticMessage, Emitter, FluentBundle,
+    LazyFallbackBundle, Level, MultiSpan, Style, SubDiagnostic,
+};
 use annotate_snippets::display_list::{DisplayList, FormatOptions};
 use annotate_snippets::snippet::*;
 use rustc_data_structures::sync::Lrc;
+use rustc_error_messages::FluentArgs;
 use rustc_span::source_map::SourceMap;
-use rustc_span::{MultiSpan, SourceFile};
+use rustc_span::SourceFile;
 
 /// Generates diagnostics using annotate-snippet
 pub struct AnnotateSnippetEmitterWriter {
     source_map: Option<Lrc<SourceMap>>,
+    fluent_bundle: Option<Lrc<FluentBundle>>,
+    fallback_bundle: LazyFallbackBundle,
+
     /// If true, hides the longer explanation text
     short_message: bool,
     /// If true, will normalize line numbers with `LL` to prevent noise in UI test diffs.
@@ -25,14 +33,25 @@ pub struct AnnotateSnippetEmitterWriter {
     macro_backtrace: bool,
 }
 
+impl Translate for AnnotateSnippetEmitterWriter {
+    fn fluent_bundle(&self) -> Option<&Lrc<FluentBundle>> {
+        self.fluent_bundle.as_ref()
+    }
+
+    fn fallback_fluent_bundle(&self) -> &FluentBundle {
+        &self.fallback_bundle
+    }
+}
+
 impl Emitter for AnnotateSnippetEmitterWriter {
     /// The entry point for the diagnostics generation
     fn emit_diagnostic(&mut self, diag: &Diagnostic) {
+        let fluent_args = to_fluent_args(diag.args());
+
         let mut children = diag.children.clone();
-        let (mut primary_span, suggestions) = self.primary_span_formatted(&diag);
+        let (mut primary_span, suggestions) = self.primary_span_formatted(diag, &fluent_args);
 
         self.fix_multispans_in_extern_macros_and_render_macro_backtrace(
-            &self.source_map,
             &mut primary_span,
             &mut children,
             &diag.level,
@@ -41,11 +60,12 @@ impl Emitter for AnnotateSnippetEmitterWriter {
 
         self.emit_messages_default(
             &diag.level,
-            diag.message(),
+            &diag.message,
+            &fluent_args,
             &diag.code,
             &primary_span,
             &children,
-            &suggestions,
+            suggestions,
         );
     }
 
@@ -66,23 +86,35 @@ fn source_string(file: Lrc<SourceFile>, line: &Line) -> String {
 /// Maps `Diagnostic::Level` to `snippet::AnnotationType`
 fn annotation_type_for_level(level: Level) -> AnnotationType {
     match level {
-        Level::Bug | Level::Fatal | Level::Error => AnnotationType::Error,
-        Level::Warning => AnnotationType::Warning,
-        Level::Note => AnnotationType::Note,
+        Level::Bug | Level::DelayedBug | Level::Fatal | Level::Error { .. } => {
+            AnnotationType::Error
+        }
+        Level::Warning(_) => AnnotationType::Warning,
+        Level::Note | Level::OnceNote => AnnotationType::Note,
         Level::Help => AnnotationType::Help,
-        // FIXME(#59346): Not sure how to map these two levels
-        Level::Cancelled | Level::FailureNote => AnnotationType::Error,
+        // FIXME(#59346): Not sure how to map this level
+        Level::FailureNote => AnnotationType::Error,
         Level::Allow => panic!("Should not call with Allow"),
+        Level::Expect(_) => panic!("Should not call with Expect"),
     }
 }
 
 impl AnnotateSnippetEmitterWriter {
     pub fn new(
         source_map: Option<Lrc<SourceMap>>,
+        fluent_bundle: Option<Lrc<FluentBundle>>,
+        fallback_bundle: LazyFallbackBundle,
         short_message: bool,
         macro_backtrace: bool,
     ) -> Self {
-        Self { source_map, short_message, ui_testing: false, macro_backtrace }
+        Self {
+            source_map,
+            fluent_bundle,
+            fallback_bundle,
+            short_message,
+            ui_testing: false,
+            macro_backtrace,
+        }
     }
 
     /// Allows to modify `Self` to enable or disable the `ui_testing` flag.
@@ -96,12 +128,14 @@ impl AnnotateSnippetEmitterWriter {
     fn emit_messages_default(
         &mut self,
         level: &Level,
-        message: String,
+        messages: &[(DiagnosticMessage, Style)],
+        args: &FluentArgs<'_>,
         code: &Option<DiagnosticId>,
         msp: &MultiSpan,
         _children: &[SubDiagnostic],
         _suggestions: &[CodeSuggestion],
     ) {
+        let message = self.translate_messages(messages, args);
         if let Some(source_map) = &self.source_map {
             // Make sure our primary file comes first
             let primary_lo = if let Some(ref primary_span) = msp.primary_span().as_ref() {
@@ -117,8 +151,7 @@ impl AnnotateSnippetEmitterWriter {
                 // should be done if it happens
                 return;
             };
-            let mut annotated_files =
-                FileWithAnnotatedLines::collect_annotations(msp, &self.source_map);
+            let mut annotated_files = FileWithAnnotatedLines::collect_annotations(self, args, msp);
             if let Ok(pos) =
                 annotated_files.binary_search_by(|x| x.file.name.cmp(&primary_lo.file.name))
             {
@@ -152,7 +185,11 @@ impl AnnotateSnippetEmitterWriter {
                     annotation_type: annotation_type_for_level(*level),
                 }),
                 footer: vec![],
-                opt: FormatOptions { color: true, anonymized_line_numbers: self.ui_testing },
+                opt: FormatOptions {
+                    color: true,
+                    anonymized_line_numbers: self.ui_testing,
+                    margin: None,
+                },
                 slices: annotated_files
                     .iter()
                     .map(|(source, line_index, annotations)| {

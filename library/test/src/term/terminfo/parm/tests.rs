@@ -78,15 +78,15 @@ fn test_push_bad_param() {
 fn test_comparison_ops() {
     let v = [('<', [1u8, 0u8, 0u8]), ('=', [0u8, 1u8, 0u8]), ('>', [0u8, 0u8, 1u8])];
     for &(op, bs) in v.iter() {
-        let s = format!("%{{1}}%{{2}}%{}%d", op);
+        let s = format!("%{{1}}%{{2}}%{op}%d");
         let res = expand(s.as_bytes(), &[], &mut Variables::new());
         assert!(res.is_ok(), "{}", res.unwrap_err());
         assert_eq!(res.unwrap(), vec![b'0' + bs[0]]);
-        let s = format!("%{{1}}%{{1}}%{}%d", op);
+        let s = format!("%{{1}}%{{1}}%{op}%d");
         let res = expand(s.as_bytes(), &[], &mut Variables::new());
         assert!(res.is_ok(), "{}", res.unwrap_err());
         assert_eq!(res.unwrap(), vec![b'0' + bs[1]]);
-        let s = format!("%{{2}}%{{1}}%{}%d", op);
+        let s = format!("%{{2}}%{{1}}%{op}%d");
         let res = expand(s.as_bytes(), &[], &mut Variables::new());
         assert!(res.is_ok(), "{}", res.unwrap_err());
         assert_eq!(res.unwrap(), vec![b'0' + bs[2]]);

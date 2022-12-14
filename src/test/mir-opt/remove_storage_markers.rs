@@ -1,3 +1,5 @@
+// unit-test: RemoveStorageMarkers
+
 // Checks that storage markers are removed at opt-level=0.
 //
 // compile-flags: -C opt-level=0 -Coverflow-checks=off

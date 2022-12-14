@@ -1,8 +1,7 @@
-// compile-flags: -Z mir-opt-level=4
+// unit-test: NormalizeArrayLen
+// compile-flags: -Zmir-enable-passes=+LowerSliceLenCalls
 
 // EMIT_MIR lower_array_len.array_bound.NormalizeArrayLen.diff
-// EMIT_MIR lower_array_len.array_bound.SimplifyLocals.diff
-// EMIT_MIR lower_array_len.array_bound.InstCombine.diff
 pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
     if index < slice.len() {
         slice[index]
@@ -12,8 +11,6 @@ pub fn array_bound<const N: usize>(index: usize, slice: &[u8; N]) -> u8 {
 }
 
 // EMIT_MIR lower_array_len.array_bound_mut.NormalizeArrayLen.diff
-// EMIT_MIR lower_array_len.array_bound_mut.SimplifyLocals.diff
-// EMIT_MIR lower_array_len.array_bound_mut.InstCombine.diff
 pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 {
     if index < slice.len() {
         slice[index]
@@ -25,15 +22,11 @@ pub fn array_bound_mut<const N: usize>(index: usize, slice: &mut [u8; N]) -> u8 
 }
 
 // EMIT_MIR lower_array_len.array_len.NormalizeArrayLen.diff
-// EMIT_MIR lower_array_len.array_len.SimplifyLocals.diff
-// EMIT_MIR lower_array_len.array_len.InstCombine.diff
 pub fn array_len<const N: usize>(arr: &[u8; N]) -> usize {
     arr.len()
 }
 
 // EMIT_MIR lower_array_len.array_len_by_value.NormalizeArrayLen.diff
-// EMIT_MIR lower_array_len.array_len_by_value.SimplifyLocals.diff
-// EMIT_MIR lower_array_len.array_len_by_value.InstCombine.diff
 pub fn array_len_by_value<const N: usize>(arr: [u8; N]) -> usize {
     arr.len()
 }

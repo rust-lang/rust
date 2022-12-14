@@ -1,7 +1,9 @@
 fn main() {
-    foobar::ok();
+    foobar::ok(0);
 
     // this is a
+
+    //  ..
 
     // BIG
 

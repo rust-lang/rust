@@ -16,8 +16,8 @@ trait A<'a> {
 }
 
 impl<'a> A<'a> for B {
-    fn foo<F>(&mut self, f: F) //~ ERROR impl has stricter
-        where F: fmt::Debug + 'static,
+    fn foo<F>(&mut self, f: F)
+        where F: fmt::Debug + 'static, //~ ERROR impl has stricter
     {
         self.list.push(Box::new(f));
     }

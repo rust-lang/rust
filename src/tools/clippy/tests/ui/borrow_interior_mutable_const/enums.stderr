@@ -4,8 +4,8 @@ error: a `const` item with interior mutability should not be borrowed
 LL |     let _ = &UNFROZEN_VARIANT; //~ ERROR interior mutability
    |              ^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::borrow-interior-mutable-const` implied by `-D warnings`
    = help: assign this const to a local or static variable, and use the variable here
+   = note: `-D clippy::borrow-interior-mutable-const` implied by `-D warnings`
 
 error: a `const` item with interior mutability should not be borrowed
   --> $DIR/enums.rs:37:18

@@ -36,7 +36,7 @@ mod without_base {
         // issue #7069.
         new_foo!();
 
-        // Shoule NOT lint because the order is the same as in the definition.
+        // Should NOT lint because the order is the same as in the definition.
         Foo { x, y, z };
 
         // Should NOT lint because z is not a shorthand init.

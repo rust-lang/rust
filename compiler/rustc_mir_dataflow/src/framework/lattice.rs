@@ -26,7 +26,7 @@
 //! ## `PartialOrd`
 //!
 //! Given that they represent partially ordered sets, you may be surprised that [`JoinSemiLattice`]
-//! and [`MeetSemiLattice`] do not have [`PartialOrd`][std::cmp::PartialOrd] as a supertrait. This
+//! and [`MeetSemiLattice`] do not have [`PartialOrd`] as a supertrait. This
 //! is because most standard library types use lexicographic ordering instead of set inclusion for
 //! their `PartialOrd` impl. Since we do not actually need to compare lattice elements to run a
 //! dataflow analysis, there's no need for a newtype wrapper with a custom `PartialOrd` impl. The
@@ -38,7 +38,8 @@
 //! [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
 //! [poset]: https://en.wikipedia.org/wiki/Partially_ordered_set
 
-use rustc_index::bit_set::BitSet;
+use crate::framework::BitSetExt;
+use rustc_index::bit_set::{BitSet, ChunkedBitSet, HybridBitSet};
 use rustc_index::vec::{Idx, IndexVec};
 use std::iter;
 
@@ -72,6 +73,16 @@ pub trait MeetSemiLattice: Eq {
     fn meet(&mut self, other: &Self) -> bool;
 }
 
+/// A set that has a "bottom" element, which is less than or equal to any other element.
+pub trait HasBottom {
+    fn bottom() -> Self;
+}
+
+/// A set that has a "top" element, which is greater than or equal to any other element.
+pub trait HasTop {
+    fn top() -> Self;
+}
+
 /// A `bool` is a "two-point" lattice with `true` as the top element and `false` as the bottom:
 ///
 /// ```text
@@ -98,6 +109,18 @@ impl MeetSemiLattice for bool {
         }
 
         false
+    }
+}
+
+impl HasBottom for bool {
+    fn bottom() -> Self {
+        false
+    }
+}
+
+impl HasTop for bool {
+    fn top() -> Self {
+        true
     }
 }
 
@@ -145,6 +168,18 @@ impl<T: Idx> MeetSemiLattice for BitSet<T> {
     }
 }
 
+impl<T: Idx> JoinSemiLattice for ChunkedBitSet<T> {
+    fn join(&mut self, other: &Self) -> bool {
+        self.union(other)
+    }
+}
+
+impl<T: Idx> MeetSemiLattice for ChunkedBitSet<T> {
+    fn meet(&mut self, other: &Self) -> bool {
+        self.intersect(other)
+    }
+}
+
 /// The counterpart of a given semilattice `T` using the [inverse order].
 ///
 /// The dual of a join-semilattice is a meet-semilattice and vice versa. For example, the dual of a
@@ -155,15 +190,21 @@ impl<T: Idx> MeetSemiLattice for BitSet<T> {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Dual<T>(pub T);
 
-impl<T> std::borrow::Borrow<T> for Dual<T> {
-    fn borrow(&self) -> &T {
-        &self.0
+impl<T: Idx> BitSetExt<T> for Dual<BitSet<T>> {
+    fn domain_size(&self) -> usize {
+        self.0.domain_size()
     }
-}
 
-impl<T> std::borrow::BorrowMut<T> for Dual<T> {
-    fn borrow_mut(&mut self) -> &mut T {
-        &mut self.0
+    fn contains(&self, elem: T) -> bool {
+        self.0.contains(elem)
+    }
+
+    fn union(&mut self, other: &HybridBitSet<T>) {
+        self.0.union(other);
+    }
+
+    fn subtract(&mut self, other: &HybridBitSet<T>) {
+        self.0.subtract(other);
     }
 }
 
@@ -180,14 +221,16 @@ impl<T: JoinSemiLattice> MeetSemiLattice for Dual<T> {
 }
 
 /// Extends a type `T` with top and bottom elements to make it a partially ordered set in which no
-/// value of `T` is comparable with any other. A flat set has the following [Hasse diagram]:
+/// value of `T` is comparable with any other.
+///
+/// A flat set has the following [Hasse diagram]:
 ///
 /// ```text
-///         top
-///       / /  \ \
+///          top
+///  / ... / /  \ \ ... \
 /// all possible values of `T`
-///       \ \  / /
-///        bottom
+///  \ ... \ \  / / ... /
+///         bottom
 /// ```
 ///
 /// [Hasse diagram]: https://en.wikipedia.org/wiki/Hasse_diagram
@@ -227,5 +270,17 @@ impl<T: Clone + Eq> MeetSemiLattice for FlatSet<T> {
 
         *self = result;
         true
+    }
+}
+
+impl<T> HasBottom for FlatSet<T> {
+    fn bottom() -> Self {
+        Self::Bottom
+    }
+}
+
+impl<T> HasTop for FlatSet<T> {
+    fn top() -> Self {
+        Self::Top
     }
 }

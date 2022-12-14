@@ -1,0 +1,1 @@
+macro_rules! try { () => {} }

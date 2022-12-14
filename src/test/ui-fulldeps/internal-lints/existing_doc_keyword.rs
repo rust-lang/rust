@@ -1,7 +1,7 @@
 // compile-flags: -Z unstable-options
 
 #![feature(rustc_private)]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 
 #![crate_type = "lib"]
 

@@ -1,0 +1,12 @@
+error[E0658]: the `#[expect]` attribute is an experimental feature
+  --> $DIR/expect_missing_feature_gate.rs:5:1
+   |
+LL | #[expect(unused)]
+   | ^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #54503 <https://github.com/rust-lang/rust/issues/54503> for more information
+   = help: add `#![feature(lint_reasons)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

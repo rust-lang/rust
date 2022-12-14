@@ -69,9 +69,6 @@ pub enum AnnotationType {
     /// Annotation under a single line of code
     Singleline,
 
-    /// Annotation enclosing the first and last character of a multiline span
-    Multiline(MultilineAnnotation),
-
     // The Multiline type above is replaced with the following three in order
     // to reuse the current label drawing code.
     //

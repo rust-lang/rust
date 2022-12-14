@@ -26,6 +26,7 @@ declare_clippy_lint! {
     /// ```rust
     /// use std::io;
     /// ```
+    #[clippy::version = "1.53.0"]
     pub UNNECESSARY_SELF_IMPORTS,
     restriction,
     "imports ending in `::{self}`, which can be omitted"
@@ -56,7 +57,7 @@ impl EarlyLintPass for UnnecessarySelfImports {
                             format!(
                                 "{}{};",
                                 last_segment.ident,
-                                if let UseTreeKind::Simple(Some(alias), ..) = self_tree.kind { format!(" as {}", alias) } else { String::new() },
+                                if let UseTreeKind::Simple(Some(alias)) = self_tree.kind { format!(" as {alias}") } else { String::new() },
                             ),
                             Applicability::MaybeIncorrect,
                         );

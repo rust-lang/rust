@@ -1,17 +1,16 @@
-use rustc_errors::DiagnosticBuilder;
-use rustc_middle::lint::LintDiagnosticBuilder;
+use rustc_errors::{DiagnosticBuilder, DiagnosticMessage};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::CONST_ITEM_MUTATION;
 use rustc_span::def_id::DefId;
 
-use crate::MirPass;
+use crate::MirLint;
 
 pub struct CheckConstItemMutation;
 
-impl<'tcx> MirPass<'tcx> for CheckConstItemMutation {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+impl<'tcx> MirLint<'tcx> for CheckConstItemMutation {
+    fn run_lint(&self, tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
         let mut checker = ConstMutationChecker { body, tcx, target_local: None };
         checker.visit_body(&body);
     }
@@ -23,7 +22,7 @@ struct ConstMutationChecker<'a, 'tcx> {
     target_local: Option<Local>,
 }
 
-impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
+impl<'tcx> ConstMutationChecker<'_, 'tcx> {
     fn is_const_item(&self, local: Local) -> Option<DefId> {
         if let Some(box LocalInfo::ConstRef { def_id }) = self.body.local_decls[local].local_info {
             Some(def_id)
@@ -64,7 +63,10 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
         place: &Place<'tcx>,
         const_item: DefId,
         location: Location,
-        decorate: impl for<'b> FnOnce(LintDiagnosticBuilder<'b>) -> DiagnosticBuilder<'b>,
+        msg: impl Into<DiagnosticMessage>,
+        decorate: impl for<'a, 'b> FnOnce(
+            &'a mut DiagnosticBuilder<'b, ()>,
+        ) -> &'a mut DiagnosticBuilder<'b, ()>,
     ) {
         // Don't lint on borrowing/assigning when a dereference is involved.
         // If we 'leave' the temporary via a dereference, we must
@@ -85,17 +87,17 @@ impl<'a, 'tcx> ConstMutationChecker<'a, 'tcx> {
                 CONST_ITEM_MUTATION,
                 lint_root,
                 source_info.span,
+                msg,
                 |lint| {
                     decorate(lint)
                         .span_note(self.tcx.def_span(const_item), "`const` item defined here")
-                        .emit()
                 },
             );
         }
     }
 }
 
-impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
+impl<'tcx> Visitor<'tcx> for ConstMutationChecker<'_, 'tcx> {
     fn visit_statement(&mut self, stmt: &Statement<'tcx>, loc: Location) {
         if let StatementKind::Assign(box (lhs, _)) = &stmt.kind {
             // Check for assignment to fields of a constant
@@ -103,10 +105,8 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
             // so emitting a lint would be redundant.
             if !lhs.projection.is_empty() {
                 if let Some(def_id) = self.is_const_item_without_destructor(lhs.local) {
-                    self.lint_const_item_usage(&lhs, def_id, loc, |lint| {
-                        let mut lint = lint.build("attempting to modify a `const` item");
-                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified");
-                        lint
+                    self.lint_const_item_usage(&lhs, def_id, loc, "attempting to modify a `const` item",|lint| {
+                        lint.note("each usage of a `const` item creates a new temporary; the original `const` item will not be modified")
                     })
                 }
             }
@@ -138,8 +138,7 @@ impl<'a, 'tcx> Visitor<'tcx> for ConstMutationChecker<'a, 'tcx> {
                 });
                 let lint_loc =
                     if method_did.is_some() { self.body.terminator_loc(loc.block) } else { loc };
-                self.lint_const_item_usage(place, def_id, lint_loc, |lint| {
-                    let mut lint = lint.build("taking a mutable reference to a `const` item");
+                self.lint_const_item_usage(place, def_id, lint_loc, "taking a mutable reference to a `const` item", |lint| {
                     lint
                         .note("each usage of a `const` item creates a new temporary")
                         .note("the mutable reference will refer to this temporary, not the original `const` item");

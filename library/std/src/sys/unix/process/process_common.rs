@@ -18,7 +18,7 @@ use crate::sys_common::IntoInner;
 #[cfg(not(target_os = "fuchsia"))]
 use crate::sys::fs::OpenOptions;
 
-use libc::{c_char, c_int, gid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
+use libc::{c_char, c_int, gid_t, pid_t, uid_t, EXIT_FAILURE, EXIT_SUCCESS};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "fuchsia")] {
@@ -35,20 +35,43 @@ cfg_if::cfg_if! {
 // Android with api less than 21 define sig* functions inline, so it is not
 // available for dynamic link. Implementing sigemptyset and sigaddset allow us
 // to support older Android version (independent of libc version).
-// The following implementations are based on https://git.io/vSkNf
+// The following implementations are based on
+// https://github.com/aosp-mirror/platform_bionic/blob/ad8dcd6023294b646e5a8288c0ed431b0845da49/libc/include/android/legacy_signal_inlines.h
 cfg_if::cfg_if! {
     if #[cfg(target_os = "android")] {
+        #[allow(dead_code)]
         pub unsafe fn sigemptyset(set: *mut libc::sigset_t) -> libc::c_int {
             set.write_bytes(0u8, 1);
             return 0;
         }
+
         #[allow(dead_code)]
         pub unsafe fn sigaddset(set: *mut libc::sigset_t, signum: libc::c_int) -> libc::c_int {
-            use crate::{slice, mem};
+            use crate::{
+                mem::{align_of, size_of},
+                slice,
+            };
+            use libc::{c_ulong, sigset_t};
 
-            let raw = slice::from_raw_parts_mut(set as *mut u8, mem::size_of::<libc::sigset_t>());
+            // The implementations from bionic (android libc) type pun `sigset_t` as an
+            // array of `c_ulong`. This works, but lets add a smoke check to make sure
+            // that doesn't change.
+            const _: () = assert!(
+                align_of::<c_ulong>() == align_of::<sigset_t>()
+                    && (size_of::<sigset_t>() % size_of::<c_ulong>()) == 0
+            );
+
             let bit = (signum - 1) as usize;
-            raw[bit / 8] |= 1 << (bit % 8);
+            if set.is_null() || bit >= (8 * size_of::<sigset_t>()) {
+                crate::sys::unix::os::set_errno(libc::EINVAL);
+                return -1;
+            }
+            let raw = slice::from_raw_parts_mut(
+                set as *mut c_ulong,
+                size_of::<sigset_t>() / size_of::<c_ulong>(),
+            );
+            const LONG_BIT: usize = size_of::<c_ulong>() * 8;
+            raw[bit / LONG_BIT] |= 1 << (bit % LONG_BIT);
             return 0;
         }
     } else {
@@ -71,6 +94,7 @@ pub struct Command {
     argv: Argv,
     env: CommandEnv,
 
+    program_kind: ProgramKind,
     cwd: Option<CString>,
     uid: Option<uid_t>,
     gid: Option<gid_t>,
@@ -82,6 +106,7 @@ pub struct Command {
     stderr: Option<Stdio>,
     #[cfg(target_os = "linux")]
     create_pidfd: bool,
+    pgroup: Option<pid_t>,
 }
 
 // Create a new type for argv, so that we can make it `Send` and `Sync`
@@ -126,15 +151,40 @@ pub enum Stdio {
     Fd(FileDesc),
 }
 
+#[derive(Copy, Clone, Debug, Eq, PartialEq)]
+pub enum ProgramKind {
+    /// A program that would be looked up on the PATH (e.g. `ls`)
+    PathLookup,
+    /// A relative path (e.g. `my-dir/foo`, `../foo`, `./foo`)
+    Relative,
+    /// An absolute path.
+    Absolute,
+}
+
+impl ProgramKind {
+    fn new(program: &OsStr) -> Self {
+        if program.bytes().starts_with(b"/") {
+            Self::Absolute
+        } else if program.bytes().contains(&b'/') {
+            // If the program has more than one component in it, it is a relative path.
+            Self::Relative
+        } else {
+            Self::PathLookup
+        }
+    }
+}
+
 impl Command {
     #[cfg(not(target_os = "linux"))]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -145,17 +195,20 @@ impl Command {
             stdin: None,
             stdout: None,
             stderr: None,
+            pgroup: None,
         }
     }
 
     #[cfg(target_os = "linux")]
     pub fn new(program: &OsStr) -> Command {
         let mut saw_nul = false;
+        let program_kind = ProgramKind::new(program.as_ref());
         let program = os2c(program, &mut saw_nul);
         Command {
             argv: Argv(vec![program.as_ptr(), ptr::null()]),
             args: vec![program.clone()],
             program,
+            program_kind,
             env: Default::default(),
             cwd: None,
             uid: None,
@@ -167,6 +220,7 @@ impl Command {
             stdout: None,
             stderr: None,
             create_pidfd: false,
+            pgroup: None,
         }
     }
 
@@ -202,6 +256,9 @@ impl Command {
     pub fn groups(&mut self, groups: &[gid_t]) {
         self.groups = Some(Box::from(groups));
     }
+    pub fn pgroup(&mut self, pgroup: pid_t) {
+        self.pgroup = Some(pgroup);
+    }
 
     #[cfg(target_os = "linux")]
     pub fn create_pidfd(&mut self, val: bool) {
@@ -225,6 +282,11 @@ impl Command {
 
     pub fn get_program(&self) -> &OsStr {
         OsStr::from_bytes(self.program.as_bytes())
+    }
+
+    #[allow(dead_code)]
+    pub fn get_program_kind(&self) -> ProgramKind {
+        self.program_kind
     }
 
     pub fn get_args(&self) -> CommandArgs<'_> {
@@ -264,6 +326,10 @@ impl Command {
     #[allow(dead_code)]
     pub fn get_groups(&self) -> Option<&[gid_t]> {
         self.groups.as_deref()
+    }
+    #[allow(dead_code)]
+    pub fn get_pgroup(&self) -> Option<pid_t> {
+        self.pgroup
     }
 
     pub fn get_closures(&mut self) -> &mut Vec<Box<dyn FnMut() -> io::Result<()> + Send + Sync>> {
@@ -473,6 +539,12 @@ impl ExitCode {
     #[inline]
     pub fn as_i32(&self) -> i32 {
         self.0 as i32
+    }
+}
+
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        Self(code)
     }
 }
 

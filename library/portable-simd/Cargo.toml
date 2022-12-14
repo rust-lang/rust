@@ -1,0 +1,7 @@
+[workspace]
+
+members = [
+    "crates/core_simd",
+    "crates/std_float",
+    "crates/test_helpers",
+]

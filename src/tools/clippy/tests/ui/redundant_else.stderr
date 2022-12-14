@@ -7,8 +7,8 @@ LL | |             println!("yet don't pull down your hedge.");
 LL | |         }
    | |_________^
    |
-   = note: `-D clippy::redundant-else` implied by `-D warnings`
    = help: remove the `else` block and move the contents out
+   = note: `-D clippy::redundant-else` implied by `-D warnings`
 
 error: redundant else block
   --> $DIR/redundant_else.rs:17:16

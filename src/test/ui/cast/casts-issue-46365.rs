@@ -3,5 +3,6 @@ struct Lorem {
 }
 
 fn main() {
-    let _foo: *mut Lorem = core::ptr::null_mut(); // no error here
+    // Testing `as` casts, so deliberately not using `ptr::null`.
+    let _foo: *mut Lorem = 0 as *mut _; // no error here
 }

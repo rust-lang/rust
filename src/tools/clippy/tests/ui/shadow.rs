@@ -1,4 +1,5 @@
 #![warn(clippy::shadow_same, clippy::shadow_reuse, clippy::shadow_unrelated)]
+#![allow(clippy::let_unit_value)]
 
 fn shadow_same() {
     let x = 1;
@@ -47,6 +48,8 @@ fn syntax() {
     let _ = |[x]: [u32; 1]| {
         let x = 1;
     };
+    let y = Some(1);
+    if let Some(y) = y {}
 }
 
 fn negative() {
@@ -77,6 +80,19 @@ fn question_mark() -> Option<()> {
     // `?` expands with a `val` binding
     None?;
     None
+}
+
+pub async fn foo1(_a: i32) {}
+
+pub async fn foo2(_a: i32, _b: i64) {
+    let _b = _a;
+}
+
+fn ice_8748() {
+    let _ = [0; {
+        let x = 1;
+        if let Some(x) = Some(1) { x } else { 1 }
+    }];
 }
 
 fn main() {}

@@ -15,7 +15,7 @@ trait MyTrait1 {
 
 impl MyTrait1 for Foo<u32> {}
 
-struct Foo<T>(T);
+struct Foo<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl Deref for Foo<()> {
     type Target = dyn MyTrait1 + 'static;
@@ -33,7 +33,7 @@ trait MyTrait2 {
 }
 
 impl MyTrait2 for u32 {}
-struct Bar<T>(T, u32);
+struct Bar<T>(#[allow(unused_tuple_struct_fields)] T, u32);
 impl Deref for Bar<u8> {
     type Target = dyn MyTrait2 + 'static;
     fn deref(&self) -> &(dyn MyTrait2 + 'static) {

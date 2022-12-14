@@ -212,7 +212,8 @@ impl AssocOp {
     /// parentheses while having a high degree of confidence on the correctness of the suggestion.
     pub fn can_continue_expr_unambiguously(&self) -> bool {
         use AssocOp::*;
-        match self {
+        matches!(
+            self,
             BitXor | // `{ 42 } ^ 3`
             Assign | // `{ 42 } = { 42 }`
             Divide | // `{ 42 } / 42`
@@ -225,9 +226,8 @@ impl AssocOp {
             As | // `{ 42 } as usize`
             // Equal | // `{ 42 } == { 42 }`    Accepting these here would regress incorrect
             // NotEqual | // `{ 42 } != { 42 }  struct literals parser recovery.
-            Colon => true, // `{ 42 }: usize`
-            _ => false,
-        }
+            Colon, // `{ 42 }: usize`
+        )
     }
 }
 
@@ -247,6 +247,7 @@ pub enum ExprPrecedence {
     Continue,
     Ret,
     Yield,
+    Yeet,
 
     Range,
 
@@ -296,10 +297,11 @@ impl ExprPrecedence {
         match self {
             ExprPrecedence::Closure => PREC_CLOSURE,
 
-            ExprPrecedence::Break |
-            ExprPrecedence::Continue |
-            ExprPrecedence::Ret |
-            ExprPrecedence::Yield => PREC_JUMP,
+            ExprPrecedence::Break
+            | ExprPrecedence::Continue
+            | ExprPrecedence::Ret
+            | ExprPrecedence::Yield
+            | ExprPrecedence::Yeet => PREC_JUMP,
 
             // `Range` claims to have higher precedence than `Assign`, but `x .. x = x` fails to
             // parse, instead of parsing as `(x .. x) = x`.  Giving `Range` a lower precedence
@@ -316,43 +318,43 @@ impl ExprPrecedence {
             ExprPrecedence::AssignOp => AssocOp::Assign.precedence() as i8,
 
             // Unary, prefix
-            ExprPrecedence::Box |
-            ExprPrecedence::AddrOf |
+            ExprPrecedence::Box
+            | ExprPrecedence::AddrOf
             // Here `let pats = expr` has `let pats =` as a "unary" prefix of `expr`.
             // However, this is not exactly right. When `let _ = a` is the LHS of a binop we
             // need parens sometimes. E.g. we can print `(let _ = a) && b` as `let _ = a && b`
             // but we need to print `(let _ = a) < b` as-is with parens.
-            ExprPrecedence::Let |
-            ExprPrecedence::Unary => PREC_PREFIX,
+            | ExprPrecedence::Let
+            | ExprPrecedence::Unary => PREC_PREFIX,
 
             // Unary, postfix
-            ExprPrecedence::Await |
-            ExprPrecedence::Call |
-            ExprPrecedence::MethodCall |
-            ExprPrecedence::Field |
-            ExprPrecedence::Index |
-            ExprPrecedence::Try |
-            ExprPrecedence::InlineAsm |
-            ExprPrecedence::Mac => PREC_POSTFIX,
+            ExprPrecedence::Await
+            | ExprPrecedence::Call
+            | ExprPrecedence::MethodCall
+            | ExprPrecedence::Field
+            | ExprPrecedence::Index
+            | ExprPrecedence::Try
+            | ExprPrecedence::InlineAsm
+            | ExprPrecedence::Mac => PREC_POSTFIX,
 
             // Never need parens
-            ExprPrecedence::Array |
-            ExprPrecedence::Repeat |
-            ExprPrecedence::Tup |
-            ExprPrecedence::Lit |
-            ExprPrecedence::Path |
-            ExprPrecedence::Paren |
-            ExprPrecedence::If |
-            ExprPrecedence::While |
-            ExprPrecedence::ForLoop |
-            ExprPrecedence::Loop |
-            ExprPrecedence::Match |
-            ExprPrecedence::ConstBlock |
-            ExprPrecedence::Block |
-            ExprPrecedence::TryBlock |
-            ExprPrecedence::Async |
-            ExprPrecedence::Struct |
-            ExprPrecedence::Err => PREC_PAREN,
+            ExprPrecedence::Array
+            | ExprPrecedence::Repeat
+            | ExprPrecedence::Tup
+            | ExprPrecedence::Lit
+            | ExprPrecedence::Path
+            | ExprPrecedence::Paren
+            | ExprPrecedence::If
+            | ExprPrecedence::While
+            | ExprPrecedence::ForLoop
+            | ExprPrecedence::Loop
+            | ExprPrecedence::Match
+            | ExprPrecedence::ConstBlock
+            | ExprPrecedence::Block
+            | ExprPrecedence::TryBlock
+            | ExprPrecedence::Async
+            | ExprPrecedence::Struct
+            | ExprPrecedence::Err => PREC_PAREN,
         }
     }
 }
@@ -375,28 +377,28 @@ pub fn needs_par_as_let_scrutinee(order: i8) -> bool {
 /// parens or other delimiters, e.g., `X { y: 1 }`, `X { y: 1 }.method()`, `foo == X { y: 1 }` and
 /// `X { y: 1 } == foo` all do, but `(X { y: 1 }) == foo` does not.
 pub fn contains_exterior_struct_lit(value: &ast::Expr) -> bool {
-    match value.kind {
+    match &value.kind {
         ast::ExprKind::Struct(..) => true,
 
-        ast::ExprKind::Assign(ref lhs, ref rhs, _)
-        | ast::ExprKind::AssignOp(_, ref lhs, ref rhs)
-        | ast::ExprKind::Binary(_, ref lhs, ref rhs) => {
+        ast::ExprKind::Assign(lhs, rhs, _)
+        | ast::ExprKind::AssignOp(_, lhs, rhs)
+        | ast::ExprKind::Binary(_, lhs, rhs) => {
             // X { y: 1 } + X { y: 2 }
-            contains_exterior_struct_lit(&lhs) || contains_exterior_struct_lit(&rhs)
+            contains_exterior_struct_lit(lhs) || contains_exterior_struct_lit(rhs)
         }
-        ast::ExprKind::Await(ref x)
-        | ast::ExprKind::Unary(_, ref x)
-        | ast::ExprKind::Cast(ref x, _)
-        | ast::ExprKind::Type(ref x, _)
-        | ast::ExprKind::Field(ref x, _)
-        | ast::ExprKind::Index(ref x, _) => {
+        ast::ExprKind::Await(x)
+        | ast::ExprKind::Unary(_, x)
+        | ast::ExprKind::Cast(x, _)
+        | ast::ExprKind::Type(x, _)
+        | ast::ExprKind::Field(x, _)
+        | ast::ExprKind::Index(x, _) => {
             // &X { y: 1 }, X { y: 1 }.y
-            contains_exterior_struct_lit(&x)
+            contains_exterior_struct_lit(x)
         }
 
-        ast::ExprKind::MethodCall(.., ref exprs, _) => {
+        ast::ExprKind::MethodCall(box ast::MethodCall { receiver, .. }) => {
             // X { y: 1 }.bar(...)
-            contains_exterior_struct_lit(&exprs[0])
+            contains_exterior_struct_lit(receiver)
         }
 
         _ => false,

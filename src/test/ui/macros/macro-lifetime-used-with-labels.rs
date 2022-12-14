@@ -18,7 +18,7 @@ macro_rules! br {
 }
 macro_rules! br2 {
     ($b:lifetime) => {
-        'b: loop { //~ WARNING `'b` shadows a label name that is already in scope
+        'b: loop {
             break $b; // this $b should refer to the outer loop.
         }
     }

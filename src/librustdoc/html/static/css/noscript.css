@@ -4,7 +4,7 @@ of content is hidden by default (depending on the settings too), we have to over
 rules.
 */
 
-#main .attributes {
+#main-content .attributes {
 	/* Since there is no toggle (the "[-]") when JS is disabled, no need for this margin either. */
 	margin-left: 0 !important;
 }
@@ -14,11 +14,17 @@ rules.
 	display: none;
 }
 
-.sub {
+nav.sub {
 	/* The search bar and related controls don't work without JS */
 	display: none;
 }
 
-#theme-picker {
+.source .sidebar {
+	display: none;
+}
+
+.notable-traits {
+	/* layout requires javascript
+	    https://github.com/rust-lang/rust/issues/102576 */
 	display: none;
 }

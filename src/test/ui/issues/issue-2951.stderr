@@ -6,6 +6,7 @@ LL | fn foo<T, U>(x: T, y: U) {
    |        |
    |        expected type parameter
 LL |     let mut xx = x;
+   |                  - expected due to this value
 LL |     xx = y;
    |          ^ expected type parameter `T`, found type parameter `U`
    |

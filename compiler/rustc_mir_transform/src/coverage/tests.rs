@@ -31,28 +31,17 @@ use super::spans;
 
 use coverage_test_macros::let_bcb;
 
+use itertools::Itertools;
 use rustc_data_structures::graph::WithNumNodes;
 use rustc_data_structures::graph::WithSuccessors;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::coverage::CoverageKind;
 use rustc_middle::mir::*;
-use rustc_middle::ty::{self, DebruijnIndex, TyS, TypeFlags};
+use rustc_middle::ty;
 use rustc_span::{self, BytePos, Pos, Span, DUMMY_SP};
 
 // All `TEMP_BLOCK` targets should be replaced before calling `to_body() -> mir::Body`.
 const TEMP_BLOCK: BasicBlock = BasicBlock::MAX;
-
-fn dummy_ty() -> &'static TyS<'static> {
-    thread_local! {
-        static DUMMY_TYS: &'static TyS<'static> = Box::leak(Box::new(TyS::make_for_test(
-            ty::Bool,
-            TypeFlags::empty(),
-            DebruijnIndex::from_usize(0),
-        )));
-    }
-
-    &DUMMY_TYS.with(|tys| *tys)
-}
 
 struct MockBlocks<'tcx> {
     blocks: IndexVec<BasicBlock, BasicBlockData<'tcx>>,
@@ -95,7 +84,7 @@ impl<'tcx> MockBlocks<'tcx> {
     fn link(&mut self, from_block: BasicBlock, to_block: BasicBlock) {
         match self.blocks[from_block].terminator_mut().kind {
             TerminatorKind::Assert { ref mut target, .. }
-            | TerminatorKind::Call { destination: Some((_, ref mut target)), .. }
+            | TerminatorKind::Call { target: Some(ref mut target), .. }
             | TerminatorKind::Drop { ref mut target, .. }
             | TerminatorKind::DropAndReplace { ref mut target, .. }
             | TerminatorKind::FalseEdge { real_target: ref mut target, .. }
@@ -150,7 +139,8 @@ impl<'tcx> MockBlocks<'tcx> {
             TerminatorKind::Call {
                 func: Operand::Copy(self.dummy_place.clone()),
                 args: vec![],
-                destination: Some((self.dummy_place.clone(), TEMP_BLOCK)),
+                destination: self.dummy_place.clone(),
+                target: Some(TEMP_BLOCK),
                 cleanup: None,
                 from_hir_call: false,
                 fn_span: DUMMY_SP,
@@ -165,7 +155,6 @@ impl<'tcx> MockBlocks<'tcx> {
     fn switchint(&mut self, some_from_block: Option<BasicBlock>) -> BasicBlock {
         let switchint_kind = TerminatorKind::SwitchInt {
             discr: Operand::Move(Place::from(self.new_temp())),
-            switch_ty: dummy_ty(),
             targets: SwitchTargets::static_if(0, TEMP_BLOCK, TEMP_BLOCK),
         };
         self.add_block_from(some_from_block, switchint_kind)
@@ -180,11 +169,11 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 }
 
-fn debug_basic_blocks(mir_body: &Body<'tcx>) -> String {
+fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
     format!(
         "{:?}",
         mir_body
-            .basic_blocks()
+            .basic_blocks
             .iter_enumerated()
             .map(|(bb, data)| {
                 let term = &data.terminator();
@@ -193,7 +182,7 @@ fn debug_basic_blocks(mir_body: &Body<'tcx>) -> String {
                 let sp = format!("(span:{},{})", span.lo().to_u32(), span.hi().to_u32());
                 match kind {
                     TerminatorKind::Assert { target, .. }
-                    | TerminatorKind::Call { destination: Some((_, target)), .. }
+                    | TerminatorKind::Call { target: Some(target), .. }
                     | TerminatorKind::Drop { target, .. }
                     | TerminatorKind::DropAndReplace { target, .. }
                     | TerminatorKind::FalseEdge { real_target: target, .. }
@@ -221,7 +210,7 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
             "digraph {} {{\n{}\n}}",
             name,
             mir_body
-                .basic_blocks()
+                .basic_blocks
                 .iter_enumerated()
                 .map(|(bb, data)| {
                     format!(
@@ -230,13 +219,12 @@ fn print_mir_graphviz(name: &str, mir_body: &Body<'_>) {
                         bb,
                         debug::term_type(&data.terminator().kind),
                         mir_body
+                            .basic_blocks
                             .successors(bb)
                             .map(|successor| { format!("    {:?} -> {:?};", bb, successor) })
-                            .collect::<Vec<_>>()
                             .join("\n")
                     )
                 })
-                .collect::<Vec<_>>()
                 .join("\n")
         );
     }
@@ -262,18 +250,16 @@ fn print_coverage_graphviz(
                         basic_coverage_blocks
                             .successors(bcb)
                             .map(|successor| { format!("    {:?} -> {:?};", bcb, successor) })
-                            .collect::<Vec<_>>()
                             .join("\n")
                     )
                 })
-                .collect::<Vec<_>>()
                 .join("\n")
         );
     }
 }
 
 /// Create a mock `Body` with a simple flow.
-fn goto_switchint() -> Body<'a> {
+fn goto_switchint<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let goto = blocks.goto(Some(start));
@@ -363,7 +349,7 @@ fn test_covgraph_goto_switchint() {
 }
 
 /// Create a mock `Body` with a loop.
-fn switchint_then_loop_else_return() -> Body<'a> {
+fn switchint_then_loop_else_return<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let switchint = blocks.switchint(Some(start));
@@ -449,7 +435,7 @@ fn test_covgraph_switchint_then_loop_else_return() {
 }
 
 /// Create a mock `Body` with nested loops.
-fn switchint_loop_then_inner_loop_else_break() -> Body<'a> {
+fn switchint_loop_then_inner_loop_else_break<'a>() -> Body<'a> {
     let mut blocks = MockBlocks::new();
     let start = blocks.call(None);
     let switchint = blocks.switchint(Some(start));
@@ -664,7 +650,7 @@ fn test_traverse_coverage_with_loops() {
 
 fn synthesize_body_span_from_terminators(mir_body: &Body<'_>) -> Span {
     let mut some_span: Option<Span> = None;
-    for (_, data) in mir_body.basic_blocks().iter_enumerated() {
+    for (_, data) in mir_body.basic_blocks.iter_enumerated() {
         let term_span = data.terminator().source_info.span;
         if let Some(span) = some_span.as_mut() {
             *span = span.to(term_span);

@@ -2,7 +2,6 @@
 
 #![crate_type="lib"]
 #![allow(unreachable_patterns)]
-#![feature(const_fn_union)]
 
 #[derive(PartialEq, Eq)]
 #[repr(transparent)]

@@ -47,7 +47,6 @@
 // gdbg-check:$15 = {data_ptr = [...] "Hello, World!", length = 13}
 // gdbr-check:$15 = "Hello, World!"
 
-
 // === LLDB TESTS ==================================================================================
 
 // lldb-command:run
@@ -96,7 +95,6 @@
 // lldbg-check:[...]$12 = 3.5
 // lldbr-check:(f64) f64 = 3.5
 
-
 // === CDB TESTS ===================================================================================
 
 // cdb-command:g
@@ -104,7 +102,8 @@
 // cdb-check:b                : false [Type: bool]
 // cdb-command:dx i
 // cdb-check:i                : -1 [Type: [...]]
-// The variable 'c' doesn't appear for some reason...
+// cdb-command:dx c
+// cdb-check:c                : 0x61 'a' [Type: char32_t]
 // cdb-command:dx i8
 // cdb-check:i8               : 68 [Type: char]
 // cdb-command:dx i16
@@ -130,7 +129,7 @@
 // cdb-command:.enable_unicode 1
 // FIXME(#88840): The latest version of the Windows SDK broke the visualizer for str.
 // cdb-command:dx  s
-// cdb-check:s                : [...] [Type: str]
+// cdb-check:s                : [...] [Type: ref$<str$>]
 
 #![allow(unused_variables)]
 #![feature(omit_gdb_pretty_printer_section)]
@@ -155,4 +154,6 @@ fn main() {
     _zzz(); // #break
 }
 
-fn _zzz() {()}
+fn _zzz() {
+    ()
+}

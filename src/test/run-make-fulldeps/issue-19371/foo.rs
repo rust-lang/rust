@@ -5,7 +5,6 @@ extern crate rustc_driver;
 extern crate rustc_session;
 extern crate rustc_span;
 
-use rustc_session::DiagnosticOutput;
 use rustc_session::config::{Input, Options, OutputType, OutputTypes};
 use rustc_interface::interface;
 use rustc_span::source_map::FileName;
@@ -49,13 +48,12 @@ fn compile(code: String, output: PathBuf, sysroot: PathBuf) {
     let config = interface::Config {
         opts,
         crate_cfg: Default::default(),
+        crate_check_cfg: Default::default(),
         input,
         input_path: None,
         output_file: Some(output),
         output_dir: None,
         file_loader: None,
-        diagnostic_output: DiagnosticOutput::Default,
-        stderr: None,
         lint_caps: Default::default(),
         parse_sess_created: None,
         register_lints: None,

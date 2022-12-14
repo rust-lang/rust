@@ -16,14 +16,13 @@ pub fn expand_option_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let var = match get_single_str_from_tts(cx, sp, tts, "option_env!") {
-        None => return DummyResult::any(sp),
-        Some(v) => v,
+    let Some(var) = get_single_str_from_tts(cx, sp, tts, "option_env!") else {
+        return DummyResult::any(sp);
     };
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(&var.as_str()).ok().as_deref().map(Symbol::intern);
-    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((Symbol::intern(&var), value));
+    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
+    cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
             let lt = cx.lifetime(sp, Ident::new(kw::StaticLifetime, sp));
@@ -53,8 +52,8 @@ pub fn expand_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
-        Some(ref exprs) if exprs.is_empty() => {
+    let mut exprs = match get_exprs_from_tts(cx, tts) {
+        Some(exprs) if exprs.is_empty() => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::any(sp);
         }
@@ -62,9 +61,8 @@ pub fn expand_env<'cx>(
         Some(exprs) => exprs.into_iter(),
     };
 
-    let var = match expr_to_string(cx, exprs.next().unwrap(), "expected string literal") {
-        None => return DummyResult::any(sp),
-        Some((v, _style)) => v,
+    let Some((var, _style)) = expr_to_string(cx, exprs.next().unwrap(), "expected string literal") else {
+        return DummyResult::any(sp);
     };
     let msg = match exprs.next() {
         None => Symbol::intern(&format!("environment variable `{}` not defined", var)),
@@ -80,11 +78,11 @@ pub fn expand_env<'cx>(
     }
 
     let sp = cx.with_def_site_ctxt(sp);
-    let value = env::var(&*var.as_str()).ok().as_deref().map(Symbol::intern);
+    let value = env::var(var.as_str()).ok().as_deref().map(Symbol::intern);
     cx.sess.parse_sess.env_depinfo.borrow_mut().insert((var, value));
     let e = match value {
         None => {
-            cx.span_err(sp, &msg.as_str());
+            cx.span_err(sp, msg.as_str());
             return DummyResult::any(sp);
         }
         Some(value) => cx.expr_str(sp, value),

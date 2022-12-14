@@ -28,24 +28,14 @@ impl<'buf, 'state> PadAdapter<'buf, 'state> {
 }
 
 impl fmt::Write for PadAdapter<'_, '_> {
-    fn write_str(&mut self, mut s: &str) -> fmt::Result {
-        while !s.is_empty() {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for s in s.split_inclusive('\n') {
             if self.state.on_newline {
                 self.buf.write_str("    ")?;
             }
 
-            let split = match s.find('\n') {
-                Some(pos) => {
-                    self.state.on_newline = true;
-                    pos + 1
-                }
-                None => {
-                    self.state.on_newline = false;
-                    s.len()
-                }
-            };
-            self.buf.write_str(&s[..split])?;
-            s = &s[split..];
+            self.state.on_newline = s.ends_with('\n');
+            self.buf.write_str(s)?;
         }
 
         Ok(())
@@ -138,7 +128,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 }
                 let mut slot = None;
                 let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
                 writer.write_str(name)?;
                 writer.write_str(": ")?;
                 value.fmt(&mut writer)?;
@@ -189,7 +179,7 @@ impl<'a, 'b: 'a> DebugStruct<'a, 'b> {
                 if self.is_pretty() {
                     let mut slot = None;
                     let mut state = Default::default();
-                    let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                    let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
                     writer.write_str("..\n")?;
                     self.fmt.write_str("}")
                 } else {
@@ -323,7 +313,7 @@ impl<'a, 'b: 'a> DebugTuple<'a, 'b> {
                 }
                 let mut slot = None;
                 let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
                 value.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
@@ -394,7 +384,7 @@ impl<'a, 'b: 'a> DebugInner<'a, 'b> {
                 }
                 let mut slot = None;
                 let mut state = Default::default();
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut state);
+                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut state);
                 entry.fmt(&mut writer)?;
                 writer.write_str(",\n")
             } else {
@@ -789,7 +779,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
                 }
                 let mut slot = None;
                 self.state = Default::default();
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut self.state);
+                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
                 key.fmt(&mut writer)?;
                 writer.write_str(": ")?;
             } else {
@@ -845,7 +835,7 @@ impl<'a, 'b: 'a> DebugMap<'a, 'b> {
 
             if self.is_pretty() {
                 let mut slot = None;
-                let mut writer = PadAdapter::wrap(&mut self.fmt, &mut slot, &mut self.state);
+                let mut writer = PadAdapter::wrap(self.fmt, &mut slot, &mut self.state);
                 value.fmt(&mut writer)?;
                 writer.write_str(",\n")?;
             } else {

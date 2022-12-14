@@ -1,5 +1,3 @@
-use std::convert::{TryFrom, TryInto};
-
 use rustc_data_structures::fx::FxHashMap;
 
 use cranelift_module::FuncId;

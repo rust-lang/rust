@@ -1,0 +1,31 @@
+error: expected identifier, found reserved identifier `_`
+  --> $DIR/issue-91461.rs:2:7
+   |
+LL |     a(_:b:,)
+   |       ^ expected identifier, found reserved identifier
+
+error: expected type, found `,`
+  --> $DIR/issue-91461.rs:2:11
+   |
+LL |     a(_:b:,)
+   |     -    -^ expected type
+   |     |    |
+   |     |    tried to parse a type due to this type ascription
+   |     while parsing this struct
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+
+error: expected type, found `,`
+  --> $DIR/issue-91461.rs:2:11
+   |
+LL |     a(_:b:,)
+   |          -^ expected type
+   |          |
+   |          tried to parse a type due to this type ascription
+   |
+   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
+   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
+
+error: aborting due to 3 previous errors
+

@@ -8,6 +8,8 @@ LL |         vec
 ...
 LL |     Box::new(closure)
    |     ----------------- the requirement to implement `Fn` derives from here
+   |
+   = note: required for the cast from `[closure@$DIR/issue-26046-fn-once.rs:4:19: 4:26]` to the object type `dyn Fn() -> Vec<u8>`
 
 error: aborting due to previous error
 

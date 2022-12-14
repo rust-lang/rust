@@ -6,8 +6,8 @@ LL |     match &s {
 LL |             "abc" => true,
    |             ^^^^^ expected `&str`, found `str`
    |
-   = note:   expected type `&&str`
-           found reference `&'static str`
+   = note: expected reference `&&str`
+              found reference `&'static str`
 
 error[E0308]: mismatched types
   --> $DIR/lit.rs:16:9
@@ -17,8 +17,8 @@ LL |     match &s {
 LL |         b"abc" => true,
    |         ^^^^^^ expected `&[u8]`, found array `[u8; 3]`
    |
-   = note:   expected type `&&[u8]`
-           found reference `&'static [u8; 3]`
+   = note: expected reference `&&[u8]`
+              found reference `&'static [u8; 3]`
 
 error: aborting due to 2 previous errors
 

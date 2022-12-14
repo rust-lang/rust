@@ -7,13 +7,13 @@ LL | | /// let heart = '❤️';
 LL | | /// ```
    | |_______^
    |
-   = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 help: `ignore` code blocks require valid Rust code for syntax highlighting; mark blocks that do not contain Rust code as text: ```text
   --> $DIR/ignore-block-help.rs:3:5
    |
 LL | /// ```ignore (to-prevent-tidy-error)
    |     ^^^
    = note: error from rustc: character literal may only contain one codepoint
+   = note: `#[warn(rustdoc::invalid_rust_codeblocks)]` on by default
 
 warning: 1 warning emitted
 

@@ -6,6 +6,11 @@ LL | fn test_func1(n: i32) -> i32 {
 LL |     match n {
 LL |         12 => 'b',
    |               ^^^ expected `i32`, found `char`
+   |
+help: you can cast a `char` to an `i32`, since a `char` always occupies 4 bytes
+   |
+LL |         12 => 'b' as i32,
+   |                   ++++++
 
 error[E0308]: `match` arms have incompatible types
   --> $DIR/match-type-err-first-arm.rs:18:14

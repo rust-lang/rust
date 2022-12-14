@@ -36,20 +36,19 @@ mod canonicalizer;
 pub mod query_response;
 mod substitute;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Creates a substitution S for the canonical value with fresh
     /// inference variables and applies it to the canonical value.
     /// Returns both the instantiated result *and* the substitution S.
     ///
-    /// This is only meant to be invoked as part of constructing an
+    /// This can be invoked as part of constructing an
     /// inference context at the start of a query (see
-    /// `InferCtxtBuilder::enter_with_canonical`). It basically
+    /// `InferCtxtBuilder::build_with_canonical`). It basically
     /// brings the canonical value "into scope" within your new infcx.
     ///
     /// At the end of processing, the substitution S (once
     /// canonicalized) then represents the values that you computed
     /// for each of the canonical inputs to your query.
-
     pub fn instantiate_canonical_with_fresh_inference_vars<T>(
         &self,
         span: Span,
@@ -64,8 +63,11 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         // in them, so this code has no effect, but it is looking
         // forward to the day when we *do* want to carry universes
         // through into queries.
-        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(ty::UniverseIndex::ROOT)
-            .chain((0..canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
+        //
+        // Instantiate the root-universe content into the current universe,
+        // and create fresh universes for the higher universes.
+        let universes: IndexVec<ty::UniverseIndex, _> = std::iter::once(self.universe())
+            .chain((1..=canonical.max_universe.as_u32()).map(|_| self.create_next_universe()))
             .collect();
 
         let canonical_inference_vars =
@@ -137,26 +139,18 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 self.tcx.mk_region(ty::RePlaceholder(placeholder_mapped)).into()
             }
 
-            CanonicalVarKind::Const(ui) => self
+            CanonicalVarKind::Const(ui, ty) => self
                 .next_const_var_in_universe(
-                    self.next_ty_var_in_universe(
-                        TypeVariableOrigin { kind: TypeVariableOriginKind::MiscVariable, span },
-                        universe_map(ui),
-                    ),
+                    ty,
                     ConstVariableOrigin { kind: ConstVariableOriginKind::MiscVariable, span },
                     universe_map(ui),
                 )
                 .into(),
 
-            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }) => {
+            CanonicalVarKind::PlaceholderConst(ty::PlaceholderConst { universe, name }, ty) => {
                 let universe_mapped = universe_map(universe);
                 let placeholder_mapped = ty::PlaceholderConst { universe: universe_mapped, name };
-                self.tcx
-                    .mk_const(ty::Const {
-                        val: ty::ConstKind::Placeholder(placeholder_mapped),
-                        ty: name.ty,
-                    })
-                    .into()
+                self.tcx.mk_const(placeholder_mapped, ty).into()
             }
         }
     }

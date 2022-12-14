@@ -1,9 +1,12 @@
 // only-x86_64
 // run-pass
+// needs-asm-support
 // revisions: mirunsafeck thirunsafeck
 // [thirunsafeck]compile-flags: -Z thir-unsafeck
 
-#![feature(asm, global_asm)]
+#![feature(asm_const)]
+
+use std::arch::{asm, global_asm};
 
 fn const_generic<const X: usize>() -> usize {
     unsafe {

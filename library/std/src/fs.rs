@@ -13,13 +13,13 @@ mod tests;
 
 use crate::ffi::OsString;
 use crate::fmt;
-use crate::io::{self, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
+use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write};
 use crate::path::{Path, PathBuf};
 use crate::sys::fs as fs_imp;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 use crate::time::SystemTime;
 
-/// A reference to an open file on the filesystem.
+/// An object providing access to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
 /// it was opened with. Files also implement [`Seek`] to alter the logical cursor
@@ -85,6 +85,12 @@ use crate::time::SystemTime;
 /// by different processes. Avoid assuming that holding a `&File` means that the
 /// file will not change.
 ///
+/// # Platform-specific behavior
+///
+/// On Windows, the implementation of [`Read`] and [`Write`] traits for `File`
+/// perform synchronous I/O operations. Therefore the underlying file must not
+/// have been opened for asynchronous I/O (e.g. by using `FILE_FLAG_OVERLAPPED`).
+///
 /// [`BufReader<R>`]: io::BufReader
 /// [`sync_all`]: File::sync_all
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -126,6 +132,16 @@ pub struct ReadDir(fs_imp::ReadDir);
 /// An instance of `DirEntry` represents an entry inside of a directory on the
 /// filesystem. Each entry can be inspected via methods to learn about the full
 /// path or possibly other metadata through per-platform extension traits.
+///
+/// # Platform-specific behavior
+///
+/// On Unix, the `DirEntry` struct contains an internal reference to the open
+/// directory. Holding `DirEntry` objects will consume a file handle even
+/// after the `ReadDir` iterator is dropped.
+///
+/// Note that this [may change in the future][changes].
+///
+/// [changes]: io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct DirEntry(fs_imp::DirEntry);
 
@@ -167,6 +183,11 @@ pub struct DirEntry(fs_imp::DirEntry);
 #[derive(Clone, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct OpenOptions(fs_imp::OpenOptions);
+
+/// Representation of the various timestamps on a file.
+#[derive(Copy, Clone, Debug, Default)]
+#[unstable(feature = "file_set_times", issue = "98245")]
+pub struct FileTimes(fs_imp::FileTimes);
 
 /// Representation of the various permissions on a file.
 ///
@@ -279,6 +300,9 @@ pub fn read_to_string<P: AsRef<Path>>(path: P) -> io::Result<String> {
 /// This function will create a file if it does not exist,
 /// and will entirely replace its contents if it does.
 ///
+/// Depending on the platform, this function may fail if the
+/// full directory path does not exist.
+///
 /// This is a convenience function for using [`File::create`] and [`write_all`]
 /// with fewer imports.
 ///
@@ -333,6 +357,9 @@ impl File {
     /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
     ///
+    /// Depending on the platform, this function may fail if the
+    /// full directory path does not exist.
+    ///
     /// See the [`OpenOptions::open`] function for more details.
     ///
     /// # Examples
@@ -350,15 +377,45 @@ impl File {
         OpenOptions::new().write(true).create(true).truncate(true).open(path.as_ref())
     }
 
+    /// Creates a new file in read-write mode; error if the file exists.
+    ///
+    /// This function will create a file if it does not exist, or return an error if it does. This
+    /// way, if the call succeeds, the file returned is guaranteed to be new.
+    ///
+    /// This option is useful because it is atomic. Otherwise between checking whether a file
+    /// exists and creating a new one, the file may have been created by another process (a TOCTOU
+    /// race condition / attack).
+    ///
+    /// This can also be written using
+    /// `File::options().read(true).write(true).create_new(true).open(...)`.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_create_new)]
+    ///
+    /// use std::fs::File;
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     let mut f = File::create_new("foo.txt")?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_create_new", issue = "105135")]
+    pub fn create_new<P: AsRef<Path>>(path: P) -> io::Result<File> {
+        OpenOptions::new().read(true).write(true).create_new(true).open(path.as_ref())
+    }
+
     /// Returns a new OpenOptions object.
     ///
     /// This function returns a new OpenOptions object that you can use to
     /// open or create a file with specific options if `open()` or `create()`
     /// are not appropriate.
     ///
-    /// It is equivalent to `OpenOptions::new()` but allows you to write more
-    /// readable code. Instead of `OpenOptions::new().read(true).open("foo.txt")`
-    /// you can write `File::with_options().read(true).open("foo.txt")`. This
+    /// It is equivalent to `OpenOptions::new()`, but allows you to write more
+    /// readable code. Instead of
+    /// `OpenOptions::new().append(true).open("example.log")`,
+    /// you can write `File::options().append(true).open("example.log")`. This
     /// also avoids the need to import `OpenOptions`.
     ///
     /// See the [`OpenOptions::new`] function for more details.
@@ -366,17 +423,16 @@ impl File {
     /// # Examples
     ///
     /// ```no_run
-    /// #![feature(with_options)]
     /// use std::fs::File;
     ///
     /// fn main() -> std::io::Result<()> {
-    ///     let mut f = File::with_options().read(true).open("foo.txt")?;
+    ///     let mut f = File::options().append(true).open("example.log")?;
     ///     Ok(())
     /// }
     /// ```
     #[must_use]
-    #[unstable(feature = "with_options", issue = "65439")]
-    pub fn with_options() -> OpenOptions {
+    #[stable(feature = "with_options", since = "1.58.0")]
+    pub fn options() -> OpenOptions {
         OpenOptions::new()
     }
 
@@ -454,8 +510,9 @@ impl File {
     /// # Errors
     ///
     /// This function will return an error if the file is not opened for writing.
-    /// Also, std::io::ErrorKind::InvalidInput will be returned if the desired
-    /// length would cause an overflow due to the implementation specifics.
+    /// Also, [`std::io::ErrorKind::InvalidInput`](crate::io::ErrorKind::InvalidInput)
+    /// will be returned if the desired length would cause an overflow due to
+    /// the implementation specifics.
     ///
     /// # Examples
     ///
@@ -574,6 +631,58 @@ impl File {
     pub fn set_permissions(&self, perm: Permissions) -> io::Result<()> {
         self.inner.set_permissions(perm.0)
     }
+
+    /// Changes the timestamps of the underlying file.
+    ///
+    /// # Platform-specific behavior
+    ///
+    /// This function currently corresponds to the `futimens` function on Unix (falling back to
+    /// `futimes` on macOS before 10.13) and the `SetFileTime` function on Windows. Note that this
+    /// [may change in the future][changes].
+    ///
+    /// [changes]: io#platform-specific-behavior
+    ///
+    /// # Errors
+    ///
+    /// This function will return an error if the user lacks permission to change timestamps on the
+    /// underlying file. It may also return an error in other os-specific unspecified cases.
+    ///
+    /// This function may return an error if the operating system lacks support to change one or
+    /// more of the timestamps set in the `FileTimes` structure.
+    ///
+    /// # Examples
+    ///
+    /// ```no_run
+    /// #![feature(file_set_times)]
+    ///
+    /// fn main() -> std::io::Result<()> {
+    ///     use std::fs::{self, File, FileTimes};
+    ///
+    ///     let src = fs::metadata("src")?;
+    ///     let dest = File::options().write(true).open("dest")?;
+    ///     let times = FileTimes::new()
+    ///         .set_accessed(src.accessed()?)
+    ///         .set_modified(src.modified()?);
+    ///     dest.set_times(times)?;
+    ///     Ok(())
+    /// }
+    /// ```
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[doc(alias = "futimens")]
+    #[doc(alias = "futimes")]
+    #[doc(alias = "SetFileTime")]
+    pub fn set_times(&self, times: FileTimes) -> io::Result<()> {
+        self.inner.set_times(times.0)
+    }
+
+    /// Changes the modification time of the underlying file.
+    ///
+    /// This is an alias for `set_times(FileTimes::new().set_modified(time))`.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    #[inline]
+    pub fn set_modified(&self, time: SystemTime) -> io::Result<()> {
+        self.set_times(FileTimes::new().set_modified(time))
+    }
 }
 
 // In addition to the `impl`s here, `File` also has `impl`s for
@@ -624,15 +733,13 @@ impl Read for File {
         self.inner.read_vectored(bufs)
     }
 
-    #[inline]
-    fn is_read_vectored(&self) -> bool {
-        self.inner.is_read_vectored()
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
     }
 
     #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
+    fn is_read_vectored(&self) -> bool {
+        self.inner.is_read_vectored()
     }
 
     // Reserves space in the buffer based on the file size when available.
@@ -678,6 +785,10 @@ impl Read for &File {
         self.inner.read(buf)
     }
 
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        self.inner.read_buf(cursor)
+    }
+
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         self.inner.read_vectored(bufs)
     }
@@ -685,12 +796,6 @@ impl Read for &File {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        // SAFETY: Read is guaranteed to work on uninitialized memory
-        unsafe { Initializer::nop() }
     }
 
     // Reserves space in the buffer based on the file size when available.
@@ -1054,7 +1159,7 @@ impl Metadata {
     ///
     /// fn main() -> std::io::Result<()> {
     ///     let link_path = Path::new("link");
-    ///     symlink("/origin_does_not_exists/", link_path)?;
+    ///     symlink("/origin_does_not_exist/", link_path)?;
     ///
     ///     let metadata = fs::symlink_metadata(link_path)?;
     ///
@@ -1063,7 +1168,7 @@ impl Metadata {
     /// }
     /// ```
     #[must_use]
-    #[stable(feature = "is_symlink", since = "1.57.0")]
+    #[stable(feature = "is_symlink", since = "1.58.0")]
     pub fn is_symlink(&self) -> bool {
         self.file_type().is_symlink()
     }
@@ -1127,7 +1232,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.modified() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform");
     ///     }
@@ -1162,7 +1267,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.accessed() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform");
     ///     }
@@ -1194,7 +1299,7 @@ impl Metadata {
     ///     let metadata = fs::metadata("foo.txt")?;
     ///
     ///     if let Ok(time) = metadata.created() {
-    ///         println!("{:?}", time);
+    ///         println!("{time:?}");
     ///     } else {
     ///         println!("Not supported on this platform or filesystem");
     ///     }
@@ -1234,8 +1339,60 @@ impl FromInner<fs_imp::FileAttr> for Metadata {
     }
 }
 
+impl FileTimes {
+    /// Create a new `FileTimes` with no times set.
+    ///
+    /// Using the resulting `FileTimes` in [`File::set_times`] will not modify any timestamps.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the last access time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_accessed(mut self, t: SystemTime) -> Self {
+        self.0.set_accessed(t.into_inner());
+        self
+    }
+
+    /// Set the last modified time of a file.
+    #[unstable(feature = "file_set_times", issue = "98245")]
+    pub fn set_modified(mut self, t: SystemTime) -> Self {
+        self.0.set_modified(t.into_inner());
+        self
+    }
+}
+
 impl Permissions {
     /// Returns `true` if these permissions describe a readonly (unwritable) file.
+    ///
+    /// # Note
+    ///
+    /// This function does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this returns [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then writes may still fail due
+    /// to lack of write permission.
+    /// The behavior of this attribute for directories depends on the Windows
+    /// version.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this checks if *any* of the owner, group or others
+    /// write permission bits are set. It does not check if the current
+    /// user is in the file's assigned group. It also does not check ACLs.
+    /// Therefore even if this returns true you may not be able to write to the
+    /// file, and vice versa. The [`PermissionsExt`] trait gives direct access
+    /// to the permission bits but also does not read ACLs. If you need to
+    /// accurately know whether or not a file is writable use the `access()`
+    /// function from libc.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
     /// # Examples
     ///
@@ -1262,8 +1419,40 @@ impl Permissions {
     /// using the resulting `Permission` will update file permissions to allow
     /// writing.
     ///
-    /// This operation does **not** modify the filesystem. To modify the
-    /// filesystem use the [`set_permissions`] function.
+    /// This operation does **not** modify the files attributes. This only
+    /// changes the in-memory value of these attributes for this `Permissions`
+    /// instance. To modify the files attributes use the [`set_permissions`]
+    /// function which commits these attribute changes to the file.
+    ///
+    /// # Note
+    ///
+    /// `set_readonly(false)` makes the file *world-writable* on Unix.
+    /// You can use the [`PermissionsExt`] trait on Unix to avoid this issue.
+    ///
+    /// It also does not take Access Control Lists (ACLs) or Unix group
+    /// membership into account.
+    ///
+    /// # Windows
+    ///
+    /// On Windows this sets or clears [`FILE_ATTRIBUTE_READONLY`](https://docs.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+    /// If `FILE_ATTRIBUTE_READONLY` is set then writes to the file will fail
+    /// but the user may still have permission to change this flag. If
+    /// `FILE_ATTRIBUTE_READONLY` is *not* set then the write may still fail if
+    /// the user does not have permission to write to the file.
+    ///
+    /// In Windows 7 and earlier this attribute prevents deleting empty
+    /// directories. It does not prevent modifying the directory contents.
+    /// On later versions of Windows this attribute is ignored for directories.
+    ///
+    /// # Unix (including macOS)
+    ///
+    /// On Unix-based platforms this sets or clears the write access bit for
+    /// the owner, group *and* others, equivalent to `chmod a+w <file>`
+    /// or `chmod a-w <file>` respectively. The latter will grant write access
+    /// to all users! You can use the [`PermissionsExt`] trait on Unix
+    /// to avoid this issue.
+    ///
+    /// [`PermissionsExt`]: crate::os::unix::fs::PermissionsExt
     ///
     /// # Examples
     ///
@@ -1277,7 +1466,8 @@ impl Permissions {
     ///
     ///     permissions.set_readonly(true);
     ///
-    ///     // filesystem doesn't change
+    ///     // filesystem doesn't change, only the in memory state of the
+    ///     // readonly permission
     ///     assert_eq!(false, metadata.permissions().readonly());
     ///
     ///     // just this particular `permissions`.
@@ -1608,7 +1798,7 @@ pub fn remove_file<P: AsRef<Path>>(path: P) -> io::Result<()> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `stat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows.
+/// and the `GetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -1642,7 +1832,7 @@ pub fn metadata<P: AsRef<Path>>(path: P) -> io::Result<Metadata> {
 /// # Platform-specific behavior
 ///
 /// This function currently corresponds to the `lstat` function on Unix
-/// and the `GetFileAttributesEx` function on Windows.
+/// and the `GetFileInformationByHandle` function on Windows.
 /// Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
@@ -1733,11 +1923,17 @@ pub fn rename<P: AsRef<Path>, Q: AsRef<Path>>(from: P, to: Q) -> io::Result<()> 
 /// This function currently corresponds to the `open` function in Unix
 /// with `O_RDONLY` for `from` and `O_WRONLY`, `O_CREAT`, and `O_TRUNC` for `to`.
 /// `O_CLOEXEC` is set for returned file descriptors.
+///
+/// On Linux (including Android), this function attempts to use `copy_file_range(2)`,
+/// and falls back to reading and writing if that is not possible.
+///
 /// On Windows, this function currently corresponds to `CopyFileEx`. Alternate
 /// NTFS streams are copied but only the size of the main stream is returned by
-/// this function. On MacOS, this function corresponds to `fclonefileat` and
-/// `fcopyfile`.
-/// Note that, this [may change in the future][changes].
+/// this function.
+///
+/// On MacOS, this function corresponds to `fclonefileat` and `fcopyfile`.
+///
+/// Note that platform-specific behavior [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
 ///
@@ -1833,10 +2029,10 @@ pub fn hard_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Re
 /// }
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
+#[deprecated(
     since = "1.1.0",
-    reason = "replaced with std::os::unix::fs::symlink and \
-              std::os::windows::fs::{symlink_file, symlink_dir}"
+    note = "replaced with std::os::unix::fs::symlink and \
+            std::os::windows::fs::{symlink_file, symlink_dir}"
 )]
 pub fn soft_link<P: AsRef<Path>, Q: AsRef<Path>>(original: P, link: Q) -> io::Result<()> {
     fs_imp::symlink(original.as_ref(), link.as_ref())
@@ -1912,6 +2108,8 @@ pub fn read_link<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
 ///     Ok(())
 /// }
 /// ```
+#[doc(alias = "realpath")]
+#[doc(alias = "GetFinalPathNameByHandle")]
 #[stable(feature = "fs_canonicalize", since = "1.5.0")]
 pub fn canonicalize<P: AsRef<Path>>(path: P) -> io::Result<PathBuf> {
     fs_imp::canonicalize(path.as_ref())
@@ -2046,12 +2244,17 @@ pub fn remove_dir<P: AsRef<Path>>(path: P) -> io::Result<()> {
 ///
 /// # Platform-specific behavior
 ///
-/// This function currently corresponds to `opendir`, `lstat`, `rm` and `rmdir` functions on Unix
-/// and the `FindFirstFile`, `GetFileAttributesEx`, `DeleteFile`, and `RemoveDirectory` functions
-/// on Windows.
-/// Note that, this [may change in the future][changes].
+/// This function currently corresponds to `openat`, `fdopendir`, `unlinkat` and `lstat` functions
+/// on Unix (except for macOS before version 10.10 and REDOX) and the `CreateFileW`,
+/// `GetFileInformationByHandleEx`, `SetFileInformationByHandle`, and `NtCreateFile` functions on
+/// Windows. Note that, this [may change in the future][changes].
 ///
 /// [changes]: io#platform-specific-behavior
+///
+/// On macOS before version 10.10 and REDOX, as well as when running in Miri for any target, this
+/// function is not protected against time-of-check to time-of-use (TOCTOU) race conditions, and
+/// should not be used in security-sensitive code on those platforms. All other platforms are
+/// protected.
 ///
 /// # Errors
 ///
@@ -2263,9 +2466,9 @@ impl DirBuilder {
         match path.parent() {
             Some(p) => self.create_dir_all(p)?,
             None => {
-                return Err(io::Error::new_const(
+                return Err(io::const_io_error!(
                     io::ErrorKind::Uncategorized,
-                    &"failed to create whole tree",
+                    "failed to create whole tree",
                 ));
             }
         }
@@ -2288,22 +2491,28 @@ impl AsInnerMut<fs_imp::DirBuilder> for DirBuilder {
 /// This function will traverse symbolic links to query information about the
 /// destination file. In case of broken symbolic links this will return `Ok(false)`.
 ///
-/// As opposed to the `exists()` method, this one doesn't silently ignore errors
+/// As opposed to the [`Path::exists`] method, this one doesn't silently ignore errors
 /// unrelated to the path not existing. (E.g. it will return `Err(_)` in case of permission
 /// denied on some of the parent directories.)
+///
+/// Note that while this avoids some pitfalls of the `exists()` method, it still can not
+/// prevent time-of-check to time-of-use (TOCTOU) bugs. You should only use it in scenarios
+/// where those bugs are not an issue.
 ///
 /// # Examples
 ///
 /// ```no_run
-/// #![feature(path_try_exists)]
+/// #![feature(fs_try_exists)]
 /// use std::fs;
 ///
 /// assert!(!fs::try_exists("does_not_exist.txt").expect("Can't check existence of file does_not_exist.txt"));
 /// assert!(fs::try_exists("/root/secret_file.txt").is_err());
 /// ```
+///
+/// [`Path::exists`]: crate::path::Path::exists
 // FIXME: stabilization should modify documentation of `exists()` to recommend this method
 // instead.
-#[unstable(feature = "path_try_exists", issue = "83186")]
+#[unstable(feature = "fs_try_exists", issue = "83186")]
 #[inline]
 pub fn try_exists<P: AsRef<Path>>(path: P) -> io::Result<bool> {
     fs_imp::try_exists(path.as_ref())

@@ -25,9 +25,8 @@ of the reference because the backing allocation of the vector does not change.
 This library enables this safe usage by keeping the owner and the reference
 bundled together in a wrapper type that ensure that lifetime constraint:
 
-```rust
-# extern crate owning_ref;
-# use owning_ref::OwningRef;
+```
+# use rustc_data_structures::owning_ref::OwningRef;
 # fn main() {
 fn return_owned_and_referenced() -> OwningRef<Vec<u8>, [u8]> {
     let v = vec![1, 2, 3, 4];
@@ -56,8 +55,7 @@ See the documentation around `OwningHandle` for more details.
 ## Basics
 
 ```
-extern crate owning_ref;
-use owning_ref::BoxRef;
+use rustc_data_structures::owning_ref::BoxRef;
 
 fn main() {
     // Create an array owned by a Box.
@@ -78,8 +76,7 @@ fn main() {
 ## Caching a reference to a struct field
 
 ```
-extern crate owning_ref;
-use owning_ref::BoxRef;
+use rustc_data_structures::owning_ref::BoxRef;
 
 fn main() {
     struct Foo {
@@ -106,8 +103,7 @@ fn main() {
 ## Caching a reference to an entry in a vector
 
 ```
-extern crate owning_ref;
-use owning_ref::VecRef;
+use rustc_data_structures::owning_ref::VecRef;
 
 fn main() {
     let v = VecRef::new(vec![1, 2, 3, 4, 5]).map(|v| &v[3]);
@@ -118,8 +114,7 @@ fn main() {
 ## Caching a subslice of a String
 
 ```
-extern crate owning_ref;
-use owning_ref::StringRef;
+use rustc_data_structures::owning_ref::StringRef;
 
 fn main() {
     let s = StringRef::new("hello world".to_owned())
@@ -132,8 +127,7 @@ fn main() {
 ## Reference counted slices that share ownership of the backing storage
 
 ```
-extern crate owning_ref;
-use owning_ref::RcRef;
+use rustc_data_structures::owning_ref::RcRef;
 use std::rc::Rc;
 
 fn main() {
@@ -155,8 +149,7 @@ fn main() {
 ## Atomic reference counted slices that share ownership of the backing storage
 
 ```
-extern crate owning_ref;
-use owning_ref::ArcRef;
+use rustc_data_structures::owning_ref::ArcRef;
 use std::sync::Arc;
 
 fn main() {
@@ -188,8 +181,7 @@ fn main() {
 ## References into RAII locks
 
 ```
-extern crate owning_ref;
-use owning_ref::RefRef;
+use rustc_data_structures::owning_ref::RefRef;
 use std::cell::{RefCell, Ref};
 
 fn main() {
@@ -219,8 +211,7 @@ When the owned container implements `DerefMut`, it is also possible to make
 a _mutable owning reference_. (e.g., with `Box`, `RefMut`, `MutexGuard`)
 
 ```
-extern crate owning_ref;
-use owning_ref::RefMutRefMut;
+use rustc_data_structures::owning_ref::RefMutRefMut;
 use std::cell::{RefCell, RefMut};
 
 fn main() {
@@ -326,8 +317,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRef;
+    /// use rustc_data_structures::owning_ref::OwningRef;
     ///
     /// fn main() {
     ///     let owning_ref = OwningRef::new(Box::new(42));
@@ -362,8 +352,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRef;
+    /// use rustc_data_structures::owning_ref::OwningRef;
     ///
     /// fn main() {
     ///     let owning_ref = OwningRef::new(Box::new([1, 2, 3, 4]));
@@ -390,8 +379,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRef;
+    /// use rustc_data_structures::owning_ref::OwningRef;
     ///
     /// fn main() {
     ///     let owning_ref = OwningRef::new(Box::new([1, 2, 3, 4]));
@@ -441,8 +429,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::{OwningRef, Erased};
+    /// use rustc_data_structures::owning_ref::{OwningRef, Erased};
     ///
     /// fn main() {
     ///     // N.B., using the concrete types here for explicitness.
@@ -460,7 +447,7 @@ impl<O, T: ?Sized> OwningRef<O, T> {
     ///     let owning_ref_b: OwningRef<Box<Vec<(i32, bool)>>, i32>
     ///         = owning_ref_b.map(|a| &a[1].0);
     ///
-    ///     let owning_refs: [OwningRef<Box<Erased>, i32>; 2]
+    ///     let owning_refs: [OwningRef<Box<dyn Erased>, i32>; 2]
     ///         = [owning_ref_a.erase_owner(), owning_ref_b.erase_owner()];
     ///
     ///     assert_eq!(*owning_refs[0], 1);
@@ -516,8 +503,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRefMut;
+    /// use rustc_data_structures::owning_ref::OwningRefMut;
     ///
     /// fn main() {
     ///     let owning_ref_mut = OwningRefMut::new(Box::new(42));
@@ -552,8 +538,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRefMut;
+    /// use rustc_data_structures::owning_ref::OwningRefMut;
     ///
     /// fn main() {
     ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
@@ -580,8 +565,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRefMut;
+    /// use rustc_data_structures::owning_ref::OwningRefMut;
     ///
     /// fn main() {
     ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
@@ -608,8 +592,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRefMut;
+    /// use rustc_data_structures::owning_ref::OwningRefMut;
     ///
     /// fn main() {
     ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
@@ -638,8 +621,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::OwningRefMut;
+    /// use rustc_data_structures::owning_ref::OwningRefMut;
     ///
     /// fn main() {
     ///     let owning_ref_mut = OwningRefMut::new(Box::new([1, 2, 3, 4]));
@@ -689,8 +671,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///
     /// # Example
     /// ```
-    /// extern crate owning_ref;
-    /// use owning_ref::{OwningRefMut, Erased};
+    /// use rustc_data_structures::owning_ref::{OwningRefMut, Erased};
     ///
     /// fn main() {
     ///     // N.B., using the concrete types here for explicitness.
@@ -708,7 +689,7 @@ impl<O, T: ?Sized> OwningRefMut<O, T> {
     ///     let owning_ref_mut_b: OwningRefMut<Box<Vec<(i32, bool)>>, i32>
     ///         = owning_ref_mut_b.map_mut(|a| &mut a[1].0);
     ///
-    ///     let owning_refs_mut: [OwningRefMut<Box<Erased>, i32>; 2]
+    ///     let owning_refs_mut: [OwningRefMut<Box<dyn Erased>, i32>; 2]
     ///         = [owning_ref_mut_a.erase_owner(), owning_ref_mut_b.erase_owner()];
     ///
     ///     assert_eq!(*owning_refs_mut[0], 1);
@@ -886,11 +867,9 @@ where
 /////////////////////////////////////////////////////////////////////////////
 
 use std::borrow::Borrow;
-use std::cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
-use std::convert::From;
+use std::cmp::Ordering;
 use std::fmt::{self, Debug};
 use std::hash::{Hash, Hasher};
-use std::marker::{Send, Sync};
 
 impl<O, T: ?Sized> Deref for OwningRef<O, T> {
     type Target = T;
@@ -918,25 +897,25 @@ unsafe impl<O, T: ?Sized> StableAddress for OwningRef<O, T> {}
 
 impl<O, T: ?Sized> AsRef<T> for OwningRef<O, T> {
     fn as_ref(&self) -> &T {
-        &*self
+        self
     }
 }
 
 impl<O, T: ?Sized> AsRef<T> for OwningRefMut<O, T> {
     fn as_ref(&self) -> &T {
-        &*self
+        self
     }
 }
 
 impl<O, T: ?Sized> AsMut<T> for OwningRefMut<O, T> {
     fn as_mut(&mut self) -> &mut T {
-        &mut *self
+        self
     }
 }
 
 impl<O, T: ?Sized> Borrow<T> for OwningRef<O, T> {
     fn borrow(&self) -> &T {
-        &*self
+        self
     }
 }
 
@@ -1040,7 +1019,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        (&*self as &T).eq(&*other as &T)
+        self.deref().eq(other.deref())
     }
 }
 
@@ -1051,7 +1030,7 @@ where
     T: PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (&*self as &T).partial_cmp(&*other as &T)
+        self.deref().partial_cmp(other.deref())
     }
 }
 
@@ -1060,7 +1039,7 @@ where
     T: Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        (&*self as &T).cmp(&*other as &T)
+        self.deref().cmp(other.deref())
     }
 }
 
@@ -1069,7 +1048,7 @@ where
     T: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&*self as &T).hash(state);
+        self.deref().hash(state);
     }
 }
 
@@ -1078,7 +1057,7 @@ where
     T: PartialEq,
 {
     fn eq(&self, other: &Self) -> bool {
-        (&*self as &T).eq(&*other as &T)
+        self.deref().eq(other.deref())
     }
 }
 
@@ -1089,7 +1068,7 @@ where
     T: PartialOrd,
 {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        (&*self as &T).partial_cmp(&*other as &T)
+        self.deref().partial_cmp(other.deref())
     }
 }
 
@@ -1098,7 +1077,7 @@ where
     T: Ord,
 {
     fn cmp(&self, other: &Self) -> Ordering {
-        (&*self as &T).cmp(&*other as &T)
+        self.deref().cmp(other.deref())
     }
 }
 
@@ -1107,7 +1086,7 @@ where
     T: Hash,
 {
     fn hash<H: Hasher>(&self, state: &mut H) {
-        (&*self as &T).hash(state);
+        self.deref().hash(state);
     }
 }
 
@@ -1115,7 +1094,6 @@ where
 // std types integration and convenience type defs
 /////////////////////////////////////////////////////////////////////////////
 
-use std::boxed::Box;
 use std::cell::{Ref, RefCell, RefMut};
 use std::rc::Rc;
 use std::sync::Arc;

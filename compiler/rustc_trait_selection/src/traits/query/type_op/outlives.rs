@@ -3,7 +3,7 @@ use crate::traits::query::dropck_outlives::{trivial_dropck_outlives, DropckOutli
 use crate::traits::query::Fallible;
 use rustc_middle::ty::{ParamEnvAnd, Ty, TyCtxt};
 
-#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Copy, Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct DropckOutlives<'tcx> {
     dropped_ty: Ty<'tcx>,
 }
@@ -14,7 +14,7 @@ impl<'tcx> DropckOutlives<'tcx> {
     }
 }
 
-impl super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
+impl<'tcx> super::QueryTypeOp<'tcx> for DropckOutlives<'tcx> {
     type QueryResponse = DropckOutlivesResult<'tcx>;
 
     fn try_fast_path(

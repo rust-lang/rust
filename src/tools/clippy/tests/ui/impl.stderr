@@ -6,7 +6,6 @@ LL | |     fn second() {}
 LL | | }
    | |_^
    |
-   = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
 note: first implementation here
   --> $DIR/impl.rs:6:1
    |
@@ -14,6 +13,7 @@ LL | / impl MyStruct {
 LL | |     fn first() {}
 LL | | }
    | |_^
+   = note: `-D clippy::multiple-inherent-impl` implied by `-D warnings`
 
 error: multiple implementations of this structure
   --> $DIR/impl.rs:24:5

@@ -3,14 +3,15 @@ use smallvec::smallvec;
 use crate::infer::outlives::components::{push_outlives_components, Component};
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
 use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
-use rustc_middle::ty::{self, ToPredicate, TyCtxt, WithConstness};
+use rustc_middle::ty::{self, ToPredicate, TyCtxt};
 use rustc_span::symbol::Ident;
+use rustc_span::Span;
 
 pub fn anonymize_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
     pred: ty::Predicate<'tcx>,
 ) -> ty::Predicate<'tcx> {
-    let new = tcx.anonymize_late_bound_regions(pred.kind());
+    let new = tcx.anonymize_bound_vars(pred.kind());
     tcx.reuse_or_mk_predicate(pred, new)
 }
 
@@ -19,7 +20,7 @@ pub struct PredicateSet<'tcx> {
     set: FxHashSet<ty::Predicate<'tcx>>,
 }
 
-impl PredicateSet<'tcx> {
+impl<'tcx> PredicateSet<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         Self { tcx, set: Default::default() }
     }
@@ -39,7 +40,7 @@ impl PredicateSet<'tcx> {
     }
 }
 
-impl Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
+impl<'tcx> Extend<ty::Predicate<'tcx>> for PredicateSet<'tcx> {
     fn extend<I: IntoIterator<Item = ty::Predicate<'tcx>>>(&mut self, iter: I) {
         for pred in iter {
             self.insert(pred);
@@ -97,6 +98,22 @@ pub fn elaborate_predicates<'tcx>(
     elaborate_obligations(tcx, obligations)
 }
 
+pub fn elaborate_predicates_with_span<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    predicates: impl Iterator<Item = (ty::Predicate<'tcx>, Span)>,
+) -> Elaborator<'tcx> {
+    let obligations = predicates
+        .map(|(predicate, span)| {
+            predicate_obligation(
+                predicate,
+                ty::ParamEnv::empty(),
+                ObligationCause::dummy_with_span(span),
+            )
+        })
+        .collect();
+    elaborate_obligations(tcx, obligations)
+}
+
 pub fn elaborate_obligations<'tcx>(
     tcx: TyCtxt<'tcx>,
     mut obligations: Vec<PredicateObligation<'tcx>>,
@@ -114,7 +131,7 @@ fn predicate_obligation<'tcx>(
     Obligation { cause, param_env, recursion_depth: 0, predicate }
 }
 
-impl Elaborator<'tcx> {
+impl<'tcx> Elaborator<'tcx> {
     pub fn filter_to_traits(self) -> FilterToTraits<Self> {
         FilterToTraits::new(self)
     }
@@ -124,18 +141,23 @@ impl Elaborator<'tcx> {
 
         let bound_predicate = obligation.predicate.kind();
         match bound_predicate.skip_binder() {
-            ty::PredicateKind::Trait(data) => {
+            ty::PredicateKind::Clause(ty::Clause::Trait(data)) => {
                 // Get predicates declared on the trait.
                 let predicates = tcx.super_predicates_of(data.def_id());
 
-                let obligations = predicates.predicates.iter().map(|&(pred, _)| {
+                let obligations = predicates.predicates.iter().map(|&(mut pred, _)| {
+                    // when parent predicate is non-const, elaborate it to non-const predicates.
+                    if data.constness == ty::BoundConstness::NotConst {
+                        pred = pred.without_const(tcx);
+                    }
+
                     predicate_obligation(
                         pred.subst_supertrait(tcx, &bound_predicate.rebind(data.trait_ref)),
                         obligation.param_env,
                         obligation.cause.clone(),
                     )
                 });
-                debug!("super_predicates: data={:?}", data);
+                debug!(?data, ?obligations, "super_predicates");
 
                 // Only keep those bounds that we haven't already seen.
                 // This is necessary to prevent infinite recursion in some
@@ -162,7 +184,7 @@ impl Elaborator<'tcx> {
                 // Currently, we do not "elaborate" predicates like `X -> Y`,
                 // though conceivably we might.
             }
-            ty::PredicateKind::Projection(..) => {
+            ty::PredicateKind::Clause(ty::Clause::Projection(..)) => {
                 // Nothing to elaborate in a projection predicate.
             }
             ty::PredicateKind::ClosureKind(..) => {
@@ -176,10 +198,13 @@ impl Elaborator<'tcx> {
                 // Currently, we do not elaborate const-equate
                 // predicates.
             }
-            ty::PredicateKind::RegionOutlives(..) => {
+            ty::PredicateKind::Clause(ty::Clause::RegionOutlives(..)) => {
                 // Nothing to elaborate from `'a: 'b`.
             }
-            ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_max, r_min)) => {
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                ty_max,
+                r_min,
+            ))) => {
                 // We know that `T: 'a` for some type `T`. We can
                 // often elaborate this. For example, if we know that
                 // `[U]: 'a`, that implies that `U: 'a`. Similarly, if
@@ -209,30 +234,47 @@ impl Elaborator<'tcx> {
                                 if r.is_late_bound() {
                                     None
                                 } else {
-                                    Some(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                                        r, r_min,
+                                    Some(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                                        ty::OutlivesPredicate(r, r_min),
                                     )))
                                 }
                             }
 
                             Component::Param(p) => {
                                 let ty = tcx.mk_ty_param(p.index, p.name);
-                                Some(ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(
-                                    ty, r_min,
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
                                 )))
                             }
 
                             Component::UnresolvedInferenceVariable(_) => None,
 
-                            Component::Projection(_) | Component::EscapingProjection(_) => {
-                                // We can probably do more here. This
-                                // corresponds to a case like `<T as
-                                // Foo<'a>>::U: 'b`.
+                            Component::Opaque(def_id, substs) => {
+                                let ty = tcx.mk_opaque(def_id, substs);
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
+                                )))
+                            }
+
+                            Component::Projection(projection) => {
+                                // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
+                                // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
+                                let ty =
+                                    tcx.mk_projection(projection.item_def_id, projection.substs);
+                                Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                                    ty::OutlivesPredicate(ty, r_min),
+                                )))
+                            }
+
+                            Component::EscapingProjection(_) => {
+                                // We might be able to do more here, but we don't
+                                // want to deal with escaping vars right now.
                                 None
                             }
                         })
-                        .map(ty::Binder::dummy)
-                        .map(|predicate_kind| predicate_kind.to_predicate(tcx))
+                        .map(|predicate_kind| {
+                            bound_predicate.rebind(predicate_kind).to_predicate(tcx)
+                        })
                         .filter(|&predicate| visited.insert(predicate))
                         .map(|predicate| {
                             predicate_obligation(
@@ -246,11 +288,12 @@ impl Elaborator<'tcx> {
             ty::PredicateKind::TypeWellFormedFromEnv(..) => {
                 // Nothing to elaborate
             }
+            ty::PredicateKind::Ambiguous => {}
         }
     }
 }
 
-impl Iterator for Elaborator<'tcx> {
+impl<'tcx> Iterator for Elaborator<'tcx> {
     type Item = PredicateObligation<'tcx>;
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -303,7 +346,7 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
 
     std::iter::from_fn(move || {
         while let Some(trait_ref) = stack.pop() {
-            let anon_trait_ref = tcx.anonymize_late_bound_regions(trait_ref);
+            let anon_trait_ref = tcx.anonymize_bound_vars(trait_ref);
             if visited.insert(anon_trait_ref) {
                 let super_predicates = tcx.super_predicates_that_define_assoc_type((
                     trait_ref.def_id(),
@@ -311,8 +354,8 @@ pub fn transitive_bounds_that_define_assoc_type<'tcx>(
                 ));
                 for (super_predicate, _) in super_predicates.predicates {
                     let subst_predicate = super_predicate.subst_supertrait(tcx, &trait_ref);
-                    if let Some(binder) = subst_predicate.to_opt_poly_trait_ref() {
-                        stack.push(binder.value);
+                    if let Some(binder) = subst_predicate.to_opt_poly_trait_pred() {
+                        stack.push(binder.map_bound(|t| t.trait_ref));
                     }
                 }
 
@@ -345,8 +388,8 @@ impl<'tcx, I: Iterator<Item = PredicateObligation<'tcx>>> Iterator for FilterToT
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         while let Some(obligation) = self.base_iterator.next() {
-            if let Some(data) = obligation.predicate.to_opt_poly_trait_ref() {
-                return Some(data.value);
+            if let Some(data) = obligation.predicate.to_opt_poly_trait_pred() {
+                return Some(data.map_bound(|t| t.trait_ref));
             }
         }
         None

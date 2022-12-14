@@ -1,4 +1,4 @@
-// Verify that debuginfo column nubmers are 1-based byte offsets.
+// Verify that debuginfo column numbers are 1-based byte offsets.
 //
 // ignore-windows
 // compile-flags: -C debuginfo=2

@@ -1,25 +1,22 @@
 // MIR for `main` after ConstProp
 
 fn main() -> () {
-    let mut _0: ();                      // return place in scope 0 at $DIR/const_allocation3.rs:4:11: 4:11
-    let _1: &Packed;                     // in scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-    let mut _2: &&Packed;                // in scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
+    let mut _0: ();                      // return place in scope 0 at $DIR/const_allocation3.rs:+0:11: +0:11
+    let _1: &Packed;                     // in scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
+    let mut _2: &&Packed;                // in scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
 
     bb0: {
-        StorageLive(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-        StorageLive(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-        _2 = const {alloc1: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-                                         // ty::Const
-                                         // + ty: &&Packed
-                                         // + val: Value(Scalar(alloc1))
+        StorageLive(_1);                 // scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
+        StorageLive(_2);                 // scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
+        _2 = const {alloc1: &&Packed};   // scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
                                          // mir::Constant
                                          // + span: $DIR/const_allocation3.rs:5:5: 5:8
                                          // + literal: Const { ty: &&Packed, val: Value(Scalar(alloc1)) }
-        _1 = (*_2);                      // scope 0 at $DIR/const_allocation3.rs:5:5: 5:8
-        StorageDead(_2);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
-        StorageDead(_1);                 // scope 0 at $DIR/const_allocation3.rs:5:8: 5:9
-        nop;                             // scope 0 at $DIR/const_allocation3.rs:4:11: 6:2
-        return;                          // scope 0 at $DIR/const_allocation3.rs:6:2: 6:2
+        _1 = (*_2);                      // scope 0 at $DIR/const_allocation3.rs:+1:5: +1:8
+        StorageDead(_2);                 // scope 0 at $DIR/const_allocation3.rs:+1:8: +1:9
+        StorageDead(_1);                 // scope 0 at $DIR/const_allocation3.rs:+1:8: +1:9
+        nop;                             // scope 0 at $DIR/const_allocation3.rs:+0:11: +2:2
+        return;                          // scope 0 at $DIR/const_allocation3.rs:+2:2: +2:2
     }
 }
 

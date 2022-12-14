@@ -1,0 +1,14 @@
+error[E0310]: the parameter type `A` may not live long enough
+  --> $DIR/implied_lifetime_wf_check4_static.rs:4:18
+   |
+LL |     type Ty<A> = impl Sized + 'static;
+   |                  ^^^^^^^^^^^^^^^^^^^^ ...so that the type `A` will meet its required lifetime bounds
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL |     type Ty<A: 'static> = impl Sized + 'static;
+   |              +++++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0310`.

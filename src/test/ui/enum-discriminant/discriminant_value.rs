@@ -1,6 +1,6 @@
 // run-pass
 #![allow(stable_features)]
-#![feature(arbitrary_enum_discriminant, core, core_intrinsics)]
+#![feature(core, core_intrinsics)]
 
 extern crate core;
 use core::intrinsics::discriminant_value;
@@ -27,13 +27,14 @@ enum CLike3 {
     D
 }
 
+#[allow(unused_tuple_struct_fields)]
 enum ADT {
     First(u32, u32),
     Second(u64)
 }
 
 enum NullablePointer {
-    Something(&'static u32),
+    Something(#[allow(unused_tuple_struct_fields)] &'static u32),
     Nothing
 }
 

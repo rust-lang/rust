@@ -1,16 +1,18 @@
-macro builtin_functions($register:ident; $(fn $name:ident($($arg_name:ident: $arg_ty:ty),*) -> $ret_ty:ty;)*) {
-    #[cfg(feature = "jit")]
-    #[allow(improper_ctypes)]
-    extern "C" {
-        $(fn $name($($arg_name: $arg_ty),*) -> $ret_ty;)*
-    }
-
-    #[cfg(feature = "jit")]
-    pub(crate) fn $register(builder: &mut cranelift_jit::JITBuilder) {
-        for (name, val) in [$((stringify!($name), $name as *const u8)),*] {
-            builder.symbol(name, val);
+macro_rules! builtin_functions {
+    ($register:ident; $(fn $name:ident($($arg_name:ident: $arg_ty:ty),*) -> $ret_ty:ty;)*) => {
+        #[cfg(feature = "jit")]
+        #[allow(improper_ctypes)]
+        extern "C" {
+            $(fn $name($($arg_name: $arg_ty),*) -> $ret_ty;)*
         }
-    }
+
+        #[cfg(feature = "jit")]
+        pub(crate) fn $register(builder: &mut cranelift_jit::JITBuilder) {
+            for (name, val) in [$((stringify!($name), $name as *const u8)),*] {
+                builder.symbol(name, val);
+            }
+        }
+    };
 }
 
 builtin_functions! {

@@ -1,6 +1,9 @@
 error[E0308]: mismatched types
   --> $DIR/static-mut-bad-types.rs:5:13
    |
+LL | static mut a: isize = 3;
+   |               ----- expected due to this type
+...
 LL |         a = true;
    |             ^^^^ expected `isize`, found `bool`
 

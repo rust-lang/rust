@@ -12,5 +12,13 @@ note: the lint level is defined here
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+warning: dereferencing a null pointer
+  --> $DIR/issue-7246.rs:7:8
+   |
+LL |     if *ptr::null() {};
+   |        ^^^^^^^^^^^^ this code causes undefined behavior when executed
+   |
+   = note: `#[warn(deref_nullptr)]` on by default
+
+error: aborting due to previous error; 1 warning emitted
 

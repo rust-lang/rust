@@ -22,17 +22,18 @@ error: malformed `stable` attribute input
 LL |     #[stable = "a"]
    |     ^^^^^^^^^^^^^^^ help: must be of the form: `#[stable(feature = "name", since = "version")]`
 
-error: malformed `rustc_deprecated` attribute input
+error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity-4.rs:21:5
    |
-LL |     #[rustc_deprecated]
-   |     ^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
+LL |     #[deprecated]
+   |     ^^^^^^^^^^^^^
 
-error: malformed `rustc_deprecated` attribute input
+error[E0542]: missing 'since'
   --> $DIR/stability-attribute-sanity-4.rs:25:5
    |
-LL |     #[rustc_deprecated = "a"]
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: must be of the form: `#[rustc_deprecated(since = "version", reason = "...")]`
+LL |     #[deprecated = "a"]
+   |     ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 6 previous errors
 
+For more information about this error, try `rustc --explain E0542`.

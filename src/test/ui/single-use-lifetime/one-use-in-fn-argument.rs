@@ -19,4 +19,15 @@ fn left<'x, 'y>(foo: Double<'x, 'y>) -> &'x u32 { foo.f } //~ ERROR `'y` only us
 fn right<'x, 'y>(foo: Double<'x, 'y>) -> &'y u32 { foo.f } //~ ERROR `'x` only used once
 //~^ HELP elide the single-use lifetime
 
-fn main() { }
+pub trait Tfv<'a> {}
+
+// Do NOT lint in an HRTB.
+pub fn g<T: for<'a> Tfv<'a>>() {}
+
+// Do NOT lint for trait bounds.
+pub fn h<'a, S>(_: S)
+where
+    S: Tfv<'a>,
+{}
+
+fn main() {}

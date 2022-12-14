@@ -16,7 +16,7 @@ fn main() {
 
     let y = Foo;
     y.zero()
-     .take()    //~ ERROR the method
+     .take()    //~ ERROR not an iterator
      .one(0);
     y.three::<usize>(); //~ ERROR this function takes 3 arguments but 0 arguments were supplied
 }

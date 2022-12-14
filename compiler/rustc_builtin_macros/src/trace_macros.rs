@@ -11,8 +11,8 @@ pub fn expand_trace_macros(
     let mut cursor = tt.into_trees();
     let mut err = false;
     let value = match &cursor.next() {
-        Some(TokenTree::Token(token)) if token.is_keyword(kw::True) => true,
-        Some(TokenTree::Token(token)) if token.is_keyword(kw::False) => false,
+        Some(TokenTree::Token(token, _)) if token.is_keyword(kw::True) => true,
+        Some(TokenTree::Token(token, _)) if token.is_keyword(kw::False) => false,
         _ => {
             err = true;
             false

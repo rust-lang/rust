@@ -5,13 +5,12 @@ use clippy_utils::source::snippet_with_applicability;
 use rustc_errors::Applicability;
 use rustc_hir::Expr;
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
 use rustc_span::symbol::sym;
 
-pub(super) fn check(cx: &LateContext<'_>, self_arg: &'hir Expr<'hir>, call_expr: &Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, self_arg: &Expr<'_>, call_expr: &Expr<'_>) {
     let self_ty = cx.typeck_results().expr_ty(self_arg);
     let self_ty_adjusted = cx.typeck_results().expr_ty_adjusted(self_arg);
-    if !(TyS::same_type(self_ty, self_ty_adjusted) && is_trait_method(cx, call_expr, sym::IntoIterator)) {
+    if !(self_ty == self_ty_adjusted && is_trait_method(cx, call_expr, sym::IntoIterator)) {
         return;
     }
 

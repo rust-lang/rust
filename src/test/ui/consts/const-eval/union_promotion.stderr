@@ -1,5 +1,5 @@
 error[E0716]: temporary value dropped while borrowed
-  --> $DIR/union_promotion.rs:10:29
+  --> $DIR/union_promotion.rs:8:29
    |
 LL |       let x: &'static bool = &unsafe {
    |  ____________-------------____^
@@ -7,7 +7,7 @@ LL |       let x: &'static bool = &unsafe {
    | |            type annotation requires that borrow lasts for `'static`
 LL | |         Foo { a: &1 }.b == Foo { a: &2 }.b
 LL | |     };
-   | |_____^ creates a temporary which is freed while still in use
+   | |_____^ creates a temporary value which is freed while still in use
 LL |   }
    |   - temporary value is freed at the end of this statement
 

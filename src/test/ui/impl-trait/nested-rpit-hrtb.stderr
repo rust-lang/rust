@@ -1,0 +1,82 @@
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/nested-rpit-hrtb.rs:54:77
+   |
+LL | fn two_htrb_outlives() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                                                             ^^ undeclared lifetime
+   |
+   = note: for more information on higher-ranked polymorphism, visit https://doc.rust-lang.org/nomicon/hrtb.html
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | fn two_htrb_outlives() -> impl for<'b, 'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                    +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn two_htrb_outlives<'b>() -> impl for<'a> Foo<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                     ++++
+
+error[E0261]: use of undeclared lifetime name `'b`
+  --> $DIR/nested-rpit-hrtb.rs:61:82
+   |
+LL | fn two_htrb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                                                                  ^^ undeclared lifetime
+   |
+help: consider making the bound lifetime-generic with a new `'b` lifetime
+   |
+LL | fn two_htrb_outlives_uses() -> impl for<'b, 'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                                         +++
+help: consider introducing lifetime `'b` here
+   |
+LL | fn two_htrb_outlives_uses<'b>() -> impl for<'a> Bar<'a, Assoc = impl for<'b> Sized + 'b> {}
+   |                          ++++
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/nested-rpit-hrtb.rs:25:69
+   |
+LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
+   |                                                                     ^^
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:25:36
+   |
+LL | fn one_hrtb_outlives() -> impl for<'a> Foo<'a, Assoc = impl Sized + 'a> {}
+   |                                    ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/nested-rpit-hrtb.rs:29:68
+   |
+LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
+   |                                                                    ^^
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:29:39
+   |
+LL | fn one_hrtb_trait_param() -> impl for<'a> Foo<'a, Assoc = impl Qux<'a>> {}
+   |                                       ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/nested-rpit-hrtb.rs:32:74
+   |
+LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
+   |                                                                          ^^
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:32:41
+   |
+LL | fn one_hrtb_outlives_uses() -> impl for<'a> Bar<'a, Assoc = impl Sized + 'a> {}
+   |                                         ^^
+
+error: higher kinded lifetime bounds on nested opaque types are not supported yet
+  --> $DIR/nested-rpit-hrtb.rs:35:73
+   |
+LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
+   |                                                                         ^^
+   |
+note: lifetime declared here
+  --> $DIR/nested-rpit-hrtb.rs:35:44
+   |
+LL | fn one_hrtb_trait_param_uses() -> impl for<'a> Bar<'a, Assoc = impl Qux<'a>> {}
+   |                                            ^^
+
+error: aborting due to 6 previous errors
+
+For more information about this error, try `rustc --explain E0261`.

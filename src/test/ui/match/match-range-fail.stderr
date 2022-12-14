@@ -27,6 +27,8 @@ LL |         true ..= "what" => {}
 error[E0308]: mismatched types
   --> $DIR/match-range-fail.rs:18:9
    |
+LL |     match 5 {
+   |           - this expression has type `{integer}`
 LL |         'c' ..= 100 => { }
    |         ^^^     --- this is of type `{integer}`
    |         |

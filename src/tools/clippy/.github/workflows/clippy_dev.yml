@@ -15,6 +15,8 @@ on:
 
 env:
   RUST_BACKTRACE: 1
+  CARGO_INCREMENTAL: 0
+  CARGO_UNSTABLE_SPARSE_REGISTRY: true
 
 jobs:
   clippy_dev:
@@ -23,19 +25,7 @@ jobs:
     steps:
     # Setup
     - name: Checkout
-      uses: actions/checkout@v2.3.3
-
-    - name: remove toolchain file
-      run: rm rust-toolchain
-
-    - name: rust-toolchain
-      uses: actions-rs/toolchain@v1.0.6
-      with:
-        toolchain: nightly
-        target: x86_64-unknown-linux-gnu
-        profile: minimal
-        components: rustfmt
-        default: true
+      uses: actions/checkout@v3.0.2
 
     # Run
     - name: Build
@@ -47,6 +37,13 @@ jobs:
 
     - name: Test fmt
       run: cargo dev fmt --check
+
+    - name: Test cargo dev new lint
+      run: |
+        cargo dev new_lint --name new_early_pass --pass early
+        cargo dev new_lint --name new_late_pass --pass late
+        cargo check
+        git reset --hard HEAD
 
   # These jobs doesn't actually test anything, but they're only used to tell
   # bors the build completed, as there is no practical way to detect when a

@@ -75,7 +75,6 @@ where
     #[inline]
     fn try_fold<Acc, Fold, R>(&mut self, init: Acc, fold: Fold) -> R
     where
-        Self: Sized,
         Fold: FnMut(Acc, Self::Item) -> R,
         R: Try<Output = Acc>,
     {
@@ -98,18 +97,26 @@ where
         }
     }
 
+    impl_fold_via_try_fold! { fold -> try_fold }
+
     #[inline]
-    fn fold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Self: Sized,
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
+    fn for_each<F: FnMut(Self::Item)>(mut self, f: F) {
+        // The default implementation would use a unit accumulator, so we can
+        // avoid a stateful closure by folding over the remaining number
+        // of items we wish to return instead.
+        fn check<'a, Item>(
+            mut action: impl FnMut(Item) + 'a,
+        ) -> impl FnMut(usize, Item) -> Option<usize> + 'a {
+            move |more, x| {
+                action(x);
+                more.checked_sub(1)
+            }
         }
 
-        self.try_fold(init, ok(fold)).unwrap()
+        let remaining = self.n;
+        if remaining > 0 {
+            self.iter.try_fold(remaining - 1, check(f));
+        }
     }
 
     #[inline]
@@ -215,21 +222,22 @@ where
     }
 
     #[inline]
+    #[rustc_inherit_overflow_checks]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
-        let inner_len = self.iter.len();
-        let len = self.n;
-        let remainder = len.saturating_sub(n);
-        let to_advance = inner_len - remainder;
-        match self.iter.advance_back_by(to_advance) {
-            Ok(_) => {
-                self.n = remainder;
-                if n > len {
-                    return Err(len);
-                }
-                return Ok(());
-            }
-            _ => panic!("ExactSizeIterator contract violation"),
-        }
+        // The amount by which the inner iterator needs to be shortened for it to be
+        // at most as long as the take() amount.
+        let trim_inner = self.iter.len().saturating_sub(self.n);
+        // The amount we need to advance inner to fulfill the caller's request.
+        // take(), advance_by() and len() all can be at most usize, so we don't have to worry
+        // about having to advance more than usize::MAX here.
+        let advance_by = trim_inner.saturating_add(n);
+
+        let advanced = match self.iter.advance_back_by(advance_by) {
+            Ok(_) => advance_by - trim_inner,
+            Err(advanced) => advanced - trim_inner,
+        };
+        self.n -= advanced;
+        return if advanced < n { Err(advanced) } else { Ok(()) };
     }
 }
 

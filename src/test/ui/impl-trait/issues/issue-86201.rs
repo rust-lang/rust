@@ -1,10 +1,10 @@
 #![feature(unboxed_closures)]
 #![feature(type_alias_impl_trait)]
 
+// check-pass
+
 type FunType = impl Fn<()>;
-//~^ could not find defining uses
 static STATIC_FN: FunType = some_fn;
-//~^ mismatched types
 
 fn some_fn() {}
 

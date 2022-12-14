@@ -1,7 +1,10 @@
+// revisions: normal opt
 // check-pass
-#![feature(unboxed_closures)]
+//[opt] compile-flags: -Zmir-opt-level=3
 
-extern "rust-call" fn foo<T>(_: T) {}
+#![feature(unboxed_closures, tuple_trait)]
+
+extern "rust-call" fn foo<T: std::marker::Tuple>(_: T) {}
 
 fn main() {
     foo(());

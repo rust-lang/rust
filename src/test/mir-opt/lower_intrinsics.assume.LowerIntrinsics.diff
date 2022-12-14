@@ -1,0 +1,26 @@
+- // MIR for `assume` before LowerIntrinsics
++ // MIR for `assume` after LowerIntrinsics
+  
+  fn assume() -> () {
+      let mut _0: ();                      // return place in scope 0 at $DIR/lower_intrinsics.rs:+0:17: +0:17
+      let _1: ();                          // in scope 0 at $DIR/lower_intrinsics.rs:+2:9: +2:38
+      scope 1 {
+      }
+  
+      bb0: {
+          StorageLive(_1);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:38
+-         _1 = std::intrinsics::assume(const true) -> bb1; // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:38
+-                                          // mir::Constant
+-                                          // + span: $DIR/lower_intrinsics.rs:72:9: 72:32
+-                                          // + literal: Const { ty: unsafe extern "rust-intrinsic" fn(bool) {std::intrinsics::assume}, val: Value(<ZST>) }
++         assume(const true);              // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:38
++         goto -> bb1;                     // scope 1 at $DIR/lower_intrinsics.rs:+2:9: +2:38
+      }
+  
+      bb1: {
+          StorageDead(_1);                 // scope 1 at $DIR/lower_intrinsics.rs:+2:38: +2:39
+          _0 = const ();                   // scope 1 at $DIR/lower_intrinsics.rs:+1:5: +3:6
+          return;                          // scope 0 at $DIR/lower_intrinsics.rs:+4:2: +4:2
+      }
+  }
+  

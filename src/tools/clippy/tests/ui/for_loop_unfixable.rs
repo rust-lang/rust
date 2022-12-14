@@ -8,6 +8,7 @@
     clippy::for_kv_map
 )]
 #[allow(clippy::linkedlist, clippy::unnecessary_mut_passed, clippy::similar_names)]
+#[allow(for_loops_over_fallibles)]
 fn main() {
     let vec = vec![1, 2, 3, 4];
 

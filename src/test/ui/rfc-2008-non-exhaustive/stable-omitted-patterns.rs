@@ -6,7 +6,7 @@
 // aux-build:unstable.rs
 extern crate unstable;
 
-use unstable::{UnstableEnum, OnlyUnstableEnum};
+use unstable::{UnstableEnum, OnlyUnstableEnum, UnstableStruct, OnlyUnstableStruct};
 
 fn main() {
     // OK: this matches all the stable variants
@@ -30,4 +30,16 @@ fn main() {
     match OnlyUnstableEnum::new() {
         _ => {}
     }
+
+    // Ok: Same as the above enum (no fields can be matched on)
+    #[warn(non_exhaustive_omitted_patterns)]
+    let OnlyUnstableStruct { .. } = OnlyUnstableStruct::new();
+
+    #[warn(non_exhaustive_omitted_patterns)]
+    let UnstableStruct { stable, .. } = UnstableStruct::default();
+    //~^ some fields are not explicitly listed
+
+    // OK: stable field is matched
+    #[warn(non_exhaustive_omitted_patterns)]
+    let UnstableStruct { stable, stable2, .. } = UnstableStruct::default();
 }

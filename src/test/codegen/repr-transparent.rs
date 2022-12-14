@@ -1,7 +1,8 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -O -C no-prepopulate-passes
 
 // ignore-riscv64 riscv64 has an i128 type used with test_Vector
 // see codegen/riscv-abi for riscv functiona call tests
+// ignore-s390x s390x with default march passes vector types per reference
 
 #![crate_type="lib"]
 #![feature(repr_simd, transparent_unions)]
@@ -24,7 +25,7 @@ pub extern "C" fn test_F32(_: F32) -> F32 { loop {} }
 #[repr(transparent)]
 pub struct Ptr(*mut u8);
 
-// CHECK: define{{.*}}i8* @test_Ptr(i8* %_1)
+// CHECK: define{{.*}}{{i8\*|ptr}} @test_Ptr({{i8\*|ptr}} %_1)
 #[no_mangle]
 pub extern "C" fn test_Ptr(_: Ptr) -> Ptr { loop {} }
 
@@ -39,7 +40,7 @@ pub extern "C" fn test_WithZst(_: WithZst) -> WithZst { loop {} }
 pub struct WithZeroSizedArray(*const f32, [i8; 0]);
 
 // Apparently we use i32* when newtype-unwrapping f32 pointers. Whatever.
-// CHECK: define{{.*}}i32* @test_WithZeroSizedArray(i32* %_1)
+// CHECK: define{{.*}}{{i32\*|ptr}} @test_WithZeroSizedArray({{i32\*|ptr}} %_1)
 #[no_mangle]
 pub extern "C" fn test_WithZeroSizedArray(_: WithZeroSizedArray) -> WithZeroSizedArray { loop {} }
 
@@ -56,14 +57,14 @@ pub struct GenericPlusZst<T>(T, Zst2);
 #[repr(u8)]
 pub enum Bool { True, False, FileNotFound }
 
-// CHECK: define{{( dso_local)?}}{{( zeroext)?}} i8 @test_Gpz(i8{{( zeroext)?}} %_1)
+// CHECK: define{{( dso_local)?}} noundef{{( zeroext)?}} i8 @test_Gpz(i8 noundef{{( zeroext)?}} %_1)
 #[no_mangle]
 pub extern "C" fn test_Gpz(_: GenericPlusZst<Bool>) -> GenericPlusZst<Bool> { loop {} }
 
 #[repr(transparent)]
 pub struct LifetimePhantom<'a, T: 'a>(*const T, PhantomData<&'a T>);
 
-// CHECK: define{{.*}}i16* @test_LifetimePhantom(i16* %_1)
+// CHECK: define{{.*}}{{i16\*|ptr}} @test_LifetimePhantom({{i16\*|ptr}} %_1)
 #[no_mangle]
 pub extern "C" fn test_LifetimePhantom(_: LifetimePhantom<i16>) -> LifetimePhantom<i16> { loop {} }
 

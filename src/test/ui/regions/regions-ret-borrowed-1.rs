@@ -8,7 +8,7 @@ fn with<R, F>(f: F) -> R where F: for<'a> FnOnce(&'a isize) -> R {
 
 fn return_it<'a>() -> &'a isize {
     with(|o| o)
-        //~^ ERROR cannot infer
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

@@ -1,7 +1,7 @@
 // build-fail
 // revisions: legacy v0
-//[legacy]compile-flags: -Z symbol-mangling-version=legacy
-//[v0]compile-flags: -Z symbol-mangling-version=v0
+//[legacy]compile-flags: -Z unstable-options -C symbol-mangling-version=legacy
+//[v0]compile-flags: -C symbol-mangling-version=v0
 //[legacy]normalize-stderr-test: "h[\w{16}]+" -> "SYMBOL_HASH"
 
 #![feature(rustc_attrs)]
@@ -42,8 +42,8 @@ where
     //[legacy]~^ ERROR symbol-name(_ZN72_$LT$issue_75326..Foo$LT$I$C$E$GT$$u20$as$u20$issue_75326..Iterator2$GT$4next
     //[legacy]~| ERROR demangling(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next
     //[legacy]~| ERROR demangling-alt(<issue_75326::Foo<I,E> as issue_75326::Iterator2>::next)
-    //[v0]~^^^^  ERROR symbol-name(_RNvXINICsiMBouZZ1iuD_11issue_75326s_0pppEINtB5_3FooppENtB5_9Iterator24nextB5_)
-    //[v0]~|     ERROR demangling(<issue_75326[dac9b7624645f95d]::Foo<_, _> as issue_75326[dac9b7624645f95d]::Iterator2>::next)
+    //[v0]~^^^^  ERROR symbol-name
+    //[v0]~|     ERROR demangling
     //[v0]~|     ERROR demangling-alt(<issue_75326::Foo<_, _> as issue_75326::Iterator2>::next)
     fn next(&mut self) -> Option<Self::Item> {
         self.find(|_| true)

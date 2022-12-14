@@ -9,8 +9,6 @@
 // check-pass
 // compile-flags:-Zno-leak-check
 
-#![feature(nll)]
-
 use std::cell::Cell;
 
 fn make_cell_aa() -> Cell<for<'a> fn(&'a u32, &'a u32)> {

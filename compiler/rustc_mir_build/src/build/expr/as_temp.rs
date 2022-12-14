@@ -10,7 +10,7 @@ use rustc_middle::thir::*;
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Compile `expr` into a fresh temporary. This is used when building
     /// up rvalues so as to freeze the value that will be consumed.
-    crate fn as_temp(
+    pub(crate) fn as_temp(
         &mut self,
         block: BasicBlock,
         temp_lifetime: Option<region::Scope>,
@@ -23,6 +23,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ensure_sufficient_stack(|| self.as_temp_inner(block, temp_lifetime, expr, mutability))
     }
 
+    #[instrument(skip(self), level = "debug")]
     fn as_temp_inner(
         &mut self,
         mut block: BasicBlock,
@@ -30,10 +31,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         expr: &Expr<'tcx>,
         mutability: Mutability,
     ) -> BlockAnd<Local> {
-        debug!(
-            "as_temp(block={:?}, temp_lifetime={:?}, expr={:?}, mutability={:?})",
-            block, temp_lifetime, expr, mutability
-        );
         let this = self;
 
         let expr_span = expr.span;
@@ -70,7 +67,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     local_decl.local_info =
                         Some(Box::new(LocalInfo::StaticRef { def_id, is_thread_local: true }));
                 }
-                ExprKind::Literal { const_id: Some(def_id), .. } => {
+                ExprKind::NamedConst { def_id, .. } | ExprKind::ConstParam { def_id, .. } => {
                     local_decl.local_info = Some(Box::new(LocalInfo::ConstRef { def_id }));
                 }
                 _ => {}
@@ -83,8 +80,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             // Don't bother with StorageLive and Dead for these temporaries,
             // they are never assigned.
             ExprKind::Break { .. } | ExprKind::Continue { .. } | ExprKind::Return { .. } => (),
-            ExprKind::Block { body: Block { expr: None, targeted_by_break: false, .. } }
-                if expr_ty.is_never() => {}
+            ExprKind::Block { block }
+                if let Block { expr: None, targeted_by_break: false, .. } = this.thir[block]
+                    && expr_ty.is_never() => {}
             _ => {
                 this.cfg
                     .push(block, Statement { source_info, kind: StatementKind::StorageLive(temp) });

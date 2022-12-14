@@ -1,11 +1,10 @@
 // revisions: lib staticlib
 // ignore-emscripten default visibility is hidden
 // compile-flags: -O
+// [lib] compile-flags: --crate-type lib
+// [staticlib] compile-flags: --crate-type staticlib
 // `#[no_mangle]`d static variables always have external linkage, i.e., no `internal` in their
 // definitions
-
-#![cfg_attr(lib, crate_type = "lib")]
-#![cfg_attr(staticlib, crate_type = "staticlib")]
 
 // CHECK: @A = local_unnamed_addr constant
 #[no_mangle]

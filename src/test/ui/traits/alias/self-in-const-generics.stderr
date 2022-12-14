@@ -1,0 +1,11 @@
+error[E0038]: the trait alias `BB` cannot be made into an object
+  --> $DIR/self-in-const-generics.rs:9:16
+   |
+LL | fn foo(x: &dyn BB) {}
+   |                ^^
+   |
+   = note: it cannot use `Self` as a type parameter in a supertrait or `where`-clause
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0038`.

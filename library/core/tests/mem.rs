@@ -1,4 +1,5 @@
 use core::mem::*;
+use core::ptr;
 
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
@@ -76,6 +77,25 @@ fn align_of_val_basic() {
 }
 
 #[test]
+#[cfg(not(bootstrap))] // stage 0 doesn't have the fix yet, so the test fails
+fn align_of_val_raw_packed() {
+    #[repr(C, packed)]
+    struct B {
+        f: [u32],
+    }
+    let storage = [0u8; 4];
+    let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+    assert_eq!(unsafe { align_of_val_raw(b) }, 1);
+
+    const ALIGN_OF_VAL_RAW: usize = {
+        let storage = [0u8; 4];
+        let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+        unsafe { align_of_val_raw(b) }
+    };
+    assert_eq!(ALIGN_OF_VAL_RAW, 1);
+}
+
+#[test]
 fn test_swap() {
     let mut x = 31337;
     let mut y = 42;
@@ -95,6 +115,50 @@ fn test_replace() {
 #[test]
 fn test_transmute_copy() {
     assert_eq!(1, unsafe { transmute_copy(&1) });
+}
+
+#[test]
+fn test_transmute_copy_shrink() {
+    assert_eq!(0_u8, unsafe { transmute_copy(&0_u64) });
+}
+
+#[test]
+fn test_transmute_copy_unaligned() {
+    #[repr(C)]
+    #[derive(Default)]
+    struct Unaligned {
+        a: u8,
+        b: [u8; 8],
+    }
+
+    let u = Unaligned::default();
+    assert_eq!(0_u64, unsafe { transmute_copy(&u.b) });
+}
+
+#[test]
+#[cfg(panic = "unwind")]
+fn test_transmute_copy_grow_panics() {
+    use std::panic;
+
+    let err = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
+        let _unused: u64 = transmute_copy(&1_u8);
+    }));
+
+    match err {
+        Ok(_) => unreachable!(),
+        Err(payload) => {
+            payload
+                .downcast::<&'static str>()
+                .and_then(|s| {
+                    if *s == "cannot transmute_copy if Dst is larger than Src" {
+                        Ok(s)
+                    } else {
+                        Err(s)
+                    }
+                })
+                .unwrap_or_else(|p| panic::resume_unwind(p));
+        }
+    }
 }
 
 #[test]
@@ -123,18 +187,18 @@ fn assume_init_good() {
 
 #[test]
 fn uninit_array_assume_init() {
-    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    let mut array = [MaybeUninit::<i16>::uninit(); 5];
     array[0].write(3);
     array[1].write(1);
     array[2].write(4);
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe { MaybeUninit::array_assume_init(array) };
+    let array = unsafe { array.transpose().assume_init() };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
 
-    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
+    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].transpose().assume_init() };
 }
 
 #[test]
@@ -268,4 +332,36 @@ fn uninit_write_slice_cloned_no_drop() {
 fn uninit_const_assume_init_read() {
     const FOO: u32 = unsafe { MaybeUninit::new(42).assume_init_read() };
     assert_eq!(FOO, 42);
+}
+
+#[test]
+fn const_maybe_uninit() {
+    use std::ptr;
+
+    #[derive(Debug, PartialEq)]
+    struct Foo {
+        x: u8,
+        y: u8,
+    }
+
+    const FIELD_BY_FIELD: Foo = unsafe {
+        let mut val = MaybeUninit::uninit();
+        init_y(&mut val); // order shouldn't matter
+        init_x(&mut val);
+        val.assume_init()
+    };
+
+    const fn init_x(foo: &mut MaybeUninit<Foo>) {
+        unsafe {
+            *ptr::addr_of_mut!((*foo.as_mut_ptr()).x) = 1;
+        }
+    }
+
+    const fn init_y(foo: &mut MaybeUninit<Foo>) {
+        unsafe {
+            *ptr::addr_of_mut!((*foo.as_mut_ptr()).y) = 2;
+        }
+    }
+
+    assert_eq!(FIELD_BY_FIELD, Foo { x: 1, y: 2 });
 }

@@ -1,21 +1,22 @@
 [package]
 name = "lintcheck"
 version = "0.0.1"
-description = "tool to monitor impact of changes in Clippys lints on a part of the ecosystem"
+description = "tool to monitor impact of changes in Clippy's lints on a part of the ecosystem"
 readme = "README.md"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust-clippy"
 categories = ["development-tools"]
-edition = "2018"
+edition = "2021"
 publish = false
 
 [dependencies]
-clap = "2.33"
+cargo_metadata = "0.14"
+clap = "3.2"
+crossbeam-channel = "0.5.6"
 flate2 = "1.0"
-fs_extra = "1.2"
-rayon = "1.5"
+rayon = "1.5.1"
 serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
+serde_json = "1.0.85"
 tar = "0.4"
 toml = "0.5"
 ureq = "2.2"

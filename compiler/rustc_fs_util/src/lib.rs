@@ -1,3 +1,6 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 use std::ffi::CString;
 use std::fs;
 use std::io;
@@ -62,7 +65,7 @@ pub enum LinkOrCopy {
 pub fn link_or_copy<P: AsRef<Path>, Q: AsRef<Path>>(p: P, q: Q) -> io::Result<LinkOrCopy> {
     let p = p.as_ref();
     let q = q.as_ref();
-    match fs::remove_file(&q) {
+    match fs::remove_file(q) {
         Ok(()) => (),
         Err(err) if err.kind() == io::ErrorKind::NotFound => (),
         Err(err) => return Err(err),

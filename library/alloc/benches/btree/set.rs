@@ -1,10 +1,10 @@
 use std::collections::BTreeSet;
 
-use rand::{thread_rng, Rng};
+use rand::Rng;
 use test::Bencher;
 
 fn random(n: usize) -> BTreeSet<usize> {
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     let mut set = BTreeSet::new();
     while set.len() < n {
         set.insert(rng.gen());

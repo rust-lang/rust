@@ -1,9 +1,9 @@
+#[cfg(feature = "rustc_serialize")]
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
 use std::fmt;
 use std::fmt::Debug;
 use std::hash::Hash;
-use std::iter::FromIterator;
 use std::marker::PhantomData;
 use std::ops::{Index, IndexMut, RangeBounds};
 use std::slice;
@@ -12,15 +12,17 @@ use std::vec;
 /// Represents some newtyped `usize` wrapper.
 ///
 /// Purpose: avoid mixing indexes for different bitvector domains.
-pub trait Idx: Copy + 'static + Ord + Debug + Hash {
+pub trait Idx: Copy + 'static + Eq + PartialEq + Debug + Hash {
     fn new(idx: usize) -> Self;
 
     fn index(self) -> usize;
 
+    #[inline]
     fn increment_by(&mut self, amount: usize) {
         *self = self.plus(amount);
     }
 
+    #[inline]
     fn plus(self, amount: usize) -> Self {
         Self::new(self.index() + amount)
     }
@@ -49,439 +51,6 @@ impl Idx for u32 {
     }
 }
 
-/// Creates a struct type `S` that can be used as an index with
-/// `IndexVec` and so on.
-///
-/// There are two ways of interacting with these indices:
-///
-/// - The `From` impls are the preferred way. So you can do
-///   `S::from(v)` with a `usize` or `u32`. And you can convert back
-///   to an integer with `u32::from(s)`.
-///
-/// - Alternatively, you can use the methods `S::new(v)` and `s.index()`
-///   to create/return a value.
-///
-/// Internally, the index uses a u32, so the index must not exceed
-/// `u32::MAX`. You can also customize things like the `Debug` impl,
-/// what traits are derived, and so forth via the macro.
-#[macro_export]
-#[allow_internal_unstable(step_trait, rustc_attrs, trusted_step)]
-macro_rules! newtype_index {
-    // ---- public rules ----
-
-    // Use default constants
-    ($(#[$attrs:meta])* $v:vis struct $name:ident { .. }) => (
-        $crate::newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
-            @attrs        [$(#[$attrs])*]
-            @type         [$name]
-            // shave off 256 indices at the end to allow space for packing these indices into enums
-            @max          [0xFFFF_FF00]
-            @vis          [$v]
-            @debug_format ["{}"]);
-    );
-
-    // Define any constants
-    ($(#[$attrs:meta])* $v:vis struct $name:ident { $($tokens:tt)+ }) => (
-        $crate::newtype_index!(
-            // Leave out derives marker so we can use its absence to ensure it comes first
-            @attrs        [$(#[$attrs])*]
-            @type         [$name]
-            // shave off 256 indices at the end to allow space for packing these indices into enums
-            @max          [0xFFFF_FF00]
-            @vis          [$v]
-            @debug_format ["{}"]
-                          $($tokens)+);
-    );
-
-    // ---- private rules ----
-
-    // Base case, user-defined constants (if any) have already been defined
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]) => (
-        $(#[$attrs])*
-        #[derive(Copy, PartialEq, Eq, Hash, PartialOrd, Ord, $($derives),*)]
-        #[rustc_layout_scalar_valid_range_end($max)]
-        $v struct $type {
-            private: u32
-        }
-
-        impl Clone for $type {
-            #[inline]
-            fn clone(&self) -> Self {
-                *self
-            }
-        }
-
-        impl $type {
-            $v const MAX_AS_U32: u32 = $max;
-
-            $v const MAX: Self = Self::from_u32($max);
-
-            #[inline]
-            $v const fn from_usize(value: usize) -> Self {
-                assert!(value <= ($max as usize));
-                unsafe {
-                    Self::from_u32_unchecked(value as u32)
-                }
-            }
-
-            #[inline]
-            $v const fn from_u32(value: u32) -> Self {
-                assert!(value <= $max);
-                unsafe {
-                    Self::from_u32_unchecked(value)
-                }
-            }
-
-            #[inline]
-            $v const unsafe fn from_u32_unchecked(value: u32) -> Self {
-                Self { private: value }
-            }
-
-            /// Extracts the value of this index as an integer.
-            #[inline]
-            $v const fn index(self) -> usize {
-                self.as_usize()
-            }
-
-            /// Extracts the value of this index as a `u32`.
-            #[inline]
-            $v const fn as_u32(self) -> u32 {
-                self.private
-            }
-
-            /// Extracts the value of this index as a `usize`.
-            #[inline]
-            $v const fn as_usize(self) -> usize {
-                self.as_u32() as usize
-            }
-        }
-
-        impl std::ops::Add<usize> for $type {
-            type Output = Self;
-
-            fn add(self, other: usize) -> Self {
-                Self::from_usize(self.index() + other)
-            }
-        }
-
-        impl $crate::vec::Idx for $type {
-            #[inline]
-            fn new(value: usize) -> Self {
-                Self::from_usize(value)
-            }
-
-            #[inline]
-            fn index(self) -> usize {
-                self.as_usize()
-            }
-        }
-
-        impl ::std::iter::Step for $type {
-            #[inline]
-            fn steps_between(start: &Self, end: &Self) -> Option<usize> {
-                <usize as ::std::iter::Step>::steps_between(
-                    &Self::index(*start),
-                    &Self::index(*end),
-                )
-            }
-
-            #[inline]
-            fn forward_checked(start: Self, u: usize) -> Option<Self> {
-                Self::index(start).checked_add(u).map(Self::from_usize)
-            }
-
-            #[inline]
-            fn backward_checked(start: Self, u: usize) -> Option<Self> {
-                Self::index(start).checked_sub(u).map(Self::from_usize)
-            }
-        }
-
-        // Safety: The implementation of `Step` upholds all invariants.
-        unsafe impl ::std::iter::TrustedStep for $type {}
-
-        impl From<$type> for u32 {
-            #[inline]
-            fn from(v: $type) -> u32 {
-                v.as_u32()
-            }
-        }
-
-        impl From<$type> for usize {
-            #[inline]
-            fn from(v: $type) -> usize {
-                v.as_usize()
-            }
-        }
-
-        impl From<usize> for $type {
-            #[inline]
-            fn from(value: usize) -> Self {
-                Self::from_usize(value)
-            }
-        }
-
-        impl From<u32> for $type {
-            #[inline]
-            fn from(value: u32) -> Self {
-                Self::from_u32(value)
-            }
-        }
-
-        $crate::newtype_index!(
-            @handle_debug
-            @derives      [$($derives,)*]
-            @type         [$type]
-            @debug_format [$debug_format]);
-    );
-
-    // base case for handle_debug where format is custom. No Debug implementation is emitted.
-    (@handle_debug
-     @derives      [$($_derives:ident,)*]
-     @type         [$type:ident]
-     @debug_format [custom]) => ();
-
-    // base case for handle_debug, no debug overrides found, so use default
-    (@handle_debug
-     @derives      []
-     @type         [$type:ident]
-     @debug_format [$debug_format:tt]) => (
-        impl ::std::fmt::Debug for $type {
-            fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                write!(fmt, $debug_format, self.as_u32())
-            }
-        }
-    );
-
-    // Debug is requested for derive, don't generate any Debug implementation.
-    (@handle_debug
-     @derives      [Debug, $($derives:ident,)*]
-     @type         [$type:ident]
-     @debug_format [$debug_format:tt]) => ();
-
-    // It's not Debug, so just pop it off the front of the derives stack and check the rest.
-    (@handle_debug
-     @derives      [$_derive:ident, $($derives:ident,)*]
-     @type         [$type:ident]
-     @debug_format [$debug_format:tt]) => (
-        $crate::newtype_index!(
-            @handle_debug
-            @derives      [$($derives,)*]
-            @type         [$type]
-            @debug_format [$debug_format]);
-    );
-
-    // Append comma to end of derives list if it's missing
-    (@attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   derive [$($derives:ident),*]
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          derive [$($derives,)*]
-                          $($tokens)*);
-    );
-
-    // By not including the @derives marker in this list nor in the default args, we can force it
-    // to come first if it exists. When encodable is custom, just use the derives list as-is.
-    (@attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   derive [$($derives:ident,)+]
-                   ENCODABLE = custom
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @attrs        [$(#[$attrs])*]
-            @derives      [$($derives,)+]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-    );
-
-    // By not including the @derives marker in this list nor in the default args, we can force it
-    // to come first if it exists. When encodable isn't custom, add serialization traits by default.
-    (@attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   derive [$($derives:ident,)+]
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @derives      [$($derives,)+]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-        $crate::newtype_index!(@serializable $type);
-    );
-
-    // The case where no derives are added, but encodable is overridden. Don't
-    // derive serialization traits
-    (@attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   ENCODABLE = custom
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @derives      []
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-    );
-
-    // The case where no derives are added, add serialization derives by default
-    (@attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @derives      []
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-        $crate::newtype_index!(@serializable $type);
-    );
-
-    (@serializable $type:ident) => (
-        impl<D: ::rustc_serialize::Decoder> ::rustc_serialize::Decodable<D> for $type {
-            fn decode(d: &mut D) -> Result<Self, D::Error> {
-                d.read_u32().map(Self::from_u32)
-            }
-        }
-        impl<E: ::rustc_serialize::Encoder> ::rustc_serialize::Encodable<E> for $type {
-            fn encode(&self, e: &mut E) -> Result<(), E::Error> {
-                e.emit_u32(self.private)
-            }
-        }
-    );
-
-    // Rewrite final without comma to one that includes comma
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   $name:ident = $constant:expr) => (
-        $crate::newtype_index!(
-            @derives      [$($derives,)*]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $name = $constant,);
-    );
-
-    // Rewrite final const without comma to one that includes comma
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   $(#[doc = $doc:expr])*
-                   const $name:ident = $constant:expr) => (
-        $crate::newtype_index!(
-            @derives      [$($derives,)*]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $(#[doc = $doc])* const $name = $constant,);
-    );
-
-    // Replace existing default for max
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$_max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   MAX = $max:expr,
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @derives      [$($derives,)*]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-    );
-
-    // Replace existing default for debug_format
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$_debug_format:tt]
-                   DEBUG_FORMAT = $debug_format:tt,
-                   $($tokens:tt)*) => (
-        $crate::newtype_index!(
-            @derives      [$($derives,)*]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-    );
-
-    // Assign a user-defined constant
-    (@derives      [$($derives:ident,)*]
-     @attrs        [$(#[$attrs:meta])*]
-     @type         [$type:ident]
-     @max          [$max:expr]
-     @vis          [$v:vis]
-     @debug_format [$debug_format:tt]
-                   $(#[doc = $doc:expr])*
-                   const $name:ident = $constant:expr,
-                   $($tokens:tt)*) => (
-        $(#[doc = $doc])*
-        $v const $name: $type = $type::from_u32($constant);
-        $crate::newtype_index!(
-            @derives      [$($derives,)*]
-            @attrs        [$(#[$attrs])*]
-            @type         [$type]
-            @max          [$max]
-            @vis          [$v]
-            @debug_format [$debug_format]
-                          $($tokens)*);
-    );
-}
-
 #[derive(Clone, PartialEq, Eq, Hash)]
 pub struct IndexVec<I: Idx, T> {
     pub raw: Vec<T>,
@@ -492,21 +61,17 @@ pub struct IndexVec<I: Idx, T> {
 // not the phantom data.
 unsafe impl<I: Idx, T> Send for IndexVec<I, T> where T: Send {}
 
+#[cfg(feature = "rustc_serialize")]
 impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for IndexVec<I, T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&self.raw, s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&self.raw, s);
     }
 }
 
-impl<S: Encoder, I: Idx, T: Encodable<S>> Encodable<S> for &IndexVec<I, T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&self.raw, s)
-    }
-}
-
+#[cfg(feature = "rustc_serialize")]
 impl<D: Decoder, I: Idx, T: Decodable<D>> Decodable<D> for IndexVec<I, T> {
-    fn decode(d: &mut D) -> Result<Self, D::Error> {
-        Decodable::decode(d).map(|v| IndexVec { raw: v, _marker: PhantomData })
+    fn decode(d: &mut D) -> Self {
+        IndexVec { raw: Decodable::decode(d), _marker: PhantomData }
     }
 }
 
@@ -611,7 +176,9 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn indices(&self) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + 'static {
+    pub fn indices(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         (0..self.len()).map(|n| I::new(n))
     }
 
@@ -673,7 +240,9 @@ impl<I: Idx, T> IndexVec<I, T> {
         self.raw.get_mut(index.index())
     }
 
-    /// Returns mutable references to two distinct elements, a and b. Panics if a == b.
+    /// Returns mutable references to two distinct elements, `a` and `b`.
+    ///
+    /// Panics if `a == b`.
     #[inline]
     pub fn pick2_mut(&mut self, a: I, b: I) -> (&mut T, &mut T) {
         let (ai, bi) = (a.index(), b.index());
@@ -688,7 +257,9 @@ impl<I: Idx, T> IndexVec<I, T> {
         }
     }
 
-    /// Returns mutable references to three distinct elements or panics otherwise.
+    /// Returns mutable references to three distinct elements.
+    ///
+    /// Panics if the elements are not distinct.
     #[inline]
     pub fn pick3_mut(&mut self, a: I, b: I, c: I) -> (&mut T, &mut T, &mut T) {
         let (ai, bi, ci) = (a.index(), b.index(), c.index());
@@ -790,11 +361,13 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     }
 
     #[inline]
+    #[cfg(feature = "nightly")]
     fn extend_one(&mut self, item: T) {
         self.raw.push(item);
     }
 
     #[inline]
+    #[cfg(feature = "nightly")]
     fn extend_reserve(&mut self, additional: usize) {
         self.raw.reserve(additional);
     }

@@ -1,0 +1,201 @@
+SOURCE_FILE
+  COMMENT "// https://github.com/rust-lang/rust-analyzer/pull/983"
+  WHITESPACE "\n\n"
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "compound_assignment"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          IDENT_PAT
+            MUT_KW "mut"
+            WHITESPACE " "
+            NAME
+              IDENT "a"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          LITERAL
+            INT_NUMBER "0"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            PLUSEQ "+="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "1"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            MINUSEQ "-="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            STAREQ "*="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "3"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            PERCENTEQ "%="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "4"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            SLASHEQ "/="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "5"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            PIPEEQ "|="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "6"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            AMPEQ "&="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "7"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            CARETEQ "^="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "8"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            LTEQ "<="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "9"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            GTEQ ">="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "10"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            SHREQ ">>="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "11"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BIN_EXPR
+            PATH_EXPR
+              PATH
+                PATH_SEGMENT
+                  NAME_REF
+                    IDENT "a"
+            WHITESPACE " "
+            SHLEQ "<<="
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "12"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,8 +1,11 @@
 use crate::cmp::{max, min};
 use crate::io::prelude::*;
 use crate::io::{
-    copy, empty, repeat, sink, BufWriter, Empty, Repeat, Result, SeekFrom, Sink, DEFAULT_BUF_SIZE,
+    copy, empty, repeat, sink, BorrowedBuf, BufWriter, Empty, Repeat, Result, SeekFrom, Sink,
+    DEFAULT_BUF_SIZE,
 };
+
+use crate::mem::MaybeUninit;
 
 #[test]
 fn copy_copies() {
@@ -75,6 +78,30 @@ fn empty_reads() {
     assert_eq!(e.read(&mut [0]).unwrap(), 0);
     assert_eq!(e.read(&mut [0; 1024]).unwrap(), 0);
     assert_eq!(e.by_ref().read(&mut [0; 1024]).unwrap(), 0);
+
+    let buf: &mut [MaybeUninit<_>] = &mut [];
+    let mut buf: BorrowedBuf<'_> = buf.into();
+    e.read_buf(buf.unfilled()).unwrap();
+    assert_eq!(buf.len(), 0);
+    assert_eq!(buf.init_len(), 0);
+
+    let buf: &mut [_] = &mut [MaybeUninit::uninit()];
+    let mut buf: BorrowedBuf<'_> = buf.into();
+    e.read_buf(buf.unfilled()).unwrap();
+    assert_eq!(buf.len(), 0);
+    assert_eq!(buf.init_len(), 0);
+
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1024];
+    let mut buf: BorrowedBuf<'_> = buf.into();
+    e.read_buf(buf.unfilled()).unwrap();
+    assert_eq!(buf.len(), 0);
+    assert_eq!(buf.init_len(), 0);
+
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); 1024];
+    let mut buf: BorrowedBuf<'_> = buf.into();
+    e.by_ref().read_buf(buf.unfilled()).unwrap();
+    assert_eq!(buf.len(), 0);
+    assert_eq!(buf.init_len(), 0);
 }
 
 #[test]

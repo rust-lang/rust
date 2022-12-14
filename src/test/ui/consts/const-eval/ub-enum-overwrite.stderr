@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/ub-enum-overwrite.rs:13:14
+   |
+LL |     unsafe { *p }
+   |              ^^ using uninitialized data, but this operation requires initialized memory
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

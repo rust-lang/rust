@@ -15,6 +15,7 @@ declare_clippy_lint! {
     /// ### Example
     /// Implementing `Visitor::visit_string` but not
     /// `Visitor::visit_str`.
+    #[clippy::version = "pre 1.29.0"]
     pub SERDE_API_MISUSE,
     correctness,
     "various things that will negatively affect your serde experience"
@@ -35,8 +36,8 @@ impl<'tcx> LateLintPass<'tcx> for SerdeApi {
                 if did == visit_did {
                     let mut seen_str = None;
                     let mut seen_string = None;
-                    for item in items {
-                        match &*item.ident.as_str() {
+                    for item in *items {
+                        match item.ident.as_str() {
                             "visit_str" => seen_str = Some(item.span),
                             "visit_string" => seen_string = Some(item.span),
                             _ => {},

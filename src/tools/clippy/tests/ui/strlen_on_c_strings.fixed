@@ -1,0 +1,34 @@
+// run-rustfix
+
+#![warn(clippy::strlen_on_c_strings)]
+#![allow(dead_code)]
+#![feature(rustc_private)]
+extern crate libc;
+
+#[allow(unused)]
+use libc::strlen;
+use std::ffi::{CStr, CString};
+
+fn main() {
+    // CString
+    let cstring = CString::new("foo").expect("CString::new failed");
+    let _ = cstring.as_bytes().len();
+
+    // CStr
+    let cstr = CStr::from_bytes_with_nul(b"foo\0").expect("CStr::from_bytes_with_nul failed");
+    let _ = cstr.to_bytes().len();
+
+    let _ = cstr.to_bytes().len();
+
+    let pcstr: *const &CStr = &cstr;
+    let _ = unsafe { (*pcstr).to_bytes().len() };
+
+    unsafe fn unsafe_identity<T>(x: T) -> T {
+        x
+    }
+    let _ = unsafe { unsafe_identity(cstr).to_bytes().len() };
+    let _ = unsafe { unsafe_identity(cstr) }.to_bytes().len();
+
+    let f: unsafe fn(_) -> _ = unsafe_identity;
+    let _ = unsafe { f(cstr).to_bytes().len() };
+}

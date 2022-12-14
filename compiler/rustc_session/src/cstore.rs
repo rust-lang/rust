@@ -6,9 +6,10 @@ use crate::search_paths::PathKind;
 use crate::utils::NativeLibKind;
 use crate::Session;
 use rustc_ast as ast;
-use rustc_data_structures::sync::{self, MetadataRef};
-use rustc_hir::def_id::{CrateNum, DefId, StableCrateId, LOCAL_CRATE};
-use rustc_hir::definitions::{DefKey, DefPath, DefPathHash};
+use rustc_data_structures::sync::{self, MetadataRef, RwLock};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId, StableCrateId, LOCAL_CRATE};
+use rustc_hir::definitions::{DefKey, DefPath, DefPathHash, Definitions};
+use rustc_index::vec::IndexVec;
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::symbol::Symbol;
 use rustc_span::Span;
@@ -68,6 +69,8 @@ pub enum LinkagePreference {
 pub struct NativeLib {
     pub kind: NativeLibKind,
     pub name: Option<Symbol>,
+    /// If packed_bundled_libs enabled, actual filename of library is stored.
+    pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
     pub foreign_module: Option<DefId>,
     pub wasm_import_module: Option<Symbol>,
@@ -75,10 +78,35 @@ pub struct NativeLib {
     pub dll_imports: Vec<DllImport>,
 }
 
+impl NativeLib {
+    pub fn has_modifiers(&self) -> bool {
+        self.verbatim.is_some() || self.kind.has_modifiers()
+    }
+}
+
+/// Different ways that the PE Format can decorate a symbol name.
+/// From <https://docs.microsoft.com/en-us/windows/win32/debug/pe-format#import-name-type>
+#[derive(Copy, Clone, Debug, Encodable, Decodable, HashStable_Generic, PartialEq, Eq)]
+pub enum PeImportNameType {
+    /// IMPORT_ORDINAL
+    /// Uses the ordinal (i.e., a number) rather than the name.
+    Ordinal(u16),
+    /// Same as IMPORT_NAME
+    /// Name is decorated with all prefixes and suffixes.
+    Decorated,
+    /// Same as IMPORT_NAME_NOPREFIX
+    /// Prefix (e.g., the leading `_` or `@`) is skipped, but suffix is kept.
+    NoPrefix,
+    /// Same as IMPORT_NAME_UNDECORATE
+    /// Prefix (e.g., the leading `_` or `@`) and suffix (the first `@` and all
+    /// trailing characters) are skipped.
+    Undecorated,
+}
+
 #[derive(Clone, Debug, Encodable, Decodable, HashStable_Generic)]
 pub struct DllImport {
     pub name: Symbol,
-    pub ordinal: Option<u16>,
+    pub import_name_type: Option<PeImportNameType>,
     /// Calling convention for the function.
     ///
     /// On x86_64, this is always `DllCallingConvention::C`; on i686, it can be any
@@ -86,6 +114,18 @@ pub struct DllImport {
     pub calling_convention: DllCallingConvention,
     /// Span of import's "extern" declaration; used for diagnostics.
     pub span: Span,
+    /// Is this for a function (rather than a static variable).
+    pub is_fn: bool,
+}
+
+impl DllImport {
+    pub fn ordinal(&self) -> Option<u16> {
+        if let Some(PeImportNameType::Ordinal(ordinal)) = self.import_name_type {
+            Some(ordinal)
+        } else {
+            None
+        }
+    }
 }
 
 /// Calling convention for a function defined in an external library.
@@ -178,6 +218,7 @@ pub type MetadataLoaderDyn = dyn MetadataLoader + Sync;
 /// during resolve)
 pub trait CrateStore: std::fmt::Debug {
     fn as_any(&self) -> &dyn Any;
+    fn untracked_as_any(&mut self) -> &mut dyn Any;
 
     // Foreign definitions.
     // This information is safe to access, since it's hashed as part of the DefPathHash, which incr.
@@ -201,6 +242,20 @@ pub trait CrateStore: std::fmt::Debug {
         index_guess: u32,
         hash: ExpnHash,
     ) -> ExpnId;
+
+    /// Imports all `SourceFile`s from the given crate into the current session.
+    /// This normally happens automatically when we decode a `Span` from
+    /// that crate's metadata - however, the incr comp cache needs
+    /// to trigger this manually when decoding a foreign `Span`
+    fn import_source_files(&self, sess: &Session, cnum: CrateNum);
 }
 
 pub type CrateStoreDyn = dyn CrateStore + sync::Sync;
+
+#[derive(Debug)]
+pub struct Untracked {
+    pub cstore: Box<CrateStoreDyn>,
+    /// Reference span for definitions.
+    pub source_span: IndexVec<LocalDefId, Span>,
+    pub definitions: RwLock<Definitions>,
+}

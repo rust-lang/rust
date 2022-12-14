@@ -12,12 +12,11 @@ fn main() {
             y @ (0..5 | 6) => or_two.push(y),
             //~^ exclusive range pattern syntax is experimental
             y @ 0..const { 5 + 1 } => assert_eq!(y, 5),
-            //~^ inline-const is experimental
+            //~^ inline-const in pattern position is experimental
             //~| exclusive range pattern syntax is experimental
             y @ -5.. => range_from.push(y),
             y @ ..-7 => assert_eq!(y, -8),
-            //~^ half-open range patterns are unstable
-            //~| exclusive range pattern syntax is experimental
+            //~^ exclusive range pattern syntax is experimental
             y => bottom.push(y),
         }
     }

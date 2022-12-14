@@ -6,7 +6,7 @@
 
 #![allow(unused)]
 
-// edition:2018
+// edition: 2018
 // aux-build:arc_wake.rs
 
 extern crate arc_wake;

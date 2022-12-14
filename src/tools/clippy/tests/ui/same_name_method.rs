@@ -1,3 +1,4 @@
+#![feature(lint_reasons)]
 #![warn(clippy::same_name_method)]
 #![allow(dead_code, non_camel_case_types)]
 
@@ -61,7 +62,7 @@ mod should_lint {
         impl T1 for S {}
     }
 
-    mod mulitply_conflicit_trait {
+    mod multiply_conflicit_trait {
         use crate::{T1, T2};
 
         struct S;
@@ -105,6 +106,21 @@ mod should_not_lint {
         impl T3 for S {
             type foo = usize;
         }
+    }
+}
+
+mod check_expect_suppression {
+    use crate::T1;
+
+    struct S;
+
+    impl S {
+        #[expect(clippy::same_name_method)]
+        fn foo() {}
+    }
+
+    impl T1 for S {
+        fn foo() {}
     }
 }
 

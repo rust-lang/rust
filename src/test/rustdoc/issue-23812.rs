@@ -16,10 +16,10 @@ doc! {
 }
 
 // @has issue_23812/Foo/index.html
-// @has - 'Outer comment'
-// @!has - '/// Outer comment'
-// @has - 'Inner comment'
-// @!has - '//! Inner comment'
+// @hasraw - 'Outer comment'
+// @!hasraw - '/// Outer comment'
+// @hasraw - 'Inner comment'
+// @!hasraw - '//! Inner comment'
 
 
 doc! {
@@ -30,7 +30,7 @@ doc! {
 }
 
 // @has issue_23812/Bar/index.html
-// @has - 'Outer block comment'
-// @!has - '/** Outer block comment */'
-// @has - 'Inner block comment'
-// @!has - '/*! Inner block comment */'
+// @hasraw - 'Outer block comment'
+// @!hasraw - '/** Outer block comment */'
+// @hasraw - 'Inner block comment'
+// @!hasraw - '/*! Inner block comment */'

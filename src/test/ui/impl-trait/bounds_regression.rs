@@ -15,7 +15,7 @@ pub fn future_from_generator<
     GenFuture(x)
 }
 
-struct GenFuture<T: FakeGenerator<Yield = ()>>(T);
+struct GenFuture<T: FakeGenerator<Yield = ()>>(#[allow(unused_tuple_struct_fields)] T);
 
 impl<T: FakeGenerator<Yield = ()>> FakeFuture for GenFuture<T> {
     type Output = T::Return;

@@ -14,7 +14,7 @@ pub mod vec_deque;
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
-    //! A map based on a B-Tree.
+    //! An ordered map based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::btree::map::*;
 }
@@ -22,7 +22,7 @@ pub mod btree_map {
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
-    //! A set based on a B-Tree.
+    //! An ordered set based on a B-Tree.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub use super::btree::set::*;
 }
@@ -139,7 +139,7 @@ impl Display for TryReserveError {
                 " because the computed capacity exceeded the collection's maximum"
             }
             TryReserveErrorKind::AllocError { .. } => {
-                " because the memory allocator returned a error"
+                " because the memory allocator returned an error"
             }
         };
         fmt.write_str(reason)
@@ -152,3 +152,6 @@ trait SpecExtend<I: IntoIterator> {
     /// Extends `self` with the contents of the given iterator.
     fn spec_extend(&mut self, iter: I);
 }
+
+#[stable(feature = "try_reserve", since = "1.57.0")]
+impl core::error::Error for TryReserveError {}

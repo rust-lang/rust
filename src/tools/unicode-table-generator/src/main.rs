@@ -75,12 +75,13 @@ use std::collections::{BTreeMap, HashMap};
 use std::ops::Range;
 use ucd_parse::Codepoints;
 
+mod cascading_map;
 mod case_mapping;
 mod raw_emitter;
 mod skiplist;
 mod unicode_download;
 
-use raw_emitter::{emit_codepoints, RawEmitter};
+use raw_emitter::{emit_codepoints, emit_whitespace, RawEmitter};
 
 static PROPERTIES: &[&str] = &[
     "Alphabetic",
@@ -220,7 +221,7 @@ fn main() {
     let write_location = std::env::args().nth(1).unwrap_or_else(|| {
         eprintln!("Must provide path to write unicode tables to");
         eprintln!(
-            "e.g. {} library/core/unicode/unicode_data.rs",
+            "e.g. {} library/core/src/unicode/unicode_data.rs",
             std::env::args().next().unwrap_or_default()
         );
         std::process::exit(1);
@@ -241,8 +242,13 @@ fn main() {
     let mut modules = Vec::new();
     for (property, ranges) in ranges_by_property {
         let datapoints = ranges.iter().map(|r| r.end - r.start).sum::<u32>();
+
         let mut emitter = RawEmitter::new();
-        emit_codepoints(&mut emitter, &ranges);
+        if property == &"White_Space" {
+            emit_whitespace(&mut emitter, &ranges);
+        } else {
+            emit_codepoints(&mut emitter, &ranges);
+        }
 
         modules.push((property.to_lowercase().to_string(), emitter.file));
         println!(
@@ -277,7 +283,7 @@ fn main() {
 
     for (name, contents) in modules {
         table_file.push_str("#[rustfmt::skip]\n");
-        table_file.push_str(&format!("pub mod {} {{\n", name));
+        table_file.push_str(&format!("pub mod {name} {{\n"));
         for line in contents.lines() {
             if !line.trim().is_empty() {
                 table_file.push_str("    ");
@@ -290,7 +296,7 @@ fn main() {
 
     std::fs::write(&write_location, format!("{}\n", table_file.trim_end())).unwrap();
 
-    println!("Total table sizes: {} bytes", total_bytes);
+    println!("Total table sizes: {total_bytes} bytes");
 }
 
 fn version() -> String {
@@ -308,7 +314,7 @@ fn version() -> String {
         readme[start..end].split('.').map(|v| v.parse::<u32>().expect(&v)).collect::<Vec<_>>();
     let [major, minor, micro] = [version[0], version[1], version[2]];
 
-    out.push_str(&format!("({}, {}, {});\n", major, minor, micro));
+    out.push_str(&format!("({major}, {minor}, {micro});\n"));
     out
 }
 
@@ -322,7 +328,7 @@ fn fmt_list<V: std::fmt::Debug>(values: impl IntoIterator<Item = V>) -> String {
         } else {
             out.push_str(line.trim_end());
             out.push('\n');
-            line = format!("    {}", piece);
+            line = format!("    {piece}");
         }
     }
     out.push_str(line.trim_end());
@@ -335,7 +341,7 @@ fn generate_tests(data_path: &str, ranges: &[(&str, Vec<Range<u32>>)]) -> String
     s.push_str("#![allow(incomplete_features, unused)]\n");
     s.push_str("#![feature(const_generics)]\n\n");
     s.push_str("\n#[allow(unused)]\nuse std::hint;\n");
-    s.push_str(&format!("#[path = \"{}\"]\n", data_path));
+    s.push_str(&format!("#[path = \"{data_path}\"]\n"));
     s.push_str("mod unicode_data;\n\n");
 
     s.push_str("\nfn main() {\n");

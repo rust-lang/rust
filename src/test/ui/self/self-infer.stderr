@@ -1,4 +1,4 @@
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/self-infer.rs:4:16
    |
 LL |     fn f(self: _) {}
@@ -9,7 +9,7 @@ help: use type parameters instead
 LL |     fn f<T>(self: T) {}
    |         +++       ~
 
-error[E0121]: the type placeholder `_` is not allowed within types on item signatures for functions
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/self-infer.rs:5:17
    |
 LL |     fn g(self: &_) {}

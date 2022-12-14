@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet;
-use clippy_utils::{contains_return, in_macro, is_lang_ctor, return_ty, visitors::find_all_ret_expressions};
+use clippy_utils::{contains_return, is_res_lang_ctor, path_res, return_ty, visitors::find_all_ret_expressions};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
@@ -49,6 +49,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.50.0"]
     pub UNNECESSARY_WRAPS,
     pedantic,
     "functions that only return `Ok` or `Some`"
@@ -82,7 +83,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         match fn_kind {
             FnKind::ItemFn(..) | FnKind::Method(..) => {
                 let def_id = cx.tcx.hir().local_def_id(hir_id);
-                if self.avoid_breaking_exported_api && cx.access_levels.is_exported(def_id) {
+                if self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(def_id) {
                     return;
                 }
             },
@@ -101,9 +102,9 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Get the wrapper and inner types, if can't, abort.
         let (return_type_label, lang_item, inner_type) = if let ty::Adt(adt_def, subst) = return_ty(cx, hir_id).kind() {
-            if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did) {
+            if cx.tcx.is_diagnostic_item(sym::Option, adt_def.did()) {
                 ("Option", OptionSome, subst.type_at(0))
-            } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did) {
+            } else if cx.tcx.is_diagnostic_item(sym::Result, adt_def.did()) {
                 ("Result", ResultOk, subst.type_at(0))
             } else {
                 return;
@@ -114,14 +115,12 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
 
         // Check if all return expression respect the following condition and collect them.
         let mut suggs = Vec::new();
-        let can_sugg = find_all_ret_expressions(cx, &body.value, |ret_expr| {
+        let can_sugg = find_all_ret_expressions(cx, body.value, |ret_expr| {
             if_chain! {
-                if !in_macro(ret_expr.span);
+                if !ret_expr.span.from_expansion();
                 // Check if a function call.
                 if let ExprKind::Call(func, [arg]) = ret_expr.kind;
-                // Check if OPTION_SOME or RESULT_OK, depending on return type.
-                if let ExprKind::Path(qpath) = &func.kind;
-                if is_lang_ctor(cx, qpath, lang_item);
+                if is_res_lang_ctor(cx, path_res(cx, func), lang_item);
                 // Make sure the function argument does not contain a return expression.
                 if !contains_return(arg);
                 then {
@@ -129,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                         (
                             ret_expr.span,
                             if inner_type.is_unit() {
-                                "".to_string()
+                                String::new()
                             } else {
                                 snippet(cx, arg.span.source_callsite(), "..").to_string()
                             }
@@ -152,11 +151,8 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
                 )
             } else {
                 (
-                    format!(
-                        "this function's return value is unnecessarily wrapped by `{}`",
-                        return_type_label
-                    ),
-                    format!("remove `{}` from the return type...", return_type_label),
+                    format!("this function's return value is unnecessarily wrapped by `{return_type_label}`"),
+                    format!("remove `{return_type_label}` from the return type..."),
                     inner_type.to_string(),
                     "...and then change returning expressions",
                 )

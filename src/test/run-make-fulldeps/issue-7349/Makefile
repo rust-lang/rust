@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test to make sure that inner functions within a polymorphic outer function
 # don't get re-codegened when the outer function is monomorphized.  The test

@@ -15,39 +15,41 @@ use rustc_hir::def::{CtorOf, DefKind, Res};
 use rustc_hir::pat_util::EnumerateAndAdjustIterator;
 use rustc_hir::RangeEnd;
 use rustc_index::vec::Idx;
-use rustc_middle::mir::interpret::{get_slice_bytes, ConstValue};
-use rustc_middle::mir::interpret::{ErrorHandled, LitToConstError, LitToConstInput};
-use rustc_middle::mir::UserTypeProjection;
+use rustc_middle::mir::interpret::{
+    ConstValue, ErrorHandled, LitToConstError, LitToConstInput, Scalar,
+};
+use rustc_middle::mir::{self, UserTypeProjection};
 use rustc_middle::mir::{BorrowKind, Field, Mutability};
-use rustc_middle::thir::{Ascription, BindingMode, FieldPat, Pat, PatKind, PatRange, PatTyProj};
+use rustc_middle::thir::{Ascription, BindingMode, FieldPat, LocalVarId, Pat, PatKind, PatRange};
 use rustc_middle::ty::subst::{GenericArg, SubstsRef};
+use rustc_middle::ty::CanonicalUserTypeAnnotation;
 use rustc_middle::ty::{self, AdtDef, ConstKind, DefIdTree, Region, Ty, TyCtxt, UserType};
 use rustc_span::{Span, Symbol};
 
 use std::cmp::Ordering;
 
 #[derive(Clone, Debug)]
-crate enum PatternError {
+enum PatternError {
     AssocConstInPattern(Span),
     ConstParamInPattern(Span),
     StaticInPattern(Span),
     NonConstPath(Span),
 }
 
-crate struct PatCtxt<'a, 'tcx> {
-    crate tcx: TyCtxt<'tcx>,
-    crate param_env: ty::ParamEnv<'tcx>,
-    crate typeck_results: &'a ty::TypeckResults<'tcx>,
-    crate errors: Vec<PatternError>,
+struct PatCtxt<'a, 'tcx> {
+    tcx: TyCtxt<'tcx>,
+    param_env: ty::ParamEnv<'tcx>,
+    typeck_results: &'a ty::TypeckResults<'tcx>,
+    errors: Vec<PatternError>,
     include_lint_checks: bool,
 }
 
-crate fn pat_from_hir<'a, 'tcx>(
+pub(super) fn pat_from_hir<'a, 'tcx>(
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     typeck_results: &'a ty::TypeckResults<'tcx>,
     pat: &'tcx hir::Pat<'tcx>,
-) -> Pat<'tcx> {
+) -> Box<Pat<'tcx>> {
     let mut pcx = PatCtxt::new(tcx, param_env, typeck_results);
     let result = pcx.lower_pattern(pat);
     if !pcx.errors.is_empty() {
@@ -59,7 +61,7 @@ crate fn pat_from_hir<'a, 'tcx>(
 }
 
 impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
-    crate fn new(
+    fn new(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         typeck_results: &'a ty::TypeckResults<'tcx>,
@@ -67,12 +69,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         PatCtxt { tcx, param_env, typeck_results, errors: vec![], include_lint_checks: false }
     }
 
-    crate fn include_lint_checks(&mut self) -> &mut Self {
+    fn include_lint_checks(&mut self) -> &mut Self {
         self.include_lint_checks = true;
         self
     }
 
-    crate fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
+    fn lower_pattern(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         // When implicit dereferences have been inserted in this pattern, the unadjusted lowered
         // pattern has the type that results *after* dereferencing. For example, in this code:
         //
@@ -84,7 +86,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // ```
         //
         // the type assigned to `Some(n)` in `unadjusted_pat` would be `Option<i32>` (this is
-        // determined in rustc_typeck::check::match). The adjustments would be
+        // determined in rustc_hir_analysis::check::match). The adjustments would be
         //
         // `vec![&&Option<i32>, &Option<i32>]`.
         //
@@ -95,13 +97,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         let unadjusted_pat = self.lower_pattern_unadjusted(pat);
         self.typeck_results.pat_adjustments().get(pat.hir_id).unwrap_or(&vec![]).iter().rev().fold(
             unadjusted_pat,
-            |pat, ref_ty| {
+            |pat: Box<_>, ref_ty| {
                 debug!("{:?}: wrapping pattern with type {:?}", pat, ref_ty);
-                Pat {
+                Box::new(Pat {
                     span: pat.span,
-                    ty: ref_ty,
-                    kind: Box::new(PatKind::Deref { subpattern: pat }),
-                }
+                    ty: *ref_ty,
+                    kind: PatKind::Deref { subpattern: pat },
+                })
             },
         )
     }
@@ -111,7 +113,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         expr: &'tcx hir::Expr<'tcx>,
     ) -> (PatKind<'tcx>, Option<Ascription<'tcx>>) {
         match self.lower_lit(expr) {
-            PatKind::AscribeUserType { ascription, subpattern: Pat { kind: box kind, .. } } => {
+            PatKind::AscribeUserType { ascription, subpattern: box Pat { kind, .. } } => {
                 (kind, Some(ascription))
             }
             kind => (kind, None),
@@ -121,18 +123,20 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     fn lower_pattern_range(
         &mut self,
         ty: Ty<'tcx>,
-        lo: &'tcx ty::Const<'tcx>,
-        hi: &'tcx ty::Const<'tcx>,
+        lo: mir::ConstantKind<'tcx>,
+        hi: mir::ConstantKind<'tcx>,
         end: RangeEnd,
         span: Span,
     ) -> PatKind<'tcx> {
-        assert_eq!(lo.ty, ty);
-        assert_eq!(hi.ty, ty);
-        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env, ty);
+        assert_eq!(lo.ty(), ty);
+        assert_eq!(hi.ty(), ty);
+        let cmp = compare_const_vals(self.tcx, lo, hi, self.param_env);
         match (end, cmp) {
             // `x..y` where `x < y`.
             // Non-empty because the range includes at least `x`.
-            (RangeEnd::Excluded, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Excluded, Some(Ordering::Less)) => {
+                PatKind::Range(Box::new(PatRange { lo, hi, end }))
+            }
             // `x..y` where `x >= y`. The range is empty => error.
             (RangeEnd::Excluded, _) => {
                 struct_span_err!(
@@ -147,7 +151,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             // `x..=y` where `x == y`.
             (RangeEnd::Included, Some(Ordering::Equal)) => PatKind::Constant { value: lo },
             // `x..=y` where `x < y`.
-            (RangeEnd::Included, Some(Ordering::Less)) => PatKind::Range(PatRange { lo, hi, end }),
+            (RangeEnd::Included, Some(Ordering::Less)) => {
+                PatKind::Range(Box::new(PatRange { lo, hi, end }))
+            }
             // `x..=y` where `x > y` hence the range is empty => error.
             (RangeEnd::Included, _) => {
                 let mut err = struct_span_err!(
@@ -177,28 +183,32 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         lo: Option<&PatKind<'tcx>>,
         hi: Option<&PatKind<'tcx>>,
-    ) -> Option<(&'tcx ty::Const<'tcx>, &'tcx ty::Const<'tcx>)> {
+    ) -> Option<(mir::ConstantKind<'tcx>, mir::ConstantKind<'tcx>)> {
         match (lo, hi) {
             (Some(PatKind::Constant { value: lo }), Some(PatKind::Constant { value: hi })) => {
-                Some((lo, hi))
+                Some((*lo, *hi))
             }
             (Some(PatKind::Constant { value: lo }), None) => {
-                Some((lo, ty.numeric_max_val(self.tcx)?))
+                let hi = ty.numeric_max_val(self.tcx)?;
+                Some((*lo, mir::ConstantKind::from_const(hi, self.tcx)))
             }
             (None, Some(PatKind::Constant { value: hi })) => {
-                Some((ty.numeric_min_val(self.tcx)?, hi))
+                let lo = ty.numeric_min_val(self.tcx)?;
+                Some((mir::ConstantKind::from_const(lo, self.tcx), *hi))
             }
             _ => None,
         }
     }
 
-    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Pat<'tcx> {
+    #[instrument(skip(self), level = "debug")]
+    fn lower_pattern_unadjusted(&mut self, pat: &'tcx hir::Pat<'tcx>) -> Box<Pat<'tcx>> {
         let mut ty = self.typeck_results.node_type(pat.hir_id);
+        let mut span = pat.span;
 
         let kind = match pat.kind {
             hir::PatKind::Wild => PatKind::Wild,
 
-            hir::PatKind::Lit(ref value) => self.lower_lit(value),
+            hir::PatKind::Lit(value) => self.lower_lit(value),
 
             hir::PatKind::Range(ref lo_expr, ref hi_expr, end) => {
                 let (lo_expr, hi_expr) = (lo_expr.as_deref(), hi_expr.as_deref());
@@ -206,7 +216,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let lo = lo_expr.map(|e| self.lower_range_expr(e));
                 let hi = hi_expr.map(|e| self.lower_range_expr(e));
 
-                let (lp, hp) = (lo.as_ref().map(|x| &x.0), hi.as_ref().map(|x| &x.0));
+                let (lp, hp) = (lo.as_ref().map(|(x, _)| x), hi.as_ref().map(|(x, _)| x));
                 let mut kind = match self.normalize_range_pattern_ends(ty, lp, hp) {
                     Some((lc, hc)) => self.lower_pattern_range(ty, lc, hc, end, lo_span),
                     None => {
@@ -224,8 +234,9 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 // constants somewhere. Have them on the range pattern.
                 for end in &[lo, hi] {
                     if let Some((_, Some(ascription))) = end {
-                        let subpattern = Pat { span: pat.span, ty, kind: Box::new(kind) };
-                        kind = PatKind::AscribeUserType { ascription: *ascription, subpattern };
+                        let subpattern = Box::new(Pat { span: pat.span, ty, kind });
+                        kind =
+                            PatKind::AscribeUserType { ascription: ascription.clone(), subpattern };
                     }
                 }
 
@@ -245,15 +256,18 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             }
 
             hir::PatKind::Tuple(ref pats, ddpos) => {
-                let tys = match ty.kind() {
-                    ty::Tuple(ref tys) => tys,
-                    _ => span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty),
+                let ty::Tuple(ref tys) = ty.kind() else {
+                    span_bug!(pat.span, "unexpected type for tuple pattern: {:?}", ty);
                 };
                 let subpatterns = self.lower_tuple_subpats(pats, tys.len(), ddpos);
                 PatKind::Leaf { subpatterns }
             }
 
             hir::PatKind::Binding(_, id, ident, ref sub) => {
+                if let Some(ident_span) = ident.span.find_ancestor_inside(span) {
+                    span = span.with_hi(ident_span.hi());
+                }
+
                 let bm = *self
                     .typeck_results
                     .pat_binding_modes()
@@ -275,7 +289,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let var_ty = ty;
                 if let ty::BindByReference(_) = bm {
                     if let ty::Ref(_, rty, _) = ty.kind() {
-                        ty = rty;
+                        ty = *rty;
                     } else {
                         bug!("`ref {}` has wrong type {}", ident, ty);
                     }
@@ -285,7 +299,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                     mutability,
                     mode,
                     name: ident.name,
-                    var: id,
+                    var: LocalVarId(id),
                     ty: var_ty,
                     subpattern: self.lower_opt_pattern(sub),
                     is_primary: id == pat.hir_id,
@@ -294,9 +308,8 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
             hir::PatKind::TupleStruct(ref qpath, ref pats, ddpos) => {
                 let res = self.typeck_results.qpath_res(qpath, pat.hir_id);
-                let adt_def = match ty.kind() {
-                    ty::Adt(adt_def, _) => adt_def,
-                    _ => span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty),
+                let ty::Adt(adt_def, _) = ty.kind() else {
+                    span_bug!(pat.span, "tuple struct pattern not applied to an ADT {:?}", ty);
                 };
                 let variant_def = adt_def.variant_of_res(res);
                 let subpatterns = self.lower_tuple_subpats(pats, variant_def.fields.len(), ddpos);
@@ -308,7 +321,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 let subpatterns = fields
                     .iter()
                     .map(|field| FieldPat {
-                        field: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+                        field: Field::new(self.typeck_results.field_index(field.hir_id)),
                         pattern: self.lower_pattern(&field.pat),
                     })
                     .collect();
@@ -319,14 +332,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             hir::PatKind::Or(ref pats) => PatKind::Or { pats: self.lower_patterns(pats) },
         };
 
-        Pat { span: pat.span, ty, kind: Box::new(kind) }
+        Box::new(Pat { span, ty, kind })
     }
 
     fn lower_tuple_subpats(
         &mut self,
         pats: &'tcx [hir::Pat<'tcx>],
         expected_len: usize,
-        gap_pos: Option<usize>,
+        gap_pos: hir::DotDotPos,
     ) -> Vec<FieldPat<'tcx>> {
         pats.iter()
             .enumerate_and_adjust(expected_len, gap_pos)
@@ -337,12 +350,15 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
             .collect()
     }
 
-    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Vec<Pat<'tcx>> {
+    fn lower_patterns(&mut self, pats: &'tcx [hir::Pat<'tcx>]) -> Box<[Box<Pat<'tcx>>]> {
         pats.iter().map(|p| self.lower_pattern(p)).collect()
     }
 
-    fn lower_opt_pattern(&mut self, pat: &'tcx Option<&'tcx hir::Pat<'tcx>>) -> Option<Pat<'tcx>> {
-        pat.as_ref().map(|p| self.lower_pattern(p))
+    fn lower_opt_pattern(
+        &mut self,
+        pat: &'tcx Option<&'tcx hir::Pat<'tcx>>,
+    ) -> Option<Box<Pat<'tcx>>> {
+        pat.map(|p| self.lower_pattern(p))
     }
 
     fn slice_or_array_pattern(
@@ -379,7 +395,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     ) -> PatKind<'tcx> {
         let res = match res {
             Res::Def(DefKind::Ctor(CtorOf::Variant, ..), variant_ctor_id) => {
-                let variant_id = self.tcx.parent(variant_ctor_id).unwrap();
+                let variant_id = self.tcx.parent(variant_ctor_id);
                 Res::Def(DefKind::Variant, variant_id)
             }
             res => res,
@@ -387,7 +403,7 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         let mut kind = match res {
             Res::Def(DefKind::Variant, variant_id) => {
-                let enum_id = self.tcx.parent(variant_id).unwrap();
+                let enum_id = self.tcx.parent(variant_id);
                 let adt_def = self.tcx.adt_def(enum_id);
                 if adt_def.is_enum() {
                     let substs = match ty.kind() {
@@ -417,12 +433,13 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
                 | DefKind::AssocTy,
                 _,
             )
-            | Res::SelfTy(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::SelfCtor(..) => PatKind::Leaf { subpatterns },
             _ => {
                 let pattern_error = match res {
                     Res::Def(DefKind::ConstParam, _) => PatternError::ConstParamInPattern(span),
-                    Res::Def(DefKind::Static, _) => PatternError::StaticInPattern(span),
+                    Res::Def(DefKind::Static(_), _) => PatternError::StaticInPattern(span),
                     _ => PatternError::NonConstPath(span),
                 };
                 self.errors.push(pattern_error);
@@ -432,13 +449,14 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
 
         if let Some(user_ty) = self.user_substs_applied_to_ty_of_hir_id(hir_id) {
             debug!("lower_variant_or_leaf: kind={:?} user_ty={:?} span={:?}", kind, user_ty, span);
+            let annotation = CanonicalUserTypeAnnotation {
+                user_ty: Box::new(user_ty),
+                span,
+                inferred_ty: self.typeck_results.node_type(hir_id),
+            };
             kind = PatKind::AscribeUserType {
-                subpattern: Pat { span, ty, kind: Box::new(kind) },
-                ascription: Ascription {
-                    user_ty: PatTyProj::from_user_type(user_ty),
-                    user_ty_span: span,
-                    variance: ty::Variance::Covariant,
-                },
+                subpattern: Box::new(Pat { span, ty, kind }),
+                ascription: Ascription { annotation, variance: ty::Variance::Covariant },
             };
         }
 
@@ -448,11 +466,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Takes a HIR Path. If the path is a constant, evaluates it and feeds
     /// it to `const_to_pat`. Any other path (like enum variants without fields)
     /// is converted to the corresponding pattern via `lower_variant_or_leaf`.
-    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Pat<'tcx> {
+    #[instrument(skip(self), level = "debug")]
+    fn lower_path(&mut self, qpath: &hir::QPath<'_>, id: hir::HirId, span: Span) -> Box<Pat<'tcx>> {
         let ty = self.typeck_results.node_type(id);
         let res = self.typeck_results.qpath_res(qpath, id);
 
-        let pat_from_kind = |kind| Pat { span, ty, kind: Box::new(kind) };
+        let pat_from_kind = |kind| Box::new(Pat { span, ty, kind });
 
         let (def_id, is_associated_const) = match res {
             Res::Def(DefKind::Const, def_id) => (def_id, false),
@@ -464,7 +483,12 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         // Use `Reveal::All` here because patterns are always monomorphic even if their function
         // isn't.
         let param_env_reveal_all = self.param_env.with_reveal_all_normalized(self.tcx);
-        let substs = self.typeck_results.node_substs(id);
+        // N.B. There is no guarantee that substs collected in typeck results are fully normalized,
+        // so they need to be normalized in order to pass to `Instance::resolve`, which will ICE
+        // if given unnormalized types.
+        let substs = self
+            .tcx
+            .normalize_erasing_regions(param_env_reveal_all, self.typeck_results.node_substs(id));
         let instance = match ty::Instance::resolve(self.tcx, param_env_reveal_all, def_id, substs) {
             Ok(Some(i)) => i,
             Ok(None) => {
@@ -489,33 +513,34 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         debug!("mir_structural_match_violation({:?}) -> {}", qpath, mir_structural_match_violation);
 
         match self.tcx.const_eval_instance(param_env_reveal_all, instance, Some(span)) {
-            Ok(value) => {
-                let const_ =
-                    ty::Const::from_value(self.tcx, value, self.typeck_results.node_type(id));
-
-                let pattern = self.const_to_pat(&const_, id, span, mir_structural_match_violation);
+            Ok(literal) => {
+                let const_ = mir::ConstantKind::Val(literal, ty);
+                let pattern = self.const_to_pat(const_, id, span, mir_structural_match_violation);
 
                 if !is_associated_const {
                     return pattern;
                 }
 
                 let user_provided_types = self.typeck_results().user_provided_types();
-                if let Some(u_ty) = user_provided_types.get(id) {
-                    let user_ty = PatTyProj::from_user_type(*u_ty);
-                    Pat {
+                if let Some(&user_ty) = user_provided_types.get(id) {
+                    let annotation = CanonicalUserTypeAnnotation {
+                        user_ty: Box::new(user_ty),
                         span,
-                        kind: Box::new(PatKind::AscribeUserType {
+                        inferred_ty: self.typeck_results().node_type(id),
+                    };
+                    Box::new(Pat {
+                        span,
+                        kind: PatKind::AscribeUserType {
                             subpattern: pattern,
                             ascription: Ascription {
+                                annotation,
                                 /// Note that use `Contravariant` here. See the
                                 /// `variance` field documentation for details.
                                 variance: ty::Variance::Contravariant,
-                                user_ty,
-                                user_ty_span: span,
                             },
-                        }),
-                        ty: const_.ty,
-                    }
+                        },
+                        ty: const_.ty(),
+                    })
                 } else {
                     pattern
                 }
@@ -533,43 +558,66 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
         }
     }
 
+    /// Converts inline const patterns.
+    fn lower_inline_const(
+        &mut self,
+        anon_const: &'tcx hir::AnonConst,
+        id: hir::HirId,
+        span: Span,
+    ) -> PatKind<'tcx> {
+        let value = mir::ConstantKind::from_inline_const(self.tcx, anon_const.def_id);
+
+        // Evaluate early like we do in `lower_path`.
+        let value = value.eval(self.tcx, self.param_env);
+
+        match value {
+            mir::ConstantKind::Ty(c) => match c.kind() {
+                ConstKind::Param(_) => {
+                    self.errors.push(PatternError::ConstParamInPattern(span));
+                    return PatKind::Wild;
+                }
+                ConstKind::Error(_) => {
+                    return PatKind::Wild;
+                }
+                _ => bug!("Expected ConstKind::Param"),
+            },
+            mir::ConstantKind::Val(_, _) => self.const_to_pat(value, id, span, false).kind,
+            mir::ConstantKind::Unevaluated(..) => {
+                // If we land here it means the const can't be evaluated because it's `TooGeneric`.
+                self.tcx.sess.span_err(span, "constant pattern depends on a generic parameter");
+                return PatKind::Wild;
+            }
+        }
+    }
+
     /// Converts literals, paths and negation of literals to patterns.
     /// The special case for negation exists to allow things like `-128_i8`
     /// which would overflow if we tried to evaluate `128_i8` and then negate
     /// afterwards.
     fn lower_lit(&mut self, expr: &'tcx hir::Expr<'tcx>) -> PatKind<'tcx> {
-        if let hir::ExprKind::Path(ref qpath) = expr.kind {
-            *self.lower_path(qpath, expr.hir_id, expr.span).kind
-        } else {
-            let (lit, neg) = match expr.kind {
-                hir::ExprKind::ConstBlock(ref anon_const) => {
-                    let anon_const_def_id = self.tcx.hir().local_def_id(anon_const.hir_id);
-                    let value = ty::Const::from_anon_const(self.tcx, anon_const_def_id);
-                    if matches!(value.val, ConstKind::Param(_)) {
-                        let span = self.tcx.hir().span(anon_const.hir_id);
-                        self.errors.push(PatternError::ConstParamInPattern(span));
-                        return PatKind::Wild;
-                    }
-                    return *self.const_to_pat(value, expr.hir_id, expr.span, false).kind;
-                }
-                hir::ExprKind::Lit(ref lit) => (lit, false),
-                hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
-                    let lit = match expr.kind {
-                        hir::ExprKind::Lit(ref lit) => lit,
-                        _ => span_bug!(expr.span, "not a literal: {:?}", expr),
-                    };
-                    (lit, true)
-                }
-                _ => span_bug!(expr.span, "not a literal: {:?}", expr),
-            };
-
-            let lit_input =
-                LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
-            match self.tcx.at(expr.span).lit_to_const(lit_input) {
-                Ok(val) => *self.const_to_pat(val, expr.hir_id, lit.span, false).kind,
-                Err(LitToConstError::Reported) => PatKind::Wild,
-                Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
+        let (lit, neg) = match expr.kind {
+            hir::ExprKind::Path(ref qpath) => {
+                return self.lower_path(qpath, expr.hir_id, expr.span).kind;
             }
+            hir::ExprKind::ConstBlock(ref anon_const) => {
+                return self.lower_inline_const(anon_const, expr.hir_id, expr.span);
+            }
+            hir::ExprKind::Lit(ref lit) => (lit, false),
+            hir::ExprKind::Unary(hir::UnOp::Neg, ref expr) => {
+                let hir::ExprKind::Lit(ref lit) = expr.kind else {
+                    span_bug!(expr.span, "not a literal: {:?}", expr);
+                };
+                (lit, true)
+            }
+            _ => span_bug!(expr.span, "not a literal: {:?}", expr),
+        };
+
+        let lit_input =
+            LitToConstInput { lit: &lit.node, ty: self.typeck_results.expr_ty(expr), neg };
+        match self.tcx.at(expr.span).lit_to_mir_constant(lit_input) {
+            Ok(constant) => self.const_to_pat(constant, expr.hir_id, lit.span, false).kind,
+            Err(LitToConstError::Reported(_)) => PatKind::Wild,
+            Err(LitToConstError::TypeError) => bug!("lower_lit: had type error"),
         }
     }
 }
@@ -584,7 +632,7 @@ impl<'tcx> UserAnnotatedTyHelpers<'tcx> for PatCtxt<'_, 'tcx> {
     }
 }
 
-crate trait PatternFoldable<'tcx>: Sized {
+trait PatternFoldable<'tcx>: Sized {
     fn fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.super_fold_with(folder)
     }
@@ -592,7 +640,7 @@ crate trait PatternFoldable<'tcx>: Sized {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self;
 }
 
-crate trait PatternFolder<'tcx>: Sized {
+trait PatternFolder<'tcx>: Sized {
     fn fold_pattern(&mut self, pattern: &Pat<'tcx>) -> Pat<'tcx> {
         pattern.super_fold_with(self)
     }
@@ -615,13 +663,19 @@ impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Vec<T> {
     }
 }
 
+impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Box<[T]> {
+    fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
+        self.iter().map(|t| t.fold_with(folder)).collect()
+    }
+}
+
 impl<'tcx, T: PatternFoldable<'tcx>> PatternFoldable<'tcx> for Option<T> {
     fn super_fold_with<F: PatternFolder<'tcx>>(&self, folder: &mut F) -> Self {
         self.as_ref().map(|t| t.fold_with(folder))
     }
 }
 
-macro_rules! CloneImpls {
+macro_rules! ClonePatternFoldableImpls {
     (<$lt_tcx:tt> $($ty:ty),+) => {
         $(
             impl<$lt_tcx> PatternFoldable<$lt_tcx> for $ty {
@@ -633,11 +687,11 @@ macro_rules! CloneImpls {
     }
 }
 
-CloneImpls! { <'tcx>
-    Span, Field, Mutability, Symbol, hir::HirId, usize, ty::Const<'tcx>,
-    Region<'tcx>, Ty<'tcx>, BindingMode, &'tcx AdtDef,
+ClonePatternFoldableImpls! { <'tcx>
+    Span, Field, Mutability, Symbol, LocalVarId, usize,
+    Region<'tcx>, Ty<'tcx>, BindingMode, AdtDef<'tcx>,
     SubstsRef<'tcx>, &'tcx GenericArg<'tcx>, UserType<'tcx>,
-    UserTypeProjection, PatTyProj<'tcx>
+    UserTypeProjection, CanonicalUserTypeAnnotation<'tcx>
 }
 
 impl<'tcx> PatternFoldable<'tcx> for FieldPat<'tcx> {
@@ -670,14 +724,10 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
             PatKind::Wild => PatKind::Wild,
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: Ascription { variance, ref user_ty, user_ty_span },
+                ascription: Ascription { ref annotation, variance },
             } => PatKind::AscribeUserType {
                 subpattern: subpattern.fold_with(folder),
-                ascription: Ascription {
-                    user_ty: user_ty.fold_with(folder),
-                    variance,
-                    user_ty_span,
-                },
+                ascription: Ascription { annotation: annotation.fold_with(folder), variance },
             },
             PatKind::Binding { mutability, name, mode, var, ty, ref subpattern, is_primary } => {
                 PatKind::Binding {
@@ -705,7 +755,7 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
                 PatKind::Deref { subpattern: subpattern.fold_with(folder) }
             }
             PatKind::Constant { value } => PatKind::Constant { value },
-            PatKind::Range(range) => PatKind::Range(range),
+            PatKind::Range(ref range) => PatKind::Range(range.clone()),
             PatKind::Slice { ref prefix, ref slice, ref suffix } => PatKind::Slice {
                 prefix: prefix.fold_with(folder),
                 slice: slice.fold_with(folder),
@@ -721,67 +771,55 @@ impl<'tcx> PatternFoldable<'tcx> for PatKind<'tcx> {
     }
 }
 
-crate fn compare_const_vals<'tcx>(
+#[instrument(skip(tcx), level = "debug")]
+pub(crate) fn compare_const_vals<'tcx>(
     tcx: TyCtxt<'tcx>,
-    a: &'tcx ty::Const<'tcx>,
-    b: &'tcx ty::Const<'tcx>,
+    a: mir::ConstantKind<'tcx>,
+    b: mir::ConstantKind<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-    ty: Ty<'tcx>,
 ) -> Option<Ordering> {
-    trace!("compare_const_vals: {:?}, {:?}", a, b);
+    assert_eq!(a.ty(), b.ty());
 
-    let from_bool = |v: bool| v.then_some(Ordering::Equal);
+    let ty = a.ty();
 
-    let fallback = || from_bool(a == b);
-
-    // Use the fallback if any type differs
-    if a.ty != b.ty || a.ty != ty {
-        return fallback();
+    // This code is hot when compiling matches with many ranges. So we
+    // special-case extraction of evaluated scalars for speed, for types where
+    // raw data comparisons are appropriate. E.g. `unicode-normalization` has
+    // many ranges such as '\u{037A}'..='\u{037F}', and chars can be compared
+    // in this way.
+    match ty.kind() {
+        ty::Float(_) | ty::Int(_) => {} // require special handling, see below
+        _ => match (a, b) {
+            (
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(a)), _a_ty),
+                mir::ConstantKind::Val(ConstValue::Scalar(Scalar::Int(b)), _b_ty),
+            ) => return Some(a.cmp(&b)),
+            _ => {}
+        },
     }
 
-    // Early return for equal constants (so e.g. references to ZSTs can be compared, even if they
-    // are just integer addresses).
-    if a.val == b.val {
-        return from_bool(true);
-    }
+    let a = a.eval_bits(tcx, param_env, ty);
+    let b = b.eval_bits(tcx, param_env, ty);
 
-    let a_bits = a.try_eval_bits(tcx, param_env, ty);
-    let b_bits = b.try_eval_bits(tcx, param_env, ty);
-
-    if let (Some(a), Some(b)) = (a_bits, b_bits) {
-        use rustc_apfloat::Float;
-        return match *ty.kind() {
-            ty::Float(ty::FloatTy::F32) => {
-                let l = rustc_apfloat::ieee::Single::from_bits(a);
-                let r = rustc_apfloat::ieee::Single::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Float(ty::FloatTy::F64) => {
-                let l = rustc_apfloat::ieee::Double::from_bits(a);
-                let r = rustc_apfloat::ieee::Double::from_bits(b);
-                l.partial_cmp(&r)
-            }
-            ty::Int(ity) => {
-                use rustc_middle::ty::layout::IntegerExt;
-                let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
-                let a = size.sign_extend(a);
-                let b = size.sign_extend(b);
-                Some((a as i128).cmp(&(b as i128)))
-            }
-            _ => Some(a.cmp(&b)),
-        };
-    }
-
-    if let ty::Str = ty.kind() {
-        if let (
-            ty::ConstKind::Value(a_val @ ConstValue::Slice { .. }),
-            ty::ConstKind::Value(b_val @ ConstValue::Slice { .. }),
-        ) = (a.val, b.val)
-        {
-            let a_bytes = get_slice_bytes(&tcx, a_val);
-            let b_bytes = get_slice_bytes(&tcx, b_val);
-            return from_bool(a_bytes == b_bytes);
+    use rustc_apfloat::Float;
+    match *ty.kind() {
+        ty::Float(ty::FloatTy::F32) => {
+            let a = rustc_apfloat::ieee::Single::from_bits(a);
+            let b = rustc_apfloat::ieee::Single::from_bits(b);
+            a.partial_cmp(&b)
         }
+        ty::Float(ty::FloatTy::F64) => {
+            let a = rustc_apfloat::ieee::Double::from_bits(a);
+            let b = rustc_apfloat::ieee::Double::from_bits(b);
+            a.partial_cmp(&b)
+        }
+        ty::Int(ity) => {
+            use rustc_middle::ty::layout::IntegerExt;
+            let size = rustc_target::abi::Integer::from_int_ty(&tcx, ity).size();
+            let a = size.sign_extend(a);
+            let b = size.sign_extend(b);
+            Some((a as i128).cmp(&(b as i128)))
+        }
+        _ => Some(a.cmp(&b)),
     }
-    fallback()
 }

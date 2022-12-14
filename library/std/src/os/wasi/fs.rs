@@ -87,7 +87,7 @@ pub trait FileExt {
             }
         }
         if !buf.is_empty() {
-            Err(io::Error::new_const(io::ErrorKind::UnexpectedEof, &"failed to fill whole buffer"))
+            Err(io::const_io_error!(io::ErrorKind::UnexpectedEof, "failed to fill whole buffer"))
         } else {
             Ok(())
         }
@@ -153,9 +153,9 @@ pub trait FileExt {
         while !buf.is_empty() {
             match self.write_at(buf, offset) {
                 Ok(0) => {
-                    return Err(io::Error::new_const(
+                    return Err(io::const_io_error!(
                         io::ErrorKind::WriteZero,
-                        &"failed to write whole buffer",
+                        "failed to write whole buffer",
                     ));
                 }
                 Ok(n) => {
@@ -250,6 +250,21 @@ impl FileExt for fs::File {
     }
 
     fn advise(&self, offset: u64, len: u64, advice: u8) -> io::Result<()> {
+        let advice = match advice {
+            a if a == wasi::ADVICE_NORMAL.raw() => wasi::ADVICE_NORMAL,
+            a if a == wasi::ADVICE_SEQUENTIAL.raw() => wasi::ADVICE_SEQUENTIAL,
+            a if a == wasi::ADVICE_RANDOM.raw() => wasi::ADVICE_RANDOM,
+            a if a == wasi::ADVICE_WILLNEED.raw() => wasi::ADVICE_WILLNEED,
+            a if a == wasi::ADVICE_DONTNEED.raw() => wasi::ADVICE_DONTNEED,
+            a if a == wasi::ADVICE_NOREUSE.raw() => wasi::ADVICE_NOREUSE,
+            _ => {
+                return Err(io::const_io_error!(
+                    io::ErrorKind::InvalidInput,
+                    "invalid parameter 'advice'",
+                ));
+            }
+        };
+
         self.as_inner().as_inner().advise(offset, len, advice)
     }
 
@@ -444,18 +459,22 @@ pub trait FileTypeExt {
     /// Returns `true` if this file type is a block device.
     fn is_block_device(&self) -> bool;
     /// Returns `true` if this file type is a character device.
-    fn is_character_device(&self) -> bool;
+    fn is_char_device(&self) -> bool;
     /// Returns `true` if this file type is a socket datagram.
     fn is_socket_dgram(&self) -> bool;
     /// Returns `true` if this file type is a socket stream.
     fn is_socket_stream(&self) -> bool;
+    /// Returns `true` if this file type is any type of socket.
+    fn is_socket(&self) -> bool {
+        self.is_socket_stream() || self.is_socket_dgram()
+    }
 }
 
 impl FileTypeExt for fs::FileType {
     fn is_block_device(&self) -> bool {
         self.as_inner().bits() == wasi::FILETYPE_BLOCK_DEVICE
     }
-    fn is_character_device(&self) -> bool {
+    fn is_char_device(&self) -> bool {
         self.as_inner().bits() == wasi::FILETYPE_CHARACTER_DEVICE
     }
     fn is_socket_dgram(&self) -> bool {
@@ -535,5 +554,5 @@ pub fn symlink_path<P: AsRef<Path>, U: AsRef<Path>>(old_path: P, new_path: U) ->
 
 fn osstr2str(f: &OsStr) -> io::Result<&str> {
     f.to_str()
-        .ok_or_else(|| io::Error::new_const(io::ErrorKind::Uncategorized, &"input must be utf-8"))
+        .ok_or_else(|| io::const_io_error!(io::ErrorKind::Uncategorized, "input must be utf-8"))
 }

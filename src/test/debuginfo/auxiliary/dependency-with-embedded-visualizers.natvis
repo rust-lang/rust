@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<AutoVisualizer xmlns="http://schemas.microsoft.com/vstudio/debugger/natvis/2010">
+  <Type Name="dependency_with_embedded_visualizers::Person">
+    <DisplayString>{name} is {age} years old.</DisplayString>
+    <Expand>
+      <Item Name="[name]">name</Item>
+      <Item Name="[age]">age</Item>
+    </Expand>
+  </Type>
+</AutoVisualizer>

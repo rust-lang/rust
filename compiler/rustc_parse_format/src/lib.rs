@@ -9,8 +9,10 @@
     html_playground_url = "https://play.rust-lang.org/",
     test(attr(deny(warnings)))
 )]
-#![feature(nll)]
-#![feature(bool_to_option)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+// We want to be able to build this crate with a stable compiler, so no
+// `#![feature]` attributes should be added.
 
 pub use Alignment::*;
 pub use Count::*;
@@ -22,7 +24,19 @@ use std::iter;
 use std::str;
 use std::string;
 
-use rustc_span::{InnerSpan, Symbol};
+// Note: copied from rustc_span
+/// Range inside of a `Span` used for diagnostics when we only have access to relative positions.
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+pub struct InnerSpan {
+    pub start: usize,
+    pub end: usize,
+}
+
+impl InnerSpan {
+    pub fn new(start: usize, end: usize) -> InnerSpan {
+        InnerSpan { start, end }
+    }
+}
 
 /// The type of format string that we are parsing.
 #[derive(Copy, Clone, Debug, Eq, PartialEq)]
@@ -44,20 +58,23 @@ impl InnerOffset {
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    NextArgument(Argument<'a>),
+    NextArgument(Box<Argument<'a>>),
 }
 
 /// Representation of an argument specification.
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub struct Argument<'a> {
     /// Where to find this argument
-    pub position: Position,
+    pub position: Position<'a>,
+    /// The span of the position indicator. Includes any whitespace in implicit
+    /// positions (`{  }`).
+    pub position_span: InnerSpan,
     /// How to format the argument
     pub format: FormatSpec<'a>,
 }
@@ -72,11 +89,11 @@ pub struct FormatSpec<'a> {
     /// Packed version of various flags provided.
     pub flags: u32,
     /// The integer precision to use.
-    pub precision: Count,
+    pub precision: Count<'a>,
     /// The span of the precision formatting flag (for diagnostics).
     pub precision_span: Option<InnerSpan>,
     /// The string width requested for the resulting format.
-    pub width: Count,
+    pub width: Count<'a>,
     /// The span of the width formatting flag (for diagnostics).
     pub width_span: Option<InnerSpan>,
     /// The descriptor string representing the name of the format desired for
@@ -89,19 +106,19 @@ pub struct FormatSpec<'a> {
 
 /// Enum describing where an argument for a format can be located.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Position {
+pub enum Position<'a> {
     /// The argument is implied to be located at an index
     ArgumentImplicitlyIs(usize),
-    /// The argument is located at a specific index given in the format
+    /// The argument is located at a specific index given in the format,
     ArgumentIs(usize),
     /// The argument has a name.
-    ArgumentNamed(Symbol),
+    ArgumentNamed(&'a str),
 }
 
-impl Position {
+impl Position<'_> {
     pub fn index(&self) -> Option<usize> {
         match self {
-            ArgumentIs(i) | ArgumentImplicitlyIs(i) => Some(*i),
+            ArgumentIs(i, ..) | ArgumentImplicitlyIs(i) => Some(*i),
             _ => None,
         }
     }
@@ -143,13 +160,15 @@ pub enum Flag {
 /// A count is used for the precision and width parameters of an integer, and
 /// can reference either an argument or a literal integer.
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum Count {
+pub enum Count<'a> {
     /// The count is specified explicitly.
     CountIs(usize),
     /// The count is specified by the argument with the given name.
-    CountIsName(Symbol),
+    CountIsName(&'a str, InnerSpan),
     /// The count is specified by the argument at the given index.
     CountIsParam(usize),
+    /// The count is specified by a star (like in `{:.*}`) that refers to the argument at the given index.
+    CountIsStar(usize),
     /// The count is implied and cannot be explicitly specified.
     CountImplied,
 }
@@ -160,6 +179,7 @@ pub struct ParseError {
     pub label: string::String,
     pub span: InnerSpan,
     pub secondary_label: Option<(string::String, InnerSpan)>,
+    pub should_be_replaced_with_positional_argument: bool,
 }
 
 /// The parser structure for interpreting the input format string. This is
@@ -204,14 +224,15 @@ impl<'a> Iterator for Parser<'a> {
                 '{' => {
                     let curr_last_brace = self.last_opening_brace;
                     let byte_pos = self.to_span_index(pos);
-                    self.last_opening_brace = Some(byte_pos.to(InnerOffset(byte_pos.0 + 1)));
+                    let lbrace_end = self.to_span_index(pos + 1);
+                    self.last_opening_brace = Some(byte_pos.to(lbrace_end));
                     self.cur.next();
                     if self.consume('{') {
                         self.last_opening_brace = curr_last_brace;
 
                         Some(String(self.string(pos + 1)))
                     } else {
-                        let arg = self.argument();
+                        let arg = self.argument(lbrace_end);
                         if let Some(rbrace_byte_idx) = self.must_consume('}') {
                             let lbrace_inner_offset = self.to_span_index(pos);
                             let rbrace_inner_offset = self.to_span_index(rbrace_byte_idx);
@@ -220,8 +241,10 @@ impl<'a> Iterator for Parser<'a> {
                                     lbrace_inner_offset.to(InnerOffset(rbrace_inner_offset.0 + 1)),
                                 );
                             }
+                        } else {
+                            self.suggest_positional_arg_instead_of_captured_arg(arg);
                         }
-                        Some(NextArgument(arg))
+                        Some(NextArgument(Box::new(arg)))
                     }
                 }
                 '}' => {
@@ -243,9 +266,7 @@ impl<'a> Iterator for Parser<'a> {
             }
         } else {
             if self.is_literal {
-                let start = self.to_span_index(self.cur_line_start);
-                let end = self.to_span_index(self.input.len());
-                let span = start.to(end);
+                let span = self.span(self.cur_line_start, self.input.len());
                 if self.line_spans.last() != Some(&span) {
                     self.line_spans.push(span);
                 }
@@ -297,6 +318,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
+            should_be_replaced_with_positional_argument: false,
         });
     }
 
@@ -320,6 +342,7 @@ impl<'a> Parser<'a> {
             label: label.into(),
             span,
             secondary_label: None,
+            should_be_replaced_with_positional_argument: false,
         });
     }
 
@@ -361,6 +384,12 @@ impl<'a> Parser<'a> {
         InnerOffset(raw + pos + 1)
     }
 
+    fn span(&self, start_pos: usize, end_pos: usize) -> InnerSpan {
+        let start = self.to_span_index(start_pos);
+        let end = self.to_span_index(end_pos);
+        start.to(end)
+    }
+
     /// Forces consumption of the specified character. If the character is not
     /// found, an error is emitted.
     fn must_consume(&mut self, c: char) -> Option<usize> {
@@ -391,6 +420,7 @@ impl<'a> Parser<'a> {
                     label,
                     span: pos.to(pos),
                     secondary_label,
+                    should_be_replaced_with_positional_argument: false,
                 });
                 None
             }
@@ -418,6 +448,7 @@ impl<'a> Parser<'a> {
                     label,
                     span: pos.to(pos),
                     secondary_label,
+                    should_be_replaced_with_positional_argument: false,
                 });
             } else {
                 self.err(description, format!("expected `{:?}`", c), pos.to(pos));
@@ -447,9 +478,7 @@ impl<'a> Parser<'a> {
                     return &self.input[start..pos];
                 }
                 '\n' if self.is_literal => {
-                    let start = self.to_span_index(self.cur_line_start);
-                    let end = self.to_span_index(pos);
-                    self.line_spans.push(start.to(end));
+                    self.line_spans.push(self.span(self.cur_line_start, pos));
                     self.cur_line_start = pos + 1;
                     self.cur.next();
                 }
@@ -465,8 +494,16 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses an `Argument` structure, or what's contained within braces inside the format string.
-    fn argument(&mut self) -> Argument<'a> {
+    fn argument(&mut self, start: InnerOffset) -> Argument<'a> {
         let pos = self.position();
+
+        let end = self
+            .cur
+            .clone()
+            .find(|(_, ch)| !ch.is_whitespace())
+            .map_or(start, |(end, _)| self.to_span_index(end));
+        let position_span = start.to(end);
+
         let format = match self.mode {
             ParseMode::Format => self.format(),
             ParseMode::InlineAsm => self.inline_asm(),
@@ -482,21 +519,19 @@ impl<'a> Parser<'a> {
             }
         };
 
-        Argument { position: pos, format }
+        Argument { position: pos, position_span, format }
     }
 
     /// Parses a positional argument for a format. This could either be an
     /// integer index of an argument, a named argument, or a blank string.
     /// Returns `Some(parsed_position)` if the position is not implicitly
     /// consuming a macro argument, `None` if it's the case.
-    fn position(&mut self) -> Option<Position> {
+    fn position(&mut self) -> Option<Position<'a>> {
         if let Some(i) = self.integer() {
             Some(ArgumentIs(i))
         } else {
             match self.cur.peek() {
-                Some(&(_, c)) if rustc_lexer::is_id_start(c) => {
-                    Some(ArgumentNamed(Symbol::intern(self.word())))
-                }
+                Some(&(_, c)) if rustc_lexer::is_id_start(c) => Some(ArgumentNamed(self.word())),
 
                 // This is an `ArgumentNext`.
                 // Record the fact and do the resolution after parsing the
@@ -504,6 +539,10 @@ impl<'a> Parser<'a> {
                 _ => None,
             }
         }
+    }
+
+    fn current_pos(&mut self) -> usize {
+        if let Some(&(pos, _)) = self.cur.peek() { pos } else { self.input.len() }
     }
 
     /// Parses a format specifier at the current position, returning all of the
@@ -557,35 +596,39 @@ impl<'a> Parser<'a> {
             // '0' flag and then an ill-formatted format string with just a '$'
             // and no count, but this is better if we instead interpret this as
             // no '0' flag and '0$' as the width instead.
-            if self.consume('$') {
+            if let Some(end) = self.consume_pos('$') {
                 spec.width = CountIsParam(0);
+                spec.width_span = Some(self.span(end - 1, end + 1));
                 havewidth = true;
             } else {
                 spec.flags |= 1 << (FlagSignAwareZeroPad as u32);
             }
         }
+
         if !havewidth {
-            let width_span_start = if let Some((pos, _)) = self.cur.peek() { *pos } else { 0 };
-            let (w, sp) = self.count(width_span_start);
-            spec.width = w;
-            spec.width_span = sp;
+            let start = self.current_pos();
+            spec.width = self.count(start);
+            if spec.width != CountImplied {
+                let end = self.current_pos();
+                spec.width_span = Some(self.span(start, end));
+            }
         }
+
         if let Some(start) = self.consume_pos('.') {
-            if let Some(end) = self.consume_pos('*') {
+            if self.consume('*') {
                 // Resolve `CountIsNextParam`.
                 // We can do this immediately as `position` is resolved later.
                 let i = self.curarg;
                 self.curarg += 1;
-                spec.precision = CountIsParam(i);
-                spec.precision_span =
-                    Some(self.to_span_index(start).to(self.to_span_index(end + 1)));
+                spec.precision = CountIsStar(i);
             } else {
-                let (p, sp) = self.count(start);
-                spec.precision = p;
-                spec.precision_span = sp;
+                spec.precision = self.count(start + 1);
             }
+            let end = self.current_pos();
+            spec.precision_span = Some(self.span(start, end));
         }
-        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
+
+        let ty_span_start = self.current_pos();
         // Optional radix followed by the actual format specifier
         if self.consume('x') {
             if self.consume('?') {
@@ -605,11 +648,9 @@ impl<'a> Parser<'a> {
             spec.ty = "?";
         } else {
             spec.ty = self.word();
-            let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
             if !spec.ty.is_empty() {
-                spec.ty_span = ty_span_start
-                    .and_then(|s| ty_span_end.map(|e| (s, e)))
-                    .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
+                let ty_span_end = self.current_pos();
+                spec.ty_span = Some(self.span(ty_span_start, ty_span_end));
             }
         }
         spec
@@ -633,13 +674,11 @@ impl<'a> Parser<'a> {
             return spec;
         }
 
-        let ty_span_start = self.cur.peek().map(|(pos, _)| *pos);
+        let ty_span_start = self.current_pos();
         spec.ty = self.word();
-        let ty_span_end = self.cur.peek().map(|(pos, _)| *pos);
         if !spec.ty.is_empty() {
-            spec.ty_span = ty_span_start
-                .and_then(|s| ty_span_end.map(|e| (s, e)))
-                .map(|(start, end)| self.to_span_index(start).to(self.to_span_index(end)));
+            let ty_span_end = self.current_pos();
+            spec.ty_span = Some(self.span(ty_span_start, ty_span_end));
         }
 
         spec
@@ -648,25 +687,21 @@ impl<'a> Parser<'a> {
     /// Parses a `Count` parameter at the current position. This does not check
     /// for 'CountIsNextParam' because that is only used in precision, not
     /// width.
-    fn count(&mut self, start: usize) -> (Count, Option<InnerSpan>) {
+    fn count(&mut self, start: usize) -> Count<'a> {
         if let Some(i) = self.integer() {
-            if let Some(end) = self.consume_pos('$') {
-                let span = self.to_span_index(start).to(self.to_span_index(end + 1));
-                (CountIsParam(i), Some(span))
-            } else {
-                (CountIs(i), None)
-            }
+            if self.consume('$') { CountIsParam(i) } else { CountIs(i) }
         } else {
             let tmp = self.cur.clone();
             let word = self.word();
             if word.is_empty() {
                 self.cur = tmp;
-                (CountImplied, None)
-            } else if self.consume('$') {
-                (CountIsName(Symbol::intern(word)), None)
+                CountImplied
+            } else if let Some(end) = self.consume_pos('$') {
+                let name_span = self.span(start, end);
+                CountIsName(word, name_span)
             } else {
                 self.cur = tmp;
-                (CountImplied, None)
+                CountImplied
             }
         }
     }
@@ -699,33 +734,81 @@ impl<'a> Parser<'a> {
                 "invalid argument name `_`",
                 "invalid argument name",
                 "argument name cannot be a single underscore",
-                self.to_span_index(start).to(self.to_span_index(end)),
+                self.span(start, end),
             );
         }
         word
     }
 
-    /// Optionally parses an integer at the current position. This doesn't deal
-    /// with overflow at all, it's just accumulating digits.
     fn integer(&mut self) -> Option<usize> {
-        let mut cur = 0;
+        let mut cur: usize = 0;
         let mut found = false;
+        let mut overflow = false;
+        let start = self.current_pos();
         while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
-                cur = cur * 10 + i as usize;
+                let (tmp, mul_overflow) = cur.overflowing_mul(10);
+                let (tmp, add_overflow) = tmp.overflowing_add(i as usize);
+                if mul_overflow || add_overflow {
+                    overflow = true;
+                }
+                cur = tmp;
                 found = true;
                 self.cur.next();
             } else {
                 break;
             }
         }
-        found.then_some(cur)
+
+        if overflow {
+            let end = self.current_pos();
+            let overflowed_int = &self.input[start..end];
+            self.err(
+                format!(
+                    "integer `{}` does not fit into the type `usize` whose range is `0..={}`",
+                    overflowed_int,
+                    usize::MAX
+                ),
+                "integer out of range for `usize`",
+                self.span(start, end),
+            );
+        }
+
+        if found { Some(cur) } else { None }
+    }
+
+    fn suggest_positional_arg_instead_of_captured_arg(&mut self, arg: Argument<'a>) {
+        if let Some(end) = self.consume_pos('.') {
+            let byte_pos = self.to_span_index(end);
+            let start = InnerOffset(byte_pos.0 + 1);
+            let field = self.argument(start);
+            // We can only parse `foo.bar` field access, any deeper nesting,
+            // or another type of expression, like method calls, are not supported
+            if !self.consume('}') {
+                return;
+            }
+            if let ArgumentNamed(_) = arg.position {
+                if let ArgumentNamed(_) = field.position {
+                    self.errors.insert(
+                        0,
+                        ParseError {
+                            description: "field access isn't supported".to_string(),
+                            note: None,
+                            label: "not supported".to_string(),
+                            span: InnerSpan::new(arg.position_span.start, field.position_span.end),
+                            secondary_label: None,
+                            should_be_replaced_with_positional_argument: true,
+                        },
+                    );
+                }
+            }
+        }
     }
 }
 
 /// Finds the indices of all characters that have been processed and differ between the actual
 /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
-/// in order to properly synthethise the intra-string `Span`s for error diagnostics.
+/// in order to properly synthesise the intra-string `Span`s for error diagnostics.
 fn find_skips_from_snippet(
     snippet: Option<string::String>,
     str_style: Option<usize>,
@@ -735,86 +818,99 @@ fn find_skips_from_snippet(
         _ => return (vec![], false),
     };
 
-    fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut s = snippet.char_indices().peekable();
-        let mut skips = vec![];
-        while let Some((pos, c)) = s.next() {
-            match (c, s.peek()) {
-                // skip whitespace and empty lines ending in '\\'
-                ('\\', Some((next_pos, '\n'))) if !is_raw => {
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-
-                    while let Some((pos, c)) = s.peek() {
-                        if matches!(c, ' ' | '\n' | '\t') {
-                            skips.push(*pos);
-                            let _ = s.next();
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                ('\\', Some((_, 'x'))) if !is_raw => {
-                    for _ in 0..3 {
-                        // consume `\xAB` literal
-                        if let Some((pos, _)) = s.next() {
-                            skips.push(pos);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                ('\\', Some((_, 'u'))) if !is_raw => {
-                    if let Some((pos, _)) = s.next() {
-                        skips.push(pos);
-                    }
-                    if let Some((next_pos, next_c)) = s.next() {
-                        if next_c == '{' {
-                            skips.push(next_pos);
-                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
-                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else if c == '}' {
-                                    skips.push(next_pos);
-                                    break;
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        } else if next_c.is_digit(16) {
-                            skips.push(next_pos);
-                            // We suggest adding `{` and `}` when appropriate, accept it here as if
-                            // it were correct
-                            let mut i = 0; // consume up to 6 hexanumeric chars
-                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        skips
+    if str_style.is_some() {
+        return (vec![], true);
     }
 
-    let r_start = str_style.map_or(0, |r| r + 1);
-    let r_end = str_style.unwrap_or(0);
-    let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
-    (find_skips(s, str_style.is_some()), true)
+    let snippet = &snippet[1..snippet.len() - 1];
+
+    let mut s = snippet.char_indices();
+    let mut skips = vec![];
+    while let Some((pos, c)) = s.next() {
+        match (c, s.clone().next()) {
+            // skip whitespace and empty lines ending in '\\'
+            ('\\', Some((next_pos, '\n'))) => {
+                skips.push(pos);
+                skips.push(next_pos);
+                let _ = s.next();
+
+                while let Some((pos, c)) = s.clone().next() {
+                    if matches!(c, ' ' | '\n' | '\t') {
+                        skips.push(pos);
+                        let _ = s.next();
+                    } else {
+                        break;
+                    }
+                }
+            }
+            ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
+                skips.push(next_pos);
+                let _ = s.next();
+            }
+            ('\\', Some((_, 'x'))) => {
+                for _ in 0..3 {
+                    // consume `\xAB` literal
+                    if let Some((pos, _)) = s.next() {
+                        skips.push(pos);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            ('\\', Some((_, 'u'))) => {
+                if let Some((pos, _)) = s.next() {
+                    skips.push(pos);
+                }
+                if let Some((next_pos, next_c)) = s.next() {
+                    if next_c == '{' {
+                        // consume up to 6 hexanumeric chars
+                        let digits_len =
+                            s.clone().take(6).take_while(|(_, c)| c.is_digit(16)).count();
+
+                        let len_utf8 = s
+                            .as_str()
+                            .get(..digits_len)
+                            .and_then(|digits| u32::from_str_radix(digits, 16).ok())
+                            .and_then(char::from_u32)
+                            .map_or(1, char::len_utf8);
+
+                        // Skip the digits, for chars that encode to more than 1 utf-8 byte
+                        // exclude as many digits as it is greater than 1 byte
+                        //
+                        // So for a 3 byte character, exclude 2 digits
+                        let required_skips = digits_len.saturating_sub(len_utf8.saturating_sub(1));
+
+                        // skip '{' and '}' also
+                        for pos in (next_pos..).take(required_skips + 2) {
+                            skips.push(pos)
+                        }
+
+                        s.nth(digits_len);
+                    } else if next_c.is_digit(16) {
+                        skips.push(next_pos);
+                        // We suggest adding `{` and `}` when appropriate, accept it here as if
+                        // it were correct
+                        let mut i = 0; // consume up to 6 hexanumeric chars
+                        while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
+                            if c.is_digit(16) {
+                                skips.push(next_pos);
+                            } else {
+                                break;
+                            }
+                            i += 1;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    (skips, true)
 }
+
+// Assert a reasonable size for `Piece`
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Piece<'_>, 16);
 
 #[cfg(test)]
 mod tests;

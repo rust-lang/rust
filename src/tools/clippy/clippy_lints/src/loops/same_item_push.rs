@@ -6,10 +6,9 @@ use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::{DefKind, Res};
-use rustc_hir::intravisit::{walk_expr, NestedVisitorMap, Visitor};
-use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Node, Pat, PatKind, Stmt, StmtKind};
+use rustc_hir::intravisit::{walk_expr, Visitor};
+use rustc_hir::{BindingAnnotation, Block, Expr, ExprKind, HirId, Mutability, Node, Pat, PatKind, Stmt, StmtKind};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
 use rustc_span::symbol::sym;
 use std::iter::Iterator;
 
@@ -31,10 +30,7 @@ pub(super) fn check<'tcx>(
             vec.span,
             "it looks like the same item is being pushed into this Vec",
             None,
-            &format!(
-                "try using vec![{};SIZE] or {}.resize(NEW_SIZE, {})",
-                item_str, vec_str, item_str
-            ),
+            &format!("try using vec![{item_str};SIZE] or {vec_str}.resize(NEW_SIZE, {item_str})"),
         );
     }
 
@@ -49,7 +45,7 @@ pub(super) fn check<'tcx>(
         if same_item_push_visitor.should_lint();
         if let Some((vec, pushed_item)) = same_item_push_visitor.vec_push;
         let vec_ty = cx.typeck_results().expr_ty(vec);
-        let ty = vec_ty.walk(cx.tcx).nth(1).unwrap().expect_ty();
+        let ty = vec_ty.walk().nth(1).unwrap().expect_ty();
         if cx
             .tcx
             .lang_items()
@@ -64,9 +60,9 @@ pub(super) fn check<'tcx>(
                         Res::Local(hir_id) => {
                             let node = cx.tcx.hir().get(hir_id);
                             if_chain! {
-                                if let Node::Binding(pat) = node;
+                                if let Node::Pat(pat) = node;
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
-                                if !matches!(bind_ann, BindingAnnotation::RefMut | BindingAnnotation::Mutable);
+                                if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
                                 let parent_node = cx.tcx.hir().get_parent_node(hir_id);
                                 if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
                                 if let Some(init) = parent_let_expr.init;
@@ -134,8 +130,6 @@ impl<'a, 'tcx> SameItemPushVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         match &expr.kind {
             // Non-determinism may occur ... don't give a lint
@@ -175,10 +169,6 @@ impl<'a, 'tcx> Visitor<'tcx> for SameItemPushVisitor<'a, 'tcx> {
             }
         }
     }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
 }
 
 // Given some statement, determine if that statement is a push on a Vec. If it is, return
@@ -187,10 +177,9 @@ fn get_vec_push<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) -> Option<(&
     if_chain! {
             // Extract method being called
             if let StmtKind::Semi(semi_stmt) = &stmt.kind;
-            if let ExprKind::MethodCall(path, _, args, _) = &semi_stmt.kind;
+            if let ExprKind::MethodCall(path, self_expr, args, _) = &semi_stmt.kind;
             // Figure out the parameters for the method call
-            if let Some(self_expr) = args.get(0);
-            if let Some(pushed_item) = args.get(1);
+            if let Some(pushed_item) = args.get(0);
             // Check that the method being called is push() on a Vec
             if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(self_expr), sym::Vec);
             if path.ident.name.as_str() == "push";

@@ -2,8 +2,6 @@
 #![allow(dead_code)]
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub struct Foo {
     a: isize,
 }
@@ -14,7 +12,7 @@ struct Bar<'a> {
 }
 
 fn check(a: Box<Foo>) {
-    let _ic = Bar{ b: &*a, a: box None };
+    let _ic = Bar{ b: &*a, a: Box::new(None) };
 }
 
 pub fn main(){}

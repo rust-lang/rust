@@ -1,5 +1,5 @@
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:8:12
+  --> $DIR/wf-unreachable.rs:6:12
    |
 LL | fn uninit<'a>() {
    |           -- lifetime `'a` defined here
@@ -8,7 +8,7 @@ LL |     let x: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:13:12
+  --> $DIR/wf-unreachable.rs:11:12
    |
 LL | fn var_type<'a>() {
    |             -- lifetime `'a` defined here
@@ -17,7 +17,7 @@ LL |     let x: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:17:12
+  --> $DIR/wf-unreachable.rs:15:12
    |
 LL | fn uninit_infer<'a>() {
    |                 -- lifetime `'a` defined here
@@ -25,7 +25,7 @@ LL |     let x: &'static &'a _;
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:23:12
+  --> $DIR/wf-unreachable.rs:21:12
    |
 LL | fn infer<'a>() {
    |          -- lifetime `'a` defined here
@@ -34,7 +34,7 @@ LL |     let x: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:28:12
+  --> $DIR/wf-unreachable.rs:26:12
    |
 LL | fn uninit_no_var<'a>() {
    |                  -- lifetime `'a` defined here
@@ -43,7 +43,7 @@ LL |     let _: &'static &'a ();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:33:12
+  --> $DIR/wf-unreachable.rs:31:12
    |
 LL | fn no_var<'a>() {
    |           -- lifetime `'a` defined here
@@ -52,7 +52,7 @@ LL |     let _: &'static &'a () = &&();
    |            ^^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:38:12
+  --> $DIR/wf-unreachable.rs:36:12
    |
 LL | fn infer_no_var<'a>() {
    |                 -- lifetime `'a` defined here
@@ -61,7 +61,7 @@ LL |     let _: &'static &'a _ = &&();
    |            ^^^^^^^^^^^^^^ type annotation requires that `'a` must outlive `'static`
 
 error: lifetime may not live long enough
-  --> $DIR/wf-unreachable.rs:51:12
+  --> $DIR/wf-unreachable.rs:49:12
    |
 LL | fn required_substs<'a>() {
    |                    -- lifetime `'a` defined here

@@ -4,23 +4,23 @@ struct Foo < #[cfg(FALSE)] A, B >
     #[cfg(FALSE)] first : String, #[cfg_attr(FALSE, deny(warnings))] second :
     bool, third :
     [u8 ;
-     {
-         #[cfg(FALSE)] struct Bar ; #[cfg(not(FALSE))] struct Inner ;
-         #[cfg(FALSE)] let a = 25 ; match true
-         {
-             #[cfg(FALSE)] true => { },
-             #[cfg_attr(not(FALSE), allow(warnings))] false => { }, _ => { }
-         } ; #[print_helper(should_be_removed)] fn removed_fn()
-         { #! [cfg(FALSE)] } #[print_helper(c)] #[cfg(not(FALSE))] fn
-         kept_fn() { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
-         {
-             Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32,
-                 #[cfg(FALSE)] String, u8)
-         } struct
-         TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32,
-                     #[cfg(FALSE)] bool, u8) ; fn plain_removed_fn()
-         { #! [cfg_attr(not(FALSE), cfg(FALSE))] } 0
-     }], #[print_helper(d)] fourth : B
+    {
+        #[cfg(FALSE)] struct Bar ; #[cfg(not(FALSE))] struct Inner ;
+        #[cfg(FALSE)] let a = 25 ; match true
+        {
+            #[cfg(FALSE)] true => {}, #[cfg_attr(not(FALSE), allow(warnings))]
+            false => {}, _ => {}
+        } ; #[print_helper(should_be_removed)] fn removed_fn()
+        { #! [cfg(FALSE)] } #[print_helper(c)] #[cfg(not(FALSE))] fn kept_fn()
+        { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
+        {
+            Foo(#[cfg(FALSE)] u8, #[cfg(FALSE)] bool, #[cfg(not(FALSE))] i32,
+            #[cfg(FALSE)] String, u8)
+        } struct
+        TupleStruct(#[cfg(FALSE)] String, #[cfg(not(FALSE))] i32,
+        #[cfg(FALSE)] bool, u8) ; fn plain_removed_fn()
+        { #! [cfg_attr(not(FALSE), cfg(FALSE))] } 0
+    }], #[print_helper(d)] fourth : B
 }
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
@@ -489,12 +489,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:34 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:33 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:33:32: 33:34 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:33:33: 33:34 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -567,12 +567,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:61 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:61: 34:62 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -591,12 +591,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:16 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:16: 35:17 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -1276,14 +1276,14 @@ PRINT-DERIVE INPUT (DISPLAY): #[print_helper(a)] #[allow(dead_code)] #[print_hel
 {
     second : bool, third :
     [u8 ;
-     {
-         #[cfg(not(FALSE))] struct Inner ; match true
-         { #[allow(warnings)] false => { }, _ => { } } ; #[print_helper(c)]
-         #[cfg(not(FALSE))] fn kept_fn()
-         { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
-         { Foo(#[cfg(not(FALSE))] i32, u8) } struct
-         TupleStruct(#[cfg(not(FALSE))] i32, u8) ; 0
-     }], #[print_helper(d)] fourth : B
+    {
+        #[cfg(not(FALSE))] struct Inner ; match true
+        { #[allow(warnings)] false => {}, _ => {} } ; #[print_helper(c)]
+        #[cfg(not(FALSE))] fn kept_fn()
+        { #! [cfg(not(FALSE))] let my_val = true ; } enum TupleEnum
+        { Foo(#[cfg(not(FALSE))] i32, u8) } struct
+        TupleStruct(#[cfg(not(FALSE))] i32, u8) ; 0
+    }], #[print_helper(d)] fourth : B
 }
 PRINT-DERIVE INPUT (DEBUG): TokenStream [
     Punct {
@@ -1519,12 +1519,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:61 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:34:60: 34:62 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:34:61: 34:62 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,
@@ -1543,12 +1543,12 @@ PRINT-DERIVE INPUT (DEBUG): TokenStream [
                                     Punct {
                                         ch: '=',
                                         spacing: Joint,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:16 (#0),
                                     },
                                     Punct {
                                         ch: '>',
                                         spacing: Alone,
-                                        span: $DIR/issue-75930-derive-cfg.rs:35:15: 35:17 (#0),
+                                        span: $DIR/issue-75930-derive-cfg.rs:35:16: 35:17 (#0),
                                     },
                                     Group {
                                         delimiter: Brace,

@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(unused_imports)]
 // Ideally, any macro call with a trailing comma should behave
 // identically to a call without the comma.
@@ -13,7 +14,6 @@
 // compile-flags: --test -C debug_assertions=yes
 // revisions: std core
 
-// ignore-wasm32-bare compiled with panic=abort by default
 #![cfg_attr(core, no_std)]
 
 #[cfg(core)]

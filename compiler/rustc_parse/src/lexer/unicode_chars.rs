@@ -1,13 +1,13 @@
-// Characters and their corresponding confusables were collected from
-// https://www.unicode.org/Public/security/10.0.0/confusables.txt
+//! Characters and their corresponding confusables were collected from
+//! <https://www.unicode.org/Public/security/10.0.0/confusables.txt>
 
 use super::StringReader;
-use crate::token;
-use rustc_errors::{Applicability, DiagnosticBuilder};
+use crate::token::{self, Delimiter};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 #[rustfmt::skip] // for line breaks
-const UNICODE_ARRAY: &[(char, &str, char)] = &[
+pub(crate) const UNICODE_ARRAY: &[(char, &str, char)] = &[
     (' ', "Line Separator", ' '),
     (' ', "Paragraph Separator", ' '),
     (' ', "Ogham Space mark", ' '),
@@ -312,12 +312,12 @@ const ASCII_ARRAY: &[(char, &str, Option<token::TokenKind>)] = &[
     ('!', "Exclamation Mark", Some(token::Not)),
     ('?', "Question Mark", Some(token::Question)),
     ('.', "Period", Some(token::Dot)),
-    ('(', "Left Parenthesis", Some(token::OpenDelim(token::Paren))),
-    (')', "Right Parenthesis", Some(token::CloseDelim(token::Paren))),
-    ('[', "Left Square Bracket", Some(token::OpenDelim(token::Bracket))),
-    (']', "Right Square Bracket", Some(token::CloseDelim(token::Bracket))),
-    ('{', "Left Curly Brace", Some(token::OpenDelim(token::Brace))),
-    ('}', "Right Curly Brace", Some(token::CloseDelim(token::Brace))),
+    ('(', "Left Parenthesis", Some(token::OpenDelim(Delimiter::Parenthesis))),
+    (')', "Right Parenthesis", Some(token::CloseDelim(Delimiter::Parenthesis))),
+    ('[', "Left Square Bracket", Some(token::OpenDelim(Delimiter::Bracket))),
+    (']', "Right Square Bracket", Some(token::CloseDelim(Delimiter::Bracket))),
+    ('{', "Left Curly Brace", Some(token::OpenDelim(Delimiter::Brace))),
+    ('}', "Right Curly Brace", Some(token::CloseDelim(Delimiter::Brace))),
     ('*', "Asterisk", Some(token::BinOp(token::Star))),
     ('/', "Slash", Some(token::BinOp(token::Slash))),
     ('\\', "Backslash", None),
@@ -336,22 +336,16 @@ pub(super) fn check_for_substitution<'a>(
     reader: &StringReader<'a>,
     pos: BytePos,
     ch: char,
-    err: &mut DiagnosticBuilder<'a>,
+    err: &mut Diagnostic,
 ) -> Option<token::TokenKind> {
-    let (u_name, ascii_char) = match UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch) {
-        Some(&(_u_char, u_name, ascii_char)) => (u_name, ascii_char),
-        None => return None,
-    };
+    let &(_u_char, u_name, ascii_char) = UNICODE_ARRAY.iter().find(|&&(c, _, _)| c == ch)?;
 
     let span = Span::with_root_ctxt(pos, pos + Pos::from_usize(ch.len_utf8()));
 
-    let (ascii_name, token) = match ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) {
-        Some((_ascii_char, ascii_name, token)) => (ascii_name, token),
-        None => {
-            let msg = format!("substitution character not found for '{}'", ch);
-            reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
-            return None;
-        }
+    let Some((_ascii_char, ascii_name, token)) = ASCII_ARRAY.iter().find(|&&(c, _, _)| c == ascii_char) else {
+        let msg = format!("substitution character not found for '{}'", ch);
+        reader.sess.span_diagnostic.span_bug_no_panic(span, &msg);
+        return None;
     };
 
     // special help suggestion for "directed" double quotes
@@ -375,7 +369,7 @@ pub(super) fn check_for_substitution<'a>(
             "Unicode character '{}' ({}) looks like '{}' ({}), but it is not",
             ch, u_name, ascii_char, ascii_name
         );
-        err.span_suggestion(span, &msg, ascii_char.to_string(), Applicability::MaybeIncorrect);
+        err.span_suggestion(span, &msg, ascii_char, Applicability::MaybeIncorrect);
     }
     token.clone()
 }

@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io;
-use std::ops::Deref;
+use std::ops::{Deref, DerefMut};
 
 use crate::owning_ref::StableAddress;
 
@@ -36,6 +36,12 @@ impl Deref for Mmap {
 
     #[inline]
     fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsRef<[u8]> for Mmap {
+    fn as_ref(&self) -> &[u8] {
         &*self.0
     }
 }
@@ -45,3 +51,64 @@ impl Deref for Mmap {
 // export any function that can cause the `Vec` to be re-allocated. As such the address of the
 // bytes inside this `Vec` is stable.
 unsafe impl StableAddress for Mmap {}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub struct MmapMut(memmap2::MmapMut);
+
+#[cfg(target_arch = "wasm32")]
+pub struct MmapMut(Vec<u8>);
+
+#[cfg(not(target_arch = "wasm32"))]
+impl MmapMut {
+    #[inline]
+    pub fn map_anon(len: usize) -> io::Result<Self> {
+        let mmap = memmap2::MmapMut::map_anon(len)?;
+        Ok(MmapMut(mmap))
+    }
+
+    #[inline]
+    pub fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
+    }
+
+    #[inline]
+    pub fn make_read_only(self) -> std::io::Result<Mmap> {
+        let mmap = self.0.make_read_only()?;
+        Ok(Mmap(mmap))
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl MmapMut {
+    #[inline]
+    pub fn map_anon(len: usize) -> io::Result<Self> {
+        let data = Vec::with_capacity(len);
+        Ok(MmapMut(data))
+    }
+
+    #[inline]
+    pub fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+
+    #[inline]
+    pub fn make_read_only(self) -> std::io::Result<Mmap> {
+        Ok(Mmap(self.0))
+    }
+}
+
+impl Deref for MmapMut {
+    type Target = [u8];
+
+    #[inline]
+    fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl DerefMut for MmapMut {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut [u8] {
+        &mut self.0
+    }
+}

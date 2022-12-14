@@ -22,6 +22,12 @@
 #[lang = "sized"]
 pub trait Sized {}
 
+#[lang = "destruct"]
+pub trait Destruct {}
+
+#[lang = "drop"]
+pub trait Drop {}
+
 #[lang = "copy"]
 trait Copy {
 }

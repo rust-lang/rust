@@ -7,7 +7,7 @@ LL |     let _n = 1i64 >> [64][0];
 note: the lint level is defined here
   --> $DIR/overflowing-rsh-6.rs:4:9
    |
-LL | #![deny(arithmetic_overflow, const_err)]
+LL | #![deny(arithmetic_overflow)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

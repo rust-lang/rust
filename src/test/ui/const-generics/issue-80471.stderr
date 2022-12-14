@@ -1,0 +1,18 @@
+warning: the feature `adt_const_params` is incomplete and may not be safe to use and/or cause compiler crashes
+  --> $DIR/issue-80471.rs:1:12
+   |
+LL | #![feature(adt_const_params)]
+   |            ^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #95174 <https://github.com/rust-lang/rust/issues/95174> for more information
+   = note: `#[warn(incomplete_features)]` on by default
+
+error[E0741]: `Box<Nat>` must be annotated with `#[derive(PartialEq, Eq)]` to be used as the type of a const parameter
+  --> $DIR/issue-80471.rs:10:17
+   |
+LL | fn foo<const N: Nat>() {}
+   |                 ^^^
+
+error: aborting due to previous error; 1 warning emitted
+
+For more information about this error, try `rustc --explain E0741`.

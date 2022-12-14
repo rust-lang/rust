@@ -44,11 +44,12 @@
 
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
+use core::error::Error;
 use core::fmt;
 use core::hash;
+use core::iter::FusedIterator;
 #[cfg(not(no_global_oom_handling))]
-use core::iter::FromIterator;
-use core::iter::{from_fn, FusedIterator};
+use core::iter::{from_fn, FromIterator};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Add;
 #[cfg(not(no_global_oom_handling))]
@@ -58,15 +59,15 @@ use core::ops::Bound::{Excluded, Included, Unbounded};
 use core::ops::{self, Index, IndexMut, Range, RangeBounds};
 use core::ptr;
 use core::slice;
-#[cfg(not(no_global_oom_handling))]
-use core::str::lossy;
 use core::str::pattern::Pattern;
+#[cfg(not(no_global_oom_handling))]
+use core::str::Utf8Chunks;
 
 #[cfg(not(no_global_oom_handling))]
 use crate::borrow::{Cow, ToOwned};
 use crate::boxed::Box;
 use crate::collections::TryReserveError;
-use crate::str::{self, Chars, Utf8Error};
+use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{from_boxed_utf8_unchecked, FromStr};
 use crate::vec::Vec;
@@ -117,27 +118,99 @@ use crate::vec::Vec;
 ///
 /// # UTF-8
 ///
-/// `String`s are always valid UTF-8. This has a few implications, the first of
-/// which is that if you need a non-UTF-8 string, consider [`OsString`]. It is
-/// similar, but without the UTF-8 constraint. The second implication is that
-/// you cannot index into a `String`:
+/// `String`s are always valid UTF-8. If you need a non-UTF-8 string, consider
+/// [`OsString`]. It is similar, but without the UTF-8 constraint. Because UTF-8
+/// is a variable width encoding, `String`s are typically smaller than an array of
+/// the same `chars`:
+///
+/// ```
+/// use std::mem;
+///
+/// // `s` is ASCII which represents each `char` as one byte
+/// let s = "hello";
+/// assert_eq!(s.len(), 5);
+///
+/// // A `char` array with the same contents would be longer because
+/// // every `char` is four bytes
+/// let s = ['h', 'e', 'l', 'l', 'o'];
+/// let size: usize = s.into_iter().map(|c| mem::size_of_val(&c)).sum();
+/// assert_eq!(size, 20);
+///
+/// // However, for non-ASCII strings, the difference will be smaller
+/// // and sometimes they are the same
+/// let s = "💖💖💖💖💖";
+/// assert_eq!(s.len(), 20);
+///
+/// let s = ['💖', '💖', '💖', '💖', '💖'];
+/// let size: usize = s.into_iter().map(|c| mem::size_of_val(&c)).sum();
+/// assert_eq!(size, 20);
+/// ```
+///
+/// This raises interesting questions as to how `s[i]` should work.
+/// What should `i` be here? Several options include byte indices and
+/// `char` indices but, because of UTF-8 encoding, only byte indices
+/// would provide constant time indexing. Getting the `i`th `char`, for
+/// example, is available using [`chars`]:
+///
+/// ```
+/// let s = "hello";
+/// let third_character = s.chars().nth(2);
+/// assert_eq!(third_character, Some('l'));
+///
+/// let s = "💖💖💖💖💖";
+/// let third_character = s.chars().nth(2);
+/// assert_eq!(third_character, Some('💖'));
+/// ```
+///
+/// Next, what should `s[i]` return? Because indexing returns a reference
+/// to underlying data it could be `&u8`, `&[u8]`, or something else similar.
+/// Since we're only providing one index, `&u8` makes the most sense but that
+/// might not be what the user expects and can be explicitly achieved with
+/// [`as_bytes()`]:
+///
+/// ```
+/// // The first byte is 104 - the byte value of `'h'`
+/// let s = "hello";
+/// assert_eq!(s.as_bytes()[0], 104);
+/// // or
+/// assert_eq!(s.as_bytes()[0], b'h');
+///
+/// // The first byte is 240 which isn't obviously useful
+/// let s = "💖💖💖💖💖";
+/// assert_eq!(s.as_bytes()[0], 240);
+/// ```
+///
+/// Due to these ambiguities/restrictions, indexing with a `usize` is simply
+/// forbidden:
 ///
 /// ```compile_fail,E0277
 /// let s = "hello";
 ///
-/// println!("The first letter of s is {}", s[0]); // ERROR!!!
+/// // The following will not compile!
+/// println!("The first letter of s is {}", s[0]);
 /// ```
 ///
-/// [`OsString`]: ../../std/ffi/struct.OsString.html "ffi::OsString"
+/// It is more clear, however, how `&s[i..j]` should work (that is,
+/// indexing with a range). It should accept byte indices (to be constant-time)
+/// and return a `&str` which is UTF-8 encoded. This is also called "string slicing".
+/// Note this will panic if the byte indices provided are not character
+/// boundaries - see [`is_char_boundary`] for more details. See the implementations
+/// for [`SliceIndex<str>`] for more details on string slicing. For a non-panicking
+/// version of string slicing, see [`get`].
 ///
-/// Indexing is intended to be a constant-time operation, but UTF-8 encoding
-/// does not allow us to do this. Furthermore, it's not clear what sort of
-/// thing the index should return: a byte, a codepoint, or a grapheme cluster.
-/// The [`bytes`] and [`chars`] methods return iterators over the first
-/// two, respectively.
+/// [`OsString`]: ../../std/ffi/struct.OsString.html "ffi::OsString"
+/// [`SliceIndex<str>`]: core::slice::SliceIndex
+/// [`as_bytes()`]: str::as_bytes
+/// [`get`]: str::get
+/// [`is_char_boundary`]: str::is_char_boundary
+///
+/// The [`bytes`] and [`chars`] methods return iterators over the bytes and
+/// codepoints of the string, respectively. To iterate over codepoints along
+/// with byte indices, use [`char_indices`].
 ///
 /// [`bytes`]: str::bytes
 /// [`chars`]: str::chars
+/// [`char_indices`]: str::char_indices
 ///
 /// # Deref
 ///
@@ -245,11 +318,11 @@ use crate::vec::Vec;
 ///
 /// ```text
 /// 0
-/// 5
-/// 10
-/// 20
-/// 20
-/// 40
+/// 8
+/// 16
+/// 16
+/// 32
+/// 32
 /// ```
 ///
 /// At first, we have no memory allocated at all, but as we append to the
@@ -289,8 +362,8 @@ use crate::vec::Vec;
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "String")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(all(not(bootstrap), not(test)), lang = "String")]
 pub struct String {
     vec: Vec<u8>,
 }
@@ -383,13 +456,13 @@ impl String {
         String { vec: Vec::new() }
     }
 
-    /// Creates a new empty `String` with a particular capacity.
+    /// Creates a new empty `String` with at least the specified capacity.
     ///
     /// `String`s have an internal buffer to hold their data. The capacity is
     /// the length of that buffer, and can be queried with the [`capacity`]
     /// method. This method creates an empty `String`, but one with an initial
-    /// buffer that can hold `capacity` bytes. This is useful when you may be
-    /// appending a bunch of data to the `String`, reducing the number of
+    /// buffer that can hold at least `capacity` bytes. This is useful when you
+    /// may be appending a bunch of data to the `String`, reducing the number of
     /// reallocations it needs to do.
     ///
     /// [`capacity`]: String::capacity
@@ -556,15 +629,15 @@ impl String {
     #[cfg(not(no_global_oom_handling))]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy(v: &[u8]) -> Cow<'_, str> {
-        let mut iter = lossy::Utf8Lossy::from_bytes(v).chunks();
+        let mut iter = Utf8Chunks::new(v);
 
-        let (first_valid, first_broken) = if let Some(chunk) = iter.next() {
-            let lossy::Utf8LossyChunk { valid, broken } = chunk;
-            if valid.len() == v.len() {
-                debug_assert!(broken.is_empty());
+        let first_valid = if let Some(chunk) = iter.next() {
+            let valid = chunk.valid();
+            if chunk.invalid().is_empty() {
+                debug_assert_eq!(valid.len(), v.len());
                 return Cow::Borrowed(valid);
             }
-            (valid, broken)
+            valid
         } else {
             return Cow::Borrowed("");
         };
@@ -573,13 +646,11 @@ impl String {
 
         let mut res = String::with_capacity(v.len());
         res.push_str(first_valid);
-        if !first_broken.is_empty() {
-            res.push_str(REPLACEMENT);
-        }
+        res.push_str(REPLACEMENT);
 
-        for lossy::Utf8LossyChunk { valid, broken } in iter {
-            res.push_str(valid);
-            if !broken.is_empty() {
+        for chunk in iter {
+            res.push_str(chunk.valid());
+            if !chunk.invalid().is_empty() {
                 res.push_str(REPLACEMENT);
             }
         }
@@ -700,7 +771,10 @@ impl String {
     /// * The first `length` bytes at `buf` need to be valid UTF-8.
     ///
     /// Violating these may cause problems like corrupting the allocator's
-    /// internal data structures.
+    /// internal data structures. For example, it is normally **not** safe to
+    /// build a `String` from a pointer to a C `char` array containing UTF-8
+    /// _unless_ you are certain that array was originally allocated by the
+    /// Rust standard library's allocator.
     ///
     /// The ownership of `buf` is effectively transferred to the
     /// `String` which may then deallocate, reallocate or change the
@@ -875,7 +949,7 @@ impl String {
     /// assert_eq!(string, "abcdecdeabecde");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_extend_from_within", issue = "none")]
+    #[unstable(feature = "string_extend_from_within", issue = "103806")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
@@ -906,20 +980,15 @@ impl String {
         self.vec.capacity()
     }
 
-    /// Ensures that this `String`'s capacity is at least `additional` bytes
-    /// larger than its length.
-    ///
-    /// The capacity may be increased by more than `additional` bytes if it
-    /// chooses, to prevent frequent reallocations.
-    ///
-    /// If you do not want this "at least" behavior, see the [`reserve_exact`]
-    /// method.
+    /// Reserves capacity for at least `additional` bytes more than the
+    /// current length. The allocator may reserve more space to speculatively
+    /// avoid frequent allocations. After calling `reserve`,
+    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Does nothing if capacity is already sufficient.
     ///
     /// # Panics
     ///
     /// Panics if the new capacity overflows [`usize`].
-    ///
-    /// [`reserve_exact`]: String::reserve_exact
     ///
     /// # Examples
     ///
@@ -940,15 +1009,16 @@ impl String {
     /// s.push('a');
     /// s.push('b');
     ///
-    /// // s now has a length of 2 and a capacity of 10
+    /// // s now has a length of 2 and a capacity of at least 10
+    /// let capacity = s.capacity();
     /// assert_eq!(2, s.len());
-    /// assert_eq!(10, s.capacity());
+    /// assert!(capacity >= 10);
     ///
-    /// // Since we already have an extra 8 capacity, calling this...
+    /// // Since we already have at least an extra 8 capacity, calling this...
     /// s.reserve(8);
     ///
     /// // ... doesn't actually increase.
-    /// assert_eq!(10, s.capacity());
+    /// assert_eq!(capacity, s.capacity());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -957,17 +1027,18 @@ impl String {
         self.vec.reserve(additional)
     }
 
-    /// Ensures that this `String`'s capacity is `additional` bytes
-    /// larger than its length.
-    ///
-    /// Consider using the [`reserve`] method unless you absolutely know
-    /// better than the allocator.
+    /// Reserves the minimum capacity for at least `additional` bytes more than
+    /// the current length. Unlike [`reserve`], this will not
+    /// deliberately over-allocate to speculatively avoid frequent allocations.
+    /// After calling `reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional`. Does nothing if the capacity is already
+    /// sufficient.
     ///
     /// [`reserve`]: String::reserve
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `usize`.
+    /// Panics if the new capacity overflows [`usize`].
     ///
     /// # Examples
     ///
@@ -988,15 +1059,16 @@ impl String {
     /// s.push('a');
     /// s.push('b');
     ///
-    /// // s now has a length of 2 and a capacity of 10
+    /// // s now has a length of 2 and a capacity of at least 10
+    /// let capacity = s.capacity();
     /// assert_eq!(2, s.len());
-    /// assert_eq!(10, s.capacity());
+    /// assert!(capacity >= 10);
     ///
-    /// // Since we already have an extra 8 capacity, calling this...
+    /// // Since we already have at least an extra 8 capacity, calling this...
     /// s.reserve_exact(8);
     ///
     /// // ... doesn't actually increase.
-    /// assert_eq!(10, s.capacity());
+    /// assert_eq!(capacity, s.capacity());
     /// ```
     #[cfg(not(no_global_oom_handling))]
     #[inline]
@@ -1005,11 +1077,12 @@ impl String {
         self.vec.reserve_exact(additional)
     }
 
-    /// Tries to reserve capacity for at least `additional` more elements to be inserted
-    /// in the given `String`. The collection may reserve more space to avoid
-    /// frequent reallocations. After calling `reserve`, capacity will be
-    /// greater than or equal to `self.len() + additional`. Does nothing if
-    /// capacity is already sufficient.
+    /// Tries to reserve capacity for at least `additional` bytes more than the
+    /// current length. The allocator may reserve more space to speculatively
+    /// avoid frequent allocations. After calling `try_reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional` if it returns
+    /// `Ok(())`. Does nothing if capacity is already sufficient. This method
+    /// preserves the contents even if an error occurs.
     ///
     /// # Errors
     ///
@@ -1039,16 +1112,18 @@ impl String {
         self.vec.try_reserve(additional)
     }
 
-    /// Tries to reserve the minimum capacity for exactly `additional` more elements to
-    /// be inserted in the given `String`. After calling `reserve_exact`,
-    /// capacity will be greater than or equal to `self.len() + additional`.
+    /// Tries to reserve the minimum capacity for at least `additional` bytes
+    /// more than the current length. Unlike [`try_reserve`], this will not
+    /// deliberately over-allocate to speculatively avoid frequent allocations.
+    /// After calling `try_reserve_exact`, capacity will be greater than or
+    /// equal to `self.len() + additional` if it returns `Ok(())`.
     /// Does nothing if the capacity is already sufficient.
     ///
     /// Note that the allocator may give the collection more space than it
     /// requests. Therefore, capacity can not be relied upon to be precisely
-    /// minimal. Prefer [`reserve`] if future insertions are expected.
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
     ///
-    /// [`reserve`]: String::reserve
+    /// [`try_reserve`]: String::try_reserve
     ///
     /// # Errors
     ///
@@ -1064,7 +1139,7 @@ impl String {
     ///     let mut output = String::new();
     ///
     ///     // Pre-reserve the memory, exiting if we can't
-    ///     output.try_reserve(data.len())?;
+    ///     output.try_reserve_exact(data.len())?;
     ///
     ///     // Now we know this can't OOM in the middle of our complex work
     ///     output.push_str(data);
@@ -1396,19 +1471,28 @@ impl String {
         let mut guard = SetLenOnDrop { s: self, idx: 0, del_bytes: 0 };
 
         while guard.idx < len {
-            let ch = unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap() };
+            let ch =
+                // SAFETY: `guard.idx` is positive-or-zero and less that len so the `get_unchecked`
+                // is in bound. `self` is valid UTF-8 like string and the returned slice starts at
+                // a unicode code point so the `Chars` always return one character.
+                unsafe { guard.s.get_unchecked(guard.idx..len).chars().next().unwrap_unchecked() };
             let ch_len = ch.len_utf8();
 
             if !f(ch) {
                 guard.del_bytes += ch_len;
             } else if guard.del_bytes > 0 {
-                unsafe {
-                    ptr::copy(
-                        guard.s.vec.as_ptr().add(guard.idx),
-                        guard.s.vec.as_mut_ptr().add(guard.idx - guard.del_bytes),
-                        ch_len,
-                    );
-                }
+                // SAFETY: `guard.idx` is in bound and `guard.del_bytes` represent the number of
+                // bytes that are erased from the string so the resulting `guard.idx -
+                // guard.del_bytes` always represent a valid unicode code point.
+                //
+                // `guard.del_bytes` >= `ch.len_utf8()`, so taking a slice with `ch.len_utf8()` len
+                // is safe.
+                ch.encode_utf8(unsafe {
+                    crate::slice::from_raw_parts_mut(
+                        guard.s.as_mut_ptr().add(guard.idx - guard.del_bytes),
+                        ch.len_utf8(),
+                    )
+                });
             }
 
             // Point idx to the next char
@@ -1630,16 +1714,23 @@ impl String {
         self.vec.clear()
     }
 
-    /// Creates a draining iterator that removes the specified range in the `String`
-    /// and yields the removed `chars`.
+    /// Removes the specified range from the string in bulk, returning all
+    /// removed characters as an iterator.
     ///
-    /// Note: The element range is removed even if the iterator is not
-    /// consumed until the end.
+    /// The returned iterator keeps a mutable borrow on the string to optimize
+    /// its implementation.
     ///
     /// # Panics
     ///
     /// Panics if the starting point or end point do not lie on a [`char`]
     /// boundary, or if they're out of bounds.
+    ///
+    /// # Leaking
+    ///
+    /// If the returned iterator goes out of scope without being dropped (due to
+    /// [`core::mem::forget`], for example), the string may still contain a copy
+    /// of any drained characters, or may have lost characters arbitrarily,
+    /// including characters outside the range.
     ///
     /// # Examples
     ///
@@ -1654,7 +1745,7 @@ impl String {
     /// assert_eq!(t, "α is alpha, ");
     /// assert_eq!(s, "β is beta");
     ///
-    /// // A full range clears the string
+    /// // A full range clears the string, like `clear()` does
     /// s.drain(..);
     /// assert_eq!(s, "");
     /// ```
@@ -1758,6 +1849,35 @@ impl String {
         let slice = self.vec.into_boxed_slice();
         unsafe { from_boxed_utf8_unchecked(slice) }
     }
+
+    /// Consumes and leaks the `String`, returning a mutable reference to the contents,
+    /// `&'static mut str`.
+    ///
+    /// This is mainly useful for data that lives for the remainder of
+    /// the program's life. Dropping the returned reference will cause a memory
+    /// leak.
+    ///
+    /// It does not reallocate or shrink the `String`,
+    /// so the leaked allocation may include unused capacity that is not part
+    /// of the returned slice.
+    ///
+    /// # Examples
+    ///
+    /// Simple usage:
+    ///
+    /// ```
+    /// #![feature(string_leak)]
+    ///
+    /// let x = String::from("bucket");
+    /// let static_ref: &'static mut str = x.leak();
+    /// assert_eq!(static_ref, "bucket");
+    /// ```
+    #[unstable(feature = "string_leak", issue = "102929")]
+    #[inline]
+    pub fn leak(self) -> &'static mut str {
+        let slice = self.vec.leak();
+        unsafe { from_utf8_unchecked_mut(slice) }
+    }
 }
 
 impl FromUtf8Error {
@@ -1846,6 +1966,22 @@ impl fmt::Display for FromUtf8Error {
 impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf8Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-8"
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for FromUtf16Error {
+    #[allow(deprecated)]
+    fn description(&self) -> &str {
+        "invalid utf-16"
     }
 }
 
@@ -2713,7 +2849,7 @@ impl From<String> for Vec<u8> {
     /// let v1 = Vec::from(s1);
     ///
     /// for b in v1 {
-    ///     println!("{}", b);
+    ///     println!("{b}");
     /// }
     /// ```
     fn from(string: String) -> Vec<u8> {

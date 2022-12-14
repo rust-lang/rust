@@ -1,11 +1,11 @@
 use std::collections::BinaryHeap;
 
-use rand::{seq::SliceRandom, thread_rng};
+use rand::seq::SliceRandom;
 use test::{black_box, Bencher};
 
 #[bench]
 fn bench_find_smallest_1000(b: &mut Bencher) {
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     let mut vec: Vec<u32> = (0..100_000).collect();
     vec.shuffle(&mut rng);
 
@@ -47,7 +47,7 @@ fn bench_peek_mut_deref_mut(b: &mut Bencher) {
 
 #[bench]
 fn bench_from_vec(b: &mut Bencher) {
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     let mut vec: Vec<u32> = (0..100_000).collect();
     vec.shuffle(&mut rng);
 
@@ -64,7 +64,7 @@ fn bench_into_sorted_vec(b: &mut Bencher) {
 #[bench]
 fn bench_push(b: &mut Bencher) {
     let mut bheap = BinaryHeap::with_capacity(50_000);
-    let mut rng = thread_rng();
+    let mut rng = crate::bench_rng();
     let mut vec: Vec<u32> = (0..50_000).collect();
     vec.shuffle(&mut rng);
 

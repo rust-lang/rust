@@ -1,13 +1,13 @@
 struct X {
     a: u8 /** document a */,
     //~^ ERROR found a documentation comment that doesn't document anything
-    //~| HELP maybe a comment was intended
+    //~| HELP if a comment was intended use `//`
 }
 
 struct Y {
     a: u8 /// document a
     //~^ ERROR found a documentation comment that doesn't document anything
-    //~| HELP maybe a comment was intended
+    //~| HELP if a comment was intended use `//`
 }
 
 fn main() {

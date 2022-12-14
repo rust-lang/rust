@@ -12,6 +12,7 @@
 
 #[cfg(not(windows))]
 use std::fs::Permissions;
+use std::net::SocketAddr;
 #[cfg(not(windows))]
 use std::os::unix::prelude::*;
 
@@ -38,36 +39,72 @@ macro_rules! t {
 }
 
 static TEST: AtomicUsize = AtomicUsize::new(0);
+const RETRY_INTERVAL: u64 = 1;
+const NUMBER_OF_RETRIES: usize = 5;
 
 #[derive(Copy, Clone)]
 struct Config {
-    pub remote: bool,
-    pub verbose: bool,
+    verbose: bool,
+    sequential: bool,
+    bind: SocketAddr,
 }
 
 impl Config {
     pub fn default() -> Config {
-        Config { remote: false, verbose: false }
+        Config {
+            verbose: false,
+            sequential: false,
+            bind: if cfg!(target_os = "android") || cfg!(windows) {
+                ([0, 0, 0, 0], 12345).into()
+            } else {
+                ([10, 0, 2, 15], 12345).into()
+            },
+        }
     }
 
     pub fn parse_args() -> Config {
         let mut config = Config::default();
 
         let args = env::args().skip(1);
+        let mut next_is_bind = false;
         for argument in args {
             match &argument[..] {
-                "remote" => {
-                    config.remote = true;
+                bind if next_is_bind => {
+                    config.bind = t!(bind.parse());
+                    next_is_bind = false;
                 }
-                "verbose" | "-v" => {
-                    config.verbose = true;
+                "--bind" => next_is_bind = true,
+                "--sequential" => config.sequential = true,
+                "--verbose" | "-v" => config.verbose = true,
+                "--help" | "-h" => {
+                    show_help();
+                    std::process::exit(0);
                 }
-                arg => panic!("unknown argument: {}", arg),
+                arg => panic!("unknown argument: {}, use `--help` for known arguments", arg),
             }
+        }
+        if next_is_bind {
+            panic!("missing value for --bind");
         }
 
         config
     }
+}
+
+fn show_help() {
+    eprintln!(
+        r#"Usage:
+
+{} [OPTIONS]
+
+OPTIONS:
+    --bind <IP>:<PORT>   Specify IP address and port to listen for requests, e.g. "0.0.0.0:12345"
+    --sequential         Run only one test at a time
+    -v, --verbose        Show status messages
+    -h, --help           Show this help screen
+"#,
+        std::env::args().next().unwrap()
+    );
 }
 
 fn print_verbose(s: &str, conf: Config) {
@@ -77,19 +114,12 @@ fn print_verbose(s: &str, conf: Config) {
 }
 
 fn main() {
+    let config = Config::parse_args();
     println!("starting test server");
 
-    let config = Config::parse_args();
-
-    let bind_addr = if cfg!(target_os = "android") || cfg!(windows) || config.remote {
-        "0.0.0.0:12345"
-    } else {
-        "10.0.2.15:12345"
-    };
-
-    let listener = t!(TcpListener::bind(bind_addr));
+    let listener = bind_socket(config.bind);
     let (work, tmp): (PathBuf, PathBuf) = if cfg!(target_os = "android") {
-        ("/data/tmp/work".into(), "/data/tmp/work/tmp".into())
+        ("/data/local/tmp/work".into(), "/data/local/tmp/work/tmp".into())
     } else {
         let mut work_dir = env::temp_dir();
         work_dir.push("work");
@@ -97,7 +127,7 @@ fn main() {
         tmp_dir.push("tmp");
         (work_dir, tmp_dir)
     };
-    println!("listening on {}!", bind_addr);
+    println!("listening on {}!", config.bind);
 
     t!(fs::create_dir_all(&work));
     t!(fs::create_dir_all(&tmp));
@@ -119,11 +149,26 @@ fn main() {
             let lock = lock.clone();
             let work = work.clone();
             let tmp = tmp.clone();
-            thread::spawn(move || handle_run(socket, &work, &tmp, &lock, config));
+            let f = move || handle_run(socket, &work, &tmp, &lock, config);
+            if config.sequential {
+                f();
+            } else {
+                thread::spawn(f);
+            }
         } else {
             panic!("unknown command {:?}", buf);
         }
     }
+}
+
+fn bind_socket(addr: SocketAddr) -> TcpListener {
+    for _ in 0..(NUMBER_OF_RETRIES - 1) {
+        if let Ok(x) = TcpListener::bind(addr) {
+            return x;
+        }
+        std::thread::sleep(std::time::Duration::from_secs(RETRY_INTERVAL));
+    }
+    TcpListener::bind(addr).unwrap()
 }
 
 fn handle_push(socket: TcpStream, work: &Path, config: Config) {

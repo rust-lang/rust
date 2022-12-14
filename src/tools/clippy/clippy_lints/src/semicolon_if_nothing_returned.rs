@@ -29,6 +29,7 @@ declare_clippy_lint! {
     ///     println!("Hello world");
     /// }
     /// ```
+    #[clippy::version = "1.52.0"]
     pub SEMICOLON_IF_NOTHING_RETURNED,
     pedantic,
     "add a semicolon if nothing is returned"
@@ -36,7 +37,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SemicolonIfNothingReturned => [SEMICOLON_IF_NOTHING_RETURNED]);
 
-impl LateLintPass<'_> for SemicolonIfNothingReturned {
+impl<'tcx> LateLintPass<'tcx> for SemicolonIfNothingReturned {
     fn check_block(&mut self, cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) {
         if_chain! {
             if !block.span.from_expansion();
@@ -44,7 +45,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
             let t_expr = cx.typeck_results().expr_ty(expr);
             if t_expr.is_unit();
             if let snippet = snippet_with_macro_callsite(cx, expr.span, "}");
-            if !snippet.ends_with('}');
+            if !snippet.ends_with('}') && !snippet.ends_with(';');
             if cx.sess().source_map().is_multiline(block.span);
             then {
                 // filter out the desugared `for` loop
@@ -53,7 +54,7 @@ impl LateLintPass<'_> for SemicolonIfNothingReturned {
                 }
 
                 let sugg = sugg::Sugg::hir_with_macro_callsite(cx, expr, "..");
-                let suggestion = format!("{0};", sugg);
+                let suggestion = format!("{sugg};");
                 span_lint_and_sugg(
                     cx,
                     SEMICOLON_IF_NOTHING_RETURNED,

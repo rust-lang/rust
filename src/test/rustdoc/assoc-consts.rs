@@ -1,11 +1,11 @@
 pub trait Foo {
     // @has assoc_consts/trait.Foo.html '//*[@class="rust trait"]' \
-    //      'const FOO: usize;'
+    //      'const FOO: usize = 13usize;'
     // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
-    const FOO: usize = 12;
+    const FOO: usize = 12 + 1;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
     const FOO_NO_DEFAULT: bool;
-    // @!has - FOO_HIDDEN
+    // @!hasraw - FOO_HIDDEN
     #[doc(hidden)]
     const FOO_HIDDEN: u8 = 0;
 }
@@ -13,12 +13,12 @@ pub trait Foo {
 pub struct Bar;
 
 impl Foo for Bar {
-    // @has assoc_consts/struct.Bar.html '//h3[@class="code-header in-band"]' 'impl Foo for Bar'
+    // @has assoc_consts/struct.Bar.html '//h3[@class="code-header"]' 'impl Foo for Bar'
     // @has - '//*[@id="associatedconstant.FOO"]' 'const FOO: usize'
     const FOO: usize = 12;
     // @has - '//*[@id="associatedconstant.FOO_NO_DEFAULT"]' 'const FOO_NO_DEFAULT: bool'
     const FOO_NO_DEFAULT: bool = false;
-    // @!has - FOO_HIDDEN
+    // @!hasraw - FOO_HIDDEN
     #[doc(hidden)]
     const FOO_HIDDEN: u8 = 0;
 }
@@ -27,6 +27,10 @@ impl Bar {
     // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.BAR"]' \
     //      'const BAR: usize'
     pub const BAR: usize = 3;
+
+    // @has - '//*[@id="associatedconstant.BAR_ESCAPED"]' \
+    //      "const BAR_ESCAPED: &'static str = \"<em>markup</em>\""
+    pub const BAR_ESCAPED: &'static str = "<em>markup</em>";
 }
 
 pub struct Baz<'a, U: 'a, T>(T, &'a [U]);
@@ -42,13 +46,14 @@ pub fn f(_: &(ToString + 'static)) {}
 impl Bar {
     // @has assoc_consts/struct.Bar.html '//*[@id="associatedconstant.F"]' \
     //      "const F: fn(_: &(dyn ToString + 'static))"
+    // FIXME(fmease): Hide default lifetime, render "const F: fn(_: &dyn ToString)"
     pub const F: fn(_: &(ToString + 'static)) = f;
 }
 
 impl Bar {
-    // @!has assoc_consts/struct.Bar.html 'BAR_PRIVATE'
+    // @!hasraw assoc_consts/struct.Bar.html 'BAR_PRIVATE'
     const BAR_PRIVATE: char = 'a';
-    // @!has assoc_consts/struct.Bar.html 'BAR_HIDDEN'
+    // @!hasraw assoc_consts/struct.Bar.html 'BAR_HIDDEN'
     #[doc(hidden)]
     pub const BAR_HIDDEN: &'static str = "a";
 }
@@ -77,7 +82,7 @@ pub trait Qux {
     const QUX_DEFAULT2: u32 = 3;
 }
 
-// @has assoc_consts/struct.Bar.html '//h3[@class="code-header in-band"]' 'impl Qux for Bar'
+// @has assoc_consts/struct.Bar.html '//h3[@class="code-header"]' 'impl Qux for Bar'
 impl Qux for Bar {
     // @has - '//*[@id="associatedconstant.QUX0"]' 'const QUX0: u8'
     // @has - '//*[@class="docblock"]' "Docs for QUX0 in trait."

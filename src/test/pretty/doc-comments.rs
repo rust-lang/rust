@@ -5,7 +5,7 @@
 // some single-line non-doc comment
 
 /// some single line outer-docs
-fn a() { }
+fn a() {}
 
 fn b() {
     //! some single line inner-docs
@@ -17,7 +17,7 @@ fn b() {
 //////////////////////////////////
 /// some single-line outer-docs preceded by a separator
 /// (and trailing whitespaces)
-fn c() { }
+fn c() {}
 
 /*
  * some multi-line non-doc comment
@@ -26,7 +26,7 @@ fn c() { }
 /**
  * some multi-line outer-docs
  */
-fn d() { }
+fn d() {}
 
 fn e() {
     /*!
@@ -43,10 +43,10 @@ fn e() {
 /**
  * some multi-line outer-docs preceded by a separator
  */
-fn f() { }
+fn f() {}
 
 #[doc = "unsugared outer doc-comments work also"]
-fn g() { }
+fn g() {}
 
 fn h() {
     #![doc = "as do inner ones"]

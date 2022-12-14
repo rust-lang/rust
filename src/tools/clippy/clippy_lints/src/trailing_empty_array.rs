@@ -1,16 +1,16 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use rustc_hir::{HirId, Item, ItemKind};
+use clippy_utils::has_repr_attr;
+use rustc_hir::{Item, ItemKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Const;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
     /// Displays a warning when a struct with a trailing zero-sized array is declared without a `repr` attribute.
     ///
     /// ### Why is this bad?
-    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjuction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
+    /// Zero-sized arrays aren't very useful in Rust itself, so such a struct is likely being created to pass to C code or in some other situation where control over memory layout matters (for example, in conjunction with manual allocation to make it easy to compute the offset of the array). Either way, `#[repr(C)]` (or another `repr` attribute) is needed.
     ///
     /// ### Example
     /// ```rust
@@ -28,6 +28,7 @@ declare_clippy_lint! {
     ///     last: [u32; 0],
     /// }
     /// ```
+    #[clippy::version = "1.58.0"]
     pub TRAILING_EMPTY_ARRAY,
     nursery,
     "struct with a trailing zero-sized array but without `#[repr(C)]` or another `repr` attribute"
@@ -45,19 +46,19 @@ impl<'tcx> LateLintPass<'tcx> for TrailingEmptyArray {
                 None,
                 &format!(
                     "consider annotating `{}` with `#[repr(C)]` or another `repr` attribute",
-                    cx.tcx.def_path_str(item.def_id.to_def_id())
+                    cx.tcx.def_path_str(item.owner_id.to_def_id())
                 ),
             );
         }
     }
 }
 
-fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx Item<'tcx>) -> bool {
+fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'_>, item: &Item<'_>) -> bool {
     if_chain! {
         // First check if last field is an array
         if let ItemKind::Struct(data, _) = &item.kind;
         if let Some(last_field) = data.fields().last();
-        if let rustc_hir::TyKind::Array(_, length) = last_field.ty.kind;
+        if let rustc_hir::TyKind::Array(_, rustc_hir::ArrayLen::Body(length)) = last_field.ty.kind;
 
         // Then check if that that array zero-sized
         let length_ldid = cx.tcx.hir().local_def_id(length.hir_id);
@@ -70,8 +71,4 @@ fn is_struct_with_trailing_zero_sized_array(cx: &LateContext<'tcx>, item: &'tcx 
             false
         }
     }
-}
-
-fn has_repr_attr(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::repr))
 }

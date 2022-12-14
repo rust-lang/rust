@@ -1,0 +1,55 @@
+error: unused implementer of `Future` that must be used
+  --> $DIR/unused-async.rs:31:5
+   |
+LL |     foo();
+   |     ^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+note: the lint level is defined here
+  --> $DIR/unused-async.rs:2:9
+   |
+LL | #![deny(unused_must_use)]
+   |         ^^^^^^^^^^^^^^^
+
+error: unused return value of `foo` that must be used
+  --> $DIR/unused-async.rs:31:5
+   |
+LL |     foo();
+   |     ^^^^^
+
+error: unused output of future returned by `foo` that must be used
+  --> $DIR/unused-async.rs:33:5
+   |
+LL |     foo().await;
+   |     ^^^^^^^^^^^
+
+error: unused implementer of `Future` that must be used
+  --> $DIR/unused-async.rs:34:5
+   |
+LL |     bar();
+   |     ^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+
+error: unused return value of `bar` that must be used
+  --> $DIR/unused-async.rs:34:5
+   |
+LL |     bar();
+   |     ^^^^^
+
+error: unused output of future returned by `bar` that must be used
+  --> $DIR/unused-async.rs:36:5
+   |
+LL |     bar().await;
+   |     ^^^^^^^^^^^
+
+error: unused implementer of `Future` that must be used
+  --> $DIR/unused-async.rs:37:5
+   |
+LL |     baz();
+   |     ^^^^^
+   |
+   = note: futures do nothing unless you `.await` or poll them
+
+error: aborting due to 7 previous errors
+

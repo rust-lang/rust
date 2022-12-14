@@ -1,0 +1,274 @@
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:24:5
+   |
+LL |     let a;
+   |     ^^^^^^ created here
+LL |     a = "zero";
+   |     ^^^^^^^^^^ initialised here
+   |
+   = note: `-D clippy::needless-late-init` implied by `-D warnings`
+help: declare `a` here
+   |
+LL |     let a = "zero";
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:27:5
+   |
+LL |     let b;
+   |     ^^^^^^ created here
+LL |     let c;
+LL |     b = 1;
+   |     ^^^^^ initialised here
+   |
+help: declare `b` here
+   |
+LL |     let b = 1;
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:28:5
+   |
+LL |     let c;
+   |     ^^^^^^ created here
+LL |     b = 1;
+LL |     c = 2;
+   |     ^^^^^ initialised here
+   |
+help: declare `c` here
+   |
+LL |     let c = 2;
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:32:5
+   |
+LL |     let d: usize;
+   |     ^^^^^^^^^^^^^ created here
+LL |     d = 1;
+   |     ^^^^^ initialised here
+   |
+help: declare `d` here
+   |
+LL |     let d: usize = 1;
+   |     ~~~~~~~~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:35:5
+   |
+LL |     let e;
+   |     ^^^^^^ created here
+LL |     e = format!("{}", d);
+   |     ^^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: declare `e` here
+   |
+LL |     let e = format!("{}", d);
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:40:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => "one",
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:49:5
+   |
+LL |     let b;
+   |     ^^^^^^
+   |
+help: declare `b` here
+   |
+LL |     let b = if n == 3 {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         "four"
+LL |     } else {
+LL ~         "five"
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:56:5
+   |
+LL |     let d;
+   |     ^^^^^^
+   |
+help: declare `d` here
+   |
+LL |     let d = if true {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         temp
+LL |     } else {
+LL ~         15
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:64:5
+   |
+LL |     let e;
+   |     ^^^^^^
+   |
+help: declare `e` here
+   |
+LL |     let e = if true {
+   |     +++++++
+help: remove the assignments from the branches
+   |
+LL ~         format!("{} {}", a, b)
+LL |     } else {
+LL ~         format!("{}", n)
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:71:5
+   |
+LL |     let f;
+   |     ^^^^^^
+   |
+help: declare `f` here
+   |
+LL |     let f = match 1 {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL -         1 => f = "three",
+LL +         1 => "three",
+   |
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:77:5
+   |
+LL |     let g: usize;
+   |     ^^^^^^^^^^^^^
+   |
+help: declare `g` here
+   |
+LL |     let g: usize = if true {
+   |     ++++++++++++++
+help: remove the assignments from the branches
+   |
+LL -         g = 5;
+LL +         5
+   |
+help: add a semicolon after the `if` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:85:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+LL |     let y = SignificantDrop;
+LL |     x = 1;
+   |     ^^^^^ initialised here
+   |
+help: declare `x` here
+   |
+LL |     let x = 1;
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:89:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+LL |     let y = 1;
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: declare `x` here
+   |
+LL |     let x = SignificantDrop;
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:93:5
+   |
+LL |     let x;
+   |     ^^^^^^ created here
+...
+LL |     x = SignificantDrop;
+   |     ^^^^^^^^^^^^^^^^^^^ initialised here
+   |
+help: declare `x` here
+   |
+LL |     let x = SignificantDrop;
+   |     ~~~~~
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:112:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f().await,
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: unneeded late initialization
+  --> $DIR/needless_late_init.rs:129:5
+   |
+LL |     let a;
+   |     ^^^^^^
+   |
+help: declare `a` here
+   |
+LL |     let a = match n {
+   |     +++++++
+help: remove the assignments from the `match` arms
+   |
+LL ~         1 => f(),
+LL |         _ => {
+LL ~             "two"
+   |
+help: add a semicolon after the `match` expression
+   |
+LL |     };
+   |      +
+
+error: aborting due to 16 previous errors
+

@@ -4,11 +4,11 @@ use rustc_parse::{new_parser_from_source_str, parser::Parser, source_file_to_str
 use rustc_session::parse::ParseSess;
 use rustc_span::create_default_session_if_not_set_then;
 use rustc_span::source_map::{FilePathMapping, SourceMap};
-use rustc_span::{BytePos, MultiSpan, Span};
+use rustc_span::{BytePos, Span};
 
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Handler, PResult};
+use rustc_errors::{Handler, MultiSpan, PResult};
 
 use std::io;
 use std::io::prelude::*;
@@ -22,7 +22,7 @@ fn string_to_parser(ps: &ParseSess, source_str: String) -> Parser<'_> {
     new_parser_from_source_str(ps, PathBuf::from("bogofile").into(), source_str)
 }
 
-crate fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
+pub(crate) fn with_error_checking_parse<'a, T, F>(s: String, ps: &'a ParseSess, f: F) -> T
 where
     F: FnOnce(&mut Parser<'a>) -> PResult<'a, T>,
 {
@@ -33,7 +33,7 @@ where
 }
 
 /// Maps a string to tts, using a made-up filename.
-crate fn string_to_stream(source_str: String) -> TokenStream {
+pub(crate) fn string_to_stream(source_str: String) -> TokenStream {
     let ps = ParseSess::new(FilePathMapping::empty());
     source_file_to_stream(
         &ps,
@@ -44,7 +44,7 @@ crate fn string_to_stream(source_str: String) -> TokenStream {
 }
 
 /// Parses a string, returns a crate.
-crate fn string_to_crate(source_str: String) -> ast::Crate {
+pub(crate) fn string_to_crate(source_str: String) -> ast::Crate {
     let ps = ParseSess::new(FilePathMapping::empty());
     with_error_checking_parse(source_str, &ps, |p| p.parse_crate_mod())
 }
@@ -53,7 +53,7 @@ crate fn string_to_crate(source_str: String) -> ast::Crate {
 /// may be deleted or replaced with other whitespace to match the pattern.
 /// This function is relatively Unicode-ignorant; fortunately, the careful design
 /// of UTF-8 mitigates this ignorance. It doesn't do NKF-normalization(?).
-crate fn matches_codepattern(a: &str, b: &str) -> bool {
+pub(crate) fn matches_codepattern(a: &str, b: &str) -> bool {
     let mut a_iter = a.chars().peekable();
     let mut b_iter = b.chars().peekable();
 
@@ -109,7 +109,7 @@ struct SpanLabel {
     label: &'static str,
 }
 
-crate struct Shared<T: Write> {
+pub(crate) struct Shared<T: Write> {
     pub data: Arc<Mutex<T>>,
 }
 
@@ -127,6 +127,8 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
     create_default_session_if_not_set_then(|_| {
         let output = Arc::new(Mutex::new(Vec::new()));
 
+        let fallback_bundle =
+            rustc_errors::fallback_fluent_bundle(rustc_errors::DEFAULT_LOCALE_RESOURCES, false);
         let source_map = Lrc::new(SourceMap::new(FilePathMapping::empty()));
         source_map.new_source_file(Path::new("test.rs").to_owned().into(), file_text.to_owned());
 
@@ -134,7 +136,7 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
         let mut msp = MultiSpan::from_span(primary_span);
         for span_label in span_labels {
             let span = make_span(&file_text, &span_label.start, &span_label.end);
-            msp.push_span_label(span, span_label.label.to_string());
+            msp.push_span_label(span, span_label.label);
             println!("span: {:?} label: {:?}", span, span_label.label);
             println!("text: {:?}", source_map.span_to_snippet(span));
         }
@@ -142,13 +144,17 @@ fn test_harness(file_text: &str, span_labels: Vec<SpanLabel>, expected_output: &
         let emitter = EmitterWriter::new(
             Box::new(Shared { data: output.clone() }),
             Some(source_map.clone()),
+            None,
+            fallback_bundle,
             false,
             false,
             false,
             None,
             false,
+            false,
         );
         let handler = Handler::with_emitter(true, None, Box::new(emitter));
+        #[allow(rustc::untranslatable_diagnostic)]
         handler.span_err(msp, "foo");
 
         assert!(
@@ -267,13 +273,13 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   X1 Y1
 5 | ||   X2 Y2
   | ||____^__- `Y` is a good letter too
-  |  |____|
+  | |_____|
   |       `X` is a good letter
 
 "#,
@@ -306,12 +312,12 @@ error: foo
  --> test.rs:3:3
   |
 3 |      X0 Y0
-  |  ____^__-
-  | | ___|
+  |   ___^__-
+  |  |___|
   | ||
 4 | ||   Y1 X1
   | ||____-__^ `X` is a good letter
-  | |_____|
+  |  |____|
   |       `Y` is a good letter too
 
 "#,
@@ -346,13 +352,13 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |_________-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | _________-
 5 | ||   X2 Y2 Z2
   | ||____^ `X` is a good letter
-6 | |    X3 Y3 Z3
-  | |_____- `Y` is a good letter too
+6 |  |   X3 Y3 Z3
+  |  |____- `Y` is a good letter too
 
 "#,
     );
@@ -390,15 +396,15 @@ error: foo
  --> test.rs:3:3
   |
 3 |       X0 Y0 Z0
-  |  _____^__-__-
-  | | ____|__|
-  | || ___|
+  |    ___^__-__-
+  |   |___|__|
+  |  ||___|
   | |||
 4 | |||   X1 Y1 Z1
 5 | |||   X2 Y2 Z2
   | |||____^__-__- `Z` label
-  |  ||____|__|
-  |   |____|  `Y` is a good letter too
+  | ||_____|__|
+  | |______|  `Y` is a good letter too
   |        `X` is a good letter
 
 "#,
@@ -482,17 +488,17 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^_-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^_-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-  | |____-______- `Y` is a good letter too
-  |  ____|
-  | |
-6 | |    X3 Y3 Z3
-  | |________- `Z`
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+  |  |___-______- `Y` is a good letter too
+  |   ___|
+  |  |
+6 |  |   X3 Y3 Z3
+  |  |_______- `Z`
 
 "#,
     );
@@ -565,14 +571,14 @@ error: foo
  --> test.rs:3:6
   |
 3 |      X0 Y0 Z0
-  |   ______^
-4 |  |   X1 Y1 Z1
-  |  |____^____-
+  |  _______^
+4 | |    X1 Y1 Z1
+  | | ____^____-
   | ||____|
-  | |     `X` is a good letter
-5 | |    X2 Y2 Z2
-6 | |    X3 Y3 Z3
-  | |___________- `Y` is a good letter too
+  |  |    `X` is a good letter
+5 |  |   X2 Y2 Z2
+6 |  |   X3 Y3 Z3
+  |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -936,18 +942,18 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  |   X1 Y1 Z1
-   |  |____^____-
+   |  _______^
+4  | |    X1 Y1 Z1
+   | | ____^____-
    | ||____|
-   | |     `X` is a good letter
-5  | |  1
-6  | |  2
-7  | |  3
-...  |
-15 | |    X2 Y2 Z2
-16 | |    X3 Y3 Z3
-   | |___________- `Y` is a good letter too
+   |  |    `X` is a good letter
+5  |  | 1
+6  |  | 2
+7  |  | 3
+...   |
+15 |  |   X2 Y2 Z2
+16 |  |   X3 Y3 Z3
+   |  |__________- `Y` is a good letter too
 
 "#,
     );
@@ -991,21 +997,21 @@ error: foo
   --> test.rs:3:6
    |
 3  |      X0 Y0 Z0
-   |   ______^
-4  |  | 1
-5  |  | 2
-6  |  | 3
-7  |  |   X1 Y1 Z1
-   |  |_________-
+   |  _______^
+4  | |  1
+5  | |  2
+6  | |  3
+7  | |    X1 Y1 Z1
+   | | _________-
 8  | || 4
 9  | || 5
 10 | || 6
 11 | ||   X2 Y2 Z2
    | ||__________- `Z` is a good letter too
-...   |
-15 |  | 10
-16 |  |   X3 Y3 Z3
-   |  |_______^ `Y` is a good letter
+...  |
+15 | |  10
+16 | |    X3 Y3 Z3
+   | |________^ `Y` is a good letter
 
 "#,
     );

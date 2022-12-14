@@ -4,12 +4,12 @@
 // summary. Trait methods with no documentation should not be wrapped.
 //
 // @has foo/trait.Foo.html
-// @has -  '//details[@class="rustdoc-toggle"]//summary//h4[@class="code-header"]' 'is_documented()'
-// @!has - '//details[@class="rustdoc-toggle"]//summary//h4[@class="code-header"]' 'not_documented()'
-// @has -  '//details[@class="rustdoc-toggle"]//*[@class="docblock"]' 'is_documented is documented'
-// @has -  '//details[@class="rustdoc-toggle"]//summary//h4[@class="code-header"]' 'is_documented_optional()'
-// @!has - '//details[@class="rustdoc-toggle"]//summary//h4[@class="code-header"]' 'not_documented_optional()'
-// @has -  '//details[@class="rustdoc-toggle"]//*[@class="docblock"]' 'is_documented_optional is documented'
+// @has -  '//details[@class="rustdoc-toggle method-toggle"]//summary//h4[@class="code-header"]' 'is_documented()'
+// @!has - '//details[@class="rustdoc-toggle method-toggle"]//summary//h4[@class="code-header"]' 'not_documented()'
+// @has -  '//details[@class="rustdoc-toggle method-toggle"]//*[@class="docblock"]' 'is_documented is documented'
+// @has -  '//details[@class="rustdoc-toggle method-toggle"]//summary//h4[@class="code-header"]' 'is_documented_optional()'
+// @!has - '//details[@class="rustdoc-toggle method-toggle"]//summary//h4[@class="code-header"]' 'not_documented_optional()'
+// @has -  '//details[@class="rustdoc-toggle method-toggle"]//*[@class="docblock"]' 'is_documented_optional is documented'
 pub trait Foo {
     fn not_documented();
 

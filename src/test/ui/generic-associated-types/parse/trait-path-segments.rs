@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 const _: () = {
     trait X {
         type Y<'a>;

@@ -5,8 +5,6 @@
 // check-pass
 // compile-flags:-Zno-leak-check
 
-#![feature(nll)]
-
 fn make_it() -> for<'a, 'b> fn(&'a u32, &'b u32) -> &'a u32 {
     panic!()
 }

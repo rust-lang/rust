@@ -1,20 +1,24 @@
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/wf-in-fn-type-static.rs:13:8
    |
-LL | struct Foo<T> {
-   |            - help: consider adding an explicit lifetime bound...: `T: 'static`
-LL |     // needs T: 'static
 LL |     x: fn() -> &'static T
    |        ^^^^^^^^^^^^^^^^^^ ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | struct Foo<T: 'static> {
+   |             +++++++++
 
 error[E0310]: the parameter type `T` may not live long enough
   --> $DIR/wf-in-fn-type-static.rs:18:8
    |
-LL | struct Bar<T> {
-   |            - help: consider adding an explicit lifetime bound...: `T: 'static`
-LL |     // needs T: Copy
 LL |     x: fn(&'static T)
    |        ^^^^^^^^^^^^^^ ...so that the reference type `&'static T` does not outlive the data it points at
+   |
+help: consider adding an explicit lifetime bound...
+   |
+LL | struct Bar<T: 'static> {
+   |             +++++++++
 
 error: aborting due to 2 previous errors
 

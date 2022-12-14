@@ -4,9 +4,8 @@ version = "0.0.0"
 edition = "2021"
 
 [dependencies]
-if_chain = "1.0"
 tracing = "0.1"
-unicode-security = "0.0.5"
+unicode-security = "0.1.0"
 rustc_middle = { path = "../rustc_middle" }
 rustc_ast_pretty = { path = "../rustc_ast_pretty" }
 rustc_attr = { path = "../rustc_attr" }
@@ -19,7 +18,8 @@ rustc_data_structures = { path = "../rustc_data_structures" }
 rustc_feature = { path = "../rustc_feature" }
 rustc_index = { path = "../rustc_index" }
 rustc_session = { path = "../rustc_session" }
-rustc_serialize = { path = "../rustc_serialize" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_parse_format = { path = "../rustc_parse_format" }
 rustc_infer = { path = "../rustc_infer" }
+rustc_type_ir = { path = "../rustc_type_ir" }
+rustc_macros = { path = "../rustc_macros" }

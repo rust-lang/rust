@@ -1,5 +1,54 @@
-use crate::def_id::{LocalDefId, CRATE_DEF_INDEX};
+use crate::def_id::{DefId, DefIndex, LocalDefId, CRATE_DEF_ID};
+use rustc_data_structures::stable_hasher::{HashStable, StableHasher, StableOrd, ToStableHashKey};
+use rustc_span::{def_id::DefPathHash, HashStableContext};
 use std::fmt;
+
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Encodable, Decodable)]
+pub struct OwnerId {
+    pub def_id: LocalDefId,
+}
+
+impl From<OwnerId> for HirId {
+    fn from(owner: OwnerId) -> HirId {
+        HirId { owner, local_id: ItemLocalId::from_u32(0) }
+    }
+}
+
+impl OwnerId {
+    #[inline]
+    pub fn to_def_id(self) -> DefId {
+        self.def_id.to_def_id()
+    }
+}
+
+impl rustc_index::vec::Idx for OwnerId {
+    #[inline]
+    fn new(idx: usize) -> Self {
+        OwnerId { def_id: LocalDefId { local_def_index: DefIndex::from_usize(idx) } }
+    }
+
+    #[inline]
+    fn index(self) -> usize {
+        self.def_id.local_def_index.as_usize()
+    }
+}
+
+impl<CTX: HashStableContext> HashStable<CTX> for OwnerId {
+    #[inline]
+    fn hash_stable(&self, hcx: &mut CTX, hasher: &mut StableHasher) {
+        self.to_stable_hash_key(hcx).hash_stable(hcx, hasher);
+    }
+}
+
+impl<CTX: HashStableContext> ToStableHashKey<CTX> for OwnerId {
+    type KeyType = DefPathHash;
+
+    #[inline]
+    fn to_stable_hash_key(&self, hcx: &CTX) -> DefPathHash {
+        hcx.def_path_hash(self.to_def_id())
+    }
+}
 
 /// Uniquely identifies a node in the HIR of the current crate. It is
 /// composed of the `owner`, which is the `LocalDefId` of the directly enclosing
@@ -11,26 +60,45 @@ use std::fmt;
 /// the `local_id` part of the `HirId` changing, which is a very useful property in
 /// incremental compilation where we have to persist things through changes to
 /// the code base.
-#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, PartialOrd, Ord)]
-#[derive(Encodable, Decodable)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
+#[derive(Encodable, Decodable, HashStable_Generic)]
+#[rustc_pass_by_value]
 pub struct HirId {
-    pub owner: LocalDefId,
+    pub owner: OwnerId,
     pub local_id: ItemLocalId,
 }
 
 impl HirId {
-    pub fn expect_owner(self) -> LocalDefId {
+    /// Signal local id which should never be used.
+    pub const INVALID: HirId =
+        HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::INVALID };
+
+    #[inline]
+    pub fn expect_owner(self) -> OwnerId {
         assert_eq!(self.local_id.index(), 0);
         self.owner
     }
 
-    pub fn as_owner(self) -> Option<LocalDefId> {
+    #[inline]
+    pub fn as_owner(self) -> Option<OwnerId> {
         if self.local_id.index() == 0 { Some(self.owner) } else { None }
     }
 
     #[inline]
+    pub fn is_owner(self) -> bool {
+        self.local_id.index() == 0
+    }
+
+    #[inline]
     pub fn make_owner(owner: LocalDefId) -> Self {
-        Self { owner, local_id: ItemLocalId::from_u32(0) }
+        Self { owner: OwnerId { def_id: owner }, local_id: ItemLocalId::from_u32(0) }
+    }
+
+    pub fn index(self) -> (usize, usize) {
+        (
+            rustc_index::vec::Idx::index(self.owner.def_id),
+            rustc_index::vec::Idx::index(self.local_id),
+        )
     }
 }
 
@@ -40,8 +108,25 @@ impl fmt::Display for HirId {
     }
 }
 
-rustc_data_structures::define_id_collections!(HirIdMap, HirIdSet, HirId);
-rustc_data_structures::define_id_collections!(ItemLocalMap, ItemLocalSet, ItemLocalId);
+impl Ord for HirId {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        (self.index()).cmp(&(other.index()))
+    }
+}
+
+impl PartialOrd for HirId {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+rustc_data_structures::define_stable_id_collections!(HirIdMap, HirIdSet, HirIdMapEntry, HirId);
+rustc_data_structures::define_id_collections!(
+    ItemLocalMap,
+    ItemLocalSet,
+    ItemLocalMapEntry,
+    ItemLocalId
+);
 
 rustc_index::newtype_index! {
     /// An `ItemLocalId` uniquely identifies something within a given "item-like";
@@ -52,16 +137,21 @@ rustc_index::newtype_index! {
     /// integers starting at zero, so a mapping that maps all or most nodes within
     /// an "item-like" to something else can be implemented by a `Vec` instead of a
     /// tree or hash map.
+    #[derive(HashStable_Generic)]
     pub struct ItemLocalId { .. }
 }
-rustc_data_structures::impl_stable_hash_via_hash!(ItemLocalId);
+
 impl ItemLocalId {
     /// Signal local id which should never be used.
     pub const INVALID: ItemLocalId = ItemLocalId::MAX;
 }
 
-/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_INDEX`.
-pub const CRATE_HIR_ID: HirId = HirId {
-    owner: LocalDefId { local_def_index: CRATE_DEF_INDEX },
-    local_id: ItemLocalId::from_u32(0),
-};
+// Safety: Ord is implement as just comparing the LocalItemId's numerical
+// values and these are not changed by (de-)serialization.
+unsafe impl StableOrd for ItemLocalId {}
+
+/// The `HirId` corresponding to `CRATE_NODE_ID` and `CRATE_DEF_ID`.
+pub const CRATE_HIR_ID: HirId =
+    HirId { owner: OwnerId { def_id: CRATE_DEF_ID }, local_id: ItemLocalId::from_u32(0) };
+
+pub const CRATE_OWNER_ID: OwnerId = OwnerId { def_id: CRATE_DEF_ID };

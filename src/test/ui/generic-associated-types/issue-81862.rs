@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 trait StreamingIterator {
     type Item<'a>;
     fn next(&mut self) -> Option<Self::Item>;

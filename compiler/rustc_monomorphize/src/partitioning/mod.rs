@@ -98,6 +98,7 @@ mod merging;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
+use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -107,6 +108,7 @@ use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
+use crate::errors::{SymbolAlreadyDefined, UnknownPartitionStrategy};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -141,14 +143,16 @@ trait Partitioner<'tcx> {
 }
 
 fn get_partitioner<'tcx>(tcx: TyCtxt<'tcx>) -> Box<dyn Partitioner<'tcx>> {
-    let strategy = match &tcx.sess.opts.debugging_opts.cgu_partitioning_strategy {
+    let strategy = match &tcx.sess.opts.unstable_opts.cgu_partitioning_strategy {
         None => "default",
         Some(s) => &s[..],
     };
 
     match strategy {
         "default" => Box::new(default::DefaultPartitioning),
-        _ => tcx.sess.fatal("unknown partitioning strategy"),
+        _ => {
+            tcx.sess.emit_fatal(UnknownPartitionStrategy);
+        }
     }
 }
 
@@ -201,6 +205,38 @@ pub fn partition<'tcx>(
         partitioner.internalize_symbols(cx, &mut post_inlining);
     }
 
+    let instrument_dead_code =
+        tcx.sess.instrument_coverage() && !tcx.sess.instrument_coverage_except_unused_functions();
+
+    if instrument_dead_code {
+        assert!(
+            post_inlining.codegen_units.len() > 0,
+            "There must be at least one CGU that code coverage data can be generated in."
+        );
+
+        // Find the smallest CGU that has exported symbols and put the dead
+        // function stubs in that CGU. We look for exported symbols to increase
+        // the likelihood the linker won't throw away the dead functions.
+        // FIXME(#92165): In order to truly resolve this, we need to make sure
+        // the object file (CGU) containing the dead function stubs is included
+        // in the final binary. This will probably require forcing these
+        // function symbols to be included via `-u` or `/include` linker args.
+        let mut cgus: Vec<_> = post_inlining.codegen_units.iter_mut().collect();
+        cgus.sort_by_key(|cgu| cgu.size_estimate());
+
+        let dead_code_cgu =
+            if let Some(cgu) = cgus.into_iter().rev().find(|cgu| {
+                cgu.items().iter().any(|(_, (linkage, _))| *linkage == Linkage::External)
+            }) {
+                cgu
+            } else {
+                // If there are no CGUs that have externally linked items,
+                // then we just pick the first CGU as a fallback.
+                &mut post_inlining.codegen_units[0]
+            };
+        dead_code_cgu.make_code_coverage_dead_code_cgu();
+    }
+
     // Finally, sort by codegen unit name, so that we get deterministic results.
     let PostInliningPartitioning {
         codegen_units: mut result,
@@ -208,7 +244,7 @@ pub fn partition<'tcx>(
         internalization_candidates: _,
     } = post_inlining;
 
-    result.sort_by_cached_key(|cgu| cgu.name().as_str());
+    result.sort_by(|a, b| a.name().as_str().partial_cmp(b.name().as_str()).unwrap());
 
     result
 }
@@ -298,13 +334,7 @@ where
                 (span1, span2) => span1.or(span2),
             };
 
-            let error_message = format!("symbol `{}` is already defined", sym1);
-
-            if let Some(span) = span {
-                tcx.sess.span_fatal(span, &error_message)
-            } else {
-                tcx.sess.fatal(&error_message)
-            }
+            tcx.sess.emit_fatal(SymbolAlreadyDefined { span, symbol: sym1.to_string() });
         }
     }
 }
@@ -313,7 +343,7 @@ fn collect_and_partition_mono_items<'tcx>(
     tcx: TyCtxt<'tcx>,
     (): (),
 ) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
-    let collection_mode = match tcx.sess.opts.debugging_opts.print_mono_items {
+    let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
             let mode_string = mode_string.trim();
@@ -361,6 +391,17 @@ fn collect_and_partition_mono_items<'tcx>(
         )
     });
 
+    if tcx.prof.enabled() {
+        // Record CGU size estimates for self-profiling.
+        for cgu in codegen_units {
+            tcx.prof.artifact_size(
+                "codegen_unit_size_estimate",
+                cgu.name().as_str(),
+                cgu.size_estimate() as u64,
+            );
+        }
+    }
+
     let mono_items: DefIdSet = items
         .iter()
         .filter_map(|mono_item| match *mono_item {
@@ -370,7 +411,7 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
-    if tcx.sess.opts.debugging_opts.print_mono_items.is_some() {
+    if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
         for cgu in codegen_units {
@@ -382,7 +423,7 @@ fn collect_and_partition_mono_items<'tcx>(
         let mut item_keys: Vec<_> = items
             .iter()
             .map(|i| {
-                let mut output = with_no_trimmed_paths(|| i.to_string());
+                let mut output = with_no_trimmed_paths!(i.to_string());
                 output.push_str(" @@");
                 let mut empty = Vec::new();
                 let cgus = item_to_cgus.get_mut(i).unwrap_or(&mut empty);
@@ -390,7 +431,7 @@ fn collect_and_partition_mono_items<'tcx>(
                 cgus.dedup();
                 for &(ref cgu_name, (linkage, _)) in cgus.iter() {
                     output.push(' ');
-                    output.push_str(&cgu_name.as_str());
+                    output.push_str(cgu_name.as_str());
 
                     let linkage_abbrev = match linkage {
                         Linkage::External => "External",
@@ -436,9 +477,14 @@ fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSe
                 if !visited.insert(did) {
                     continue;
                 }
-                for scope in &tcx.instance_mir(instance.def).source_scopes {
-                    if let Some((ref inlined, _)) = scope.inlined {
-                        result.insert(inlined.def_id());
+                let body = tcx.instance_mir(instance.def);
+                for block in body.basic_blocks.iter() {
+                    for statement in &block.statements {
+                        let mir::StatementKind::Coverage(_) = statement.kind else { continue };
+                        let scope = statement.source_info.scope;
+                        if let Some(inlined) = scope.inlined_instance(&body.source_scopes) {
+                            result.insert(inlined.def_id());
+                        }
                     }
                 }
             }

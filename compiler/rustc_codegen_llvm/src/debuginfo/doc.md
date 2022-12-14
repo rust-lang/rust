@@ -27,14 +27,14 @@ The module is thus driven from an outside client with functions like
 Internally the module will try to reuse already created metadata by
 utilizing a cache. The way to get a shared metadata node when needed is
 thus to just call the corresponding function in this module:
-
-    let file_metadata = file_metadata(cx, file);
-
+```ignore (illustrative)
+let file_metadata = file_metadata(cx, file);
+```
 The function will take care of probing the cache for an existing node for
 that exact file path.
 
 All private state used by the module is stored within either the
-CrateDebugContext struct (owned by the CodegenCx) or the
+CodegenUnitDebugContext struct (owned by the CodegenCx) or the
 FunctionDebugContext (owned by the FunctionCx).
 
 This file consists of three conceptual sections:
@@ -63,7 +63,7 @@ struct List {
 
 will generate the following callstack with a naive DFS algorithm:
 
-```
+```ignore (illustrative)
 describe(t = List)
   describe(t = i32)
   describe(t = Option<Box<List>>)
@@ -72,7 +72,7 @@ describe(t = List)
       ...
 ```
 
-To break cycles like these, we use "forward declarations". That is, when
+To break cycles like these, we use "stubs". That is, when
 the algorithm encounters a possibly recursive type (any struct or enum), it
 immediately creates a type description node and inserts it into the cache
 *before* describing the members of the type. This type description is just
@@ -80,13 +80,8 @@ a stub (as type members are not described and added to it yet) but it
 allows the algorithm to already refer to the type. After the stub is
 inserted into the cache, the algorithm continues as before. If it now
 encounters a recursive reference, it will hit the cache and does not try to
-describe the type anew.
-
-This behavior is encapsulated in the 'RecursiveTypeDescription' enum,
-which represents a kind of continuation, storing all state needed to
-continue traversal at the type members after the type has been registered
-with the cache. (This implementation approach might be a tad over-
-engineered and may change in the future)
+describe the type anew. This behavior is encapsulated in the
+`type_map::build_type_with_children()` function.
 
 
 ## Source Locations and Line Information
@@ -134,47 +129,3 @@ detection. The `create_argument_metadata()` and related functions take care
 of linking the `llvm.dbg.declare` instructions to the correct source
 locations even while source location emission is still disabled, so there
 is no need to do anything special with source location handling here.
-
-## Unique Type Identification
-
-In order for link-time optimization to work properly, LLVM needs a unique
-type identifier that tells it across compilation units which types are the
-same as others. This type identifier is created by
-`TypeMap::get_unique_type_id_of_type()` using the following algorithm:
-
-1. Primitive types have their name as ID
-
-2. Structs, enums and traits have a multipart identifier
-
-  1. The first part is the SVH (strict version hash) of the crate they
-     were originally defined in
-
-  2. The second part is the ast::NodeId of the definition in their
-     original crate
-
-  3. The final part is a concatenation of the type IDs of their concrete
-     type arguments if they are generic types.
-
-3. Tuple-, pointer-, and function types are structurally identified, which
-   means that they are equivalent if their component types are equivalent
-   (i.e., `(i32, i32)` is the same regardless in which crate it is used).
-
-This algorithm also provides a stable ID for types that are defined in one
-crate but instantiated from metadata within another crate. We just have to
-take care to always map crate and `NodeId`s back to the original crate
-context.
-
-As a side-effect these unique type IDs also help to solve a problem arising
-from lifetime parameters. Since lifetime parameters are completely omitted
-in debuginfo, more than one `Ty` instance may map to the same debuginfo
-type metadata, that is, some struct `Struct<'a>` may have N instantiations
-with different concrete substitutions for `'a`, and thus there will be N
-`Ty` instances for the type `Struct<'a>` even though it is not generic
-otherwise. Unfortunately this means that we cannot use `ty::type_id()` as
-cheap identifier for type metadata -- we have done this in the past, but it
-led to unnecessary metadata duplication in the best case and LLVM
-assertions in the worst. However, the unique type ID as described above
-*can* be used as identifier. Since it is comparatively expensive to
-construct, though, `ty::type_id()` is still used additionally as an
-optimization for cases where the exact same type has been seen before
-(which is most of the time).

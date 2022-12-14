@@ -1,7 +1,7 @@
 #![warn(clippy::drop_ref)]
 #![allow(clippy::toplevel_ref_arg)]
 #![allow(clippy::map_err_ignore)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::unnecessary_wraps, clippy::drop_non_drop)]
 
 use std::mem::drop;
 

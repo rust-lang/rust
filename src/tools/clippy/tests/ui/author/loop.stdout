@@ -1,0 +1,101 @@
+if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
+    && let PatKind::Binding(BindingAnnotation::NONE, _, name, None) = pat.kind
+    && name.as_str() == "y"
+    && let ExprKind::Struct(qpath, fields, None) = arg.kind
+    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && fields.len() == 2
+    && fields[0].ident.as_str() == "start"
+    && let ExprKind::Lit(ref lit) = fields[0].expr.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && fields[1].ident.as_str() == "end"
+    && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
+    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block, None) = body.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Local(local) = block.stmts[0].kind
+    && let Some(init) = local.init
+    && let ExprKind::Path(ref qpath1) = init.kind
+    && match_qpath(qpath1, &["y"])
+    && let PatKind::Binding(BindingAnnotation::NONE, _, name1, None) = local.pat.kind
+    && name1.as_str() == "z"
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
+    && let PatKind::Wild = pat.kind
+    && let ExprKind::Struct(qpath, fields, None) = arg.kind
+    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && fields.len() == 2
+    && fields[0].ident.as_str() == "start"
+    && let ExprKind::Lit(ref lit) = fields[0].expr.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && fields[1].ident.as_str() == "end"
+    && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
+    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block, None) = body.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Break(destination, None) = e.kind
+    && destination.label.is_none()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let Some(higher::ForLoop { pat: pat, arg: arg, body: body, .. }) = higher::ForLoop::hir(expr)
+    && let PatKind::Wild = pat.kind
+    && let ExprKind::Struct(qpath, fields, None) = arg.kind
+    && matches!(qpath, QPath::LangItem(LangItem::Range, _))
+    && fields.len() == 2
+    && fields[0].ident.as_str() == "start"
+    && let ExprKind::Lit(ref lit) = fields[0].expr.kind
+    && let LitKind::Int(0, LitIntType::Unsuffixed) = lit.node
+    && fields[1].ident.as_str() == "end"
+    && let ExprKind::Lit(ref lit1) = fields[1].expr.kind
+    && let LitKind::Int(10, LitIntType::Unsuffixed) = lit1.node
+    && let ExprKind::Block(block, None) = body.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Break(destination, None) = e.kind
+    && let Some(label) = destination.label
+    && label.ident.as_str() == "'label"
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let Some(higher::While { condition: condition, body: body }) = higher::While::hir(expr)
+    && let ExprKind::Path(ref qpath) = condition.kind
+    && match_qpath(qpath, &["a"])
+    && let ExprKind::Block(block, None) = body.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Break(destination, None) = e.kind
+    && destination.label.is_none()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let Some(higher::WhileLet { let_pat: let_pat, let_expr: let_expr, if_then: if_then }) = higher::WhileLet::hir(expr)
+    && let PatKind::Lit(lit_expr) = let_pat.kind
+    && let ExprKind::Lit(ref lit) = lit_expr.kind
+    && let LitKind::Bool(true) = lit.node
+    && let ExprKind::Path(ref qpath) = let_expr.kind
+    && match_qpath(qpath, &["a"])
+    && let ExprKind::Block(block, None) = if_then.kind
+    && block.stmts.len() == 1
+    && let StmtKind::Semi(e) = block.stmts[0].kind
+    && let ExprKind::Break(destination, None) = e.kind
+    && destination.label.is_none()
+    && block.expr.is_none()
+{
+    // report your lint here
+}
+if let ExprKind::Loop(body, None, LoopSource::Loop, _) = expr.kind
+    && body.stmts.len() == 1
+    && let StmtKind::Semi(e) = body.stmts[0].kind
+    && let ExprKind::Break(destination, None) = e.kind
+    && destination.label.is_none()
+    && body.expr.is_none()
+{
+    // report your lint here
+}

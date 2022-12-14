@@ -1,6 +1,5 @@
 #![feature(const_mut_refs)]
 #![feature(raw_ref_op)]
-#![feature(const_raw_ptr_deref)]
 
 // This file checks that our dynamic checks catch things that the static checks miss.
 // We do not have static checks for these, because we do not look into function bodies.
@@ -12,7 +11,7 @@ const fn helper() -> Option<&'static mut i32> { unsafe {
     // Undefined behaviour (integer as pointer), who doesn't love tests like this.
     // This code never gets executed, because the static checks fail before that.
     Some(&mut *(42 as *mut i32)) //~ ERROR evaluation of constant value failed
-    //~| 0x2a is not a valid pointer
+    //~| 0x2a[noalloc] is a dangling pointer
 } }
 // The error is an evaluation error and not a validation error, so the error is reported
 // directly at the site where it occurs.

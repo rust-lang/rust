@@ -18,6 +18,11 @@ LL | use m2::S;
    |
 LL | use xm2::S;
    |
+help: if you import `S`, refer to it directly
+   |
+LL -     check(m1::S);
+LL +     check(S);
+   |
 
 error[E0423]: expected value, found type alias `xm1::S`
   --> $DIR/namespace-mix.rs:40:11
@@ -28,7 +33,7 @@ LL |     check(xm1::S);
   ::: $DIR/auxiliary/namespace-mix.rs:3:5
    |
 LL |     pub struct TS();
-   |     ---------------- similarly named tuple struct `TS` defined here
+   |     ------------- similarly named tuple struct `TS` defined here
    |
    = note: can't use a type alias as a constructor
 help: a tuple struct with a similar name exists
@@ -41,22 +46,22 @@ LL | use m2::S;
    |
 LL | use xm2::S;
    |
+help: if you import `S`, refer to it directly
+   |
+LL -     check(xm1::S);
+LL +     check(S);
+   |
 
-error[E0423]: expected value, found struct variant `m7::V`
+error[E0423]: expected value, found type alias `m7::V`
   --> $DIR/namespace-mix.rs:100:11
    |
-LL |         V {},
-   |         ---- `m7::V` defined here
 LL |         TV(),
    |         ---- similarly named tuple variant `TV` defined here
 ...
 LL |     check(m7::V);
    |           ^^^^^
    |
-help: use struct literal syntax instead
-   |
-LL |     check(m7::V {});
-   |           ~~~~~~~~
+   = note: can't use a type alias as a constructor
 help: a tuple variant with a similar name exists
    |
 LL |     check(m7::TV);
@@ -67,24 +72,24 @@ LL | use m8::V;
    |
 LL | use xm8::V;
    |
+help: if you import `V`, refer to it directly
+   |
+LL -     check(m7::V);
+LL +     check(V);
+   |
 
-error[E0423]: expected value, found struct variant `xm7::V`
+error[E0423]: expected value, found type alias `xm7::V`
   --> $DIR/namespace-mix.rs:106:11
    |
 LL |     check(xm7::V);
    |           ^^^^^^
    |
-  ::: $DIR/auxiliary/namespace-mix.rs:6:9
+  ::: $DIR/auxiliary/namespace-mix.rs:7:9
    |
-LL |         V {},
-   |         - `xm7::V` defined here
 LL |         TV(),
-   |         ---- similarly named tuple variant `TV` defined here
+   |         -- similarly named tuple variant `TV` defined here
    |
-help: use struct literal syntax instead
-   |
-LL |     check(xm7::V { /* fields */ });
-   |           ~~~~~~~~~~~~~~~~~~~~~~~
+   = note: can't use a type alias as a constructor
 help: a tuple variant with a similar name exists
    |
 LL |     check(xm7::TV);
@@ -94,6 +99,11 @@ help: consider importing one of these items instead
 LL | use m8::V;
    |
 LL | use xm8::V;
+   |
+help: if you import `V`, refer to it directly
+   |
+LL -     check(xm7::V);
+LL +     check(V);
    |
 
 error[E0277]: the trait bound `c::Item: Impossible` is not satisfied
@@ -198,7 +208,7 @@ error[E0277]: the trait bound `fn() -> c::TS {c::TS}: Impossible` is not satisfi
   --> $DIR/namespace-mix.rs:56:11
    |
 LL |     check(m3::TS);
-   |     ----- ^^^^^^ the trait `Impossible` is not implemented for `fn() -> c::TS {c::TS}`
+   |     ----- ^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> c::TS {c::TS}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -254,7 +264,7 @@ error[E0277]: the trait bound `fn() -> namespace_mix::c::TS {namespace_mix::c::T
   --> $DIR/namespace-mix.rs:62:11
    |
 LL |     check(xm3::TS);
-   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
+   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> namespace_mix::c::TS {namespace_mix::c::TS}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -506,7 +516,7 @@ error[E0277]: the trait bound `fn() -> c::E {c::E::TV}: Impossible` is not satis
   --> $DIR/namespace-mix.rs:122:11
    |
 LL |     check(m9::TV);
-   |     ----- ^^^^^^ the trait `Impossible` is not implemented for `fn() -> c::E {c::E::TV}`
+   |     ----- ^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> c::E {c::E::TV}`
    |     |
    |     required by a bound introduced by this call
    |
@@ -562,7 +572,7 @@ error[E0277]: the trait bound `fn() -> namespace_mix::c::E {namespace_mix::xm7::
   --> $DIR/namespace-mix.rs:128:11
    |
 LL |     check(xm9::TV);
-   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}`
+   |     ----- ^^^^^^^ the trait `Impossible` is not implemented for fn item `fn() -> namespace_mix::c::E {namespace_mix::xm7::TV}`
    |     |
    |     required by a bound introduced by this call
    |

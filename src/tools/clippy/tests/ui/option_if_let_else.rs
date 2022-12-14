@@ -1,6 +1,12 @@
 // run-rustfix
 #![warn(clippy::option_if_let_else)]
-#![allow(clippy::redundant_closure, clippy::ref_option_ref, clippy::equatable_if_let)]
+#![allow(
+    unused_tuple_struct_fields,
+    clippy::redundant_closure,
+    clippy::ref_option_ref,
+    clippy::equatable_if_let,
+    clippy::let_unit_value
+)]
 
 fn bad1(string: Option<&str>) -> (bool, &str) {
     if let Some(x) = string {
@@ -94,6 +100,34 @@ fn negative_tests(arg: Option<u32>) -> u32 {
     7
 }
 
+// #7973
+fn pattern_to_vec(pattern: &str) -> Vec<String> {
+    pattern
+        .trim_matches('/')
+        .split('/')
+        .flat_map(|s| {
+            if let Some(idx) = s.find('.') {
+                vec![s[..idx].to_string(), s[idx..].to_string()]
+            } else {
+                vec![s.to_string()]
+            }
+        })
+        .collect::<Vec<_>>()
+}
+
+enum DummyEnum {
+    One(u8),
+    Two,
+}
+
+// should not warn since there is a compled complex subpat
+// see #7991
+fn complex_subpat() -> DummyEnum {
+    let x = Some(DummyEnum::One(1));
+    let _ = if let Some(_one @ DummyEnum::One(..)) = x { 1 } else { 2 };
+    DummyEnum::Two
+}
+
 fn main() {
     let optional = Some(5);
     let _ = if let Some(x) = optional { x + 2 } else { 5 };
@@ -170,5 +204,38 @@ fn main() {
     async fn _f2() {
         // Don't lint. `await` can't be moved into a closure.
         let _ = if let Some(x) = Some(0) { _f1(x).await } else { 0 };
+    }
+
+    let _ = pattern_to_vec("hello world");
+    let _ = complex_subpat();
+
+    // issue #8492
+    let _ = match s {
+        Some(string) => string.len(),
+        None => 1,
+    };
+    let _ = match Some(10) {
+        Some(a) => a + 1,
+        None => 5,
+    };
+
+    let res: Result<i32, i32> = Ok(5);
+    let _ = match res {
+        Ok(a) => a + 1,
+        _ => 1,
+    };
+    let _ = match res {
+        Err(_) => 1,
+        Ok(a) => a + 1,
+    };
+    let _ = if let Ok(a) = res { a + 1 } else { 5 };
+}
+
+#[allow(dead_code)]
+fn issue9742() -> Option<&'static str> {
+    // should not lint because of guards
+    match Some("foo  ") {
+        Some(name) if name.starts_with("foo") => Some(name.trim()),
+        _ => None,
     }
 }

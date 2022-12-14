@@ -5,18 +5,13 @@
 //! The providers for the queries defined here can be found in
 //! `rustc_traits`.
 
+use crate::error::DropCheckOverflow;
 use crate::infer::canonical::{Canonical, QueryResponse};
 use crate::ty::error::TypeError;
-use crate::ty::subst::GenericArg;
+use crate::ty::subst::{GenericArg, SubstsRef};
 use crate::ty::{self, Ty, TyCtxt};
-
-use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
-use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
-use rustc_query_system::ich::StableHashingContext;
+use rustc_hir::def_id::DefId;
 use rustc_span::source_map::Span;
-use std::iter::FromIterator;
-use std::mem;
 
 pub mod type_op {
     use crate::ty::fold::TypeFoldable;
@@ -25,7 +20,8 @@ pub mod type_op {
     use rustc_hir::def_id::DefId;
     use std::fmt;
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct AscribeUserType<'tcx> {
         pub mir_ty: Ty<'tcx>,
         pub def_id: DefId,
@@ -38,19 +34,22 @@ pub mod type_op {
         }
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Eq<'tcx> {
         pub a: Ty<'tcx>,
         pub b: Ty<'tcx>,
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Subtype<'tcx> {
         pub sub: Ty<'tcx>,
         pub sup: Ty<'tcx>,
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct ProvePredicate<'tcx> {
         pub predicate: Predicate<'tcx>,
     }
@@ -61,7 +60,8 @@ pub mod type_op {
         }
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, TypeFoldable, Lift)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq, HashStable, Lift)]
+    #[derive(TypeFoldable, TypeVisitable)]
     pub struct Normalize<T> {
         pub value: T,
     }
@@ -97,7 +97,7 @@ pub type CanonicalTypeOpProvePredicateGoal<'tcx> =
 pub type CanonicalTypeOpNormalizeGoal<'tcx, T> =
     Canonical<'tcx, ty::ParamEnvAnd<'tcx, type_op::Normalize<T>>>;
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub struct NoSolution;
 
 pub type Fallible<T> = Result<T, NoSolution>;
@@ -108,7 +108,7 @@ impl<'tcx> From<TypeError<'tcx>> for NoSolution {
     }
 }
 
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct DropckOutlivesResult<'tcx> {
     pub kinds: Vec<GenericArg<'tcx>>,
     pub overflows: Vec<Ty<'tcx>>,
@@ -117,15 +117,7 @@ pub struct DropckOutlivesResult<'tcx> {
 impl<'tcx> DropckOutlivesResult<'tcx> {
     pub fn report_overflows(&self, tcx: TyCtxt<'tcx>, span: Span, ty: Ty<'tcx>) {
         if let Some(overflow_ty) = self.overflows.get(0) {
-            let mut err = struct_span_err!(
-                tcx.sess,
-                span,
-                E0320,
-                "overflow while adding drop-check rules for {}",
-                ty,
-            );
-            err.note(&format!("overflowed on {}", overflow_ty));
-            err.emit();
+            tcx.sess.emit_err(DropCheckOverflow { span, ty, overflow_ty: *overflow_ty });
         }
     }
 
@@ -144,7 +136,7 @@ impl<'tcx> DropckOutlivesResult<'tcx> {
 /// A set of constraints that need to be satisfied in order for
 /// a type to be valid for destruction.
 #[derive(Clone, Debug, HashStable)]
-pub struct DtorckConstraint<'tcx> {
+pub struct DropckConstraint<'tcx> {
     /// Types that are required to be alive in order for this
     /// type to be valid for destruction.
     pub outlives: Vec<ty::subst::GenericArg<'tcx>>,
@@ -158,17 +150,17 @@ pub struct DtorckConstraint<'tcx> {
     pub overflows: Vec<Ty<'tcx>>,
 }
 
-impl<'tcx> DtorckConstraint<'tcx> {
-    pub fn empty() -> DtorckConstraint<'tcx> {
-        DtorckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
+impl<'tcx> DropckConstraint<'tcx> {
+    pub fn empty() -> DropckConstraint<'tcx> {
+        DropckConstraint { outlives: vec![], dtorck_types: vec![], overflows: vec![] }
     }
 }
 
-impl<'tcx> FromIterator<DtorckConstraint<'tcx>> for DtorckConstraint<'tcx> {
-    fn from_iter<I: IntoIterator<Item = DtorckConstraint<'tcx>>>(iter: I) -> Self {
+impl<'tcx> FromIterator<DropckConstraint<'tcx>> for DropckConstraint<'tcx> {
+    fn from_iter<I: IntoIterator<Item = DropckConstraint<'tcx>>>(iter: I) -> Self {
         let mut result = Self::empty();
 
-        for DtorckConstraint { outlives, dtorck_types, overflows } in iter {
+        for DropckConstraint { outlives, dtorck_types, overflows } in iter {
             result.outlives.extend(outlives);
             result.dtorck_types.extend(dtorck_types);
             result.overflows.extend(overflows);
@@ -191,12 +183,12 @@ pub struct CandidateStep<'tcx> {
     pub unsize: bool,
 }
 
-#[derive(Clone, Debug, HashStable)]
+#[derive(Copy, Clone, Debug, HashStable)]
 pub struct MethodAutoderefStepsResult<'tcx> {
     /// The valid autoderef steps that could be find.
-    pub steps: Lrc<Vec<CandidateStep<'tcx>>>,
+    pub steps: &'tcx [CandidateStep<'tcx>],
     /// If Some(T), a type autoderef reported an error on.
-    pub opt_bad_ty: Option<Lrc<MethodAutoderefBadTy<'tcx>>>,
+    pub opt_bad_ty: Option<&'tcx MethodAutoderefBadTy<'tcx>>,
     /// If `true`, `steps` has been truncated due to reaching the
     /// recursion limit.
     pub reached_recursion_limit: bool,
@@ -209,7 +201,7 @@ pub struct MethodAutoderefBadTy<'tcx> {
 }
 
 /// Result from the `normalize_projection_ty` query.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct NormalizationResult<'tcx> {
     /// Result of normalization.
     pub normalized_ty: Ty<'tcx>,
@@ -222,29 +214,10 @@ pub struct NormalizationResult<'tcx> {
 /// case they are called implied bounds). They are fed to the
 /// `OutlivesEnv` which in turn is supplied to the region checker and
 /// other parts of the inference system.
-#[derive(Clone, Debug, TypeFoldable, Lift)]
+#[derive(Clone, Debug, TypeFoldable, TypeVisitable, Lift, HashStable)]
 pub enum OutlivesBound<'tcx> {
     RegionSubRegion(ty::Region<'tcx>, ty::Region<'tcx>),
     RegionSubParam(ty::Region<'tcx>, ty::ParamTy),
     RegionSubProjection(ty::Region<'tcx>, ty::ProjectionTy<'tcx>),
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for OutlivesBound<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        mem::discriminant(self).hash_stable(hcx, hasher);
-        match *self {
-            OutlivesBound::RegionSubRegion(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubParam(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-            OutlivesBound::RegionSubProjection(ref a, ref b) => {
-                a.hash_stable(hcx, hasher);
-                b.hash_stable(hcx, hasher);
-            }
-        }
-    }
+    RegionSubOpaque(ty::Region<'tcx>, DefId, SubstsRef<'tcx>),
 }

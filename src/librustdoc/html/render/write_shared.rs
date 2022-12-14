@@ -1,15 +1,14 @@
-use std::ffi::OsStr;
-use std::fmt::Write;
 use std::fs::{self, File};
 use std::io::prelude::*;
 use std::io::{self, BufReader};
-use std::lazy::SyncLazy as Lazy;
-use std::path::{Component, Path, PathBuf};
+use std::path::{Component, Path};
+use std::rc::Rc;
 
 use itertools::Itertools;
 use rustc_data_structures::flock;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use serde::Serialize;
+use serde::ser::SerializeSeq;
+use serde::{Serialize, Serializer};
 
 use super::{collect_paths_for_type, ensure_trailing_slash, Context, BASIC_KEYWORDS};
 use crate::clean::Crate;
@@ -19,132 +18,22 @@ use crate::error::Error;
 use crate::html::{layout, static_files};
 use crate::{try_err, try_none};
 
-static FILES_UNVERSIONED: Lazy<FxHashMap<&str, &[u8]>> = Lazy::new(|| {
-    map! {
-        "FiraSans-Regular.woff2" => static_files::fira_sans::REGULAR2,
-        "FiraSans-Medium.woff2" => static_files::fira_sans::MEDIUM2,
-        "FiraSans-Regular.woff" => static_files::fira_sans::REGULAR,
-        "FiraSans-Medium.woff" => static_files::fira_sans::MEDIUM,
-        "FiraSans-LICENSE.txt" => static_files::fira_sans::LICENSE,
-        "SourceSerif4-Regular.ttf.woff2" => static_files::source_serif_4::REGULAR2,
-        "SourceSerif4-Bold.ttf.woff2" => static_files::source_serif_4::BOLD2,
-        "SourceSerif4-It.ttf.woff2" => static_files::source_serif_4::ITALIC2,
-        "SourceSerif4-Regular.ttf.woff" => static_files::source_serif_4::REGULAR,
-        "SourceSerif4-Bold.ttf.woff" => static_files::source_serif_4::BOLD,
-        "SourceSerif4-It.ttf.woff" => static_files::source_serif_4::ITALIC,
-        "SourceSerif4-LICENSE.md" => static_files::source_serif_4::LICENSE,
-        "SourceCodePro-Regular.ttf.woff2" => static_files::source_code_pro::REGULAR2,
-        "SourceCodePro-Semibold.ttf.woff2" => static_files::source_code_pro::SEMIBOLD2,
-        "SourceCodePro-It.ttf.woff2" => static_files::source_code_pro::ITALIC2,
-        "SourceCodePro-Regular.ttf.woff" => static_files::source_code_pro::REGULAR,
-        "SourceCodePro-Semibold.ttf.woff" => static_files::source_code_pro::SEMIBOLD,
-        "SourceCodePro-It.ttf.woff" => static_files::source_code_pro::ITALIC,
-        "SourceCodePro-LICENSE.txt" => static_files::source_code_pro::LICENSE,
-        "NanumBarunGothic.ttf.woff2" => static_files::nanum_barun_gothic::REGULAR2,
-        "NanumBarunGothic.ttf.woff" => static_files::nanum_barun_gothic::REGULAR,
-        "NanumBarunGothic-LICENSE.txt" => static_files::nanum_barun_gothic::LICENSE,
-        "LICENSE-MIT.txt" => static_files::LICENSE_MIT,
-        "LICENSE-APACHE.txt" => static_files::LICENSE_APACHE,
-        "COPYRIGHT.txt" => static_files::COPYRIGHT,
-    }
-});
-
-enum SharedResource<'a> {
-    /// This file will never change, no matter what toolchain is used to build it.
-    ///
-    /// It does not have a resource suffix.
-    Unversioned { name: &'static str },
-    /// This file may change depending on the toolchain.
-    ///
-    /// It has a resource suffix.
-    ToolchainSpecific { basename: &'static str },
-    /// This file may change for any crate within a build, or based on the CLI arguments.
-    ///
-    /// This differs from normal invocation-specific files because it has a resource suffix.
-    InvocationSpecific { basename: &'a str },
-}
-
-impl SharedResource<'_> {
-    fn extension(&self) -> Option<&OsStr> {
-        use SharedResource::*;
-        match self {
-            Unversioned { name }
-            | ToolchainSpecific { basename: name }
-            | InvocationSpecific { basename: name } => Path::new(name).extension(),
-        }
-    }
-
-    fn path(&self, cx: &Context<'_>) -> PathBuf {
-        match self {
-            SharedResource::Unversioned { name } => cx.dst.join(name),
-            SharedResource::ToolchainSpecific { basename } => cx.suffix_path(basename),
-            SharedResource::InvocationSpecific { basename } => cx.suffix_path(basename),
-        }
-    }
-
-    fn should_emit(&self, emit: &[EmitType]) -> bool {
-        if emit.is_empty() {
-            return true;
-        }
-        let kind = match self {
-            SharedResource::Unversioned { .. } => EmitType::Unversioned,
-            SharedResource::ToolchainSpecific { .. } => EmitType::Toolchain,
-            SharedResource::InvocationSpecific { .. } => EmitType::InvocationSpecific,
-        };
-        emit.contains(&kind)
-    }
-}
-
-impl Context<'_> {
-    fn suffix_path(&self, filename: &str) -> PathBuf {
-        // We use splitn vs Path::extension here because we might get a filename
-        // like `style.min.css` and we want to process that into
-        // `style-suffix.min.css`.  Path::extension would just return `css`
-        // which would result in `style.min-suffix.css` which isn't what we
-        // want.
-        let (base, ext) = filename.split_once('.').unwrap();
-        let filename = format!("{}{}.{}", base, self.shared.resource_suffix, ext);
-        self.dst.join(&filename)
-    }
-
-    fn write_shared(
-        &self,
-        resource: SharedResource<'_>,
-        contents: impl 'static + Send + AsRef<[u8]>,
-        emit: &[EmitType],
-    ) -> Result<(), Error> {
-        if resource.should_emit(emit) {
-            self.shared.fs.write(resource.path(self), contents)
-        } else {
-            Ok(())
-        }
-    }
-
-    fn write_minify(
-        &self,
-        resource: SharedResource<'_>,
-        contents: impl 'static + Send + AsRef<str> + AsRef<[u8]>,
-        minify: bool,
-        emit: &[EmitType],
-    ) -> Result<(), Error> {
-        if minify {
-            let contents = contents.as_ref();
-            let contents = if resource.extension() == Some(OsStr::new("css")) {
-                minifier::css::minify(contents).map_err(|e| {
-                    Error::new(format!("failed to minify CSS file: {}", e), resource.path(self))
-                })?
-            } else {
-                minifier::js::minify(contents)
-            };
-            self.write_shared(resource, contents, emit)
-        } else {
-            self.write_shared(resource, contents, emit)
-        }
-    }
-}
-
+/// Rustdoc writes out two kinds of shared files:
+///  - Static files, which are embedded in the rustdoc binary and are written with a
+///    filename that includes a hash of their contents. These will always have a new
+///    URL if the contents change, so they are safe to cache with the
+///    `Cache-Control: immutable` directive. They are written under the static.files/
+///    directory and are written when --emit-type is empty (default) or contains
+///    "toolchain-specific". If using the --static-root-path flag, it should point
+///    to a URL path prefix where each of these filenames can be fetched.
+///  - Invocation specific files. These are generated based on the crate(s) being
+///    documented. Their filenames need to be predictable without knowing their
+///    contents, so they do not include a hash in their filename and are not safe to
+///    cache with `Cache-Control: immutable`. They include the contents of the
+///    --resource-suffix flag and are emitted when --emit-type is empty (default)
+///    or contains "invocation-specific".
 pub(super) fn write_shared(
-    cx: &Context<'_>,
+    cx: &mut Context<'_>,
     krate: &Crate,
     search_index: String,
     options: &RenderOptions,
@@ -155,199 +44,91 @@ pub(super) fn write_shared(
     let lock_file = cx.dst.join(".lock");
     let _lock = try_err!(flock::Lock::new(&lock_file, true, true, true), &lock_file);
 
-    // Minified resources are usually toolchain resources. If they're not, they should use `cx.write_minify` directly.
-    fn write_minify(
-        basename: &'static str,
-        contents: impl 'static + Send + AsRef<str> + AsRef<[u8]>,
-        cx: &Context<'_>,
-        options: &RenderOptions,
-    ) -> Result<(), Error> {
-        cx.write_minify(
-            SharedResource::ToolchainSpecific { basename },
-            contents,
-            options.enable_minification,
-            &options.emit,
-        )
-    }
-
-    // Toolchain resources should never be dynamic.
-    let write_toolchain = |p: &'static _, c: &'static _| {
-        cx.write_shared(SharedResource::ToolchainSpecific { basename: p }, c, &options.emit)
-    };
-
-    // Crate resources should always be dynamic.
-    let write_crate = |p: &_, make_content: &dyn Fn() -> Result<Vec<u8>, Error>| {
+    // InvocationSpecific resources should always be dynamic.
+    let write_invocation_specific = |p: &str, make_content: &dyn Fn() -> Result<Vec<u8>, Error>| {
         let content = make_content()?;
-        cx.write_shared(SharedResource::InvocationSpecific { basename: p }, content, &options.emit)
+        if options.emit.is_empty() || options.emit.contains(&EmitType::InvocationSpecific) {
+            let output_filename = static_files::suffix_path(p, &cx.shared.resource_suffix);
+            cx.shared.fs.write(cx.dst.join(output_filename), content)
+        } else {
+            Ok(())
+        }
     };
 
-    fn add_background_image_to_css(
-        cx: &Context<'_>,
-        css: &mut String,
-        rule: &str,
-        file: &'static str,
-    ) {
-        css.push_str(&format!(
-            "{} {{ background-image: url({}); }}",
-            rule,
-            SharedResource::ToolchainSpecific { basename: file }
-                .path(cx)
-                .file_name()
-                .unwrap()
-                .to_str()
-                .unwrap()
-        ))
-    }
+    cx.shared
+        .fs
+        .create_dir_all(cx.dst.join("static.files"))
+        .map_err(|e| PathError::new(e, "static.files"))?;
 
-    // Add all the static files. These may already exist, but we just
-    // overwrite them anyway to make sure that they're fresh and up-to-date.
-    let mut rustdoc_css = static_files::RUSTDOC_CSS.to_owned();
-    add_background_image_to_css(
-        cx,
-        &mut rustdoc_css,
-        "details.undocumented[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary::before, \
-         details.rustdoc-toggle[open] > summary.hideme::before",
-        "toggle-minus.svg",
-    );
-    add_background_image_to_css(
-        cx,
-        &mut rustdoc_css,
-        "details.undocumented > summary::before, details.rustdoc-toggle > summary::before",
-        "toggle-plus.svg",
-    );
-    write_minify("rustdoc.css", rustdoc_css, cx, options)?;
-
-    // Add all the static files. These may already exist, but we just
-    // overwrite them anyway to make sure that they're fresh and up-to-date.
-    write_minify("settings.css", static_files::SETTINGS_CSS, cx, options)?;
-    write_minify("noscript.css", static_files::NOSCRIPT_CSS, cx, options)?;
-
-    // To avoid "light.css" to be overwritten, we'll first run over the received themes and only
-    // then we'll run over the "official" styles.
-    let mut themes: FxHashSet<String> = FxHashSet::default();
-
+    // Handle added third-party themes
     for entry in &cx.shared.style_files {
-        let theme = try_none!(try_none!(entry.path.file_stem(), &entry.path).to_str(), &entry.path);
+        let theme = entry.basename()?;
         let extension =
             try_none!(try_none!(entry.path.extension(), &entry.path).to_str(), &entry.path);
 
-        // Handle the official themes
-        match theme {
-            "light" => write_minify("light.css", static_files::themes::LIGHT, cx, options)?,
-            "dark" => write_minify("dark.css", static_files::themes::DARK, cx, options)?,
-            "ayu" => write_minify("ayu.css", static_files::themes::AYU, cx, options)?,
-            _ => {
-                // Handle added third-party themes
-                let filename = format!("{}.{}", theme, extension);
-                write_crate(&filename, &|| Ok(try_err!(fs::read(&entry.path), &entry.path)))?;
-            }
-        };
+        // Skip the official themes. They are written below as part of STATIC_FILES_LIST.
+        if matches!(theme.as_str(), "light" | "dark" | "ayu") {
+            continue;
+        }
 
-        themes.insert(theme.to_owned());
+        let bytes = try_err!(fs::read(&entry.path), &entry.path);
+        let filename = format!("{}{}.{}", theme, cx.shared.resource_suffix, extension);
+        cx.shared.fs.write(cx.dst.join(filename), bytes)?;
     }
 
-    if (*cx.shared).layout.logo.is_empty() {
-        write_toolchain("rust-logo.png", static_files::RUST_LOGO)?;
-    }
-    if (*cx.shared).layout.favicon.is_empty() {
-        write_toolchain("favicon.svg", static_files::RUST_FAVICON_SVG)?;
-        write_toolchain("favicon-16x16.png", static_files::RUST_FAVICON_PNG_16)?;
-        write_toolchain("favicon-32x32.png", static_files::RUST_FAVICON_PNG_32)?;
-    }
-    write_toolchain("brush.svg", static_files::BRUSH_SVG)?;
-    write_toolchain("wheel.svg", static_files::WHEEL_SVG)?;
-    write_toolchain("clipboard.svg", static_files::CLIPBOARD_SVG)?;
-    write_toolchain("down-arrow.svg", static_files::DOWN_ARROW_SVG)?;
-    write_toolchain("toggle-minus.svg", static_files::TOGGLE_MINUS_PNG)?;
-    write_toolchain("toggle-plus.svg", static_files::TOGGLE_PLUS_PNG)?;
-
-    let mut themes: Vec<&String> = themes.iter().collect();
-    themes.sort();
-
-    // FIXME: this should probably not be a toolchain file since it depends on `--theme`.
-    // But it seems a shame to copy it over and over when it's almost always the same.
-    // Maybe we can change the representation to move this out of main.js?
-    write_minify(
-        "main.js",
-        static_files::MAIN_JS
-            .replace(
-                "/* INSERT THEMES HERE */",
-                &format!(" = {}", serde_json::to_string(&themes).unwrap()),
-            )
-            .replace(
-                "/* INSERT RUSTDOC_VERSION HERE */",
-                &format!(
-                    "rustdoc {}",
-                    rustc_interface::util::version_str().unwrap_or("unknown version")
-                ),
-            ),
-        cx,
-        options,
-    )?;
-    write_minify("search.js", static_files::SEARCH_JS, cx, options)?;
-    write_minify("settings.js", static_files::SETTINGS_JS, cx, options)?;
-
-    if cx.include_sources {
-        write_minify("source-script.js", static_files::sidebar::SOURCE_SCRIPT, cx, options)?;
-    }
-
-    {
-        write_minify(
-            "storage.js",
-            format!(
-                "var resourcesSuffix = \"{}\";{}",
-                cx.shared.resource_suffix,
-                static_files::STORAGE_JS
-            ),
-            cx,
-            options,
-        )?;
-    }
-
-    if cx.shared.layout.scrape_examples_extension {
-        cx.write_minify(
-            SharedResource::InvocationSpecific { basename: "scrape-examples.js" },
-            static_files::SCRAPE_EXAMPLES_JS,
-            options.enable_minification,
-            &options.emit,
-        )?;
-    }
-
+    // When the user adds their own CSS files with --extend-css, we write that as an
+    // invocation-specific file (that is, with a resource suffix).
     if let Some(ref css) = cx.shared.layout.css_file_extension {
         let buffer = try_err!(fs::read_to_string(css), css);
-        // This varies based on the invocation, so it can't go through the write_minify wrapper.
-        cx.write_minify(
-            SharedResource::InvocationSpecific { basename: "theme.css" },
-            buffer,
-            options.enable_minification,
-            &options.emit,
-        )?;
-    }
-    write_minify("normalize.css", static_files::NORMALIZE_CSS, cx, options)?;
-    for (name, contents) in &*FILES_UNVERSIONED {
-        cx.write_shared(SharedResource::Unversioned { name }, contents, &options.emit)?;
+        let path = static_files::suffix_path("theme.css", &cx.shared.resource_suffix);
+        cx.shared.fs.write(cx.dst.join(path), buffer)?;
     }
 
-    fn collect(path: &Path, krate: &str, key: &str) -> io::Result<(Vec<String>, Vec<String>)> {
+    if options.emit.is_empty() || options.emit.contains(&EmitType::Toolchain) {
+        let static_dir = cx.dst.join(Path::new("static.files"));
+        static_files::for_each(|f: &static_files::StaticFile| {
+            let filename = static_dir.join(f.output_filename());
+            cx.shared.fs.write(filename, f.minified())
+        })?;
+    }
+
+    /// Read a file and return all lines that match the `"{crate}":{data},` format,
+    /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
+    ///
+    /// This forms the payload of files that look like this:
+    ///
+    /// ```javascript
+    /// var data = {
+    /// "{crate1}":{data},
+    /// "{crate2}":{data}
+    /// };
+    /// use_data(data);
+    /// ```
+    ///
+    /// The file needs to be formatted so that *only crate data lines start with `"`*.
+    fn collect(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
 
         if path.exists() {
-            let prefix = format!(r#"{}["{}"]"#, key, krate);
+            let prefix = format!("\"{}\"", krate);
             for line in BufReader::new(File::open(path)?).lines() {
                 let line = line?;
-                if !line.starts_with(key) {
+                if !line.starts_with('"') {
                     continue;
                 }
                 if line.starts_with(&prefix) {
                     continue;
                 }
-                ret.push(line.to_string());
+                if line.ends_with(',') {
+                    ret.push(line[..line.len() - 1].to_string());
+                } else {
+                    // No comma (it's the case for the last added crate line)
+                    ret.push(line.to_string());
+                }
                 krates.push(
-                    line[key.len() + 2..]
-                        .split('"')
-                        .next()
+                    line.split('"')
+                        .find(|s| !s.is_empty())
                         .map(|s| s.to_owned())
                         .unwrap_or_else(String::new),
                 );
@@ -356,6 +137,20 @@ pub(super) fn write_shared(
         Ok((ret, krates))
     }
 
+    /// Read a file and return all lines that match the <code>"{crate}":{data},\</code> format,
+    /// and return a tuple `(Vec<DataString>, Vec<CrateNameString>)`.
+    ///
+    /// This forms the payload of files that look like this:
+    ///
+    /// ```javascript
+    /// var data = JSON.parse('{\
+    /// "{crate1}":{data},\
+    /// "{crate2}":{data}\
+    /// }');
+    /// use_data(data);
+    /// ```
+    ///
+    /// The file needs to be formatted so that *only crate data lines start with `"`*.
     fn collect_json(path: &Path, krate: &str) -> io::Result<(Vec<String>, Vec<String>)> {
         let mut ret = Vec::new();
         let mut krates = Vec::new();
@@ -411,13 +206,15 @@ pub(super) fn write_shared(
                 .collect::<Vec<_>>();
             files.sort_unstable();
             let subs = subs.iter().map(|s| s.to_json_string()).collect::<Vec<_>>().join(",");
-            let dirs =
-                if subs.is_empty() { String::new() } else { format!(",\"dirs\":[{}]", subs) };
+            let dirs = if subs.is_empty() && files.is_empty() {
+                String::new()
+            } else {
+                format!(",[{}]", subs)
+            };
             let files = files.join(",");
-            let files =
-                if files.is_empty() { String::new() } else { format!(",\"files\":[{}]", files) };
+            let files = if files.is_empty() { String::new() } else { format!(",[{}]", files) };
             format!(
-                "{{\"name\":\"{name}\"{dirs}{files}}}",
+                "[\"{name}\"{dirs}{files}]",
                 name = self.elem.to_str().expect("invalid osstring conversion"),
                 dirs = dirs,
                 files = files
@@ -456,26 +253,31 @@ pub(super) fn write_shared(
         let dst = cx.dst.join(&format!("source-files{}.js", cx.shared.resource_suffix));
         let make_sources = || {
             let (mut all_sources, _krates) =
-                try_err!(collect(&dst, &krate.name(cx.tcx()).as_str(), "sourcesIndex"), &dst);
+                try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
             all_sources.push(format!(
-                "sourcesIndex[\"{}\"] = {};",
+                r#""{}":{}"#,
                 &krate.name(cx.tcx()),
-                hierarchy.to_json_string()
+                hierarchy
+                    .to_json_string()
+                    // All these `replace` calls are because we have to go through JS string for JSON content.
+                    .replace('\\', r"\\")
+                    .replace('\'', r"\'")
+                    // We need to escape double quotes for the JSON.
+                    .replace("\\\"", "\\\\\"")
             ));
             all_sources.sort();
-            Ok(format!(
-                "var N = null;var sourcesIndex = {{}};\n{}\ncreateSourceSidebar();\n",
-                all_sources.join("\n")
-            )
-            .into_bytes())
+            let mut v = String::from("var sourcesIndex = JSON.parse('{\\\n");
+            v.push_str(&all_sources.join(",\\\n"));
+            v.push_str("\\\n}');\ncreateSourceSidebar();\n");
+            Ok(v.into_bytes())
         };
-        write_crate("source-files.js", &make_sources)?;
+        write_invocation_specific("source-files.js", &make_sources)?;
     }
 
     // Update the search index and crate list.
     let dst = cx.dst.join(&format!("search-index{}.js", cx.shared.resource_suffix));
     let (mut all_indexes, mut krates) =
-        try_err!(collect_json(&dst, &krate.name(cx.tcx()).as_str()), &dst);
+        try_err!(collect_json(&dst, krate.name(cx.tcx()).as_str()), &dst);
     all_indexes.push(search_index);
     krates.push(krate.name(cx.tcx()).to_string());
     krates.sort();
@@ -483,14 +285,20 @@ pub(super) fn write_shared(
     // Sort the indexes by crate so the file will be generated identically even
     // with rustdoc running in parallel.
     all_indexes.sort();
-    write_crate("search-index.js", &|| {
+    write_invocation_specific("search-index.js", &|| {
         let mut v = String::from("var searchIndex = JSON.parse('{\\\n");
         v.push_str(&all_indexes.join(",\\\n"));
-        v.push_str("\\\n}');\nif (window.initSearch) {window.initSearch(searchIndex)};");
+        v.push_str(
+            r#"\
+}');
+if (typeof window !== 'undefined' && window.initSearch) {window.initSearch(searchIndex)};
+if (typeof exports !== 'undefined') {exports.searchIndex = searchIndex};
+"#,
+        );
         Ok(v.into_bytes())
     })?;
 
-    write_crate("crates.js", &|| {
+    write_invocation_specific("crates.js", &|| {
         let krates = krates.iter().map(|k| format!("\"{}\"", k)).join(",");
         Ok(format!("window.ALL_CRATES = [{}];", krates).into_bytes())
     })?;
@@ -504,43 +312,33 @@ pub(super) fn write_shared(
             crate::markdown::render(&index_page, md_opts, cx.shared.edition())
                 .map_err(|e| Error::new(e, &index_page))?;
         } else {
+            let shared = Rc::clone(&cx.shared);
             let dst = cx.dst.join("index.html");
             let page = layout::Page {
                 title: "Index of crates",
                 css_class: "mod",
                 root_path: "./",
-                static_root_path: cx.shared.static_root_path.as_deref(),
+                static_root_path: shared.static_root_path.as_deref(),
                 description: "List of crates",
                 keywords: BASIC_KEYWORDS,
-                resource_suffix: &cx.shared.resource_suffix,
-                extra_scripts: &[],
-                static_extra_scripts: &[],
+                resource_suffix: &shared.resource_suffix,
             };
 
             let content = format!(
-                "<h1 class=\"fqn\">\
-                     <span class=\"in-band\">List of all crates</span>\
-                </h1><ul class=\"crate mod\">{}</ul>",
+                "<h1 class=\"fqn\">List of all crates</h1><ul class=\"all-items\">{}</ul>",
                 krates
                     .iter()
                     .map(|s| {
                         format!(
-                            "<li><a class=\"crate mod\" href=\"{}index.html\">{}</a></li>",
+                            "<li><a href=\"{}index.html\">{}</a></li>",
                             ensure_trailing_slash(s),
                             s
                         )
                     })
                     .collect::<String>()
             );
-            let v = layout::render(
-                &cx.shared.templates,
-                &cx.shared.layout,
-                &page,
-                "",
-                content,
-                &cx.shared.style_files,
-            );
-            cx.shared.fs.write(dst, v)?;
+            let v = layout::render(&shared.layout, &page, "", content, &shared.style_files);
+            shared.fs.write(dst, v)?;
         }
     }
 
@@ -555,19 +353,36 @@ pub(super) fn write_shared(
         //
         // FIXME: this is a vague explanation for why this can't be a `get`, in
         //        theory it should be...
-        let &(ref remote_path, remote_item_type) = match cache.paths.get(&did) {
-            Some(p) => p,
+        let (remote_path, remote_item_type) = match cache.exact_paths.get(&did) {
+            Some(p) => match cache.paths.get(&did).or_else(|| cache.external_paths.get(&did)) {
+                Some((_, t)) => (p, t),
+                None => continue,
+            },
             None => match cache.external_paths.get(&did) {
-                Some(p) => p,
+                Some((p, t)) => (p, t),
                 None => continue,
             },
         };
 
-        #[derive(Serialize)]
         struct Implementor {
             text: String,
             synthetic: bool,
             types: Vec<String>,
+        }
+
+        impl Serialize for Implementor {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                let mut seq = serializer.serialize_seq(None)?;
+                seq.serialize_element(&self.text)?;
+                if self.synthetic {
+                    seq.serialize_element(&1)?;
+                    seq.serialize_element(&self.types)?;
+                }
+                seq.end()
+            }
         }
 
         let implementors = imps
@@ -580,12 +395,12 @@ pub(super) fn write_shared(
                 //
                 // If the implementation is from another crate then that crate
                 // should add it.
-                if imp.impl_item.def_id.krate() == did.krate || !imp.impl_item.def_id.is_local() {
+                if imp.impl_item.item_id.krate() == did.krate || !imp.impl_item.item_id.is_local() {
                     None
                 } else {
                     Some(Implementor {
                         text: imp.inner_impl().print(false, cx).to_string(),
-                        synthetic: imp.inner_impl().synthetic,
+                        synthetic: imp.inner_impl().kind.is_auto(),
                         types: collect_paths_for_type(imp.inner_impl().for_.clone(), cache),
                     })
                 }
@@ -600,29 +415,28 @@ pub(super) fn write_shared(
         }
 
         let implementors = format!(
-            r#"implementors["{}"] = {};"#,
+            r#""{}":{}"#,
             krate.name(cx.tcx()),
-            serde_json::to_string(&implementors).unwrap()
+            serde_json::to_string(&implementors).expect("failed serde conversion"),
         );
 
         let mut mydst = dst.clone();
         for part in &remote_path[..remote_path.len() - 1] {
-            mydst.push(part);
+            mydst.push(part.to_string());
         }
         cx.shared.ensure_dir(&mydst)?;
         mydst.push(&format!("{}.{}.js", remote_item_type, remote_path[remote_path.len() - 1]));
 
         let (mut all_implementors, _) =
-            try_err!(collect(&mydst, &krate.name(cx.tcx()).as_str(), "implementors"), &mydst);
+            try_err!(collect(&mydst, krate.name(cx.tcx()).as_str()), &mydst);
         all_implementors.push(implementors);
         // Sort the implementors by crate so the file will be generated
         // identically even with rustdoc running in parallel.
         all_implementors.sort();
 
-        let mut v = String::from("(function() {var implementors = {};\n");
-        for implementor in &all_implementors {
-            writeln!(v, "{}", *implementor).unwrap();
-        }
+        let mut v = String::from("(function() {var implementors = {\n");
+        v.push_str(&all_implementors.join(",\n"));
+        v.push_str("\n};");
         v.push_str(
             "if (window.register_implementors) {\
                  window.register_implementors(implementors);\

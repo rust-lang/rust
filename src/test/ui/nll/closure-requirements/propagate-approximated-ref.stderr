@@ -1,17 +1,12 @@
 note: external requirements
   --> $DIR/propagate-approximated-ref.rs:43:47
    |
-LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-   |  _______________________________________________^
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |
-LL | |     });
-   | |_____^
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'r, 's, 't0, 't1, 't2, 't3> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrNamed('t0) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('t1) }) &'_#2r u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrNamed('t2) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrNamed('t3) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('t1) }) u32>)),
+               for<Region(BrAnon(0, None)), Region(BrAnon(1, None)), Region(BrAnon(2, None)), Region(BrAnon(3, None)), Region(BrAnon(4, None)), Region(BrAnon(5, None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(2, None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(3, None) }) &'_#2r u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(4, None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(5, None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(3, None) }) u32>)),
                (),
            ]
    = note: late-bound region is '_#3r
@@ -22,14 +17,8 @@ LL | |     });
 note: no external requirements
   --> $DIR/propagate-approximated-ref.rs:42:1
    |
-LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |
-LL | |     });
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 

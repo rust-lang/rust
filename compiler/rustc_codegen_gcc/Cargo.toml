@@ -9,24 +9,23 @@ license = "MIT OR Apache-2.0"
 crate-type = ["dylib"]
 
 [[test]]
-name = "lang_tests"
-path = "tests/lib.rs"
+name = "lang_tests_debug"
+path = "tests/lang_tests_debug.rs"
 harness = false
+[[test]]
+name = "lang_tests_release"
+path = "tests/lang_tests_release.rs"
+harness = false
+
+[features]
+default = ["master"]
+master = ["gccjit/master"]
 
 [dependencies]
 gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
 
 # Local copy.
 #gccjit = { path = "../gccjit.rs" }
-
-target-lexicon = "0.10.0"
-
-ar = "0.8.0"
-
-[dependencies.object]
-version = "0.25.0"
-default-features = false
-features = ["read", "std", "write"] # We don't need WASM support.
 
 [dev-dependencies]
 lang_tester = "0.3.9"

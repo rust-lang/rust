@@ -1,13 +1,14 @@
 // only-aarch64
 // compile-flags: -C target-feature=+neon
 
-#![feature(asm, global_asm, repr_simd, stdsimd)]
+#![feature(repr_simd, stdsimd, asm_const)]
 
 use std::arch::aarch64::float64x2_t;
+use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 #[derive(Copy, Clone)]
-struct Simd256bit(f64, f64,f64, f64);
+struct Simd256bit(f64, f64, f64, f64);
 
 fn main() {
     let f64x2: float64x2_t = unsafe { std::mem::transmute(0i128) };
@@ -41,7 +42,6 @@ fn main() {
         asm!("{:x}", in(reg) 0u32);
         asm!("{:b}", in(vreg) 0u64);
         asm!("{:d}", in(vreg_low16) f64x2);
-
 
         // Template modifier suggestions for sub-registers
 
@@ -95,21 +95,3 @@ fn main() {
         asm!("{:x}", inout(reg) main => val_u64);
     }
 }
-
-// Constants must be... constant
-
-static S: i32 = 1;
-const fn const_foo(x: i32) -> i32 {
-    x
-}
-const fn const_bar<T>(x: T) -> T {
-    x
-}
-global_asm!("{}", const S);
-//~^ ERROR constants cannot refer to statics
-global_asm!("{}", const const_foo(0));
-global_asm!("{}", const const_foo(S));
-//~^ ERROR constants cannot refer to statics
-global_asm!("{}", const const_bar(0));
-global_asm!("{}", const const_bar(S));
-//~^ ERROR constants cannot refer to statics

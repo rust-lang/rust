@@ -1,4 +1,5 @@
 #![warn(clippy::needless_continue)]
+#![allow(clippy::uninlined_format_args)]
 
 macro_rules! zero {
     ($x:expr) => {
@@ -12,6 +13,7 @@ macro_rules! nonzero {
     };
 }
 
+#[allow(clippy::nonminimal_bool)]
 fn main() {
     let mut i = 1;
     while i < 10 {

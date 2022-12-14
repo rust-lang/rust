@@ -1,4 +1,6 @@
 // run-pass
+#![allow(unused_macro_rules)]
+
 /// A compile-time map from identifiers to arbitrary (heterogeneous) expressions
 macro_rules! ident_map {
     ( $name:ident = { $($key:ident => $e:expr,)* } ) => {

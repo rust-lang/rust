@@ -69,22 +69,40 @@ LL |     unsafe { std::ptr::read(p) };
    |                             ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> $DIR/functions.rs:87:34
+  --> $DIR/functions.rs:84:30
+   |
+LL |     println!("{}", unsafe { *p });
+   |                              ^
+
+error: this public function might dereference a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:85:31
+   |
+LL |     println!("{:?}", unsafe { p.as_ref() });
+   |                               ^
+
+error: this public function might dereference a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:86:29
+   |
+LL |     unsafe { std::ptr::read(p) };
+   |                             ^
+
+error: this public function might dereference a raw pointer but is not marked `unsafe`
+  --> $DIR/functions.rs:95:34
    |
 LL |         println!("{}", unsafe { *p });
    |                                  ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> $DIR/functions.rs:88:35
+  --> $DIR/functions.rs:96:35
    |
 LL |         println!("{:?}", unsafe { p.as_ref() });
    |                                   ^
 
 error: this public function might dereference a raw pointer but is not marked `unsafe`
-  --> $DIR/functions.rs:89:33
+  --> $DIR/functions.rs:97:33
    |
 LL |         unsafe { std::ptr::read(p) };
    |                                 ^
 
-error: aborting due to 13 previous errors
+error: aborting due to 16 previous errors
 

@@ -1,3 +1,5 @@
+// unit-test: InstCombine
+
 // EMIT_MIR bool_compare.opt1.InstCombine.diff
 fn opt1(x: bool) -> u32 {
     if x != true { 0 } else { 1 }

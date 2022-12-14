@@ -1,4 +1,4 @@
-#![feature(try_trait, async_closure)]
+#![feature(async_closure)]
 // edition:2018
 fn main() {}
 

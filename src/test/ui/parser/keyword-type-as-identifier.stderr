@@ -4,10 +4,10 @@ error: expected identifier, found keyword `type`
 LL |     let type = "foo";
    |         ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `type` to use it as an identifier
    |
 LL |     let r#type = "foo";
-   |         ~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

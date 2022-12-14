@@ -1,8 +1,10 @@
+#![feature(once_cell)]
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
 use std::ffi::OsStr;
 use std::path::PathBuf;
+use std::sync::LazyLock;
 
 use regex::RegexSet;
 
@@ -14,42 +16,45 @@ struct Message {
 
 impl Message {
     fn new(path: PathBuf) -> Self {
-        let content: String = std::fs::read_to_string(&path).unwrap();
         // we don't want the first letter after "error: ", "help: " ... to be capitalized
-        // also no puncutation (except for "?" ?) at the end of a line
-        let regex_set: RegexSet = RegexSet::new(&[
-            r"error: [A-Z]",
-            r"help: [A-Z]",
-            r"warning: [A-Z]",
-            r"note: [A-Z]",
-            r"try this: [A-Z]",
-            r"error: .*[.!]$",
-            r"help: .*[.!]$",
-            r"warning: .*[.!]$",
-            r"note: .*[.!]$",
-            r"try this: .*[.!]$",
-        ])
-        .unwrap();
+        // also no punctuation (except for "?" ?) at the end of a line
+        static REGEX_SET: LazyLock<RegexSet> = LazyLock::new(|| {
+            RegexSet::new([
+                r"error: [A-Z]",
+                r"help: [A-Z]",
+                r"warning: [A-Z]",
+                r"note: [A-Z]",
+                r"try this: [A-Z]",
+                r"error: .*[.!]$",
+                r"help: .*[.!]$",
+                r"warning: .*[.!]$",
+                r"note: .*[.!]$",
+                r"try this: .*[.!]$",
+            ])
+            .unwrap()
+        });
 
         // sometimes the first character is capitalized and it is legal (like in "C-like enum variants") or
         // we want to ask a question ending in "?"
-        let exceptions_set: RegexSet = RegexSet::new(&[
-            r".*C-like enum variant discriminant is not portable to 32-bit targets",
-            r".*did you mean `unix`?",
-            r".*the arguments may be inverted...",
-            r".*Intel x86 assembly syntax used",
-            r".*AT&T x86 assembly syntax used",
-            r".*remove .*the return type...",
-            r"note: Clippy version: .*",
-            r"the compiler unexpectedly panicked. this is a bug.",
-        ])
-        .unwrap();
+        static EXCEPTIONS_SET: LazyLock<RegexSet> = LazyLock::new(|| {
+            RegexSet::new([
+                r"\.\.\.$",
+                r".*C-like enum variant discriminant is not portable to 32-bit targets",
+                r".*Intel x86 assembly syntax used",
+                r".*AT&T x86 assembly syntax used",
+                r"note: Clippy version: .*",
+                r"the compiler unexpectedly panicked. this is a bug.",
+            ])
+            .unwrap()
+        });
+
+        let content: String = std::fs::read_to_string(&path).unwrap();
 
         let bad_lines = content
             .lines()
-            .filter(|line| regex_set.matches(line).matched_any())
+            .filter(|line| REGEX_SET.matches(line).matched_any())
             // ignore exceptions
-            .filter(|line| !exceptions_set.matches(line).matched_any())
+            .filter(|line| !EXCEPTIONS_SET.matches(line).matched_any())
             .map(ToOwned::to_owned)
             .collect::<Vec<String>>();
 
@@ -66,7 +71,7 @@ fn lint_message_convention() {
 
     // make sure that lint messages:
     // * are not capitalized
-    // * don't have puncuation at the end of the last sentence
+    // * don't have punctuation at the end of the last sentence
 
     // these directories have interesting tests
     let test_dirs = ["ui", "ui-cargo", "ui-internal", "ui-toml"]
@@ -97,7 +102,7 @@ fn lint_message_convention() {
             "error: the test '{}' contained the following nonconforming lines :",
             message.path.display()
         );
-        message.bad_lines.iter().for_each(|line| eprintln!("{}", line));
+        message.bad_lines.iter().for_each(|line| eprintln!("{line}"));
         eprintln!("\n\n");
     }
 

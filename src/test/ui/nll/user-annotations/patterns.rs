@@ -1,7 +1,5 @@
 // Test that various patterns also enforce types.
 
-#![feature(nll)]
-
 fn variable_no_initializer() {
     let x = 22;
     let y: &'static u32;

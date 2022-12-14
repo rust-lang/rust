@@ -1,0 +1,53 @@
+SOURCE_FILE
+  FN
+    FN_KW "fn"
+    WHITESPACE " "
+    NAME
+      IDENT "f"
+    PARAM_LIST
+      L_PAREN "("
+      R_PAREN ")"
+    WHITESPACE " "
+    BLOCK_EXPR
+      STMT_LIST
+        L_CURLY "{"
+        WHITESPACE "\n    "
+        LET_STMT
+          LET_KW "let"
+          WHITESPACE " "
+          WILDCARD_PAT
+            UNDERSCORE "_"
+          WHITESPACE " "
+          EQ "="
+          WHITESPACE " "
+          BIN_EXPR
+            BLOCK_EXPR
+              STMT_LIST
+                L_CURLY "{"
+                LITERAL
+                  INT_NUMBER "1"
+                R_CURLY "}"
+            WHITESPACE " "
+            AMP "&"
+            WHITESPACE " "
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n    "
+        EXPR_STMT
+          BLOCK_EXPR
+            STMT_LIST
+              L_CURLY "{"
+              LITERAL
+                INT_NUMBER "1"
+              R_CURLY "}"
+        WHITESPACE " "
+        EXPR_STMT
+          REF_EXPR
+            AMP "&"
+            LITERAL
+              INT_NUMBER "2"
+          SEMICOLON ";"
+        WHITESPACE "\n"
+        R_CURLY "}"
+  WHITESPACE "\n"

@@ -1,4 +1,4 @@
-#![allow(dead_code, clippy::missing_safety_doc)]
+#![allow(dead_code, clippy::missing_safety_doc, clippy::extra_unused_lifetimes)]
 #![warn(clippy::new_without_default)]
 
 pub struct Foo;
@@ -88,6 +88,22 @@ impl Private {
     fn new() -> Private {
         unimplemented!()
     } // We don't lint private items
+}
+
+struct PrivateStruct;
+
+impl PrivateStruct {
+    pub fn new() -> PrivateStruct {
+        unimplemented!()
+    } // We don't lint public items on private structs
+}
+
+pub struct PrivateItem;
+
+impl PrivateItem {
+    fn new() -> PrivateItem {
+        unimplemented!()
+    } // We don't lint private items on public structs
 }
 
 struct Const;
@@ -185,4 +201,28 @@ pub mod issue7220 {
     }
 }
 
+// see issue #8152
+// This should not create any lints
+pub struct DocHidden;
+impl DocHidden {
+    #[doc(hidden)]
+    pub fn new() -> Self {
+        DocHidden
+    }
+}
+
 fn main() {}
+
+pub struct IgnoreConstGenericNew(usize);
+impl IgnoreConstGenericNew {
+    pub fn new<const N: usize>() -> Self {
+        Self(N)
+    }
+}
+
+pub struct IgnoreLifetimeNew;
+impl IgnoreLifetimeNew {
+    pub fn new<'a>() -> Self {
+        Self
+    }
+}

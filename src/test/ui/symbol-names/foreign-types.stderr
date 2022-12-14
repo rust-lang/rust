@@ -1,0 +1,20 @@
+error: symbol-name(_RMCsCRATE_HASH_13foreign_typesINtB<REF>_5CheckNvB<REF>_11ForeignTypeE)
+  --> $DIR/foreign-types.rs:13:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(<foreign_types[49eeeb51f120b431]::Check<foreign_types[49eeeb51f120b431]::ForeignType>>)
+  --> $DIR/foreign-types.rs:13:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(<foreign_types::Check<foreign_types::ForeignType>>)
+  --> $DIR/foreign-types.rs:13:1
+   |
+LL | #[rustc_symbol_name]
+   | ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 3 previous errors
+

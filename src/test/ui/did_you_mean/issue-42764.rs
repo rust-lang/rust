@@ -10,7 +10,7 @@ fn main() {
     let n: usize = 42;
     this_function_expects_a_double_option(n);
     //~^ ERROR mismatched types
-    //~| HELP try using a variant of the expected enum
+    //~| HELP try wrapping the expression in a variant of `DoubleOption`
 }
 
 
@@ -26,4 +26,5 @@ struct Context { wrapper: Wrapper }
 fn overton() {
     let _c = Context { wrapper: Payload{} };
     //~^ ERROR mismatched types
+    //~| try wrapping the expression in `Wrapper`
 }

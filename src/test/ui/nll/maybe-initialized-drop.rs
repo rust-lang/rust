@@ -1,5 +1,3 @@
-//compile-flags: -Zborrowck=mir
-
 #![allow(warnings)]
 
 struct Wrap<'p> { p: &'p mut i32 }

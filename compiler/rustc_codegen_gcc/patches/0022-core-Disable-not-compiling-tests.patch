@@ -22,7 +22,7 @@ index 0000000..46fd999
 +[package]
 +name = "core"
 +version = "0.0.0"
-+edition = "2018"
++edition = "2021"
 +
 +[lib]
 +name = "coretests"

@@ -1,4 +1,4 @@
-//! The `Default` trait for types which may have meaningful default values.
+//! The `Default` trait for types with a default value.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -52,6 +52,23 @@
 /// This trait can be used with `#[derive]` if all of the type's fields implement
 /// `Default`. When `derive`d, it will use the default value for each field's type.
 ///
+/// ### `enum`s
+///
+/// When using `#[derive(Default)]` on an `enum`, you need to choose which unit variant will be
+/// default. You do this by placing the `#[default]` attribute on the variant.
+///
+/// ```
+/// #[derive(Default)]
+/// enum Kind {
+///     #[default]
+///     A,
+///     B,
+///     C,
+/// }
+/// ```
+///
+/// You cannot use the `#[default]` attribute on non-unit or non-exhaustive variants.
+///
 /// ## How can I implement `Default`?
 ///
 /// Provide an implementation for the `default()` method that returns the value of
@@ -82,6 +99,7 @@
 /// ```
 #[cfg_attr(not(test), rustc_diagnostic_item = "Default")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[const_trait]
 pub trait Default: Sized {
     /// Returns the "default value" for a type.
     ///

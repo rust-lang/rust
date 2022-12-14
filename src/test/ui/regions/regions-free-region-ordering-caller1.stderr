@@ -5,7 +5,7 @@ LL | fn call1<'a>(x: &'a usize) {
    |          -- lifetime `'a` defined here
 ...
 LL |     let z: &'a & usize = &(&y);
-   |            -----------    ^^^^ creates a temporary which is freed while still in use
+   |            -----------    ^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'a`
 ...

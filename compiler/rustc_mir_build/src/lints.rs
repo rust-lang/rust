@@ -1,54 +1,55 @@
 use rustc_data_structures::graph::iterate::{
     NodeStatus, TriColorDepthFirstSearch, TriColorVisitor,
 };
-use rustc_hir::intravisit::FnKind;
-use rustc_middle::mir::{BasicBlock, Body, Operand, TerminatorKind};
+use rustc_hir::def::DefKind;
+use rustc_middle::mir::{BasicBlock, BasicBlocks, Body, Operand, TerminatorKind};
 use rustc_middle::ty::subst::{GenericArg, InternalSubsts};
-use rustc_middle::ty::{self, AssocItem, AssocItemContainer, Instance, TyCtxt};
+use rustc_middle::ty::{self, Instance, TyCtxt};
 use rustc_session::lint::builtin::UNCONDITIONAL_RECURSION;
 use rustc_span::Span;
 use std::ops::ControlFlow;
 
-crate fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
+pub(crate) fn check<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
-    let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
 
-    if let Some(fn_kind) = tcx.hir().get(hir_id).fn_kind() {
-        if let FnKind::Closure = fn_kind {
-            // closures can't recur, so they don't matter.
-            return;
-        }
-
+    if let DefKind::Fn | DefKind::AssocFn = tcx.def_kind(def_id) {
         // If this is trait/impl method, extract the trait's substs.
-        let trait_substs = match tcx.opt_associated_item(def_id.to_def_id()) {
-            Some(AssocItem {
-                container: AssocItemContainer::TraitContainer(trait_def_id), ..
-            }) => {
-                let trait_substs_count = tcx.generics_of(*trait_def_id).count();
+        let trait_substs = match tcx.trait_of_item(def_id.to_def_id()) {
+            Some(trait_def_id) => {
+                let trait_substs_count = tcx.generics_of(trait_def_id).count();
                 &InternalSubsts::identity_for_item(tcx, def_id.to_def_id())[..trait_substs_count]
             }
             _ => &[],
         };
 
         let mut vis = Search { tcx, body, reachable_recursive_calls: vec![], trait_substs };
-        if let Some(NonRecursive) = TriColorDepthFirstSearch::new(&body).run_from_start(&mut vis) {
+        if let Some(NonRecursive) =
+            TriColorDepthFirstSearch::new(&body.basic_blocks).run_from_start(&mut vis)
+        {
+            return;
+        }
+        if vis.reachable_recursive_calls.is_empty() {
             return;
         }
 
         vis.reachable_recursive_calls.sort();
 
+        let sp = tcx.def_span(def_id);
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let sp = tcx.sess.source_map().guess_head_span(tcx.hir().span_with_body(hir_id));
-        tcx.struct_span_lint_hir(UNCONDITIONAL_RECURSION, hir_id, sp, |lint| {
-            let mut db = lint.build("function cannot return without recursing");
-            db.span_label(sp, "cannot return without recursing");
-            // offer some help to the programmer.
-            for call_span in vis.reachable_recursive_calls {
-                db.span_label(call_span, "recursive call site");
-            }
-            db.help("a `loop` may express intention better if this is on purpose");
-            db.emit();
-        });
+        tcx.struct_span_lint_hir(
+            UNCONDITIONAL_RECURSION,
+            hir_id,
+            sp,
+            "function cannot return without recursing",
+            |lint| {
+                lint.span_label(sp, "cannot return without recursing");
+                // offer some help to the programmer.
+                for call_span in vis.reachable_recursive_calls {
+                    lint.span_label(call_span, "recursive call site");
+                }
+                lint.help("a `loop` may express intention better if this is on purpose")
+            },
+        );
     }
 }
 
@@ -64,8 +65,14 @@ struct Search<'mir, 'tcx> {
 
 impl<'mir, 'tcx> Search<'mir, 'tcx> {
     /// Returns `true` if `func` refers to the function we are searching in.
-    fn is_recursive_call(&self, func: &Operand<'tcx>) -> bool {
+    fn is_recursive_call(&self, func: &Operand<'tcx>, args: &[Operand<'tcx>]) -> bool {
         let Search { tcx, body, trait_substs, .. } = *self;
+        // Resolving function type to a specific instance that is being called is expensive.  To
+        // avoid the cost we check the number of arguments first, which is sufficient to reject
+        // most of calls as non-recursive.
+        if args.len() != body.arg_count {
+            return false;
+        }
         let caller = body.source.def_id();
         let param_env = tcx.param_env(caller);
 
@@ -93,7 +100,7 @@ impl<'mir, 'tcx> Search<'mir, 'tcx> {
     }
 }
 
-impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
+impl<'mir, 'tcx> TriColorVisitor<BasicBlocks<'tcx>> for Search<'mir, 'tcx> {
     type BreakVal = NonRecursive;
 
     fn node_examined(
@@ -139,8 +146,8 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     fn node_settled(&mut self, bb: BasicBlock) -> ControlFlow<Self::BreakVal> {
         // When we examine a node for the last time, remember it if it is a recursive call.
         let terminator = self.body[bb].terminator();
-        if let TerminatorKind::Call { func, .. } = &terminator.kind {
-            if self.is_recursive_call(func) {
+        if let TerminatorKind::Call { func, args, .. } = &terminator.kind {
+            if self.is_recursive_call(func, args) {
                 self.reachable_recursive_calls.push(terminator.source_info.span);
             }
         }
@@ -149,13 +156,14 @@ impl<'mir, 'tcx> TriColorVisitor<&'mir Body<'tcx>> for Search<'mir, 'tcx> {
     }
 
     fn ignore_edge(&mut self, bb: BasicBlock, target: BasicBlock) -> bool {
+        let terminator = self.body[bb].terminator();
+        if terminator.unwind() == Some(&Some(target)) && terminator.successors().count() > 1 {
+            return true;
+        }
         // Don't traverse successors of recursive calls or false CFG edges.
         match self.body[bb].terminator().kind {
-            TerminatorKind::Call { ref func, .. } => self.is_recursive_call(func),
-
-            TerminatorKind::FalseUnwind { unwind: Some(imaginary_target), .. }
-            | TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
-
+            TerminatorKind::Call { ref func, ref args, .. } => self.is_recursive_call(func, args),
+            TerminatorKind::FalseEdge { imaginary_target, .. } => imaginary_target == target,
             _ => false,
         }
     }

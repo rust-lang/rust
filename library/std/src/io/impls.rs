@@ -3,9 +3,10 @@ mod tests;
 
 use crate::alloc::Allocator;
 use crate::cmp;
+use crate::collections::VecDeque;
 use crate::fmt;
 use crate::io::{
-    self, BufRead, Error, ErrorKind, Initializer, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
+    self, BorrowedCursor, BufRead, ErrorKind, IoSlice, IoSliceMut, Read, Seek, SeekFrom, Write,
 };
 use crate::mem;
 
@@ -20,6 +21,11 @@ impl<R: Read + ?Sized> Read for &mut R {
     }
 
     #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
+    }
+
+    #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
     }
@@ -27,11 +33,6 @@ impl<R: Read + ?Sized> Read for &mut R {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         (**self).is_read_vectored()
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        (**self).initializer()
     }
 
     #[inline]
@@ -124,6 +125,11 @@ impl<R: Read + ?Sized> Read for Box<R> {
     }
 
     #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        (**self).read_buf(cursor)
+    }
+
+    #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         (**self).read_vectored(bufs)
     }
@@ -131,11 +137,6 @@ impl<R: Read + ?Sized> Read for Box<R> {
     #[inline]
     fn is_read_vectored(&self) -> bool {
         (**self).is_read_vectored()
-    }
-
-    #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        (**self).initializer()
     }
 
     #[inline]
@@ -248,6 +249,17 @@ impl Read for &[u8] {
     }
 
     #[inline]
+    fn read_buf(&mut self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let amt = cmp::min(cursor.capacity(), self.len());
+        let (a, b) = self.split_at(amt);
+
+        cursor.append(a);
+
+        *self = b;
+        Ok(())
+    }
+
+    #[inline]
     fn read_vectored(&mut self, bufs: &mut [IoSliceMut<'_>]) -> io::Result<usize> {
         let mut nread = 0;
         for buf in bufs {
@@ -266,14 +278,12 @@ impl Read for &[u8] {
     }
 
     #[inline]
-    unsafe fn initializer(&self) -> Initializer {
-        Initializer::nop()
-    }
-
-    #[inline]
     fn read_exact(&mut self, buf: &mut [u8]) -> io::Result<()> {
         if buf.len() > self.len() {
-            return Err(Error::new_const(ErrorKind::UnexpectedEof, &"failed to fill whole buffer"));
+            return Err(io::const_io_error!(
+                ErrorKind::UnexpectedEof,
+                "failed to fill whole buffer"
+            ));
         }
         let (a, b) = self.split_at(buf.len());
 
@@ -355,7 +365,7 @@ impl Write for &mut [u8] {
         if self.write(data)? == data.len() {
             Ok(())
         } else {
-            Err(Error::new_const(ErrorKind::WriteZero, &"failed to write whole buffer"))
+            Err(io::const_io_error!(ErrorKind::WriteZero, "failed to write whole buffer"))
         }
     }
 
@@ -393,6 +403,51 @@ impl<A: Allocator> Write for Vec<u8, A> {
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
         self.extend_from_slice(buf);
+        Ok(())
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Read is implemented for `VecDeque<u8>` by consuming bytes from the front of the `VecDeque`.
+#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
+impl<A: Allocator> Read for VecDeque<u8, A> {
+    /// Fill `buf` with the contents of the "front" slice as returned by
+    /// [`as_slices`][`VecDeque::as_slices`]. If the contained byte slices of the `VecDeque` are
+    /// discontiguous, multiple calls to `read` will be needed to read the entire content.
+    #[inline]
+    fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+        let (ref mut front, _) = self.as_slices();
+        let n = Read::read(front, buf)?;
+        self.drain(..n);
+        Ok(n)
+    }
+
+    #[inline]
+    fn read_buf(&mut self, cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        let (ref mut front, _) = self.as_slices();
+        let n = cmp::min(cursor.capacity(), front.len());
+        Read::read_buf(front, cursor)?;
+        self.drain(..n);
+        Ok(())
+    }
+}
+
+/// Write is implemented for `VecDeque<u8>` by appending to the `VecDeque`, growing it as needed.
+#[stable(feature = "vecdeque_read_write", since = "1.63.0")]
+impl<A: Allocator> Write for VecDeque<u8, A> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.extend(buf);
+        Ok(buf.len())
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.extend(buf);
         Ok(())
     }
 

@@ -12,8 +12,6 @@ fn b() {
     //~^ ERROR expected trait, found constant `BAR`
     //~| ERROR expected trait, found constant `BAR`
     //~| ERROR type provided when a constant was expected
-    //~| WARN trait objects without an explicit `dyn` are deprecated
-    //~| WARN this is accepted in the current edition
 }
 fn c() {
     foo::<3 + 3>(); //~ ERROR expressions must be enclosed in braces

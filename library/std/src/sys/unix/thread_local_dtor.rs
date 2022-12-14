@@ -17,6 +17,7 @@
     target_os = "redox",
     target_os = "emscripten"
 ))]
+#[cfg_attr(target_family = "wasm", allow(unused))] // might remain unused depending on target details (e.g. wasm32-unknown-emscripten)
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::mem;
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
@@ -93,7 +94,7 @@ pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     }
 }
 
-#[cfg(target_os = "vxworks")]
+#[cfg(any(target_os = "vxworks", target_os = "horizon"))]
 pub unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
     use crate::sys_common::thread_local_dtor::register_dtor_fallback;
     register_dtor_fallback(t, dtor);

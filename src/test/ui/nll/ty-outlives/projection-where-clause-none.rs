@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Test that we are NOT able to establish that `<T as
 // MyTrait<'a>>::Output: 'a` outlives `'a` here -- we have only one
 // recourse, which is to prove that `T: 'a` and `'a: 'a`, but we don't

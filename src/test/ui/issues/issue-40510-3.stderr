@@ -3,7 +3,7 @@ error: captured variable cannot escape `FnMut` closure body
    |
 LL |       let mut x: Vec<()> = Vec::new();
    |           ----- variable defined here
-LL | 
+LL |
 LL |       || {
    |        - inferred to be a `FnMut` closure
 LL | /         || {
@@ -14,6 +14,10 @@ LL | |         }
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |         move || {
+   |         ++++
 
 error: aborting due to previous error
 

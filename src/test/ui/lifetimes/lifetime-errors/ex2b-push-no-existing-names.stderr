@@ -1,11 +1,12 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/ex2b-push-no-existing-names.rs:6:12
+error: lifetime may not live long enough
+  --> $DIR/ex2b-push-no-existing-names.rs:6:5
    |
 LL | fn foo(x: &mut Vec<Ref<i32>>, y: Ref<i32>) {
-   |                    --------      -------- these two types are declared with different lifetimes...
+   |        -                      - has type `Ref<'1, i32>`
+   |        |
+   |        has type `&mut Vec<Ref<'2, i32>>`
 LL |     x.push(y);
-   |            ^ ...but data from `y` flows into `x` here
+   |     ^^^^^^^^^ argument requires that `'1` must outlive `'2`
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0623`.

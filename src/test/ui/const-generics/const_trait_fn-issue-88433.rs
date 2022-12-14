@@ -2,6 +2,7 @@
 
 #![feature(const_trait_impl)]
 
+#[const_trait]
 trait Func<T> {
     type Output;
 

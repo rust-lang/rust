@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_middle::mir::visit::{
     MutatingUseContext, NonMutatingUseContext, NonUseContext, PlaceContext,
 };
@@ -16,9 +18,6 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         PlaceContext::MutatingUse(MutatingUseContext::Store) |
 
-        // This is potentially both a def and a use...
-        PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
-
         // We let Call define the result in both the success and
         // unwind cases. This is not really correct, however it
         // does not seem to be observable due to the way that we
@@ -26,6 +25,7 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
         // the def in call only to the input from the success
         // path and not the unwind path. -nmatsakis
         PlaceContext::MutatingUse(MutatingUseContext::Call) |
+        PlaceContext::MutatingUse(MutatingUseContext::AsmOutput) |
         PlaceContext::MutatingUse(MutatingUseContext::Yield) |
 
         // Storage live and storage dead aren't proper defines, but we can ignore
@@ -74,5 +74,9 @@ pub fn categorize(context: PlaceContext) -> Option<DefUse> {
 
         // Debug info is neither def nor use.
         PlaceContext::NonUse(NonUseContext::VarDebugInfo) => None,
+
+        PlaceContext::MutatingUse(MutatingUseContext::Deinit | MutatingUseContext::SetDiscriminant) => {
+            bug!("These statements are not allowed in this MIR phase")
+        }
     }
 }

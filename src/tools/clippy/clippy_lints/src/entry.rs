@@ -10,8 +10,8 @@ use core::fmt::Write;
 use rustc_errors::Applicability;
 use rustc_hir::{
     hir_id::HirIdSet,
-    intravisit::{walk_expr, ErasedMap, NestedVisitorMap, Visitor},
-    Block, Expr, ExprKind, Guard, HirId, Pat, Stmt, StmtKind, UnOp,
+    intravisit::{walk_expr, Visitor},
+    Block, Expr, ExprKind, Guard, HirId, Let, Pat, Stmt, StmtKind, UnOp,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -46,7 +46,7 @@ declare_clippy_lint! {
     ///     map.insert(k, v);
     /// }
     /// ```
-    /// can both be rewritten as:
+    /// Use instead:
     /// ```rust
     /// # use std::collections::HashMap;
     /// # let mut map = HashMap::new();
@@ -54,6 +54,7 @@ declare_clippy_lint! {
     /// # let v = 1;
     /// map.entry(k).or_insert(v);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MAP_ENTRY,
     perf,
     "use of `contains_key` followed by `insert` on a `HashMap` or `BTreeMap`"
@@ -62,30 +63,26 @@ declare_clippy_lint! {
 declare_lint_pass!(HashMapPass => [MAP_ENTRY]);
 
 impl<'tcx> LateLintPass<'tcx> for HashMapPass {
-    #[allow(clippy::too_many_lines)]
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        let (cond_expr, then_expr, else_expr) = match higher::If::hir(expr) {
-            Some(higher::If { cond, then, r#else }) => (cond, then, r#else),
-            _ => return,
+        let Some(higher::If { cond: cond_expr, then: then_expr, r#else: else_expr }) = higher::If::hir(expr) else {
+            return
         };
 
-        let (map_ty, contains_expr) = match try_parse_contains(cx, cond_expr) {
-            Some(x) => x,
-            None => return,
+        let Some((map_ty, contains_expr)) = try_parse_contains(cx, cond_expr) else {
+            return
         };
 
-        let then_search = match find_insert_calls(cx, &contains_expr, then_expr) {
-            Some(x) => x,
-            None => return,
+        let Some(then_search) = find_insert_calls(cx, &contains_expr, then_expr) else {
+            return
         };
 
         let mut app = Applicability::MachineApplicable;
         let map_str = snippet_with_context(cx, contains_expr.map.span, contains_expr.call_ctxt, "..", &mut app).0;
         let key_str = snippet_with_context(cx, contains_expr.key.span, contains_expr.call_ctxt, "..", &mut app).0;
         let sugg = if let Some(else_expr) = else_expr {
-            let else_search = match find_insert_calls(cx, &contains_expr, else_expr) {
-                Some(search) => search,
-                None => return,
+            let Some(else_search) = find_insert_calls(cx, &contains_expr, else_expr) else {
+                return;
             };
 
             if then_search.edits.is_empty() && else_search.edits.is_empty() {
@@ -112,13 +109,8 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                     ),
                 };
                 format!(
-                    "if let {}::{} = {}.entry({}) {} else {}",
+                    "if let {}::{entry_kind} = {map_str}.entry({key_str}) {then_str} else {else_str}",
                     map_ty.entry_path(),
-                    entry_kind,
-                    map_str,
-                    key_str,
-                    then_str,
-                    else_str,
                 )
             } else {
                 // if .. { insert } else { insert }
@@ -136,16 +128,11 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                 let indent_str = snippet_indent(cx, expr.span);
                 let indent_str = indent_str.as_deref().unwrap_or("");
                 format!(
-                    "match {}.entry({}) {{\n{indent}    {entry}::{} => {}\n\
-                        {indent}    {entry}::{} => {}\n{indent}}}",
-                    map_str,
-                    key_str,
-                    then_entry,
+                    "match {map_str}.entry({key_str}) {{\n{indent_str}    {entry}::{then_entry} => {}\n\
+                        {indent_str}    {entry}::{else_entry} => {}\n{indent_str}}}",
                     reindent_multiline(then_str.into(), true, Some(4 + indent_str.len())),
-                    else_entry,
                     reindent_multiline(else_str.into(), true, Some(4 + indent_str.len())),
                     entry = map_ty.entry_path(),
-                    indent = indent_str,
                 )
             }
         } else {
@@ -162,20 +149,16 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
                     then_search.snippet_occupied(cx, then_expr.span, &mut app)
                 };
                 format!(
-                    "if let {}::{} = {}.entry({}) {}",
+                    "if let {}::{entry_kind} = {map_str}.entry({key_str}) {body_str}",
                     map_ty.entry_path(),
-                    entry_kind,
-                    map_str,
-                    key_str,
-                    body_str,
                 )
             } else if let Some(insertion) = then_search.as_single_insertion() {
                 let value_str = snippet_with_context(cx, insertion.value.span, then_expr.span.ctxt(), "..", &mut app).0;
                 if contains_expr.negated {
                     if insertion.value.can_have_side_effects() {
-                        format!("{}.entry({}).or_insert_with(|| {});", map_str, key_str, value_str)
+                        format!("{map_str}.entry({key_str}).or_insert_with(|| {value_str});")
                     } else {
-                        format!("{}.entry({}).or_insert({});", map_str, key_str, value_str)
+                        format!("{map_str}.entry({key_str}).or_insert({value_str});")
                     }
                 } else {
                     // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
@@ -185,7 +168,7 @@ impl<'tcx> LateLintPass<'tcx> for HashMapPass {
             } else {
                 let block_str = then_search.snippet_closure(cx, then_expr.span, &mut app);
                 if contains_expr.negated {
-                    format!("{}.entry({}).or_insert_with(|| {});", map_str, key_str, block_str)
+                    format!("{map_str}.entry({key_str}).or_insert_with(|| {block_str});")
                 } else {
                     // TODO: suggest using `if let Some(v) = map.get_mut(k) { .. }` here.
                     // This would need to be a different lint.
@@ -232,7 +215,7 @@ struct ContainsExpr<'tcx> {
     key: &'tcx Expr<'tcx>,
     call_ctxt: SyntaxContext,
 }
-fn try_parse_contains(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(MapType, ContainsExpr<'tcx>)> {
+fn try_parse_contains<'tcx>(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(MapType, ContainsExpr<'tcx>)> {
     let mut negated = false;
     let expr = peel_hir_expr_while(expr, |e| match e.kind {
         ExprKind::Unary(UnOp::Not, e) => {
@@ -244,9 +227,8 @@ fn try_parse_contains(cx: &LateContext<'_>, expr: &'tcx Expr<'_>) -> Option<(Map
     match expr.kind {
         ExprKind::MethodCall(
             _,
-            _,
+            map,
             [
-                map,
                 Expr {
                     kind: ExprKind::AddrOf(_, _, key),
                     span: key_span,
@@ -279,8 +261,8 @@ struct InsertExpr<'tcx> {
     key: &'tcx Expr<'tcx>,
     value: &'tcx Expr<'tcx>,
 }
-fn try_parse_insert(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
-    if let ExprKind::MethodCall(_, _, [map, key, value], _) = expr.kind {
+fn try_parse_insert<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<InsertExpr<'tcx>> {
+    if let ExprKind::MethodCall(_, map, [key, value], _) = expr.kind {
         let id = cx.typeck_results().type_dependent_def_id(expr.hir_id)?;
         if match_def_path(cx, id, &paths::BTREEMAP_INSERT) || match_def_path(cx, id, &paths::HASHMAP_INSERT) {
             Some(InsertExpr { map, key, value })
@@ -300,7 +282,7 @@ enum Edit<'tcx> {
     /// An insertion into the map.
     Insertion(Insertion<'tcx>),
 }
-impl Edit<'tcx> {
+impl<'tcx> Edit<'tcx> {
     fn as_insertion(self) -> Option<Insertion<'tcx>> {
         if let Self::Insertion(i) = self { Some(i) } else { None }
     }
@@ -319,7 +301,7 @@ struct Insertion<'tcx> {
 ///   `or_insert_with`.
 /// * Determine if there's any sub-expression that can't be placed in a closure.
 /// * Determine if there's only a single insert statement. `or_insert` can be used in this case.
-#[allow(clippy::struct_excessive_bools)]
+#[expect(clippy::struct_excessive_bools)]
 struct InsertSearcher<'cx, 'tcx> {
     cx: &'cx LateContext<'tcx>,
     /// The map expression used in the contains call.
@@ -369,11 +351,6 @@ impl<'tcx> InsertSearcher<'_, 'tcx> {
     }
 }
 impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
-    type Map = ErasedMap<'tcx>;
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
     fn visit_stmt(&mut self, stmt: &'tcx Stmt<'_>) {
         match stmt.kind {
             StmtKind::Semi(e) => {
@@ -483,7 +460,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     let mut is_map_used = self.is_map_used;
                     for arm in arms {
                         self.visit_pat(arm.pat);
-                        if let Some(Guard::If(guard) | Guard::IfLet(_, guard)) = arm.guard {
+                        if let Some(Guard::If(guard) | Guard::IfLet(&Let { init: guard, .. })) = arm.guard {
                             self.visit_non_tail_expr(guard);
                         }
                         is_map_used |= self.visit_cond_arm(arm.body);
@@ -503,7 +480,7 @@ impl<'tcx> Visitor<'tcx> for InsertSearcher<'_, 'tcx> {
                     self.loops.pop();
                 },
                 ExprKind::Block(block, _) => self.visit_block(block),
-                ExprKind::InlineAsm(_) | ExprKind::LlvmInlineAsm(_) => {
+                ExprKind::InlineAsm(_) => {
                     self.can_use_entry = false;
                 },
                 _ => {
@@ -531,7 +508,7 @@ struct InsertSearchResults<'tcx> {
     allow_insert_closure: bool,
     is_single_insert: bool,
 }
-impl InsertSearchResults<'tcx> {
+impl<'tcx> InsertSearchResults<'tcx> {
     fn as_single_insertion(&self) -> Option<Insertion<'tcx>> {
         self.is_single_insert.then(|| self.edits[0].as_insertion().unwrap())
     }
@@ -632,7 +609,7 @@ impl InsertSearchResults<'tcx> {
     }
 }
 
-fn find_insert_calls(
+fn find_insert_calls<'tcx>(
     cx: &LateContext<'tcx>,
     contains_expr: &ContainsExpr<'tcx>,
     expr: &'tcx Expr<'_>,
@@ -655,7 +632,7 @@ fn find_insert_calls(
     let allow_insert_closure = s.allow_insert_closure;
     let is_single_insert = s.is_single_insert;
     let edits = s.edits;
-    s.can_use_entry.then(|| InsertSearchResults {
+    s.can_use_entry.then_some(InsertSearchResults {
         edits,
         allow_insert_closure,
         is_single_insert,

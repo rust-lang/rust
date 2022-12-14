@@ -3,9 +3,9 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
 use crate::io::ErrorKind;
-use crate::os::raw::c_char;
 use crate::sync::atomic::{AtomicBool, Ordering};
 
 pub mod abi;
@@ -15,7 +15,6 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fd;
 #[path = "../unsupported/fs.rs"]
@@ -23,7 +22,6 @@ pub mod fs;
 #[path = "../unsupported/io.rs"]
 pub mod io;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -33,15 +31,25 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
+
+mod condvar;
+mod mutex;
+mod rwlock;
+
+pub mod locks {
+    pub use super::condvar::*;
+    pub use super::mutex::*;
+    pub use super::rwlock::*;
+}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(argc: isize, argv: *const *const u8) {
+pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     unsafe {
         args::init(argc, argv);
     }
@@ -58,7 +66,7 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new_const(ErrorKind::Unsupported, &"operation not supported on SGX yet")
+    crate::io::const_io_error!(ErrorKind::Unsupported, "operation not supported on SGX yet")
 }
 
 /// This function is used to implement various functions that doesn't exist,
@@ -69,9 +77,9 @@ pub fn unsupported_err() -> crate::io::Error {
 pub fn sgx_ineffective<T>(v: T) -> crate::io::Result<T> {
     static SGX_INEFFECTIVE_ERROR: AtomicBool = AtomicBool::new(false);
     if SGX_INEFFECTIVE_ERROR.load(Ordering::Relaxed) {
-        Err(crate::io::Error::new_const(
+        Err(crate::io::const_io_error!(
             ErrorKind::Uncategorized,
-            &"operation can't be trusted to have any effect on SGX",
+            "operation can't be trusted to have any effect on SGX",
         ))
     } else {
         Ok(v)
@@ -121,15 +129,6 @@ pub fn decode_error_kind(code: i32) -> ErrorKind {
     } else {
         ErrorKind::Uncategorized
     }
-}
-
-pub unsafe fn strlen(mut s: *const c_char) -> usize {
-    let mut n = 0;
-    while unsafe { *s } != 0 {
-        n += 1;
-        s = unsafe { s.offset(1) };
-    }
-    return n;
 }
 
 pub fn abort_internal() -> ! {

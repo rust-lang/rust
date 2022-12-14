@@ -59,7 +59,7 @@ mod libc {
         pub fn puts(s: *const u8) -> i32;
         pub fn fflush(stream: *mut i32) -> i32;
 
-        pub static STDOUT: *mut i32;
+        pub static stdout: *mut i32;
     }
 }
 
@@ -75,7 +75,7 @@ mod intrinsics {
 pub fn panic(_msg: &str) -> ! {
     unsafe {
         libc::puts("Panicking\0" as *const str as *const u8);
-        libc::fflush(libc::STDOUT);
+        libc::fflush(libc::stdout);
         intrinsics::abort();
     }
 }

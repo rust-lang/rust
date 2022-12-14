@@ -8,7 +8,7 @@ mod m1 {
 
     use legacy_macro as _; // OK
     pub(crate) use legacy_macro as _; // OK
-    pub use legacy_macro as _; //~ ERROR `legacy_macro` is private, and cannot be re-exported
+    pub use legacy_macro as _; //~ ERROR `legacy_macro` is only public within the crate, and cannot be re-exported outside
 }
 
 mod m2 {

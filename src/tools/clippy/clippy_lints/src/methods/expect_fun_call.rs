@@ -1,7 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::higher::FormatExpn;
+use clippy_utils::macros::{root_macro_call_first_node, FormatArgsExpn};
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::is_type_diagnostic_item;
+use clippy_utils::ty::{is_type_diagnostic_item, is_type_lang_item};
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
@@ -14,7 +14,14 @@ use super::EXPECT_FUN_CALL;
 
 /// Checks for the `EXPECT_FUN_CALL` lint.
 #[allow(clippy::too_many_lines)]
-pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Span, name: &str, args: &[hir::Expr<'_>]) {
+pub(super) fn check<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &hir::Expr<'_>,
+    method_span: Span,
+    name: &str,
+    receiver: &'tcx hir::Expr<'tcx>,
+    args: &'tcx [hir::Expr<'tcx>],
+) {
     // Strip `&`, `as_ref()` and `as_str()` off `arg` until we're left with either a `String` or
     // `&str`
     fn get_arg_root<'a>(cx: &LateContext<'_>, arg: &'a hir::Expr<'a>) -> &'a hir::Expr<'a> {
@@ -22,16 +29,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         loop {
             arg_root = match &arg_root.kind {
                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, _, expr) => expr,
-                hir::ExprKind::MethodCall(method_name, _, call_args, _) => {
-                    if call_args.len() == 1
-                        && (method_name.ident.name == sym::as_str || method_name.ident.name == sym!(as_ref))
-                        && {
-                            let arg_type = cx.typeck_results().expr_ty(&call_args[0]);
-                            let base_type = arg_type.peel_refs();
-                            *base_type.kind() == ty::Str || is_type_diagnostic_item(cx, base_type, sym::String)
-                        }
-                    {
-                        &call_args[0]
+                hir::ExprKind::MethodCall(method_name, receiver, [], ..) => {
+                    if (method_name.ident.name == sym::as_str || method_name.ident.name == sym::as_ref) && {
+                        let arg_type = cx.typeck_results().expr_ty(receiver);
+                        let base_type = arg_type.peel_refs();
+                        *base_type.kind() == ty::Str || is_type_lang_item(cx, base_type, hir::LangItem::String)
+                    } {
+                        receiver
                     } else {
                         break;
                     }
@@ -46,7 +50,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
     // converted to string.
     fn requires_to_string(cx: &LateContext<'_>, arg: &hir::Expr<'_>) -> bool {
         let arg_ty = cx.typeck_results().expr_ty(arg);
-        if is_type_diagnostic_item(cx, arg_ty, sym::String) {
+        if is_type_lang_item(cx, arg_ty, hir::LangItem::String) {
             return false;
         }
         if let ty::Ref(_, ty, ..) = arg_ty.kind() {
@@ -67,7 +71,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
                     match cx.qpath_res(p, fun.hir_id) {
                         hir::def::Res::Def(hir::def::DefKind::Fn | hir::def::DefKind::AssocFn, def_id) => matches!(
                             cx.tcx.fn_sig(def_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static(),
                         ),
                         _ => false,
                     }
@@ -81,13 +85,13 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
                     .map_or(false, |method_id| {
                         matches!(
                             cx.tcx.fn_sig(method_id).output().skip_binder().kind(),
-                            ty::Ref(ty::ReStatic, ..)
+                            ty::Ref(re, ..) if re.is_static()
                         )
                     })
             },
             hir::ExprKind::Path(ref p) => matches!(
                 cx.qpath_res(p, arg.hir_id),
-                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static, _)
+                hir::def::Res::Def(hir::def::DefKind::Const | hir::def::DefKind::Static(_), _)
             ),
             _ => false,
         }
@@ -108,11 +112,11 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         }
     }
 
-    if args.len() != 2 || name != "expect" || !is_call(&args[1].kind) {
+    if args.len() != 1 || name != "expect" || !is_call(&args[0].kind) {
         return;
     }
 
-    let receiver_type = cx.typeck_results().expr_ty_adjusted(&args[0]);
+    let receiver_type = cx.typeck_results().expr_ty_adjusted(receiver);
     let closure_args = if is_type_diagnostic_item(cx, receiver_type, sym::Option) {
         "||"
     } else if is_type_diagnostic_item(cx, receiver_type, sym::Result) {
@@ -121,26 +125,27 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         return;
     };
 
-    let arg_root = get_arg_root(cx, &args[1]);
+    let arg_root = get_arg_root(cx, &args[0]);
 
     let span_replace_word = method_span.with_hi(expr.span.hi());
 
     let mut applicability = Applicability::MachineApplicable;
 
     //Special handling for `format!` as arg_root
-    if let Some(format_expn) = FormatExpn::parse(arg_root) {
-        let span = match *format_expn.format_args.value_args {
-            [] => format_expn.format_args.format_string_span,
-            [.., last] => format_expn.format_args.format_string_span.to(last.span),
-        };
+    if let Some(macro_call) = root_macro_call_first_node(cx, arg_root) {
+        if !cx.tcx.is_diagnostic_item(sym::format_macro, macro_call.def_id) {
+            return;
+        }
+        let Some(format_args) = FormatArgsExpn::find_nested(cx, arg_root, macro_call.expn) else { return };
+        let span = format_args.inputs_span();
         let sugg = snippet_with_applicability(cx, span, "..", &mut applicability);
         span_lint_and_sugg(
             cx,
             EXPECT_FUN_CALL,
             span_replace_word,
-            &format!("use of `{}` followed by a function call", name),
+            &format!("use of `{name}` followed by a function call"),
             "try this",
-            format!("unwrap_or_else({} panic!({}))", closure_args, sugg),
+            format!("unwrap_or_else({closure_args} panic!({sugg}))"),
             applicability,
         );
         return;
@@ -155,12 +160,9 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, method_span: Spa
         cx,
         EXPECT_FUN_CALL,
         span_replace_word,
-        &format!("use of `{}` followed by a function call", name),
+        &format!("use of `{name}` followed by a function call"),
         "try this",
-        format!(
-            "unwrap_or_else({} {{ panic!(\"{{}}\", {}) }})",
-            closure_args, arg_root_snippet
-        ),
+        format!("unwrap_or_else({closure_args} {{ panic!(\"{{}}\", {arg_root_snippet}) }})"),
         applicability,
     );
 }

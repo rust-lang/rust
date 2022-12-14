@@ -1,23 +1,23 @@
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:10:5
+  --> $DIR/shared_at_top.rs:11:5
    |
 LL | /     if true {
 LL | |         println!("Hello World!");
    | |_________________________________^
    |
 note: the lint level is defined here
-  --> $DIR/shared_at_top.rs:2:36
+  --> $DIR/shared_at_top.rs:1:9
    |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: consider moving the start statements out like this
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+help: consider moving these statements before the if
    |
 LL ~     println!("Hello World!");
 LL +     if true {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:19:5
+  --> $DIR/shared_at_top.rs:20:5
    |
 LL | /     if x == 0 {
 LL | |         let y = 9;
@@ -25,8 +25,8 @@ LL | |         println!("The value y was set to: `{}`", y);
 LL | |         let _z = y;
    | |___________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let y = 9;
 LL +     println!("The value y was set to: `{}`", y);
@@ -35,28 +35,28 @@ LL +     if x == 0 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:40:5
+  --> $DIR/shared_at_top.rs:41:5
    |
 LL | /     let _ = if x == 7 {
 LL | |         let y = 16;
    | |___________________^
    |
-help: consider moving the start statements out like this
+help: consider moving these statements before the if
    |
 LL ~     let y = 16;
 LL +     let _ = if x == 7 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:58:5
+  --> $DIR/shared_at_top.rs:59:5
    |
 LL | /     if x == 10 {
 LL | |         let used_value_name = "Different type";
 LL | |         println!("Str: {}", used_value_name);
    | |_____________________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let used_value_name = "Different type";
 LL +     println!("Str: {}", used_value_name);
@@ -64,15 +64,15 @@ LL +     if x == 10 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:72:5
+  --> $DIR/shared_at_top.rs:73:5
    |
 LL | /     if x == 11 {
 LL | |         let can_be_overridden = "Move me";
 LL | |         println!("I'm also moveable");
    | |______________________________________^
    |
-   = warning: Some moved values might need to be renamed to avoid wrong references
-help: consider moving the start statements out like this
+   = warning: some moved values might need to be renamed to avoid wrong references
+help: consider moving these statements before the if
    |
 LL ~     let can_be_overridden = "Move me";
 LL +     println!("I'm also moveable");
@@ -80,14 +80,14 @@ LL +     if x == 11 {
    |
 
 error: all if blocks contain the same code at the start
-  --> $DIR/shared_at_top.rs:88:5
+  --> $DIR/shared_at_top.rs:89:5
    |
 LL | /     if x == 2020 {
 LL | |         println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
 LL | |         println!("Because `IF_SAME_THEN_ELSE` is allowed here");
    | |________________________________________________________________^
    |
-help: consider moving the start statements out like this
+help: consider moving these statements before the if
    |
 LL ~     println!("This should trigger the `SHARED_CODE_IN_IF_BLOCKS` lint.");
 LL +     println!("Because `IF_SAME_THEN_ELSE` is allowed here");
@@ -95,7 +95,7 @@ LL +     if x == 2020 {
    |
 
 error: this `if` has identical blocks
-  --> $DIR/shared_at_top.rs:96:18
+  --> $DIR/shared_at_top.rs:97:18
    |
 LL |       if x == 2019 {
    |  __________________^
@@ -103,19 +103,19 @@ LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     } else {
    | |_____^
    |
-note: the lint level is defined here
-  --> $DIR/shared_at_top.rs:2:9
-   |
-LL | #![deny(clippy::if_same_then_else, clippy::branches_sharing_code)]
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
 note: same as this
-  --> $DIR/shared_at_top.rs:98:12
+  --> $DIR/shared_at_top.rs:99:12
    |
 LL |       } else {
    |  ____________^
 LL | |         println!("This should trigger `IS_SAME_THAN_ELSE` as usual");
 LL | |     }
    | |_____^
+note: the lint level is defined here
+  --> $DIR/shared_at_top.rs:1:40
+   |
+LL | #![deny(clippy::branches_sharing_code, clippy::if_same_then_else)]
+   |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 7 previous errors
 

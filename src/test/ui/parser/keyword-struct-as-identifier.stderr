@@ -4,10 +4,10 @@ error: expected identifier, found keyword `struct`
 LL |     let struct = "foo";
    |         ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `struct` to use it as an identifier
    |
 LL |     let r#struct = "foo";
-   |         ~~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

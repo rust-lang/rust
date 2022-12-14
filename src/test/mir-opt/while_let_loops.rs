@@ -1,6 +1,5 @@
 // EMIT_MIR while_let_loops.change_loop_body.ConstProp.diff
 // EMIT_MIR while_let_loops.change_loop_body.PreCodegen.after.mir
-// EMIT_MIR_FOR_EACH_BIT_WIDTH
 
 pub fn change_loop_body() {
     let mut _x = 0;

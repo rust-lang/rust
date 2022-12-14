@@ -1,12 +1,78 @@
-goto: file://|DOC_PATH|/test_docs/index.html
+// Checks that the search results have the expected width.
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 size: (900, 1000)
 write: (".search-input", "test")
-// Waiting for the search results to appear...
-wait-for: "#titles"
+// To be SURE that the search will be run.
+press-key: 'Enter'
+wait-for: "#crate-search"
 // The width is returned by "getComputedStyle" which returns the exact number instead of the
 // CSS rule which is "50%"...
-assert-css: (".search-results div.desc", {"width": "320px"})
+assert-css: (".search-results div.desc", {"width": "310px"})
 size: (600, 100)
 // As counter-intuitive as it may seem, in this width, the width is "100%", which is why
 // when computed it's larger.
-assert-css: (".search-results div.desc", {"width": "570px"})
+assert-css: (".search-results div.desc", {"width": "566px"})
+
+// The result set is all on one line.
+assert-css: (".search-results .result-name > span", {"display": "inline"})
+
+// Check that the crate filter `<select>` is correctly handled when it goes to next line.
+// To do so we need to update the length of one of its `<option>`.
+size: (900, 900)
+
+// First we check the current width, height and position.
+assert-css: ("#crate-search", {"width": "223px"})
+assert-css: (".search-results-title", {"height": "44px", "width": "640px"})
+assert-css: ("#search", {"width": "640px"})
+
+// Then we update the text of one of the `<option>`.
+text: (
+    "#crate-search option",
+    "sdjfaksdjfaksjdbfkadsbfkjsadbfkdsbkfbsadkjfbkdsabfkadsfkjdsafa",
+)
+
+// Then we compare again to confirm the height didn't change.
+assert-css: ("#crate-search", {"width": "527px"})
+assert-css: (".search-results-title", {"height": "44px", "width": "640px"})
+// And we check that the `<select>` isn't bigger than its container (".search-results-title").
+assert-css: ("#search", {"width": "640px"})
+
+// Now checking that the crate filter is working as expected too.
+show-text: true
+define-function: (
+    "check-filter",
+    (theme, border, filter, hover_border, hover_filter),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("wait-for", "#crate-search"),
+        ("assert-css", ("#crate-search", {"border": "1px solid " + |border|})),
+        ("assert-css", ("#crate-search-div::after", {"filter": |filter|})),
+        ("move-cursor-to", "#crate-search"),
+        ("assert-css", ("#crate-search", {"border": "1px solid " + |hover_border|})),
+        ("assert-css", ("#crate-search-div::after", {"filter": |hover_filter|})),
+        ("move-cursor-to", ".search-input"),
+    ],
+)
+
+call-function: ("check-filter", {
+    "theme": "ayu",
+    "border": "rgb(92, 103, 115)",
+    "filter": "invert(0.41) sepia(0.12) saturate(4.87) hue-rotate(171deg) brightness(0.94) contrast(0.94)",
+    "hover_border": "rgb(224, 224, 224)",
+    "hover_filter": "invert(0.98) sepia(0.12) saturate(0.81) hue-rotate(343deg) brightness(1.13) contrast(0.76)",
+})
+call-function: ("check-filter", {
+    "theme": "dark",
+    "border": "rgb(224, 224, 224)",
+    "filter": "invert(0.94) sepia(0) saturate(7.21) hue-rotate(255deg) brightness(0.9) contrast(0.9)",
+    "hover_border": "rgb(33, 150, 243)",
+    "hover_filter": "invert(0.69) sepia(0.6) saturate(66.13) hue-rotate(184deg) brightness(1) contrast(0.91)",
+})
+call-function: ("check-filter", {
+    "theme": "light",
+    "border": "rgb(224, 224, 224)",
+    "filter": "invert(1) sepia(0) saturate(42.23) hue-rotate(289deg) brightness(1.14) contrast(0.76)",
+    "hover_border": "rgb(113, 113, 113)",
+    "hover_filter": "invert(0.44) sepia(0.18) saturate(0.23) hue-rotate(317deg) brightness(0.96) contrast(0.93)",
+})

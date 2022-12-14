@@ -2,7 +2,7 @@
 // compile-flags: --target hexagon-unknown-linux-musl
 // needs-llvm-components: hexagon
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]
@@ -73,7 +73,7 @@ macro_rules! check_reg {
 
 // CHECK-LABEL: sym_static:
 // CHECK: InlineAsm Start
-// CHECK: r0 = #extern_static
+// CHECK: r0 = {{#+}}extern_static
 // CHECK: InlineAsm End
 #[no_mangle]
 pub unsafe fn sym_static() {
@@ -88,7 +88,7 @@ pub unsafe fn sym_static() {
 
 // CHECK-LABEL: sym_fn:
 // CHECK: InlineAsm Start
-// CHECK: r0 = #extern_func
+// CHECK: r0 = {{#+}}extern_func
 // CHECK: InlineAsm End
 #[no_mangle]
 pub unsafe fn sym_fn() {
@@ -108,7 +108,7 @@ pub unsafe fn sym_fn() {
 // CHECK: InlineAsm Start
 // CHECK: {
 // CHECK:   r{{[0-9]+}} = r0
-// CHECK:   memw(r1) = r{{[0-9]+}}
+// CHECK:   memw(r1{{(\+#0)?}}) = r{{[0-9]+}}
 // CHECK: }
 // CHECK: InlineAsm End
 #[no_mangle]

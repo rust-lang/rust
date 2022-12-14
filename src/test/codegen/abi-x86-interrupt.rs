@@ -13,6 +13,7 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+impl Copy for i64 {}
 
 // CHECK: define x86_intrcc i64 @has_x86_interrupt_abi
 #[no_mangle]

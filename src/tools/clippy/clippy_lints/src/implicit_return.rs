@@ -1,9 +1,10 @@
 use clippy_utils::{
-    diagnostics::span_lint_and_sugg,
+    diagnostics::span_lint_hir_and_then,
     get_async_fn_body, is_async_fn,
     source::{snippet_with_applicability, snippet_with_context, walk_span_to_context},
-    visitors::visit_break_exprs,
+    visitors::for_each_expr,
 };
+use core::ops::ControlFlow;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, FnRetTy, HirId};
@@ -35,6 +36,7 @@ declare_clippy_lint! {
     ///     return x;
     /// }
     /// ```
+    #[clippy::version = "1.33.0"]
     pub IMPLICIT_RETURN,
     restriction,
     "use a return statement like `return expr` instead of an expression"
@@ -42,31 +44,38 @@ declare_clippy_lint! {
 
 declare_lint_pass!(ImplicitReturn => [IMPLICIT_RETURN]);
 
-fn lint_return(cx: &LateContext<'_>, span: Span) {
+fn lint_return(cx: &LateContext<'_>, emission_place: HirId, span: Span) {
     let mut app = Applicability::MachineApplicable;
     let snip = snippet_with_applicability(cx, span, "..", &mut app);
-    span_lint_and_sugg(
+    span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
+        emission_place,
         span,
         "missing `return` statement",
-        "add `return` as shown",
-        format!("return {}", snip),
-        app,
+        |diag| {
+            diag.span_suggestion(span, "add `return` as shown", format!("return {snip}"), app);
+        },
     );
 }
 
-fn lint_break(cx: &LateContext<'_>, break_span: Span, expr_span: Span) {
+fn lint_break(cx: &LateContext<'_>, emission_place: HirId, break_span: Span, expr_span: Span) {
     let mut app = Applicability::MachineApplicable;
     let snip = snippet_with_context(cx, expr_span, break_span.ctxt(), "..", &mut app).0;
-    span_lint_and_sugg(
+    span_lint_hir_and_then(
         cx,
         IMPLICIT_RETURN,
+        emission_place,
         break_span,
         "missing `return` statement",
-        "change `break` to `return` as shown",
-        format!("return {}", snip),
-        app,
+        |diag| {
+            diag.span_suggestion(
+                break_span,
+                "change `break` to `return` as shown",
+                format!("return {snip}"),
+                app,
+            );
+        },
     );
 }
 
@@ -93,8 +102,8 @@ fn get_call_site(span: Span, ctxt: SyntaxContext) -> Option<Span> {
 }
 
 fn lint_implicit_returns(
-    cx: &LateContext<'tcx>,
-    expr: &'tcx Expr<'_>,
+    cx: &LateContext<'_>,
+    expr: &Expr<'_>,
     // The context of the function body.
     ctxt: SyntaxContext,
     // Whether the expression is from a macro expansion.
@@ -144,27 +153,30 @@ fn lint_implicit_returns(
 
         ExprKind::Loop(block, ..) => {
             let mut add_return = false;
-            visit_break_exprs(block, |break_expr, dest, sub_expr| {
-                if dest.target_id.ok() == Some(expr.hir_id) {
-                    if call_site_span.is_none() && break_expr.span.ctxt() == ctxt {
-                        // At this point sub_expr can be `None` in async functions which either diverge, or return the
-                        // unit type.
-                        if let Some(sub_expr) = sub_expr {
-                            lint_break(cx, break_expr.span, sub_expr.span);
+            let _: Option<!> = for_each_expr(block, |e| {
+                if let ExprKind::Break(dest, sub_expr) = e.kind {
+                    if dest.target_id.ok() == Some(expr.hir_id) {
+                        if call_site_span.is_none() && e.span.ctxt() == ctxt {
+                            // At this point sub_expr can be `None` in async functions which either diverge, or return
+                            // the unit type.
+                            if let Some(sub_expr) = sub_expr {
+                                lint_break(cx, e.hir_id, e.span, sub_expr.span);
+                            }
+                        } else {
+                            // the break expression is from a macro call, add a return to the loop
+                            add_return = true;
                         }
-                    } else {
-                        // the break expression is from a macro call, add a return to the loop
-                        add_return = true;
                     }
                 }
+                ControlFlow::Continue(())
             });
             if add_return {
-                #[allow(clippy::option_if_let_else)]
+                #[expect(clippy::option_if_let_else)]
                 if let Some(span) = call_site_span {
-                    lint_return(cx, span);
+                    lint_return(cx, expr.hir_id, span);
                     LintLocation::Parent
                 } else {
-                    lint_return(cx, expr.span);
+                    lint_return(cx, expr.hir_id, expr.span);
                     LintLocation::Inner
                 }
             } else {
@@ -191,12 +203,12 @@ fn lint_implicit_returns(
 
         _ =>
         {
-            #[allow(clippy::option_if_let_else)]
+            #[expect(clippy::option_if_let_else)]
             if let Some(span) = call_site_span {
-                lint_return(cx, span);
+                lint_return(cx, expr.hir_id, span);
                 LintLocation::Parent
             } else {
-                lint_return(cx, expr.span);
+                lint_return(cx, expr.hir_id, expr.span);
                 LintLocation::Inner
             }
         },
@@ -220,7 +232,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
             return;
         }
 
-        let res_ty = cx.typeck_results().expr_ty(&body.value);
+        let res_ty = cx.typeck_results().expr_ty(body.value);
         if res_ty.is_unit() || res_ty.is_never() {
             return;
         }
@@ -231,7 +243,7 @@ impl<'tcx> LateLintPass<'tcx> for ImplicitReturn {
                 None => return,
             }
         } else {
-            &body.value
+            body.value
         };
         lint_implicit_returns(cx, expr, expr.span.ctxt(), None);
     }

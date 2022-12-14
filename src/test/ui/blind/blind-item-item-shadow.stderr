@@ -3,7 +3,7 @@ error[E0255]: the name `foo` is defined multiple times
    |
 LL | mod foo { pub mod foo {  } }
    | ------- previous definition of the module `foo` here
-LL | 
+LL |
 LL | use foo::foo;
    |     ^^^^^^^^ `foo` reimported here
    |

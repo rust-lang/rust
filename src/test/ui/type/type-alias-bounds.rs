@@ -52,7 +52,7 @@ type T2<U> where U: Bound = U::Assoc;  //~ WARN not enforced in type aliases
 // Do this instead:
 type T4<U> = <U as Bound>::Assoc;
 
-// Make sure the help about associatd types is not shown incorrectly
+// Make sure the help about associated types is not shown incorrectly
 type T5<U: Bound> = <U as Bound>::Assoc;  //~ WARN not enforced in type aliases
 type T6<U: Bound> = ::std::vec::Vec<U>;  //~ WARN not enforced in type aliases
 

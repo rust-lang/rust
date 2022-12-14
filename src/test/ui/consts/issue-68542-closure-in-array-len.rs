@@ -3,7 +3,7 @@
 // in the length part of an array.
 
 struct Bug {
-    a: [(); (|| { 0 })()] //~ ERROR calls in constants are limited to
+    a: [(); (|| { 0 })()] //~ ERROR cannot call non-const closure
 }
 
 fn main() {}

@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 ifeq ($(TARGET),wasm32-unknown-unknown)
 all:

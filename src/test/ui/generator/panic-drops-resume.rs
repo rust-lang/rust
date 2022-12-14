@@ -1,8 +1,7 @@
 //! Tests that panics inside a generator will correctly drop the initial resume argument.
 
 // run-pass
-// ignore-wasm       no unwind support
-// ignore-emscripten no unwind support
+// needs-unwind
 
 #![feature(generators, generator_trait)]
 

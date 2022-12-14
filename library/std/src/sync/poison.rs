@@ -19,12 +19,20 @@ pub struct Flag {
 // all cases.
 
 impl Flag {
+    #[inline]
     pub const fn new() -> Flag {
         Flag { failed: AtomicBool::new(false) }
     }
 
+    /// Check the flag for an unguarded borrow, where we only care about existing poison.
     #[inline]
-    pub fn borrow(&self) -> LockResult<Guard> {
+    pub fn borrow(&self) -> LockResult<()> {
+        if self.get() { Err(PoisonError::new(())) } else { Ok(()) }
+    }
+
+    /// Check the flag for a guarded borrow, where we may also set poison when `done`.
+    #[inline]
+    pub fn guard(&self) -> LockResult<Guard> {
         let ret = Guard { panicking: thread::panicking() };
         if self.get() { Err(PoisonError::new(ret)) } else { Ok(ret) }
     }
@@ -39,6 +47,11 @@ impl Flag {
     #[inline]
     pub fn get(&self) -> bool {
         self.failed.load(Ordering::Relaxed)
+    }
+
+    #[inline]
+    pub fn clear(&self) {
+        self.failed.store(false, Ordering::Relaxed)
     }
 }
 
@@ -73,7 +86,7 @@ pub struct Guard {
 ///     Ok(_) => unreachable!(),
 ///     Err(p_err) => {
 ///         let data = p_err.get_ref();
-///         println!("recovered: {}", data);
+///         println!("recovered: {data}");
 ///     }
 /// };
 /// ```

@@ -3,8 +3,6 @@ error[E0282]: type annotations needed
    |
 LL |     let b = (a + 1) as usize;
    |             ^^^^^^^ cannot infer type
-   |
-   = note: type must be known at this point
 
 error: aborting due to previous error
 

@@ -1,35 +1,35 @@
 error: missing code example in this documentation
   --> $DIR/doc-without-codeblock.rs:1:1
    |
-LL | / #![deny(rustdoc::missing_doc_code_examples)]
+LL | / #![feature(rustdoc_missing_doc_code_examples)]
+LL | | #![deny(rustdoc::missing_doc_code_examples)]
 LL | |
 LL | | /// Some docs.
-LL | |
 ...  |
 LL | |     }
 LL | | }
    | |_^
    |
 note: the lint level is defined here
-  --> $DIR/doc-without-codeblock.rs:1:9
+  --> $DIR/doc-without-codeblock.rs:2:9
    |
 LL | #![deny(rustdoc::missing_doc_code_examples)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:7:1
+  --> $DIR/doc-without-codeblock.rs:8:1
    |
 LL | /// And then, the princess died.
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:10:5
+  --> $DIR/doc-without-codeblock.rs:11:5
    |
 LL |     /// Or maybe not because she saved herself!
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: missing code example in this documentation
-  --> $DIR/doc-without-codeblock.rs:3:1
+  --> $DIR/doc-without-codeblock.rs:4:1
    |
 LL | /// Some docs.
    | ^^^^^^^^^^^^^^

@@ -34,7 +34,7 @@ macro_rules! fake_lint_pass {
                     if !cx.sess().contains_name(attrs, $attr) {
                         cx.lint(CRATE_NOT_OKAY, |lint| {
                              let msg = format!("crate is not marked with #![{}]", $attr);
-                             lint.build(&msg).set_span(span).emit()
+                             lint.build(&msg).set_span(span).emit();
                         });
                     }
                 )*
@@ -74,7 +74,7 @@ fn __rustc_plugin_registrar(reg: &mut Registry) {
         &CRATE_NOT_GREY,
         &CRATE_NOT_GREEN,
     ]);
-    reg.lint_store.register_late_pass(|| Box::new(PassOkay));
-    reg.lint_store.register_late_pass(|| Box::new(PassRedBlue));
-    reg.lint_store.register_late_pass(|| Box::new(PassGreyGreen));
+    reg.lint_store.register_late_pass(|_| Box::new(PassOkay));
+    reg.lint_store.register_late_pass(|_| Box::new(PassRedBlue));
+    reg.lint_store.register_late_pass(|_| Box::new(PassGreyGreen));
 }

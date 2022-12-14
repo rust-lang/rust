@@ -4,8 +4,8 @@ warning: the feature `unsized_locals` is incomplete and may not be safe to use a
 LL | #![feature(unsized_locals, unsized_fn_params)]
    |            ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #48055 <https://github.com/rust-lang/rust/issues/48055> for more information
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:21:24
@@ -28,6 +28,14 @@ LL |         drop_unsized(y);
 ...
 LL |         println!("{}", &y);
    |                        ^^ value borrowed here after move
+   |
+note: consider changing this parameter type in function `drop_unsized` to borrow instead if owning the value isn't necessary
+  --> $DIR/borrow-after-move.rs:14:31
+   |
+LL | fn drop_unsized<T: ?Sized>(_: T) {}
+   |    ------------               ^ this parameter takes ownership of the value
+   |    |
+   |    in this function
 
 error[E0382]: borrow of moved value: `x`
   --> $DIR/borrow-after-move.rs:31:24
@@ -66,6 +74,11 @@ LL |         x.foo();
    |         - value moved here
 LL |         println!("{}", &x);
    |                        ^^ value borrowed here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |         x.clone().foo();
+   |          ++++++++
 
 error: aborting due to 5 previous errors; 1 warning emitted
 

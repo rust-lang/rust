@@ -1,5 +1,3 @@
-#![feature(nll)]
-
 // Test that we enforce user-provided type annotations on closures.
 
 fn foo<'a>() {

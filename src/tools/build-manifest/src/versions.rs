@@ -8,52 +8,63 @@ use tar::Archive;
 
 const DEFAULT_TARGET: &str = "x86_64-unknown-linux-gnu";
 
-#[derive(Debug, Hash, Eq, PartialEq, Clone)]
-pub(crate) enum PkgType {
-    Rust,
-    RustSrc,
-    Rustc,
-    Cargo,
-    Rls,
-    RustAnalyzer,
-    Clippy,
-    Rustfmt,
-    LlvmTools,
-    Miri,
-    Other(String),
+macro_rules! pkg_type {
+    ( $($variant:ident = $component:literal $(; preview = true $(@$is_preview:tt)? )? ),+ $(,)? ) => {
+        #[derive(Debug, Hash, Eq, PartialEq, Clone)]
+        pub(crate) enum PkgType {
+            $($variant,)+
+        }
+
+        impl PkgType {
+            pub(crate) fn is_preview(&self) -> bool {
+                match self {
+                    $( $( $($is_preview)? PkgType::$variant => true, )? )+
+                    _ => false,
+                }
+            }
+
+            /// First part of the tarball name.
+            pub(crate) fn tarball_component_name(&self) -> &str {
+                match self {
+                    $( PkgType::$variant => $component,)+
+                }
+            }
+
+            pub(crate) fn all() -> &'static [PkgType] {
+                &[ $(PkgType::$variant),+ ]
+            }
+        }
+    }
+}
+
+pkg_type! {
+    Rust = "rust",
+    RustSrc = "rust-src",
+    Rustc = "rustc",
+    RustcDev = "rustc-dev",
+    RustcDocs = "rustc-docs",
+    ReproducibleArtifacts = "reproducible-artifacts",
+    RustMingw = "rust-mingw",
+    RustStd = "rust-std",
+    Cargo = "cargo",
+    HtmlDocs = "rust-docs",
+    RustAnalysis = "rust-analysis",
+    Rls = "rls"; preview = true,
+    RustAnalyzer = "rust-analyzer"; preview = true,
+    Clippy = "clippy"; preview = true,
+    Rustfmt = "rustfmt"; preview = true,
+    LlvmTools = "llvm-tools"; preview = true,
+    Miri = "miri"; preview = true,
+    JsonDocs = "rust-docs-json"; preview = true,
 }
 
 impl PkgType {
-    pub(crate) fn from_component(component: &str) -> Self {
-        match component {
-            "rust" => PkgType::Rust,
-            "rust-src" => PkgType::RustSrc,
-            "rustc" => PkgType::Rustc,
-            "cargo" => PkgType::Cargo,
-            "rls" | "rls-preview" => PkgType::Rls,
-            "rust-analyzer" | "rust-analyzer-preview" => PkgType::RustAnalyzer,
-            "clippy" | "clippy-preview" => PkgType::Clippy,
-            "rustfmt" | "rustfmt-preview" => PkgType::Rustfmt,
-            "llvm-tools" | "llvm-tools-preview" => PkgType::LlvmTools,
-            "miri" | "miri-preview" => PkgType::Miri,
-            other => PkgType::Other(other.into()),
-        }
-    }
-
-    /// First part of the tarball name.
-    fn tarball_component_name(&self) -> &str {
-        match self {
-            PkgType::Rust => "rust",
-            PkgType::RustSrc => "rust-src",
-            PkgType::Rustc => "rustc",
-            PkgType::Cargo => "cargo",
-            PkgType::Rls => "rls",
-            PkgType::RustAnalyzer => "rust-analyzer",
-            PkgType::Clippy => "clippy",
-            PkgType::Rustfmt => "rustfmt",
-            PkgType::LlvmTools => "llvm-tools",
-            PkgType::Miri => "miri",
-            PkgType::Other(component) => component,
+    /// Component name in the manifest. In particular, this includes the `-preview` suffix where appropriate.
+    pub(crate) fn manifest_component_name(&self) -> String {
+        if self.is_preview() {
+            format!("{}-preview", self.tarball_component_name())
+        } else {
+            self.tarball_component_name().to_string()
         }
     }
 
@@ -70,15 +81,56 @@ impl PkgType {
             PkgType::Miri => false,
 
             PkgType::Rust => true,
+            PkgType::RustStd => true,
             PkgType::RustSrc => true,
             PkgType::Rustc => true,
-            PkgType::Other(_) => true,
+            PkgType::JsonDocs => true,
+            PkgType::HtmlDocs => true,
+            PkgType::RustcDev => true,
+            PkgType::RustcDocs => true,
+            PkgType::ReproducibleArtifacts => true,
+            PkgType::RustMingw => true,
+            PkgType::RustAnalysis => true,
+        }
+    }
+
+    pub(crate) fn targets(&self) -> &[&str] {
+        use crate::{HOSTS, MINGW, TARGETS};
+        use PkgType::*;
+
+        match self {
+            Rust => HOSTS, // doesn't matter in practice, but return something to avoid panicking
+            Rustc => HOSTS,
+            RustcDev => HOSTS,
+            ReproducibleArtifacts => HOSTS,
+            RustcDocs => HOSTS,
+            Cargo => HOSTS,
+            RustMingw => MINGW,
+            RustStd => TARGETS,
+            HtmlDocs => HOSTS,
+            JsonDocs => HOSTS,
+            RustSrc => &["*"],
+            Rls => HOSTS,
+            RustAnalyzer => HOSTS,
+            Clippy => HOSTS,
+            Miri => HOSTS,
+            Rustfmt => HOSTS,
+            RustAnalysis => TARGETS,
+            LlvmTools => TARGETS,
         }
     }
 
     /// Whether this package is target-independent or not.
     fn target_independent(&self) -> bool {
         *self == PkgType::RustSrc
+    }
+
+    /// Whether to package these target-specific docs for another similar target.
+    pub(crate) fn use_docs_fallback(&self) -> bool {
+        match self {
+            PkgType::JsonDocs | PkgType::HtmlDocs => true,
+            _ => false,
+        }
     }
 }
 
@@ -113,6 +165,9 @@ impl Versions {
             Some(version) => Ok(version.clone()),
             None => {
                 let version_info = self.load_version_from_tarball(package)?;
+                if *package == PkgType::Rust && version_info.version.is_none() {
+                    panic!("missing version info for toolchain");
+                }
                 self.versions.insert(package.clone(), version_info.clone());
                 Ok(version_info)
             }
@@ -127,6 +182,7 @@ impl Versions {
             Ok(file) => file,
             Err(err) if err.kind() == std::io::ErrorKind::NotFound => {
                 // Missing tarballs do not return an error, but return empty data.
+                println!("warning: missing tarball {}", tarball.display());
                 return Ok(VersionInfo::default());
             }
             Err(err) => return Err(err.into()),
@@ -157,19 +213,8 @@ impl Versions {
         Ok(VersionInfo { version, git_commit, present: true })
     }
 
-    pub(crate) fn disable_version(&mut self, package: &PkgType) {
-        match self.versions.get_mut(package) {
-            Some(version) => {
-                *version = VersionInfo::default();
-            }
-            None => {
-                self.versions.insert(package.clone(), VersionInfo::default());
-            }
-        }
-    }
-
     pub(crate) fn archive_name(
-        &mut self,
+        &self,
         package: &PkgType,
         target: &str,
         extension: &str,
@@ -189,11 +234,7 @@ impl Versions {
         }
     }
 
-    pub(crate) fn tarball_name(
-        &mut self,
-        package: &PkgType,
-        target: &str,
-    ) -> Result<String, Error> {
+    pub(crate) fn tarball_name(&self, package: &PkgType, target: &str) -> Result<String, Error> {
         self.archive_name(package, target, "tar.gz")
     }
 

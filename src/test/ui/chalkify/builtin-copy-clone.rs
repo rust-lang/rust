@@ -4,7 +4,7 @@
 // Test that `Clone` is correctly implemented for builtin types.
 
 #[derive(Copy, Clone)]
-struct S(i32);
+struct S(#[allow(unused_tuple_struct_fields)] i32);
 
 fn test_clone<T: Clone>(arg: T) {
     let _ = arg.clone();
@@ -23,11 +23,12 @@ fn test_copy_clone<T: Copy + Clone>(arg: T) {
 fn foo() { }
 
 fn main() {
+    // FIXME: add closures when they're considered WF
     test_copy_clone(foo);
     let f: fn() = foo;
     test_copy_clone(f);
-    // FIXME: add closures when they're considered WF
-    test_copy_clone([1; 56]);
+    // FIXME(#86252): reinstate array test after chalk upgrade
+    //test_copy_clone([1; 56]);
     test_copy_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1));
     test_copy_clone((1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, true, 'a', 1.1));
     test_copy_clone(());

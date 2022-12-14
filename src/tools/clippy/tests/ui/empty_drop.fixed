@@ -1,0 +1,24 @@
+// run-rustfix
+#![warn(clippy::empty_drop)]
+#![allow(unused)]
+
+// should cause an error
+struct Foo;
+
+
+
+// shouldn't cause an error
+struct Bar;
+
+impl Drop for Bar {
+    fn drop(&mut self) {
+        println!("dropping bar!");
+    }
+}
+
+// should error
+struct Baz;
+
+
+
+fn main() {}

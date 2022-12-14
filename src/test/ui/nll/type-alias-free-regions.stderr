@@ -1,65 +1,22 @@
-error[E0495]: cannot infer an appropriate lifetime for lifetime parameter `'a` due to conflicting requirements
+error: lifetime may not live long enough
   --> $DIR/type-alias-free-regions.rs:17:9
-   |
-LL |         C { f: b }
-   |         ^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime defined here...
-  --> $DIR/type-alias-free-regions.rs:16:24
-   |
-LL |     fn from_box(b: Box<B>) -> Self {
-   |                        ^
-note: ...so that the expression is assignable
-  --> $DIR/type-alias-free-regions.rs:17:16
-   |
-LL |         C { f: b }
-   |                ^
-   = note: expected `Box<Box<&isize>>`
-              found `Box<Box<&isize>>`
-note: but, the lifetime must be valid for the lifetime `'a` as defined here...
-  --> $DIR/type-alias-free-regions.rs:15:6
    |
 LL | impl<'a> FromBox<'a> for C<'a> {
-   |      ^^
-note: ...so that the types are compatible
-  --> $DIR/type-alias-free-regions.rs:17:9
-   |
+   |      -- lifetime `'a` defined here
+LL |     fn from_box(b: Box<B>) -> Self {
+   |                 - has type `Box<Box<&'1 isize>>`
 LL |         C { f: b }
-   |         ^^^^^^^^^^
-   = note: expected `C<'a>`
-              found `C<'_>`
+   |         ^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
-error[E0495]: cannot infer an appropriate lifetime due to conflicting requirements
-  --> $DIR/type-alias-free-regions.rs:27:16
-   |
-LL |         C { f: Box::new(b.0) }
-   |                ^^^^^^^^^^^^^
-   |
-note: first, the lifetime cannot outlive the anonymous lifetime defined here...
-  --> $DIR/type-alias-free-regions.rs:26:23
-   |
-LL |     fn from_tuple(b: (B,)) -> Self {
-   |                       ^
-note: ...so that the expression is assignable
-  --> $DIR/type-alias-free-regions.rs:27:25
-   |
-LL |         C { f: Box::new(b.0) }
-   |                         ^^^
-   = note: expected `Box<&isize>`
-              found `Box<&isize>`
-note: but, the lifetime must be valid for the lifetime `'a` as defined here...
-  --> $DIR/type-alias-free-regions.rs:25:6
-   |
-LL | impl<'a> FromTuple<'a> for C<'a> {
-   |      ^^
-note: ...so that the types are compatible
+error: lifetime may not live long enough
   --> $DIR/type-alias-free-regions.rs:27:9
    |
+LL | impl<'a> FromTuple<'a> for C<'a> {
+   |      -- lifetime `'a` defined here
+LL |     fn from_tuple(b: (B,)) -> Self {
+   |                   - has type `(Box<&'1 isize>,)`
 LL |         C { f: Box::new(b.0) }
-   |         ^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected `C<'a>`
-              found `C<'_>`
+   |         ^^^^^^^^^^^^^^^^^^^^^^ associated function was supposed to return data with lifetime `'a` but it is returning data with lifetime `'1`
 
 error: aborting due to 2 previous errors
 
-For more information about this error, try `rustc --explain E0495`.

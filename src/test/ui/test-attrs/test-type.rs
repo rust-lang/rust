@@ -5,7 +5,6 @@
 // ignore-emscripten no threads support
 // run-pass
 
-
 #[test]
 fn test_ok() {
     let _a = true;
@@ -18,9 +17,9 @@ fn test_panic() {
 }
 
 #[test]
-#[ignore]
+#[ignore = "msg"]
 fn test_no_run() {
-    loop{
+    loop {
         println!("Hello, world");
     }
 }

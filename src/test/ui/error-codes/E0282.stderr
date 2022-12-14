@@ -2,7 +2,12 @@ error[E0282]: type annotations needed
   --> $DIR/E0282.rs:2:9
    |
 LL |     let x = "hello".chars().rev().collect();
-   |         ^ consider giving `x` a type
+   |         ^
+   |
+help: consider giving `x` an explicit type
+   |
+LL |     let x: _ = "hello".chars().rev().collect();
+   |          +++
 
 error: aborting due to previous error
 

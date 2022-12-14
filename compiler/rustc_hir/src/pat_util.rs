@@ -1,11 +1,12 @@
 use crate::def::{CtorOf, DefKind, Res};
 use crate::def_id::DefId;
-use crate::hir::{self, HirId, PatKind};
-use rustc_data_structures::stable_set::FxHashSet;
+use crate::hir::{self, BindingAnnotation, ByRef, HirId, PatKind};
+use rustc_data_structures::fx::FxHashSet;
+use rustc_span::hygiene::DesugaringKind;
 use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
-use std::iter::{Enumerate, ExactSizeIterator};
+use std::iter::Enumerate;
 
 pub struct EnumerateAndAdjust<I> {
     enumerate: Enumerate<I>,
@@ -34,7 +35,7 @@ pub trait EnumerateAndAdjustIterator {
     fn enumerate_and_adjust(
         self,
         expected_len: usize,
-        gap_pos: Option<usize>,
+        gap_pos: hir::DotDotPos,
     ) -> EnumerateAndAdjust<Self>
     where
         Self: Sized;
@@ -44,7 +45,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
     fn enumerate_and_adjust(
         self,
         expected_len: usize,
-        gap_pos: Option<usize>,
+        gap_pos: hir::DotDotPos,
     ) -> EnumerateAndAdjust<Self>
     where
         Self: Sized,
@@ -52,7 +53,7 @@ impl<T: ExactSizeIterator> EnumerateAndAdjustIterator for T {
         let actual_len = self.len();
         EnumerateAndAdjust {
             enumerate: self.enumerate(),
-            gap_pos: gap_pos.unwrap_or(expected_len),
+            gap_pos: gap_pos.as_opt_usize().unwrap_or(expected_len),
             gap_len: expected_len - actual_len,
         }
     }
@@ -92,12 +93,7 @@ impl hir::Pat<'_> {
 
     pub fn simple_ident(&self) -> Option<Ident> {
         match self.kind {
-            PatKind::Binding(
-                hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Mutable,
-                _,
-                ident,
-                None,
-            ) => Some(ident),
+            PatKind::Binding(BindingAnnotation(ByRef::No, _), _, ident, None) => Some(ident),
             _ => None,
         }
     }
@@ -134,13 +130,20 @@ impl hir::Pat<'_> {
     pub fn contains_explicit_ref_binding(&self) -> Option<hir::Mutability> {
         let mut result = None;
         self.each_binding(|annotation, _, _, _| match annotation {
-            hir::BindingAnnotation::Ref => match result {
-                None | Some(hir::Mutability::Not) => result = Some(hir::Mutability::Not),
-                _ => {}
-            },
-            hir::BindingAnnotation::RefMut => result = Some(hir::Mutability::Mut),
+            hir::BindingAnnotation::REF if result.is_none() => result = Some(hir::Mutability::Not),
+            hir::BindingAnnotation::REF_MUT => result = Some(hir::Mutability::Mut),
             _ => {}
         });
         result
+    }
+
+    /// If the pattern is `Some(<pat>)` from a desugared for loop, returns the inner pattern
+    pub fn for_loop_some(&self) -> Option<&Self> {
+        if self.span.desugaring_kind() == Some(DesugaringKind::ForLoop) {
+            if let hir::PatKind::Struct(_, [pat_field], _) = self.kind {
+                return Some(pat_field.pat);
+            }
+        }
+        None
     }
 }

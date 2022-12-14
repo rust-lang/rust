@@ -13,7 +13,7 @@ help: remove these parentheses
    |
 LL -     return (<T as ToString>::to_string(&arg));
 LL +     return <T as ToString>::to_string(&arg);
-   | 
+   |
 
 warning: 1 warning emitted
 

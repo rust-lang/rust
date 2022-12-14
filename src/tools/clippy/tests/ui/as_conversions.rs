@@ -1,6 +1,7 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::as_conversions)]
+#![allow(clippy::borrow_as_ptr)]
 
 #[macro_use]
 extern crate macro_rules;

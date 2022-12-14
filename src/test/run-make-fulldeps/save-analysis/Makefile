@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 all: code
 krate2: krate2.rs
 	$(RUSTC) $<

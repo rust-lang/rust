@@ -13,17 +13,17 @@ LL |         let x = foo();
 LL |     )
    |     ^ mismatched closing delimiter
 
-error[E0425]: cannot find function `foo` in this scope
-  --> $DIR/parser-recovery-2.rs:5:17
-   |
-LL |         let x = foo();
-   |                 ^^^ not found in this scope
-
 error[E0425]: cannot find value `y` in this scope
   --> $DIR/parser-recovery-2.rs:10:13
    |
 LL |     let x = y.;
    |             ^ not found in this scope
+
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/parser-recovery-2.rs:5:17
+   |
+LL |         let x = foo();
+   |                 ^^^ not found in this scope
 
 error: aborting due to 4 previous errors
 

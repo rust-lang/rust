@@ -268,9 +268,9 @@ fn test_swap_remove_fail() {
 fn test_swap_remove_noncopyable() {
     // Tests that we don't accidentally run destructors twice.
     let mut v: Vec<Box<_>> = Vec::new();
-    v.push(box 0);
-    v.push(box 0);
-    v.push(box 0);
+    v.push(Box::new(0));
+    v.push(Box::new(0));
+    v.push(Box::new(0));
     let mut _e = v.swap_remove(0);
     assert_eq!(v.len(), 2);
     _e = v.swap_remove(1);
@@ -296,7 +296,7 @@ fn test_push() {
 
 #[test]
 fn test_truncate() {
-    let mut v: Vec<Box<_>> = vec![box 6, box 5, box 4];
+    let mut v: Vec<Box<_>> = vec![Box::new(6), Box::new(5), Box::new(4)];
     v.truncate(1);
     let v = v;
     assert_eq!(v.len(), 1);
@@ -306,7 +306,7 @@ fn test_truncate() {
 
 #[test]
 fn test_clear() {
-    let mut v: Vec<Box<_>> = vec![box 6, box 5, box 4];
+    let mut v: Vec<Box<_>> = vec![Box::new(6), Box::new(5), Box::new(4)];
     v.clear();
     assert_eq!(v.len(), 0);
     // If the unsafe block didn't drop things properly, we blow up here.
@@ -863,7 +863,7 @@ fn test_splitator_inclusive() {
     assert_eq!(xs.split_inclusive(|_| true).collect::<Vec<&[i32]>>(), splits);
 
     let xs: &[i32] = &[];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_inclusive(|x| *x == 5).collect::<Vec<&[i32]>>(), splits);
 }
 
@@ -883,7 +883,7 @@ fn test_splitator_inclusive_reverse() {
     assert_eq!(xs.split_inclusive(|_| true).rev().collect::<Vec<_>>(), splits);
 
     let xs: &[i32] = &[];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_inclusive(|x| *x == 5).rev().collect::<Vec<_>>(), splits);
 }
 
@@ -903,7 +903,7 @@ fn test_splitator_mut_inclusive() {
     assert_eq!(xs.split_inclusive_mut(|_| true).collect::<Vec<_>>(), splits);
 
     let xs: &mut [i32] = &mut [];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_inclusive_mut(|x| *x == 5).collect::<Vec<_>>(), splits);
 }
 
@@ -923,7 +923,7 @@ fn test_splitator_mut_inclusive_reverse() {
     assert_eq!(xs.split_inclusive_mut(|_| true).rev().collect::<Vec<_>>(), splits);
 
     let xs: &mut [i32] = &mut [];
-    let splits: &[&[i32]] = &[&[]];
+    let splits: &[&[i32]] = &[];
     assert_eq!(xs.split_inclusive_mut(|x| *x == 5).rev().collect::<Vec<_>>(), splits);
 }
 
@@ -1045,10 +1045,10 @@ fn test_split_iterators_size_hint() {
             a(v.rsplit_mut(p), b, "rsplit_mut");
 
             for n in 0..=3 {
-                a(v.splitn(n, p), b, f!("splitn, n = {}", n));
-                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {}", n));
-                a(v.rsplitn(n, p), b, f!("rsplitn, n = {}", n));
-                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {}", n));
+                a(v.splitn(n, p), b, f!("splitn, n = {n}"));
+                a(v.splitn_mut(n, p), b, f!("splitn_mut, n = {n}"));
+                a(v.rsplitn(n, p), b, f!("rsplitn, n = {n}"));
+                a(v.rsplitn_mut(n, p), b, f!("rsplitn_mut, n = {n}"));
             }
         }
     }
@@ -1184,8 +1184,8 @@ fn test_show() {
     macro_rules! test_show_vec {
         ($x:expr, $x_str:expr) => {{
             let (x, x_str) = ($x, $x_str);
-            assert_eq!(format!("{:?}", x), x_str);
-            assert_eq!(format!("{:?}", x), x_str);
+            assert_eq!(format!("{x:?}"), x_str);
+            assert_eq!(format!("{x:?}"), x_str);
         }};
     }
     let empty = Vec::<i32>::new();
@@ -1516,14 +1516,14 @@ fn test_mut_last() {
 
 #[test]
 fn test_to_vec() {
-    let xs: Box<_> = box [1, 2, 3];
+    let xs: Box<_> = Box::new([1, 2, 3]);
     let ys = xs.to_vec();
     assert_eq!(ys, [1, 2, 3]);
 }
 
 #[test]
 fn test_in_place_iterator_specialization() {
-    let src: Box<[usize]> = box [1, 2, 3];
+    let src: Box<[usize]> = Box::new([1, 2, 3]);
     let src_ptr = src.as_ptr();
     let sink: Box<_> = src.into_vec().into_iter().map(std::convert::identity).collect();
     let sink_ptr = sink.as_ptr();
@@ -1783,12 +1783,11 @@ thread_local!(static SILENCE_PANIC: Cell<bool> = Cell::new(false));
 #[test]
 #[cfg_attr(target_os = "emscripten", ignore)] // no threads
 fn panic_safe() {
-    let prev = panic::take_hook();
-    panic::set_hook(Box::new(move |info| {
+    panic::update_hook(move |prev, info| {
         if !SILENCE_PANIC.with(|s| s.get()) {
             prev(info);
         }
-    }));
+    });
 
     let mut rng = thread_rng();
 

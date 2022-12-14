@@ -3,7 +3,7 @@ mod unit_arg;
 mod unit_cmp;
 mod utils;
 
-use rustc_hir::{Expr, Stmt};
+use rustc_hir::{Expr, Local};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -21,8 +21,9 @@ declare_clippy_lint! {
     ///     1;
     /// };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub LET_UNIT_VALUE,
-    pedantic,
+    style,
     "creating a `let` binding to a value of unit type, which usually can't be used afterwards"
 }
 
@@ -68,6 +69,7 @@ declare_clippy_lint! {
     /// assert_eq!({ foo(); }, { bar(); });
     /// ```
     /// will always succeed
+    #[clippy::version = "pre 1.29.0"]
     pub UNIT_CMP,
     correctness,
     "comparing unit values"
@@ -88,6 +90,7 @@ declare_clippy_lint! {
     ///     baz(a);
     /// })
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNIT_ARG,
     complexity,
     "passing unit to a function"
@@ -95,12 +98,12 @@ declare_clippy_lint! {
 
 declare_lint_pass!(UnitTypes => [LET_UNIT_VALUE, UNIT_CMP, UNIT_ARG]);
 
-impl LateLintPass<'_> for UnitTypes {
-    fn check_stmt(&mut self, cx: &LateContext<'_>, stmt: &Stmt<'_>) {
-        let_unit_value::check(cx, stmt);
+impl<'tcx> LateLintPass<'tcx> for UnitTypes {
+    fn check_local(&mut self, cx: &LateContext<'tcx>, local: &'tcx Local<'tcx>) {
+        let_unit_value::check(cx, local);
     }
 
-    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+    fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         unit_cmp::check(cx, expr);
         unit_arg::check(cx, expr);
     }

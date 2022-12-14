@@ -4,9 +4,9 @@ use crate::fs;
 use crate::io::{self, Error, ErrorKind};
 use crate::path::Path;
 
-pub(crate) const NOT_FILE_ERROR: Error = Error::new_const(
+pub(crate) const NOT_FILE_ERROR: Error = io::const_io_error!(
     ErrorKind::InvalidInput,
-    &"the source path is neither a regular file nor a symlink to a regular file",
+    "the source path is neither a regular file nor a symlink to a regular file",
 );
 
 pub fn copy(from: &Path, to: &Path) -> io::Result<u64> {

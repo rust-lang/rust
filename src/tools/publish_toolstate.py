@@ -30,22 +30,16 @@ except ImportError:
 # These should be collaborators of the rust-lang/rust repository (with at least
 # read privileges on it). CI will fail otherwise.
 MAINTAINERS = {
-    'miri': {'oli-obk', 'RalfJung', 'eddyb'},
-    'rls': {'Xanewok'},
-    'rustfmt': {'topecongiro', 'calebcartwright'},
-    'book': {'carols10cents', 'steveklabnik'},
+    'book': {'carols10cents'},
     'nomicon': {'frewsxcv', 'Gankra', 'JohnTitor'},
-    'reference': {'steveklabnik', 'Havvy', 'matthewjasper', 'ehuss'},
-    'rust-by-example': {'steveklabnik', 'marioidival'},
+    'reference': {'Havvy', 'matthewjasper', 'ehuss'},
+    'rust-by-example': {'marioidival'},
     'embedded-book': {'adamgreig', 'andre-richter', 'jamesmunns', 'therealprof'},
-    'edition-guide': {'ehuss', 'steveklabnik'},
+    'edition-guide': {'ehuss'},
     'rustc-dev-guide': {'spastorino', 'amanjeev', 'JohnTitor'},
 }
 
 LABELS = {
-    'miri': ['A-miri', 'C-bug'],
-    'rls': ['A-rls', 'C-bug'],
-    'rustfmt': ['A-rustfmt', 'C-bug'],
     'book': ['C-bug'],
     'nomicon': ['C-bug'],
     'reference': ['C-bug'],
@@ -56,9 +50,6 @@ LABELS = {
 }
 
 REPOS = {
-    'miri': 'https://github.com/rust-lang/miri',
-    'rls': 'https://github.com/rust-lang/rls',
-    'rustfmt': 'https://github.com/rust-lang/rustfmt',
     'book': 'https://github.com/rust-lang/book',
     'nomicon': 'https://github.com/rust-lang/nomicon',
     'reference': 'https://github.com/rust-lang/reference',
@@ -245,16 +236,10 @@ def update_latest(
                     message += '{} (cc {}).\n' \
                         .format(title, maintainers)
                     # See if we need to create an issue.
-                    if tool == 'miri':
-                        # Create issue if tests used to pass before. Don't open a *second*
-                        # issue when we regress from "test-fail" to "build-fail".
-                        if old == 'test-pass':
-                            create_issue_for_status = new
-                    else:
-                        # Create issue if things no longer build.
-                        # (No issue for mere test failures to avoid spurious issues.)
-                        if new == 'build-fail':
-                            create_issue_for_status = new
+                    # Create issue if things no longer build.
+                    # (No issue for mere test failures to avoid spurious issues.)
+                    if new == 'build-fail':
+                        create_issue_for_status = new
 
             if create_issue_for_status is not None:
                 try:

@@ -21,6 +21,7 @@ mod os_impl {
 
 #[cfg(unix)]
 mod os_impl {
+    use crate::walk::{filter_dirs, walk_no_read};
     use std::fs;
     use std::os::unix::prelude::*;
     use std::path::Path;
@@ -96,20 +97,43 @@ mod os_impl {
 
     #[cfg(unix)]
     pub fn check(path: &Path, bad: &mut bool) {
-        crate::walk_no_read(
+        use std::ffi::OsStr;
+
+        const ALLOWED: &[&str] = &["configure", "x"];
+
+        walk_no_read(
             path,
-            &mut |path| crate::filter_dirs(path) || path.ends_with("src/etc"),
+            &mut |path| {
+                filter_dirs(path)
+                    || path.ends_with("src/etc")
+                    // This is a list of directories that we almost certainly
+                    // don't need to walk. A future PR will likely want to
+                    // remove these in favor of crate::walk_no_read using git
+                    // ls-files to discover the paths we should check, which
+                    // would naturally ignore all of these directories. It's
+                    // also likely faster than walking the directory tree
+                    // directly (since git is just reading from a couple files
+                    // to produce the results).
+                    || path.ends_with("target")
+                    || path.ends_with("build")
+                    || path.ends_with(".git")
+            },
             &mut |entry| {
                 let file = entry.path();
-                let filename = file.file_name().unwrap().to_string_lossy();
-                let extensions = [".py", ".sh"];
-                if extensions.iter().any(|e| filename.ends_with(e)) {
+                let extension = file.extension();
+                let scripts = ["py", "sh", "ps1"];
+                if scripts.into_iter().any(|e| extension == Some(OsStr::new(e))) {
                     return;
                 }
 
                 if t!(is_executable(&file), file) {
                     let rel_path = file.strip_prefix(path).unwrap();
                     let git_friendly_path = rel_path.to_str().unwrap().replace("\\", "/");
+
+                    if ALLOWED.contains(&git_friendly_path.as_str()) {
+                        return;
+                    }
+
                     let output = Command::new("git")
                         .arg("ls-files")
                         .arg(&git_friendly_path)
@@ -117,7 +141,7 @@ mod os_impl {
                         .stderr(Stdio::null())
                         .output()
                         .unwrap_or_else(|e| {
-                            panic!("could not run git ls-files: {}", e);
+                            panic!("could not run git ls-files: {e}");
                         });
                     let path_bytes = rel_path.as_os_str().as_bytes();
                     if output.status.success() && output.stdout.starts_with(path_bytes) {

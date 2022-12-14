@@ -12,14 +12,15 @@ fn foo2<'a:'b,'b>(x: &'b mut (dyn Dummy+'a)) -> &'b mut (dyn Dummy+'b) {
 
 fn foo3<'a,'b>(x: &'a mut dyn Dummy) -> &'b mut dyn Dummy {
     // Without knowing 'a:'b, we can't coerce
-    x //~ ERROR lifetime bound not satisfied
-     //~^ ERROR cannot infer an appropriate lifetime
+    x
+    //~^ ERROR lifetime may not live long enough
 }
 
 struct Wrapper<T>(T);
 fn foo4<'a:'b,'b>(x: Wrapper<&'a mut dyn Dummy>) -> Wrapper<&'b mut dyn Dummy> {
     // We can't coerce because it is packed in `Wrapper`
-    x //~ ERROR mismatched types
+    x
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

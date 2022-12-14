@@ -15,7 +15,8 @@ fn it_works() {
 ```
 
 Tests "pass" if they return without an error. They "fail" if they [panic], or
-return a [`Result`] with an error.
+return a type such as [`Result`] that implements the [`Termination`] trait
+with a non-zero value.
 
 By passing the [`--test` option] to `rustc`, the compiler will build the crate
 in a special mode to construct an executable that will run the tests in the
@@ -267,7 +268,7 @@ Controls the format of the output. Valid options:
 
 Writes the results of the tests to the given file.
 
-#### `--report-time` _FORMAT_
+#### `--report-time`
 
 ⚠️ 🚧 This option is [unstable](#unstable-options), and requires the `-Z
 unstable-options` flag. See [tracking issue
@@ -304,6 +305,7 @@ Experimental support for using custom test harnesses is available on the
 [`libtest`]: ../../test/index.html
 [`main` function]: ../../reference/crates-and-source-files.html#main-functions
 [`Result`]: ../../std/result/index.html
+[`Termination`]: ../../std/process/trait.Termination.html
 [`test` cfg option]: ../../reference/conditional-compilation.html#test
 [attribute-ignore]: ../../reference/attributes/testing.html#the-ignore-attribute
 [attribute-should_panic]: ../../reference/attributes/testing.html#the-should_panic-attribute

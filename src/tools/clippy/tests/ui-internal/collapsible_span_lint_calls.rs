@@ -1,5 +1,6 @@
 // run-rustfix
 #![deny(clippy::internal)]
+#![allow(clippy::missing_clippy_version_attribute)]
 #![feature(rustc_private)]
 
 extern crate clippy_utils;
@@ -54,7 +55,12 @@ impl EarlyLintPass for Pass {
             if predicate {
                 db.note(note_msg);
             }
-        })
+        });
+
+        // Issue #8798
+        span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
+            db.help(help_msg).help(help_msg);
+        });
     }
 }
 

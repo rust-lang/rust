@@ -1,11 +1,11 @@
-use rustc_ast::{ast, attr};
+use rustc_ast::ast;
+use rustc_ast::attr;
 use rustc_errors::Applicability;
 use rustc_session::Session;
 use rustc_span::sym;
 use std::str::FromStr;
 
 /// Deprecation status of attributes known by Clippy.
-#[allow(dead_code)]
 pub enum DeprecationStatus {
     /// Attribute is deprecated
     Deprecated,
@@ -14,15 +14,15 @@ pub enum DeprecationStatus {
     None,
 }
 
+#[rustfmt::skip]
 pub const BUILTIN_ATTRIBUTES: &[(&str, DeprecationStatus)] = &[
-    ("author", DeprecationStatus::None),
-    ("cognitive_complexity", DeprecationStatus::None),
-    (
-        "cyclomatic_complexity",
-        DeprecationStatus::Replaced("cognitive_complexity"),
-    ),
-    ("dump", DeprecationStatus::None),
-    ("msrv", DeprecationStatus::None),
+    ("author",                DeprecationStatus::None),
+    ("version",               DeprecationStatus::None),
+    ("cognitive_complexity",  DeprecationStatus::None),
+    ("cyclomatic_complexity", DeprecationStatus::Replaced("cognitive_complexity")),
+    ("dump",                  DeprecationStatus::None),
+    ("msrv",                  DeprecationStatus::None),
+    ("has_significant_drop",  DeprecationStatus::None),
 ];
 
 pub struct LimitStack {
@@ -59,8 +59,8 @@ pub fn get_attr<'a>(
     name: &'static str,
 ) -> impl Iterator<Item = &'a ast::Attribute> {
     attrs.iter().filter(move |attr| {
-        let attr = if let ast::AttrKind::Normal(ref attr, _) = attr.kind {
-            attr
+        let attr = if let ast::AttrKind::Normal(ref normal) = attr.kind {
+            &normal.item
         } else {
             return false;
         };
@@ -92,7 +92,7 @@ pub fn get_attr<'a>(
                                 diag.span_suggestion(
                                     attr_segments[1].ident.span,
                                     "consider using",
-                                    new_name.to_string(),
+                                    new_name,
                                     Applicability::MachineApplicable,
                                 );
                                 diag.emit();
@@ -114,7 +114,7 @@ pub fn get_attr<'a>(
 fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'static str, mut f: F) {
     for attr in get_attr(sess, attrs, name) {
         if let Some(ref value) = attr.value_str() {
-            if let Ok(value) = FromStr::from_str(&value.as_str()) {
+            if let Ok(value) = FromStr::from_str(value.as_str()) {
                 f(value);
             } else {
                 sess.span_err(attr.span, "not a number");
@@ -125,19 +125,19 @@ fn parse_attrs<F: FnMut(u64)>(sess: &Session, attrs: &[ast::Attribute], name: &'
     }
 }
 
-pub fn get_unique_inner_attr(sess: &Session, attrs: &[ast::Attribute], name: &'static str) -> Option<ast::Attribute> {
-    let mut unique_attr = None;
+pub fn get_unique_attr<'a>(
+    sess: &'a Session,
+    attrs: &'a [ast::Attribute],
+    name: &'static str,
+) -> Option<&'a ast::Attribute> {
+    let mut unique_attr: Option<&ast::Attribute> = None;
     for attr in get_attr(sess, attrs, name) {
-        match attr.style {
-            ast::AttrStyle::Inner if unique_attr.is_none() => unique_attr = Some(attr.clone()),
-            ast::AttrStyle::Inner => {
-                sess.struct_span_err(attr.span, &format!("`{}` is defined multiple times", name))
-                    .span_note(unique_attr.as_ref().unwrap().span, "first definition found here")
-                    .emit();
-            },
-            ast::AttrStyle::Outer => {
-                sess.span_err(attr.span, &format!("`{}` cannot be an outer attribute", name));
-            },
+        if let Some(duplicate) = unique_attr {
+            sess.struct_span_err(attr.span, &format!("`{name}` is defined multiple times"))
+                .span_note(duplicate.span, "first definition found here")
+                .emit();
+        } else {
+            unique_attr = Some(attr);
         }
     }
     unique_attr
@@ -156,9 +156,4 @@ pub fn is_doc_hidden(attrs: &[ast::Attribute]) -> bool {
         .filter(|attr| attr.has_name(sym::doc))
         .filter_map(ast::Attribute::meta_item_list)
         .any(|l| attr::list_contains_name(&l, sym::hidden))
-}
-
-/// Return true if the attributes contain `#[unstable]`
-pub fn is_unstable(attrs: &[ast::Attribute]) -> bool {
-    attrs.iter().any(|attr| attr.has_name(sym::unstable))
 }

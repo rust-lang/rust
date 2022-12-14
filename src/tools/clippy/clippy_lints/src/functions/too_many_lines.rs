@@ -11,9 +11,9 @@ use super::TOO_MANY_LINES;
 
 pub(super) fn check_fn(
     cx: &LateContext<'_>,
-    kind: FnKind<'tcx>,
+    kind: FnKind<'_>,
     span: Span,
-    body: &'tcx hir::Body<'_>,
+    body: &hir::Body<'_>,
     too_many_lines_threshold: u64,
 ) {
     // Closures must be contained in a parent body, which will be checked for `too_many_lines`.
@@ -22,9 +22,8 @@ pub(super) fn check_fn(
         return;
     }
 
-    let code_snippet = match snippet_opt(cx, body.value.span) {
-        Some(s) => s,
-        _ => return,
+    let Some(code_snippet) = snippet_opt(cx, body.value.span) else {
+        return
     };
     let mut line_count: u64 = 0;
     let mut in_comment = false;
@@ -56,8 +55,8 @@ pub(super) fn check_fn(
                     continue;
                 }
             } else {
-                let multi_idx = line.find("/*").unwrap_or_else(|| line.len());
-                let single_idx = line.find("//").unwrap_or_else(|| line.len());
+                let multi_idx = line.find("/*").unwrap_or(line.len());
+                let single_idx = line.find("//").unwrap_or(line.len());
                 code_in_line |= multi_idx > 0 && single_idx > 0;
                 // Implies multi_idx is below line.len()
                 if multi_idx < single_idx {
@@ -78,10 +77,7 @@ pub(super) fn check_fn(
             cx,
             TOO_MANY_LINES,
             span,
-            &format!(
-                "this function has too many lines ({}/{})",
-                line_count, too_many_lines_threshold
-            ),
+            &format!("this function has too many lines ({line_count}/{too_many_lines_threshold})"),
         );
     }
 }

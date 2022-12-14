@@ -25,7 +25,7 @@ fn close_res(i: closable) -> close_res {
     }
 }
 
-enum option<T> { none, some(T), }
+enum option<T> { none, some(#[allow(unused_tuple_struct_fields)] T), }
 
 fn sink(_res: option<close_res>) { }
 

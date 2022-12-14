@@ -1,68 +1,52 @@
 use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
-
-use rustc_ast::ptr::P;
-use rustc_ast::walk_list;
-use rustc_ast::EnumDef;
-use rustc_ast::VariantData;
-use rustc_ast::{Expr, MetaItem};
+use rustc_ast as ast;
+use rustc_ast::{walk_list, EnumDef, VariantData};
 use rustc_errors::Applicability;
 use rustc_expand::base::{Annotatable, DummyResult, ExtCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::symbol::{kw, sym};
 use rustc_span::Span;
 use smallvec::SmallVec;
+use thin_vec::thin_vec;
 
 pub fn expand_deriving_default(
     cx: &mut ExtCtxt<'_>,
     span: Span,
-    mitem: &MetaItem,
+    mitem: &ast::MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
         path: Path::new(vec![kw::Default, sym::Default]),
+        skip_path_as_bound: has_a_default_variant(item),
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,
             generics: Bounds::empty(),
-            explicit_self: None,
-            args: Vec::new(),
+            explicit_self: false,
+            nonself_args: Vec::new(),
             ret_ty: Self_,
             attributes: attrs,
-            is_unsafe: false,
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|cx, trait_span, substr| {
                 match substr.fields {
                     StaticStruct(_, fields) => {
                         default_struct_substructure(cx, trait_span, substr, fields)
                     }
-                    StaticEnum(enum_def, _) => {
-                        if !cx.sess.features_untracked().derive_default_enum {
-                            rustc_session::parse::feature_err(
-                                cx.parse_sess(),
-                                sym::derive_default_enum,
-                                span,
-                                "deriving `Default` on enums is experimental",
-                            )
-                            .emit();
-                        }
-                        default_enum_substructure(cx, trait_span, enum_def)
-                    }
+                    StaticEnum(enum_def, _) => default_enum_substructure(cx, trait_span, enum_def),
                     _ => cx.span_bug(trait_span, "method in `derive(Default)`"),
                 }
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }
@@ -72,53 +56,45 @@ fn default_struct_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     summary: &StaticFields,
-) -> P<Expr> {
+) -> BlockOrExpr {
     // Note that `kw::Default` is "default" and `sym::Default` is "Default"!
     let default_ident = cx.std_path(&[kw::Default, sym::Default, kw::Default]);
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
-    match summary {
-        Unnamed(ref fields, is_tuple) => {
-            if !is_tuple {
-                cx.expr_ident(trait_span, substr.type_ident)
-            } else {
-                let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
-                cx.expr_call_ident(trait_span, substr.type_ident, exprs)
-            }
+    let expr = match summary {
+        Unnamed(_, false) => cx.expr_ident(trait_span, substr.type_ident),
+        Unnamed(fields, true) => {
+            let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
+            cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
-        Named(ref fields) => {
+        Named(fields) => {
             let default_fields = fields
                 .iter()
                 .map(|&(ident, span)| cx.field_imm(span, ident, default_call(span)))
                 .collect();
             cx.expr_struct_ident(trait_span, substr.type_ident, default_fields)
         }
-    }
+    };
+    BlockOrExpr::new_expr(expr)
 }
 
 fn default_enum_substructure(
     cx: &mut ExtCtxt<'_>,
     trait_span: Span,
     enum_def: &EnumDef,
-) -> P<Expr> {
-    let default_variant = match extract_default_variant(cx, enum_def, trait_span) {
-        Ok(value) => value,
-        Err(()) => return DummyResult::raw_expr(trait_span, true),
+) -> BlockOrExpr {
+    let expr = if let Ok(default_variant) = extract_default_variant(cx, enum_def, trait_span)
+        && let Ok(_) = validate_default_attribute(cx, default_variant)
+    {
+        // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
+        cx.expr_path(cx.path(
+            default_variant.span,
+            vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
+        ))
+    } else {
+        DummyResult::raw_expr(trait_span, true)
     };
-
-    // At this point, we know that there is exactly one variant with a `#[default]` attribute. The
-    // attribute hasn't yet been validated.
-
-    if let Err(()) = validate_default_attribute(cx, default_variant) {
-        return DummyResult::raw_expr(trait_span, true);
-    }
-
-    // We now know there is exactly one unit variant with exactly one `#[default]` attribute.
-
-    cx.expr_path(cx.path(
-        default_variant.span,
-        vec![Ident::new(kw::SelfUpper, default_variant.span), default_variant.ident],
-    ))
+    BlockOrExpr::new_expr(expr)
 }
 
 fn extract_default_variant<'a>(
@@ -166,7 +142,7 @@ fn extract_default_variant<'a>(
                 let suggestion = default_variants
                     .iter()
                     .filter_map(|v| {
-                        if v.ident == variant.ident {
+                        if v.span == variant.span {
                             None
                         } else {
                             Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))
@@ -222,9 +198,6 @@ fn validate_default_attribute(
             "this method must only be called with a variant that has a `#[default]` attribute",
         ),
         [first, rest @ ..] => {
-            // FIXME(jhpratt) Do we want to perform this check? It doesn't exist
-            // for `#[inline]`, `#[non_exhaustive]`, and presumably others.
-
             let suggestion_text =
                 if rest.len() == 1 { "try removing this" } else { "try removing these" };
 
@@ -250,7 +223,7 @@ fn validate_default_attribute(
             .span_suggestion_hidden(
                 attr.span,
                 "try using `#[default]`",
-                "#[default]".into(),
+                "#[default]",
                 Applicability::MaybeIncorrect,
             )
             .emit();
@@ -286,4 +259,23 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
             rustc_ast::visit::walk_attribute(self, attr);
         }
     }
+}
+
+fn has_a_default_variant(item: &Annotatable) -> bool {
+    struct HasDefaultAttrOnVariant {
+        found: bool,
+    }
+
+    impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
+        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) {
+            if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
+                self.found = true;
+            }
+            // no need to subrecurse.
+        }
+    }
+
+    let mut visitor = HasDefaultAttrOnVariant { found: false };
+    item.visit_with(&mut visitor);
+    visitor.found
 }

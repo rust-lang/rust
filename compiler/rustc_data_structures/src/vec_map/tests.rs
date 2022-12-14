@@ -14,7 +14,7 @@ fn test_from_iterator() {
     );
     assert_eq!(std::iter::once((42, true)).collect::<VecMap<_, _>>().into_vec(), vec![(42, true)]);
     assert_eq!(
-        vec![(1, true), (2, false)].into_iter().collect::<VecMap<_, _>>().into_vec(),
+        [(1, true), (2, false)].into_iter().collect::<VecMap<_, _>>().into_vec(),
         vec![(1, true), (2, false)]
     );
 }
@@ -41,7 +41,7 @@ fn test_insert() {
 
 #[test]
 fn test_get() {
-    let v = vec![(1, true), (2, false)].into_iter().collect::<VecMap<_, _>>();
+    let v = [(1, true), (2, false)].into_iter().collect::<VecMap<_, _>>();
     assert_eq!(v.get(&1), Some(&true));
     assert_eq!(v.get(&2), Some(&false));
     assert_eq!(v.get(&3), None);

@@ -1,5 +1,5 @@
 error: `--x` could be misinterpreted as pre-decrement by C programmers, is usually a no-op
-  --> $DIR/double_neg.rs:6:5
+  --> $DIR/double_neg.rs:7:5
    |
 LL |     --x;
    |     ^^^

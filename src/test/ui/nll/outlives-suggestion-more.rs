@@ -1,7 +1,5 @@
 // Test the more elaborate outlives suggestions.
 
-#![feature(nll)]
-
 // Should suggest: 'a: 'c, 'b: 'd
 fn foo1<'a, 'b, 'c, 'd>(x: &'a usize, y: &'b usize) -> (&'c usize, &'d usize) {
     (x, y) //~ERROR lifetime may not live long enough

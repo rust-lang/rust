@@ -6,7 +6,7 @@ fn main() {
     let y = Some(X::A);
 
     match (x, y) {
-        //~^ ERROR non-exhaustive patterns: `(A, Some(A))`, `(A, Some(B))`, `(B, Some(B))` and 2
+        //~^ ERROR non-exhaustive patterns: `(X::A, Some(X::A))`, `(X::A, Some(X::B))`, `(X::B, Some(X::B))` and 2
         //~| more not covered
         (_, None) => false,
         (v, Some(w)) if v == w => true,

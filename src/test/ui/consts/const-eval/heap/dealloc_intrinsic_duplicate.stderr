@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/dealloc_intrinsic_duplicate.rs:9:5
+   |
+LL |     intrinsics::const_deallocate(ptr, 4, 4);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ pointer to alloc2 was dereferenced after this allocation got freed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

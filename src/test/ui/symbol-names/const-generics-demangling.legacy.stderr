@@ -1,0 +1,74 @@
+error: symbol-name(_ZN1c21Unsigned$LT$11_u8$GT$1f17h[HASH]E)
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(c::Unsigned<11_u8>::f::h[HASH])
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(c::Unsigned<11_u8>::f)
+  --> $DIR/const-generics-demangling.rs:13:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1c22Signed$LT$.152_i16$GT$1f17h[HASH]E)
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(c::Signed<.152_i16>::f::h[HASH])
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(c::Signed<.152_i16>::f)
+  --> $DIR/const-generics-demangling.rs:26:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1c13Bool$LT$_$GT$1f17h[HASH]E)
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(c::Bool<_>::f::h[HASH])
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(c::Bool<_>::f)
+  --> $DIR/const-generics-demangling.rs:39:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: symbol-name(_ZN1c13Char$LT$_$GT$1f17h[HASH]E)
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling(c::Char<_>::f::h[HASH])
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: demangling-alt(c::Char<_>::f)
+  --> $DIR/const-generics-demangling.rs:52:5
+   |
+LL |     #[rustc_symbol_name]
+   |     ^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to 12 previous errors
+

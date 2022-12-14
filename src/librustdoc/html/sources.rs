@@ -6,20 +6,22 @@ use crate::html::highlight;
 use crate::html::layout;
 use crate::html::render::{Context, BASIC_KEYWORDS};
 use crate::visit::DocVisitor;
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
-use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
+
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
+use std::rc::Rc;
 
-crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
+pub(crate) fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error> {
     info!("emitting source files");
 
-    let dst = cx.dst.join("src").join(&*krate.name(cx.tcx()).as_str());
+    let dst = cx.dst.join("src").join(krate.name(cx.tcx()).as_str());
     cx.shared.ensure_dir(&dst)?;
 
     let mut collector = SourceCollector { dst, cx, emitted_local_sources: FxHashSet::default() };
@@ -27,7 +29,7 @@ crate fn render(cx: &mut Context<'_>, krate: &clean::Crate) -> Result<(), Error>
     Ok(())
 }
 
-crate fn collect_local_sources<'tcx>(
+pub(crate) fn collect_local_sources<'tcx>(
     tcx: TyCtxt<'tcx>,
     src_root: &Path,
     krate: &clean::Crate,
@@ -51,6 +53,7 @@ impl LocalSourcesCollector<'_, '_> {
     fn add_local_source(&mut self, item: &clean::Item) {
         let sess = self.tcx.sess;
         let span = item.span(self.tcx);
+        let Some(span) = span else { return };
         // skip all synthetic "files"
         if !is_real_and_local(span, sess) {
             return;
@@ -107,6 +110,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
 
         let tcx = self.cx.tcx();
         let span = item.span(tcx);
+        let Some(span) = span else { return };
         let sess = tcx.sess;
 
         // If we're not rendering sources, there's nothing to do.
@@ -142,7 +146,7 @@ impl DocVisitor for SourceCollector<'_, '_> {
     }
 }
 
-impl SourceCollector<'_, 'tcx> {
+impl SourceCollector<'_, '_> {
     /// Renders the given filename into its corresponding HTML source file.
     fn emit_source(
         &mut self,
@@ -174,15 +178,16 @@ impl SourceCollector<'_, 'tcx> {
         // Remove the utf-8 BOM if any
         let contents = contents.strip_prefix('\u{feff}').unwrap_or(&contents);
 
+        let shared = Rc::clone(&self.cx.shared);
         // Create the intermediate directories
         let mut cur = self.dst.clone();
         let mut root_path = String::from("../../");
-        clean_path(&self.cx.shared.src_root, &p, false, |component| {
+        clean_path(&shared.src_root, &p, false, |component| {
             cur.push(component);
             root_path.push_str("../");
         });
 
-        self.cx.shared.ensure_dir(&cur)?;
+        shared.ensure_dir(&cur)?;
 
         let src_fname = p.file_name().expect("source has no filename").to_os_string();
         let mut fname = src_fname.clone();
@@ -195,33 +200,30 @@ impl SourceCollector<'_, 'tcx> {
             title: &title,
             css_class: "source",
             root_path: &root_path,
-            static_root_path: self.cx.shared.static_root_path.as_deref(),
+            static_root_path: shared.static_root_path.as_deref(),
             description: &desc,
             keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.cx.shared.resource_suffix,
-            extra_scripts: &[&format!("source-files{}", self.cx.shared.resource_suffix)],
-            static_extra_scripts: &[&format!("source-script{}", self.cx.shared.resource_suffix)],
+            resource_suffix: &shared.resource_suffix,
         };
         let v = layout::render(
-            &self.cx.shared.templates,
-            &self.cx.shared.layout,
+            &shared.layout,
             &page,
             "",
             |buf: &mut _| {
+                let cx = &mut self.cx;
                 print_src(
                     buf,
                     contents,
-                    self.cx.shared.edition(),
                     file_span,
-                    self.cx,
+                    cx,
                     &root_path,
-                    None,
+                    highlight::DecorationInfo::default(),
                     SourceContext::Standalone,
                 )
             },
-            &self.cx.shared.style_files,
+            &shared.style_files,
         );
-        self.cx.shared.fs.write(cur, v)?;
+        shared.fs.write(cur, v)?;
         self.emitted_local_sources.insert(p);
         Ok(())
     }
@@ -232,7 +234,7 @@ impl SourceCollector<'_, 'tcx> {
 /// static HTML tree. Each component in the cleaned path will be passed as an
 /// argument to `f`. The very last component of the path (ie the file name) will
 /// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-crate fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+pub(crate) fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
 where
     F: FnMut(&OsStr),
 {
@@ -254,52 +256,55 @@ where
     }
 }
 
-crate enum SourceContext {
+pub(crate) enum SourceContext {
     Standalone,
-    Embedded { offset: usize },
+    Embedded { offset: usize, needs_expansion: bool },
 }
 
 /// Wrapper struct to render the source code of a file. This will do things like
 /// adding line numbers to the left-hand side.
-crate fn print_src(
+pub(crate) fn print_src(
     buf: &mut Buffer,
     s: &str,
-    edition: Edition,
     file_span: rustc_span::Span,
     context: &Context<'_>,
     root_path: &str,
-    decoration_info: Option<highlight::DecorationInfo>,
+    decoration_info: highlight::DecorationInfo,
     source_context: SourceContext,
 ) {
     let lines = s.lines().count();
     let mut line_numbers = Buffer::empty_from(buf);
-    let mut cols = 0;
-    let mut tmp = lines;
-    while tmp > 0 {
-        cols += 1;
-        tmp /= 10;
-    }
-    line_numbers.write_str("<pre class=\"line-numbers\">");
-    for i in 1..=lines {
-        match source_context {
-            SourceContext::Standalone => {
-                writeln!(line_numbers, "<span id=\"{0}\">{0:1$}</span>", i, cols)
+    let extra;
+    line_numbers.write_str("<pre class=\"src-line-numbers\">");
+    let current_href = context
+        .href_from_span(clean::Span::new(file_span), false)
+        .expect("only local crates should have sources emitted");
+    match source_context {
+        SourceContext::Standalone => {
+            extra = None;
+            for line in 1..=lines {
+                writeln!(line_numbers, "<a href=\"#{line}\" id=\"{line}\">{line}</a>")
             }
-            SourceContext::Embedded { offset } => {
-                writeln!(line_numbers, "<span>{0:1$}</span>", i + offset, cols)
+        }
+        SourceContext::Embedded { offset, needs_expansion } => {
+            extra = if needs_expansion {
+                Some(r#"<button class="expand">&varr;</button>"#)
+            } else {
+                None
+            };
+            for line_number in 1..=lines {
+                let line = line_number + offset;
+                writeln!(line_numbers, "<span>{line}</span>")
             }
         }
     }
     line_numbers.write_str("</pre>");
-    highlight::render_with_highlighting(
+    highlight::render_source_with_highlighting(
         s,
         buf,
-        None,
-        None,
-        None,
-        edition,
-        Some(line_numbers),
-        Some(highlight::ContextInfo { context, file_span, root_path }),
+        line_numbers,
+        highlight::HrefContext { context, file_span, root_path, current_href },
         decoration_info,
+        extra,
     );
 }

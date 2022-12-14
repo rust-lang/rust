@@ -1,8 +1,6 @@
 // build-fail
 // compile-flags: -Zunleash-the-miri-inside-of-you
 
-#![allow(const_err)]
-
 // a test demonstrating why we do need to run static const qualification on associated constants
 // instead of just checking the final constant
 
@@ -28,5 +26,5 @@ fn main() {
     // this is fine, but would have been forbidden by the static checks on `F`
     let x = <() as Bar<u32, ()>>::F;
     // this test only causes errors due to the line below, so post-monomorphization
-    let y = <String as Bar<Vec<u32>, String>>::F; //~ ERROR erroneous constant
+    let y = <String as Bar<Vec<u32>, String>>::F; //~ constant
 }

@@ -7,8 +7,7 @@ pub struct Deaggregator;
 
 impl<'tcx> MirPass<'tcx> for Deaggregator {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let (basic_blocks, local_decls) = body.basic_blocks_and_local_decls_mut();
-        let local_decls = &*local_decls;
+        let basic_blocks = body.basic_blocks.as_mut_preserves_cfg();
         for bb in basic_blocks {
             bb.expand_statements(|stmt| {
                 // FIXME(eddyb) don't match twice on `stmt.kind` (post-NLL).
@@ -26,17 +25,14 @@ impl<'tcx> MirPass<'tcx> for Deaggregator {
 
                 let stmt = stmt.replace_nop();
                 let source_info = stmt.source_info;
-                let (lhs, kind, operands) = match stmt.kind {
-                    StatementKind::Assign(box (lhs, Rvalue::Aggregate(kind, operands))) => {
-                        (lhs, kind, operands)
-                    }
-                    _ => bug!(),
+                let StatementKind::Assign(box (lhs, Rvalue::Aggregate(kind, operands))) = stmt.kind else {
+                    bug!();
                 };
 
                 Some(expand_aggregate(
                     lhs,
                     operands.into_iter().map(|op| {
-                        let ty = op.ty(local_decls, tcx);
+                        let ty = op.ty(&body.local_decls, tcx);
                         (op, ty)
                     }),
                     *kind,

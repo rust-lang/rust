@@ -1,0 +1,52 @@
+error: unknown start of token: \u{1fa90}
+  --> $DIR/lex-emoji-identifiers.rs:4:15
+   |
+LL |     let planet🪐 = "basic emoji";
+   |               ^^
+
+error: unknown start of token: \u{1f6dc}
+  --> $DIR/lex-emoji-identifiers.rs:6:17
+   |
+LL |     let wireless🛜 = "basic emoji";
+   |                 ^^
+
+error: unknown start of token: \u{20e3}
+  --> $DIR/lex-emoji-identifiers.rs:8:14
+   |
+LL |     let key1️⃣ = "keycap sequence";
+   |             ^
+
+error: identifiers cannot contain emoji: `arrow↔️`
+  --> $DIR/lex-emoji-identifiers.rs:2:9
+   |
+LL |     let arrow↔️ = "basic emoji";
+   |         ^^^^^^
+
+error: identifiers cannot contain emoji: `flag🇺🇳`
+  --> $DIR/lex-emoji-identifiers.rs:10:9
+   |
+LL |     let flag🇺🇳 = "flag sequence";
+   |         ^^^^^^
+
+error: identifiers cannot contain emoji: `wales🏴`
+  --> $DIR/lex-emoji-identifiers.rs:11:9
+   |
+LL |     let wales🏴 = "tag sequence";
+   |         ^^^^^^^
+
+error: identifiers cannot contain emoji: `folded🙏🏿`
+  --> $DIR/lex-emoji-identifiers.rs:12:9
+   |
+LL |     let folded🙏🏿 = "modifier sequence";
+   |         ^^^^^^^^^^
+
+warning: identifier contains uncommon Unicode codepoints
+  --> $DIR/lex-emoji-identifiers.rs:8:9
+   |
+LL |     let key1️⃣ = "keycap sequence";
+   |         ^^^^
+   |
+   = note: `#[warn(uncommon_codepoints)]` on by default
+
+error: aborting due to 7 previous errors; 1 warning emitted
+

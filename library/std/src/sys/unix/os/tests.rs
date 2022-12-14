@@ -1,14 +1,12 @@
-use super::*;
-
 #[test]
-#[cfg(not(target_os = "vxworks"))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn test_glibc_version() {
     // This mostly just tests that the weak linkage doesn't panic wildly...
-    glibc_version();
+    super::glibc_version();
 }
 
 #[test]
-#[cfg(not(target_os = "vxworks"))]
+#[cfg(all(target_os = "linux", target_env = "gnu"))]
 fn test_parse_glibc_version() {
     let cases = [
         ("0.0", Some((0, 0))),
@@ -20,6 +18,6 @@ fn test_parse_glibc_version() {
         ("foo.1", None),
     ];
     for &(version_str, parsed) in cases.iter() {
-        assert_eq!(parsed, parse_glibc_version(version_str));
+        assert_eq!(parsed, super::parse_glibc_version(version_str));
     }
 }

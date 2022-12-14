@@ -1,6 +1,5 @@
 // run-pass
 #![feature(const_discriminant)]
-#![feature(bench_black_box)]
 #![allow(dead_code)]
 
 use std::mem::{discriminant, Discriminant};
@@ -24,6 +23,13 @@ enum SingleVariant {
 }
 
 const TEST_V: Discriminant<SingleVariant> = discriminant(&SingleVariant::V);
+
+pub const TEST_VOID: () = {
+    // This is UB, but CTFE does not check validity so it does not detect this.
+    // This is a regression test for https://github.com/rust-lang/rust/issues/89765.
+    unsafe { std::mem::discriminant(&*(&() as *const () as *const Void)); };
+};
+
 
 fn main() {
     assert_eq!(TEST_A, TEST_A_OTHER);

@@ -39,6 +39,7 @@ macro_rules! nonzero_integers {
             #[repr(transparent)]
             #[rustc_layout_scalar_valid_range_start(1)]
             #[rustc_nonnull_optimization_guaranteed]
+            #[rustc_diagnostic_item = stringify!($Ty)]
             pub struct $Ty($Int);
 
             impl $Ty {
@@ -54,7 +55,13 @@ macro_rules! nonzero_integers {
                 #[inline]
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
-                    unsafe { Self(n) }
+                    unsafe {
+                        core::intrinsics::assert_unsafe_precondition!(
+                            concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
+                            (n: $Int) => n != 0
+                        );
+                        Self(n)
+                    }
                 }
 
                 /// Creates a non-zero if the given value is not zero.
@@ -74,7 +81,7 @@ macro_rules! nonzero_integers {
                 /// Returns the value as a primitive type.
                 #[$stability]
                 #[inline]
-                #[rustc_const_stable(feature = "nonzero", since = "1.34.0")]
+                #[rustc_const_stable(feature = "const_nonzero_get", since = "1.34.0")]
                 pub const fn get(self) -> $Int {
                     self.0
                 }
@@ -210,7 +217,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                               without modifying the original"]
                 #[inline]
                 pub const fn leading_zeros(self) -> u32 {
-                    // SAFETY: since `self` can not be zero it is safe to call ctlz_nonzero
+                    // SAFETY: since `self` cannot be zero, it is safe to call `ctlz_nonzero`.
                     unsafe { intrinsics::ctlz_nonzero(self.0 as $Uint) as u32 }
                 }
 
@@ -234,7 +241,7 @@ macro_rules! nonzero_leading_trailing_zeros {
                               without modifying the original"]
                 #[inline]
                 pub const fn trailing_zeros(self) -> u32 {
-                    // SAFETY: since `self` can not be zero it is safe to call cttz_nonzero
+                    // SAFETY: since `self` cannot be zero, it is safe to call `cttz_nonzero`.
                     unsafe { intrinsics::cttz_nonzero(self.0 as $Uint) as u32 }
                 }
 
@@ -302,20 +309,18 @@ nonzero_integers_div! {
 
 // A bunch of methods for unsigned nonzero types only.
 macro_rules! nonzero_unsigned_operations {
-    ( $( $Ty: ident($Int: ty); )+ ) => {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
         $(
             impl $Ty {
-                /// Add an unsigned integer to a non-zero value.
-                /// Check for overflow and return [`None`] on overflow
+                /// Adds an unsigned integer to a non-zero value.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -328,7 +333,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -342,15 +348,13 @@ macro_rules! nonzero_unsigned_operations {
                     }
                 }
 
-                /// Add an unsigned integer to a non-zero value.
+                /// Adds an unsigned integer to a non-zero value.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -363,7 +367,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -373,7 +378,7 @@ macro_rules! nonzero_unsigned_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_add(other)) }
                 }
 
-                /// Add an unsigned integer to a non-zero value,
+                /// Adds an unsigned integer to a non-zero value,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -384,8 +389,8 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -405,16 +410,14 @@ macro_rules! nonzero_unsigned_operations {
                 }
 
                 /// Returns the smallest power of two greater than or equal to n.
-                /// Check for overflow and return [`None`]
+                /// Checks for overflow and returns [`None`]
                 /// if the next power of two is greater than the type’s maximum value.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -429,7 +432,8 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -441,6 +445,54 @@ macro_rules! nonzero_unsigned_operations {
                     } else {
                         None
                     }
+                }
+
+                /// Returns the base 2 logarithm of the number, rounded down.
+                ///
+                /// This is the same operation as
+                #[doc = concat!("[`", stringify!($Int), "::ilog2`],")]
+                /// except that it has no failure cases to worry about
+                /// since this value can never be zero.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().ilog2(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
+                /// ```
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[must_use = "this returns the result of the operation, \
+                              without modifying the original"]
+                #[inline]
+                pub const fn ilog2(self) -> u32 {
+                    Self::BITS - 1 - self.leading_zeros()
+                }
+
+                /// Returns the base 10 logarithm of the number, rounded down.
+                ///
+                /// This is the same operation as
+                #[doc = concat!("[`", stringify!($Int), "::ilog10`],")]
+                /// except that it has no failure cases to worry about
+                /// since this value can never be zero.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().ilog10(), 1);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
+                /// ```
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[must_use = "this returns the result of the operation, \
+                              without modifying the original"]
+                #[inline]
+                pub const fn ilog10(self) -> u32 {
+                    super::int_log10::$Int(self.0)
                 }
             }
         )+
@@ -468,9 +520,7 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -481,7 +531,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -491,16 +542,14 @@ macro_rules! nonzero_signed_operations {
                 }
 
                 /// Checked absolute value.
-                /// Check for overflow and returns [`None`] if
+                /// Checks for overflow and returns [`None`] if
                 #[doc = concat!("`self == ", stringify!($Int), "::MIN`.")]
                 /// The result cannot be zero.
                 ///
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -513,7 +562,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -533,9 +583,7 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -549,7 +597,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -568,9 +617,7 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -589,7 +636,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -604,16 +652,14 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MIN)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                #[doc = concat!("# let max = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MAX)?;")]
                 ///
                 /// assert_eq!(pos, pos.wrapping_abs());
@@ -624,7 +670,8 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -639,7 +686,6 @@ macro_rules! nonzero_signed_operations {
                 /// # Example
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("# use std::num::", stringify!($Uty), ";")]
                 ///
@@ -659,13 +705,168 @@ macro_rules! nonzero_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
                 pub const fn unsigned_abs(self) -> $Uty {
                     // SAFETY: absolute value of nonzero cannot yield zero values.
                     unsafe { $Uty::new_unchecked(self.get().unsigned_abs()) }
+                }
+
+                /// Returns `true` if `self` is negative and `false` if the
+                /// number is positive.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                ///
+                /// assert!(neg_five.is_negative());
+                /// assert!(!pos_five.is_negative());
+                /// # Some(())
+                /// # }
+                /// ```
+                #[must_use]
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn is_negative(self) -> bool {
+                    self.get().is_negative()
+                }
+
+                /// Checked negation. Computes `-self`, returning `None` if `self == i32::MIN`.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.checked_neg(), Some(neg_five));
+                /// assert_eq!(min.checked_neg(), None);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn checked_neg(self) -> Option<$Ty> {
+                    if let Some(result) = self.get().checked_neg() {
+                        // SAFETY: negation of nonzero cannot yield zero values.
+                        return Some(unsafe { $Ty::new_unchecked(result) });
+                    }
+                    None
+                }
+
+                /// Negates self, overflowing if this is equal to the minimum value.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::overflowing_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.overflowing_neg(), (neg_five, false));
+                /// assert_eq!(min.overflowing_neg(), (min, true));
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn overflowing_neg(self) -> ($Ty, bool) {
+                    let (result, overflow) = self.get().overflowing_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    ((unsafe { $Ty::new_unchecked(result) }), overflow)
+                }
+
+                /// Saturating negation. Computes `-self`, returning `MAX` if
+                /// `self == i32::MIN` instead of overflowing.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                #[doc = concat!("let min_plus_one = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN + 1)?;")]
+                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MAX)?;")]
+                ///
+                /// assert_eq!(pos_five.saturating_neg(), neg_five);
+                /// assert_eq!(min.saturating_neg(), max);
+                /// assert_eq!(max.saturating_neg(), min_plus_one);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn saturating_neg(self) -> $Ty {
+                    if let Some(result) = self.checked_neg() {
+                        return result;
+                    }
+                    $Ty::MAX
+                }
+
+                /// Wrapping (modular) negation. Computes `-self`, wrapping around at the boundary
+                /// of the type.
+                ///
+                #[doc = concat!("See [`", stringify!($Int), "::wrapping_neg`]")]
+                /// for documentation on overflow behaviour.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// #![feature(nonzero_negation_ops)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                /// # fn main() { test().unwrap(); }
+                /// # fn test() -> Option<()> {
+                #[doc = concat!("let pos_five = ", stringify!($Ty), "::new(5)?;")]
+                #[doc = concat!("let neg_five = ", stringify!($Ty), "::new(-5)?;")]
+                #[doc = concat!("let min = ", stringify!($Ty), "::new(",
+                                stringify!($Int), "::MIN)?;")]
+                ///
+                /// assert_eq!(pos_five.wrapping_neg(), neg_five);
+                /// assert_eq!(min.wrapping_neg(), min);
+                /// # Some(())
+                /// # }
+                /// ```
+                #[inline]
+                #[unstable(feature = "nonzero_negation_ops", issue = "102443")]
+                pub const fn wrapping_neg(self) -> $Ty {
+                    let result = self.get().wrapping_neg();
+                    // SAFETY: negation of nonzero cannot yield zero values.
+                    unsafe { $Ty::new_unchecked(result) }
                 }
             }
         )+
@@ -686,16 +887,14 @@ macro_rules! nonzero_unsigned_signed_operations {
     ( $( $signedness:ident $Ty: ident($Int: ty); )+ ) => {
         $(
             impl $Ty {
-                /// Multiply two non-zero integers together.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Multiplies two non-zero integers together.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -708,7 +907,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -723,15 +923,13 @@ macro_rules! nonzero_unsigned_signed_operations {
                     }
                 }
 
-                /// Multiply two non-zero integers together.
+                /// Multiplies two non-zero integers together.
                 #[doc = concat!("Return [`", stringify!($Int), "::MAX`] on overflow.")]
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -744,7 +942,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -755,7 +954,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().saturating_mul(other.get())) }
                 }
 
-                /// Multiply two non-zero integers together,
+                /// Multiplies two non-zero integers together,
                 /// assuming overflow cannot occur.
                 /// Overflow is unchecked, and it is undefined behaviour to overflow
                 /// *even if the result would wrap to a non-zero value*.
@@ -775,8 +974,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -795,16 +994,14 @@ macro_rules! nonzero_unsigned_signed_operations {
                     unsafe { $Ty::new_unchecked(self.get().unchecked_mul(other.get())) }
                 }
 
-                /// Raise non-zero value to an integer power.
-                /// Check for overflow and return [`None`] on overflow.
+                /// Raises non-zero value to an integer power.
+                /// Checks for overflow and returns [`None`] on overflow.
                 /// As a consequence, the result cannot wrap to zero.
                 ///
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
@@ -817,7 +1014,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -846,9 +1044,7 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_ops)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
@@ -861,7 +1057,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 /// # Some(())
                 /// # }
                 /// ```
-                #[unstable(feature = "nonzero_ops", issue = "84186")]
+                #[stable(feature = "nonzero_checked_ops", since = "1.64.0")]
+                #[rustc_const_stable(feature = "const_nonzero_checked_ops", since = "1.64.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -915,15 +1112,14 @@ macro_rules! nonzero_unsigned_is_power_of_two {
                 /// Basic usage:
                 ///
                 /// ```
-                /// #![feature(nonzero_is_power_of_two)]
-                ///
                 #[doc = concat!("let eight = std::num::", stringify!($Ty), "::new(8).unwrap();")]
                 /// assert!(eight.is_power_of_two());
                 #[doc = concat!("let ten = std::num::", stringify!($Ty), "::new(10).unwrap();")]
                 /// assert!(!ten.is_power_of_two());
                 /// ```
                 #[must_use]
-                #[unstable(feature = "nonzero_is_power_of_two", issue = "81106")]
+                #[stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
+                #[rustc_const_stable(feature = "nonzero_is_power_of_two", since = "1.59.0")]
                 #[inline]
                 pub const fn is_power_of_two(self) -> bool {
                     // LLVM 11 normalizes `unchecked_sub(x, 1) & x == 0` to the implementation seen here.
@@ -940,3 +1136,141 @@ macro_rules! nonzero_unsigned_is_power_of_two {
 }
 
 nonzero_unsigned_is_power_of_two! { NonZeroU8 NonZeroU16 NonZeroU32 NonZeroU64 NonZeroU128 NonZeroUsize }
+
+macro_rules! nonzero_min_max_unsigned {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
+        $(
+            impl $Ty {
+                /// The smallest value that can be represented by this non-zero
+                /// integer type, 1.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MIN: Self = Self::new(1).unwrap();
+
+                /// The largest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+            }
+        )+
+    }
+}
+
+macro_rules! nonzero_min_max_signed {
+    ( $( $Ty: ident($Int: ident); )+ ) => {
+        $(
+            impl $Ty {
+                /// The smallest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MIN`].")]
+                ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MIN: Self = Self::new(<$Int>::MIN).unwrap();
+
+                /// The largest value that can be represented by this non-zero
+                /// integer type,
+                #[doc = concat!("equal to [`", stringify!($Int), "::MAX`].")]
+                ///
+                /// Note: While most integer types are defined for every whole
+                /// number between `MIN` and `MAX`, signed non-zero integers are
+                /// a special case. They have a "gap" at 0.
+                ///
+                /// # Examples
+                ///
+                /// ```
+                /// #![feature(nonzero_min_max)]
+                ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
+                /// ```
+                #[unstable(feature = "nonzero_min_max", issue = "89065")]
+                pub const MAX: Self = Self::new(<$Int>::MAX).unwrap();
+            }
+        )+
+    }
+}
+
+nonzero_min_max_unsigned! {
+    NonZeroU8(u8);
+    NonZeroU16(u16);
+    NonZeroU32(u32);
+    NonZeroU64(u64);
+    NonZeroU128(u128);
+    NonZeroUsize(usize);
+}
+
+nonzero_min_max_signed! {
+    NonZeroI8(i8);
+    NonZeroI16(i16);
+    NonZeroI32(i32);
+    NonZeroI64(i64);
+    NonZeroI128(i128);
+    NonZeroIsize(isize);
+}
+
+macro_rules! nonzero_bits {
+    ( $( $Ty: ident($Int: ty); )+ ) => {
+        $(
+            impl $Ty {
+                /// The size of this non-zero integer type in bits.
+                ///
+                #[doc = concat!("This value is equal to [`", stringify!($Int), "::BITS`].")]
+                ///
+                /// # Examples
+                ///
+                /// ```
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
+                ///
+                #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
+                /// ```
+                #[stable(feature = "nonzero_bits", since = "CURRENT_RUSTC_VERSION")]
+                pub const BITS: u32 = <$Int>::BITS;
+            }
+        )+
+    }
+}
+
+nonzero_bits! {
+    NonZeroU8(u8);
+    NonZeroI8(i8);
+    NonZeroU16(u16);
+    NonZeroI16(i16);
+    NonZeroU32(u32);
+    NonZeroI32(i32);
+    NonZeroU64(u64);
+    NonZeroI64(i64);
+    NonZeroU128(u128);
+    NonZeroI128(i128);
+    NonZeroUsize(usize);
+    NonZeroIsize(isize);
+}

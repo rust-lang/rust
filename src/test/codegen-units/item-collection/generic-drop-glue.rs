@@ -34,9 +34,9 @@ enum EnumNoDrop<T1, T2> {
 }
 
 
-struct NonGenericNoDrop(i32);
+struct NonGenericNoDrop(#[allow(unused_tuple_struct_fields)] i32);
 
-struct NonGenericWithDrop(i32);
+struct NonGenericWithDrop(#[allow(unused_tuple_struct_fields)] i32);
 //~ MONO_ITEM fn std::ptr::drop_in_place::<NonGenericWithDrop> - shim(Some(NonGenericWithDrop)) @@ generic_drop_glue-cgu.0[Internal]
 
 impl Drop for NonGenericWithDrop {

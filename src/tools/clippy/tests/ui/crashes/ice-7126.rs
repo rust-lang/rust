@@ -1,13 +1,13 @@
 // This test requires a feature gated const fn and will stop working in the future.
 
-#![feature(const_btree_new)]
+#![feature(const_btree_len)]
 
 use std::collections::BTreeMap;
 
-struct Foo(BTreeMap<i32, i32>);
+struct Foo(usize);
 impl Foo {
     fn new() -> Self {
-        Self(BTreeMap::new())
+        Self(BTreeMap::len(&BTreeMap::<u8, u8>::new()))
     }
 }
 

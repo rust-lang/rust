@@ -3,9 +3,9 @@
 use std::env;
 use std::path::PathBuf;
 
-use super::helpers::isatty;
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
+use std::io::{self, IsTerminal};
 
 #[derive(Debug)]
 pub struct TestOpts {
@@ -26,13 +26,17 @@ pub struct TestOpts {
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
+    /// Stop at first failing test.
+    /// May run a few more tests due to threading, but will
+    /// abort as soon as possible.
+    pub fail_fast: bool,
     pub options: Options,
 }
 
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && isatty::stdout_isatty(),
+            ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }
@@ -109,12 +113,10 @@ fn optgroups() -> getopts::Options {
             unstable-options = Allow use of experimental features",
             "unstable-options",
         )
-        .optflagopt(
+        .optflag(
             "",
             "report-time",
-            "Show execution time of each test. Available values:
-            plain   = do not colorize the execution time (default);
-            colored = colorize output according to the `color` parameter value;
+            "Show execution time of each test.
 
             Threshold values for colorized output can be configured via
             `RUST_TEST_TIME_UNIT`, `RUST_TEST_TIME_INTEGRATION` and
@@ -125,7 +127,6 @@ fn optgroups() -> getopts::Options {
             is 0.5 seconds, and the critical time is 2 seconds.
 
             Not available for --format=terse",
-            "plain|colored",
         )
         .optflag(
             "",
@@ -152,7 +153,7 @@ fn optgroups() -> getopts::Options {
 }
 
 fn usage(binary: &str, options: &getopts::Options) {
-    let message = format!("Usage: {} [OPTIONS] [FILTERS...]", binary);
+    let message = format!("Usage: {binary} [OPTIONS] [FILTERS...]");
     println!(
         r#"{usage}
 
@@ -199,6 +200,7 @@ Test Attributes:
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Parse matches.
     let opts = optgroups();
+    let binary = args.get(0).map(|c| &**c).unwrap_or("...");
     let args = args.get(1..).unwrap_or(args);
     let matches = match opts.parse(args) {
         Ok(m) => m,
@@ -208,7 +210,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     // Check if help was requested.
     if matches.opt_present("h") {
         // Show help and do nothing more.
-        usage(&args[0], &opts);
+        usage(binary, &opts);
         return None;
     }
 
@@ -298,6 +300,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
+        fail_fast: false,
     };
 
     Ok(test_opts)
@@ -319,17 +322,12 @@ fn get_time_options(
     allow_unstable: bool,
 ) -> OptPartRes<Option<TestTimeOptions>> {
     let report_time = unstable_optflag!(matches, allow_unstable, "report-time");
-    let colored_opt_str = matches.opt_str("report-time");
-    let mut report_time_colored = report_time && colored_opt_str == Some("colored".into());
     let ensure_test_time = unstable_optflag!(matches, allow_unstable, "ensure-time");
 
     // If `ensure-test-time` option is provided, time output is enforced,
     // so user won't be confused if any of tests will silently fail.
     let options = if report_time || ensure_test_time {
-        if ensure_test_time && !report_time {
-            report_time_colored = true;
-        }
-        Some(TestTimeOptions::new_from_env(ensure_test_time, report_time_colored))
+        Some(TestTimeOptions::new_from_env(ensure_test_time))
     } else {
         None
     };
@@ -368,7 +366,7 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
         shuffle_seed = match env::var("RUST_TEST_SHUFFLE_SEED") {
             Ok(val) => match val.parse::<u64>() {
                 Ok(n) => Some(n),
-                Err(_) => panic!("RUST_TEST_SHUFFLE_SEED is `{}`, should be a number.", val),
+                Err(_) => panic!("RUST_TEST_SHUFFLE_SEED is `{val}`, should be a number."),
             },
             Err(_) => None,
         };

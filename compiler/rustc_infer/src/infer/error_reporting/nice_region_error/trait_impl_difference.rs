@@ -2,71 +2,54 @@
 
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::{SubregionOrigin, Subtype, ValuePairs};
-use crate::traits::ObligationCauseCode::CompareImplMethodObligation;
-use rustc_errors::ErrorReported;
+use crate::infer::Subtype;
+use crate::traits::ObligationCauseCode::CompareImplItemObligation;
+use rustc_errors::{ErrorGuaranteed, MultiSpan};
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::print::RegionHighlightMode;
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable, TypeVisitor};
-
-use rustc_span::{MultiSpan, Span, Symbol};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
+use rustc_span::Span;
 
 use std::ops::ControlFlow;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// Print the error message for lifetime errors when the `impl` doesn't conform to the `trait`.
-    pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorReported> {
+    pub(super) fn try_report_impl_not_conforming_to_trait(&self) -> Option<ErrorGuaranteed> {
         let error = self.error.as_ref()?;
         debug!("try_report_impl_not_conforming_to_trait {:?}", error);
         if let RegionResolutionError::SubSupConflict(
-            _,
-            var_origin,
-            sub_origin,
-            _sub,
-            sup_origin,
-            _sup,
-        ) = error.clone()
+                _,
+                var_origin,
+                sub_origin,
+                _sub,
+                sup_origin,
+                _sup,
+                _,
+            ) = error.clone()
+            && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
+            && let sub_expected_found @ Some((sub_expected, sub_found)) = sub_trace.values.ty()
+            && let sup_expected_found @ Some(_) = sup_trace.values.ty()
+            && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
+            && sup_expected_found == sub_expected_found
         {
-            if let (&Subtype(ref sup_trace), &Subtype(ref sub_trace)) = (&sup_origin, &sub_origin) {
-                if let (
-                    ValuePairs::Types(sub_expected_found),
-                    ValuePairs::Types(sup_expected_found),
-                    CompareImplMethodObligation { trait_item_def_id, .. },
-                ) = (&sub_trace.values, &sup_trace.values, &sub_trace.cause.code)
-                {
-                    if sup_expected_found == sub_expected_found {
-                        self.emit_err(
-                            var_origin.span(),
-                            sub_expected_found.expected,
-                            sub_expected_found.found,
-                            *trait_item_def_id,
-                        );
-                        return Some(ErrorReported);
-                    }
-                }
-            }
-        }
-        if let RegionResolutionError::ConcreteFailure(origin, _, _)
-        | RegionResolutionError::GenericBoundFailure(origin, _, _) = error.clone()
-        {
-            if let SubregionOrigin::CompareImplTypeObligation {
-                span,
-                item_name,
-                impl_item_def_id,
-                trait_item_def_id,
-            } = origin
-            {
-                self.emit_associated_type_err(span, item_name, impl_item_def_id, trait_item_def_id);
-                return Some(ErrorReported);
-            }
+            let guar =
+                self.emit_err(var_origin.span(), sub_expected, sub_found, *trait_item_def_id);
+            return Some(guar);
         }
         None
     }
 
-    fn emit_err(&self, sp: Span, expected: Ty<'tcx>, found: Ty<'tcx>, trait_def_id: DefId) {
+    fn emit_err(
+        &self,
+        sp: Span,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+        trait_def_id: DefId,
+    ) -> ErrorGuaranteed {
         let trait_sp = self.tcx().def_span(trait_def_id);
         let mut err = self
             .tcx()
@@ -76,25 +59,20 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
         struct HighlightBuilder<'tcx> {
-            highlight: RegionHighlightMode,
-            tcx: TyCtxt<'tcx>,
+            highlight: RegionHighlightMode<'tcx>,
             counter: usize,
         }
 
-        impl HighlightBuilder<'tcx> {
-            fn build(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> RegionHighlightMode {
+        impl<'tcx> HighlightBuilder<'tcx> {
+            fn build(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> RegionHighlightMode<'tcx> {
                 let mut builder =
-                    HighlightBuilder { highlight: RegionHighlightMode::default(), counter: 1, tcx };
+                    HighlightBuilder { highlight: RegionHighlightMode::new(tcx), counter: 1 };
                 builder.visit_ty(ty);
                 builder.highlight
             }
         }
 
-        impl<'tcx> ty::fold::TypeVisitor<'tcx> for HighlightBuilder<'tcx> {
-            fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-                Some(self.tcx)
-            }
-
+        impl<'tcx> ty::visit::TypeVisitor<'tcx> for HighlightBuilder<'tcx> {
             fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
                 if !r.has_name() && self.counter <= 3 {
                     self.highlight.highlighting_region(r, self.counter);
@@ -106,12 +84,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         let expected_highlight = HighlightBuilder::build(self.tcx(), expected);
         let expected = self
-            .infcx
+            .cx
             .extract_inference_diagnostics_data(expected.into(), Some(expected_highlight))
             .name;
         let found_highlight = HighlightBuilder::build(self.tcx(), found);
         let found =
-            self.infcx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
+            self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
 
         err.span_label(sp, &format!("found `{}`", found));
         err.span_label(trait_sp, &format!("expected `{}`", expected));
@@ -134,10 +112,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         let mut type_param_span: MultiSpan = visitor.types.to_vec().into();
         for &span in &visitor.types {
-            type_param_span.push_span_label(
-                span,
-                "consider borrowing this type parameter in the trait".to_string(),
-            );
+            type_param_span
+                .push_span_label(span, "consider borrowing this type parameter in the trait");
         }
 
         err.note(&format!("expected `{}`\n   found `{}`", expected, found));
@@ -153,26 +129,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                  argument, the other inputs and its output",
             );
         }
-        err.emit();
-    }
-
-    fn emit_associated_type_err(
-        &self,
-        span: Span,
-        item_name: Symbol,
-        impl_item_def_id: DefId,
-        trait_item_def_id: DefId,
-    ) {
-        let impl_sp = self.tcx().def_span(impl_item_def_id);
-        let trait_sp = self.tcx().def_span(trait_item_def_id);
-        let mut err = self
-            .tcx()
-            .sess
-            .struct_span_err(span, &format!("`impl` associated type signature for `{}` doesn't match `trait` associated type signature", item_name));
-        err.span_label(impl_sp, "found");
-        err.span_label(trait_sp, "expected");
-
-        err.emit();
+        err.emit()
     }
 }
 
@@ -181,11 +138,11 @@ struct TypeParamSpanVisitor<'tcx> {
     types: Vec<Span>,
 }
 
-impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
-    type Map = rustc_middle::hir::map::Map<'tcx>;
+impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
+    type NestedFilter = nested_filter::OnlyBodies;
 
-    fn nested_visit_map(&mut self) -> hir::intravisit::NestedVisitorMap<Self::Map> {
-        hir::intravisit::NestedVisitorMap::OnlyBodies(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
@@ -197,15 +154,12 @@ impl Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
             }
             hir::TyKind::Path(hir::QPath::Resolved(None, path)) => match &path.segments {
                 [segment]
-                    if segment
-                        .res
-                        .map(|res| {
-                            matches!(
-                                res,
-                                Res::SelfTy(_, _) | Res::Def(hir::def::DefKind::TyParam, _)
-                            )
-                        })
-                        .unwrap_or(false) =>
+                    if matches!(
+                        segment.res,
+                        Res::SelfTyParam { .. }
+                            | Res::SelfTyAlias { .. }
+                            | Res::Def(hir::def::DefKind::TyParam, _)
+                    ) =>
                 {
                     self.types.push(path.span);
                 }

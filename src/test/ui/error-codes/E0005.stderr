@@ -4,18 +4,25 @@ error[E0005]: refutable pattern in local binding: `None` not covered
 LL |     let Some(y) = x;
    |         ^^^^^^^ pattern `None` not covered
    |
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     None,
-   |     ---- not covered
-   |
    = note: `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
    = note: for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+note: `Option<i32>` defined here
+  --> $SRC_DIR/core/src/option.rs:LL:COL
+   |
+LL | pub enum Option<T> {
+   | ------------------
+...
+LL |     None,
+   |     ^^^^ not covered
    = note: the matched value is of type `Option<i32>`
 help: you might want to use `if let` to ignore the variant that isn't matched
    |
-LL |     if let Some(y) = x { /* */ }
-   |     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+LL |     let y = if let Some(y) = x { y } else { todo!() };
+   |     ++++++++++                 ++++++++++++++++++++++
+help: alternatively, you might want to use let else to handle the variant that isn't matched
+   |
+LL |     let Some(y) = x else { todo!() };
+   |                     ++++++++++++++++
 
 error: aborting due to previous error
 

@@ -1,4 +1,4 @@
-#![feature(specialization)]
+#![feature(min_specialization)]
 
 // @has default_trait_method/trait.Item.html
 // @has - '//*[@id="tymethod.foo"]' 'fn foo()'

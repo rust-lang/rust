@@ -12,15 +12,13 @@ struct Indirect2<'a> {
     g: Box<dyn FnOnce(Direct<'a>) + 'static>
 }
 
-fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p } //~ ERROR mismatched types
+fn take_direct<'a,'b>(p: Direct<'a>) -> Direct<'b> { p }
+//~^ ERROR lifetime may not live long enough
 
 fn take_indirect1(p: Indirect1) -> Indirect1 { p }
 
-fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p } //~ ERROR mismatched types
-//~| expected struct `Indirect2<'b>`
-//~| found struct `Indirect2<'a>`
-//~| ERROR mismatched types
-//~| expected struct `Indirect2<'b>`
-//~| found struct `Indirect2<'a>`
+fn take_indirect2<'a,'b>(p: Indirect2<'a>) -> Indirect2<'b> { p }
+//~^ ERROR lifetime may not live long enough
+//~| ERROR lifetime may not live long enough
 
 fn main() {}

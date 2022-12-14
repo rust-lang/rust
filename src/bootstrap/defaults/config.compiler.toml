@@ -1,4 +1,8 @@
 # These defaults are meant for contributors to the compiler who do not modify codegen or LLVM
+[build]
+# Contributors working on the compiler will probably expect compiler docs to be generated.
+compiler-docs = true
+
 [rust]
 # This enables `RUSTC_LOG=debug`, avoiding confusing situations
 # where adding `debug!()` appears to do nothing.

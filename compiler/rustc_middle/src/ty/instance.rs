@@ -1,12 +1,14 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::print::{FmtPrinter, Printer};
-use crate::ty::subst::{InternalSubsts, Subst};
-use crate::ty::{self, SubstsRef, Ty, TyCtxt, TypeFoldable};
-use rustc_errors::ErrorReported;
+use crate::ty::{self, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable, TypeVisitable};
+use crate::ty::{EarlyBinder, InternalSubsts, SubstsRef};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::Namespace;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::lang_items::LangItem;
 use rustc_macros::HashStable;
+use rustc_middle::ty::normalize_erasing_regions::NormalizationError;
+use rustc_span::Symbol;
 
 use std::fmt;
 
@@ -16,14 +18,14 @@ use std::fmt;
 /// simply couples a potentially generic `InstanceDef` with some substs, and codegen and const eval
 /// will do all required substitution as they run.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug, TyEncodable, TyDecodable)]
-#[derive(HashStable, Lift)]
+#[derive(HashStable, Lift, TypeFoldable, TypeVisitable)]
 pub struct Instance<'tcx> {
     pub def: InstanceDef<'tcx>,
     pub substs: SubstsRef<'tcx>,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
-#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub enum InstanceDef<'tcx> {
     /// A user-defined callable item.
     ///
@@ -45,7 +47,7 @@ pub enum InstanceDef<'tcx> {
     ///
     /// The generated shim will take `Self` via `*mut Self` - conceptually this is `&owned Self` -
     /// and dereference the argument to call the original function.
-    VtableShim(DefId),
+    VTableShim(DefId),
 
     /// `fn()` pointer where the function itself cannot be turned into a pointer.
     ///
@@ -100,7 +102,7 @@ impl<'tcx> Instance<'tcx> {
     /// lifetimes erased, allowing a `ParamEnv` to be specified for use during normalization.
     pub fn ty(&self, tcx: TyCtxt<'tcx>, param_env: ty::ParamEnv<'tcx>) -> Ty<'tcx> {
         let ty = tcx.type_of(self.def.def_id());
-        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, &ty)
+        tcx.subst_and_normalize_erasing_regions(self.substs, param_env, ty)
     }
 
     /// Finds a crate that contains a monomorphization of this instance that
@@ -141,7 +143,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn def_id(self) -> DefId {
         match self {
             InstanceDef::Item(def) => def.did,
-            InstanceDef::VtableShim(def_id)
+            InstanceDef::VTableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
@@ -157,7 +159,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match self {
             ty::InstanceDef::Item(def) => Some(def.did),
             ty::InstanceDef::DropGlue(def_id, Some(_)) => Some(def_id),
-            InstanceDef::VtableShim(..)
+            InstanceDef::VTableShim(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::FnPtrShim(..)
             | InstanceDef::Virtual(..)
@@ -172,7 +174,7 @@ impl<'tcx> InstanceDef<'tcx> {
     pub fn with_opt_param(self) -> ty::WithOptConstParam<DefId> {
         match self {
             InstanceDef::Item(def) => def,
-            InstanceDef::VtableShim(def_id)
+            InstanceDef::VTableShim(def_id)
             | InstanceDef::ReifyShim(def_id)
             | InstanceDef::FnPtrShim(def_id, _)
             | InstanceDef::Virtual(def_id, _)
@@ -184,8 +186,8 @@ impl<'tcx> InstanceDef<'tcx> {
     }
 
     #[inline]
-    pub fn attrs(&self, tcx: TyCtxt<'tcx>) -> ty::Attributes<'tcx> {
-        tcx.get_attrs(self.def_id())
+    pub fn get_attrs(&self, tcx: TyCtxt<'tcx>, attr: Symbol) -> ty::Attributes<'tcx> {
+        tcx.get_attrs(self.def_id(), attr)
     }
 
     /// Returns `true` if the LLVM version of this instance is unconditionally
@@ -245,7 +247,7 @@ impl<'tcx> InstanceDef<'tcx> {
         match *self {
             InstanceDef::Item(ty::WithOptConstParam { did: def_id, .. })
             | InstanceDef::Virtual(def_id, _) => {
-                tcx.codegen_fn_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
+                tcx.body_codegen_attrs(def_id).flags.contains(CodegenFnAttrFlags::TRACK_CALLER)
             }
             InstanceDef::ClosureOnceShim { call_once: _, track_caller } => track_caller,
             _ => false,
@@ -269,32 +271,50 @@ impl<'tcx> InstanceDef<'tcx> {
             | InstanceDef::Intrinsic(..)
             | InstanceDef::ReifyShim(..)
             | InstanceDef::Virtual(..)
-            | InstanceDef::VtableShim(..) => true,
+            | InstanceDef::VTableShim(..) => true,
         }
+    }
+}
+
+fn fmt_instance(
+    f: &mut fmt::Formatter<'_>,
+    instance: &Instance<'_>,
+    type_length: rustc_session::Limit,
+) -> fmt::Result {
+    ty::tls::with(|tcx| {
+        let substs = tcx.lift(instance.substs).expect("could not lift for printing");
+
+        let s = FmtPrinter::new_with_limit(tcx, Namespace::ValueNS, type_length)
+            .print_def_path(instance.def_id(), substs)?
+            .into_buffer();
+        f.write_str(&s)
+    })?;
+
+    match instance.def {
+        InstanceDef::Item(_) => Ok(()),
+        InstanceDef::VTableShim(_) => write!(f, " - shim(vtable)"),
+        InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
+        InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
+        InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
+        InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
+        InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
+        InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
+        InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
+        InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
+    }
+}
+
+pub struct ShortInstance<'a, 'tcx>(pub &'a Instance<'tcx>, pub usize);
+
+impl<'a, 'tcx> fmt::Display for ShortInstance<'a, 'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt_instance(f, self.0, rustc_session::Limit(self.1))
     }
 }
 
 impl<'tcx> fmt::Display for Instance<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        ty::tls::with(|tcx| {
-            let substs = tcx.lift(self.substs).expect("could not lift for printing");
-            FmtPrinter::new(tcx, &mut *f, Namespace::ValueNS)
-                .print_def_path(self.def_id(), substs)?;
-            Ok(())
-        })?;
-
-        match self.def {
-            InstanceDef::Item(_) => Ok(()),
-            InstanceDef::VtableShim(_) => write!(f, " - shim(vtable)"),
-            InstanceDef::ReifyShim(_) => write!(f, " - shim(reify)"),
-            InstanceDef::Intrinsic(_) => write!(f, " - intrinsic"),
-            InstanceDef::Virtual(_, num) => write!(f, " - virtual#{}", num),
-            InstanceDef::FnPtrShim(_, ty) => write!(f, " - shim({})", ty),
-            InstanceDef::ClosureOnceShim { .. } => write!(f, " - shim"),
-            InstanceDef::DropGlue(_, None) => write!(f, " - shim(None)"),
-            InstanceDef::DropGlue(_, Some(ty)) => write!(f, " - shim(Some({}))", ty),
-            InstanceDef::CloneShim(_, ty) => write!(f, " - shim({})", ty),
-        }
+        ty::tls::with(|tcx| fmt_instance(f, self, tcx.type_length_limit()))
     }
 }
 
@@ -335,7 +355,7 @@ impl<'tcx> Instance<'tcx> {
     /// Returns `Ok(None)` if we cannot resolve `Instance` to a specific instance.
     /// For example, in a context like this,
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// fn foo<T: Debug>(t: T) { ... }
     /// ```
     ///
@@ -347,7 +367,7 @@ impl<'tcx> Instance<'tcx> {
     /// in a monomorphic context (i.e., like during codegen), then it is guaranteed to return
     /// `Ok(Some(instance))`.
     ///
-    /// Returns `Err(ErrorReported)` when the `Instance` resolution process
+    /// Returns `Err(ErrorGuaranteed)` when the `Instance` resolution process
     /// couldn't complete due to errors elsewhere - this is distinct
     /// from `Ok(None)` to avoid misleading diagnostics when an error
     /// has already been/will be emitted, for the original cause
@@ -356,7 +376,7 @@ impl<'tcx> Instance<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         def_id: DefId,
         substs: SubstsRef<'tcx>,
-    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         Instance::resolve_opt_const_arg(
             tcx,
             param_env,
@@ -365,14 +385,28 @@ impl<'tcx> Instance<'tcx> {
         )
     }
 
+    pub fn expect_resolve(
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        def_id: DefId,
+        substs: SubstsRef<'tcx>,
+    ) -> Instance<'tcx> {
+        match ty::Instance::resolve(tcx, param_env, def_id, substs) {
+            Ok(Some(instance)) => instance,
+            _ => bug!(
+                "failed to resolve instance for {}",
+                tcx.def_path_str_with_substs(def_id, substs)
+            ),
+        }
+    }
+
     // This should be kept up to date with `resolve`.
-    #[instrument(level = "debug", skip(tcx))]
     pub fn resolve_opt_const_arg(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         def: ty::WithOptConstParam<DefId>,
         substs: SubstsRef<'tcx>,
-    ) -> Result<Option<Instance<'tcx>>, ErrorReported> {
+    ) -> Result<Option<Instance<'tcx>>, ErrorGuaranteed> {
         // All regions in the result of this query are erased, so it's
         // fine to erase all of the input regions.
 
@@ -430,7 +464,7 @@ impl<'tcx> Instance<'tcx> {
             && tcx.generics_of(def_id).has_self;
         if is_vtable_shim {
             debug!(" => associated item with unsizeable self: Self");
-            Some(Instance { def: InstanceDef::VtableShim(def_id), substs })
+            Some(Instance { def: InstanceDef::VTableShim(def_id), substs })
         } else {
             Instance::resolve(tcx, param_env, def_id, substs).ok().flatten().map(|mut resolved| {
                 match resolved.def {
@@ -456,7 +490,7 @@ impl<'tcx> Instance<'tcx> {
                             && !matches!(
                                 tcx.opt_associated_item(def.did),
                                 Some(ty::AssocItem {
-                                    container: ty::AssocItemContainer::TraitContainer(_),
+                                    container: ty::AssocItemContainer::TraitContainer,
                                     ..
                                 })
                             )
@@ -494,27 +528,27 @@ impl<'tcx> Instance<'tcx> {
         def_id: DefId,
         substs: ty::SubstsRef<'tcx>,
         requested_kind: ty::ClosureKind,
-    ) -> Instance<'tcx> {
+    ) -> Option<Instance<'tcx>> {
         let actual_kind = substs.as_closure().kind();
 
         match needs_fn_once_adapter_shim(actual_kind, requested_kind) {
             Ok(true) => Instance::fn_once_adapter_instance(tcx, def_id, substs),
-            _ => Instance::new(def_id, substs),
+            _ => Some(Instance::new(def_id, substs)),
         }
     }
 
     pub fn resolve_drop_in_place(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> ty::Instance<'tcx> {
         let def_id = tcx.require_lang_item(LangItem::DropInPlace, None);
         let substs = tcx.intern_substs(&[ty.into()]);
-        Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+        Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
     }
 
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn fn_once_adapter_instance(
         tcx: TyCtxt<'tcx>,
         closure_did: DefId,
         substs: ty::SubstsRef<'tcx>,
-    ) -> Instance<'tcx> {
-        debug!("fn_once_adapter_shim({:?}, {:?})", closure_did, substs);
+    ) -> Option<Instance<'tcx>> {
         let fn_once = tcx.require_lang_item(LangItem::FnOnce, None);
         let call_once = tcx
             .associated_items(fn_once)
@@ -529,12 +563,13 @@ impl<'tcx> Instance<'tcx> {
         let self_ty = tcx.mk_closure(closure_did, substs);
 
         let sig = substs.as_closure().sig();
-        let sig = tcx.normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig);
+        let sig =
+            tcx.try_normalize_erasing_late_bound_regions(ty::ParamEnv::reveal_all(), sig).ok()?;
         assert_eq!(sig.inputs().len(), 1);
-        let substs = tcx.mk_substs_trait(self_ty, &[sig.inputs()[0].into()]);
+        let substs = tcx.mk_substs_trait(self_ty, [sig.inputs()[0].into()]);
 
-        debug!("fn_once_adapter_shim: self_ty={:?} sig={:?}", self_ty, sig);
-        Instance { def, substs }
+        debug!(?self_ty, ?sig);
+        Some(Instance { def, substs })
     }
 
     /// Depending on the kind of `InstanceDef`, the MIR body associated with an
@@ -555,7 +590,11 @@ impl<'tcx> Instance<'tcx> {
     where
         T: TypeFoldable<'tcx> + Copy,
     {
-        if let Some(substs) = self.substs_for_mir_body() { v.subst(tcx, substs) } else { *v }
+        if let Some(substs) = self.substs_for_mir_body() {
+            EarlyBinder(*v).subst(tcx, substs)
+        } else {
+            *v
+        }
     }
 
     #[inline(always)]
@@ -575,11 +614,28 @@ impl<'tcx> Instance<'tcx> {
         }
     }
 
+    #[inline(always)]
+    pub fn try_subst_mir_and_normalize_erasing_regions<T>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        param_env: ty::ParamEnv<'tcx>,
+        v: T,
+    ) -> Result<T, NormalizationError<'tcx>>
+    where
+        T: TypeFoldable<'tcx> + Clone,
+    {
+        if let Some(substs) = self.substs_for_mir_body() {
+            tcx.try_subst_and_normalize_erasing_regions(substs, param_env, v)
+        } else {
+            tcx.try_normalize_erasing_regions(param_env, v)
+        }
+    }
+
     /// Returns a new `Instance` where generic parameters in `instance.substs` are replaced by
     /// identity parameters if they are determined to be unused in `instance.def`.
     pub fn polymorphize(self, tcx: TyCtxt<'tcx>) -> Self {
         debug!("polymorphize: running polymorphization analysis");
-        if !tcx.sess.opts.debugging_opts.polymorphize {
+        if !tcx.sess.opts.unstable_opts.polymorphize {
             return self;
         }
 
@@ -610,21 +666,21 @@ fn polymorphize<'tcx>(
     } else {
         None
     };
-    let has_upvars = upvars_ty.map_or(false, |ty| ty.tuple_fields().count() > 0);
+    let has_upvars = upvars_ty.map_or(false, |ty| !ty.tuple_fields().is_empty());
     debug!("polymorphize: upvars_ty={:?} has_upvars={:?}", upvars_ty, has_upvars);
 
     struct PolymorphizationFolder<'tcx> {
         tcx: TyCtxt<'tcx>,
     }
 
-    impl ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
+    impl<'tcx> ty::TypeFolder<'tcx> for PolymorphizationFolder<'tcx> {
         fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
             self.tcx
         }
 
         fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
             debug!("fold_ty: ty={:?}", ty);
-            match ty.kind {
+            match *ty.kind() {
                 ty::Closure(def_id, substs) => {
                     let polymorphized_substs = polymorphize(
                         self.tcx,

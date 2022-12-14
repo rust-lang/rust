@@ -6,7 +6,7 @@ repository = "https://github.com/rust-lang/rust.git"
 description = "The Rust core allocation and collections library"
 autotests = false
 autobenches = false
-edition = "2018"
+edition = "2021"
 
 [dependencies]
 core = { path = "../core" }

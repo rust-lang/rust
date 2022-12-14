@@ -1,5 +1,5 @@
 error[E0618]: expected function, found `()`
-  --> $DIR/suggest-on-bare-closure-call.rs:2:15
+  --> $DIR/suggest-on-bare-closure-call.rs:6:15
    |
 LL |     let _ = ||{}();
    |               ^^--
@@ -11,6 +11,19 @@ help: if you meant to create this closure and immediately call it, surround the 
 LL |     let _ = (||{})();
    |             +    +
 
-error: aborting due to previous error
+error[E0618]: expected function, found `()`
+  --> $DIR/suggest-on-bare-closure-call.rs:9:21
+   |
+LL |     let _ = async ||{}();
+   |                     ^^--
+   |                     |
+   |                     call expression requires function
+   |
+help: if you meant to create this closure and immediately call it, surround the closure with parentheses
+   |
+LL |     let _ = (async ||{})();
+   |             +          +
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0618`.

@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(call NATIVE_STATICLIB,add)
 	$(RUSTC) main.rs

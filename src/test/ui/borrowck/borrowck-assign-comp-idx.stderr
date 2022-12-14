@@ -3,10 +3,10 @@ error[E0502]: cannot borrow `p` as mutable because it is also borrowed as immuta
    |
 LL |     let q: &isize = &p[0];
    |                      - immutable borrow occurs here
-LL | 
+LL |
 LL |     p[0] = 5;
    |     ^ mutable borrow occurs here
-LL | 
+LL |
 LL |     println!("{}", *q);
    |                    -- immutable borrow later used here
 

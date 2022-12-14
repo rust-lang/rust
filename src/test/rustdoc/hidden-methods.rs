@@ -17,13 +17,13 @@ pub mod hidden {
 }
 
 // @has foo/struct.Foo.html
-// @!has - 'Methods'
+// @!hasraw - 'Methods'
 // @!has - '//code' 'impl Foo'
-// @!has - 'this_should_be_hidden'
+// @!hasraw - 'this_should_be_hidden'
 pub use hidden::Foo;
 
 // @has foo/struct.Bar.html
-// @!has - 'Methods'
+// @!hasraw - 'Methods'
 // @!has - '//code' 'impl Bar'
-// @!has - 'this_should_be_hidden'
+// @!hasraw - 'this_should_be_hidden'
 pub use hidden::Bar;

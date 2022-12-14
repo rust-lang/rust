@@ -1,13 +1,18 @@
+use cranelift_codegen::isa::TargetFrontendConfig;
+use gimli::write::FileId;
+
+use rustc_data_structures::sync::Lrc;
 use rustc_index::vec::IndexVec;
 use rustc_middle::ty::layout::{
     FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOfHelpers,
 };
-use rustc_middle::ty::SymbolName;
+use rustc_span::SourceFile;
 use rustc_target::abi::call::FnAbi;
 use rustc_target::abi::{Integer, Primitive};
 use rustc_target::spec::{HasTargetSpec, Target};
 
 use crate::constant::ConstantCx;
+use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
 
 pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
@@ -20,7 +25,7 @@ pub(crate) fn pointer_ty(tcx: TyCtxt<'_>) -> types::Type {
 }
 
 pub(crate) fn scalar_to_clif_type(tcx: TyCtxt<'_>, scalar: Scalar) -> Type {
-    match scalar.value {
+    match scalar.primitive() {
         Primitive::Int(int, _sign) => match int {
             Integer::I8 => types::I8,
             Integer::I16 => types::I16,
@@ -60,20 +65,20 @@ fn clif_type_from_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Option<types::Typ
         },
         ty::FnPtr(_) => pointer_ty(tcx),
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 return None;
             } else {
                 pointer_ty(tcx)
             }
         }
-        ty::Adt(adt_def, _) if adt_def.repr.simd() => {
+        ty::Adt(adt_def, _) if adt_def.repr().simd() => {
             let (element, count) = match &tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().abi
             {
                 Abi::Vector { element, count } => (element.clone(), *count),
                 _ => unreachable!(),
             };
 
-            match scalar_to_clif_type(tcx, element).by(u16::try_from(count).unwrap()) {
+            match scalar_to_clif_type(tcx, element).by(u32::try_from(count).unwrap()) {
                 // Cranelift currently only implements icmp for 128bit vectors.
                 Some(vector_ty) if vector_ty.bits() == 128 => vector_ty,
                 _ => return None,
@@ -89,17 +94,16 @@ fn clif_pair_type_from_ty<'tcx>(
     ty: Ty<'tcx>,
 ) -> Option<(types::Type, types::Type)> {
     Some(match ty.kind() {
-        ty::Tuple(substs) if substs.len() == 2 => {
-            let mut types = substs.types();
-            let a = clif_type_from_ty(tcx, types.next().unwrap())?;
-            let b = clif_type_from_ty(tcx, types.next().unwrap())?;
+        ty::Tuple(types) if types.len() == 2 => {
+            let a = clif_type_from_ty(tcx, types[0])?;
+            let b = clif_type_from_ty(tcx, types[1])?;
             if a.is_vector() || b.is_vector() {
                 return None;
             }
             (a, b)
         }
         ty::RawPtr(TypeAndMut { ty: pointee_ty, mutbl: _ }) | ty::Ref(_, pointee_ty, _) => {
-            if has_ptr_meta(tcx, pointee_ty) {
+            if has_ptr_meta(tcx, *pointee_ty) {
                 (pointer_ty(tcx), pointer_ty(tcx))
             } else {
                 return None;
@@ -232,14 +236,16 @@ pub(crate) fn type_sign(ty: Ty<'_>) -> bool {
 }
 
 pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
-    pub(crate) cx: &'clif mut crate::CodegenCx<'tcx>,
+    pub(crate) cx: &'clif mut crate::CodegenCx,
     pub(crate) module: &'m mut dyn Module,
     pub(crate) tcx: TyCtxt<'tcx>,
-    pub(crate) pointer_type: Type, // Cached from module
+    pub(crate) target_config: TargetFrontendConfig, // Cached from module
+    pub(crate) pointer_type: Type,                  // Cached from module
     pub(crate) constants_cx: ConstantCx,
+    pub(crate) func_debug_cx: Option<FunctionDebugContext>,
 
     pub(crate) instance: Instance<'tcx>,
-    pub(crate) symbol_name: SymbolName<'tcx>,
+    pub(crate) symbol_name: String,
     pub(crate) mir: &'tcx Body<'tcx>,
     pub(crate) fn_abi: Option<&'tcx FnAbi<'tcx, Ty<'tcx>>>,
 
@@ -251,12 +257,14 @@ pub(crate) struct FunctionCx<'m, 'clif, 'tcx: 'm> {
     pub(crate) caller_location: Option<CValue<'tcx>>,
 
     pub(crate) clif_comments: crate::pretty_clif::CommentWriter,
-    pub(crate) source_info_set: indexmap::IndexSet<SourceInfo>,
+
+    /// Last accessed source file and it's debuginfo file id.
+    ///
+    /// For optimization purposes only
+    pub(crate) last_source_file: Option<(Lrc<SourceFile>, FileId)>,
 
     /// This should only be accessed by `CPlace::new_var`.
     pub(crate) next_ssa_var: u32,
-
-    pub(crate) inline_asm_index: u32,
 }
 
 impl<'tcx> LayoutOfHelpers<'tcx> for FunctionCx<'_, '_, 'tcx> {
@@ -337,30 +345,73 @@ impl<'tcx> FunctionCx<'_, '_, 'tcx> {
     }
 
     pub(crate) fn set_debug_loc(&mut self, source_info: mir::SourceInfo) {
-        let (index, _) = self.source_info_set.insert_full(source_info);
-        self.bcx.set_srcloc(SourceLoc::new(index as u32));
+        if let Some(debug_context) = &mut self.cx.debug_context {
+            let (file, line, column) =
+                DebugContext::get_span_loc(self.tcx, self.mir.span, source_info.span);
+
+            // add_source_file is very slow.
+            // Optimize for the common case of the current file not being changed.
+            let mut cached_file_id = None;
+            if let Some((ref last_source_file, last_file_id)) = self.last_source_file {
+                // If the allocations are not equal, the files may still be equal, but that
+                // doesn't matter, as this is just an optimization.
+                if rustc_data_structures::sync::Lrc::ptr_eq(last_source_file, &file) {
+                    cached_file_id = Some(last_file_id);
+                }
+            }
+
+            let file_id = if let Some(file_id) = cached_file_id {
+                file_id
+            } else {
+                debug_context.add_source_file(&file)
+            };
+
+            let source_loc =
+                self.func_debug_cx.as_mut().unwrap().add_dbg_loc(file_id, line, column);
+            self.bcx.set_srcloc(source_loc);
+        }
     }
 
-    pub(crate) fn get_caller_location(&mut self, span: Span) -> CValue<'tcx> {
-        if let Some(loc) = self.caller_location {
-            // `#[track_caller]` is used; return caller location instead of current location.
-            return loc;
+    // Note: must be kept in sync with get_caller_location from cg_ssa
+    pub(crate) fn get_caller_location(&mut self, mut source_info: mir::SourceInfo) -> CValue<'tcx> {
+        let span_to_caller_location = |fx: &mut FunctionCx<'_, '_, 'tcx>, span: Span| {
+            let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
+            let caller = fx.tcx.sess.source_map().lookup_char_pos(topmost.lo());
+            let const_loc = fx.tcx.const_caller_location((
+                rustc_span::symbol::Symbol::intern(
+                    &caller.file.name.prefer_remapped().to_string_lossy(),
+                ),
+                caller.line as u32,
+                caller.col_display as u32 + 1,
+            ));
+            crate::constant::codegen_const_value(fx, const_loc, fx.tcx.caller_location_ty())
+        };
+
+        // Walk up the `SourceScope`s, in case some of them are from MIR inlining.
+        // If so, the starting `source_info.span` is in the innermost inlined
+        // function, and will be replaced with outer callsite spans as long
+        // as the inlined functions were `#[track_caller]`.
+        loop {
+            let scope_data = &self.mir.source_scopes[source_info.scope];
+
+            if let Some((callee, callsite_span)) = scope_data.inlined {
+                // Stop inside the most nested non-`#[track_caller]` function,
+                // before ever reaching its caller (which is irrelevant).
+                if !callee.def.requires_caller_location(self.tcx) {
+                    return span_to_caller_location(self, source_info.span);
+                }
+                source_info.span = callsite_span;
+            }
+
+            // Skip past all of the parents with `inlined: None`.
+            match scope_data.inlined_parent_scope {
+                Some(parent) => source_info.scope = parent,
+                None => break,
+            }
         }
 
-        let topmost = span.ctxt().outer_expn().expansion_cause().unwrap_or(span);
-        let caller = self.tcx.sess.source_map().lookup_char_pos(topmost.lo());
-        let const_loc = self.tcx.const_caller_location((
-            rustc_span::symbol::Symbol::intern(
-                &caller.file.name.prefer_remapped().to_string_lossy(),
-            ),
-            caller.line as u32,
-            caller.col_display as u32 + 1,
-        ));
-        crate::constant::codegen_const_value(self, const_loc, self.tcx.caller_location_ty())
-    }
-
-    pub(crate) fn triple(&self) -> &target_lexicon::Triple {
-        self.module.isa().triple()
+        // No inlined `SourceScope`s, or all of them were `#[track_caller]`.
+        self.caller_location.unwrap_or_else(|| span_to_caller_location(self, source_info.span))
     }
 
     pub(crate) fn anonymous_str(&mut self, msg: &str) -> Value {

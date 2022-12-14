@@ -1,5 +1,4 @@
-//! Script to invoke the bundled rust-lld with the correct flavor. The flavor is selected by
-//! feature.
+//! Script to invoke the bundled rust-lld with the correct flavor.
 //!
 //! lld supports multiple command line interfaces. If `-flavor <flavor>` are passed as the first
 //! two arguments the `<flavor>` command line interface is used to process the remaining arguments.
@@ -8,59 +7,34 @@
 //! In Rust with `-Z gcc-ld=lld` we have gcc or clang invoke rust-lld. Since there is no way to
 //! make gcc/clang pass `-flavor <flavor>` as the first two arguments in the linker invocation
 //! and since Windows does not support symbolic links for files this wrapper is used in place of a
-//! symblic link. It execs `../rust-lld -flavor ld` if the feature `ld` is enabled and
-//! `../rust-lld -flavor ld64` if `ld64` is enabled. On Windows it spawns a `..\rust-lld.exe`
-//! child process.
+//! symbolic link. It execs `../rust-lld -flavor <flavor>` by propagating the flavor argument
+//! obtained from the wrapper's name as the first two arguments.
+//! On Windows it spawns a `..\rust-lld.exe` child process.
 
-#[cfg(not(any(feature = "ld", feature = "ld64")))]
-compile_error!("One of the features ld and ld64 must be enabled.");
-
-#[cfg(all(feature = "ld", feature = "ld64"))]
-compile_error!("Only one of the feature ld or ld64 can be enabled.");
-
-#[cfg(feature = "ld")]
-const FLAVOR: &str = "ld";
-
-#[cfg(feature = "ld64")]
-const FLAVOR: &str = "ld64";
-
-use std::env;
+use std::env::{self, consts::EXE_SUFFIX};
 use std::fmt::Display;
 use std::path::{Path, PathBuf};
 use std::process;
 
-trait ResultExt<T, E> {
+trait UnwrapOrExitWith<T> {
     fn unwrap_or_exit_with(self, context: &str) -> T;
 }
 
-impl<T, E> ResultExt<T, E> for Result<T, E>
-where
-    E: Display,
-{
+impl<T> UnwrapOrExitWith<T> for Option<T> {
     fn unwrap_or_exit_with(self, context: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => {
-                eprintln!("lld-wrapper: {}: {}", context, e);
-                process::exit(1);
-            }
-        }
+        self.unwrap_or_else(|| {
+            eprintln!("lld-wrapper: {}", context);
+            process::exit(1);
+        })
     }
 }
 
-trait OptionExt<T> {
-    fn unwrap_or_exit_with(self, context: &str) -> T;
-}
-
-impl<T> OptionExt<T> for Option<T> {
+impl<T, E: Display> UnwrapOrExitWith<T> for Result<T, E> {
     fn unwrap_or_exit_with(self, context: &str) -> T {
-        match self {
-            Some(t) => t,
-            None => {
-                eprintln!("lld-wrapper: {}", context);
-                process::exit(1);
-            }
-        }
+        self.unwrap_or_else(|err| {
+            eprintln!("lld-wrapper: {}: {}", context, err);
+            process::exit(1);
+        })
     }
 }
 
@@ -69,7 +43,7 @@ impl<T> OptionExt<T> for Option<T> {
 /// Exits if the parent directory cannot be determined.
 fn get_rust_lld_path(current_exe_path: &Path) -> PathBuf {
     let mut rust_lld_exe_name = "rust-lld".to_owned();
-    rust_lld_exe_name.push_str(env::consts::EXE_SUFFIX);
+    rust_lld_exe_name.push_str(EXE_SUFFIX);
     let mut rust_lld_path = current_exe_path
         .parent()
         .unwrap_or_exit_with("directory containing current executable could not be determined")
@@ -80,14 +54,32 @@ fn get_rust_lld_path(current_exe_path: &Path) -> PathBuf {
     rust_lld_path
 }
 
+/// Extract LLD flavor name from the lld-wrapper executable name.
+fn get_lld_flavor(current_exe_path: &Path) -> Result<&'static str, String> {
+    let file = current_exe_path.file_name();
+    let stem = file.and_then(|s| s.to_str()).map(|s| s.trim_end_matches(EXE_SUFFIX));
+    Ok(match stem {
+        Some("ld.lld") => "gnu",
+        Some("ld64.lld") => "darwin",
+        Some("lld-link") => "link",
+        Some("wasm-ld") => "wasm",
+        _ => return Err(format!("{:?}", file)),
+    })
+}
+
 /// Returns the command for invoking rust-lld with the correct flavor.
+/// LLD only accepts the flavor argument at the first two arguments, so pass it there.
 ///
 /// Exits on error.
 fn get_rust_lld_command(current_exe_path: &Path) -> process::Command {
     let rust_lld_path = get_rust_lld_path(current_exe_path);
     let mut command = process::Command::new(rust_lld_path);
+
+    let flavor =
+        get_lld_flavor(current_exe_path).unwrap_or_exit_with("executable has unexpected name");
+
     command.arg("-flavor");
-    command.arg(FLAVOR);
+    command.arg(flavor);
     command.args(env::args_os().skip(1));
     command
 }
@@ -101,20 +93,14 @@ fn exec_lld(mut command: process::Command) {
 
 #[cfg(not(unix))]
 fn exec_lld(mut command: process::Command) {
-    // Windows has no exec(), spawn a child process and wait for it
+    // Windows has no exec(), spawn a child process and wait for it.
     let exit_status = command.status().unwrap_or_exit_with("error running rust-lld child process");
-    if !exit_status.success() {
-        match exit_status.code() {
-            Some(code) => {
-                // return the original lld exit code
-                process::exit(code)
-            }
-            None => {
-                eprintln!("lld-wrapper: rust-lld child process exited with error: {}", exit_status,);
-                process::exit(1);
-            }
-        }
-    }
+    let code = exit_status
+        .code()
+        .ok_or(exit_status)
+        .unwrap_or_exit_with("rust-lld child process exited with error");
+    // Return the original lld exit code.
+    process::exit(code);
 }
 
 fn main() {

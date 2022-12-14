@@ -16,12 +16,16 @@ error[E0716]: temporary value dropped while borrowed
 LL |     v3.push(&id('x'));           // statement 6
    |              ^^^^^^^ - temporary value is freed at the end of this statement
    |              |
-   |              creates a temporary which is freed while still in use
+   |              creates a temporary value which is freed while still in use
 ...
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |              -- borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('x');
+LL ~     v3.push(&binding);           // statement 6
+   |
 
 error[E0716]: temporary value dropped while borrowed
   --> $DIR/borrowck-let-suggestion-suffixes.rs:29:18
@@ -29,7 +33,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |         v4.push(&id('y'));
    |                  ^^^^^^^ - temporary value is freed at the end of this statement
    |                  |
-   |                  creates a temporary which is freed while still in use
+   |                  creates a temporary value which is freed while still in use
 ...
 LL |         v4.use_ref();
    |         ------------ borrow later used here
@@ -42,12 +46,16 @@ error[E0716]: temporary value dropped while borrowed
 LL |     v5.push(&id('z'));
    |              ^^^^^^^ - temporary value is freed at the end of this statement
    |              |
-   |              creates a temporary which is freed while still in use
+   |              creates a temporary value which is freed while still in use
 ...
 LL |     (v1, v2, v3, /* v4 is above. */ v5).use_ref();
    |                                     -- borrow later used here
    |
-   = note: consider using a `let` binding to create a longer lived value
+help: consider using a `let` binding to create a longer lived value
+   |
+LL ~     let binding = id('z');
+LL ~     v5.push(&binding);
+   |
 
 error: aborting due to 4 previous errors
 

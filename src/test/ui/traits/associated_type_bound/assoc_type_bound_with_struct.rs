@@ -16,4 +16,8 @@ fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String { //~ ERROR expected trait, f
 fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String { //~ ERROR expected trait, found
 }
 
+fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
+//~^ ERROR expected trait, found struct
+//~| ERROR use of undeclared type `Unresolved`
+
 fn main() {}

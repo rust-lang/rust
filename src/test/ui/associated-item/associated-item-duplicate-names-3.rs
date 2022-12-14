@@ -16,4 +16,5 @@ impl Foo for Baz {
 
 fn main() {
     let x: Baz::Bar = 5;
+    //~^ ERROR ambiguous associated type
 }

@@ -1,7 +1,7 @@
 // aux-build:macro_inner.rs
 // aux-build:proc_macro.rs
 // build-aux-docs
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 extern crate macro_inner;
 extern crate proc_macro_inner;
 

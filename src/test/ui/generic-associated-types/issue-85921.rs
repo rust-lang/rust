@@ -1,7 +1,5 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait Trait {
     type Assoc<'a>;
 

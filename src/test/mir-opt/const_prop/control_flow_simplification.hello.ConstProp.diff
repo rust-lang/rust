@@ -2,36 +2,32 @@
 + // MIR for `hello` after ConstProp
   
   fn hello() -> () {
-      let mut _0: ();                      // return place in scope 0 at $DIR/control-flow-simplification.rs:11:14: 11:14
-      let mut _1: bool;                    // in scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+      let mut _0: ();                      // return place in scope 0 at $DIR/control_flow_simplification.rs:+0:14: +0:14
+      let mut _1: bool;                    // in scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
       let mut _2: !;                       // in scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
   
       bb0: {
-          StorageLive(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         _1 = const <bool as NeedsDrop>::NEEDS; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
--         switchInt(move _1) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         _1 = const false;                // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
-+         switchInt(const false) -> [false: bb2, otherwise: bb1]; // scope 0 at $DIR/control-flow-simplification.rs:12:8: 12:21
+          StorageLive(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
+          _1 = const _;                    // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
+-         switchInt(move _1) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
++         switchInt(const false) -> [0: bb2, otherwise: bb1]; // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
       }
   
       bb1: {
           StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
-          begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
+          _2 = begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-                                           // + literal: Const { ty: fn(&str) -> ! {std::rt::begin_panic::<&str>}, val: Value(Scalar(<ZST>)) }
-                                           // ty::Const
-                                           // + ty: &str
-                                           // + val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 })
+                                           // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(<ZST>) }
                                            // mir::Constant
                                            // + span: $SRC_DIR/std/src/panic.rs:LL:COL
-                                           // + literal: Const { ty: &str, val: Value(Slice { data: Allocation { bytes: [101, 120, 112, 108, 105, 99, 105, 116, 32, 112, 97, 110, 105, 99], relocations: Relocations(SortedMap { data: [] }), init_mask: InitMask { blocks: [16383], len: Size { raw: 14 } }, align: Align { pow2: 0 }, mutability: Not, extra: () }, start: 0, end: 14 }) }
+                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
       }
   
       bb2: {
-          nop;                             // scope 0 at $DIR/control-flow-simplification.rs:14:6: 14:6
-          StorageDead(_1);                 // scope 0 at $DIR/control-flow-simplification.rs:14:5: 14:6
-          return;                          // scope 0 at $DIR/control-flow-simplification.rs:15:2: 15:2
+          nop;                             // scope 0 at $DIR/control_flow_simplification.rs:+3:6: +3:6
+          StorageDead(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+3:5: +3:6
+          return;                          // scope 0 at $DIR/control_flow_simplification.rs:+4:2: +4:2
       }
   }
   

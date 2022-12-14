@@ -1,18 +1,22 @@
-use super::apple_sdk_base::{opts, Arch};
-use crate::spec::{StackProbeType, Target, TargetOptions};
+use super::apple_base::{opts, Arch};
+use crate::spec::{Cc, LinkerFlavor, Lld, StackProbeType, Target, TargetOptions};
 
 pub fn target() -> Target {
-    let base = opts("ios", Arch::X86_64_macabi);
+    let llvm_target = "x86_64-apple-ios13.0-macabi";
+
+    let arch = Arch::X86_64_macabi;
+    let mut base = opts("ios", arch);
+    base.add_pre_link_args(LinkerFlavor::Darwin(Cc::Yes, Lld::No), &["-target", llvm_target]);
+
     Target {
-        llvm_target: "x86_64-apple-ios13.0-macabi".to_string(),
+        llvm_target: llvm_target.into(),
         pointer_width: 64,
         data_layout: "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-            .to_string(),
-        arch: "x86_64".to_string(),
+            .into(),
+        arch: arch.target_arch(),
         options: TargetOptions {
             max_atomic_width: Some(64),
-            // don't use probe-stack=inline-asm until rust#83139 and rust#84667 are resolved
-            stack_probes: StackProbeType::Call,
+            stack_probes: StackProbeType::X86,
             ..base
         },
     }

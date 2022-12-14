@@ -1,8 +1,7 @@
 // revisions: full min
 //[full] check-pass
 #![cfg_attr(full, feature(generic_const_exprs))]
-#![feature(const_generics_defaults)]
-#![allow(incomplete_features)]
+#![cfg_attr(full, allow(incomplete_features))]
 
 struct Foo<const N: usize, const M: usize = { N + 1 }>;
 //[min]~^ ERROR generic parameters may not be used in const operations

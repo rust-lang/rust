@@ -1,35 +1,35 @@
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:8:9
    |
 LL |     let x = Some(Vec::new());
-   |         ^ constants cannot evaluate destructors
+   |         ^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `(Vec<i32>,)` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:21:9
    |
 LL |     let vec_tuple = (Vec::new(),);
-   |         ^^^^^^^^^ constants cannot evaluate destructors
+   |         ^^^^^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Result<Vec<i32>, Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:29:9
    |
 LL |     let x: Result<_, Vec<i32>> = Ok(Vec::new());
-   |         ^ constants cannot evaluate destructors
+   |         ^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here
 
-error[E0493]: destructors cannot be evaluated at compile-time
+error[E0493]: destructor of `Option<Vec<i32>>` cannot be evaluated at compile-time
   --> $DIR/drop-fail.rs:39:9
    |
 LL |     let mut tmp = None;
-   |         ^^^^^^^ constants cannot evaluate destructors
+   |         ^^^^^^^ the destructor for this type cannot be evaluated in constants
 ...
 LL | };
    | - value is dropped here

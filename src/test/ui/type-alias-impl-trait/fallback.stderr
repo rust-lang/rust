@@ -1,0 +1,17 @@
+error[E0283]: type annotations needed
+  --> $DIR/fallback.rs:24:5
+   |
+LL | fn unconstrained_foo() -> Wrapper<Foo> {
+   |                           ------------ type must be known at this point
+LL |     Wrapper::Second
+   |     ^^^^^^^^^^^^^^^ cannot infer type of the type parameter `T` declared on the enum `Wrapper`
+   |
+   = note: cannot satisfy `_: Copy`
+help: consider specifying the generic argument
+   |
+LL |     Wrapper::<T>::Second
+   |            +++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0283`.

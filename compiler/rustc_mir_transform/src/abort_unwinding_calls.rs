@@ -1,6 +1,5 @@
 use crate::MirPass;
-use rustc_hir::def::DefKind;
-use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
+use rustc_ast::InlineAsmOptions;
 use rustc_middle::mir::*;
 use rustc_middle::ty::layout;
 use rustc_middle::ty::{self, TyCtxt};
@@ -31,11 +30,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
 
         // We don't simplify the MIR of constants at this time because that
         // namely results in a cyclic query when we call `tcx.type_of` below.
-        let is_function = match kind {
-            DefKind::Fn | DefKind::AssocFn | DefKind::Ctor(..) => true,
-            _ => tcx.is_closure(def_id),
-        };
-        if !is_function {
+        if !kind.is_fn_like() {
             return;
         }
 
@@ -46,7 +41,6 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         //
         // Here we test for this function itself whether its ABI allows
         // unwinding or not.
-        let body_flags = tcx.codegen_fn_attrs(def_id).flags;
         let body_ty = tcx.type_of(def_id);
         let body_abi = match body_ty.kind() {
             ty::FnDef(..) => body_ty.fn_sig(tcx).abi(),
@@ -54,7 +48,7 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
             ty::Generator(..) => Abi::Rust,
             _ => span_bug!(body.span, "unexpected body ty: {:?}", body_ty),
         };
-        let body_can_unwind = layout::fn_can_unwind(tcx, body_flags, body_abi);
+        let body_can_unwind = layout::fn_can_unwind(tcx, Some(def_id), body_abi);
 
         // Look in this function body for any basic blocks which are terminated
         // with a function call, and whose function we're calling may unwind.
@@ -62,33 +56,36 @@ impl<'tcx> MirPass<'tcx> for AbortUnwindingCalls {
         // example.
         let mut calls_to_terminate = Vec::new();
         let mut cleanups_to_remove = Vec::new();
-        for (id, block) in body.basic_blocks().iter_enumerated() {
+        for (id, block) in body.basic_blocks.iter_enumerated() {
             if block.is_cleanup {
                 continue;
             }
-            let terminator = match &block.terminator {
-                Some(terminator) => terminator,
-                None => continue,
-            };
+            let Some(terminator) = &block.terminator else { continue };
             let span = terminator.source_info.span;
 
             let call_can_unwind = match &terminator.kind {
                 TerminatorKind::Call { func, .. } => {
                     let ty = func.ty(body, tcx);
                     let sig = ty.fn_sig(tcx);
-                    let flags = match ty.kind() {
-                        ty::FnPtr(_) => CodegenFnAttrFlags::empty(),
-                        ty::FnDef(def_id, _) => tcx.codegen_fn_attrs(*def_id).flags,
+                    let fn_def_id = match ty.kind() {
+                        ty::FnPtr(_) => None,
+                        &ty::FnDef(def_id, _) => Some(def_id),
                         _ => span_bug!(span, "invalid callee of type {:?}", ty),
                     };
-                    layout::fn_can_unwind(tcx, flags, sig.abi())
+                    layout::fn_can_unwind(tcx, fn_def_id, sig.abi())
                 }
                 TerminatorKind::Drop { .. } | TerminatorKind::DropAndReplace { .. } => {
-                    tcx.sess.opts.debugging_opts.panic_in_drop == PanicStrategy::Unwind
-                        && layout::fn_can_unwind(tcx, CodegenFnAttrFlags::empty(), Abi::Rust)
+                    tcx.sess.opts.unstable_opts.panic_in_drop == PanicStrategy::Unwind
+                        && layout::fn_can_unwind(tcx, None, Abi::Rust)
                 }
                 TerminatorKind::Assert { .. } | TerminatorKind::FalseUnwind { .. } => {
-                    layout::fn_can_unwind(tcx, CodegenFnAttrFlags::empty(), Abi::Rust)
+                    layout::fn_can_unwind(tcx, None, Abi::Rust)
+                }
+                TerminatorKind::InlineAsm { options, .. } => {
+                    options.contains(InlineAsmOptions::MAY_UNWIND)
+                }
+                _ if terminator.unwind().is_some() => {
+                    span_bug!(span, "unexpected terminator that may unwind {:?}", terminator)
                 }
                 _ => continue,
             };

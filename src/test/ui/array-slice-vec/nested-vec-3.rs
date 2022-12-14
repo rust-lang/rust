@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(overflowing_literals)]
 
 // ignore-emscripten no threads support

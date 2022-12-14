@@ -1,5 +1,5 @@
 #![feature(type_alias_impl_trait)]
-// build-pass (FIXME(62277): could be check-pass?)
+
 mod my_mod {
     use std::fmt::Debug;
 
@@ -11,7 +11,7 @@ mod my_mod {
     }
 
     pub fn get_foot() -> Foot {
-        get_foo()
+        get_foo() //~ ERROR opaque type's hidden type cannot be another opaque type
     }
 }
 

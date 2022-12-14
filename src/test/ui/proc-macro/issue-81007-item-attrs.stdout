@@ -1,4 +1,4 @@
-PRINT-ATTR INPUT (DISPLAY): #[doc = r" A doc comment"] struct Foo { }
+PRINT-ATTR INPUT (DISPLAY): #[doc = r" A doc comment"] struct Foo {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',
@@ -40,7 +40,7 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
         span: $DIR/issue-81007-item-attrs.rs:22:16: 22:18 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[doc = r" Another comment comment"] struct Bar { }
+PRINT-ATTR INPUT (DISPLAY): #[rustc_dummy] #[doc = r" Another comment comment"] struct Bar {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '#',

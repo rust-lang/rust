@@ -1,11 +1,8 @@
 error: cannot specialize on `'static` lifetime
   --> $DIR/specialize_on_static.rs:13:1
    |
-LL | / impl X for &'static u8 {
-LL | |
-LL | |     fn f() {}
-LL | | }
-   | |_^
+LL | impl X for &'static u8 {
+   | ^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

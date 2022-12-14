@@ -264,36 +264,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `const_err` lint detects an erroneous expression while doing
-    /// constant evaluation.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![allow(unconditional_panic)]
-    /// const C: i32 = 1/0;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint detects constants that fail to evaluate. Allowing the lint will accept the
-    /// constant declaration, but any use of this constant will still lead to a hard error. This is
-    /// a future incompatibility lint; the plan is to eventually entirely forbid even declaring
-    /// constants that cannot be evaluated.  See [issue #71800] for more details.
-    ///
-    /// [issue #71800]: https://github.com/rust-lang/rust/issues/71800
-    pub CONST_ERR,
-    Deny,
-    "constant evaluation encountered erroneous expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
-    };
-    report_in_external_macro
-}
-
-declare_lint! {
     /// The `unused_imports` lint detects imports that are never used.
     ///
     /// ### Example
@@ -474,7 +444,7 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unknown_lints` lint detects unrecognized lint attribute.
+    /// The `unknown_lints` lint detects unrecognized lint attributes.
     ///
     /// ### Example
     ///
@@ -493,6 +463,44 @@ declare_lint! {
     pub UNKNOWN_LINTS,
     Warn,
     "unrecognized lint attribute"
+}
+
+declare_lint! {
+    /// The `unfulfilled_lint_expectations` lint detects lint trigger expectations
+    /// that have not been fulfilled.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(lint_reasons)]
+    ///
+    /// #[expect(unused_variables)]
+    /// let x = 10;
+    /// println!("{}", x);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// It was expected that the marked code would emit a lint. This expectation
+    /// has not been fulfilled.
+    ///
+    /// The `expect` attribute can be removed if this is intended behavior otherwise
+    /// it should be investigated why the expected lint is no longer issued.
+    ///
+    /// In rare cases, the expectation might be emitted at a different location than
+    /// shown in the shown code snippet. In most cases, the `#[expect]` attribute
+    /// works when added to the outer scope. A few lints can only be expected
+    /// on a crate level.
+    ///
+    /// Part of RFC 2383. The progress is being tracked in [#54503]
+    ///
+    /// [#54503]: https://github.com/rust-lang/rust/issues/54503
+    pub UNFULFILLED_LINT_EXPECTATIONS,
+    Warn,
+    "unfulfilled lint expectation",
+    @feature_gate = rustc_span::sym::lint_reasons;
 }
 
 declare_lint! {
@@ -589,6 +597,32 @@ declare_lint! {
     pub UNUSED_ATTRIBUTES,
     Warn,
     "detects attributes that were not used by the compiler"
+}
+
+declare_lint! {
+    /// The `unused_tuple_struct_fields` lint detects fields of tuple structs
+    /// that are never read.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[warn(unused_tuple_struct_fields)]
+    /// struct S(i32, i32, i32);
+    /// let s = S(1, 2, 3);
+    /// let _ = (s.0, s.2);
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Tuple struct fields that are never read anywhere may indicate a
+    /// mistake or unfinished code. To silence this warning, consider
+    /// removing the unused field(s) or, to preserve the numbering of the
+    /// remaining fields, change the unused field(s) to have unit type.
+    pub UNUSED_TUPLE_STRUCT_FIELDS,
+    Allow,
+    "detects tuple struct fields that are never read"
 }
 
 declare_lint! {
@@ -716,6 +750,10 @@ declare_lint! {
 declare_lint! {
     /// The `unused_macros` lint detects macros that were not used.
     ///
+    /// Note that this lint is distinct from the `unused_macro_rules` lint,
+    /// which checks for single rules that never match of an otherwise used
+    /// macro, and thus never expand.
+    ///
     /// ### Example
     ///
     /// ```rust
@@ -740,6 +778,46 @@ declare_lint! {
     pub UNUSED_MACROS,
     Warn,
     "detects macros that were not used"
+}
+
+declare_lint! {
+    /// The `unused_macro_rules` lint detects macro rules that were not used.
+    ///
+    /// Note that the lint is distinct from the `unused_macros` lint, which
+    /// fires if the entire macro is never called, while this lint fires for
+    /// single unused rules of the macro that is otherwise used.
+    /// `unused_macro_rules` fires only if `unused_macros` wouldn't fire.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[warn(unused_macro_rules)]
+    /// macro_rules! unused_empty {
+    ///     (hello) => { println!("Hello, world!") }; // This rule is unused
+    ///     () => { println!("empty") }; // This rule is used
+    /// }
+    ///
+    /// fn main() {
+    ///     unused_empty!(hello);
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Unused macro rules may signal a mistake or unfinished code. Furthermore,
+    /// they slow down compilation. Right now, silencing the warning is not
+    /// supported on a single rule level, so you have to add an allow to the
+    /// entire macro definition.
+    ///
+    /// If you intended to export the macro to make it
+    /// available outside of the crate, use the [`macro_export` attribute].
+    ///
+    /// [`macro_export` attribute]: https://doc.rust-lang.org/reference/macros-by-example.html#path-based-scope
+    pub UNUSED_MACRO_RULES,
+    Allow,
+    "detects macro rules that were not used"
 }
 
 declare_lint! {
@@ -1077,8 +1155,6 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust,compile_fail
-    /// #![deny(unaligned_references)]
-    ///
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -1106,10 +1182,11 @@ declare_lint! {
     /// [undefined behavior]: https://doc.rust-lang.org/reference/behavior-considered-undefined.html
     /// [issue #82523]: https://github.com/rust-lang/rust/issues/82523
     pub UNALIGNED_REFERENCES,
-    Warn,
+    Deny,
     "detects unaligned references to fields of packed structs",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #82523 <https://github.com/rust-lang/rust/issues/82523>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
     report_in_external_macro
 }
@@ -1350,6 +1427,7 @@ declare_lint! {
     "trait-object types were treated as different depending on marker-trait order",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
@@ -1793,6 +1871,10 @@ declare_lint! {
     Warn,
     "detects name collision with an existing but unstable method",
     @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::Custom(
+            "once this associated item is added to the standard library, \
+             the ambiguity may cause an error or change in behavior!"
+        ),
         reference: "issue #48919 <https://github.com/rust-lang/rust/issues/48919>",
         // Note: this item represents future incompatibility of all unstable functions in the
         //       standard library, and thus should never be removed or changed to an error.
@@ -1805,7 +1887,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// if let _ = 123 {
     ///     println!("always runs!");
     /// }
@@ -1897,73 +1979,6 @@ declare_lint! {
     "checks the object safety of where clauses",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-    };
-}
-
-declare_lint! {
-    /// The `proc_macro_derive_resolution_fallback` lint detects proc macro
-    /// derives using inaccessible names from parent modules.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (proc-macro)
-    /// // foo.rs
-    /// #![crate_type = "proc-macro"]
-    ///
-    /// extern crate proc_macro;
-    ///
-    /// use proc_macro::*;
-    ///
-    /// #[proc_macro_derive(Foo)]
-    /// pub fn foo1(a: TokenStream) -> TokenStream {
-    ///     drop(a);
-    ///     "mod __bar { static mut BAR: Option<Something> = None; }".parse().unwrap()
-    /// }
-    /// ```
-    ///
-    /// ```rust,ignore (needs-dependency)
-    /// // bar.rs
-    /// #[macro_use]
-    /// extern crate foo;
-    ///
-    /// struct Something;
-    ///
-    /// #[derive(Foo)]
-    /// struct Another;
-    ///
-    /// fn main() {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: cannot find type `Something` in this scope
-    ///  --> src/main.rs:8:10
-    ///   |
-    /// 8 | #[derive(Foo)]
-    ///   |          ^^^ names from parent modules are not accessible without an explicit import
-    ///   |
-    ///   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// If a proc-macro generates a module, the compiler unintentionally
-    /// allowed items in that module to refer to items in the crate root
-    /// without importing them. This is a [future-incompatible] lint to
-    /// transition this to a hard error in the future. See [issue #50504] for
-    /// more details.
-    ///
-    /// [issue #50504]: https://github.com/rust-lang/rust/issues/50504
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-    Deny,
-    "detects proc macro derives using inaccessible names from parent modules",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
@@ -2164,13 +2179,12 @@ declare_lint! {
     /// used by user code.
     ///
     /// This lint is only enabled in the standard library. It works with the
-    /// use of `#[rustc_deprecated]` with a `since` field of a version in the
-    /// future. This allows something to be marked as deprecated in a future
-    /// version, and then this lint will ensure that the item is no longer
-    /// used in the standard library. See the [stability documentation] for
-    /// more details.
+    /// use of `#[deprecated]` with a `since` field of a version in the future.
+    /// This allows something to be marked as deprecated in a future version,
+    /// and then this lint will ensure that the item is no longer used in the
+    /// standard library. See the [stability documentation] for more details.
     ///
-    /// [stability documentation]: https://rustc-dev-guide.rust-lang.org/stability.html#rustc_deprecated
+    /// [stability documentation]: https://rustc-dev-guide.rust-lang.org/stability.html#deprecated
     pub DEPRECATED_IN_FUTURE,
     Allow,
     "detects use of items that will be deprecated in a future version",
@@ -2217,7 +2231,7 @@ declare_lint! {
 declare_lint! {
     /// The `nontrivial_structural_match` lint detects constants that are used in patterns,
     /// whose type is not structural-match and whose initializer body actually uses values
-    /// that are not structural-match. So `Option<NotStruturalMatch>` is ok if the constant
+    /// that are not structural-match. So `Option<NotStructuralMatch>` is ok if the constant
     /// is just `None`.
     ///
     /// ### Example
@@ -2239,7 +2253,7 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// Previous versions of Rust accepted constants in patterns, even if those constants's types
+    /// Previous versions of Rust accepted constants in patterns, even if those constants' types
     /// did not have `PartialEq` derived. Thus the compiler falls back to runtime execution of
     /// `PartialEq`, which can report that two constants are not equal even if they are
     /// bit-equivalent.
@@ -2306,36 +2320,6 @@ declare_lint! {
     "ambiguous associated items",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #57644 <https://github.com/rust-lang/rust/issues/57644>",
-    };
-}
-
-declare_lint! {
-    /// The `mutable_borrow_reservation_conflict` lint detects the reservation
-    /// of a two-phased borrow that conflicts with other shared borrows.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// let mut v = vec![0, 1, 2];
-    /// let shared = &v;
-    /// v.push(shared.len());
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This is a [future-incompatible] lint to transition this to a hard error
-    /// in the future. See [issue #59159] for a complete description of the
-    /// problem, and some possible solutions.
-    ///
-    /// [issue #59159]: https://github.com/rust-lang/rust/issues/59159
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub MUTABLE_BORROW_RESERVATION_CONFLICT,
-    Warn,
-    "reservation of a two-phased borrow conflicts with other shared borrows",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #59159 <https://github.com/rust-lang/rust/issues/59159>",
     };
 }
 
@@ -2419,8 +2403,9 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on system llvm)
-    /// #![feature(asm)]
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #[cfg(target_arch="x86_64")]
+    /// use std::arch::asm;
     ///
     /// fn main() {
     ///     #[cfg(target_arch="x86_64")]
@@ -2434,9 +2419,9 @@ declare_lint! {
     ///
     /// ```text
     /// warning: formatting may not be suitable for sub-register argument
-    ///  --> src/main.rs:6:19
+    ///  --> src/main.rs:7:19
     ///   |
-    /// 6 |         asm!("mov {0}, {0}", in(reg) 0i16);
+    /// 7 |         asm!("mov {0}, {0}", in(reg) 0i16);
     ///   |                   ^^^  ^^^           ---- for this argument
     ///   |
     ///   = note: `#[warn(asm_sub_register)]` on by default
@@ -2456,9 +2441,9 @@ declare_lint! {
     /// fix this, add the suggested modifier to the template, or cast the
     /// value to the correct size.
     ///
-    /// See [register template modifiers] for more details.
+    /// See [register template modifiers] in the reference for more details.
     ///
-    /// [register template modifiers]: https://doc.rust-lang.org/nightly/unstable-book/library-features/asm.html#register-template-modifiers
+    /// [register template modifiers]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html#template-modifiers
     pub ASM_SUB_REGISTER,
     Warn,
     "using only a subset of a register for inline asm inputs",
@@ -2470,15 +2455,16 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust,ignore (fails on system llvm)
-    /// #![feature(asm)]
+    /// ```rust,ignore (fails on non-x86_64)
+    /// #[cfg(target_arch="x86_64")]
+    /// use std::arch::asm;
     ///
     /// fn main() {
     ///     #[cfg(target_arch="x86_64")]
     ///     unsafe {
     ///         asm!(
     ///             ".att_syntax",
-    ///             "movl {0}, {0}", in(reg) 0usize
+    ///             "movq %{0}, %{0}", in(reg) 0usize
     ///         );
     ///     }
     /// }
@@ -2487,14 +2473,11 @@ declare_lint! {
     /// This will produce:
     ///
     /// ```text
-    ///  warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
-    ///  --> test.rs:7:14
+    /// warning: avoid using `.att_syntax`, prefer using `options(att_syntax)` instead
+    ///  --> src/main.rs:8:14
     ///   |
-    /// 7 |             ".att_syntax",
+    /// 8 |             ".att_syntax",
     ///   |              ^^^^^^^^^^^
-    /// 8 |             "movq {0}, {0}", out(reg) _,
-    /// 9 |         );
-    ///   |         - help: add option: `, options(att_syntax)`
     ///   |
     ///   = note: `#[warn(bad_asm_style)]` on by default
     /// ```
@@ -2565,7 +2548,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```rust
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// enum E {
     ///     A,
@@ -2601,11 +2584,102 @@ declare_lint! {
     /// [issue #73333]: https://github.com/rust-lang/rust/issues/73333
     /// [`Copy`]: https://doc.rust-lang.org/std/marker/trait.Copy.html
     pub CENUM_IMPL_DROP_CAST,
-    Warn,
+    Deny,
     "a C-like enum implementing Drop is cast",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #73333 <https://github.com/rust-lang/rust/issues/73333>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
+}
+
+declare_lint! {
+    /// The `fuzzy_provenance_casts` lint detects an `as` cast between an integer
+    /// and a pointer.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(strict_provenance)]
+    /// #![warn(fuzzy_provenance_casts)]
+    ///
+    /// fn main() {
+    ///     let _dangling = 16_usize as *const u8;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is part of the strict provenance effort, see [issue #95228].
+    /// Casting an integer to a pointer is considered bad style, as a pointer
+    /// contains, besides the *address* also a *provenance*, indicating what
+    /// memory the pointer is allowed to read/write. Casting an integer, which
+    /// doesn't have provenance, to a pointer requires the compiler to assign
+    /// (guess) provenance. The compiler assigns "all exposed valid" (see the
+    /// docs of [`ptr::from_exposed_addr`] for more information about this
+    /// "exposing"). This penalizes the optimiser and is not well suited for
+    /// dynamic analysis/dynamic program verification (e.g. Miri or CHERI
+    /// platforms).
+    ///
+    /// It is much better to use [`ptr::with_addr`] instead to specify the
+    /// provenance you want. If using this function is not possible because the
+    /// code relies on exposed provenance then there is as an escape hatch
+    /// [`ptr::from_exposed_addr`].
+    ///
+    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
+    /// [`ptr::with_addr`]: https://doc.rust-lang.org/core/ptr/fn.with_addr
+    /// [`ptr::from_exposed_addr`]: https://doc.rust-lang.org/core/ptr/fn.from_exposed_addr
+    pub FUZZY_PROVENANCE_CASTS,
+    Allow,
+    "a fuzzy integer to pointer cast is used",
+    @feature_gate = sym::strict_provenance;
+}
+
+declare_lint! {
+    /// The `lossy_provenance_casts` lint detects an `as` cast between a pointer
+    /// and an integer.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![feature(strict_provenance)]
+    /// #![warn(lossy_provenance_casts)]
+    ///
+    /// fn main() {
+    ///     let x: u8 = 37;
+    ///     let _addr: usize = &x as *const u8 as usize;
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is part of the strict provenance effort, see [issue #95228].
+    /// Casting a pointer to an integer is a lossy operation, because beyond
+    /// just an *address* a pointer may be associated with a particular
+    /// *provenance*. This information is used by the optimiser and for dynamic
+    /// analysis/dynamic program verification (e.g. Miri or CHERI platforms).
+    ///
+    /// Since this cast is lossy, it is considered good style to use the
+    /// [`ptr::addr`] method instead, which has a similar effect, but doesn't
+    /// "expose" the pointer provenance. This improves optimisation potential.
+    /// See the docs of [`ptr::addr`] and [`ptr::expose_addr`] for more information
+    /// about exposing pointer provenance.
+    ///
+    /// If your code can't comply with strict provenance and needs to expose
+    /// the provenance, then there is [`ptr::expose_addr`] as an escape hatch,
+    /// which preserves the behaviour of `as usize` casts while being explicit
+    /// about the semantics.
+    ///
+    /// [issue #95228]: https://github.com/rust-lang/rust/issues/95228
+    /// [`ptr::addr`]: https://doc.rust-lang.org/core/ptr/fn.addr
+    /// [`ptr::expose_addr`]: https://doc.rust-lang.org/core/ptr/fn.expose_addr
+    pub LOSSY_PROVENANCE_CASTS,
+    Allow,
+    "a lossy pointer to integer cast is used",
+    @feature_gate = sym::strict_provenance;
 }
 
 declare_lint! {
@@ -2738,8 +2812,9 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(naked_functions)]
-    /// #![feature(asm)]
+    /// #![feature(asm_experimental_arch, naked_functions)]
+    ///
+    /// use std::arch::asm;
     ///
     /// #[naked]
     /// pub fn default_abi() -> u32 {
@@ -2764,57 +2839,11 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `unsupported_naked_functions` lint detects naked function
-    /// definitions that are unsupported but were previously accepted.
-    ///
-    /// ### Example
-    ///
-    /// ```rust
-    /// #![feature(naked_functions)]
-    ///
-    /// #[naked]
-    /// pub extern "C" fn f() -> u32 {
-    ///     42
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The naked functions must be defined using a single inline assembly
-    /// block.
-    ///
-    /// The execution must never fall through past the end of the assembly
-    /// code so the block must use `noreturn` option. The asm block can also
-    /// use `att_syntax` option, but other options are not allowed.
-    ///
-    /// The asm block must not contain any operands other than `const` and
-    /// `sym`. Additionally, naked function should specify a non-Rust ABI.
-    ///
-    /// Naked functions cannot be inlined. All forms of the `inline` attribute
-    /// are prohibited.
-    ///
-    /// While other definitions of naked functions were previously accepted,
-    /// they are unsupported and might not work reliably. This is a
-    /// [future-incompatible] lint that will transition into hard error in
-    /// the future.
-    ///
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub UNSUPPORTED_NAKED_FUNCTIONS,
-    Warn,
-    "unsupported naked function definitions",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #32408 <https://github.com/rust-lang/rust/issues/32408>",
-    };
-}
-
-declare_lint! {
     /// The `ineffective_unstable_trait_impl` lint detects `#[unstable]` attributes which are not used.
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// #![feature(staged_api)]
     ///
     /// #[derive(Clone)]
@@ -2960,6 +2989,182 @@ declare_lint! {
     "detects large moves or copies",
 }
 
+declare_lint! {
+    /// The `deprecated_cfg_attr_crate_type_name` lint detects uses of the
+    /// `#![cfg_attr(..., crate_type = "...")]` and
+    /// `#![cfg_attr(..., crate_name = "...")]` attributes to conditionally
+    /// specify the crate type and name in the source code.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![cfg_attr(debug_assertions, crate_type = "lib")]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    ///
+    /// ### Explanation
+    ///
+    /// The `#![crate_type]` and `#![crate_name]` attributes require a hack in
+    /// the compiler to be able to change the used crate type and crate name
+    /// after macros have been expanded. Neither attribute works in combination
+    /// with Cargo as it explicitly passes `--crate-type` and `--crate-name` on
+    /// the commandline. These values must match the value used in the source
+    /// code to prevent an error.
+    ///
+    /// To fix the warning use `--crate-type` on the commandline when running
+    /// rustc instead of `#![cfg_attr(..., crate_type = "...")]` and
+    /// `--crate-name` instead of `#![cfg_attr(..., crate_name = "...")]`.
+    pub DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+    Deny,
+    "detects usage of `#![cfg_attr(..., crate_type/crate_name = \"...\")]`",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #91632 <https://github.com/rust-lang/rust/issues/91632>",
+    };
+}
+
+declare_lint! {
+    /// The `unexpected_cfgs` lint detects unexpected conditional compilation conditions.
+    ///
+    /// ### Example
+    ///
+    /// ```text
+    /// rustc --check-cfg 'names()'
+    /// ```
+    ///
+    /// ```rust,ignore (needs command line option)
+    /// #[cfg(widnows)]
+    /// fn foo() {}
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// warning: unknown condition name used
+    ///  --> lint_example.rs:1:7
+    ///   |
+    /// 1 | #[cfg(widnows)]
+    ///   |       ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(unexpected_cfgs)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// This lint is only active when a `--check-cfg='names(...)'` option has been passed
+    /// to the compiler and triggers whenever an unknown condition name or value is used.
+    /// The known condition include names or values passed in `--check-cfg`, `--cfg`, and some
+    /// well-knows names and values built into the compiler.
+    pub UNEXPECTED_CFGS,
+    Warn,
+    "detects unexpected names and values in `#[cfg]` conditions",
+}
+
+declare_lint! {
+    /// The `repr_transparent_external_private_fields` lint
+    /// detects types marked `#[repr(transparent)]` that (transitively)
+    /// contain an external ZST type marked `#[non_exhaustive]` or containing
+    /// private fields
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (needs external crate)
+    /// #![deny(repr_transparent_external_private_fields)]
+    /// use foo::NonExhaustiveZst;
+    ///
+    /// #[repr(transparent)]
+    /// struct Bar(u32, ([u32; 0], NonExhaustiveZst));
+    /// ```
+    ///
+    /// This will produce:
+    ///
+    /// ```text
+    /// error: zero-sized fields in repr(transparent) cannot contain external non-exhaustive types
+    ///  --> src/main.rs:5:28
+    ///   |
+    /// 5 | struct Bar(u32, ([u32; 0], NonExhaustiveZst));
+    ///   |                            ^^^^^^^^^^^^^^^^
+    ///   |
+    /// note: the lint level is defined here
+    ///  --> src/main.rs:1:9
+    ///   |
+    /// 1 | #![deny(repr_transparent_external_private_fields)]
+    ///   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
+    ///   = note: for more information, see issue #78586 <https://github.com/rust-lang/rust/issues/78586>
+    ///   = note: this struct contains `NonExhaustiveZst`, which is marked with `#[non_exhaustive]`, and makes it not a breaking change to become non-zero-sized in the future.
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// Previous, Rust accepted fields that contain external private zero-sized types,
+    /// even though it should not be a breaking change to add a non-zero-sized field to
+    /// that private type.
+    ///
+    /// This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #78586] for more details.
+    ///
+    /// [issue #78586]: https://github.com/rust-lang/rust/issues/78586
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+    Warn,
+    "transparent type contains an external ZST that is marked #[non_exhaustive] or contains private fields",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #78586 <https://github.com/rust-lang/rust/issues/78586>",
+    };
+}
+
+declare_lint! {
+    /// The `unstable_syntax_pre_expansion` lint detects the use of unstable
+    /// syntax that is discarded during attribute expansion.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[cfg(FALSE)]
+    /// macro foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The input to active attributes such as `#[cfg]` or procedural macro
+    /// attributes is required to be valid syntax. Previously, the compiler only
+    /// gated the use of unstable syntax features after resolving `#[cfg]` gates
+    /// and expanding procedural macros.
+    ///
+    /// To avoid relying on unstable syntax, move the use of unstable syntax
+    /// into a position where the compiler does not parse the syntax, such as a
+    /// functionlike macro.
+    ///
+    /// ```rust
+    /// # #![deny(unstable_syntax_pre_expansion)]
+    ///
+    /// macro_rules! identity {
+    ///    ( $($tokens:tt)* ) => { $($tokens)* }
+    /// }
+    ///
+    /// #[cfg(FALSE)]
+    /// identity! {
+    ///    macro foo() {}
+    /// }
+    /// ```
+    ///
+    /// This is a [future-incompatible] lint to transition this
+    /// to a hard error in the future. See [issue #65860] for more details.
+    ///
+    /// [issue #65860]: https://github.com/rust-lang/rust/issues/65860
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub UNSTABLE_SYNTAX_PRE_EXPANSION,
+    Warn,
+    "unstable syntax can change at any point in the future, causing a hard error!",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #65860 <https://github.com/rust-lang/rust/issues/65860>",
+    };
+}
+
 declare_lint_pass! {
     /// Does nothing as a lint pass, but registers some `Lint`s
     /// that are used by other parts of the compiler.
@@ -2973,6 +3178,7 @@ declare_lint_pass! {
         UNUSED_CRATE_DEPENDENCIES,
         UNUSED_QUALIFICATIONS,
         UNKNOWN_LINTS,
+        UNFULFILLED_LINT_EXPECTATIONS,
         UNUSED_VARIABLES,
         UNUSED_ASSIGNMENTS,
         DEAD_CODE,
@@ -2981,6 +3187,7 @@ declare_lint_pass! {
         OVERLAPPING_RANGE_ENDPOINTS,
         BINDINGS_WITH_VARIANT_NAME,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         WARNINGS,
         UNUSED_FEATURES,
         STABLE_FEATURES,
@@ -2991,7 +3198,6 @@ declare_lint_pass! {
         EXPORTED_PRIVATE_DEPENDENCIES,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         INVALID_TYPE_PARAM_DEFAULT,
-        CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
         UNALIGNED_REFERENCES,
         CONST_ITEM_MUTATION,
@@ -3014,7 +3220,6 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
         WHERE_CLAUSES_OBJECT_SAFETY,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         ILL_FORMED_ATTRIBUTE_INPUT,
@@ -3022,24 +3227,25 @@ declare_lint_pass! {
         META_VARIABLE_MISUSE,
         DEPRECATED_IN_FUTURE,
         AMBIGUOUS_ASSOCIATED_ITEMS,
-        MUTABLE_BORROW_RESERVATION_CONFLICT,
         INDIRECT_STRUCTURAL_MATCH,
         POINTER_STRUCTURAL_MATCH,
         NONTRIVIAL_STRUCTURAL_MATCH,
         SOFT_UNSTABLE,
+        UNSTABLE_SYNTAX_PRE_EXPANSION,
         INLINE_NO_SANITIZE,
         BAD_ASM_STYLE,
         ASM_SUB_REGISTER,
         UNSAFE_OP_IN_UNSAFE_FN,
         INCOMPLETE_INCLUDE,
         CENUM_IMPL_DROP_CAST,
+        FUZZY_PROVENANCE_CASTS,
+        LOSSY_PROVENANCE_CASTS,
         CONST_EVALUATABLE_UNCHECKED,
         INEFFECTIVE_UNSTABLE_TRAIT_IMPL,
         MUST_NOT_SUSPEND,
         UNINHABITED_STATIC,
         FUNCTION_ITEM_REFERENCES,
         USELESS_DEPRECATED,
-        UNSUPPORTED_NAKED_FUNCTIONS,
         MISSING_ABI,
         INVALID_DOC_ATTRIBUTES,
         SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
@@ -3053,8 +3259,17 @@ declare_lint_pass! {
         UNSUPPORTED_CALLING_CONVENTIONS,
         BREAK_WITH_LABEL_AND_LOOP,
         UNUSED_ATTRIBUTES,
+        UNUSED_TUPLE_STRUCT_FIELDS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
-        DEREF_INTO_DYN_SUPERTRAIT,
+        TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
+        DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
+        DUPLICATE_MACRO_ATTRIBUTES,
+        SUSPICIOUS_AUTO_TRAIT_IMPLS,
+        DEPRECATED_WHERE_CLAUSE_LOCATION,
+        TEST_UNSTABLE_LINT,
+        FFI_UNWIND_CALLS,
+        REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
+        NAMED_ARGUMENTS_USED_POSITIONALLY,
     ]
 }
 
@@ -3092,7 +3307,7 @@ declare_lint! {
     ///
     /// ### Example of drop reorder
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// # #![allow(unused)]
     ///
@@ -3128,7 +3343,7 @@ declare_lint! {
     ///
     /// ### Example of auto-trait
     ///
-    /// ```rust,compile_fail
+    /// ```rust,edition2018,compile_fail
     /// #![deny(rust_2021_incompatible_closure_captures)]
     /// use std::thread;
     ///
@@ -3326,7 +3541,7 @@ declare_lint! {
     ///     //                  ^^^^^^^^
     ///     // This call to try_into matches both Foo:try_into and TryInto::try_into as
     ///     // `TryInto` has been added to the Rust prelude in 2021 edition.
-    ///     println!("{}", x);
+    ///     println!("{x}");
     /// }
     /// ```
     ///
@@ -3549,33 +3764,91 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
-    /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
-    ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stablized.
-    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
+    /// The `duplicate_macro_attributes` lint detects when a `#[test]`-like built-in macro
+    /// attribute is duplicated on an item. This lint may trigger on `bench`, `cfg_eval`, `test`
+    /// and `test_case`.
     ///
     /// ### Example
     ///
-    /// ```rust,compile_fail
-    /// #![deny(deref_into_dyn_supertrait)]
-    /// #![allow(dead_code)]
+    /// ```rust,ignore (needs --test)
+    /// #[test]
+    /// #[test]
+    /// fn foo() {}
+    /// ```
     ///
-    /// use core::ops::Deref;
+    /// This will produce:
     ///
-    /// trait A {}
-    /// trait B: A {}
-    /// impl<'a> Deref for dyn 'a + B {
-    ///     type Target = dyn A;
-    ///     fn deref(&self) -> &Self::Target {
-    ///         todo!()
-    ///     }
+    /// ```text
+    /// warning: duplicated attribute
+    ///  --> src/lib.rs:2:1
+    ///   |
+    /// 2 | #[test]
+    ///   | ^^^^^^^
+    ///   |
+    ///   = note: `#[warn(duplicate_macro_attributes)]` on by default
+    /// ```
+    ///
+    /// ### Explanation
+    ///
+    /// A duplicated attribute may erroneously originate from a copy-paste and the effect of it
+    /// being duplicated may not be obvious or desirable.
+    ///
+    /// For instance, doubling the `#[test]` attributes registers the test to be run twice with no
+    /// change to its environment.
+    ///
+    /// [issue #90979]: https://github.com/rust-lang/rust/issues/90979
+    pub DUPLICATE_MACRO_ATTRIBUTES,
+    Warn,
+    "duplicated attribute"
+}
+
+declare_lint! {
+    /// The `suspicious_auto_trait_impls` lint checks for potentially incorrect
+    /// implementations of auto traits.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// struct Foo<T>(T);
+    ///
+    /// unsafe impl<T> Send for Foo<*const T> {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// A type can implement auto traits, e.g. `Send`, `Sync` and `Unpin`,
+    /// in two different ways: either by writing an explicit impl or if
+    /// all fields of the type implement that auto trait.
+    ///
+    /// The compiler disables the automatic implementation if an explicit one
+    /// exists for given type constructor. The exact rules governing this
+    /// are currently unsound, quite subtle, and will be modified in the future.
+    /// This change will cause the automatic implementation to be disabled in more
+    /// cases, potentially breaking some code.
+    pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
+    Warn,
+    "the rules governing auto traits will change in the future",
+    @future_incompatible = FutureIncompatibleInfo {
+        reason: FutureIncompatibilityReason::FutureReleaseSemanticsChange,
+        reference: "issue #93367 <https://github.com/rust-lang/rust/issues/93367>",
+    };
+}
+
+declare_lint! {
+    /// The `deprecated_where_clause_location` lint detects when a where clause in front of the equals
+    /// in an associated type.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// trait Trait {
+    ///   type Assoc<'a> where Self: 'a;
     /// }
     ///
-    /// fn take_a(_: &dyn A) { }
-    ///
-    /// fn take_b(b: &dyn B) {
-    ///     take_a(b);
+    /// impl Trait for () {
+    ///   type Assoc<'a> where Self: 'a = ();
     /// }
     /// ```
     ///
@@ -3583,12 +3856,104 @@ declare_lint! {
     ///
     /// ### Explanation
     ///
-    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
-    /// over certain other coercion rules, which will cause some behavior change.
-    pub DEREF_INTO_DYN_SUPERTRAIT,
+    /// The preferred location for where clauses on associated types in impls
+    /// is after the type. However, for most of generic associated types development,
+    /// it was only accepted before the equals. To provide a transition period and
+    /// further evaluate this change, both are currently accepted. At some point in
+    /// the future, this may be disallowed at an edition boundary; but, that is
+    /// undecided currently.
+    pub DEPRECATED_WHERE_CLAUSE_LOCATION,
     Warn,
-    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
-    };
+    "deprecated where clause location"
+}
+
+declare_lint! {
+    /// The `test_unstable_lint` lint tests unstable lints and is perma-unstable.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #![allow(test_unstable_lint)]
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// In order to test the behavior of unstable lints, a permanently-unstable
+    /// lint is required. This lint can be used to trigger warnings and errors
+    /// from the compiler related to unstable lints.
+    pub TEST_UNSTABLE_LINT,
+    Deny,
+    "this unstable lint is only for testing",
+    @feature_gate = sym::test_unstable_lint;
+}
+
+declare_lint! {
+    /// The `ffi_unwind_calls` lint detects calls to foreign functions or function pointers with
+    /// `C-unwind` or other FFI-unwind ABIs.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,ignore (need FFI)
+    /// #![feature(ffi_unwind_calls)]
+    /// #![feature(c_unwind)]
+    ///
+    /// # mod impl {
+    /// #     #[no_mangle]
+    /// #     pub fn "C-unwind" fn foo() {}
+    /// # }
+    ///
+    /// extern "C-unwind" {
+    ///     fn foo();
+    /// }
+    ///
+    /// fn bar() {
+    ///     unsafe { foo(); }
+    ///     let ptr: unsafe extern "C-unwind" fn() = foo;
+    ///     unsafe { ptr(); }
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// For crates containing such calls, if they are compiled with `-C panic=unwind` then the
+    /// produced library cannot be linked with crates compiled with `-C panic=abort`. For crates
+    /// that desire this ability it is therefore necessary to avoid such calls.
+    pub FFI_UNWIND_CALLS,
+    Allow,
+    "call to foreign functions or function pointers with FFI-unwind ABI",
+    @feature_gate = sym::c_unwind;
+}
+
+declare_lint! {
+    /// The `named_arguments_used_positionally` lint detects cases where named arguments are only
+    /// used positionally in format strings. This usage is valid but potentially very confusing.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![deny(named_arguments_used_positionally)]
+    /// fn main() {
+    ///     let _x = 5;
+    ///     println!("{}", _x = 1); // Prints 1, will trigger lint
+    ///
+    ///     println!("{}", _x); // Prints 5, no lint emitted
+    ///     println!("{_x}", _x = _x); // Prints 5, no lint emitted
+    /// }
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// Rust formatting strings can refer to named arguments by their position, but this usage is
+    /// potentially confusing. In particular, readers can incorrectly assume that the declaration
+    /// of named arguments is an assignment (which would produce the unit type).
+    /// For backwards compatibility, this is not a hard error.
+    pub NAMED_ARGUMENTS_USED_POSITIONALLY,
+    Warn,
+    "named arguments in format used positionally"
 }

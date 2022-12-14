@@ -30,6 +30,7 @@ declare_clippy_lint! {
     /// let x: u8 = 1;
     /// (x as u32) > 300;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub INVALID_UPCAST_COMPARISONS,
     pedantic,
     "a comparison involving an upcast which is always true or false"
@@ -37,7 +38,7 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InvalidUpcastComparisons => [INVALID_UPCAST_COMPARISONS]);
 
-fn numeric_cast_precast_bounds<'a>(cx: &LateContext<'_>, expr: &'a Expr<'_>) -> Option<(FullInt, FullInt)> {
+fn numeric_cast_precast_bounds(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<(FullInt, FullInt)> {
     if let ExprKind::Cast(cast_exp, _) = expr.kind {
         let pre_cast_ty = cx.typeck_results().expr_ty(cast_exp);
         let cast_ty = cx.typeck_results().expr_ty(expr);
@@ -144,9 +145,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidUpcastComparisons {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if let ExprKind::Binary(ref cmp, lhs, rhs) = expr.kind {
             let normalized = comparisons::normalize_comparison(cmp.node, lhs, rhs);
-            let (rel, normalized_lhs, normalized_rhs) = if let Some(val) = normalized {
-                val
-            } else {
+            let Some((rel, normalized_lhs, normalized_rhs)) = normalized else {
                 return;
             };
 

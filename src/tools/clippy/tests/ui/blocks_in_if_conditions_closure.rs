@@ -44,6 +44,14 @@ fn macro_in_closure() {
     }
 }
 
+fn closure(_: impl FnMut()) -> bool {
+    true
+}
+
+fn function_with_empty_closure() {
+    if closure(|| {}) {}
+}
+
 #[rustfmt::skip]
 fn main() {
     let mut range = 0..10;

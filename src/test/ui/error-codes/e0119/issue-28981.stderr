@@ -1,13 +1,3 @@
-error[E0119]: conflicting implementations of trait `std::ops::Deref` for type `&_`
-  --> $DIR/issue-28981.rs:5:1
-   |
-LL | impl<Foo> Deref for Foo { }
-   | ^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = note: conflicting implementation in crate `core`:
-           - impl<T> Deref for &T
-             where T: ?Sized;
-
 error[E0210]: type parameter `Foo` must be used as the type parameter for some local type (e.g., `MyStruct<Foo>`)
   --> $DIR/issue-28981.rs:5:6
    |
@@ -17,7 +7,6 @@ LL | impl<Foo> Deref for Foo { }
    = note: implementing a foreign trait is only possible if at least one of the types for which it is implemented is local
    = note: only traits defined in the current crate can be implemented for a type parameter
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-Some errors have detailed explanations: E0119, E0210.
-For more information about an error, try `rustc --explain E0119`.
+For more information about this error, try `rustc --explain E0210`.

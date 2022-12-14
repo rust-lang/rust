@@ -72,22 +72,20 @@
 //! best we can with this target. Don't start relying on too much here unless
 //! you know what you're getting in to!
 
-use super::wasm_base;
-use super::{crt_objects, LinkerFlavor, LldFlavor, Target};
+use super::crt_objects::{self, LinkSelfContainedDefault};
+use super::{wasm_base, Cc, LinkerFlavor, Target};
 
 pub fn target() -> Target {
     let mut options = wasm_base::options();
 
-    options.os = "wasi".to_string();
-    options.linker_flavor = LinkerFlavor::Lld(LldFlavor::Wasm);
-    options
-        .pre_link_args
-        .entry(LinkerFlavor::Gcc)
-        .or_insert(Vec::new())
-        .push("--target=wasm32-wasi".to_string());
+    options.os = "wasi".into();
+    options.add_pre_link_args(LinkerFlavor::WasmLld(Cc::Yes), &["--target=wasm32-wasi"]);
 
-    options.pre_link_objects_fallback = crt_objects::pre_wasi_fallback();
-    options.post_link_objects_fallback = crt_objects::post_wasi_fallback();
+    options.pre_link_objects_self_contained = crt_objects::pre_wasi_self_contained();
+    options.post_link_objects_self_contained = crt_objects::post_wasi_self_contained();
+
+    // FIXME: Figure out cases in which WASM needs to link with a native toolchain.
+    options.link_self_contained = LinkSelfContainedDefault::True;
 
     // Right now this is a bit of a workaround but we're currently saying that
     // the target by default has a static crt which we're taking as a signal
@@ -106,11 +104,15 @@ pub fn target() -> Target {
     // `args::args()` makes the WASI API calls itself.
     options.main_needs_argc_argv = false;
 
+    // And, WASI mangles the name of "main" to distinguish between different
+    // signatures.
+    options.entry_name = "__main_void".into();
+
     Target {
-        llvm_target: "wasm32-wasi".to_string(),
+        llvm_target: "wasm32-wasi".into(),
         pointer_width: 32,
-        data_layout: "e-m:e-p:32:32-i64:64-n32:64-S128-ni:1:10:20".to_string(),
-        arch: "wasm32".to_string(),
+        data_layout: "e-m:e-p:32:32-p10:8:8-p20:8:8-i64:64-n32:64-S128-ni:1:10:20".into(),
+        arch: "wasm32".into(),
         options,
     }
 }

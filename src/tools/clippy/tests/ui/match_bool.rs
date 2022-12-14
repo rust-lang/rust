@@ -50,6 +50,14 @@ fn match_bool() {
         11..=20 => 2,
         _ => 3,
     };
+
+    // Don't lint
+    let _ = match test {
+        #[cfg(feature = "foo")]
+        true if option == 5 => 10,
+        true => 0,
+        false => 1,
+    };
 }
 
 fn main() {}

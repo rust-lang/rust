@@ -445,7 +445,7 @@ PRINT-ATTR_ARGS INPUT (DEBUG): TokenStream [
         span: $DIR/weird-braces.rs:20:30: 20:42 (#0),
     },
 ]
-PRINT-ATTR INPUT (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } > { }
+PRINT-ATTR INPUT (DISPLAY): impl Bar < { 1 > 0 } > for Foo < { true } > {}
 PRINT-ATTR INPUT (DEBUG): TokenStream [
     Ident {
         ident: "impl",

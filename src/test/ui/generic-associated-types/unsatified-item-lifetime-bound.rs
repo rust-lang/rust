@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 pub trait X {
     type Y<'a: 'static>;
     //~^ WARNING unnecessary lifetime parameter

@@ -1,4 +1,4 @@
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![allow(warnings)]
 
@@ -8,8 +8,8 @@ trait Foo<'a> {
 impl<'a, T> Foo<'a> for T { }
 
 fn foo<'a, T>(x: &T) -> impl Foo<'a> {
-//~^ ERROR captures lifetime that does not appear in bounds
     x
+    //~^ ERROR captures lifetime that does not appear in bounds
 }
 
 fn main() {}

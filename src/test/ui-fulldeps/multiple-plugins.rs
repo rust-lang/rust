@@ -1,6 +1,7 @@
 // run-pass
 // aux-build:multiple-plugins-1.rs
 // aux-build:multiple-plugins-2.rs
+// ignore-stage1
 
 // Check that the plugin registrar of multiple plugins doesn't conflict
 

@@ -1,5 +1,4 @@
 use crate::cmp;
-use crate::convert::TryFrom;
 use crate::io::{Error as IoError, ErrorKind, IoSlice, IoSliceMut, Result as IoResult};
 use crate::sys::rand::rdrand64;
 use crate::time::{Duration, Instant};
@@ -7,6 +6,8 @@ use crate::time::{Duration, Instant};
 pub(crate) mod alloc;
 #[macro_use]
 pub(crate) mod raw;
+#[cfg(test)]
+mod tests;
 
 use self::raw::*;
 
@@ -83,7 +84,7 @@ pub fn close(fd: Fd) {
 
 fn string_from_bytebuffer(buf: &alloc::UserRef<ByteBuffer>, usercall: &str, arg: &str) -> String {
     String::from_utf8(buf.copy_user_buffer())
-        .unwrap_or_else(|_| rtabort!("Usercall {}: expected {} to be valid UTF-8", usercall, arg))
+        .unwrap_or_else(|_| rtabort!("Usercall {usercall}: expected {arg} to be valid UTF-8"))
 }
 
 /// Usercall `bind_stream`. See the ABI documentation for more information.
@@ -287,16 +288,21 @@ fn check_os_error(err: Result) -> i32 {
     {
         err
     } else {
-        rtabort!("Usercall: returned invalid error value {}", err)
+        rtabort!("Usercall: returned invalid error value {err}")
     }
 }
 
-trait FromSgxResult {
+/// Translate the raw result of an SGX usercall.
+#[unstable(feature = "sgx_platform", issue = "56975")]
+pub trait FromSgxResult {
+    /// Return type
     type Return;
 
+    /// Translate the raw result of an SGX usercall.
     fn from_sgx_result(self) -> IoResult<Self::Return>;
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl<T> FromSgxResult for (Result, T) {
     type Return = T;
 
@@ -309,6 +315,7 @@ impl<T> FromSgxResult for (Result, T) {
     }
 }
 
+#[unstable(feature = "sgx_platform", issue = "56975")]
 impl FromSgxResult for Result {
     type Return = ();
 

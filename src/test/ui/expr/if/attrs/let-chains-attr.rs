@@ -1,6 +1,6 @@
 // check-pass
 
-#![feature(let_chains)] //~ WARN the feature `let_chains` is incomplete
+#![feature(let_chains)]
 
 #[cfg(FALSE)]
 fn foo() {

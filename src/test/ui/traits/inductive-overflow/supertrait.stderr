@@ -4,7 +4,7 @@ error[E0275]: overflow evaluating the requirement `NoClone: Magic`
 LL |     let (a, b) = copy(NoClone);
    |                  ^^^^
    |
-note: required because of the requirements on the impl of `Magic` for `NoClone`
+note: required for `NoClone` to implement `Magic`
   --> $DIR/supertrait.rs:5:16
    |
 LL | impl<T: Magic> Magic for T {}

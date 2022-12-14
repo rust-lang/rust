@@ -7,17 +7,20 @@ mod transmute_num_to_bytes;
 mod transmute_ptr_to_ptr;
 mod transmute_ptr_to_ref;
 mod transmute_ref_to_ref;
+mod transmute_undefined_repr;
 mod transmutes_expressible_as_ptr_casts;
+mod transmuting_null;
 mod unsound_collection_transmute;
 mod useless_transmute;
 mod utils;
 mod wrong_transmute;
 
 use clippy_utils::in_constant;
+use clippy_utils::msrvs::Msrv;
 use if_chain::if_chain;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::{Expr, ExprKind, QPath};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::sym;
 
 declare_clippy_lint! {
@@ -26,7 +29,7 @@ declare_clippy_lint! {
     /// architecture.
     ///
     /// ### Why is this bad?
-    /// It's basically guaranteed to be undefined behaviour.
+    /// It's basically guaranteed to be undefined behavior.
     ///
     /// ### Known problems
     /// When accessing C, users might want to store pointer
@@ -36,9 +39,10 @@ declare_clippy_lint! {
     /// ```ignore
     /// let ptr: *const T = core::intrinsics::transmute('x')
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub WRONG_TRANSMUTE,
     correctness,
-    "transmutes that are confusing at best, undefined behaviour at worst and always useless"
+    "transmutes that are confusing at best, undefined behavior at worst and always useless"
 }
 
 // FIXME: Move this to `complexity` again, after #5343 is fixed
@@ -55,8 +59,9 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// core::intrinsics::transmute(t); // where the result type is the same as `t`'s
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub USELESS_TRANSMUTE,
-    nursery,
+    complexity,
     "transmutes that have the same to and from types or could be a cast/coercion"
 }
 
@@ -80,6 +85,7 @@ declare_clippy_lint! {
     /// # let p: *const [i32] = &[];
     /// p as *const [u16];
     /// ```
+    #[clippy::version = "1.47.0"]
     pub TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
     complexity,
     "transmutes that could be a pointer cast"
@@ -98,6 +104,7 @@ declare_clippy_lint! {
     /// core::intrinsics::transmute(t) // where the result type is the same as
     ///                                // `*t` or `&t`'s
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub CROSSPOINTER_TRANSMUTE,
     complexity,
     "transmutes that have to or from types that are a pointer to the other"
@@ -125,6 +132,7 @@ declare_clippy_lint! {
     /// // can be written:
     /// let _: &T = &*p;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_PTR_TO_REF,
     complexity,
     "transmutes from a pointer to a reference type"
@@ -158,6 +166,7 @@ declare_clippy_lint! {
     /// // should be:
     /// let _ = std::char::from_u32(x).unwrap();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_INT_TO_CHAR,
     complexity,
     "transmutes from an integer to a `char`"
@@ -191,6 +200,7 @@ declare_clippy_lint! {
     /// // should be:
     /// let _ = std::str::from_utf8(b).unwrap();
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_BYTES_TO_STR,
     complexity,
     "transmutes from a `&[u8]` to a `&str`"
@@ -213,6 +223,7 @@ declare_clippy_lint! {
     /// // should be:
     /// let _: bool = x != 0;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_INT_TO_BOOL,
     complexity,
     "transmutes from an integer to a `bool`"
@@ -235,6 +246,7 @@ declare_clippy_lint! {
     /// // should be:
     /// let _: f32 = f32::from_bits(1_u32);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_INT_TO_FLOAT,
     complexity,
     "transmutes from an integer to a float"
@@ -257,6 +269,7 @@ declare_clippy_lint! {
     /// // should be:
     /// let _: u32 = 1f32.to_bits();
     /// ```
+    #[clippy::version = "1.41.0"]
     pub TRANSMUTE_FLOAT_TO_INT,
     complexity,
     "transmutes from a float to an integer"
@@ -279,6 +292,7 @@ declare_clippy_lint! {
     /// // should be
     /// let x: [u8; 8] = 0i64.to_ne_bytes();
     /// ```
+    #[clippy::version = "1.58.0"]
     pub TRANSMUTE_NUM_TO_BYTES,
     complexity,
     "transmutes from a number to an array of `u8`"
@@ -306,6 +320,7 @@ declare_clippy_lint! {
     /// let _ = ptr as *const f32;
     /// let _ = unsafe{ &*(&1u32 as *const u32 as *const f32) };
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub TRANSMUTE_PTR_TO_PTR,
     pedantic,
     "transmutes from a pointer to a pointer / a reference to a reference"
@@ -337,12 +352,67 @@ declare_clippy_lint! {
     /// ```rust
     /// vec![2_u16].into_iter().map(u32::from).collect::<Vec<_>>();
     /// ```
+    #[clippy::version = "1.40.0"]
     pub UNSOUND_COLLECTION_TRANSMUTE,
     correctness,
     "transmute between collections of layout-incompatible types"
 }
 
-declare_lint_pass!(Transmute => [
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmutes between types which do not have a representation defined relative to
+    /// each other.
+    ///
+    /// ### Why is this bad?
+    /// The results of such a transmute are not defined.
+    ///
+    /// ### Known problems
+    /// This lint has had multiple problems in the past and was moved to `nursery`. See issue
+    /// [#8496](https://github.com/rust-lang/rust-clippy/issues/8496) for more details.
+    ///
+    /// ### Example
+    /// ```rust
+    /// struct Foo<T>(u32, T);
+    /// let _ = unsafe { core::mem::transmute::<Foo<u32>, Foo<i32>>(Foo(0u32, 0u32)) };
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// #[repr(C)]
+    /// struct Foo<T>(u32, T);
+    /// let _ = unsafe { core::mem::transmute::<Foo<u32>, Foo<i32>>(Foo(0u32, 0u32)) };
+    /// ```
+    #[clippy::version = "1.60.0"]
+    pub TRANSMUTE_UNDEFINED_REPR,
+    nursery,
+    "transmute to or from a type with an undefined representation"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for transmute calls which would receive a null pointer.
+    ///
+    /// ### Why is this bad?
+    /// Transmuting a null pointer is undefined behavior.
+    ///
+    /// ### Known problems
+    /// Not all cases can be detected at the moment of this writing.
+    /// For example, variables which hold a null pointer and are then fed to a `transmute`
+    /// call, aren't detectable yet.
+    ///
+    /// ### Example
+    /// ```rust
+    /// let null_ref: &u64 = unsafe { std::mem::transmute(0 as *const u64) };
+    /// ```
+    #[clippy::version = "1.35.0"]
+    pub TRANSMUTING_NULL,
+    correctness,
+    "transmutes from a null pointer to a reference, which is undefined behavior"
+}
+
+pub struct Transmute {
+    msrv: Msrv,
+}
+impl_lint_pass!(Transmute => [
     CROSSPOINTER_TRANSMUTE,
     TRANSMUTE_PTR_TO_REF,
     TRANSMUTE_PTR_TO_PTR,
@@ -356,46 +426,60 @@ declare_lint_pass!(Transmute => [
     TRANSMUTE_NUM_TO_BYTES,
     UNSOUND_COLLECTION_TRANSMUTE,
     TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
+    TRANSMUTE_UNDEFINED_REPR,
+    TRANSMUTING_NULL,
 ]);
-
+impl Transmute {
+    #[must_use]
+    pub fn new(msrv: Msrv) -> Self {
+        Self { msrv }
+    }
+}
 impl<'tcx> LateLintPass<'tcx> for Transmute {
-    #[allow(clippy::similar_names, clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         if_chain! {
-            if let ExprKind::Call(path_expr, args) = e.kind;
-            if let ExprKind::Path(ref qpath) = path_expr.kind;
-            if let Some(def_id) = cx.qpath_res(qpath, path_expr.hir_id).opt_def_id();
+            if let ExprKind::Call(path_expr, [arg]) = e.kind;
+            if let ExprKind::Path(QPath::Resolved(None, path)) = path_expr.kind;
+            if let Some(def_id) = path.res.opt_def_id();
             if cx.tcx.is_diagnostic_item(sym::transmute, def_id);
             then {
-                // Avoid suggesting from/to bits and dereferencing raw pointers in const contexts.
-                // See https://github.com/rust-lang/rust/issues/73736 for progress on making them `const fn`.
-                // And see https://github.com/rust-lang/rust/issues/51911 for dereferencing raw pointers.
+                // Avoid suggesting non-const operations in const contexts:
+                // - from/to bits (https://github.com/rust-lang/rust/issues/73736)
+                // - dereferencing raw pointers (https://github.com/rust-lang/rust/issues/51911)
+                // - char conversions (https://github.com/rust-lang/rust/issues/89259)
                 let const_context = in_constant(cx, e.hir_id);
 
-                let from_ty = cx.typeck_results().expr_ty(&args[0]);
+                let from_ty = cx.typeck_results().expr_ty_adjusted(arg);
+                // Adjustments for `to_ty` happen after the call to `transmute`, so don't use them.
                 let to_ty = cx.typeck_results().expr_ty(e);
 
                 // If useless_transmute is triggered, the other lints can be skipped.
-                if useless_transmute::check(cx, e, from_ty, to_ty, args) {
+                if useless_transmute::check(cx, e, from_ty, to_ty, arg) {
                     return;
                 }
 
-                let mut linted = wrong_transmute::check(cx, e, from_ty, to_ty);
-                linted |= crosspointer_transmute::check(cx, e, from_ty, to_ty);
-                linted |= transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, args, qpath);
-                linted |= transmute_int_to_char::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_ref_to_ref::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_int_to_bool::check(cx, e, from_ty, to_ty, args);
-                linted |= transmute_int_to_float::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_float_to_int::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= transmute_num_to_bytes::check(cx, e, from_ty, to_ty, args, const_context);
-                linted |= unsound_collection_transmute::check(cx, e, from_ty, to_ty);
+                let linted = wrong_transmute::check(cx, e, from_ty, to_ty)
+                    | crosspointer_transmute::check(cx, e, from_ty, to_ty)
+                    | transmuting_null::check(cx, e, arg, to_ty)
+                    | transmute_ptr_to_ref::check(cx, e, from_ty, to_ty, arg, path, &self.msrv)
+                    | transmute_int_to_char::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_ref_to_ref::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_ptr_to_ptr::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_int_to_bool::check(cx, e, from_ty, to_ty, arg)
+                    | transmute_int_to_float::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_float_to_int::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | transmute_num_to_bytes::check(cx, e, from_ty, to_ty, arg, const_context)
+                    | (
+                        unsound_collection_transmute::check(cx, e, from_ty, to_ty)
+                        || transmute_undefined_repr::check(cx, e, from_ty, to_ty)
+                    );
 
                 if !linted {
-                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, args);
+                    transmutes_expressible_as_ptr_casts::check(cx, e, from_ty, to_ty, arg);
                 }
             }
         }
     }
+
+    extract_msrv_attr!(LateContext);
 }

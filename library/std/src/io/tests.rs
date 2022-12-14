@@ -1,7 +1,8 @@
-use super::{repeat, Cursor, SeekFrom};
+use super::{repeat, BorrowedBuf, Cursor, SeekFrom};
 use crate::cmp::{self, min};
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::io::{BufRead, BufReader, Read, Seek, Write};
+use crate::mem::MaybeUninit;
 use crate::ops::Deref;
 
 #[test]
@@ -93,7 +94,7 @@ fn read_to_end() {
     assert_eq!(c.read_to_end(&mut v).unwrap(), 1);
     assert_eq!(v, b"1");
 
-    let cap = 1024 * 1024;
+    let cap = if cfg!(miri) { 1024 } else { 1024 * 1024 };
     let data = (0..cap).map(|i| (i / 3) as u8).collect::<Vec<_>>();
     let mut v = Vec::new();
     let (a, b) = data.split_at(data.len() / 2);
@@ -157,17 +158,39 @@ fn read_exact_slice() {
 }
 
 #[test]
+fn read_buf_exact() {
+    let buf: &mut [_] = &mut [0; 4];
+    let mut buf: BorrowedBuf<'_> = buf.into();
+
+    let mut c = Cursor::new(&b""[..]);
+    assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+
+    let mut c = Cursor::new(&b"123456789"[..]);
+    c.read_buf_exact(buf.unfilled()).unwrap();
+    assert_eq!(buf.filled(), b"1234");
+
+    buf.clear();
+
+    c.read_buf_exact(buf.unfilled()).unwrap();
+    assert_eq!(buf.filled(), b"5678");
+
+    buf.clear();
+
+    assert_eq!(c.read_buf_exact(buf.unfilled()).unwrap_err().kind(), io::ErrorKind::UnexpectedEof);
+}
+
+#[test]
 fn take_eof() {
     struct R;
 
     impl Read for R {
         fn read(&mut self, _: &mut [u8]) -> io::Result<usize> {
-            Err(io::Error::new_const(io::ErrorKind::Other, &""))
+            Err(io::const_io_error!(io::ErrorKind::Other, ""))
         }
     }
     impl BufRead for R {
         fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            Err(io::Error::new_const(io::ErrorKind::Other, &""))
+            Err(io::const_io_error!(io::ErrorKind::Other, ""))
         }
         fn consume(&mut self, _amt: usize) {}
     }
@@ -286,6 +309,7 @@ fn chain_zero_length_read_is_not_eof() {
 
 #[bench]
 #[cfg_attr(target_os = "emscripten", ignore)]
+#[cfg_attr(miri, ignore)] // Miri isn't fast...
 fn bench_read_to_end(b: &mut test::Bencher) {
     b.iter(|| {
         let mut lr = repeat(1).take(10000000);
@@ -400,18 +424,18 @@ fn io_slice_mut_advance_slices() {
 }
 
 #[test]
+#[should_panic]
 fn io_slice_mut_advance_slices_empty_slice() {
     let mut empty_bufs = &mut [][..];
-    // Shouldn't panic.
     IoSliceMut::advance_slices(&mut empty_bufs, 1);
 }
 
 #[test]
+#[should_panic]
 fn io_slice_mut_advance_slices_beyond_total_length() {
     let mut buf1 = [1; 8];
     let mut bufs = &mut [IoSliceMut::new(&mut buf1)][..];
 
-    // Going beyond the total length should be ok.
     IoSliceMut::advance_slices(&mut bufs, 9);
     assert!(bufs.is_empty());
 }
@@ -440,18 +464,18 @@ fn io_slice_advance_slices() {
 }
 
 #[test]
+#[should_panic]
 fn io_slice_advance_slices_empty_slice() {
     let mut empty_bufs = &mut [][..];
-    // Shouldn't panic.
     IoSlice::advance_slices(&mut empty_bufs, 1);
 }
 
 #[test]
+#[should_panic]
 fn io_slice_advance_slices_beyond_total_length() {
     let buf1 = [1; 8];
     let mut bufs = &mut [IoSlice::new(&buf1)][..];
 
-    // Going beyond the total length should be ok.
     IoSlice::advance_slices(&mut bufs, 9);
     assert!(bufs.is_empty());
 }
@@ -558,4 +582,43 @@ fn test_write_all_vectored() {
             assert_eq!(&*writer.written, &*wanted);
         }
     }
+}
+
+// Issue 94981
+#[test]
+#[should_panic = "number of read bytes exceeds limit"]
+fn test_take_wrong_length() {
+    struct LieAboutSize(bool);
+
+    impl Read for LieAboutSize {
+        fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+            // Lie about the read size at first time of read.
+            if core::mem::take(&mut self.0) { Ok(buf.len() + 1) } else { Ok(buf.len()) }
+        }
+    }
+
+    let mut buffer = vec![0; 4];
+    let mut reader = LieAboutSize(true).take(4);
+    // Primed the `Limit` by lying about the read size.
+    let _ = reader.read(&mut buffer[..]);
+}
+
+#[bench]
+fn bench_take_read(b: &mut test::Bencher) {
+    b.iter(|| {
+        let mut buf = [0; 64];
+
+        [255; 128].take(64).read(&mut buf).unwrap();
+    });
+}
+
+#[bench]
+fn bench_take_read_buf(b: &mut test::Bencher) {
+    b.iter(|| {
+        let buf: &mut [_] = &mut [MaybeUninit::uninit(); 64];
+
+        let mut buf: BorrowedBuf<'_> = buf.into();
+
+        [255; 128].take(64).read_buf(buf.unfilled()).unwrap();
+    });
 }

@@ -32,6 +32,10 @@ LL |     +
 LL |     x.clone();
    |     ^^^^^^^^^ value borrowed here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     x.clone()
+   |      ++++++++
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Add<Output=()> + Clone + Copy>(x: T) {
@@ -63,8 +67,20 @@ LL |     use_mut(n); use_imm(m);
 error[E0507]: cannot move out of `*m` which is behind a mutable reference
   --> $DIR/binop-move-semantics.rs:30:5
    |
-LL |     *m
-   |     ^^ move occurs because `*m` has type `T`, which does not implement the `Copy` trait
+LL |       *m
+   |       -^
+   |       |
+   |  _____move occurs because `*m` has type `T`, which does not implement the `Copy` trait
+   | |
+LL | |     +
+LL | |     *n;
+   | |______- `*m` moved due to usage in operator
+   |
+note: calling this operator moves the left-hand side
+  --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
+   |
+LL |     fn add(self, rhs: Rhs) -> Self::Output;
+   |            ^^^^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:32:5

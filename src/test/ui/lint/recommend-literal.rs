@@ -7,6 +7,13 @@ fn main() {
     let y: long = 74802374902374923;
     //~^ ERROR cannot find type `long` in this scope
     //~| HELP perhaps you intended to use this type
+    let v1: Boolean = true;
+    //~^ ERROR: cannot find type `Boolean` in this scope [E0412]
+    //~| HELP perhaps you intended to use this type
+    let v2: Bool = true;
+    //~^ ERROR: cannot find type `Bool` in this scope [E0412]
+    //~| HELP a builtin type with a similar name exists
+    //~| HELP perhaps you intended to use this type
 }
 
 fn z(a: boolean) {

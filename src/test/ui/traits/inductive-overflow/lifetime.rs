@@ -22,10 +22,11 @@ impl<'a> NotAuto for C<'a> {}
 fn is_send<S: NotAuto>() {}
 //~^ NOTE: required
 //~| NOTE: required
+
 fn main() {
     // Should only be a few notes.
     is_send::<X<C<'static>>>();
     //~^ ERROR overflow evaluating
     //~| 3 redundant requirements hidden
-    //~| required because of
+    //~| required for
 }

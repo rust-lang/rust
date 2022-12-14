@@ -1,6 +1,5 @@
 #![crate_type = "lib"]
-#![feature(const_generics_defaults)]
-#![allow(incomplete_features, dead_code)]
+#![allow(dead_code)]
 
 struct Both<const N: usize=3, T> {
 //~^ ERROR: generic parameters with a default must be

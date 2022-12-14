@@ -52,15 +52,11 @@ LL ~           { 14;
 LL ~           15; }
    |
 
-error: expected one of `,`, `.`, `?`, `}`, or an operator, found reserved identifier `_`
-  --> $DIR/match-arm-without-braces.rs:49:9
+error: expected `,` following `match` arm
+  --> $DIR/match-arm-without-braces.rs:48:29
    |
 LL |         Some(Val::Foo) => 17
-   |                        --   - expected one of `,`, `.`, `?`, `}`, or an operator
-   |                        |
-   |                        while parsing the `match` arm starting here
-LL |         _ => 18,
-   |         ^ unexpected token
+   |                             ^ help: missing a comma here to end this `match` arm: `,`
 
 error: `match` arm body without braces
   --> $DIR/match-arm-without-braces.rs:53:11

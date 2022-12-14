@@ -7,7 +7,7 @@
 // as it only knows of regions that `'x` is outlived by, and none that
 // `'x` outlives.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

@@ -4,16 +4,18 @@ error: expected identifier, found keyword `extern`
 LL | use extern::foo;
    |     ^^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `extern` to use it as an identifier
    |
 LL | use r#extern::foo;
-   |     ~~~~~~~~
+   |     ++
 
 error[E0432]: unresolved import `r#extern`
   --> $DIR/keyword-extern-as-identifier-use.rs:1:5
    |
 LL | use extern::foo;
    |     ^^^^^^ maybe a missing crate `r#extern`?
+   |
+   = help: consider adding `extern crate r#extern` to use the `r#extern` crate
 
 error: aborting due to 2 previous errors
 

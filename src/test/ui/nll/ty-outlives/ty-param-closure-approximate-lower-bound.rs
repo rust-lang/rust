@@ -1,4 +1,4 @@
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

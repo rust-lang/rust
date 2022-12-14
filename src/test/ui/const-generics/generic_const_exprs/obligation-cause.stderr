@@ -1,0 +1,20 @@
+error[E0308]: mismatched types
+  --> $DIR/obligation-cause.rs:20:5
+   |
+LL |     g::<usize>();
+   |     ^^^^^^^^^^ expected `false`, found `true`
+   |
+   = note: expected constant `false`
+              found constant `true`
+note: required by a bound in `g`
+  --> $DIR/obligation-cause.rs:13:44
+   |
+LL | fn g<T>()
+   |    - required by a bound in this
+...
+LL |     Is<{ std::mem::size_of::<T>() == 0 }>: True,
+   |                                            ^^^^ required by this bound in `g`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.

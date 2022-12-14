@@ -22,7 +22,7 @@
 //
 // Unlike WaitOnAddress, NtWaitForKeyedEvent/NtReleaseKeyedEvent operate on a
 // HANDLE (created with NtCreateKeyedEvent). This means that we can be sure
-// a succesfully awoken park() was awoken by unpark() and not a
+// a successfully awoken park() was awoken by unpark() and not a
 // NtReleaseKeyedEvent call from some other code, as these events are not only
 // matched by the key (address of the parker (state)), but also by this HANDLE.
 // We lazily allocate this handle the first time it is needed.
@@ -57,10 +57,10 @@
 // [3]: https://docs.microsoft.com/en-us/archive/msdn-magazine/2012/november/windows-with-c-the-evolution-of-synchronization-in-windows-and-c
 // [4]: Windows Internals, Part 1, ISBN 9780735671300
 
-use crate::convert::TryFrom;
+use crate::pin::Pin;
 use crate::ptr;
 use crate::sync::atomic::{
-    AtomicI8, AtomicUsize,
+    AtomicI8, AtomicPtr,
     Ordering::{Acquire, Relaxed, Release},
 };
 use crate::sys::{c, dur2timeout};
@@ -95,13 +95,16 @@ const NOTIFIED: i8 = 1;
 // Ordering::Release when writing NOTIFIED (the 'token') in unpark(), and using
 // Ordering::Acquire when reading this state in park() after waking up.
 impl Parker {
-    pub fn new() -> Self {
-        Self { state: AtomicI8::new(EMPTY) }
+    /// Construct the Windows parker. The UNIX parker implementation
+    /// requires this to happen in-place.
+    pub unsafe fn new(parker: *mut Parker) {
+        parker.write(Self { state: AtomicI8::new(EMPTY) });
     }
 
     // Assumes this is only called by the thread that owns the Parker,
-    // which means that `self.state != PARKED`.
-    pub unsafe fn park(&self) {
+    // which means that `self.state != PARKED`. This implementation doesn't require `Pin`,
+    // but other implementations do.
+    pub unsafe fn park(self: Pin<&Self>) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -132,8 +135,9 @@ impl Parker {
     }
 
     // Assumes this is only called by the thread that owns the Parker,
-    // which means that `self.state != PARKED`.
-    pub unsafe fn park_timeout(&self, timeout: Duration) {
+    // which means that `self.state != PARKED`. This implementation doesn't require `Pin`,
+    // but other implementations do.
+    pub unsafe fn park_timeout(self: Pin<&Self>, timeout: Duration) {
         // Change NOTIFIED=>EMPTY or EMPTY=>PARKED, and directly return in the
         // first case.
         if self.state.fetch_sub(1, Acquire) == NOTIFIED {
@@ -184,7 +188,8 @@ impl Parker {
         }
     }
 
-    pub fn unpark(&self) {
+    // This implementation doesn't require `Pin`, but other implementations do.
+    pub fn unpark(self: Pin<&Self>) {
         // Change PARKED=>NOTIFIED, EMPTY=>NOTIFIED, or NOTIFIED=>NOTIFIED, and
         // wake the thread in the first case.
         //
@@ -192,19 +197,17 @@ impl Parker {
         // purpose, to make sure every unpark() has a release-acquire ordering
         // with park().
         if self.state.swap(NOTIFIED, Release) == PARKED {
-            if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
-                unsafe {
+            unsafe {
+                if let Some(wake_by_address_single) = c::WakeByAddressSingle::option() {
                     wake_by_address_single(self.ptr());
-                }
-            } else {
-                // If we run NtReleaseKeyedEvent before the waiting thread runs
-                // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
-                // If the waiting thread wakes up before we run NtReleaseKeyedEvent
-                // (e.g. due to a timeout), this blocks until we do wake up a thread.
-                // To prevent this thread from blocking indefinitely in that case,
-                // park_impl() will, after seeing the state set to NOTIFIED after
-                // waking up, call NtWaitForKeyedEvent again to unblock us.
-                unsafe {
+                } else {
+                    // If we run NtReleaseKeyedEvent before the waiting thread runs
+                    // NtWaitForKeyedEvent, this (shortly) blocks until we can wake it up.
+                    // If the waiting thread wakes up before we run NtReleaseKeyedEvent
+                    // (e.g. due to a timeout), this blocks until we do wake up a thread.
+                    // To prevent this thread from blocking indefinitely in that case,
+                    // park_impl() will, after seeing the state set to NOTIFIED after
+                    // waking up, call NtWaitForKeyedEvent again to unblock us.
                     c::NtReleaseKeyedEvent(keyed_event_handle(), self.ptr(), 0, ptr::null_mut());
                 }
             }
@@ -217,8 +220,8 @@ impl Parker {
 }
 
 fn keyed_event_handle() -> c::HANDLE {
-    const INVALID: usize = !0;
-    static HANDLE: AtomicUsize = AtomicUsize::new(INVALID);
+    const INVALID: c::HANDLE = ptr::invalid_mut(!0);
+    static HANDLE: AtomicPtr<libc::c_void> = AtomicPtr::new(INVALID);
     match HANDLE.load(Relaxed) {
         INVALID => {
             let mut handle = c::INVALID_HANDLE_VALUE;
@@ -230,10 +233,10 @@ fn keyed_event_handle() -> c::HANDLE {
                     0,
                 ) {
                     c::STATUS_SUCCESS => {}
-                    r => panic!("Unable to create keyed event handle: error {}", r),
+                    r => panic!("Unable to create keyed event handle: error {r}"),
                 }
             }
-            match HANDLE.compare_exchange(INVALID, handle as usize, Relaxed, Relaxed) {
+            match HANDLE.compare_exchange(INVALID, handle, Relaxed, Relaxed) {
                 Ok(_) => handle,
                 Err(h) => {
                     // Lost the race to another thread initializing HANDLE before we did.
@@ -241,10 +244,10 @@ fn keyed_event_handle() -> c::HANDLE {
                     unsafe {
                         c::CloseHandle(handle);
                     }
-                    h as c::HANDLE
+                    h
                 }
             }
         }
-        handle => handle as c::HANDLE,
+        handle => handle,
     }
 }

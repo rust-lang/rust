@@ -1,5 +1,5 @@
 error: expected one of `>`, a const expression, lifetime, or type, found `:`
-  --> $DIR/trait-path-missing-gen_arg.rs:8:30
+  --> $DIR/trait-path-missing-gen_arg.rs:6:30
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                              ^ expected one of `>`, a const expression, lifetime, or type
@@ -10,13 +10,13 @@ LL |   fn f1<'a>(arg : Box<{ dyn X< : 32 } >>) {}
    |                       +             +
 
 error: expected parameter name, found `>`
-  --> $DIR/trait-path-missing-gen_arg.rs:8:36
+  --> $DIR/trait-path-missing-gen_arg.rs:6:36
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    ^ expected parameter name
 
 error: expected one of `!`, `)`, `+`, `,`, or `::`, found `>`
-  --> $DIR/trait-path-missing-gen_arg.rs:8:36
+  --> $DIR/trait-path-missing-gen_arg.rs:6:36
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    ^
@@ -25,7 +25,7 @@ LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                                    help: missing `,`
 
 error: expected one of `>`, a const expression, lifetime, or type, found `=`
-  --> $DIR/trait-path-missing-gen_arg.rs:16:30
+  --> $DIR/trait-path-missing-gen_arg.rs:14:30
    |
 LL |   fn f1<'a>(arg : Box<dyn X< = 32 >>) {}
    |                            - ^ expected one of `>`, a const expression, lifetime, or type
@@ -33,7 +33,7 @@ LL |   fn f1<'a>(arg : Box<dyn X< = 32 >>) {}
    |                            maybe try to close unmatched angle bracket
 
 error[E0747]: constant provided when a type was expected
-  --> $DIR/trait-path-missing-gen_arg.rs:8:23
+  --> $DIR/trait-path-missing-gen_arg.rs:6:23
    |
 LL |   fn f1<'a>(arg : Box<dyn X< : 32 >>) {}
    |                       ^^^^^^^^^^^

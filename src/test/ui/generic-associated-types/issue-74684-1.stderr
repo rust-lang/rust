@@ -1,5 +1,5 @@
 error[E0597]: `a` does not live long enough
-  --> $DIR/issue-74684-1.rs:15:26
+  --> $DIR/issue-74684-1.rs:13:26
    |
 LL | fn bug<'a, T: ?Sized + Fun<F<'a> = [u8]>>(_ : Box<T>) -> &'static T::F<'a> {
    |        -- lifetime `'a` defined here

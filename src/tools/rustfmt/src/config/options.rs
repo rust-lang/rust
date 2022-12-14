@@ -20,7 +20,7 @@ pub enum NewlineStyle {
     Windows,
     /// Force CR (`\n).
     Unix,
-    /// `\r\n` in Windows, `\n`` on other platforms.
+    /// `\r\n` in Windows, `\n` on other platforms.
     Native,
 }
 
@@ -112,6 +112,8 @@ pub enum GroupImportsTactic {
     ///  2. other imports
     ///  3. `self` / `crate` / `super` imports
     StdExternalCrate,
+    /// Discard existing groups, and create a single group for everything
+    One,
 }
 
 #[config_type]
@@ -216,24 +218,24 @@ pub enum Verbosity {
 pub struct WidthHeuristics {
     // Maximum width of the args of a function call before falling back
     // to vertical formatting.
-    pub fn_call_width: usize,
+    pub(crate) fn_call_width: usize,
     // Maximum width of the args of a function-like attributes before falling
     // back to vertical formatting.
-    pub attr_fn_like_width: usize,
+    pub(crate) attr_fn_like_width: usize,
     // Maximum width in the body of a struct lit before falling back to
     // vertical formatting.
-    pub struct_lit_width: usize,
+    pub(crate) struct_lit_width: usize,
     // Maximum width in the body of a struct variant before falling back
     // to vertical formatting.
-    pub struct_variant_width: usize,
+    pub(crate) struct_variant_width: usize,
     // Maximum width of an array literal before falling back to vertical
     // formatting.
-    pub array_width: usize,
+    pub(crate) array_width: usize,
     // Maximum length of a chain to fit on a single line.
-    pub chain_width: usize,
+    pub(crate) chain_width: usize,
     // Maximum line length for single line if-else expressions. A value
     // of zero means always break if-else expressions.
-    pub single_line_if_else_max_width: usize,
+    pub(crate) single_line_if_else_max_width: usize,
 }
 
 impl fmt::Display for WidthHeuristics {
@@ -421,6 +423,10 @@ pub enum Edition {
     #[doc_hint = "2021"]
     /// Edition 2021.
     Edition2021,
+    #[value = "2024"]
+    #[doc_hint = "2024"]
+    /// Edition 2024.
+    Edition2024,
 }
 
 impl Default for Edition {
@@ -435,6 +441,7 @@ impl From<Edition> for rustc_span::edition::Edition {
             Edition::Edition2015 => Self::Edition2015,
             Edition::Edition2018 => Self::Edition2018,
             Edition::Edition2021 => Self::Edition2021,
+            Edition::Edition2024 => Self::Edition2024,
         }
     }
 }

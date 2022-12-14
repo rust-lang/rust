@@ -1,4 +1,5 @@
 // run-fail
+// needs-unwind
 // error-pattern:unwind happens
 // error-pattern:drop 3
 // error-pattern:drop 2

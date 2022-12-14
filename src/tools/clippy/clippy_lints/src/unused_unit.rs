@@ -1,8 +1,7 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{position_before_rarrow, snippet_opt};
 use if_chain::if_chain;
-use rustc_ast::ast;
-use rustc_ast::visit::FnKind;
+use rustc_ast::{ast, visit::FnKind, ClosureBinder};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -28,6 +27,7 @@ declare_clippy_lint! {
     /// ```rust
     /// fn return_unit() {}
     /// ```
+    #[clippy::version = "1.31.0"]
     pub UNUSED_UNIT,
     style,
     "needless unit expression"
@@ -42,6 +42,11 @@ impl EarlyLintPass for UnusedUnit {
             if let ast::TyKind::Tup(ref vals) = ty.kind;
             if vals.is_empty() && !ty.span.from_expansion() && get_def(span) == get_def(ty.span);
             then {
+                // implicit types in closure signatures are forbidden when `for<...>` is present
+                if let FnKind::Closure(&ClosureBinder::For { .. }, ..) = kind {
+                    return;
+                }
+
                 lint_unneeded_unit_return(cx, ty, span);
             }
         }
@@ -88,12 +93,12 @@ impl EarlyLintPass for UnusedUnit {
         }
     }
 
-    fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef, _: &ast::TraitBoundModifier) {
+    fn check_poly_trait_ref(&mut self, cx: &EarlyContext<'_>, poly: &ast::PolyTraitRef) {
         let segments = &poly.trait_ref.path.segments;
 
         if_chain! {
             if segments.len() == 1;
-            if ["Fn", "FnMut", "FnOnce"].contains(&&*segments[0].ident.name.as_str());
+            if ["Fn", "FnMut", "FnOnce"].contains(&segments[0].ident.name.as_str());
             if let Some(args) = &segments[0].args;
             if let ast::GenericArgs::Parenthesized(generic_args) = &**args;
             if let ast::FnRetTy::Ty(ty) = &generic_args.output;
@@ -129,7 +134,7 @@ fn lint_unneeded_unit_return(cx: &EarlyContext<'_>, ty: &ast::Ty, span: Span) {
         snippet_opt(cx, span.with_hi(ty.span.hi())).map_or((ty.span, Applicability::MaybeIncorrect), |fn_source| {
             position_before_rarrow(&fn_source).map_or((ty.span, Applicability::MaybeIncorrect), |rpos| {
                 (
-                    #[allow(clippy::cast_possible_truncation)]
+                    #[expect(clippy::cast_possible_truncation)]
                     ty.span.with_lo(BytePos(span.lo().0 + rpos as u32)),
                     Applicability::MachineApplicable,
                 )

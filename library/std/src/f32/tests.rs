@@ -20,6 +20,18 @@ fn test_max_nan() {
 }
 
 #[test]
+fn test_minimum() {
+    assert!(f32::NAN.minimum(2.0).is_nan());
+    assert!(2.0f32.minimum(f32::NAN).is_nan());
+}
+
+#[test]
+fn test_maximum() {
+    assert!(f32::NAN.maximum(2.0).is_nan());
+    assert!(2.0f32.maximum(f32::NAN).is_nan());
+}
+
+#[test]
 fn test_nan() {
     let nan: f32 = f32::NAN;
     assert!(nan.is_nan());
@@ -287,6 +299,84 @@ fn test_is_sign_negative() {
     assert!((-f32::NAN).is_sign_negative());
 }
 
+#[allow(unused_macros)]
+macro_rules! assert_f32_biteq {
+    ($left : expr, $right : expr) => {
+        let l: &f32 = &$left;
+        let r: &f32 = &$right;
+        let lb = l.to_bits();
+        let rb = r.to_bits();
+        assert_eq!(lb, rb, "float {} ({:#x}) is not equal to {} ({:#x})", *l, lb, *r, rb);
+    };
+}
+
+// Ignore test on x87 floating point, these platforms do not guarantee NaN
+// payloads are preserved and flush denormals to zero, failing the tests.
+#[cfg(not(target_arch = "x86"))]
+#[test]
+fn test_next_up() {
+    let tiny = f32::from_bits(1);
+    let tiny_up = f32::from_bits(2);
+    let max_down = f32::from_bits(0x7f7f_fffe);
+    let largest_subnormal = f32::from_bits(0x007f_ffff);
+    let smallest_normal = f32::from_bits(0x0080_0000);
+    assert_f32_biteq!(f32::NEG_INFINITY.next_up(), f32::MIN);
+    assert_f32_biteq!(f32::MIN.next_up(), -max_down);
+    assert_f32_biteq!((-1.0 - f32::EPSILON).next_up(), -1.0);
+    assert_f32_biteq!((-smallest_normal).next_up(), -largest_subnormal);
+    assert_f32_biteq!((-tiny_up).next_up(), -tiny);
+    assert_f32_biteq!((-tiny).next_up(), -0.0f32);
+    assert_f32_biteq!((-0.0f32).next_up(), tiny);
+    assert_f32_biteq!(0.0f32.next_up(), tiny);
+    assert_f32_biteq!(tiny.next_up(), tiny_up);
+    assert_f32_biteq!(largest_subnormal.next_up(), smallest_normal);
+    assert_f32_biteq!(1.0f32.next_up(), 1.0 + f32::EPSILON);
+    assert_f32_biteq!(f32::MAX.next_up(), f32::INFINITY);
+    assert_f32_biteq!(f32::INFINITY.next_up(), f32::INFINITY);
+
+    // Check that NaNs roundtrip.
+    let nan0 = f32::NAN;
+    let nan1 = f32::from_bits(f32::NAN.to_bits() ^ 0x002a_aaaa);
+    let nan2 = f32::from_bits(f32::NAN.to_bits() ^ 0x0055_5555);
+    assert_f32_biteq!(nan0.next_up(), nan0);
+    assert_f32_biteq!(nan1.next_up(), nan1);
+    assert_f32_biteq!(nan2.next_up(), nan2);
+}
+
+// Ignore test on x87 floating point, these platforms do not guarantee NaN
+// payloads are preserved and flush denormals to zero, failing the tests.
+#[cfg(not(target_arch = "x86"))]
+#[test]
+fn test_next_down() {
+    let tiny = f32::from_bits(1);
+    let tiny_up = f32::from_bits(2);
+    let max_down = f32::from_bits(0x7f7f_fffe);
+    let largest_subnormal = f32::from_bits(0x007f_ffff);
+    let smallest_normal = f32::from_bits(0x0080_0000);
+    assert_f32_biteq!(f32::NEG_INFINITY.next_down(), f32::NEG_INFINITY);
+    assert_f32_biteq!(f32::MIN.next_down(), f32::NEG_INFINITY);
+    assert_f32_biteq!((-max_down).next_down(), f32::MIN);
+    assert_f32_biteq!((-1.0f32).next_down(), -1.0 - f32::EPSILON);
+    assert_f32_biteq!((-largest_subnormal).next_down(), -smallest_normal);
+    assert_f32_biteq!((-tiny).next_down(), -tiny_up);
+    assert_f32_biteq!((-0.0f32).next_down(), -tiny);
+    assert_f32_biteq!((0.0f32).next_down(), -tiny);
+    assert_f32_biteq!(tiny.next_down(), 0.0f32);
+    assert_f32_biteq!(tiny_up.next_down(), tiny);
+    assert_f32_biteq!(smallest_normal.next_down(), largest_subnormal);
+    assert_f32_biteq!((1.0 + f32::EPSILON).next_down(), 1.0f32);
+    assert_f32_biteq!(f32::MAX.next_down(), max_down);
+    assert_f32_biteq!(f32::INFINITY.next_down(), f32::MAX);
+
+    // Check that NaNs roundtrip.
+    let nan0 = f32::NAN;
+    let nan1 = f32::from_bits(f32::NAN.to_bits() ^ 0x002a_aaaa);
+    let nan2 = f32::from_bits(f32::NAN.to_bits() ^ 0x0055_5555);
+    assert_f32_biteq!(nan0.next_down(), nan0);
+    assert_f32_biteq!(nan1.next_down(), nan1);
+    assert_f32_biteq!(nan2.next_down(), nan2);
+}
+
 #[test]
 fn test_mul_add() {
     let nan: f32 = f32::NAN;
@@ -497,6 +587,11 @@ fn test_asinh() {
     assert_approx_eq!((-2.0f32).asinh(), -1.443635475178810342493276740273105f32);
     // regression test for the catastrophic cancellation fixed in 72486
     assert_approx_eq!((-3000.0f32).asinh(), -8.699514775987968673236893537700647f32);
+
+    // test for low accuracy from issue 104548
+    assert_approx_eq!(60.0f32, 60.0f32.sinh().asinh());
+    // mul needed for approximate comparison to be meaningful
+    assert_approx_eq!(1.0f32, 1e-15f32.sinh().asinh() * 1e15f32);
 }
 
 #[test]
@@ -512,6 +607,9 @@ fn test_acosh() {
     assert!(nan.acosh().is_nan());
     assert_approx_eq!(2.0f32.acosh(), 1.31695789692481670862504634730796844f32);
     assert_approx_eq!(3.0f32.acosh(), 1.76274717403908605046521864995958461f32);
+
+    // test for low accuracy from issue 104548
+    assert_approx_eq!(60.0f32, 60.0f32.cosh().acosh());
 }
 
 #[test]

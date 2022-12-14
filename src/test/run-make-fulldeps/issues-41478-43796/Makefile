@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	# Work in /tmp, because we need to create the `save-analysis-temp` folder.

@@ -12,9 +12,9 @@ struct Node<'b, T: 'b> {
 
 impl<'b, T> Node<'b, T> {
     fn get<'a>(&'a self) -> &'b T {
-        match self.next {
+        match self.next { //~ ERROR lifetime may not live long enough
             Some(ref next) => next.get(),
-            None => &self.val //~ ERROR cannot infer
+            None => &self.val
         }
     }
 }

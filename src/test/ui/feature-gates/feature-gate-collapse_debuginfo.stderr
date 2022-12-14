@@ -1,0 +1,12 @@
+error[E0658]: the `#[collapse_debuginfo]` attribute is an experimental feature
+  --> $DIR/feature-gate-collapse_debuginfo.rs:1:1
+   |
+LL | #[collapse_debuginfo]
+   | ^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: see issue #100758 <https://github.com/rust-lang/rust/issues/100758> for more information
+   = help: add `#![feature(collapse_debuginfo)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

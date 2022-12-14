@@ -31,7 +31,7 @@ fn test2() {
 }
 
 fn main() {
-    foo::<isize>(); //~ ERROR: unused result
+    foo::<isize>(); //~ ERROR: unused result of type `isize`
     foo::<MustUse>(); //~ ERROR: unused `MustUse` that must be used
     foo::<MustUseMsg>(); //~ ERROR: unused `MustUseMsg` that must be used
     //~^ NOTE: some message

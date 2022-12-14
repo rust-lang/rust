@@ -8,7 +8,7 @@ LL |     let c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:36:13
+  --> $DIR/destructure_patterns.rs:38:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -17,7 +17,7 @@ LL |     let c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/destructure_patterns.rs:56:13
+  --> $DIR/destructure_patterns.rs:58:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -37,6 +37,16 @@ LL | |         assert_eq!(e, "E");
 LL | |     };
    | |_____^
    |
+note: Capturing arr[Index] -> ByValue
+  --> $DIR/destructure_patterns.rs:16:29
+   |
+LL |         let [a, b, .., e] = arr;
+   |                             ^^^
+note: Capturing arr[Index] -> ByValue
+  --> $DIR/destructure_patterns.rs:16:29
+   |
+LL |         let [a, b, .., e] = arr;
+   |                             ^^^
 note: Capturing arr[Index] -> ByValue
   --> $DIR/destructure_patterns.rs:16:29
    |
@@ -62,7 +72,7 @@ LL |         let [a, b, .., e] = arr;
    |                             ^^^
 
 error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:39:5
+  --> $DIR/destructure_patterns.rs:41:5
    |
 LL | /     || {
 LL | |
@@ -74,18 +84,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing p[(0, 0)] -> MutBorrow
-  --> $DIR/destructure_patterns.rs:42:58
+  --> $DIR/destructure_patterns.rs:44:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 note: Capturing p[(2, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:42:58
+  --> $DIR/destructure_patterns.rs:44:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 
 error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:39:5
+  --> $DIR/destructure_patterns.rs:41:5
    |
 LL | /     || {
 LL | |
@@ -97,18 +107,18 @@ LL | |     };
    | |_____^
    |
 note: Min Capture p[(0, 0)] -> MutBorrow
-  --> $DIR/destructure_patterns.rs:42:58
+  --> $DIR/destructure_patterns.rs:44:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 note: Min Capture p[(2, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:42:58
+  --> $DIR/destructure_patterns.rs:44:58
    |
 LL |         let Point { x: ref mut x, y: _, id: moved_id } = p;
    |                                                          ^
 
 error: First Pass analysis includes:
-  --> $DIR/destructure_patterns.rs:59:5
+  --> $DIR/destructure_patterns.rs:61:5
    |
 LL | /     || {
 LL | |
@@ -120,23 +130,23 @@ LL | |     };
    | |_____^
    |
 note: Capturing t[(0, 0)] -> MutBorrow
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Capturing t[(1, 0)] -> ImmBorrow
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Capturing t[(2, 0),(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 
 error: Min Capture analysis includes:
-  --> $DIR/destructure_patterns.rs:59:5
+  --> $DIR/destructure_patterns.rs:61:5
    |
 LL | /     || {
 LL | |
@@ -148,17 +158,17 @@ LL | |     };
    | |_____^
    |
 note: Min Capture t[(0, 0)] -> MutBorrow
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Min Capture t[(1, 0)] -> ImmBorrow
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^
 note: Min Capture t[(2, 0),(0, 0)] -> ByValue
-  --> $DIR/destructure_patterns.rs:62:54
+  --> $DIR/destructure_patterns.rs:64:54
    |
 LL |         let (ref mut x, ref ref_str, (moved_s, _)) = t;
    |                                                      ^

@@ -19,7 +19,7 @@ use crate::ops::Try;
 /// you can also [`map`] backwards:
 ///
 /// ```rust
-/// let v: Vec<i32> = vec![1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
+/// let v: Vec<i32> = [1, 2, 3].into_iter().map(|x| x + 1).rev().collect();
 ///
 /// assert_eq!(v, [4, 3, 2]);
 /// ```
@@ -32,13 +32,13 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in vec!['a', 'b', 'c'].into_iter()
+/// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) }) {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 ///
-/// This will print "('a', 1), ('b', 2), ('c', 3)".
+/// This will print `('a', 1), ('b', 2), ('c', 3)`.
 ///
 /// Now consider this twist where we add a call to `rev`. This version will
 /// print `('c', 1), ('b', 2), ('a', 3)`. Note that the letters are reversed,
@@ -49,10 +49,10 @@ use crate::ops::Try;
 /// ```rust
 /// let mut c = 0;
 ///
-/// for pair in vec!['a', 'b', 'c'].into_iter()
+/// for pair in ['a', 'b', 'c'].into_iter()
 ///                                .map(|letter| { c += 1; (letter, c) })
 ///                                .rev() {
-///     println!("{:?}", pair);
+///     println!("{pair:?}");
 /// }
 /// ```
 #[must_use = "iterators are lazy and do nothing unless consumed"]
@@ -124,7 +124,7 @@ where
         self.iter.fold(init, map_fold(self.f, g))
     }
 
-    #[doc(hidden)]
+    #[inline]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> B
     where
         Self: TrustedRandomAccessNoCoerce,

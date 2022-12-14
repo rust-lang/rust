@@ -17,7 +17,7 @@ pub struct VecGraph<N: Idx> {
     edge_targets: Vec<N>,
 }
 
-impl<N: Idx> VecGraph<N> {
+impl<N: Idx + Ord> VecGraph<N> {
     pub fn new(num_nodes: usize, mut edge_pairs: Vec<(N, N)>) -> Self {
         // Sort the edges by the source -- this is important.
         edge_pairs.sort();
@@ -27,8 +27,8 @@ impl<N: Idx> VecGraph<N> {
         // Store the *target* of each edge into `edge_targets`.
         let edge_targets: Vec<N> = edge_pairs.iter().map(|&(_, target)| target).collect();
 
-        // Create the *edge starts* array. We are iterating over over
-        // the (sorted) edge pairs. We maintain the invariant that the
+        // Create the *edge starts* array. We are iterating over the
+        // (sorted) edge pairs. We maintain the invariant that the
         // length of the `node_starts` array is enough to store the
         // current source node -- so when we see that the source node
         // for an edge is greater than the current length, we grow the
@@ -94,13 +94,13 @@ impl<N: Idx> WithNumEdges for VecGraph<N> {
     }
 }
 
-impl<N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
+impl<'graph, N: Idx> GraphSuccessors<'graph> for VecGraph<N> {
     type Item = N;
 
     type Iter = std::iter::Cloned<std::slice::Iter<'graph, N>>;
 }
 
-impl<N: Idx> WithSuccessors for VecGraph<N> {
+impl<N: Idx + Ord> WithSuccessors for VecGraph<N> {
     fn successors(&self, node: N) -> <Self as GraphSuccessors<'_>>::Iter {
         self.successors(node).iter().cloned()
     }

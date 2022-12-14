@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(dead_code)]
 // compile-flags: -C codegen-units=3
 // ignore-emscripten no threads support

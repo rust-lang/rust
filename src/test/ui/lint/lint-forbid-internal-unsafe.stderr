@@ -10,5 +10,13 @@ note: the lint level is defined here
 LL | #![forbid(unsafe_code)]
    |           ^^^^^^^^^^^
 
-error: aborting due to previous error
+warning: dereferencing a null pointer
+  --> $DIR/lint-forbid-internal-unsafe.rs:15:26
+   |
+LL |     println!("{}", evil!(*(0 as *const u8)));
+   |                          ^^^^^^^^^^^^^^^^^ this code causes undefined behavior when executed
+   |
+   = note: `#[warn(deref_nullptr)]` on by default
+
+error: aborting due to previous error; 1 warning emitted
 

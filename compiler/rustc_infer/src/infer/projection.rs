@@ -1,12 +1,12 @@
 use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, ToPredicate, Ty};
+use rustc_middle::ty::{self, Ty};
 
 use crate::traits::{Obligation, PredicateObligation};
 
 use super::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use super::InferCtxt;
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Instead of normalizing an associated type projection,
     /// this function generates an inference variable and registers
     /// an obligation that this inference variable must be the result
@@ -26,13 +26,10 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             kind: TypeVariableOriginKind::NormalizeProjectionType,
             span: self.tcx.def_span(def_id),
         });
-        let projection = ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, ty: ty_var });
-        let obligation = Obligation::with_depth(
-            cause,
-            recursion_depth,
-            param_env,
-            projection.to_predicate(self.tcx),
-        );
+        let projection =
+            ty::Binder::dummy(ty::ProjectionPredicate { projection_ty, term: ty_var.into() });
+        let obligation =
+            Obligation::with_depth(self.tcx, cause, recursion_depth, param_env, projection);
         obligations.push(obligation);
         ty_var
     }

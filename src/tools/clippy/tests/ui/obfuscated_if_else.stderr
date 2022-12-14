@@ -1,0 +1,10 @@
+error: use of `.then_some(..).unwrap_or(..)` can be written more clearly with `if .. else ..`
+  --> $DIR/obfuscated_if_else.rs:6:5
+   |
+LL |     true.then_some("a").unwrap_or("b");
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `if true { "a" } else { "b" }`
+   |
+   = note: `-D clippy::obfuscated-if-else` implied by `-D warnings`
+
+error: aborting due to previous error
+

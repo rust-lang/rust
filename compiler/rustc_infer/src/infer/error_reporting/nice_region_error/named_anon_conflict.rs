@@ -2,15 +2,16 @@
 //! where one region is named and the other is anonymous.
 use crate::infer::error_reporting::nice_region_error::find_anon_type::find_anon_type;
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
-use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder};
-use rustc_hir::intravisit::Visitor;
-use rustc_hir::FnRetTy;
+use rustc_errors::{struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty;
+use rustc_span::symbol::kw;
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     /// When given a `ConcreteFailure` for a function with parameters containing a named region and
     /// an anonymous region, emit an descriptive diagnostic error.
-    pub(super) fn try_report_named_anon_conflict(&self) -> Option<DiagnosticBuilder<'tcx>> {
+    pub(super) fn try_report_named_anon_conflict(
+        &self,
+    ) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         let (span, sub, sup) = self.regions()?;
 
         debug!(
@@ -48,21 +49,26 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None; // inapplicable
         };
 
+        // Suggesting to add a `'static` lifetime to a parameter is nearly always incorrect,
+        // and can steer users down the wrong path.
+        if named.is_static() {
+            return None;
+        }
+
         debug!("try_report_named_anon_conflict: named = {:?}", named);
         debug!("try_report_named_anon_conflict: anon_param_info = {:?}", anon_param_info);
         debug!("try_report_named_anon_conflict: region_info = {:?}", region_info);
 
-        let (param, new_ty, new_ty_span, br, is_first, scope_def_id, is_impl_item) = (
-            anon_param_info.param,
-            anon_param_info.param_ty,
-            anon_param_info.param_ty_span,
-            anon_param_info.bound_region,
-            anon_param_info.is_first,
-            region_info.def_id,
-            region_info.is_impl_item,
-        );
+        let param = anon_param_info.param;
+        let new_ty = anon_param_info.param_ty;
+        let new_ty_span = anon_param_info.param_ty_span;
+        let br = anon_param_info.bound_region;
+        let is_first = anon_param_info.is_first;
+        let scope_def_id = region_info.def_id;
+        let is_impl_item = region_info.is_impl_item;
+
         match br {
-            ty::BrAnon(_) => {}
+            ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) => {}
             _ => {
                 /* not an anonymous region */
                 debug!("try_report_named_anon_conflict: not an anonymous region");
@@ -75,26 +81,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return None;
         }
 
-        if let Some((_, fndecl)) = find_anon_type(self.tcx(), anon, &br) {
-            if self.is_self_anon(is_first, scope_def_id) {
-                return None;
-            }
-
-            if let FnRetTy::Return(ty) = &fndecl.output {
-                let mut v = ty::TraitObjectVisitor(vec![], self.tcx().hir());
-                v.visit_ty(ty);
-
-                debug!("try_report_named_anon_conflict: ret ty {:?}", ty);
-                if sub == &ty::ReStatic
-                    && v.0.into_iter().any(|t| t.span.desugaring_kind().is_none())
-                {
-                    // If the failure is due to a `'static` requirement coming from a `dyn` or
-                    // `impl` Trait that *isn't* caused by `async fn` desugaring, handle this case
-                    // better in `static_impl_trait`.
-                    debug!("try_report_named_anon_conflict: impl Trait + 'static");
-                    return None;
-                }
-            }
+        if find_anon_type(self.tcx(), anon, &br).is_some()
+            && self.is_self_anon(is_first, scope_def_id)
+        {
+            return None;
         }
 
         let (error_var, span_label_var) = match param.pat.simple_ident() {
@@ -114,16 +104,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         );
 
         diag.span_label(span, format!("lifetime `{}` required", named));
-        // Suggesting `'static` is nearly always incorrect, and can steer users
-        // down the wrong path.
-        if *named != ty::ReStatic {
-            diag.span_suggestion(
-                new_ty_span,
-                &format!("add explicit lifetime `{}` to {}", named, span_label_var),
-                new_ty.to_string(),
-                Applicability::Unspecified,
-            );
-        }
+        diag.span_suggestion(
+            new_ty_span,
+            &format!("add explicit lifetime `{}` to {}", named, span_label_var),
+            new_ty,
+            Applicability::Unspecified,
+        );
 
         Some(diag)
     }

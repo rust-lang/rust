@@ -13,6 +13,6 @@ pub unsafe fn test_volatile_order() {
     volatile_store(&mut *a, 12);
     // CHECK: store volatile
     unaligned_volatile_store(&mut *a, 12);
-    // CHECK: llvm.memset.p0i8
+    // CHECK: llvm.memset.p0
     volatile_set_memory(&mut *a, 12, 1)
 }

@@ -1,8 +1,6 @@
-use core::fmt;
 use core::iter::{FusedIterator, TrustedLen, TrustedRandomAccess, TrustedRandomAccessNoCoerce};
 use core::ops::Try;
-
-use super::{count, wrap_index, RingSlices};
+use core::{fmt, mem, slice};
 
 /// An iterator over the elements of a `VecDeque`.
 ///
@@ -12,16 +10,20 @@ use super::{count, wrap_index, RingSlices};
 /// [`iter`]: super::VecDeque::iter
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
-    pub(crate) ring: &'a [T],
-    pub(crate) tail: usize,
-    pub(crate) head: usize,
+    i1: slice::Iter<'a, T>,
+    i2: slice::Iter<'a, T>,
+}
+
+impl<'a, T> Iter<'a, T> {
+    pub(super) fn new(i1: slice::Iter<'a, T>, i2: slice::Iter<'a, T>) -> Self {
+        Self { i1, i2 }
+    }
 }
 
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        f.debug_tuple("Iter").field(&front).field(&back).finish()
+        f.debug_tuple("Iter").field(&self.i1.as_slice()).field(&self.i2.as_slice()).finish()
     }
 }
 
@@ -29,7 +31,7 @@ impl<T: fmt::Debug> fmt::Debug for Iter<'_, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Iter<'_, T> {
     fn clone(&self) -> Self {
-        Iter { ring: self.ring, tail: self.tail, head: self.head }
+        Iter { i1: self.i1.clone(), i2: self.i2.clone() }
     }
 }
 
@@ -39,62 +41,50 @@ impl<'a, T> Iterator for Iter<'a, T> {
 
     #[inline]
     fn next(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
+        match self.i1.next() {
+            Some(val) => Some(val),
+            None => {
+                // most of the time, the iterator will either always
+                // call next(), or always call next_back(). By swapping
+                // the iterators once the first one is empty, we ensure
+                // that the first branch is taken as often as possible,
+                // without sacrificing correctness, as i1 is empty anyways
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i1.next()
+            }
         }
-        let tail = self.tail;
-        self.tail = wrap_index(self.tail.wrapping_add(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(tail)) }
+    }
+
+    fn advance_by(&mut self, n: usize) -> Result<(), usize> {
+        let m = match self.i1.advance_by(n) {
+            Ok(_) => return Ok(()),
+            Err(m) => m,
+        };
+        mem::swap(&mut self.i1, &mut self.i2);
+        self.i1.advance_by(n - m).map_err(|o| o + m)
     }
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let len = count(self.tail, self.head, self.ring.len());
+        let len = self.len();
         (len, Some(len))
     }
 
-    fn fold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+    fn fold<Acc, F>(self, accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = front.iter().fold(accum, &mut f);
-        back.iter().fold(accum, &mut f)
+        let accum = self.i1.fold(accum, &mut f);
+        self.i2.fold(accum, &mut f)
     }
 
     fn try_fold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_fold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut back_iter = back.iter();
-            let res = back_iter.try_fold(init, &mut f);
-            let len = self.ring.len();
-            self.tail = (self.ring.len() - back_iter.len()) & (len - 1);
-            iter = front[..self.head].iter();
-            final_res = iter.try_fold(res?, &mut f);
-        }
-        self.tail = self.head - iter.len();
-        final_res
-    }
-
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        if n >= count(self.tail, self.head, self.ring.len()) {
-            self.tail = self.head;
-            None
-        } else {
-            self.tail = wrap_index(self.tail.wrapping_add(n), self.ring.len());
-            self.next()
-        }
+        let acc = self.i1.try_fold(init, &mut f)?;
+        self.i2.try_fold(acc, &mut f)
     }
 
     #[inline]
@@ -103,13 +93,16 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item {
         // Safety: The TrustedRandomAccess contract requires that callers only pass an index
         // that is in bounds.
         unsafe {
-            let idx = wrap_index(self.tail.wrapping_add(idx), self.ring.len());
-            self.ring.get_unchecked(idx)
+            let i1_len = self.i1.len();
+            if idx < i1_len {
+                self.i1.__iterator_get_unchecked(idx)
+            } else {
+                self.i2.__iterator_get_unchecked(idx - i1_len)
+            }
         }
     }
 }
@@ -118,51 +111,56 @@ impl<'a, T> Iterator for Iter<'a, T> {
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
-        if self.tail == self.head {
-            return None;
+        match self.i2.next_back() {
+            Some(val) => Some(val),
+            None => {
+                // most of the time, the iterator will either always
+                // call next(), or always call next_back(). By swapping
+                // the iterators once the second one is empty, we ensure
+                // that the first branch is taken as often as possible,
+                // without sacrificing correctness, as i2 is empty anyways
+                mem::swap(&mut self.i1, &mut self.i2);
+                self.i2.next_back()
+            }
         }
-        self.head = wrap_index(self.head.wrapping_sub(1), self.ring.len());
-        unsafe { Some(self.ring.get_unchecked(self.head)) }
     }
 
-    fn rfold<Acc, F>(self, mut accum: Acc, mut f: F) -> Acc
+    fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {
+        let m = match self.i2.advance_back_by(n) {
+            Ok(_) => return Ok(()),
+            Err(m) => m,
+        };
+
+        mem::swap(&mut self.i1, &mut self.i2);
+        self.i2.advance_back_by(n - m).map_err(|o| m + o)
+    }
+
+    fn rfold<Acc, F>(self, accum: Acc, mut f: F) -> Acc
     where
         F: FnMut(Acc, Self::Item) -> Acc,
     {
-        let (front, back) = RingSlices::ring_slices(self.ring, self.head, self.tail);
-        accum = back.iter().rfold(accum, &mut f);
-        front.iter().rfold(accum, &mut f)
+        let accum = self.i2.rfold(accum, &mut f);
+        self.i1.rfold(accum, &mut f)
     }
 
     fn try_rfold<B, F, R>(&mut self, init: B, mut f: F) -> R
     where
-        Self: Sized,
         F: FnMut(B, Self::Item) -> R,
         R: Try<Output = B>,
     {
-        let (mut iter, final_res);
-        if self.tail <= self.head {
-            // single slice self.ring[self.tail..self.head]
-            iter = self.ring[self.tail..self.head].iter();
-            final_res = iter.try_rfold(init, &mut f);
-        } else {
-            // two slices: self.ring[self.tail..], self.ring[..self.head]
-            let (front, back) = self.ring.split_at(self.tail);
-            let mut front_iter = front[..self.head].iter();
-            let res = front_iter.try_rfold(init, &mut f);
-            self.head = front_iter.len();
-            iter = back.iter();
-            final_res = iter.try_rfold(res?, &mut f);
-        }
-        self.head = self.tail + iter.len();
-        final_res
+        let acc = self.i2.try_rfold(init, &mut f)?;
+        self.i1.try_rfold(acc, &mut f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for Iter<'_, T> {
+    fn len(&self) -> usize {
+        self.i1.len() + self.i2.len()
+    }
+
     fn is_empty(&self) -> bool {
-        self.head == self.tail
+        self.i1.is_empty() && self.i2.is_empty()
     }
 }
 

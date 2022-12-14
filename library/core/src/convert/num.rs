@@ -25,7 +25,6 @@ macro_rules! impl_float_to_int {
         $(
             #[unstable(feature = "convert_float_to_int", issue = "67057")]
             impl FloatToInt<$Int> for $Float {
-                #[doc(hidden)]
                 #[inline]
                 unsafe fn to_int_unchecked(self) -> $Int {
                     // SAFETY: the safety contract must be upheld by the caller.
@@ -50,7 +49,7 @@ macro_rules! impl_from {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
-            #[inline]
+            #[inline(always)]
             fn from(small: $Small) -> Self {
                 small as Self
             }

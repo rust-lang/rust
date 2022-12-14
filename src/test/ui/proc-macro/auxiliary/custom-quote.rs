@@ -6,6 +6,7 @@
 #![crate_type = "proc-macro"]
 
 extern crate proc_macro;
+use std::iter::FromIterator;
 use std::str::FromStr;
 use proc_macro::*;
 
@@ -23,7 +24,7 @@ pub fn custom_quote(input: TokenStream) -> TokenStream {
             let set_span_method = TokenStream::from_str("ident.set_span").unwrap();
             let set_span_arg = TokenStream::from(TokenTree::Group(Group::new(Delimiter::Parenthesis, quoted_span)));
             let suffix = TokenStream::from_str(";proc_macro::TokenStream::from(proc_macro::TokenTree::Ident(ident))").unwrap();
-            let full_stream: TokenStream = std::array::IntoIter::new([prefix, set_span_method, set_span_arg, suffix]).collect();
+            let full_stream = TokenStream::from_iter([prefix, set_span_method, set_span_arg, suffix]);
             full_stream
         }
         _ => unreachable!()

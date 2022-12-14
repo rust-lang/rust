@@ -1,0 +1,20 @@
+error: non-binding let on a synchronization lock
+  --> $DIR/let_underscore_lock.rs:6:9
+   |
+LL |     let _ = data.lock().unwrap();
+   |         ^   ^^^^^^^^^^^^^^^^^^^^ this binding will immediately drop the value assigned to it
+   |         |
+   |         this lock is not assigned to a binding and is immediately dropped
+   |
+   = note: `#[deny(let_underscore_lock)]` on by default
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = data.lock().unwrap();
+   |         ~~~~~~~
+help: consider immediately dropping the value
+   |
+LL |     drop(data.lock().unwrap());
+   |     ~~~~~                    +
+
+error: aborting due to previous error
+

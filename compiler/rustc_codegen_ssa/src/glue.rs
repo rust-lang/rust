@@ -6,6 +6,7 @@ use crate::common::IntPredicate;
 use crate::meth;
 use crate::traits::*;
 use rustc_middle::ty::{self, Ty};
+use rustc_target::abi::WrappingRange;
 
 pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
     bx: &mut Bx,
@@ -14,28 +15,36 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 ) -> (Bx::Value, Bx::Value) {
     let layout = bx.layout_of(t);
     debug!("size_and_align_of_dst(ty={}, info={:?}): layout: {:?}", t, info, layout);
-    if !layout.is_unsized() {
+    if layout.is_sized() {
         let size = bx.const_usize(layout.size.bytes());
         let align = bx.const_usize(layout.align.abi.bytes());
         return (size, align);
     }
     match t.kind() {
         ty::Dynamic(..) => {
-            // load size/align from vtable
+            // Load size/align from vtable.
             let vtable = info.unwrap();
-            (
-                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
-                    .get_usize(bx, vtable),
-                meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
-                    .get_usize(bx, vtable),
-            )
+            let size = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_SIZE)
+                .get_usize(bx, vtable);
+            let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
+                .get_usize(bx, vtable);
+
+            // Alignment is always nonzero.
+            bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
+
+            (size, align)
         }
         ty::Slice(_) | ty::Str => {
             let unit = layout.field(bx, 0);
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             (
-                bx.mul(info.unwrap(), bx.const_usize(unit.size.bytes())),
+                // All slice sizes must fit into `isize`, so this multiplication cannot (signed) wrap.
+                // NOTE: ideally, we want the effects of both `unchecked_smul` and `unchecked_umul`
+                // (resulting in `mul nsw nuw` in LLVM IR), since we know that the multiplication
+                // cannot signed wrap, and that both operands are non-negative. But at the time of writing,
+                // `BuilderMethods` can't do this, and it doesn't seem to enable any further optimizations.
+                bx.unchecked_smul(info.unwrap(), bx.const_usize(unit.size.bytes())),
                 bx.const_usize(unit.align.abi.bytes()),
             )
         }
@@ -70,7 +79,7 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
             // Packed types ignore the alignment of their fields.
             if let ty::Adt(def, _) = t.kind() {
-                if def.repr.packed() {
+                if def.repr().packed() {
                     unsized_align = sized_align;
                 }
             }

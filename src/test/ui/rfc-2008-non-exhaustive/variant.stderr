@@ -8,7 +8,7 @@ note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
    |
 LL |     #[non_exhaustive] Tuple(u32),
-   |                       ^^^^^^^^^^
+   |                       ^^^^^
 
 error[E0603]: unit variant `Unit` is private
   --> $DIR/variant.rs:14:47
@@ -44,7 +44,7 @@ note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
    |
 LL |     #[non_exhaustive] Tuple(u32),
-   |                       ^^^^^^^^^^
+   |                       ^^^^^
 
 error[E0603]: tuple variant `Tuple` is private
   --> $DIR/variant.rs:26:35
@@ -56,7 +56,7 @@ note: the tuple variant `Tuple` is defined here
   --> $DIR/auxiliary/variants.rs:5:23
    |
 LL |     #[non_exhaustive] Tuple(u32),
-   |                       ^^^^^^^^^^
+   |                       ^^^^^
 
 error[E0639]: cannot create non-exhaustive variant using struct expression
   --> $DIR/variant.rs:8:26

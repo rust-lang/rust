@@ -99,3 +99,9 @@ pub fn indent_after_fenced() {}
 /// ```
 pub fn invalid() {}
 //~^^^^ WARNING could not parse code block as Rust code
+
+/// ```
+/// fn wook_at_my_beautifuw_bwaces_plz() {);
+/// ```
+pub fn uwu() {}
+//~^^^^ WARNING could not parse code block as Rust code

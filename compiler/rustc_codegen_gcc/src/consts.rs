@@ -1,4 +1,4 @@
-use gccjit::{LValue, RValue, ToRValue, Type};
+use gccjit::{GlobalKind, LValue, RValue, ToRValue, Type};
 use rustc_codegen_ssa::traits::{BaseTypeMethods, ConstMethods, DerivedTypeMethods, StaticMethods};
 use rustc_hir as hir;
 use rustc_hir::Node;
@@ -7,8 +7,7 @@ use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs}
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::ty::layout::LayoutOf;
-use rustc_middle::mir::interpret::{self, Allocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
-use rustc_span::Span;
+use rustc_middle::mir::interpret::{self, ConstAllocation, ErrorHandled, Scalar as InterpScalar, read_target_uint};
 use rustc_span::def_id::DefId;
 use rustc_target::abi::{self, Align, HasDataLayout, Primitive, Size, WrappingRange};
 
@@ -20,23 +19,37 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn const_bitcast(&self, value: RValue<'gcc>, typ: Type<'gcc>) -> RValue<'gcc> {
         if value.get_type() == self.bool_type.make_pointer() {
             if let Some(pointee) = typ.get_pointee() {
-                if pointee.is_vector().is_some() {
+                if pointee.dyncast_vector().is_some() {
                     panic!()
                 }
             }
         }
-        self.context.new_bitcast(None, value, typ)
+        // NOTE: since bitcast makes a value non-constant, don't bitcast if not necessary as some
+        // SIMD builtins require a constant value.
+        self.bitcast_if_needed(value, typ)
     }
 }
 
 impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
     fn static_addr_of(&self, cv: RValue<'gcc>, align: Align, kind: Option<&str>) -> RValue<'gcc> {
-        if let Some(global_value) = self.const_globals.borrow().get(&cv) {
-            // TODO(antoyo): upgrade alignment.
-            return *global_value;
+        // TODO(antoyo): implement a proper rvalue comparison in libgccjit instead of doing the
+        // following:
+        for (value, variable) in &*self.const_globals.borrow() {
+            if format!("{:?}", value) == format!("{:?}", cv) {
+                if let Some(global_variable) = self.global_lvalues.borrow().get(variable) {
+                    let alignment = align.bits() as i32;
+                    if alignment > global_variable.get_alignment() {
+                        global_variable.set_alignment(alignment);
+                    }
+                }
+                return *variable;
+            }
         }
         let global_value = self.static_addr_of_mut(cv, align, kind);
-        // TODO(antoyo): set global constant.
+        #[cfg(feature = "master")]
+        self.global_lvalues.borrow().get(&global_value)
+            .expect("`static_addr_of_mut` did not add the global to `self.global_lvalues`")
+            .global_set_readonly();
         self.const_globals.borrow_mut().insert(cv, global_value);
         global_value
     }
@@ -70,20 +83,15 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
 
         // TODO(antoyo): set alignment.
 
-        let value =
-            if value.get_type() != gcc_type {
-                self.context.new_bitcast(None, value, gcc_type)
-            }
-            else {
-                value
-            };
-        global.global_set_initializer_value(value);
+        let value = self.bitcast_if_needed(value, gcc_type);
+        global.global_set_initializer_rvalue(value);
 
         // As an optimization, all shared statics which do not have interior
         // mutability are placed into read-only memory.
         if !is_mutable {
             if self.type_is_freeze(ty) {
-                // TODO(antoyo): set global constant.
+                #[cfg(feature = "master")]
+                global.global_set_readonly();
             }
         }
 
@@ -118,7 +126,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             //
             // We could remove this hack whenever we decide to drop macOS 10.10 support.
             if self.tcx.sess.target.options.is_like_osx {
-                // The `inspect` method is okay here because we checked relocations, and
+                // The `inspect` method is okay here because we checked for provenance, and
                 // because we are doing this access to inspect the final interpreter state
                 // (not as part of the interpreter execution).
                 //
@@ -140,7 +148,7 @@ impl<'gcc, 'tcx> StaticMethods for CodegenCx<'gcc, 'tcx> {
             // TODO(antoyo): set link section.
         }
 
-        if attrs.flags.contains(CodegenFnAttrFlags::USED) {
+        if attrs.flags.contains(CodegenFnAttrFlags::USED) || attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER) {
             self.add_used_global(global.to_rvalue());
         }
     }
@@ -161,11 +169,10 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
             match kind {
                 Some(kind) if !self.tcx.sess.fewer_names() => {
                     let name = self.generate_local_symbol_name(kind);
-                    // TODO(antoyo): check if it's okay that TLS is off here.
-                    // TODO(antoyo): check if it's okay that link_section is None here.
-                    // TODO(antoyo): set alignment here as well.
-                    let global = self.define_global(&name[..], self.val_ty(cv), false, None);
-                    // TODO(antoyo): set linkage.
+                    // TODO(antoyo): check if it's okay that no link_section is set.
+
+                    let typ = self.val_ty(cv).get_aligned(align.bytes());
+                    let global = self.declare_private_global(&name[..], typ);
                     global
                 }
                 _ => {
@@ -174,11 +181,11 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     global
                 },
             };
-        // FIXME(antoyo): I think the name coming from generate_local_symbol_name() above cannot be used
-        // globally.
-        global.global_set_initializer_value(cv);
+        global.global_set_initializer_rvalue(cv);
         // TODO(antoyo): set unnamed address.
-        global.get_address(None)
+        let rvalue = global.get_address(None);
+        self.global_lvalues.borrow_mut().insert(rvalue, global);
+        rvalue
     }
 
     pub fn get_static(&self, def_id: DefId) -> LValue<'gcc> {
@@ -214,7 +221,13 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                         }
 
                         let is_tls = fn_attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
-                        let global = self.declare_global(&sym, llty, is_tls, fn_attrs.link_section);
+                        let global = self.declare_global(
+                            &sym,
+                            llty,
+                            GlobalKind::Exported,
+                            is_tls,
+                            fn_attrs.link_section,
+                        );
 
                         if !self.tcx.is_reachable_non_generic(def_id) {
                             // TODO(antoyo): set visibility.
@@ -224,12 +237,12 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                     }
 
                     Node::ForeignItem(&hir::ForeignItem {
-                        span,
+                        span: _,
                         kind: hir::ForeignItemKind::Static(..),
                         ..
                     }) => {
                         let fn_attrs = self.tcx.codegen_fn_attrs(def_id);
-                        check_and_apply_linkage(&self, &fn_attrs, ty, sym, span)
+                        check_and_apply_linkage(&self, &fn_attrs, ty, sym)
                     }
 
                     item => bug!("get_static: expected static, found {:?}", item),
@@ -242,8 +255,7 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
                 //debug!("get_static: sym={} item_attr={:?}", sym, self.tcx.item_attrs(def_id));
 
                 let attrs = self.tcx.codegen_fn_attrs(def_id);
-                let span = self.tcx.def_span(def_id);
-                let global = check_and_apply_linkage(&self, &attrs, ty, sym, span);
+                let global = check_and_apply_linkage(&self, &attrs, ty, sym);
 
                 let needs_dll_storage_attr = false; // TODO(antoyo)
 
@@ -280,18 +292,19 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     }
 }
 
-pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Allocation) -> RValue<'gcc> {
-    let mut llvals = Vec::with_capacity(alloc.relocations().len() + 1);
+pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: ConstAllocation<'tcx>) -> RValue<'gcc> {
+    let alloc = alloc.inner();
+    let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.relocations().iter() {
+    for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
         if offset > next_offset {
-            // This `inspect` is okay since we have checked that it is not within a relocation, it
+            // This `inspect` is okay since we have checked that it is not within a pointer with provenance, it
             // is within the bounds of the allocation, and it doesn't affect interpreter execution
             // (we inspect the result after interpreter execution). Any undef byte is replaced with
             // some arbitrary byte value.
@@ -304,7 +317,7 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Alloca
             read_target_uint( dl.endian,
                 // This `inspect` is okay since it is within the bounds of the allocation, it doesn't
                 // affect interpreter execution (we inspect the result after interpreter execution),
-                // and we properly interpret the relocation as a relocation pointer offset.
+                // and we properly interpret the provenance as a relocation pointer offset.
                 alloc.inspect_with_uninit_and_ptr_outside_interpreter(offset..(offset + pointer_size)),
             )
             .expect("const_alloc_to_llvm: could not read relocation pointer")
@@ -314,14 +327,14 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Alloca
                 interpret::Pointer::new(alloc_id, Size::from_bytes(ptr_offset)),
                 &cx.tcx,
             ),
-            abi::Scalar { value: Primitive::Pointer, valid_range: WrappingRange { start: 0, end: !0 } },
+            abi::Scalar::Initialized { value: Primitive::Pointer, valid_range: WrappingRange::full(dl.pointer_size) },
             cx.type_i8p(),
         ));
         next_offset = offset + pointer_size;
     }
     if alloc.len() >= next_offset {
         let range = next_offset..alloc.len();
-        // This `inspect` is okay since we have check that it is after all relocations, it is
+        // This `inspect` is okay since we have check that it is after all provenance, it is
         // within the bounds of the allocation, and it doesn't affect interpreter execution (we
         // inspect the result after interpreter execution). Any undef byte is replaced with some
         // arbitrary byte value.
@@ -334,32 +347,17 @@ pub fn const_alloc_to_gcc<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, alloc: &Alloca
     cx.const_struct(&llvals, true)
 }
 
-pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id: DefId) -> Result<(RValue<'gcc>, &'tcx Allocation), ErrorHandled> {
+pub fn codegen_static_initializer<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, def_id: DefId) -> Result<(RValue<'gcc>, ConstAllocation<'tcx>), ErrorHandled> {
     let alloc = cx.tcx.eval_static_initializer(def_id)?;
     Ok((const_alloc_to_gcc(cx, alloc), alloc))
 }
 
-fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str, span: Span) -> LValue<'gcc> {
+fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &CodegenFnAttrs, ty: Ty<'tcx>, sym: &str) -> LValue<'gcc> {
     let is_tls = attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL);
     let llty = cx.layout_of(ty).gcc_type(cx, true);
-    if let Some(linkage) = attrs.linkage {
-        // If this is a static with a linkage specified, then we need to handle
-        // it a little specially. The typesystem prevents things like &T and
-        // extern "C" fn() from being non-null, so we can't just declare a
-        // static and call it a day. Some linkages (like weak) will make it such
-        // that the static actually has a null value.
-        let llty2 =
-            if let ty::RawPtr(ref mt) = ty.kind() {
-                cx.layout_of(mt.ty).gcc_type(cx, true)
-            }
-            else {
-                cx.sess().span_fatal(
-                    span,
-                    "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-                )
-            };
+    if let Some(linkage) = attrs.import_linkage {
         // Declare a symbol `foo` with the desired linkage.
-        let global1 = cx.declare_global_with_linkage(&sym, llty2, base::global_linkage_to_gcc(linkage));
+        let global1 = cx.declare_global_with_linkage(&sym, cx.type_i8(), base::global_linkage_to_gcc(linkage));
 
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -371,7 +369,7 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         real_name.push_str(&sym);
         let global2 = cx.define_global(&real_name, llty, is_tls, attrs.link_section);
         // TODO(antoyo): set linkage.
-        global2.global_set_initializer_value(global1.get_address(None));
+        global2.global_set_initializer_rvalue(global1.get_address(None));
         // TODO(antoyo): use global_set_initializer() when it will work.
         global2
     }
@@ -385,6 +383,6 @@ fn check_and_apply_linkage<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, attrs: &Codeg
         // don't do this then linker errors can be generated where the linker
         // complains that one object files has a thread local version of the
         // symbol and another one doesn't.
-        cx.declare_global(&sym, llty, is_tls, attrs.link_section)
+        cx.declare_global(&sym, llty, GlobalKind::Imported, is_tls, attrs.link_section)
     }
 }

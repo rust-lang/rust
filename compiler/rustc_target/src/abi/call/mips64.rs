@@ -1,10 +1,12 @@
-use crate::abi::call::{ArgAbi, ArgExtension, CastTarget, FnAbi, PassMode, Reg, RegKind, Uniform};
+use crate::abi::call::{
+    ArgAbi, ArgAttribute, ArgAttributes, ArgExtension, CastTarget, FnAbi, PassMode, Reg, Uniform,
+};
 use crate::abi::{self, HasDataLayout, Size, TyAbiInterface};
 
 fn extend_integer_width_mips<Ty>(arg: &mut ArgAbi<'_, Ty>, bits: u64) {
     // Always sign extend u32 values on 64-bit mips
     if let abi::Abi::Scalar(scalar) = arg.layout.abi {
-        if let abi::Int(i, signed) = scalar.value {
+        if let abi::Int(i, signed) = scalar.primitive() {
             if !signed && i.size().bits() == 32 {
                 if let PassMode::Direct(ref mut attrs) = arg.mode {
                     attrs.ext(ArgExtension::Sext);
@@ -23,7 +25,7 @@ where
     C: HasDataLayout,
 {
     match ret.layout.field(cx, i).abi {
-        abi::Abi::Scalar(scalar) => match scalar.value {
+        abi::Abi::Scalar(scalar) => match scalar.primitive() {
             abi::F32 => Some(Reg::f32()),
             abi::F64 => Some(Reg::f64()),
             _ => None,
@@ -108,14 +110,14 @@ where
 
                 // We only care about aligned doubles
                 if let abi::Abi::Scalar(scalar) = field.abi {
-                    if let abi::F64 = scalar.value {
+                    if let abi::F64 = scalar.primitive() {
                         if offset.is_aligned(dl.f64_align.abi) {
                             // Insert enough integers to cover [last_offset, offset)
                             assert!(last_offset.is_aligned(dl.f64_align.abi));
                             for _ in 0..((offset - last_offset).bits() / 64)
                                 .min((prefix.len() - prefix_index) as u64)
                             {
-                                prefix[prefix_index] = Some(RegKind::Integer);
+                                prefix[prefix_index] = Some(Reg::i64());
                                 prefix_index += 1;
                             }
 
@@ -123,7 +125,7 @@ where
                                 break;
                             }
 
-                            prefix[prefix_index] = Some(RegKind::Float);
+                            prefix[prefix_index] = Some(Reg::f64());
                             prefix_index += 1;
                             last_offset = offset + Reg::f64().size;
                         }
@@ -137,8 +139,13 @@ where
     let rest_size = size - Size::from_bytes(8) * prefix_index as u64;
     arg.cast_to(CastTarget {
         prefix,
-        prefix_chunk_size: Size::from_bytes(8),
         rest: Uniform { unit: Reg::i64(), total: rest_size },
+        attrs: ArgAttributes {
+            regular: ArgAttribute::default(),
+            arg_ext: ArgExtension::None,
+            pointee_size: Size::ZERO,
+            pointee_align: None,
+        },
     });
 }
 
@@ -151,7 +158,7 @@ where
         classify_ret(cx, &mut fn_abi.ret);
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

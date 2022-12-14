@@ -1,0 +1,57 @@
+// run-rustfix
+#![warn(clippy::box_default)]
+
+#[derive(Default)]
+struct ImplementsDefault;
+
+struct OwnDefault;
+
+impl OwnDefault {
+    fn default() -> Self {
+        Self
+    }
+}
+
+macro_rules! outer {
+    ($e: expr) => {
+        $e
+    };
+}
+
+fn main() {
+    let _string: Box<String> = Box::default();
+    let _byte = Box::<u8>::default();
+    let _vec = Box::<std::vec::Vec<u8>>::default();
+    let _impl = Box::<ImplementsDefault>::default();
+    let _impl2 = Box::<ImplementsDefault>::default();
+    let _impl3: Box<ImplementsDefault> = Box::default();
+    let _own = Box::new(OwnDefault::default()); // should not lint
+    let _in_macro = outer!(Box::<std::string::String>::default());
+    let _string_default = outer!(Box::<std::string::String>::default());
+    let _vec2: Box<Vec<ImplementsDefault>> = Box::default();
+    let _vec3: Box<Vec<bool>> = Box::default();
+    let _vec4: Box<_> = Box::<std::vec::Vec<bool>>::default();
+    let _more = ret_ty_fn();
+    call_ty_fn(Box::default());
+}
+
+fn ret_ty_fn() -> Box<bool> {
+    Box::<bool>::default()
+}
+
+#[allow(clippy::boxed_local)]
+fn call_ty_fn(_b: Box<u8>) {
+    issue_9621_dyn_trait();
+}
+
+use std::io::{Read, Result};
+
+impl Read for ImplementsDefault {
+    fn read(&mut self, _: &mut [u8]) -> Result<usize> {
+        Ok(0)
+    }
+}
+
+fn issue_9621_dyn_trait() {
+    let _: Box<dyn Read> = Box::<ImplementsDefault>::default();
+}

@@ -23,7 +23,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
             // `expr` implements `FromIterator` trait
             let iter_expr = sugg::Sugg::hir(cx, &args[0], "..").maybe_par();
             let turbofish = extract_turbofish(cx, expr, ty);
-            let sugg = format!("{}.collect::<{}>()", iter_expr, turbofish);
+            let sugg = format!("{iter_expr}.collect::<{turbofish}>()");
             span_lint_and_sugg(
                 cx,
                 FROM_ITER_INSTEAD_OF_COLLECT,
@@ -37,7 +37,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, args: &[hir::Exp
     }
 }
 
-fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -> String {
+fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'_>) -> String {
     fn strip_angle_brackets(s: &str) -> Option<&str> {
         s.strip_prefix('<')?.strip_suffix('>')
     }
@@ -63,16 +63,16 @@ fn extract_turbofish(cx: &LateContext<'_>, expr: &hir::Expr<'_>, ty: Ty<'tcx>) -
                             if e == type_specifier { None } else { Some((*e).to_string()) }
                         }).collect::<Vec<_>>();
                         // join and add the type specifier at the end (i.e.: `collections::BTreeSet<u32>`)
-                        format!("{}{}", without_ts.join("::"), type_specifier)
+                        format!("{}{type_specifier}", without_ts.join("::"))
                     } else {
                         // type is not explicitly specified so wildcards are needed
                         // i.e.: 2 wildcards in `std::collections::BTreeMap<&i32, &char>`
                         let ty_str = ty.to_string();
                         let start = ty_str.find('<').unwrap_or(0);
-                        let end = ty_str.find('>').unwrap_or_else(|| ty_str.len());
+                        let end = ty_str.find('>').unwrap_or(ty_str.len());
                         let nb_wildcard = ty_str[start..end].split(',').count();
                         let wildcards = format!("_{}", ", _".repeat(nb_wildcard - 1));
-                        format!("{}<{}>", elements.join("::"), wildcards)
+                        format!("{}<{wildcards}>", elements.join("::"))
                     }
                 }
             }

@@ -14,8 +14,8 @@ fn expect_free_supply_free_from_fn<'x>(x: &'x u32) {
     // Here, the type given for `'x` "obscures" a region from the
     // expected signature that is bound at closure level.
     with_closure_expecting_fn_with_free_region(|x: fn(&'x u32), y| {});
-    //~^ ERROR mismatched types
-    //~| ERROR mismatched types
+    //~^ ERROR lifetime may not live long enough
+    //~| ERROR lifetime may not live long enough
 }
 
 fn expect_free_supply_free_from_closure() {

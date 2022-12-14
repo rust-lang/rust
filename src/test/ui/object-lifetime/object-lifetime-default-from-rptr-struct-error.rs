@@ -2,7 +2,6 @@
 // through the `MyBox` struct.
 
 #![allow(dead_code)]
-#![feature(rustc_error)]
 
 trait Test {
     fn foo(&self) { }
@@ -18,7 +17,8 @@ struct MyBox<T:?Sized> {
 }
 
 fn c<'a>(t: &'a MyBox<dyn Test+'a>, mut ss: SomeStruct<'a>) {
-    ss.t = t; //~ ERROR mismatched types
+    ss.t = t;
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {

@@ -5,11 +5,12 @@ edition = "2021"
 autobins = false
 
 [dependencies]
-cargo_metadata = "0.12"
+cargo_metadata = "0.14"
 regex = "1"
+miropt-test-tools = { path = "../miropt-test-tools" }
 lazy_static = "1"
 walkdir = "2"
-crossbeam-utils = "0.8.0"
+ignore = "0.4.18"
 
 [[bin]]
 name = "rust-tidy"

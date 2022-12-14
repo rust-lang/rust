@@ -18,7 +18,7 @@ LL |     let l = &mut p;
    |             ------ mutable borrow occurs here
 LL |     p.impurem();
    |     ^^^^^^^^^^^ immutable borrow occurs here
-LL | 
+LL |
 LL |     l.x += 1;
    |     -------- mutable borrow later used here
 

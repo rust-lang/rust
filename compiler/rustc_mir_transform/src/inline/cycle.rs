@@ -1,16 +1,15 @@
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_data_structures::sso::SsoHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::mir::TerminatorKind;
-use rustc_middle::ty::TypeFoldable;
+use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, subst::SubstsRef, InstanceDef, TyCtxt};
 use rustc_session::Limit;
 
 // FIXME: check whether it is cheaper to precompute the entire call graph instead of invoking
-// this query riddiculously often.
+// this query ridiculously often.
 #[instrument(level = "debug", skip(tcx, root, target))]
-crate fn mir_callgraph_reachable(
+pub(crate) fn mir_callgraph_reachable<'tcx>(
     tcx: TyCtxt<'tcx>,
     (root, target): (ty::Instance<'tcx>, LocalDefId),
 ) -> bool {
@@ -33,7 +32,7 @@ crate fn mir_callgraph_reachable(
         level = "debug",
         skip(tcx, param_env, target, stack, seen, recursion_limiter, caller, recursion_limit)
     )]
-    fn process(
+    fn process<'tcx>(
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
         caller: ty::Instance<'tcx>,
@@ -45,13 +44,13 @@ crate fn mir_callgraph_reachable(
     ) -> bool {
         trace!(%caller);
         for &(callee, substs) in tcx.mir_inliner_callees(caller.def) {
-            let substs = caller.subst_mir_and_normalize_erasing_regions(tcx, param_env, substs);
-            let callee = match ty::Instance::resolve(tcx, param_env, callee, substs).unwrap() {
-                Some(callee) => callee,
-                None => {
-                    trace!(?callee, "cannot resolve, skipping");
-                    continue;
-                }
+            let Ok(substs) = caller.try_subst_mir_and_normalize_erasing_regions(tcx, param_env, substs) else {
+                trace!(?caller, ?param_env, ?substs, "cannot normalize, skipping");
+                continue;
+            };
+            let Ok(Some(callee)) = ty::Instance::resolve(tcx, param_env, callee, substs) else {
+                trace!(?callee, "cannot resolve, skipping");
+                continue;
             };
 
             // Found a path.
@@ -80,7 +79,7 @@ crate fn mir_callgraph_reachable(
                 // These have MIR and if that MIR is inlined, substituted and then inlining is run
                 // again, a function item can end up getting inlined. Thus we'll be able to cause
                 // a cycle that way
-                InstanceDef::VtableShim(_)
+                InstanceDef::VTableShim(_)
                 | InstanceDef::ReifyShim(_)
                 | InstanceDef::FnPtrShim(..)
                 | InstanceDef::ClosureOnceShim { .. }
@@ -89,7 +88,7 @@ crate fn mir_callgraph_reachable(
                     // FIXME: A not fully substituted drop shim can cause ICEs if one attempts to
                     // have its MIR built. Likely oli-obk just screwed up the `ParamEnv`s, so this
                     // needs some more analysis.
-                    if callee.definitely_needs_subst(tcx) {
+                    if callee.needs_subst() {
                         continue;
                     }
                 }
@@ -137,7 +136,7 @@ crate fn mir_callgraph_reachable(
     )
 }
 
-crate fn mir_inliner_callees<'tcx>(
+pub(crate) fn mir_inliner_callees<'tcx>(
     tcx: TyCtxt<'tcx>,
     instance: ty::InstanceDef<'tcx>,
 ) -> &'tcx [(DefId, SubstsRef<'tcx>)] {
@@ -153,8 +152,8 @@ crate fn mir_inliner_callees<'tcx>(
         // Functions from other crates and MIR shims
         _ => tcx.instance_mir(instance),
     };
-    let mut calls = SsoHashSet::new();
-    for bb_data in body.basic_blocks() {
+    let mut calls = FxIndexSet::default();
+    for bb_data in body.basic_blocks.iter() {
         let terminator = bb_data.terminator();
         if let TerminatorKind::Call { func, .. } = &terminator.kind {
             let ty = func.ty(&body.local_decls, tcx);

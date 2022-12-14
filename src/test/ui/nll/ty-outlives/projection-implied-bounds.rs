@@ -1,7 +1,7 @@
 // Test that we can deduce when projections like `T::Item` outlive the
 // function body. Test that this does not imply that `T: 'a` holds.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 use std::cell::Cell;
 

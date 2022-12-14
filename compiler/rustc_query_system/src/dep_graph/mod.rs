@@ -4,14 +4,15 @@ mod graph;
 mod query;
 mod serialized;
 
-pub use dep_node::{DepNode, DepNodeParams, WorkProductId};
-pub use graph::{hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, WorkProduct};
+pub use dep_node::{DepKindStruct, DepNode, DepNodeParams, WorkProductId};
+pub use graph::{
+    hash_result, DepGraph, DepNodeColor, DepNodeIndex, TaskDeps, TaskDepsRef, WorkProduct,
+};
 pub use query::DepGraphQuery;
 pub use serialized::{SerializedDepGraph, SerializedDepNodeIndex};
 
 use crate::ich::StableHashingContext;
 use rustc_data_structures::profiling::SelfProfilerRef;
-use rustc_data_structures::sync::Lock;
 use rustc_serialize::{opaque::FileEncoder, Encodable};
 use rustc_session::Session;
 
@@ -22,7 +23,7 @@ pub trait DepContext: Copy {
     type DepKind: self::DepKind;
 
     /// Create a hashing context for hashing new results.
-    fn create_stable_hashing_context(&self) -> StableHashingContext<'_>;
+    fn with_stable_hashing_context<R>(&self, f: impl FnOnce(StableHashingContext<'_>) -> R) -> R;
 
     /// Access the DepGraph.
     fn dep_graph(&self) -> &DepGraph<Self::DepKind>;
@@ -33,16 +34,42 @@ pub trait DepContext: Copy {
     /// Access the compiler session.
     fn sess(&self) -> &Session;
 
-    /// Return whether this kind always require evaluation.
-    fn is_eval_always(&self, kind: Self::DepKind) -> bool;
+    fn dep_kind_info(&self, dep_node: Self::DepKind) -> &DepKindStruct<Self>;
 
-    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle;
+    #[inline(always)]
+    fn fingerprint_style(&self, kind: Self::DepKind) -> FingerprintStyle {
+        let data = self.dep_kind_info(kind);
+        if data.is_anon {
+            return FingerprintStyle::Opaque;
+        }
+        data.fingerprint_style
+    }
+
+    #[inline(always)]
+    /// Return whether this kind always require evaluation.
+    fn is_eval_always(&self, kind: Self::DepKind) -> bool {
+        self.dep_kind_info(kind).is_eval_always
+    }
 
     /// Try to force a dep node to execute and see if it's green.
-    fn try_force_from_dep_node(&self, dep_node: DepNode<Self::DepKind>) -> bool;
+    #[instrument(skip(self), level = "debug")]
+    fn try_force_from_dep_node(self, dep_node: DepNode<Self::DepKind>) -> bool {
+        let cb = self.dep_kind_info(dep_node.kind);
+        if let Some(f) = cb.force_from_dep_node {
+            f(self, dep_node);
+            true
+        } else {
+            false
+        }
+    }
 
     /// Load data from the on-disk cache.
-    fn try_load_from_on_disk_cache(&self, dep_node: DepNode<Self::DepKind>);
+    fn try_load_from_on_disk_cache(self, dep_node: DepNode<Self::DepKind>) {
+        let cb = self.dep_kind_info(dep_node.kind);
+        if let Some(f) = cb.try_load_from_on_disk_cache {
+            f(self, dep_node)
+        }
+    }
 }
 
 pub trait HasDepContext: Copy {
@@ -66,6 +93,8 @@ impl<T: DepContext> HasDepContext for T {
 pub enum FingerprintStyle {
     /// The fingerprint is actually a DefPathHash.
     DefPathHash,
+    /// The fingerprint is actually a HirId.
+    HirId,
     /// Query key was `()` or equivalent, so fingerprint is just zero.
     Unit,
     /// Some opaque hash.
@@ -76,7 +105,9 @@ impl FingerprintStyle {
     #[inline]
     pub fn reconstructible(self) -> bool {
         match self {
-            FingerprintStyle::DefPathHash | FingerprintStyle::Unit => true,
+            FingerprintStyle::DefPathHash | FingerprintStyle::Unit | FingerprintStyle::HirId => {
+                true
+            }
             FingerprintStyle::Opaque => false,
         }
     }
@@ -84,18 +115,22 @@ impl FingerprintStyle {
 
 /// Describe the different families of dependency nodes.
 pub trait DepKind: Copy + fmt::Debug + Eq + Hash + Send + Encodable<FileEncoder> + 'static {
+    /// DepKind to use when incr. comp. is turned off.
     const NULL: Self;
+
+    /// DepKind to use to create the initial forever-red node.
+    const RED: Self;
 
     /// Implementation of `std::fmt::Debug` for `DepNode`.
     fn debug_node(node: &DepNode<Self>, f: &mut fmt::Formatter<'_>) -> fmt::Result;
 
     /// Execute the operation with provided dependencies.
-    fn with_deps<OP, R>(deps: Option<&Lock<TaskDeps<Self>>>, op: OP) -> R
+    fn with_deps<OP, R>(deps: TaskDepsRef<'_, Self>, op: OP) -> R
     where
         OP: FnOnce() -> R;
 
     /// Access dependencies from current implicit context.
     fn read_deps<OP>(op: OP)
     where
-        OP: for<'a> FnOnce(Option<&'a Lock<TaskDeps<Self>>>);
+        OP: for<'a> FnOnce(TaskDepsRef<'a, Self>);
 }

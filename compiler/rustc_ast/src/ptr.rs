@@ -10,7 +10,7 @@
 //!
 //! * **Immutability**: `P<T>` disallows mutating its inner `T`, unlike `Box<T>`
 //!   (unless it contains an `Unsafe` interior, but that may be denied later).
-//!   This mainly prevents mistakes, but can also enforces a kind of "purity".
+//!   This mainly prevents mistakes, but also enforces a kind of "purity".
 //!
 //! * **Efficiency**: folding can reuse allocation space for `P<T>` and `Vec<T>`,
 //!   the latter even when the input and output types differ (as it would be the
@@ -22,7 +22,6 @@
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Debug, Display};
-use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
 
@@ -115,27 +114,20 @@ impl<T> fmt::Pointer for P<T> {
 }
 
 impl<D: Decoder, T: 'static + Decodable<D>> Decodable<D> for P<T> {
-    fn decode(d: &mut D) -> Result<P<T>, D::Error> {
-        Decodable::decode(d).map(P)
+    fn decode(d: &mut D) -> P<T> {
+        P(Decodable::decode(d))
     }
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<T> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        (**self).encode(s)
+    fn encode(&self, s: &mut S) {
+        (**self).encode(s);
     }
 }
 
 impl<T> P<[T]> {
     pub const fn new() -> P<[T]> {
-        // HACK(eddyb) bypass the lack of a `const fn` to create an empty `Box<[T]>`
-        // (as trait methods, `default` in this case, can't be `const fn` yet).
-        P {
-            ptr: unsafe {
-                use std::ptr::NonNull;
-                std::mem::transmute(NonNull::<[T; 0]>::dangling() as NonNull<[T]>)
-            },
-        }
+        P { ptr: Box::default() }
     }
 
     #[inline(never)]
@@ -198,14 +190,14 @@ impl<'a, T> IntoIterator for &'a P<[T]> {
 }
 
 impl<S: Encoder, T: Encodable<S>> Encodable<S> for P<[T]> {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        Encodable::encode(&**self, s)
+    fn encode(&self, s: &mut S) {
+        Encodable::encode(&**self, s);
     }
 }
 
 impl<D: Decoder, T: Decodable<D>> Decodable<D> for P<[T]> {
-    fn decode(d: &mut D) -> Result<P<[T]>, D::Error> {
-        Ok(P::from_vec(Decodable::decode(d)?))
+    fn decode(d: &mut D) -> P<[T]> {
+        P::from_vec(Decodable::decode(d))
     }
 }
 

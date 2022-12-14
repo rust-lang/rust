@@ -4,33 +4,6 @@ mod fs;
 pub mod sockets;
 pub use self::fs::*;
 
-pub const SOLID_BP_PROGRAM_EXITED: usize = 15;
-pub const SOLID_BP_CSABORT: usize = 16;
-
-#[inline(always)]
-pub fn breakpoint_program_exited(tid: usize) {
-    unsafe {
-        match () {
-            #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #{}", const SOLID_BP_PROGRAM_EXITED, in("r0") tid),
-            #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #{}", const SOLID_BP_PROGRAM_EXITED, in("x0") tid),
-        }
-    }
-}
-
-#[inline(always)]
-pub fn breakpoint_abort() {
-    unsafe {
-        match () {
-            #[cfg(target_arch = "arm")]
-            () => asm!("bkpt #{}", const SOLID_BP_CSABORT),
-            #[cfg(target_arch = "aarch64")]
-            () => asm!("hlt #{}", const SOLID_BP_CSABORT),
-        }
-    }
-}
-
 // `solid_types.h`
 pub use super::itron::abi::{ER, ER_ID, E_TMOUT, ID};
 

@@ -21,6 +21,7 @@ declare_clippy_lint! {
     /// extern crate crossbeam;
     /// use crossbeam::{spawn_unsafe as spawn};
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNSAFE_REMOVED_FROM_NAME,
     style,
     "`unsafe` removed from API names on import"
@@ -38,7 +39,7 @@ impl EarlyLintPass for UnsafeNameRemoval {
 
 fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
     match use_tree.kind {
-        UseTreeKind::Simple(Some(new_name), ..) => {
+        UseTreeKind::Simple(Some(new_name)) => {
             let old_name = use_tree
                 .prefix
                 .segments
@@ -47,9 +48,9 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
                 .ident;
             unsafe_to_safe_check(old_name, new_name, cx, span);
         },
-        UseTreeKind::Simple(None, ..) | UseTreeKind::Glob => {},
+        UseTreeKind::Simple(None) | UseTreeKind::Glob => {},
         UseTreeKind::Nested(ref nested_use_tree) => {
-            for &(ref use_tree, _) in nested_use_tree {
+            for (use_tree, _) in nested_use_tree {
                 check_use_tree(use_tree, cx, span);
             }
         },
@@ -59,15 +60,12 @@ fn check_use_tree(use_tree: &UseTree, cx: &EarlyContext<'_>, span: Span) {
 fn unsafe_to_safe_check(old_name: Ident, new_name: Ident, cx: &EarlyContext<'_>, span: Span) {
     let old_str = old_name.name.as_str();
     let new_str = new_name.name.as_str();
-    if contains_unsafe(&old_str) && !contains_unsafe(&new_str) {
+    if contains_unsafe(old_str) && !contains_unsafe(new_str) {
         span_lint(
             cx,
             UNSAFE_REMOVED_FROM_NAME,
             span,
-            &format!(
-                "removed `unsafe` from the name of `{}` in use as `{}`",
-                old_str, new_str
-            ),
+            &format!("removed `unsafe` from the name of `{old_str}` in use as `{new_str}`"),
         );
     }
 }

@@ -1,0 +1,68 @@
+error: unused import: `std::io::BufRead`
+  --> $DIR/unused-imports-in-test-mode.rs:5:5
+   |
+LL | use std::io::BufRead;
+   |     ^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/unused-imports-in-test-mode.rs:3:9
+   |
+LL | #![deny(unused_imports)]
+   |         ^^^^^^^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:16:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:26:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:36:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:46:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:56:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:66:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:76:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:87:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: unused import: `crate::b`
+  --> $DIR/unused-imports-in-test-mode.rs:98:13
+   |
+LL |         use crate::b;
+   |             ^^^^^^^^
+
+error: aborting due to 10 previous errors
+

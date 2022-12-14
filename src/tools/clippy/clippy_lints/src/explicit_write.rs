@@ -1,9 +1,11 @@
-use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
-use clippy_utils::higher::FormatArgsExpn;
+use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::macros::FormatArgsExpn;
+use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::{is_expn_of, match_function_call, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind};
+use rustc_hir::def::Res;
+use rustc_hir::{BindingAnnotation, Block, BlockCheckMode, Expr, ExprKind, Node, PatKind, QPath, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -20,9 +22,18 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::io::Write;
     /// # let bar = "furchtbar";
-    /// // this would be clearer as `eprintln!("foo: {:?}", bar);`
     /// writeln!(&mut std::io::stderr(), "foo: {:?}", bar).unwrap();
+    /// writeln!(&mut std::io::stdout(), "foo: {:?}", bar).unwrap();
     /// ```
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # use std::io::Write;
+    /// # let bar = "furchtbar";
+    /// eprintln!("foo: {:?}", bar);
+    /// println!("foo: {:?}", bar);
+    /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub EXPLICIT_WRITE,
     complexity,
     "using the `write!()` family of functions instead of the `print!()` family of functions, when using the latter would work"
@@ -34,10 +45,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         if_chain! {
             // match call to unwrap
-            if let ExprKind::MethodCall(unwrap_fun, _, [write_call], _) = expr.kind;
+            if let ExprKind::MethodCall(unwrap_fun, write_call, [], _) = expr.kind;
             if unwrap_fun.ident.name == sym::unwrap;
             // match call to write_fmt
-            if let ExprKind::MethodCall(write_fun, _, [write_recv, write_arg], _) = write_call.kind;
+            if let ExprKind::MethodCall(write_fun, write_recv, [write_arg], _) = look_in_block(cx, &write_call.kind);
             if write_fun.ident.name == sym!(write_fmt);
             // match calls to std::io::stdout() / std::io::stderr ()
             if let Some(dest_name) = if match_function_call(cx, write_recv, &paths::STDOUT).is_some() {
@@ -47,7 +58,7 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
             } else {
                 None
             };
-            if let Some(format_args) = FormatArgsExpn::parse(write_arg);
+            if let Some(format_args) = FormatArgsExpn::parse(cx, write_arg);
             then {
                 let calling_macro =
                     // ordering is important here, since `writeln!` uses `write!` internally
@@ -69,38 +80,63 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitWrite {
                 // used.
                 let (used, sugg_mac) = if let Some(macro_name) = calling_macro {
                     (
-                        format!("{}!({}(), ...)", macro_name, dest_name),
+                        format!("{macro_name}!({dest_name}(), ...)"),
                         macro_name.replace("write", "print"),
                     )
                 } else {
                     (
-                        format!("{}().write_fmt(...)", dest_name),
+                        format!("{dest_name}().write_fmt(...)"),
                         "print".into(),
                     )
                 };
-                let msg = format!("use of `{}.unwrap()`", used);
-                if let [write_output] = *format_args.format_string_symbols {
-                    let mut write_output = write_output.to_string();
-                    if write_output.ends_with('\n') {
-                        write_output.pop();
-                    }
-
-                    let sugg = format!("{}{}!(\"{}\")", prefix, sugg_mac, write_output.escape_default());
-                    span_lint_and_sugg(
-                        cx,
-                        EXPLICIT_WRITE,
-                        expr.span,
-                        &msg,
-                        "try this",
-                        sugg,
-                        Applicability::MachineApplicable
-                    );
-                } else {
-                    // We don't have a proper suggestion
-                    let help = format!("consider using `{}{}!` instead", prefix, sugg_mac);
-                    span_lint_and_help(cx, EXPLICIT_WRITE, expr.span, &msg, None, &help);
-                }
+                let mut applicability = Applicability::MachineApplicable;
+                let inputs_snippet = snippet_with_applicability(
+                    cx,
+                    format_args.inputs_span(),
+                    "..",
+                    &mut applicability,
+                );
+                span_lint_and_sugg(
+                    cx,
+                    EXPLICIT_WRITE,
+                    expr.span,
+                    &format!("use of `{used}.unwrap()`"),
+                    "try this",
+                    format!("{prefix}{sugg_mac}!({inputs_snippet})"),
+                    applicability,
+                )
             }
         }
     }
+}
+
+/// If `kind` is a block that looks like `{ let result = $expr; result }` then
+/// returns $expr. Otherwise returns `kind`.
+fn look_in_block<'tcx, 'hir>(cx: &LateContext<'tcx>, kind: &'tcx ExprKind<'hir>) -> &'tcx ExprKind<'hir> {
+    if_chain! {
+        if let ExprKind::Block(block, _label @ None) = kind;
+        if let Block {
+            stmts: [Stmt { kind: StmtKind::Local(local), .. }],
+            expr: Some(expr_end_of_block),
+            rules: BlockCheckMode::DefaultBlock,
+            ..
+        } = block;
+
+        // Find id of the local that expr_end_of_block resolves to
+        if let ExprKind::Path(QPath::Resolved(None, expr_path)) = expr_end_of_block.kind;
+        if let Res::Local(expr_res) = expr_path.res;
+        if let Some(Node::Pat(res_pat)) = cx.tcx.hir().find(expr_res);
+
+        // Find id of the local we found in the block
+        if let PatKind::Binding(BindingAnnotation::NONE, local_hir_id, _ident, None) = local.pat.kind;
+
+        // If those two are the same hir id
+        if res_pat.hir_id == local_hir_id;
+
+        if let Some(init) = local.init;
+        then {
+            return &init.kind;
+        }
+    }
+    kind
 }

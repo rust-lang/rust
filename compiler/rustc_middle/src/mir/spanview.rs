@@ -105,7 +105,7 @@ where
     }
     let body_span = hir_body.unwrap().value.span;
     let mut span_viewables = Vec::new();
-    for (bb, data) in body.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         match spanview {
             MirSpanview::Statement => {
                 for (i, statement) in data.statements.iter().enumerate() {
@@ -230,7 +230,7 @@ where
 }
 
 /// Format a string showing the start line and column, and end line and column within a file.
-pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: &Span) -> String {
+pub fn source_range_no_file<'tcx>(tcx: TyCtxt<'tcx>, span: Span) -> String {
     let source_map = tcx.sess.source_map();
     let start = source_map.lookup_char_pos(span.lo());
     let end = source_map.lookup_char_pos(span.hi());
@@ -243,13 +243,13 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         Assign(..) => "Assign",
         FakeRead(..) => "FakeRead",
         SetDiscriminant { .. } => "SetDiscriminant",
+        Deinit(..) => "Deinit",
         StorageLive(..) => "StorageLive",
         StorageDead(..) => "StorageDead",
-        LlvmInlineAsm(..) => "LlvmInlineAsm",
         Retag(..) => "Retag",
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
-        CopyNonOverlapping(..) => "CopyNonOverlapping",
+        Intrinsic(..) => "Intrinsic",
         Nop => "Nop",
     }
 }
@@ -630,17 +630,17 @@ fn tooltip<'tcx>(
     let mut text = Vec::new();
     text.push(format!("{}: {}:", spanview_id, &source_map.span_to_embeddable_string(span)));
     for statement in statements {
-        let source_range = source_range_no_file(tcx, &statement.source_info.span);
+        let source_range = source_range_no_file(tcx, statement.source_info.span);
         text.push(format!(
-            "\n{}{}: {}: {}",
+            "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
             source_range,
             statement_kind_name(&statement),
-            format!("{:?}", statement)
+            statement
         ));
     }
     if let Some(term) = terminator {
-        let source_range = source_range_no_file(tcx, &term.source_info.span);
+        let source_range = source_range_no_file(tcx, term.source_info.span);
         text.push(format!(
             "\n{}{}: {}: {:?}",
             TOOLTIP_INDENT,
@@ -665,11 +665,9 @@ fn trim_span_hi(span: Span, to_pos: BytePos) -> Span {
 }
 
 fn fn_span<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Span {
-    let hir_id =
-        tcx.hir().local_def_id_to_hir_id(def_id.as_local().expect("expected DefId is local"));
-    let fn_decl_span = tcx.hir().span(hir_id);
+    let fn_decl_span = tcx.def_span(def_id);
     if let Some(body_span) = hir_body(tcx, def_id).map(|hir_body| hir_body.value.span) {
-        if fn_decl_span.ctxt() == body_span.ctxt() { fn_decl_span.to(body_span) } else { body_span }
+        if fn_decl_span.eq_ctxt(body_span) { fn_decl_span.to(body_span) } else { body_span }
     } else {
         fn_decl_span
     }
@@ -681,13 +679,13 @@ fn hir_body<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Option<&'tcx rustc_hir::B
 }
 
 fn escape_html(s: &str) -> String {
-    s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+    s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;")
 }
 
 fn escape_attr(s: &str) -> String {
-    s.replace("&", "&amp;")
-        .replace("\"", "&quot;")
-        .replace("'", "&#39;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
+    s.replace('&', "&amp;")
+        .replace('\"', "&quot;")
+        .replace('\'', "&#39;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
 }

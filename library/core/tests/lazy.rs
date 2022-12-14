@@ -1,6 +1,5 @@
 use core::{
-    cell::Cell,
-    lazy::{Lazy, OnceCell},
+    cell::{Cell, LazyCell, OnceCell},
     sync::atomic::{AtomicUsize, Ordering::SeqCst},
 };
 
@@ -91,7 +90,7 @@ fn into_inner() {
 #[test]
 fn lazy_new() {
     let called = Cell::new(0);
-    let x = Lazy::new(|| {
+    let x = LazyCell::new(|| {
         called.set(called.get() + 1);
         92
     });
@@ -113,7 +112,7 @@ fn aliasing_in_get() {
     x.set(42).unwrap();
     let at_x = x.get().unwrap(); // --- (shared) borrow of inner `Option<T>` --+
     let _ = x.set(27); // <-- temporary (unique) borrow of inner `Option<T>`   |
-    println!("{}", at_x); // <------- up until here ---------------------------+
+    println!("{at_x}"); // <------- up until here ---------------------------+
 }
 
 #[test]

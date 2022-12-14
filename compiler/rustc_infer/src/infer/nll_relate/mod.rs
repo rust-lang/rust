@@ -24,11 +24,15 @@
 use crate::infer::combine::ConstEquateRelation;
 use crate::infer::InferCtxt;
 use crate::infer::{ConstVarValue, ConstVariableValue};
+use crate::infer::{TypeVariableOrigin, TypeVariableOriginKind};
+use crate::traits::{Obligation, PredicateObligation};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_middle::traits::ObligationCause;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::fold::{TypeFoldable, TypeVisitor};
 use rustc_middle::ty::relate::{self, Relate, RelateResult, TypeRelation};
+use rustc_middle::ty::visit::{TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_middle::ty::{self, InferConst, Ty, TyCtxt};
+use rustc_span::Span;
 use std::fmt::Debug;
 use std::ops::ControlFlow;
 
@@ -42,7 +46,7 @@ pub struct TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     /// Callback to use when we deduce an outlives relationship.
     delegate: D,
@@ -75,6 +79,7 @@ where
 
 pub trait TypeRelatingDelegate<'tcx> {
     fn param_env(&self) -> ty::ParamEnv<'tcx>;
+    fn span(&self) -> Span;
 
     /// Push a constraint `sup: sub` -- this constraint must be
     /// satisfied for the two types to be related. `sub` and `sup` may
@@ -87,7 +92,7 @@ pub trait TypeRelatingDelegate<'tcx> {
         info: ty::VarianceDiagInfo<'tcx>,
     );
 
-    fn const_equate(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>);
+    fn register_obligations(&mut self, obligations: Vec<PredicateObligation<'tcx>>);
 
     /// Creates a new universe index. Used when instantiating placeholders.
     fn create_next_universe(&mut self) -> ty::UniverseIndex;
@@ -140,11 +145,7 @@ impl<'me, 'tcx, D> TypeRelating<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    pub fn new(
-        infcx: &'me InferCtxt<'me, 'tcx>,
-        delegate: D,
-        ambient_variance: ty::Variance,
-    ) -> Self {
+    pub fn new(infcx: &'me InferCtxt<'tcx>, delegate: D, ambient_variance: ty::Variance) -> Self {
         Self {
             infcx,
             delegate,
@@ -201,7 +202,6 @@ where
         };
 
         value.skip_binder().visit_with(&mut ScopeInstantiator {
-            tcx: self.infcx.tcx,
             next_region: &mut next_region,
             target_index: ty::INNERMOST,
             bound_region_scope: &mut scope,
@@ -245,8 +245,8 @@ where
         scopes: &[BoundRegionScope<'tcx>],
     ) -> ty::Region<'tcx> {
         debug!("replace_bound_regions(scopes={:?})", scopes);
-        if let ty::ReLateBound(debruijn, br) = r {
-            Self::lookup_bound_region(*debruijn, br, first_free_index, scopes)
+        if let ty::ReLateBound(debruijn, br) = *r {
+            Self::lookup_bound_region(debruijn, &br, first_free_index, scopes)
         } else {
             r
         }
@@ -278,7 +278,6 @@ where
         projection_ty: ty::ProjectionTy<'tcx>,
         value_ty: Ty<'tcx>,
     ) -> Ty<'tcx> {
-        use crate::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
         use rustc_span::DUMMY_SP;
 
         match *value_ty.kind() {
@@ -287,6 +286,8 @@ where
                     kind: TypeVariableOriginKind::MiscVariable,
                     span: DUMMY_SP,
                 });
+                // FIXME(lazy-normalization): This will always ICE, because the recursive
+                // call will end up in the _ arm below.
                 self.relate_projection_ty(projection_ty, var);
                 self.relate_projection_ty(other_projection_ty, var);
                 var
@@ -348,7 +349,7 @@ where
             // In NLL, we don't have type inference variables
             // floating around, so we can do this rather imprecise
             // variant of the occurs-check.
-            assert!(!generalized_ty.has_infer_types_or_consts());
+            assert!(!generalized_ty.has_non_region_infer());
         }
 
         self.infcx.inner.borrow_mut().type_variables().instantiate(vid, generalized_ty);
@@ -387,6 +388,37 @@ where
 
         generalizer.relate(value, value)
     }
+
+    fn relate_opaques(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        let (a, b) = if self.a_is_expected() { (a, b) } else { (b, a) };
+        let mut generalize = |ty, ty_is_expected| {
+            let var = self.infcx.next_ty_var_id_in_universe(
+                TypeVariableOrigin {
+                    kind: TypeVariableOriginKind::MiscVariable,
+                    span: self.delegate.span(),
+                },
+                ty::UniverseIndex::ROOT,
+            );
+            if ty_is_expected {
+                self.relate_ty_var((ty, var))
+            } else {
+                self.relate_ty_var((var, ty))
+            }
+        };
+        let (a, b) = match (a.kind(), b.kind()) {
+            (&ty::Opaque(..), _) => (a, generalize(b, false)?),
+            (_, &ty::Opaque(..)) => (generalize(a, true)?, b),
+            _ => unreachable!(),
+        };
+        let cause = ObligationCause::dummy_with_span(self.delegate.span());
+        let obligations = self
+            .infcx
+            .handle_opaque_type(a, b, true, &cause, self.delegate.param_env())?
+            .obligations;
+        self.delegate.register_obligations(obligations);
+        trace!(a = ?a.kind(), b = ?b.kind(), "opaque type instantiated");
+        Ok(a)
+    }
 }
 
 /// When we instantiate an inference variable with a value in
@@ -407,7 +439,7 @@ trait VidValuePair<'tcx>: Debug {
     /// Extract the scopes that apply to whichever side of the tuple
     /// the vid was found on.  See the comment where this is called
     /// for more details on why we want them.
-    fn vid_scopes<D: TypeRelatingDelegate<'tcx>>(
+    fn vid_scopes<'r, D: TypeRelatingDelegate<'tcx>>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>;
@@ -424,7 +456,7 @@ trait VidValuePair<'tcx>: Debug {
         D: TypeRelatingDelegate<'tcx>;
 }
 
-impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
+impl<'tcx> VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
     fn vid(&self) -> ty::TyVid {
         self.0
     }
@@ -433,7 +465,7 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
         self.1
     }
 
-    fn vid_scopes<D>(
+    fn vid_scopes<'r, D>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
@@ -451,12 +483,12 @@ impl VidValuePair<'tcx> for (ty::TyVid, Ty<'tcx>) {
     where
         D: TypeRelatingDelegate<'tcx>,
     {
-        relate.relate(&generalized_ty, &self.value_ty())
+        relate.relate(generalized_ty, self.value_ty())
     }
 }
 
 // In this case, the "vid" is the "b" type.
-impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
+impl<'tcx> VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     fn vid(&self) -> ty::TyVid {
         self.1
     }
@@ -465,7 +497,7 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
         self.0
     }
 
-    fn vid_scopes<D>(
+    fn vid_scopes<'r, D>(
         &self,
         relate: &'r mut TypeRelating<'_, 'tcx, D>,
     ) -> &'r mut Vec<BoundRegionScope<'tcx>>
@@ -483,16 +515,20 @@ impl VidValuePair<'tcx> for (Ty<'tcx>, ty::TyVid) {
     where
         D: TypeRelatingDelegate<'tcx>,
     {
-        relate.relate(&self.value_ty(), &generalized_ty)
+        relate.relate(self.value_ty(), generalized_ty)
     }
 }
 
-impl<D> TypeRelation<'tcx> for TypeRelating<'me, 'tcx, D>
+impl<'tcx, D> TypeRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
+    }
+
+    fn intercrate(&self) -> bool {
+        self.infcx.intercrate
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
@@ -507,7 +543,18 @@ where
         true
     }
 
-    #[instrument(skip(self, info), level = "trace")]
+    fn mark_ambiguous(&mut self) {
+        let cause = ObligationCause::dummy_with_span(self.delegate.span());
+        let param_env = self.delegate.param_env();
+        self.delegate.register_obligations(vec![Obligation::new(
+            self.tcx(),
+            cause,
+            param_env,
+            ty::Binder::dummy(ty::PredicateKind::Ambiguous),
+        )]);
+    }
+
+    #[instrument(skip(self, info), level = "trace", ret)]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         variance: ty::Variance,
@@ -520,18 +567,19 @@ where
         self.ambient_variance_info = self.ambient_variance_info.xform(info);
 
         debug!(?self.ambient_variance);
-
-        let r = self.relate(a, b)?;
+        // In a bivariant context this always succeeds.
+        let r =
+            if self.ambient_variance == ty::Variance::Bivariant { a } else { self.relate(a, b)? };
 
         self.ambient_variance = old_ambient_variance;
-
-        debug!(?r);
 
         Ok(r)
     }
 
     #[instrument(skip(self), level = "debug")]
     fn tys(&mut self, a: Ty<'tcx>, mut b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
+        let infcx = self.infcx;
+
         let a = self.infcx.shallow_resolve(a);
 
         if !D::forbid_inference_vars() {
@@ -539,7 +587,7 @@ where
         }
 
         if a == b {
-            // Subtle: if a or b has a bound variable that we are lazilly
+            // Subtle: if a or b has a bound variable that we are lazily
             // substituting, then even if a == b, it could be that the values we
             // will substitute for those bound variables are *not* the same, and
             // hence returning `Ok(a)` is incorrect.
@@ -559,6 +607,19 @@ where
             }
 
             (&ty::Infer(ty::TyVar(vid)), _) => self.relate_ty_var((vid, b)),
+
+            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+                infcx.super_combine_tys(self, a, b).or_else(|err| {
+                    self.tcx().sess.delay_span_bug(
+                        self.delegate.span(),
+                        "failure to relate an opaque to itself should result in an error later on",
+                    );
+                    if a_def_id.is_local() { self.relate_opaques(a, b) } else { Err(err) }
+                })
+            }
+            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..)) if did.is_local() => {
+                self.relate_opaques(a, b)
+            }
 
             (&ty::Projection(projection_ty), _)
                 if D::normalization() == NormalizationStrategy::Lazy =>
@@ -610,19 +671,23 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        mut b: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
+        a: ty::Const<'tcx>,
+        mut b: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
         let a = self.infcx.shallow_resolve(a);
 
         if !D::forbid_inference_vars() {
             b = self.infcx.shallow_resolve(b);
         }
 
-        match b.val {
+        match b.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 // Forbid inference variables in the RHS.
-                bug!("unexpected inference var {:?}", b)
+                self.infcx.tcx.sess.delay_span_bug(
+                    self.delegate.span(),
+                    format!("unexpected inference var {:?}", b,),
+                );
+                Ok(a)
             }
             // FIXME(invariance): see the related FIXME above.
             _ => self.infcx.super_combine_consts(self, a, b),
@@ -746,8 +811,12 @@ impl<'tcx, D> ConstEquateRelation<'tcx> for TypeRelating<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    fn const_equate_obligation(&mut self, a: &'tcx ty::Const<'tcx>, b: &'tcx ty::Const<'tcx>) {
-        self.delegate.const_equate(a, b);
+    fn const_equate_obligation(&mut self, _a: ty::Const<'tcx>, _b: ty::Const<'tcx>) {
+        // We don't have to worry about the equality of consts during borrow checking
+        // as consts always have a static lifetime.
+        // FIXME(oli-obk): is this really true? We can at least have HKL and with
+        // inline consts we may have further lifetimes that may be unsound to treat as
+        // 'static.
     }
 }
 
@@ -759,7 +828,6 @@ where
 /// `for<..`>.  For each of those, it creates an entry in
 /// `bound_region_scope`.
 struct ScopeInstantiator<'me, 'tcx> {
-    tcx: TyCtxt<'tcx>,
     next_region: &'me mut dyn FnMut(ty::BoundRegion) -> ty::Region<'tcx>,
     // The debruijn index of the scope we are instantiating.
     target_index: ty::DebruijnIndex,
@@ -767,11 +835,7 @@ struct ScopeInstantiator<'me, 'tcx> {
 }
 
 impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
-    fn tcx_for_anon_const_substs(&self) -> Option<TyCtxt<'tcx>> {
-        Some(self.tcx)
-    }
-
-    fn visit_binder<T: TypeFoldable<'tcx>>(
+    fn visit_binder<T: TypeVisitable<'tcx>>(
         &mut self,
         t: &ty::Binder<'tcx, T>,
     ) -> ControlFlow<Self::BreakTy> {
@@ -785,9 +849,9 @@ impl<'me, 'tcx> TypeVisitor<'tcx> for ScopeInstantiator<'me, 'tcx> {
     fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
         let ScopeInstantiator { bound_region_scope, next_region, .. } = self;
 
-        match r {
-            ty::ReLateBound(debruijn, br) if *debruijn == self.target_index => {
-                bound_region_scope.map.entry(*br).or_insert_with(|| next_region(*br));
+        match *r {
+            ty::ReLateBound(debruijn, br) if debruijn == self.target_index => {
+                bound_region_scope.map.entry(br).or_insert_with(|| next_region(br));
             }
 
             _ => {}
@@ -820,11 +884,11 @@ struct TypeGeneralizer<'me, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
-    infcx: &'me InferCtxt<'me, 'tcx>,
+    infcx: &'me InferCtxt<'tcx>,
 
     delegate: &'me mut D,
 
-    /// After we generalize this type, we are going to relative it to
+    /// After we generalize this type, we are going to relate it to
     /// some other type. What will be the variance at this point?
     ambient_variance: ty::Variance,
 
@@ -841,12 +905,17 @@ where
     universe: ty::UniverseIndex,
 }
 
-impl<D> TypeRelation<'tcx> for TypeGeneralizer<'me, 'tcx, D>
+impl<'tcx, D> TypeRelation<'tcx> for TypeGeneralizer<'_, 'tcx, D>
 where
     D: TypeRelatingDelegate<'tcx>,
 {
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
+    }
+
+    fn intercrate(&self) -> bool {
+        assert!(!self.infcx.intercrate);
+        false
     }
 
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
@@ -859,6 +928,10 @@ where
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(
@@ -969,10 +1042,8 @@ where
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         debug!("TypeGeneralizer::regions(a={:?})", a);
 
-        if let ty::ReLateBound(debruijn, _) = a {
-            if *debruijn < self.first_free_index {
-                return Ok(a);
-            }
+        if let ty::ReLateBound(debruijn, _) = *a && debruijn < self.first_free_index {
+            return Ok(a);
         }
 
         // For now, we just always create a fresh region variable to
@@ -998,10 +1069,10 @@ where
 
     fn consts(
         &mut self,
-        a: &'tcx ty::Const<'tcx>,
-        _: &'tcx ty::Const<'tcx>,
-    ) -> RelateResult<'tcx, &'tcx ty::Const<'tcx>> {
-        match a.val {
+        a: ty::Const<'tcx>,
+        _: ty::Const<'tcx>,
+    ) -> RelateResult<'tcx, ty::Const<'tcx>> {
+        match a.kind() {
             ty::ConstKind::Infer(InferConst::Var(_)) if D::forbid_inference_vars() => {
                 bug!("unexpected inference variable encountered in NLL generalization: {:?}", a);
             }
@@ -1016,7 +1087,7 @@ where
                             origin: var_value.origin,
                             val: ConstVariableValue::Unknown { universe: self.universe },
                         });
-                        Ok(self.tcx().mk_const_var(new_var_id, a.ty))
+                        Ok(self.tcx().mk_const(new_var_id, a.ty()))
                     }
                 }
             }

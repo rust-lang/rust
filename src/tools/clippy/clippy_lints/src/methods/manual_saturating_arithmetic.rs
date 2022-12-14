@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::is_qpath_def_path;
 use clippy_utils::source::snippet_with_applicability;
+use clippy_utils::{match_def_path, path_def_id};
 use if_chain::if_chain;
 use rustc_ast::ast;
 use rustc_errors::Applicability;
@@ -21,11 +21,7 @@ pub fn check(
         return;
     }
 
-    let mm = if let Some(mm) = is_min_or_max(cx, unwrap_arg) {
-        mm
-    } else {
-        return;
-    };
+    let Some(mm) = is_min_or_max(cx, unwrap_arg) else { return };
 
     if ty.is_signed() {
         use self::{
@@ -33,9 +29,7 @@ pub fn check(
             Sign::{Neg, Pos},
         };
 
-        let sign = if let Some(sign) = lit_sign(arith_rhs) {
-            sign
-        } else {
+        let Some(sign) = lit_sign(arith_rhs) else {
             return;
         };
 
@@ -57,11 +51,10 @@ pub fn check(
         super::MANUAL_SATURATING_ARITHMETIC,
         expr.span,
         "manual saturating arithmetic",
-        &format!("try using `saturating_{}`", arith),
+        &format!("try using `saturating_{arith}`"),
         format!(
-            "{}.saturating_{}({})",
+            "{}.saturating_{arith}({})",
             snippet_with_applicability(cx, arith_lhs.span, "..", &mut applicability),
-            arith,
             snippet_with_applicability(cx, arith_rhs.span, "..", &mut applicability),
         ),
         applicability,
@@ -74,14 +67,14 @@ enum MinMax {
     Max,
 }
 
-fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<MinMax> {
+fn is_min_or_max(cx: &LateContext<'_>, expr: &hir::Expr<'_>) -> Option<MinMax> {
     // `T::max_value()` `T::min_value()` inherent methods
     if_chain! {
         if let hir::ExprKind::Call(func, args) = &expr.kind;
         if args.is_empty();
         if let hir::ExprKind::Path(hir::QPath::TypeRelative(_, segment)) = &func.kind;
         then {
-            match &*segment.ident.as_str() {
+            match segment.ident.as_str() {
                 "max_value" => return Some(MinMax::Max),
                 "min_value" => return Some(MinMax::Min),
                 _ => {}
@@ -93,12 +86,12 @@ fn is_min_or_max<'tcx>(cx: &LateContext<'tcx>, expr: &hir::Expr<'_>) -> Option<M
     let ty_str = ty.to_string();
 
     // `std::T::MAX` `std::T::MIN` constants
-    if let hir::ExprKind::Path(path) = &expr.kind {
-        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MAX"][..]) {
+    if let Some(id) = path_def_id(cx, expr) {
+        if match_def_path(cx, id, &["core", &ty_str, "MAX"]) {
             return Some(MinMax::Max);
         }
 
-        if is_qpath_def_path(cx, path, expr.hir_id, &["core", &ty_str, "MIN"][..]) {
+        if match_def_path(cx, id, &["core", &ty_str, "MIN"]) {
             return Some(MinMax::Min);
         }
     }

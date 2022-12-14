@@ -1,7 +1,7 @@
 // run-pass
 enum Abc {
-    A(u8),
-    B(i8),
+    A(#[allow(unused_tuple_struct_fields)] u8),
+    B(#[allow(unused_tuple_struct_fields)] i8),
     C,
     D,
 }

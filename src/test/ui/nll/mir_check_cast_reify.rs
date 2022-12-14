@@ -1,5 +1,3 @@
-// compile-flags: -Zborrowck=mir
-
 #![allow(dead_code)]
 
 // Test that we relate the type of the fn type to the type of the fn

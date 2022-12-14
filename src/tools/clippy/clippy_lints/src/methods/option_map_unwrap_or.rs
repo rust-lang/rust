@@ -1,14 +1,13 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::differing_macro_contexts;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::ty::is_copy;
 use clippy_utils::ty::is_type_diagnostic_item;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_path, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{self, HirId, Path};
 use rustc_lint::LateContext;
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 
@@ -48,7 +47,7 @@ pub(super) fn check<'tcx>(
             }
         }
 
-        if differing_macro_contexts(unwrap_arg.span, map_span) {
+        if unwrap_arg.span.ctxt() != map_span.ctxt() {
             return;
         }
 
@@ -66,9 +65,8 @@ pub(super) fn check<'tcx>(
             "map_or(<a>, <f>)"
         };
         let msg = &format!(
-            "called `map(<f>).unwrap_or({})` on an `Option` value. \
-            This can be done more directly by calling `{}` instead",
-            arg, suggest
+            "called `map(<f>).unwrap_or({arg})` on an `Option` value. \
+            This can be done more directly by calling `{suggest}` instead"
         );
 
         span_lint_and_then(cx, MAP_UNWRAP_OR, expr.span, msg, |diag| {
@@ -79,14 +77,14 @@ pub(super) fn check<'tcx>(
                     map_span,
                     String::from(if unwrap_snippet_none { "and_then" } else { "map_or" }),
                 ),
-                (expr.span.with_lo(unwrap_recv.span.hi()), String::from("")),
+                (expr.span.with_lo(unwrap_recv.span.hi()), String::new()),
             ];
 
             if !unwrap_snippet_none {
-                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{}, ", unwrap_snippet)));
+                suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 
-            diag.multipart_suggestion(&format!("use `{}` instead", suggest), suggestion, applicability);
+            diag.multipart_suggestion(&format!("use `{suggest}` instead"), suggestion, applicability);
         });
     }
 }
@@ -97,15 +95,15 @@ struct UnwrapVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 
@@ -116,9 +114,9 @@ struct MapExprVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
             self.found_identifier = true;
             return;
@@ -126,8 +124,8 @@ impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
         walk_path(self, path);
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::All(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 

@@ -1,5 +1,5 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/complex-generic-default-expr.rs:7:47
+  --> $DIR/complex-generic-default-expr.rs:6:47
    |
 LL | struct Foo<const N: usize, const M: usize = { N + 1 }>;
    |                                               ^ cannot perform const operation using `N`
@@ -8,7 +8,7 @@ LL | struct Foo<const N: usize, const M: usize = { N + 1 }>;
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions
 
 error: generic parameters may not be used in const operations
-  --> $DIR/complex-generic-default-expr.rs:10:62
+  --> $DIR/complex-generic-default-expr.rs:9:62
    |
 LL | struct Bar<T, const TYPE_SIZE: usize = { std::mem::size_of::<T>() }>(T);
    |                                                              ^ cannot perform const operation using `T`

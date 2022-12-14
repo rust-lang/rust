@@ -1,9 +1,9 @@
 use std::convert::TryInto;
 
 use gccjit::{RValue, Struct, Type};
-use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods};
+use rustc_codegen_ssa::traits::{BaseTypeMethods, DerivedTypeMethods, TypeMembershipMethods};
 use rustc_codegen_ssa::common::TypeKind;
-use rustc_middle::bug;
+use rustc_middle::{bug, ty};
 use rustc_middle::ty::layout::TyAndLayout;
 use rustc_target::abi::{AddressSpace, Align, Integer, Size};
 
@@ -61,6 +61,17 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let ity = Integer::approximate_align(self, align);
         self.type_from_integer(ity)
     }
+
+    pub fn type_vector(&self, ty: Type<'gcc>, len: u64) -> Type<'gcc> {
+        self.context.new_vector_type(ty, len)
+    }
+
+    pub fn type_float_from_ty(&self, t: ty::FloatTy) -> Type<'gcc> {
+        match t {
+            ty::FloatTy::F32 => self.type_f32(),
+            ty::FloatTy::F64 => self.type_f64(),
+        }
+    }
 }
 
 impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
@@ -104,7 +115,7 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         self.context.new_function_pointer_type(None, return_type, params, false)
     }
 
-    fn type_struct(&self, fields: &[Type<'gcc>], _packed: bool) -> Type<'gcc> {
+    fn type_struct(&self, fields: &[Type<'gcc>], packed: bool) -> Type<'gcc> {
         let types = fields.to_vec();
         if let Some(typ) = self.struct_types.borrow().get(fields) {
             return typ.clone();
@@ -112,17 +123,26 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let fields: Vec<_> = fields.iter().enumerate()
             .map(|(index, field)| self.context.new_field(None, *field, &format!("field{}_TODO", index)))
             .collect();
-        // TODO(antoyo): use packed.
         let typ = self.context.new_struct_type(None, "struct", &fields).as_type();
+        if packed {
+            #[cfg(feature="master")]
+            typ.set_packed();
+        }
         self.struct_types.borrow_mut().insert(types, typ);
         typ
     }
 
     fn type_kind(&self, typ: Type<'gcc>) -> TypeKind {
-        if typ.is_integral() {
+        if self.is_int_type_or_bool(typ) {
             TypeKind::Integer
         }
-        else if typ.is_vector().is_some() {
+        else if typ.is_compatible_with(self.float_type) {
+            TypeKind::Float
+        }
+        else if typ.is_compatible_with(self.double_type) {
+            TypeKind::Double
+        }
+        else if typ.is_vector() {
             TypeKind::Vector
         }
         else {
@@ -136,15 +156,15 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn type_ptr_to_ext(&self, ty: Type<'gcc>, _address_space: AddressSpace) -> Type<'gcc> {
-        // TODO(antoyo): use address_space
+        // TODO(antoyo): use address_space, perhaps with TYPE_ADDR_SPACE?
         ty.make_pointer()
     }
 
     fn element_type(&self, ty: Type<'gcc>) -> Type<'gcc> {
-        if let Some(typ) = ty.is_array() {
+        if let Some(typ) = ty.dyncast_array() {
             typ
         }
-        else if let Some(vector_type) = ty.is_vector() {
+        else if let Some(vector_type) = ty.dyncast_vector() {
             vector_type.get_element_type()
         }
         else if let Some(typ) = ty.get_pointee() {
@@ -162,10 +182,10 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     fn float_width(&self, typ: Type<'gcc>) -> usize {
         let f32 = self.context.new_type::<f32>();
         let f64 = self.context.new_type::<f64>();
-        if typ == f32 {
+        if typ.is_compatible_with(f32) {
             32
         }
-        else if typ == f64 {
+        else if typ.is_compatible_with(f64) {
             64
         }
         else {
@@ -175,53 +195,14 @@ impl<'gcc, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn int_width(&self, typ: Type<'gcc>) -> u64 {
-        if typ.is_i8(self) || typ.is_u8(self) {
-            8
-        }
-        else if typ.is_i16(self) || typ.is_u16(self) {
-            16
-        }
-        else if typ.is_i32(self) || typ.is_u32(self) {
-            32
-        }
-        else if typ.is_i64(self) || typ.is_u64(self) {
-            64
-        }
-        else if typ.is_i128(self) || typ.is_u128(self) {
-            128
-        }
-        else {
-            panic!("Cannot get width of int type {:?}", typ);
-        }
+        self.gcc_int_width(typ)
     }
 
     fn val_ty(&self, value: RValue<'gcc>) -> Type<'gcc> {
         value.get_type()
     }
-}
 
-impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
-    pub fn type_padding_filler(&self, size: Size, align: Align) -> Type<'gcc> {
-        let unit = Integer::approximate_align(self, align);
-        let size = size.bytes();
-        let unit_size = unit.size().bytes();
-        assert_eq!(size % unit_size, 0);
-        self.type_array(self.type_from_integer(unit), size / unit_size)
-    }
-
-    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], _packed: bool) {
-        // TODO(antoyo): use packed.
-        let fields: Vec<_> = fields.iter().enumerate()
-            .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
-            .collect();
-        typ.set_fields(None, &fields);
-    }
-
-    pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
-        self.context.new_opaque_struct_type(None, name)
-    }
-
-    pub fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
+    fn type_array(&self, ty: Type<'gcc>, mut len: u64) -> Type<'gcc> {
         if let Some(struct_type) = ty.is_struct() {
             if struct_type.get_field_count() == 0 {
                 // NOTE: since gccjit only supports i32 for the array size and libcore's tests uses a
@@ -240,6 +221,35 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
         let len: i32 = len.try_into().expect("array len");
 
         self.context.new_array_type(None, ty, len)
+    }
+}
+
+impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
+    pub fn type_padding_filler(&self, size: Size, align: Align) -> Type<'gcc> {
+        let unit = Integer::approximate_align(self, align);
+        let size = size.bytes();
+        let unit_size = unit.size().bytes();
+        assert_eq!(size % unit_size, 0);
+        self.type_array(self.type_from_integer(unit), size / unit_size)
+    }
+
+    pub fn set_struct_body(&self, typ: Struct<'gcc>, fields: &[Type<'gcc>], packed: bool) {
+        let fields: Vec<_> = fields.iter().enumerate()
+            .map(|(index, field)| self.context.new_field(None, *field, &format!("field_{}", index)))
+            .collect();
+        typ.set_fields(None, &fields);
+        if packed {
+            #[cfg(feature="master")]
+            typ.as_type().set_packed();
+        }
+    }
+
+    pub fn type_named_struct(&self, name: &str) -> Struct<'gcc> {
+        self.context.new_opaque_struct_type(None, name)
+    }
+
+    pub fn type_bool(&self) -> Type<'gcc> {
+        self.context.new_type::<bool>()
     }
 }
 
@@ -267,7 +277,7 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
         offset = target_offset + field.size;
         prev_effective_align = effective_field_align;
     }
-    if !layout.is_unsized() && field_count > 0 {
+    if layout.is_sized() && field_count > 0 {
         if offset > layout.size {
             bug!("layout: {:#?} stride: {:?} offset: {:?}", layout, layout.size, offset);
         }
@@ -279,4 +289,19 @@ pub fn struct_fields<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, layout: TyAndLayout
     }
 
     (result, packed)
+}
+
+impl<'gcc, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
+    fn set_type_metadata(&self, _function: RValue<'gcc>, _typeid: String) {
+        // Unsupported.
+    }
+
+    fn typeid_metadata(&self, _typeid: String) -> RValue<'gcc> {
+        // Unsupported.
+        self.context.new_rvalue_from_int(self.int_type, 0)
+    }
+
+    fn set_kcfi_type_metadata(&self, _function: RValue<'gcc>, _kcfi_typeid: u32) {
+        // Unsupported.
+    }
 }

@@ -1,7 +1,8 @@
+use rustc_errors::DelayDm;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_infer::infer::{InferCtxt, TyCtxtInferExt};
-use rustc_middle::mir::Field;
+use rustc_middle::mir::{self, Field};
 use rustc_middle::thir::{FieldPat, Pat, PatKind};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, AdtDef, Ty, TyCtxt};
@@ -19,25 +20,21 @@ impl<'a, 'tcx> PatCtxt<'a, 'tcx> {
     /// Converts an evaluated constant to a pattern (if possible).
     /// This means aggregate values (like structs and enums) are converted
     /// to a pattern that matches the value (as if you'd compared via structural equality).
-    #[instrument(level = "debug", skip(self))]
+    #[instrument(level = "debug", skip(self), ret)]
     pub(super) fn const_to_pat(
         &self,
-        cv: &'tcx ty::Const<'tcx>,
+        cv: mir::ConstantKind<'tcx>,
         id: hir::HirId,
         span: Span,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
-        let pat = self.tcx.infer_ctxt().enter(|infcx| {
-            let mut convert = ConstToPat::new(self, id, span, infcx);
-            convert.to_pat(cv, mir_structural_match_violation)
-        });
-
-        debug!(?pat);
-        pat
+    ) -> Box<Pat<'tcx>> {
+        let infcx = self.tcx.infer_ctxt().build();
+        let mut convert = ConstToPat::new(self, id, span, infcx);
+        convert.to_pat(cv, mir_structural_match_violation)
     }
 }
 
-struct ConstToPat<'a, 'tcx> {
+struct ConstToPat<'tcx> {
     id: hir::HirId,
     span: Span,
     param_env: ty::ParamEnv<'tcx>,
@@ -57,7 +54,7 @@ struct ConstToPat<'a, 'tcx> {
     behind_reference: Cell<bool>,
 
     // inference context used for checking `T: Structural` bounds.
-    infcx: InferCtxt<'a, 'tcx>,
+    infcx: InferCtxt<'tcx>,
 
     include_lint_checks: bool,
 
@@ -73,21 +70,19 @@ mod fallback_to_const_ref {
     /// hoops to get a reference to the value.
     pub(super) struct FallbackToConstRef(());
 
-    pub(super) fn fallback_to_const_ref<'a, 'tcx>(
-        c2p: &super::ConstToPat<'a, 'tcx>,
-    ) -> FallbackToConstRef {
+    pub(super) fn fallback_to_const_ref<'tcx>(c2p: &super::ConstToPat<'tcx>) -> FallbackToConstRef {
         assert!(c2p.behind_reference.get());
         FallbackToConstRef(())
     }
 }
 use fallback_to_const_ref::{fallback_to_const_ref, FallbackToConstRef};
 
-impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
+impl<'tcx> ConstToPat<'tcx> {
     fn new(
         pat_ctxt: &PatCtxt<'_, 'tcx>,
         id: hir::HirId,
         span: Span,
-        infcx: InferCtxt<'a, 'tcx>,
+        infcx: InferCtxt<'tcx>,
     ) -> Self {
         trace!(?pat_ctxt.typeck_results.hir_owner);
         ConstToPat {
@@ -110,8 +105,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         self.infcx.tcx
     }
 
-    fn adt_derive_msg(&self, adt_def: &AdtDef) -> String {
-        let path = self.tcx().def_path_str(adt_def.did);
+    fn adt_derive_msg(&self, adt_def: AdtDef<'tcx>) -> String {
+        let path = self.tcx().def_path_str(adt_def.did());
         format!(
             "to use a constant of type `{}` in a pattern, \
             `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
@@ -120,34 +115,35 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     fn search_for_structural_match_violation(&self, ty: Ty<'tcx>) -> Option<String> {
-        traits::search_for_structural_match_violation(self.id, self.span, self.tcx(), ty).map(
-            |non_sm_ty| {
-                with_no_trimmed_paths(|| match non_sm_ty {
-                    traits::NonStructuralMatchTy::Adt(adt) => self.adt_derive_msg(adt),
-                    traits::NonStructuralMatchTy::Dynamic => {
-                        "trait objects cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Opaque => {
-                        "opaque types cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Closure => {
-                        "closures cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Generator => {
-                        "generators cannot be used in patterns".to_string()
-                    }
-                    traits::NonStructuralMatchTy::Param => {
-                        bug!("use of a constant whose type is a parameter inside a pattern")
-                    }
-                    traits::NonStructuralMatchTy::Projection => {
-                        bug!("use of a constant whose type is a projection inside a pattern")
-                    }
-                    traits::NonStructuralMatchTy::Foreign => {
-                        bug!("use of a value of a foreign type inside a pattern")
-                    }
-                })
-            },
-        )
+        traits::search_for_structural_match_violation(self.span, self.tcx(), ty).map(|non_sm_ty| {
+            with_no_trimmed_paths!(match non_sm_ty.kind() {
+                ty::Adt(adt, _) => self.adt_derive_msg(*adt),
+                ty::Dynamic(..) => {
+                    "trait objects cannot be used in patterns".to_string()
+                }
+                ty::Opaque(..) => {
+                    "opaque types cannot be used in patterns".to_string()
+                }
+                ty::Closure(..) => {
+                    "closures cannot be used in patterns".to_string()
+                }
+                ty::Generator(..) | ty::GeneratorWitness(..) => {
+                    "generators cannot be used in patterns".to_string()
+                }
+                ty::Float(..) => {
+                    "floating-point numbers cannot be used in patterns".to_string()
+                }
+                ty::FnPtr(..) => {
+                    "function pointers cannot be used in patterns".to_string()
+                }
+                ty::RawPtr(..) => {
+                    "raw pointers cannot be used in patterns".to_string()
+                }
+                _ => {
+                    bug!("use of a value of `{non_sm_ty}` inside a pattern")
+                }
+            })
+        })
     }
 
     fn type_marked_structural(&self, ty: Ty<'tcx>) -> bool {
@@ -156,9 +152,9 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn to_pat(
         &mut self,
-        cv: &'tcx ty::Const<'tcx>,
+        cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Pat<'tcx> {
+    ) -> Box<Pat<'tcx>> {
         trace!(self.treat_byte_string_as_slice);
         // This method is just a wrapper handling a validity check; the heavy lifting is
         // performed by the recursive `recur` method, which is not meant to be
@@ -167,16 +163,24 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // once indirect_structural_match is a full fledged error, this
         // level of indirection can be eliminated
 
-        let inlined_const_as_pat = self.recur(cv, mir_structural_match_violation).unwrap();
+        let inlined_const_as_pat =
+            self.recur(cv, mir_structural_match_violation).unwrap_or_else(|_| {
+                Box::new(Pat {
+                    span: self.span,
+                    ty: cv.ty(),
+                    kind: PatKind::Constant { value: cv },
+                })
+            });
 
         if self.include_lint_checks && !self.saw_const_match_error.get() {
             // If we were able to successfully convert the const to some pat,
             // double-check that all types in the const implement `Structural`.
 
-            let structural = self.search_for_structural_match_violation(cv.ty);
+            let structural = self.search_for_structural_match_violation(cv.ty());
             debug!(
                 "search_for_structural_match_violation cv.ty: {:?} returned: {:?}",
-                cv.ty, structural
+                cv.ty(),
+                structural
             );
 
             // This can occur because const qualification treats all associated constants as
@@ -191,7 +195,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             }
 
             if let Some(msg) = structural {
-                if !self.type_may_have_partial_eq_impl(cv.ty) {
+                if !self.type_may_have_partial_eq_impl(cv.ty()) {
                     // span_fatal avoids ICE from resolution of non-existent method (rare case).
                     self.tcx().sess.span_fatal(self.span, &msg);
                 } else if mir_structural_match_violation && !self.saw_const_match_lint.get() {
@@ -199,7 +203,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         self.id,
                         self.span,
-                        |lint| lint.build(&msg).emit(),
+                        msg,
+                        |lint| lint,
                     );
                 } else {
                     debug!(
@@ -227,8 +232,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ObligationCause::misc(self.span, self.id),
             partial_eq_trait_id,
             0,
-            ty,
-            &[],
+            [ty, ty],
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 
@@ -240,7 +244,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
         // code at the moment, because types like `for <'a> fn(&'a ())` do
         // not *yet* implement `PartialEq`. So for now we leave this here.
         has_impl
-            || ty.walk(self.tcx()).any(|t| match t.unpack() {
+            || ty.walk().any(|t| match t.unpack() {
                 ty::subst::GenericArgKind::Lifetime(_) => false,
                 ty::subst::GenericArgKind::Type(t) => t.is_fn_ptr(),
                 ty::subst::GenericArgKind::Const(_) => false,
@@ -249,7 +253,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
 
     fn field_pats(
         &self,
-        vals: impl Iterator<Item = &'tcx ty::Const<'tcx>>,
+        vals: impl Iterator<Item = mir::ConstantKind<'tcx>>,
     ) -> Result<Vec<FieldPat<'tcx>>, FallbackToConstRef> {
         vals.enumerate()
             .map(|(idx, val)| {
@@ -260,24 +264,26 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
     }
 
     // Recursive helper for `to_pat`; invoke that (instead of calling this directly).
+    #[instrument(skip(self), level = "debug")]
     fn recur(
         &self,
-        cv: &'tcx ty::Const<'tcx>,
+        cv: mir::ConstantKind<'tcx>,
         mir_structural_match_violation: bool,
-    ) -> Result<Pat<'tcx>, FallbackToConstRef> {
+    ) -> Result<Box<Pat<'tcx>>, FallbackToConstRef> {
         let id = self.id;
         let span = self.span;
         let tcx = self.tcx();
         let param_env = self.param_env;
 
-        let kind = match cv.ty.kind() {
+        let kind = match cv.ty().kind() {
             ty::Float(_) => {
                 if self.include_lint_checks {
                     tcx.struct_span_lint_hir(
                         lint::builtin::ILLEGAL_FLOATING_POINT_LITERAL_PATTERN,
                         id,
                         span,
-                        |lint| lint.build("floating-point types cannot be used in patterns").emit(),
+                        "floating-point types cannot be used in patterns",
+                        |lint| lint,
                     );
                 }
                 PatKind::Constant { value: cv }
@@ -289,24 +295,24 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, msg)
+                    tcx.sess.delay_span_bug(span, msg);
                 }
                 PatKind::Wild
             }
             ty::Adt(..)
-                if !self.type_may_have_partial_eq_impl(cv.ty)
+                if !self.type_may_have_partial_eq_impl(cv.ty())
                     // FIXME(#73448): Find a way to bring const qualification into parity with
                     // `search_for_structural_match_violation` and then remove this condition.
-                    && self.search_for_structural_match_violation(cv.ty).is_some() =>
+                    && self.search_for_structural_match_violation(cv.ty()).is_some() =>
             {
                 // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
                 // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
-                let msg = self.search_for_structural_match_violation(cv.ty).unwrap();
+                let msg = self.search_for_structural_match_violation(cv.ty()).unwrap();
                 self.saw_const_match_error.set(true);
                 if self.include_lint_checks {
                     tcx.sess.span_err(self.span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(self.span, &msg)
+                    tcx.sess.delay_span_bug(self.span, &msg);
                 }
                 PatKind::Wild
             }
@@ -319,7 +325,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             // details.
             // Backwards compatibility hack because we can't cause hard errors on these
             // types, so we compare them via `PartialEq::eq` at runtime.
-            ty::Adt(..) if !self.type_marked_structural(cv.ty) && self.behind_reference.get() => {
+            ty::Adt(..) if !self.type_marked_structural(cv.ty()) && self.behind_reference.get() => {
                 if self.include_lint_checks
                     && !self.saw_const_match_error.get()
                     && !self.saw_const_match_lint.get()
@@ -329,14 +335,15 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| {
-                            let msg = format!(
+                        DelayDm(|| {
+                            format!(
                                 "to use a constant of type `{}` in a pattern, \
                                  `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
-                                cv.ty, cv.ty,
-                            );
-                            lint.build(&msg).emit()
-                        },
+                                cv.ty(),
+                                cv.ty(),
+                            )
+                        }),
+                        |lint| lint,
                     );
                 }
                 // Since we are behind a reference, we can just bubble the error up so we get a
@@ -344,9 +351,13 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // `PartialEq::eq` on it.
                 return Err(fallback_to_const_ref(self));
             }
-            ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty) => {
-                debug!("adt_def {:?} has !type_marked_structural for cv.ty: {:?}", adt_def, cv.ty);
-                let path = tcx.def_path_str(adt_def.did);
+            ty::Adt(adt_def, _) if !self.type_marked_structural(cv.ty()) => {
+                debug!(
+                    "adt_def {:?} has !type_marked_structural for cv.ty: {:?}",
+                    adt_def,
+                    cv.ty()
+                );
+                let path = tcx.def_path_str(adt_def.did());
                 let msg = format!(
                     "to use a constant of type `{}` in a pattern, \
                      `{}` must be annotated with `#[derive(PartialEq, Eq)]`",
@@ -356,14 +367,15 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, &msg)
+                    tcx.sess.delay_span_bug(span, &msg);
                 }
                 PatKind::Wild
             }
             ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let destructured = tcx.destructure_const(param_env.and(cv));
+                let destructured = tcx.destructure_mir_constant(param_env, cv);
+
                 PatKind::Variant {
-                    adt_def,
+                    adt_def: *adt_def,
                     substs,
                     variant_index: destructured
                         .variant
@@ -372,28 +384,28 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 }
             }
             ty::Tuple(_) | ty::Adt(_, _) => {
-                let destructured = tcx.destructure_const(param_env.and(cv));
+                let destructured = tcx.destructure_mir_constant(param_env, cv);
                 PatKind::Leaf { subpatterns: self.field_pats(destructured.fields.iter().copied())? }
             }
             ty::Array(..) => PatKind::Array {
                 prefix: tcx
-                    .destructure_const(param_env.and(cv))
+                    .destructure_mir_constant(param_env, cv)
                     .fields
                     .iter()
-                    .map(|val| self.recur(val, false))
+                    .map(|val| self.recur(*val, false))
                     .collect::<Result<_, _>>()?,
                 slice: None,
-                suffix: Vec::new(),
+                suffix: Box::new([]),
             },
             ty::Ref(_, pointee_ty, ..) => match *pointee_ty.kind() {
                 // These are not allowed and will error elsewhere anyway.
                 ty::Dynamic(..) => {
                     self.saw_const_match_error.set(true);
-                    let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                    let msg = format!("`{}` cannot be used in patterns", cv.ty());
                     if self.include_lint_checks {
                         tcx.sess.span_err(span, &msg);
                     } else {
-                        tcx.sess.delay_span_bug(span, &msg)
+                        tcx.sess.delay_span_bug(span, &msg);
                     }
                     PatKind::Wild
                 }
@@ -408,22 +420,22 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // arrays.
                 ty::Array(..) if !self.treat_byte_string_as_slice => {
                     let old = self.behind_reference.replace(true);
-                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Array {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Array {
                                 prefix: tcx
-                                    .destructure_const(param_env.and(array))
+                                    .destructure_mir_constant(param_env, array)
                                     .fields
                                     .iter()
-                                    .map(|val| self.recur(val, false))
+                                    .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
-                            ty: pointee_ty,
-                        },
+                            ty: *pointee_ty,
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -434,22 +446,22 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // pattern.
                 ty::Slice(elem_ty) => {
                     let old = self.behind_reference.replace(true);
-                    let array = tcx.deref_const(self.param_env.and(cv));
+                    let array = tcx.deref_mir_constant(self.param_env.and(cv));
                     let val = PatKind::Deref {
-                        subpattern: Pat {
-                            kind: Box::new(PatKind::Slice {
+                        subpattern: Box::new(Pat {
+                            kind: PatKind::Slice {
                                 prefix: tcx
-                                    .destructure_const(param_env.and(array))
+                                    .destructure_mir_constant(param_env, array)
                                     .fields
                                     .iter()
-                                    .map(|val| self.recur(val, false))
+                                    .map(|val| self.recur(*val, false))
                                     .collect::<Result<_, _>>()?,
                                 slice: None,
-                                suffix: vec![],
-                            }),
+                                suffix: Box::new([]),
+                            },
                             span,
                             ty: tcx.mk_slice(elem_ty),
-                        },
+                        }),
                     };
                     self.behind_reference.set(old);
                     val
@@ -459,7 +471,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // this pattern to a `PartialEq::eq` comparison and `PartialEq::eq` takes a
                 // reference. This makes the rest of the matching logic simpler as it doesn't have
                 // to figure out how to get a reference again.
-                ty::Adt(adt_def, _) if !self.type_marked_structural(pointee_ty) => {
+                ty::Adt(adt_def, _) if !self.type_marked_structural(*pointee_ty) => {
                     if self.behind_reference.get() {
                         if self.include_lint_checks
                             && !self.saw_const_match_error.get()
@@ -471,7 +483,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                                 lint::builtin::INDIRECT_STRUCTURAL_MATCH,
                                 self.id,
                                 self.span,
-                                |lint| lint.build(&msg).emit(),
+                                msg,
+                                |lint| lint,
                             );
                         }
                         PatKind::Constant { value: cv }
@@ -482,7 +495,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                             if self.include_lint_checks {
                                 tcx.sess.span_err(span, &msg);
                             } else {
-                                tcx.sess.delay_span_bug(span, &msg)
+                                tcx.sess.delay_span_bug(span, &msg);
                             }
                         }
                         PatKind::Wild
@@ -492,8 +505,8 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
                 _ => {
-                    if !pointee_ty.is_sized(tcx.at(span), param_env) {
-                        // `tcx.deref_const()` below will ICE with an unsized type
+                    if !pointee_ty.is_sized(tcx, param_env) {
+                        // `tcx.deref_mir_constant()` below will ICE with an unsized type
                         // (except slices, which are handled in a separate arm above).
                         let msg = format!("cannot use unsized non-slice type `{}` in constant patterns", pointee_ty);
                         if self.include_lint_checks {
@@ -508,7 +521,7 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         // we fall back to a const pattern. If we do not do this, we may end up with
                         // a !structural-match constant that is not of reference type, which makes it
                         // very hard to invoke `PartialEq::eq` on it as a fallback.
-                        let val = match self.recur(tcx.deref_const(self.param_env.and(cv)), false) {
+                        let val = match self.recur(tcx.deref_mir_constant(self.param_env.and(cv)), false) {
                             Ok(subpattern) => PatKind::Deref { subpattern },
                             Err(_) => PatKind::Constant { value: cv },
                         };
@@ -520,10 +533,10 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
                 PatKind::Constant { value: cv }
             }
-            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
+            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx, param_env) => {
                 PatKind::Constant { value: cv }
             }
-            // FIXME: these can have very suprising behaviour where optimization levels or other
+            // FIXME: these can have very surprising behaviour where optimization levels or other
             // compilation choices change the runtime behaviour of the match.
             // See https://github.com/rust-lang/rust/issues/70861 for examples.
             ty::FnPtr(..) | ty::RawPtr(..) => {
@@ -539,18 +552,19 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                         lint::builtin::POINTER_STRUCTURAL_MATCH,
                         id,
                         span,
-                        |lint| lint.build(&msg).emit(),
+                        msg,
+                        |lint| lint,
                     );
                 }
                 PatKind::Constant { value: cv }
             }
             _ => {
                 self.saw_const_match_error.set(true);
-                let msg = format!("`{}` cannot be used in patterns", cv.ty);
+                let msg = format!("`{}` cannot be used in patterns", cv.ty());
                 if self.include_lint_checks {
                     tcx.sess.span_err(span, &msg);
                 } else {
-                    tcx.sess.delay_span_bug(span, &msg)
+                    tcx.sess.delay_span_bug(span, &msg);
                 }
                 PatKind::Wild
             }
@@ -562,12 +576,12 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
             && mir_structural_match_violation
             // FIXME(#73448): Find a way to bring const qualification into parity with
             // `search_for_structural_match_violation` and then remove this condition.
-            && self.search_for_structural_match_violation(cv.ty).is_some()
+            && self.search_for_structural_match_violation(cv.ty()).is_some()
         {
             self.saw_const_match_lint.set(true);
             // Obtain the actual type that isn't annotated. If we just looked at `cv.ty` we
             // could get `Option<NonStructEq>`, even though `Option` is annotated with derive.
-            let msg = self.search_for_structural_match_violation(cv.ty).unwrap().replace(
+            let msg = self.search_for_structural_match_violation(cv.ty()).unwrap().replace(
                 "in a pattern,",
                 "in a pattern, the constant's initializer must be trivial or",
             );
@@ -575,10 +589,11 @@ impl<'a, 'tcx> ConstToPat<'a, 'tcx> {
                 lint::builtin::NONTRIVIAL_STRUCTURAL_MATCH,
                 id,
                 span,
-                |lint| lint.build(&msg).emit(),
+                msg,
+                |lint| lint,
             );
         }
 
-        Ok(Pat { span, ty: cv.ty, kind: Box::new(kind) })
+        Ok(Box::new(Pat { span, ty: cv.ty(), kind }))
     }
 }

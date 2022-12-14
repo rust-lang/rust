@@ -1,5 +1,6 @@
 use super::{InlineAsmArch, InlineAsmType};
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -33,7 +34,7 @@ impl MipsInlineAsmRegClass {
     pub fn supported_types(
         self,
         arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match (self, arch) {
             (Self::reg, InlineAsmArch::Mips64) => types! { _: I8, I16, I32, I64, F32, F64; },
             (Self::reg, _) => types! { _: I8, I16, I32, F32; },
@@ -42,7 +43,8 @@ impl MipsInlineAsmRegClass {
     }
 }
 
-// The reserved registers are somewhat taken from <https://git.io/JUR1k#L150>.
+// The reserved registers are somewhat taken from
+// <https://github.com/llvm/llvm-project/blob/deb8f8bcf31540c657716ea5242183b0792702a1/llvm/lib/Target/Mips/MipsRegisterInfo.cpp#L150>.
 def_regs! {
     Mips MipsInlineAsmReg MipsInlineAsmRegClass {
         r2: reg = ["$2"],

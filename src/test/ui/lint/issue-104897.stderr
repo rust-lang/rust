@@ -1,0 +1,43 @@
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-104897.rs:6:18
+   |
+LL | fn f(){(print!(á
+   |       --      -  ^
+   |       ||      |
+   |       ||      unclosed delimiter
+   |       |unclosed delimiter
+   |       unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-104897.rs:6:18
+   |
+LL | fn f(){(print!(á
+   |       --      -  ^
+   |       ||      |
+   |       ||      unclosed delimiter
+   |       |unclosed delimiter
+   |       unclosed delimiter
+
+error: this file contains an unclosed delimiter
+  --> $DIR/issue-104897.rs:6:18
+   |
+LL | fn f(){(print!(á
+   |       --      -  ^
+   |       ||      |
+   |       ||      unclosed delimiter
+   |       |unclosed delimiter
+   |       unclosed delimiter
+
+error: format argument must be a string literal
+  --> $DIR/issue-104897.rs:6:16
+   |
+LL | fn f(){(print!(á
+   |                ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL | fn f(){(print!("{}", á
+   |                +++++
+
+error: aborting due to 4 previous errors
+

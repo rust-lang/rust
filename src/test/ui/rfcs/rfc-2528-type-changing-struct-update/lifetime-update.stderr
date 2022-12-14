@@ -1,0 +1,15 @@
+error[E0597]: `s` does not live long enough
+  --> $DIR/lifetime-update.rs:20:17
+   |
+LL |         lt_str: &s,
+   |                 ^^ borrowed value does not live long enough
+...
+LL |     let m2: Machine<'static, State1> = Machine {
+   |             ------------------------ type annotation requires that `s` is borrowed for `'static`
+...
+LL | }
+   | - `s` dropped here while still borrowed
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0597`.

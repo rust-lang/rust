@@ -1,5 +1,5 @@
 error[E0055]: reached the recursion limit while auto-dereferencing `J`
-  --> $DIR/issue-38940.rs:43:22
+  --> $DIR/issue-38940.rs:49:22
    |
 LL |     let x: &Bottom = &t;
    |                      ^^ deref recursion limit reached
@@ -7,7 +7,7 @@ LL |     let x: &Bottom = &t;
    = help: consider increasing the recursion limit by adding a `#![recursion_limit = "20"]` attribute to your crate (`issue_38940`)
 
 error[E0308]: mismatched types
-  --> $DIR/issue-38940.rs:43:22
+  --> $DIR/issue-38940.rs:49:22
    |
 LL |     let x: &Bottom = &t;
    |            -------   ^^ expected struct `Bottom`, found struct `Top`

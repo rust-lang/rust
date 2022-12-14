@@ -25,9 +25,9 @@ LL |
 LL | #[repr(simd)]
    |        ^^^^
    |
-   = note: `#[deny(conflicting_repr_hints)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #68585 <https://github.com/rust-lang/rust/issues/68585>
+   = note: `#[deny(conflicting_repr_hints)]` on by default
 
 error: aborting due to 3 previous errors
 

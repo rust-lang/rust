@@ -32,7 +32,7 @@ impl Default for Decimal {
 impl Decimal {
     /// The maximum number of digits required to unambiguously round a float.
     ///
-    /// For a double-precision IEEE-754 float, this required 767 digits,
+    /// For a double-precision IEEE 754 float, this required 767 digits,
     /// so we store the max digits + 1.
     ///
     /// We can exactly represent a float in radix `b` from radix 2 if

@@ -1,0 +1,13 @@
+error: format argument must be a string literal
+  --> $DIR/const_panic_stability.rs:14:12
+   |
+LL |     panic!({ "foo" });
+   |            ^^^^^^^^^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     panic!("{}", { "foo" });
+   |            +++++
+
+error: aborting due to previous error
+

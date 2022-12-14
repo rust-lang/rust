@@ -1,7 +1,8 @@
 use std::iter::ExactSizeIterator;
 use std::ops::Deref;
 
-use rustc_ast::ast::{self, FnRetTy, Mutability};
+use rustc_ast::ast::{self, FnRetTy, Mutability, Term};
+use rustc_ast::ptr;
 use rustc_span::{symbol::kw, BytePos, Pos, Span};
 
 use crate::comment::{combine_strs_with_missing_comments, contains_comment};
@@ -9,6 +10,7 @@ use crate::config::lists::*;
 use crate::config::{IndentStyle, TypeDensity, Version};
 use crate::expr::{
     format_expr, rewrite_assign_rhs, rewrite_call, rewrite_tuple, rewrite_unary_prefix, ExprType,
+    RhsAssignKind,
 };
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
@@ -36,11 +38,11 @@ pub(crate) enum PathContext {
 pub(crate) fn rewrite_path(
     context: &RewriteContext<'_>,
     path_context: PathContext,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     shape: Shape,
 ) -> Option<String> {
-    let skip_count = qself.map_or(0, |x| x.position);
+    let skip_count = qself.as_ref().map_or(0, |x| x.position);
 
     let mut result = if path.is_global() && qself.is_none() && path_context != PathContext::Import {
         "::".to_owned()
@@ -139,7 +141,7 @@ pub(crate) enum SegmentParam<'a> {
     Const(&'a ast::AnonConst),
     LifeTime(&'a ast::Lifetime),
     Type(&'a ast::Ty),
-    Binding(&'a ast::AssocTyConstraint),
+    Binding(&'a ast::AssocConstraint),
 }
 
 impl<'a> SegmentParam<'a> {
@@ -174,9 +176,9 @@ impl<'a> Rewrite for SegmentParam<'a> {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraint {
+impl Rewrite for ast::AssocConstraint {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        use ast::AssocTyConstraintKind::{Bound, Equality};
+        use ast::AssocConstraintKind::{Bound, Equality};
 
         let mut result = String::with_capacity(128);
         result.push_str(rewrite_ident(context, self.ident));
@@ -204,11 +206,14 @@ impl Rewrite for ast::AssocTyConstraint {
     }
 }
 
-impl Rewrite for ast::AssocTyConstraintKind {
+impl Rewrite for ast::AssocConstraintKind {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
-            ast::AssocTyConstraintKind::Equality { ty } => ty.rewrite(context, shape),
-            ast::AssocTyConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
+            ast::AssocConstraintKind::Equality { term } => match term {
+                Term::Ty(ty) => ty.rewrite(context, shape),
+                Term::Const(c) => c.rewrite(context, shape),
+            },
+            ast::AssocConstraintKind::Bound { bounds } => bounds.rewrite(context, shape),
         }
     }
 }
@@ -246,7 +251,7 @@ fn rewrite_segment(
         match **args {
             ast::GenericArgs::AngleBracketed(ref data) if !data.args.is_empty() => {
                 // HACK: squeeze out the span between the identifier and the parameters.
-                // The hack is requried so that we don't remove the separator inside macro calls.
+                // The hack is required so that we don't remove the separator inside macro calls.
                 // This does not work in the presence of comment, hoping that people are
                 // sane about where to put their comment.
                 let separator_snippet = context
@@ -429,7 +434,7 @@ impl Rewrite for ast::WherePredicate {
                     format!("{}{}", type_str, colon)
                 };
 
-                rewrite_assign_rhs(context, lhs, bounds, shape)?
+                rewrite_assign_rhs(context, lhs, bounds, &RhsAssignKind::Bounds, shape)?
             }
             ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                 ref lifetime,
@@ -442,7 +447,7 @@ impl Rewrite for ast::WherePredicate {
                 ..
             }) => {
                 let lhs_ty_str = lhs_ty.rewrite(context, shape).map(|lhs| lhs + " =")?;
-                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, shape)?
+                rewrite_assign_rhs(context, lhs_ty_str, &**rhs_ty, &RhsAssignKind::Ty, shape)?
             }
         };
 
@@ -570,7 +575,16 @@ impl Rewrite for ast::GenericParam {
         let mut result = String::with_capacity(128);
         // FIXME: If there are more than one attributes, this will force multiline.
         match self.attrs.rewrite(context, shape) {
-            Some(ref rw) if !rw.is_empty() => result.push_str(&format!("{} ", rw)),
+            Some(ref rw) if !rw.is_empty() => {
+                result.push_str(rw);
+                // When rewriting generic params, an extra newline should be put
+                // if the attributes end with a doc comment
+                if let Some(true) = self.attrs.last().map(|a| a.is_doc_comment()) {
+                    result.push_str(&shape.indent.to_string_with_newline(context.config));
+                } else {
+                    result.push(' ');
+                }
+            }
             _ => (),
         }
 
@@ -641,7 +655,7 @@ impl Rewrite for ast::PolyTraitRef {
 
 impl Rewrite for ast::TraitRef {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        rewrite_path(context, PathContext::Type, None, &self.path, shape)
+        rewrite_path(context, PathContext::Type, &None, &self.path, shape)
     }
 }
 
@@ -728,7 +742,7 @@ impl Rewrite for ast::Ty {
                     result = combine_strs_with_missing_comments(
                         context,
                         result.trim_end(),
-                        &mt.ty.rewrite(&context, shape)?,
+                        &mt.ty.rewrite(context, shape)?,
                         before_ty_span,
                         shape,
                         true,
@@ -738,7 +752,7 @@ impl Rewrite for ast::Ty {
                     let budget = shape.width.checked_sub(used_width)?;
                     let ty_str = mt
                         .ty
-                        .rewrite(&context, Shape::legacy(budget, shape.indent + used_width))?;
+                        .rewrite(context, Shape::legacy(budget, shape.indent + used_width))?;
                     result.push_str(&ty_str);
                 }
 
@@ -786,7 +800,7 @@ impl Rewrite for ast::Ty {
                 rewrite_tuple(context, items.iter(), self.span, shape, items.len() == 1)
             }
             ast::TyKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Type, q_self.as_ref(), path, shape)
+                rewrite_path(context, PathContext::Type, q_self, path, shape)
             }
             ast::TyKind::Array(ref ty, ref repeats) => rewrite_pair(
                 &**ty,
@@ -1031,6 +1045,13 @@ fn join_bounds_inner(
     }
 }
 
+pub(crate) fn opaque_ty(ty: &Option<ptr::P<ast::Ty>>) -> Option<&ast::GenericBounds> {
+    ty.as_ref().and_then(|t| match &t.kind {
+        ast::TyKind::ImplTrait(_, bounds) => Some(bounds),
+        _ => None,
+    })
+}
+
 pub(crate) fn can_be_overflowed_type(
     context: &RewriteContext<'_>,
     ty: &ast::Ty,
@@ -1046,7 +1067,7 @@ pub(crate) fn can_be_overflowed_type(
 }
 
 /// Returns `None` if there is no `LifetimeDef` in the given generic parameters.
-fn rewrite_lifetime_param(
+pub(crate) fn rewrite_lifetime_param(
     context: &RewriteContext<'_>,
     shape: Shape,
     generic_params: &[ast::GenericParam],

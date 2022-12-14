@@ -55,11 +55,11 @@ fn rewrite_pairs_one_line<T: Rewrite>(
 
     for ((_, rewrite), s) in list.list.iter().zip(list.separators.iter()) {
         if let Some(rewrite) = rewrite {
-            if !is_single_line(&rewrite) || result.len() > shape.width {
+            if !is_single_line(rewrite) || result.len() > shape.width {
                 return None;
             }
 
-            result.push_str(&rewrite);
+            result.push_str(rewrite);
             result.push(' ');
             result.push_str(s);
             result.push(' ');
@@ -94,18 +94,18 @@ fn rewrite_pairs_multiline<T: Rewrite>(
     shape: Shape,
     context: &RewriteContext<'_>,
 ) -> Option<String> {
-    let rhs_offset = shape.rhs_overhead(&context.config);
+    let rhs_offset = shape.rhs_overhead(context.config);
     let nested_shape = (match context.config.indent_style() {
         IndentStyle::Visual => shape.visual_indent(0),
         IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
     })
-    .with_max_width(&context.config)
+    .with_max_width(context.config)
     .sub_width(rhs_offset)?;
 
     let indent_str = nested_shape.indent.to_string_with_newline(context.config);
     let mut result = String::new();
 
-    result.push_str(&list.list[0].1.as_ref()?);
+    result.push_str(list.list[0].1.as_ref()?);
 
     for ((e, default_rw), s) in list.list[1..].iter().zip(list.separators.iter()) {
         // The following test checks if we should keep two subexprs on the same
@@ -144,7 +144,7 @@ fn rewrite_pairs_multiline<T: Rewrite>(
             }
         }
 
-        result.push_str(&default_rw.as_ref()?);
+        result.push_str(default_rw.as_ref()?);
     }
     Some(result)
 }
@@ -264,12 +264,12 @@ impl FlattenPair for ast::Expr {
                 return node.rewrite(context, shape);
             }
             let nested_overhead = sep + 1;
-            let rhs_offset = shape.rhs_overhead(&context.config);
+            let rhs_offset = shape.rhs_overhead(context.config);
             let nested_shape = (match context.config.indent_style() {
                 IndentStyle::Visual => shape.visual_indent(0),
                 IndentStyle::Block => shape.block_indent(context.config.tab_spaces()),
             })
-            .with_max_width(&context.config)
+            .with_max_width(context.config)
             .sub_width(rhs_offset)?;
             let default_shape = match context.config.binop_separator() {
                 SeparatorPlace::Back => nested_shape.sub_width(nested_overhead)?,

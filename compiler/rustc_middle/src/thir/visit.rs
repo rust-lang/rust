@@ -1,7 +1,7 @@
 use super::{
-    Arm, Block, Expr, ExprKind, Guard, InlineAsmOperand, Pat, PatKind, Stmt, StmtKind, Thir,
+    AdtExpr, Arm, Block, ClosureExpr, Expr, ExprKind, Guard, InlineAsmExpr, InlineAsmOperand, Pat,
+    PatKind, Stmt, StmtKind, Thir,
 };
-use rustc_middle::ty::Const;
 
 pub trait Visitor<'a, 'tcx: 'a>: Sized {
     fn thir(&self) -> &'a Thir<'tcx>;
@@ -26,7 +26,14 @@ pub trait Visitor<'a, 'tcx: 'a>: Sized {
         walk_pat(self, pat);
     }
 
-    fn visit_const(&mut self, _cnst: &'tcx Const<'tcx>) {}
+    // Note: We don't have visitors for `ty::Const` and `mir::ConstantKind`
+    // (even though these types occur in THIR) for consistency and to reduce confusion,
+    // since the lazy creation of constants during thir construction causes most
+    // 'constants' to not be of type `ty::Const` or `mir::ConstantKind` at that
+    // stage (they are mostly still identified by `DefId` or `hir::Lit`, see
+    // the variants `Literal`, `NonHirLiteral` and `NamedConst` in `thir::ExprKind`).
+    // You have to manually visit `ty::Const` and `mir::ConstantKind` through the
+    // other `visit*` functions.
 }
 
 pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Expr<'tcx>) {
@@ -69,12 +76,12 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_arm(&visitor.thir()[arm]);
             }
         }
-        Block { ref body } => visitor.visit_block(body),
+        Block { block } => visitor.visit_block(&visitor.thir()[block]),
         Assign { lhs, rhs } | AssignOp { lhs, rhs, op: _ } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[rhs]);
         }
-        Field { lhs, name: _ } => visitor.visit_expr(&visitor.thir()[lhs]),
+        Field { lhs, variant_index: _, name: _ } => visitor.visit_expr(&visitor.thir()[lhs]),
         Index { lhs, index } => {
             visitor.visit_expr(&visitor.thir()[lhs]);
             visitor.visit_expr(&visitor.thir()[index]);
@@ -93,17 +100,16 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                 visitor.visit_expr(&visitor.thir()[value])
             }
         }
-        ConstBlock { value } => visitor.visit_const(value),
-        Repeat { value, count } => {
+        ConstBlock { did: _, substs: _ } => {}
+        Repeat { value, count: _ } => {
             visitor.visit_expr(&visitor.thir()[value]);
-            visitor.visit_const(count);
         }
         Array { ref fields } | Tuple { ref fields } => {
             for &field in &**fields {
                 visitor.visit_expr(&visitor.thir()[field]);
             }
         }
-        Adt(box crate::thir::Adt {
+        Adt(box AdtExpr {
             ref fields,
             ref base,
             adt_def: _,
@@ -121,17 +127,26 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
         PlaceTypeAscription { source, user_ty: _ } | ValueTypeAscription { source, user_ty: _ } => {
             visitor.visit_expr(&visitor.thir()[source])
         }
-        Closure { closure_id: _, substs: _, upvars: _, movability: _, fake_reads: _ } => {}
-        Literal { literal, user_ty: _, const_id: _ } => visitor.visit_const(literal),
-        StaticRef { literal, def_id: _ } => visitor.visit_const(literal),
-        InlineAsm { ref operands, template: _, options: _, line_spans: _ } => {
+        Closure(box ClosureExpr {
+            closure_id: _,
+            substs: _,
+            upvars: _,
+            movability: _,
+            fake_reads: _,
+        }) => {}
+        Literal { lit: _, neg: _ } => {}
+        NonHirLiteral { lit: _, user_ty: _ } => {}
+        ZstLiteral { user_ty: _ } => {}
+        NamedConst { def_id: _, substs: _, user_ty: _ } => {}
+        ConstParam { param: _, def_id: _ } => {}
+        StaticRef { alloc_id: _, ty: _, def_id: _ } => {}
+        InlineAsm(box InlineAsmExpr { ref operands, template: _, options: _, line_spans: _ }) => {
             for op in &**operands {
                 use InlineAsmOperand::*;
                 match op {
                     In { expr, reg: _ }
                     | Out { expr: Some(expr), reg: _, late: _ }
-                    | InOut { expr, reg: _, late: _ }
-                    | SymFn { expr } => visitor.visit_expr(&visitor.thir()[*expr]),
+                    | InOut { expr, reg: _, late: _ } => visitor.visit_expr(&visitor.thir()[*expr]),
                     SplitInOut { in_expr, out_expr, reg: _, late: _ } => {
                         visitor.visit_expr(&visitor.thir()[*in_expr]);
                         if let Some(out_expr) = out_expr {
@@ -140,19 +155,12 @@ pub fn walk_expr<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, expr: &Exp
                     }
                     Out { expr: None, reg: _, late: _ }
                     | Const { value: _, span: _ }
+                    | SymFn { value: _, span: _ }
                     | SymStatic { def_id: _ } => {}
                 }
             }
         }
         ThreadLocalRef(_) => {}
-        LlvmInlineAsm { ref outputs, ref inputs, asm: _ } => {
-            for &out_expr in &**outputs {
-                visitor.visit_expr(&visitor.thir()[out_expr]);
-            }
-            for &in_expr in &**inputs {
-                visitor.visit_expr(&visitor.thir()[in_expr]);
-            }
-        }
         Yield { value } => visitor.visit_expr(&visitor.thir()[value]),
     }
 }
@@ -166,11 +174,15 @@ pub fn walk_stmt<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, stmt: &Stm
             init_scope: _,
             ref pattern,
             lint_level: _,
+            else_block,
         } => {
             if let Some(init) = initializer {
                 visitor.visit_expr(&visitor.thir()[*init]);
             }
             visitor.visit_pat(pattern);
+            if let Some(block) = else_block {
+                visitor.visit_block(&visitor.thir()[*block])
+            }
         }
     }
 }
@@ -199,7 +211,7 @@ pub fn walk_arm<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, arm: &Arm<'
 
 pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'tcx>) {
     use PatKind::*;
-    match pat.kind.as_ref() {
+    match &pat.kind {
         AscribeUserType { subpattern, ascription: _ }
         | Deref { subpattern }
         | Binding {
@@ -217,24 +229,21 @@ pub fn walk_pat<'a, 'tcx: 'a, V: Visitor<'a, 'tcx>>(visitor: &mut V, pat: &Pat<'
                 visitor.visit_pat(&subpattern.pattern);
             }
         }
-        Constant { value } => visitor.visit_const(value),
-        Range(range) => {
-            visitor.visit_const(range.lo);
-            visitor.visit_const(range.hi);
-        }
+        Constant { value: _ } => {}
+        Range(_) => {}
         Slice { prefix, slice, suffix } | Array { prefix, slice, suffix } => {
-            for subpattern in prefix {
+            for subpattern in prefix.iter() {
                 visitor.visit_pat(&subpattern);
             }
             if let Some(pat) = slice {
-                visitor.visit_pat(pat);
+                visitor.visit_pat(&pat);
             }
-            for subpattern in suffix {
+            for subpattern in suffix.iter() {
                 visitor.visit_pat(&subpattern);
             }
         }
         Or { pats } => {
-            for pat in pats {
+            for pat in pats.iter() {
                 visitor.visit_pat(&pat);
             }
         }

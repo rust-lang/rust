@@ -1,5 +1,6 @@
 // compile-flags:-Zprint-mono-items=eager
 // compile-flags:-Zinline-in-all-cgus
+// compile-flags:-Zmir-opt-level=0
 
 #![deny(dead_code)]
 #![feature(coerce_unsized)]
@@ -39,7 +40,7 @@ impl Trait for u32 {
 }
 
 #[derive(Clone, Copy)]
-struct Wrapper<T: ?Sized>(*const T);
+struct Wrapper<T: ?Sized>(#[allow(unused_tuple_struct_fields)] *const T);
 
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Wrapper<U>> for Wrapper<T> {}
 

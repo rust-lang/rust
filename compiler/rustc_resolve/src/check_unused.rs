@@ -6,7 +6,7 @@
 // `use` items.
 //
 // Unused trait imports can't be checked until the method resolution. We save
-// candidates here, and do the actual check in librustc_typeck/check_unused.rs.
+// candidates here, and do the actual check in rustc_hir_analysis/check_unused.rs.
 //
 // Checking for unused imports is split into three steps:
 //
@@ -24,18 +24,17 @@
 //    in the last step
 
 use crate::imports::ImportKind;
+use crate::module_to_string;
 use crate::Resolver;
 
 use rustc_ast as ast;
 use rustc_ast::node_id::NodeMap;
 use rustc_ast::visit::{self, Visitor};
-use rustc_ast_lowering::ResolverAstLowering;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::pluralize;
-use rustc_middle::ty;
+use rustc_errors::{pluralize, MultiSpan};
 use rustc_session::lint::builtin::{MACRO_USE_EXTERN_CRATE, UNUSED_IMPORTS};
 use rustc_session::lint::BuiltinLintDiagnostics;
-use rustc_span::{MultiSpan, Span, DUMMY_SP};
+use rustc_span::{Span, DUMMY_SP};
 
 struct UnusedImport<'a> {
     use_tree: &'a ast::UseTree,
@@ -224,18 +223,18 @@ fn calc_unused_spans(
 }
 
 impl Resolver<'_> {
-    crate fn check_unused(&mut self, krate: &ast::Crate) {
+    pub(crate) fn check_unused(&mut self, krate: &ast::Crate) {
         for import in self.potentially_unused_imports.iter() {
             match import.kind {
                 _ if import.used.get()
-                    || import.vis.get() == ty::Visibility::Public
+                    || import.expect_vis().is_public()
                     || import.span.is_dummy() =>
                 {
                     if let ImportKind::MacroUse = import.kind {
                         if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
                                 MACRO_USE_EXTERN_CRATE,
-                                import.id,
+                                import.root_id,
                                 import.span,
                                 "deprecated `#[macro_use]` attribute used to \
                                 import macros should be replaced at use sites \
@@ -245,13 +244,13 @@ impl Resolver<'_> {
                         }
                     }
                 }
-                ImportKind::ExternCrate { .. } => {
-                    let def_id = self.local_def_id(import.id);
+                ImportKind::ExternCrate { id, .. } => {
+                    let def_id = self.local_def_id(id);
                     self.maybe_unused_extern_crates.push((def_id, import.span));
                 }
                 ImportKind::MacroUse => {
                     let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);
+                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.root_id, import.span, msg);
                 }
                 _ => {}
             }
@@ -315,12 +314,36 @@ impl Resolver<'_> {
                 "remove the unused import"
             };
 
+            // If we are in the `--test` mode, suppress a help that adds the `#[cfg(test)]`
+            // attribute; however, if not, suggest adding the attribute. There is no way to
+            // retrieve attributes here because we do not have a `TyCtxt` yet.
+            let test_module_span = if visitor.r.session.opts.test {
+                None
+            } else {
+                let parent_module = visitor.r.get_nearest_non_block_module(
+                    visitor.r.local_def_id(unused.use_tree_id).to_def_id(),
+                );
+                match module_to_string(parent_module) {
+                    Some(module)
+                        if module == "test"
+                            || module == "tests"
+                            || module.starts_with("test_")
+                            || module.starts_with("tests_")
+                            || module.ends_with("_test")
+                            || module.ends_with("_tests") =>
+                    {
+                        Some(parent_module.span)
+                    }
+                    _ => None,
+                }
+            };
+
             visitor.r.lint_buffer.buffer_lint_with_diagnostic(
                 UNUSED_IMPORTS,
                 unused.use_tree_id,
                 ms,
                 &msg,
-                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes),
+                BuiltinLintDiagnostics::UnusedImports(fix_msg.into(), fixes, test_module_span),
             );
         }
     }

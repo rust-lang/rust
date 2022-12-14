@@ -1,43 +1,46 @@
 error: lifetime in trait object type must be followed by `+`
-  --> $DIR/gat-trait-path-parenthesised-args.rs:7:29
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:29
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                             ^^
 
 error: parenthesized generic arguments cannot be used in associated type constraints
-  --> $DIR/gat-trait-path-parenthesised-args.rs:7:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           ^^^^^
+   |
+help: use angle brackets instead
+   |
+LL | fn foo<'a>(arg: Box<dyn X<Y<'a> = &'a ()>>) {}
+   |                            ~  ~
 
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/gat-trait-path-parenthesised-args.rs:7:29
+error: parenthesized generic arguments cannot be used in associated type constraints
+  --> $DIR/gat-trait-path-parenthesised-args.rs:12:27
    |
-LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
-   |                             ^^ help: use `dyn`: `dyn 'a`
-   |
-   = note: `#[warn(bare_trait_objects)]` on by default
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
+LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
+   |                           ^--
+   |                            |
+   |                            help: remove these parentheses
 
 error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
-  --> $DIR/gat-trait-path-parenthesised-args.rs:7:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           ^ expected 1 lifetime argument
    |
 note: associated type defined here, with 1 lifetime parameter: `'a`
-  --> $DIR/gat-trait-path-parenthesised-args.rs:4:8
+  --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL |   type Y<'a>;
    |        ^ --
 help: add missing lifetime argument
    |
-LL | fn foo<'a>(arg: Box<dyn X<Y('a, 'a) = &'a ()>>) {}
+LL | fn foo<'a>(arg: Box<dyn X<Y('_, 'a) = &'a ()>>) {}
    |                             +++
 
 error[E0107]: this associated type takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/gat-trait-path-parenthesised-args.rs:7:27
+  --> $DIR/gat-trait-path-parenthesised-args.rs:5:27
    |
 LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           ^---- help: remove these generics
@@ -45,11 +48,27 @@ LL | fn foo<'a>(arg: Box<dyn X<Y('a) = &'a ()>>) {}
    |                           expected 0 generic arguments
    |
 note: associated type defined here, with 0 generic parameters
-  --> $DIR/gat-trait-path-parenthesised-args.rs:4:8
+  --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
    |
 LL |   type Y<'a>;
    |        ^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error[E0107]: this associated type takes 1 lifetime argument but 0 lifetime arguments were supplied
+  --> $DIR/gat-trait-path-parenthesised-args.rs:12:27
+   |
+LL | fn bar<'a>(arg: Box<dyn X<Y() = ()>>) {}
+   |                           ^ expected 1 lifetime argument
+   |
+note: associated type defined here, with 1 lifetime parameter: `'a`
+  --> $DIR/gat-trait-path-parenthesised-args.rs:2:8
+   |
+LL |   type Y<'a>;
+   |        ^ --
+help: add missing lifetime argument
+   |
+LL | fn bar<'a>(arg: Box<dyn X<Y('_) = ()>>) {}
+   |                             ++
+
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0107`.

@@ -1,5 +1,6 @@
-use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::{in_macro, is_automatically_derived, is_default_equivalent, remove_blocks};
+use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::{is_default_equivalent, peel_blocks};
+use rustc_errors::Applicability;
 use rustc_hir::{
     def::{DefKind, Res},
     Body, Expr, ExprKind, GenericArg, Impl, ImplItemKind, Item, ItemKind, Node, PathSegment, QPath, TyKind,
@@ -21,7 +22,7 @@ declare_clippy_lint! {
     ///     bar: bool
     /// }
     ///
-    /// impl std::default::Default for Foo {
+    /// impl Default for Foo {
     ///     fn default() -> Self {
     ///         Self {
     ///             bar: false
@@ -30,8 +31,7 @@ declare_clippy_lint! {
     /// }
     /// ```
     ///
-    /// Could be written as:
-    ///
+    /// Use instead:
     /// ```rust
     /// #[derive(Default)]
     /// struct Foo {
@@ -41,11 +41,11 @@ declare_clippy_lint! {
     ///
     /// ### Known problems
     /// Derive macros [sometimes use incorrect bounds](https://github.com/rust-lang/rust/issues/26925)
-    /// in generic types and the user defined `impl` maybe is more generalized or
+    /// in generic types and the user defined `impl` may be more generalized or
     /// specialized than what derive will produce. This lint can't detect the manual `impl`
     /// has exactly equal bounds, and therefore this lint is disabled for types with
     /// generic parameters.
-    ///
+    #[clippy::version = "1.57.0"]
     pub DERIVABLE_IMPLS,
     complexity,
     "manual implementation of the `Default` trait which is equal to a derive"
@@ -70,16 +70,16 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                 self_ty,
                 ..
             }) = item.kind;
-            if let attrs = cx.tcx.hir().attrs(item.hir_id());
-            if !is_automatically_derived(attrs);
-            if !in_macro(item.span);
+            if !cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
+            if !item.span.from_expansion();
             if let Some(def_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Default, def_id);
             if let impl_item_hir = child.id.hir_id();
             if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
-            if let Some(adt_def) = cx.tcx.type_of(item.def_id).ty_adt_def();
+            if let Some(adt_def) = cx.tcx.type_of(item.owner_id).ty_adt_def();
+            if let attrs = cx.tcx.hir().attrs(item.hir_id());
             if !attrs.iter().any(|attr| attr.doc_str().is_some());
             if let child_attrs = cx.tcx.hir().attrs(impl_item_hir);
             if !child_attrs.iter().any(|attr| attr.doc_str().is_some());
@@ -94,22 +94,35 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
                         }
                     }
                 }
-                let should_emit = match remove_blocks(func_expr).kind {
+                let should_emit = match peel_blocks(func_expr).kind {
                     ExprKind::Tup(fields) => fields.iter().all(|e| is_default_equivalent(cx, e)),
                     ExprKind::Call(callee, args)
                         if is_path_self(callee) => args.iter().all(|e| is_default_equivalent(cx, e)),
                     ExprKind::Struct(_, fields, _) => fields.iter().all(|ef| is_default_equivalent(cx, ef.expr)),
                     _ => false,
                 };
+
                 if should_emit {
-                    let path_string = cx.tcx.def_path_str(adt_def.did);
-                    span_lint_and_help(
+                    let struct_span = cx.tcx.def_span(adt_def.did());
+                    span_lint_and_then(
                         cx,
                         DERIVABLE_IMPLS,
                         item.span,
                         "this `impl` can be derived",
-                        None,
-                        &format!("try annotating `{}` with `#[derive(Default)]`", path_string),
+                        |diag| {
+                            diag.span_suggestion_hidden(
+                                item.span,
+                                "remove the manual implementation...",
+                                String::new(),
+                                Applicability::MachineApplicable
+                            );
+                            diag.span_suggestion(
+                                struct_span.shrink_to_lo(),
+                                "...and instead derive it",
+                                "#[derive(Default)]\n".to_string(),
+                                Applicability::MachineApplicable
+                            );
+                        }
                     );
                 }
             }

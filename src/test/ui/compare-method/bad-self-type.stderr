@@ -13,27 +13,31 @@ LL |     fn poll(self, _: &mut Context<'_>) -> Poll<()> {
 error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:22:18
    |
-LL |     fn foo(self);
-   |            ---- type in trait
-...
 LL |     fn foo(self: Box<Self>) {}
    |            ------^^^^^^^^^
    |            |     |
    |            |     expected struct `MyFuture`, found struct `Box`
    |            help: change the self-receiver type to match the trait: `self`
    |
+note: type in trait
+  --> $DIR/bad-self-type.rs:17:12
+   |
+LL |     fn foo(self);
+   |            ^^^^
    = note: expected fn pointer `fn(MyFuture)`
               found fn pointer `fn(Box<MyFuture>)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:24:18
    |
-LL |     fn bar(self) -> Option<()>;
-   |                     ---------- type in trait
-...
 LL |     fn bar(self) {}
    |                  ^ expected enum `Option`, found `()`
    |
+note: type in trait
+  --> $DIR/bad-self-type.rs:18:21
+   |
+LL |     fn bar(self) -> Option<()>;
+   |                     ^^^^^^^^^^
    = note: expected fn pointer `fn(MyFuture) -> Option<()>`
               found fn pointer `fn(MyFuture)`
 help: change the output type to match the trait

@@ -45,11 +45,11 @@ use smallvec::SmallVec;
 pub struct SeparateConstSwitch;
 
 impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        if tcx.sess.mir_opt_level() < 4 {
-            return;
-        }
+    fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
+        sess.mir_opt_level() >= 4
+    }
 
+    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // If execution did something, applying a simplification layer
         // helps later passes optimize the copy away.
         if separate_const_switch(body) > 0 {
@@ -59,10 +59,10 @@ impl<'tcx> MirPass<'tcx> for SeparateConstSwitch {
 }
 
 /// Returns the amount of blocks that were duplicated
-pub fn separate_const_switch<'tcx>(body: &mut Body<'tcx>) -> usize {
+pub fn separate_const_switch(body: &mut Body<'_>) -> usize {
     let mut new_blocks: SmallVec<[(BasicBlock, BasicBlock); 6]> = SmallVec::new();
-    let predecessors = body.predecessors();
-    'block_iter: for (block_id, block) in body.basic_blocks().iter_enumerated() {
+    let predecessors = body.basic_blocks.predecessors();
+    'block_iter: for (block_id, block) in body.basic_blocks.iter_enumerated() {
         if let TerminatorKind::SwitchInt {
             discr: Operand::Copy(switch_place) | Operand::Move(switch_place),
             ..
@@ -90,7 +90,7 @@ pub fn separate_const_switch<'tcx>(body: &mut Body<'tcx>) -> usize {
 
                 let mut predecessors_left = predecessors[block_id].len();
                 'predec_iter: for predecessor_id in predecessors[block_id].iter().copied() {
-                    let predecessor = &body.basic_blocks()[predecessor_id];
+                    let predecessor = &body.basic_blocks[predecessor_id];
 
                     // First we make sure the predecessor jumps
                     // in a reasonable way
@@ -218,6 +218,7 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                         // These rvalues move the place to track
                         Rvalue::Cast(_, Operand::Copy(place) | Operand::Move(place), _)
                         | Rvalue::Use(Operand::Copy(place) | Operand::Move(place))
+                        | Rvalue::CopyForDeref(place)
                         | Rvalue::UnaryOp(_, Operand::Copy(place) | Operand::Move(place))
                         | Rvalue::Discriminant(place) => tracked_place = place,
                     }
@@ -239,19 +240,16 @@ fn is_likely_const<'tcx>(mut tracked_place: Place<'tcx>, block: &BasicBlockData<
                 }
             }
 
-            // If inline assembly is found, we probably should
-            // not try to analyze the code
-            StatementKind::LlvmInlineAsm(_) => return false,
-
             // These statements have no influence on the place
             // we are interested in
             StatementKind::FakeRead(_)
+            | StatementKind::Deinit(_)
             | StatementKind::StorageLive(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
             | StatementKind::StorageDead(_)
-            | StatementKind::CopyNonOverlapping(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
         }
     }
@@ -282,6 +280,7 @@ fn find_determining_place<'tcx>(
                     // that may be const in the predecessor
                     Rvalue::Use(Operand::Move(new) | Operand::Copy(new))
                     | Rvalue::UnaryOp(_, Operand::Copy(new) | Operand::Move(new))
+                    | Rvalue::CopyForDeref(new)
                     | Rvalue::Cast(_, Operand::Move(new) | Operand::Copy(new), _)
                     | Rvalue::Repeat(Operand::Move(new) | Operand::Copy(new), _)
                     | Rvalue::Discriminant(new)
@@ -312,17 +311,14 @@ fn find_determining_place<'tcx>(
             // These statements have no influence on the place
             // we are interested in
             StatementKind::FakeRead(_)
+            | StatementKind::Deinit(_)
             | StatementKind::StorageLive(_)
             | StatementKind::StorageDead(_)
             | StatementKind::Retag(_, _)
             | StatementKind::AscribeUserType(_, _)
             | StatementKind::Coverage(_)
-            | StatementKind::CopyNonOverlapping(_)
+            | StatementKind::Intrinsic(_)
             | StatementKind::Nop => {}
-
-            // If inline assembly is found, we probably should
-            // not try to analyze the code
-            StatementKind::LlvmInlineAsm(_) => return None,
 
             // If the discriminant is set, it is always set
             // as a constant, so the job is already done.

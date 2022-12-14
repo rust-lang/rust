@@ -30,6 +30,15 @@ trait T {
     fn def_method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
 }
 
+// Should not warn since there is likely no way to simplify this (#1013)
+impl T for () {
+    const A: Vec<Vec<Box<(u32, u32, u32, u32)>>> = vec![];
+
+    type B = Vec<Vec<Box<(u32, u32, u32, u32)>>>;
+
+    fn method(&self, p: Vec<Vec<Box<(u32, u32, u32, u32)>>>) {}
+}
+
 fn test1() -> Vec<Vec<Box<(u32, u32, u32, u32)>>> {
     vec![]
 }

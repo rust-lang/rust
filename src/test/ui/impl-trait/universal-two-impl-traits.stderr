@@ -6,6 +6,7 @@ LL | fn foo(x: impl Debug, y: impl Debug) -> String {
    |           |
    |           expected type parameter
 LL |     let mut a = x;
+   |                 - expected due to this value
 LL |     a = y;
    |         ^ expected type parameter `impl Debug`, found a different type parameter `impl Debug`
    |

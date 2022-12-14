@@ -199,7 +199,7 @@
 //! ```
 //! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter() {
-//!    println!("vec contained {}", x);
+//!    println!("vec contained {x:?}");
 //! }
 //! ```
 //!
@@ -232,7 +232,7 @@
 //! ```
 //! use std::collections::VecDeque;
 //!
-//! let vec = vec![1, 2, 3, 4];
+//! let vec = [1, 2, 3, 4];
 //! let buf: VecDeque<_> = vec.into_iter().collect();
 //! ```
 //!
@@ -246,7 +246,7 @@
 //! ```
 //! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter().rev() {
-//!    println!("vec contained {}", x);
+//!    println!("vec contained {x:?}");
 //! }
 //! ```
 //!
@@ -268,7 +268,7 @@
 //! not. Normally, this would require a `find` followed by an `insert`,
 //! effectively duplicating the search effort on each insertion.
 //!
-//! When a user calls `map.entry(&key)`, the map will search for the key and
+//! When a user calls `map.entry(key)`, the map will search for the key and
 //! then yield a variant of the `Entry` enum.
 //!
 //! If a `Vacant(entry)` is yielded, then the key *was not* found. In this case
@@ -306,7 +306,7 @@
 //!
 //! println!("Number of occurrences of each character");
 //! for (char, count) in &count {
-//!     println!("{}: {}", char, count);
+//!     println!("{char}: {count}");
 //! }
 //! ```
 //!
@@ -339,7 +339,7 @@
 //!     // Check if they're sober enough to have another beer.
 //!     if person.blood_alcohol > 0.3 {
 //!         // Too drunk... for now.
-//!         println!("Sorry {}, I have to cut you off", id);
+//!         println!("Sorry {id}, I have to cut you off");
 //!     } else {
 //!         // Have another!
 //!         person.blood_alcohol += 0.1;
@@ -402,7 +402,7 @@
 
 #[stable(feature = "rust1", since = "1.0.0")]
 // FIXME(#82080) The deprecation here is only theoretical, and does not actually produce a warning.
-#[rustc_deprecated(reason = "moved to `std::ops::Bound`", since = "1.26.0")]
+#[deprecated(note = "moved to `std::ops::Bound`", since = "1.26.0")]
 #[doc(hidden)]
 pub use crate::ops::Bound;
 

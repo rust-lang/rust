@@ -2,8 +2,10 @@
 
 use std::mem;
 
+#[allow(unused_tuple_struct_fields)]
 struct Trivial(u8, f32);
 
+#[allow(unused_tuple_struct_fields)]
 struct NonTrivial(u8, String);
 
 const CONST_U8: bool = mem::needs_drop::<u8>();

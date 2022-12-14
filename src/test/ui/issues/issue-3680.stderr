@@ -8,6 +8,10 @@ LL |         Err(_) => ()
    |
    = note: expected enum `Option<_>`
               found enum `Result<_, _>`
+help: try wrapping the pattern in `Some`
+   |
+LL |         Some(Err(_)) => ()
+   |         +++++      +
 
 error: aborting due to previous error
 

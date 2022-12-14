@@ -3,14 +3,13 @@ use rustc_data_structures::sorted_map::SortedMap;
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::definitions;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::*;
 use rustc_index::vec::{Idx, IndexVec};
+use rustc_middle::span_bug;
 use rustc_session::Session;
 use rustc_span::source_map::SourceMap;
 use rustc_span::{Span, DUMMY_SP};
-
-use tracing::debug;
 
 /// A visitor that walks over the HIR and collects `Node`s into a HIR map.
 pub(super) struct NodeCollector<'a, 'hir> {
@@ -25,11 +24,12 @@ pub(super) struct NodeCollector<'a, 'hir> {
     /// The parent of this node
     parent_node: hir::ItemLocalId,
 
-    owner: LocalDefId,
+    owner: OwnerId,
 
     definitions: &'a definitions::Definitions,
 }
 
+#[instrument(level = "debug", skip(sess, definitions, bodies))]
 pub(super) fn index_hir<'hir>(
     sess: &Session,
     definitions: &definitions::Definitions,
@@ -52,7 +52,9 @@ pub(super) fn index_hir<'hir>(
     };
 
     match item {
-        OwnerNode::Crate(citem) => collector.visit_mod(&citem, citem.inner, hir::CRATE_HIR_ID),
+        OwnerNode::Crate(citem) => {
+            collector.visit_mod(&citem, citem.spans.inner_span, hir::CRATE_HIR_ID)
+        }
         OwnerNode::Item(item) => collector.visit_item(item),
         OwnerNode::TraitItem(item) => collector.visit_trait_item(item),
         OwnerNode::ImplItem(item) => collector.visit_impl_item(item),
@@ -63,22 +65,25 @@ pub(super) fn index_hir<'hir>(
 }
 
 impl<'a, 'hir> NodeCollector<'a, 'hir> {
+    #[instrument(level = "debug", skip(self))]
     fn insert(&mut self, span: Span, hir_id: HirId, node: Node<'hir>) {
         debug_assert_eq!(self.owner, hir_id.owner);
         debug_assert_ne!(hir_id.local_id.as_u32(), 0);
+        debug_assert_ne!(hir_id.local_id, self.parent_node);
 
         // Make sure that the DepNode of some node coincides with the HirId
         // owner of that node.
         if cfg!(debug_assertions) {
             if hir_id.owner != self.owner {
-                panic!(
-                    "inconsistent DepNode at `{:?}` for `{:?}`: \
+                span_bug!(
+                    span,
+                    "inconsistent HirId at `{:?}` for `{:?}`: \
                      current_dep_node_owner={} ({:?}), hir_id.owner={} ({:?})",
                     self.source_map.span_to_diagnostic_string(span),
                     node,
-                    self.definitions.def_path(self.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(self.owner.def_id).to_string_no_crate_verbose(),
                     self.owner,
-                    self.definitions.def_path(hir_id.owner).to_string_no_crate_verbose(),
+                    self.definitions.def_path(hir_id.owner.def_id).to_string_no_crate_verbose(),
                     hir_id.owner,
                 )
             }
@@ -101,31 +106,25 @@ impl<'a, 'hir> NodeCollector<'a, 'hir> {
 }
 
 impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
-    type Map = !;
-
     /// Because we want to track parent items and so forth, enable
     /// deep walking so that we walk nested items in the context of
     /// their outer items.
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        panic!("`visit_nested_xxx` must be manually implemented in this visitor");
-    }
-
     fn visit_nested_item(&mut self, item: ItemId) {
         debug!("visit_nested_item: {:?}", item);
-        self.insert_nested(item.def_id);
+        self.insert_nested(item.owner_id.def_id);
     }
 
     fn visit_nested_trait_item(&mut self, item_id: TraitItemId) {
-        self.insert_nested(item_id.def_id);
+        self.insert_nested(item_id.owner_id.def_id);
     }
 
     fn visit_nested_impl_item(&mut self, item_id: ImplItemId) {
-        self.insert_nested(item_id.def_id);
+        self.insert_nested(item_id.owner_id.def_id);
     }
 
     fn visit_nested_foreign_item(&mut self, foreign_id: ForeignItemId) {
-        self.insert_nested(foreign_id.def_id);
+        self.insert_nested(foreign_id.owner_id.def_id);
     }
 
     fn visit_nested_body(&mut self, id: BodyId) {
@@ -142,11 +141,11 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_item(&mut self, i: &'hir Item<'hir>) {
-        debug!("visit_item: {:?}", i);
-        debug_assert_eq!(i.def_id, self.owner);
+        debug_assert_eq!(i.owner_id, self.owner);
         self.with_parent(i.hir_id(), |this| {
-            if let ItemKind::Struct(ref struct_def, _) = i.kind {
+            if let ItemKind::Struct(struct_def, _) = &i.kind {
                 // If this is a tuple or unit-like struct, register the constructor.
                 if let Some(ctor_hir_id) = struct_def.ctor_hir_id() {
                     this.insert(i.span, ctor_hir_id, Node::Ctor(struct_def));
@@ -156,8 +155,9 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_foreign_item(&mut self, fi: &'hir ForeignItem<'hir>) {
-        debug_assert_eq!(fi.def_id, self.owner);
+        debug_assert_eq!(fi.owner_id, self.owner);
         self.with_parent(fi.hir_id(), |this| {
             intravisit::walk_foreign_item(this, fi);
         });
@@ -174,27 +174,34 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         })
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_trait_item(&mut self, ti: &'hir TraitItem<'hir>) {
-        debug_assert_eq!(ti.def_id, self.owner);
+        debug_assert_eq!(ti.owner_id, self.owner);
         self.with_parent(ti.hir_id(), |this| {
             intravisit::walk_trait_item(this, ti);
         });
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn visit_impl_item(&mut self, ii: &'hir ImplItem<'hir>) {
-        debug_assert_eq!(ii.def_id, self.owner);
+        debug_assert_eq!(ii.owner_id, self.owner);
         self.with_parent(ii.hir_id(), |this| {
             intravisit::walk_impl_item(this, ii);
         });
     }
 
     fn visit_pat(&mut self, pat: &'hir Pat<'hir>) {
-        let node =
-            if let PatKind::Binding(..) = pat.kind { Node::Binding(pat) } else { Node::Pat(pat) };
-        self.insert(pat.span, pat.hir_id, node);
+        self.insert(pat.span, pat.hir_id, Node::Pat(pat));
 
         self.with_parent(pat.hir_id, |this| {
             intravisit::walk_pat(this, pat);
+        });
+    }
+
+    fn visit_pat_field(&mut self, field: &'hir PatField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::PatField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_pat_field(this, field);
         });
     }
 
@@ -224,6 +231,13 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_expr_field(&mut self, field: &'hir ExprField<'hir>) {
+        self.insert(field.span, field.hir_id, Node::ExprField(field));
+        self.with_parent(field.hir_id, |this| {
+            intravisit::walk_expr_field(this, field);
+        });
+    }
+
     fn visit_stmt(&mut self, stmt: &'hir Stmt<'hir>) {
         self.insert(stmt.span, stmt.hir_id, Node::Stmt(stmt));
 
@@ -232,11 +246,9 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
-    fn visit_path_segment(&mut self, path_span: Span, path_segment: &'hir PathSegment<'hir>) {
-        if let Some(hir_id) = path_segment.hir_id {
-            self.insert(path_span, hir_id, Node::PathSegment(path_segment));
-        }
-        intravisit::walk_path_segment(self, path_span, path_segment);
+    fn visit_path_segment(&mut self, path_segment: &'hir PathSegment<'hir>) {
+        self.insert(path_segment.ident.span, path_segment.hir_id, Node::PathSegment(path_segment));
+        intravisit::walk_path_segment(self, path_segment);
     }
 
     fn visit_ty(&mut self, ty: &'hir Ty<'hir>) {
@@ -268,12 +280,12 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         fk: intravisit::FnKind<'hir>,
         fd: &'hir FnDecl<'hir>,
         b: BodyId,
-        s: Span,
+        _: Span,
         id: HirId,
     ) {
         assert_eq!(self.owner, id.owner);
         assert_eq!(self.parent_node, id.local_id);
-        intravisit::walk_fn(self, fk, fd, b, s, id);
+        intravisit::walk_fn(self, fk, fd, b, id);
     }
 
     fn visit_block(&mut self, block: &'hir Block<'hir>) {
@@ -291,29 +303,17 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     }
 
     fn visit_lifetime(&mut self, lifetime: &'hir Lifetime) {
-        self.insert(lifetime.span, lifetime.hir_id, Node::Lifetime(lifetime));
+        self.insert(lifetime.ident.span, lifetime.hir_id, Node::Lifetime(lifetime));
     }
 
-    fn visit_vis(&mut self, visibility: &'hir Visibility<'hir>) {
-        match visibility.node {
-            VisibilityKind::Public | VisibilityKind::Crate(_) | VisibilityKind::Inherited => {}
-            VisibilityKind::Restricted { hir_id, .. } => {
-                self.insert(visibility.span, hir_id, Node::Visibility(visibility));
-                self.with_parent(hir_id, |this| {
-                    intravisit::walk_vis(this, visibility);
-                });
-            }
-        }
-    }
-
-    fn visit_variant(&mut self, v: &'hir Variant<'hir>, g: &'hir Generics<'hir>, item_id: HirId) {
-        self.insert(v.span, v.id, Node::Variant(v));
-        self.with_parent(v.id, |this| {
+    fn visit_variant(&mut self, v: &'hir Variant<'hir>) {
+        self.insert(v.span, v.hir_id, Node::Variant(v));
+        self.with_parent(v.hir_id, |this| {
             // Register the constructor of this variant.
             if let Some(ctor_hir_id) = v.data.ctor_hir_id() {
                 this.insert(v.span, ctor_hir_id, Node::Ctor(&v.data));
             }
-            intravisit::walk_variant(this, v, g, item_id);
+            intravisit::walk_variant(this, v);
         });
     }
 
@@ -324,10 +324,17 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
         });
     }
 
+    fn visit_assoc_type_binding(&mut self, type_binding: &'hir TypeBinding<'hir>) {
+        self.insert(type_binding.span, type_binding.hir_id, Node::TypeBinding(type_binding));
+        self.with_parent(type_binding.hir_id, |this| {
+            intravisit::walk_assoc_type_binding(this, type_binding)
+        })
+    }
+
     fn visit_trait_item_ref(&mut self, ii: &'hir TraitItemRef) {
         // Do not visit the duplicate information in TraitItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let TraitItemRef { id, ident: _, kind: _, span: _, defaultness: _ } = *ii;
+        let TraitItemRef { id, ident: _, kind: _, span: _ } = *ii;
 
         self.visit_nested_trait_item(id);
     }
@@ -335,7 +342,7 @@ impl<'a, 'hir> Visitor<'hir> for NodeCollector<'a, 'hir> {
     fn visit_impl_item_ref(&mut self, ii: &'hir ImplItemRef) {
         // Do not visit the duplicate information in ImplItemRef. We want to
         // map the actual nodes, not the duplicate ones in the *Ref.
-        let ImplItemRef { id, ident: _, kind: _, span: _, defaultness: _ } = *ii;
+        let ImplItemRef { id, ident: _, kind: _, span: _, trait_item_def_id: _ } = *ii;
 
         self.visit_nested_impl_item(id);
     }

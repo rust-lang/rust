@@ -16,7 +16,7 @@ error: boolean short circuit operator in statement may be clearer using an expli
   --> $DIR/short_circuit_statement.rs:9:5
    |
 LL |     1 == 2 || g();
-   |     ^^^^^^^^^^^^^^ help: replace it with: `if !(1 == 2) { g(); }`
+   |     ^^^^^^^^^^^^^^ help: replace it with: `if 1 != 2 { g(); }`
 
 error: aborting due to 3 previous errors
 

@@ -3,8 +3,8 @@
 //! In order to call `chalk-solve`, this file must convert a `CanonicalChalkEnvironmentAndGoal` into
 //! a Chalk uncanonical goal. It then calls Chalk, and converts the answer back into rustc solution.
 
-crate mod db;
-crate mod lowering;
+pub(crate) mod db;
+pub(crate) mod lowering;
 
 use rustc_data_structures::fx::FxHashMap;
 
@@ -14,7 +14,7 @@ use rustc_middle::infer::canonical::{CanonicalTyVarKind, CanonicalVarKind};
 use rustc_middle::traits::ChalkRustInterner;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArg;
-use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, BoundVar, ParamTy, TyCtxt, TypeFoldable, TypeVisitable};
 
 use rustc_infer::infer::canonical::{
     Canonical, CanonicalVarValues, Certainty, QueryRegionConstraints, QueryResponse,
@@ -22,17 +22,16 @@ use rustc_infer::infer::canonical::{
 use rustc_infer::traits::{self, CanonicalChalkEnvironmentAndGoal};
 
 use crate::chalk::db::RustIrDatabase as ChalkRustIrDatabase;
-use crate::chalk::lowering::{
-    LowerInto, ParamsSubstitutor, PlaceholdersCollector, RegionsSubstitutor,
-};
+use crate::chalk::lowering::LowerInto;
+use crate::chalk::lowering::{ParamsSubstitutor, PlaceholdersCollector, ReverseParamsSubstitutor};
 
 use chalk_solve::Solution;
 
-crate fn provide(p: &mut Providers) {
+pub(crate) fn provide(p: &mut Providers) {
     *p = Providers { evaluate_goal, ..*p };
 }
 
-crate fn evaluate_goal<'tcx>(
+pub(crate) fn evaluate_goal<'tcx>(
     tcx: TyCtxt<'tcx>,
     obligation: CanonicalChalkEnvironmentAndGoal<'tcx>,
 ) -> Result<&'tcx Canonical<'tcx, QueryResponse<'tcx, ()>>, traits::query::NoSolution> {
@@ -42,19 +41,10 @@ crate fn evaluate_goal<'tcx>(
     let mut placeholders_collector = PlaceholdersCollector::new();
     obligation.visit_with(&mut placeholders_collector);
 
-    let reempty_placeholder = tcx.mk_region(ty::RegionKind::RePlaceholder(ty::Placeholder {
-        universe: ty::UniverseIndex::ROOT,
-        name: ty::BoundRegionKind::BrAnon(placeholders_collector.next_anon_region_placeholder + 1),
-    }));
-
     let mut params_substitutor =
         ParamsSubstitutor::new(tcx, placeholders_collector.next_ty_placeholder);
     let obligation = obligation.fold_with(&mut params_substitutor);
-    // FIXME(chalk): we really should be substituting these back in the solution
-    let _params: FxHashMap<usize, ParamTy> = params_substitutor.params;
-
-    let mut regions_substitutor = RegionsSubstitutor::new(tcx, reempty_placeholder);
-    let obligation = obligation.fold_with(&mut regions_substitutor);
+    let params: FxHashMap<usize, ParamTy> = params_substitutor.params;
 
     let max_universe = obligation.max_universe.index();
 
@@ -63,7 +53,7 @@ crate fn evaluate_goal<'tcx>(
     > = chalk_ir::UCanonical {
         canonical: chalk_ir::Canonical {
             binders: chalk_ir::CanonicalVarKinds::from_iter(
-                &interner,
+                interner,
                 obligation.variables.iter().map(|v| match v.kind {
                     CanonicalVarKind::PlaceholderTy(_ty) => unimplemented!(),
                     CanonicalVarKind::PlaceholderRegion(_ui) => unimplemented!(),
@@ -85,18 +75,19 @@ crate fn evaluate_goal<'tcx>(
                         chalk_ir::VariableKind::Lifetime,
                         chalk_ir::UniverseIndex { counter: ui.index() },
                     ),
-                    CanonicalVarKind::Const(_ui) => unimplemented!(),
-                    CanonicalVarKind::PlaceholderConst(_pc) => unimplemented!(),
+                    CanonicalVarKind::Const(_ui, _ty) => unimplemented!(),
+                    CanonicalVarKind::PlaceholderConst(_pc, _ty) => unimplemented!(),
                 }),
             ),
-            value: obligation.value.lower_into(&interner),
+            value: obligation.value.lower_into(interner),
         },
         universes: max_universe + 1,
     };
 
     use chalk_solve::Solver;
     let mut solver = chalk_engine::solve::SLGSolver::new(32, None);
-    let db = ChalkRustIrDatabase { interner, reempty_placeholder };
+    let db = ChalkRustIrDatabase { interner };
+    debug!(?lowered_goal);
     let solution = solver.solve(&db, &lowered_goal);
     debug!(?obligation, ?solution, "evaluate goal");
 
@@ -110,11 +101,12 @@ crate fn evaluate_goal<'tcx>(
         use rustc_middle::infer::canonical::CanonicalVarInfo;
 
         let mut var_values: IndexVec<BoundVar, GenericArg<'tcx>> = IndexVec::new();
-        subst.as_slice(&interner).iter().for_each(|p| {
-            var_values.push(p.lower_into(&interner));
+        let mut reverse_param_substitutor = ReverseParamsSubstitutor::new(tcx, params);
+        subst.as_slice(interner).iter().for_each(|p| {
+            var_values.push(p.lower_into(interner).fold_with(&mut reverse_param_substitutor));
         });
         let variables: Vec<_> = binders
-            .iter(&interner)
+            .iter(interner)
             .map(|var| {
                 let kind = match var.kind {
                     chalk_ir::VariableKind::Ty(ty_kind) => CanonicalVarKind::Ty(match ty_kind {
@@ -127,15 +119,14 @@ crate fn evaluate_goal<'tcx>(
                     chalk_ir::VariableKind::Lifetime => CanonicalVarKind::Region(
                         ty::UniverseIndex::from_usize(var.skip_kind().counter),
                     ),
-                    chalk_ir::VariableKind::Const(_) => CanonicalVarKind::Const(
-                        ty::UniverseIndex::from_usize(var.skip_kind().counter),
-                    ),
+                    // FIXME(compiler-errors): We don't currently have a way of turning
+                    // a Chalk ty back into a rustc ty, right?
+                    chalk_ir::VariableKind::Const(_) => todo!(),
                 };
                 CanonicalVarInfo { kind }
             })
             .collect();
-        let max_universe =
-            binders.iter(&interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
+        let max_universe = binders.iter(interner).map(|v| v.skip_kind().counter).max().unwrap_or(0);
         let sol = Canonical {
             max_universe: ty::UniverseIndex::from_usize(max_universe),
             variables: tcx.intern_canonical_var_infos(&variables),
@@ -143,6 +134,7 @@ crate fn evaluate_goal<'tcx>(
                 var_values: CanonicalVarValues { var_values },
                 region_constraints: QueryRegionConstraints::default(),
                 certainty: Certainty::Proven,
+                opaque_types: vec![],
                 value: (),
             },
         };
@@ -171,6 +163,7 @@ crate fn evaluate_goal<'tcx>(
                                     .make_identity(tcx),
                                 region_constraints: QueryRegionConstraints::default(),
                                 certainty: Certainty::Ambiguous,
+                                opaque_types: vec![],
                                 value: (),
                             },
                         };

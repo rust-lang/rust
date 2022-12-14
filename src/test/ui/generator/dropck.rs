@@ -1,4 +1,4 @@
-#![feature(generators, generator_trait, box_leak)]
+#![feature(generators, generator_trait)]
 
 use std::cell::RefCell;
 use std::ops::Generator;

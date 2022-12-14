@@ -1,6 +1,3 @@
-#![allow(incomplete_features)]
-#![feature(const_generics_defaults)]
-
 struct X<const N: u8>();
 
 impl X<N> {}

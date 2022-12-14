@@ -58,14 +58,6 @@ error[E0452]: malformed lint attribute input
 LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
 
-warning: unknown lint: `reason`
-  --> $DIR/reasons-erroneous.rs:50:39
-   |
-LL | #![warn(missing_copy_implementations, reason)]
-   |                                       ^^^^^^
-   |
-   = note: `#[warn(unknown_lints)]` on by default
-
 error[E0452]: malformed lint attribute input
   --> $DIR/reasons-erroneous.rs:3:58
    |
@@ -125,6 +117,14 @@ error[E0452]: malformed lint attribute input
    |
 LL | #![warn(keyword_idents, reason = "root in rubble", macro_use_extern_crate)]
    |                         ^^^^^^^^^^^^^^^^^^^^^^^^^ reason in lint attribute must come last
+
+warning: unknown lint: `reason`
+  --> $DIR/reasons-erroneous.rs:50:39
+   |
+LL | #![warn(missing_copy_implementations, reason)]
+   |                                       ^^^^^^
+   |
+   = note: `#[warn(unknown_lints)]` on by default
 
 error: aborting due to 20 previous errors; 1 warning emitted
 

@@ -6,5 +6,5 @@ pub mod foo {
 
 fn main() {
     foo::Foo {};
-    //~^ ERROR cannot construct `Foo` with struct literal syntax due to inaccessible fields
+    //~^ ERROR cannot construct `Foo` with struct literal syntax due to private fields
 }

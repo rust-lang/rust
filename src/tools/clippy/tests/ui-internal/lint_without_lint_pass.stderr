@@ -1,5 +1,5 @@
 error: the lint `TEST_LINT` is not added to any `LintPass`
-  --> $DIR/lint_without_lint_pass.rs:11:1
+  --> $DIR/lint_without_lint_pass.rs:12:1
    |
 LL | / declare_tool_lint! {
 LL | |     pub clippy::TEST_LINT,

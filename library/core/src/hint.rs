@@ -5,27 +5,78 @@
 
 use crate::intrinsics;
 
-/// Informs the compiler that this point in the code is not reachable, enabling
-/// further optimizations.
+/// Informs the compiler that the site which is calling this function is not
+/// reachable, possibly enabling further optimizations.
 ///
 /// # Safety
 ///
-/// Reaching this function is completely *undefined behavior* (UB). In
-/// particular, the compiler assumes that all UB must never happen, and
-/// therefore will eliminate all branches that reach to a call to
-/// `unreachable_unchecked()`.
+/// Reaching this function is *Undefined Behavior*.
 ///
-/// Like all instances of UB, if this assumption turns out to be wrong, i.e., the
-/// `unreachable_unchecked()` call is actually reachable among all possible
-/// control flow, the compiler will apply the wrong optimization strategy, and
-/// may sometimes even corrupt seemingly unrelated code, causing
-/// difficult-to-debug problems.
+/// As the compiler assumes that all forms of Undefined Behavior can never
+/// happen, it will eliminate all branches in the surrounding code that it can
+/// determine will invariably lead to a call to `unreachable_unchecked()`.
 ///
-/// Use this function only when you can prove that the code will never call it.
-/// Otherwise, consider using the [`unreachable!`] macro, which does not allow
-/// optimizations but will panic when executed.
+/// If the assumptions embedded in using this function turn out to be wrong -
+/// that is, if the site which is calling `unreachable_unchecked()` is actually
+/// reachable at runtime - the compiler may have generated nonsensical machine
+/// instructions for this situation, including in seemingly unrelated code,
+/// causing difficult-to-debug problems.
 ///
-/// # Example
+/// Use this function sparingly. Consider using the [`unreachable!`] macro,
+/// which may prevent some optimizations but will safely panic in case it is
+/// actually reached at runtime. Benchmark your code to find out if using
+/// `unreachable_unchecked()` comes with a performance benefit.
+///
+/// # Examples
+///
+/// `unreachable_unchecked()` can be used in situations where the compiler
+/// can't prove invariants that were previously established. Such situations
+/// have a higher chance of occurring if those invariants are upheld by
+/// external code that the compiler can't analyze.
+/// ```
+/// fn prepare_inputs(divisors: &mut Vec<u32>) {
+///     // Note to future-self when making changes: The invariant established
+///     // here is NOT checked in `do_computation()`; if this changes, you HAVE
+///     // to change `do_computation()`.
+///     divisors.retain(|divisor| *divisor != 0)
+/// }
+///
+/// /// # Safety
+/// /// All elements of `divisor` must be non-zero.
+/// unsafe fn do_computation(i: u32, divisors: &[u32]) -> u32 {
+///     divisors.iter().fold(i, |acc, divisor| {
+///         // Convince the compiler that a division by zero can't happen here
+///         // and a check is not needed below.
+///         if *divisor == 0 {
+///             // Safety: `divisor` can't be zero because of `prepare_inputs`,
+///             // but the compiler does not know about this. We *promise*
+///             // that we always call `prepare_inputs`.
+///             std::hint::unreachable_unchecked()
+///         }
+///         // The compiler would normally introduce a check here that prevents
+///         // a division by zero. However, if `divisor` was zero, the branch
+///         // above would reach what we explicitly marked as unreachable.
+///         // The compiler concludes that `divisor` can't be zero at this point
+///         // and removes the - now proven useless - check.
+///         acc / divisor
+///     })
+/// }
+///
+/// let mut divisors = vec![2, 0, 4];
+/// prepare_inputs(&mut divisors);
+/// let result = unsafe {
+///     // Safety: prepare_inputs() guarantees that divisors is non-zero
+///     do_computation(100, &divisors)
+/// };
+/// assert_eq!(result, 12);
+///
+/// ```
+///
+/// While using `unreachable_unchecked()` is perfectly sound in the following
+/// example, the compiler is able to prove that a division by zero is not
+/// possible. Benchmarking reveals that `unreachable_unchecked()` provides
+/// no benefit over using [`unreachable!`], while the latter does not introduce
+/// the possibility of Undefined Behavior.
 ///
 /// ```
 /// fn div_1(a: u32, b: u32) -> u32 {
@@ -45,10 +96,14 @@ use crate::intrinsics;
 #[inline]
 #[stable(feature = "unreachable", since = "1.27.0")]
 #[rustc_const_stable(feature = "const_unreachable_unchecked", since = "1.57.0")]
+#[cfg_attr(miri, track_caller)] // even without panics, this helps for Miri backtraces
 pub const unsafe fn unreachable_unchecked() -> ! {
     // SAFETY: the safety contract for `intrinsics::unreachable` must
     // be upheld by the caller.
-    unsafe { intrinsics::unreachable() }
+    unsafe {
+        intrinsics::assert_unsafe_precondition!("hint::unreachable_unchecked must never be reached", () => false);
+        intrinsics::unreachable()
+    }
 }
 
 /// Emits a machine instruction to signal the processor that it is running in
@@ -105,21 +160,33 @@ pub const unsafe fn unreachable_unchecked() -> ! {
 /// ```
 ///
 /// [`thread::yield_now`]: ../../std/thread/fn.yield_now.html
-#[inline]
+#[inline(always)]
 #[stable(feature = "renamed_spin_loop", since = "1.49.0")]
 pub fn spin_loop() {
-    #[cfg(all(any(target_arch = "x86", target_arch = "x86_64"), target_feature = "sse2"))]
+    #[cfg(target_arch = "x86")]
     {
-        #[cfg(target_arch = "x86")]
-        {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
-            unsafe { crate::arch::x86::_mm_pause() };
-        }
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86 targets.
+        unsafe { crate::arch::x86::_mm_pause() };
+    }
 
-        #[cfg(target_arch = "x86_64")]
+    #[cfg(target_arch = "x86_64")]
+    {
+        // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
+        unsafe { crate::arch::x86_64::_mm_pause() };
+    }
+
+    // RISC-V platform spin loop hint implementation
+    {
+        // RISC-V RV32 and RV64 share the same PAUSE instruction, but they are located in different
+        // modules in `core::arch`.
+        // In this case, here we call `pause` function in each core arch module.
+        #[cfg(target_arch = "riscv32")]
         {
-            // SAFETY: the `cfg` attr ensures that we only execute this on x86_64 targets.
-            unsafe { crate::arch::x86_64::_mm_pause() };
+            crate::arch::riscv32::pause();
+        }
+        #[cfg(target_arch = "riscv64")]
+        {
+            crate::arch::riscv64::pause();
         }
     }
 
@@ -153,7 +220,132 @@ pub fn spin_loop() {
 ///
 /// [`std::convert::identity`]: crate::convert::identity
 #[inline]
-#[unstable(feature = "bench_black_box", issue = "64102")]
-pub fn black_box<T>(dummy: T) -> T {
+#[stable(feature = "bench_black_box", since = "1.66.0")]
+#[rustc_const_unstable(feature = "const_black_box", issue = "none")]
+pub const fn black_box<T>(dummy: T) -> T {
     crate::intrinsics::black_box(dummy)
+}
+
+/// An identity function that causes an `unused_must_use` warning to be
+/// triggered if the given value is not used (returned, stored in a variable,
+/// etc) by the caller.
+///
+/// This is primarily intended for use in macro-generated code, in which a
+/// [`#[must_use]` attribute][must_use] either on a type or a function would not
+/// be convenient.
+///
+/// [must_use]: https://doc.rust-lang.org/reference/attributes/diagnostics.html#the-must_use-attribute
+///
+/// # Example
+///
+/// ```
+/// #![feature(hint_must_use)]
+///
+/// use core::fmt;
+///
+/// pub struct Error(/* ... */);
+///
+/// #[macro_export]
+/// macro_rules! make_error {
+///     ($($args:expr),*) => {
+///         core::hint::must_use({
+///             let error = $crate::make_error(core::format_args!($($args),*));
+///             error
+///         })
+///     };
+/// }
+///
+/// // Implementation detail of make_error! macro.
+/// #[doc(hidden)]
+/// pub fn make_error(args: fmt::Arguments<'_>) -> Error {
+///     Error(/* ... */)
+/// }
+///
+/// fn demo() -> Option<Error> {
+///     if true {
+///         // Oops, meant to write `return Some(make_error!("..."));`
+///         Some(make_error!("..."));
+///     }
+///     None
+/// }
+/// #
+/// # // Make rustdoc not wrap the whole snippet in fn main, so that $crate::make_error works
+/// # fn main() {}
+/// ```
+///
+/// In the above example, we'd like an `unused_must_use` lint to apply to the
+/// value created by `make_error!`. However, neither `#[must_use]` on a struct
+/// nor `#[must_use]` on a function is appropriate here, so the macro expands
+/// using `core::hint::must_use` instead.
+///
+/// - We wouldn't want `#[must_use]` on the `struct Error` because that would
+///   make the following unproblematic code trigger a warning:
+///
+///   ```
+///   # struct Error;
+///   #
+///   fn f(arg: &str) -> Result<(), Error>
+///   # { Ok(()) }
+///
+///   #[test]
+///   fn t() {
+///       // Assert that `f` returns error if passed an empty string.
+///       // A value of type `Error` is unused here but that's not a problem.
+///       f("").unwrap_err();
+///   }
+///   ```
+///
+/// - Using `#[must_use]` on `fn make_error` can't help because the return value
+///   *is* used, as the right-hand side of a `let` statement. The `let`
+///   statement looks useless but is in fact necessary for ensuring that
+///   temporaries within the `format_args` expansion are not kept alive past the
+///   creation of the `Error`, as keeping them alive past that point can cause
+///   autotrait issues in async code:
+///
+///   ```
+///   # #![feature(hint_must_use)]
+///   #
+///   # struct Error;
+///   #
+///   # macro_rules! make_error {
+///   #     ($($args:expr),*) => {
+///   #         core::hint::must_use({
+///   #             // If `let` isn't used, then `f()` produces a non-Send future.
+///   #             let error = make_error(core::format_args!($($args),*));
+///   #             error
+///   #         })
+///   #     };
+///   # }
+///   #
+///   # fn make_error(args: core::fmt::Arguments<'_>) -> Error {
+///   #     Error
+///   # }
+///   #
+///   async fn f() {
+///       // Using `let` inside the make_error expansion causes temporaries like
+///       // `unsync()` to drop at the semicolon of that `let` statement, which
+///       // is prior to the await point. They would otherwise stay around until
+///       // the semicolon on *this* statement, which is after the await point,
+///       // and the enclosing Future would not implement Send.
+///       log(make_error!("look: {:p}", unsync())).await;
+///   }
+///
+///   async fn log(error: Error) {/* ... */}
+///
+///   // Returns something without a Sync impl.
+///   fn unsync() -> *const () {
+///       0 as *const ()
+///   }
+///   #
+///   # fn test() {
+///   #     fn assert_send(_: impl Send) {}
+///   #     assert_send(f());
+///   # }
+///   ```
+#[unstable(feature = "hint_must_use", issue = "94745")]
+#[rustc_const_unstable(feature = "hint_must_use", issue = "94745")]
+#[must_use] // <-- :)
+#[inline(always)]
+pub const fn must_use<T>(value: T) -> T {
+    value
 }

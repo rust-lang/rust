@@ -4,22 +4,22 @@
 #![forbid(dead_code)]
 
 struct A { f: () }
-//~^ ERROR: field is never read: `f`
+//~^ ERROR: field `f` is never read
 
 #[derive(Clone)]
 struct B { f: () }
-//~^ ERROR: field is never read: `f`
+//~^ ERROR: field `f` is never read
 
 #[derive(Debug)]
 struct C { f: () }
-//~^ ERROR: field is never read: `f`
+//~^ ERROR: field `f` is never read
 
 #[derive(Debug,Clone)]
 struct D { f: () }
-//~^ ERROR: field is never read: `f`
+//~^ ERROR: field `f` is never read
 
 struct E { f: () }
-//~^ ERROR: field is never read: `f`
+//~^ ERROR: field `f` is never read
 // Custom impl, still doesn't read f
 impl Clone for E {
     fn clone(&self) -> Self {

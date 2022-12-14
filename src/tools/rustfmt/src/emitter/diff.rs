@@ -23,12 +23,12 @@ impl Emitter for DiffEmitter {
         }: FormattedFile<'_>,
     ) -> Result<EmitterResult, io::Error> {
         const CONTEXT_SIZE: usize = 3;
-        let mismatch = make_diff(&original_text, formatted_text, CONTEXT_SIZE);
+        let mismatch = make_diff(original_text, formatted_text, CONTEXT_SIZE);
         let has_diff = !mismatch.is_empty();
 
         if has_diff {
             if self.config.print_misformatted_file_names() {
-                writeln!(output, "{}", ensure_real_path(filename).display())?;
+                writeln!(output, "{}", filename)?;
             } else {
                 print_diff(
                     mismatch,
@@ -40,8 +40,7 @@ impl Emitter for DiffEmitter {
             // This occurs when the only difference between the original and formatted values
             // is the newline style. This happens because The make_diff function compares the
             // original and formatted values line by line, independent of line endings.
-            let file_path = ensure_real_path(filename);
-            writeln!(output, "Incorrect newline style in {}", file_path.display())?;
+            writeln!(output, "Incorrect newline style in {}", filename)?;
             return Ok(EmitterResult { has_diff: true });
         }
 

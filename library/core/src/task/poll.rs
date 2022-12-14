@@ -9,6 +9,7 @@ use crate::task::Ready;
 /// scheduled to receive a wakeup instead.
 #[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
+#[cfg_attr(not(bootstrap), lang = "Poll")]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
@@ -243,7 +244,7 @@ impl<T, E> Poll<Option<Result<T, E>>> {
 #[stable(feature = "futures_api", since = "1.36.0")]
 #[rustc_const_unstable(feature = "const_convert", issue = "88674")]
 impl<T> const From<T> for Poll<T> {
-    /// Convert to a `Ready` variant.
+    /// Moves the value into a [`Poll::Ready`] to make a `Poll<T>`.
     ///
     /// # Example
     ///

@@ -2,12 +2,11 @@
 
 #![allow(
     clippy::cast_lossless,
+    unused,
     // Int::max_value will be deprecated in the future
     deprecated,
 )]
 #![warn(clippy::checked_conversions)]
-
-use std::convert::TryFrom;
 
 // Positive tests
 
@@ -71,6 +70,23 @@ pub fn no_isize_to_u8(value: isize) {
 
 pub fn i8_to_u8(value: i8) {
     let _ = value >= 0;
+}
+
+// Do not lint
+pub const fn issue_8898(i: u32) -> bool {
+    i <= i32::MAX as u32
+}
+
+#[clippy::msrv = "1.33"]
+fn msrv_1_33() {
+    let value: i64 = 33;
+    let _ = value <= (u32::MAX as i64) && value >= 0;
+}
+
+#[clippy::msrv = "1.34"]
+fn msrv_1_34() {
+    let value: i64 = 34;
+    let _ = value <= (u32::MAX as i64) && value >= 0;
 }
 
 fn main() {}

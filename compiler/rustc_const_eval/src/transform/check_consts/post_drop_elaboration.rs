@@ -1,6 +1,6 @@
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::{self, BasicBlock, Location};
-use rustc_middle::ty::TyCtxt;
+use rustc_middle::ty::{Ty, TyCtxt};
 use rustc_span::{symbol::sym, Span};
 
 use super::check::Qualifs;
@@ -23,7 +23,7 @@ pub fn checking_enabled(ccx: &ConstCx<'_, '_>) -> bool {
 ///
 /// This is separate from the rest of the const checking logic because it must run after drop
 /// elaboration.
-pub fn check_live_drops(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
+pub fn check_live_drops<'tcx>(tcx: TyCtxt<'tcx>, body: &mir::Body<'tcx>) {
     let def_id = body.source.def_id().expect_local();
     let const_kind = tcx.hir().body_const_context(def_id);
     if const_kind.is_none() {
@@ -50,7 +50,7 @@ struct CheckLiveDrops<'mir, 'tcx> {
 }
 
 // So we can access `body` and `tcx`.
-impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
+impl<'mir, 'tcx> std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     type Target = ConstCx<'mir, 'tcx>;
 
     fn deref(&self) -> &Self::Target {
@@ -58,13 +58,13 @@ impl std::ops::Deref for CheckLiveDrops<'mir, 'tcx> {
     }
 }
 
-impl CheckLiveDrops<'mir, 'tcx> {
-    fn check_live_drop(&self, span: Span) {
-        ops::LiveDrop { dropped_at: None }.build_error(self.ccx, span).emit();
+impl<'tcx> CheckLiveDrops<'_, 'tcx> {
+    fn check_live_drop(&self, span: Span, dropped_ty: Ty<'tcx>) {
+        ops::LiveDrop { dropped_at: None, dropped_ty }.build_error(self.ccx, span).emit();
     }
 }
 
-impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
+impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, block: &mir::BasicBlockData<'tcx>) {
         trace!("visit_basic_block_data: bb={:?} is_cleanup={:?}", bb, block.is_cleanup);
 
@@ -80,7 +80,8 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
         trace!("visit_terminator: terminator={:?} location={:?}", terminator, location);
 
         match &terminator.kind {
-            mir::TerminatorKind::Drop { place: dropped_place, .. } => {
+            mir::TerminatorKind::Drop { place: dropped_place, .. }
+            | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
                 let dropped_ty = dropped_place.ty(self.body, self.tcx).ty;
                 if !NeedsNonConstDrop::in_any_value_of_ty(self.ccx, dropped_ty) {
                     // Instead of throwing a bug, we just return here. This is because we have to
@@ -89,7 +90,7 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
                 }
 
                 if dropped_place.is_indirect() {
-                    self.check_live_drop(terminator.source_info.span);
+                    self.check_live_drop(terminator.source_info.span, dropped_ty);
                     return;
                 }
 
@@ -100,14 +101,9 @@ impl Visitor<'tcx> for CheckLiveDrops<'mir, 'tcx> {
                 if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {
                     // Use the span where the dropped local was declared for the error.
                     let span = self.body.local_decls[dropped_place.local].source_info.span;
-                    self.check_live_drop(span);
+                    self.check_live_drop(span, dropped_ty);
                 }
             }
-
-            mir::TerminatorKind::DropAndReplace { .. } => span_bug!(
-                terminator.source_info.span,
-                "`DropAndReplace` should be removed by drop elaboration",
-            ),
 
             mir::TerminatorKind::Abort
             | mir::TerminatorKind::Call { .. }

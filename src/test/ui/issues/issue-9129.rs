@@ -2,10 +2,7 @@
 #![allow(dead_code)]
 #![allow(non_camel_case_types)]
 #![allow(non_snake_case)]
-#![allow(deprecated)] // llvm_asm!
 // ignore-pretty unreported
-
-#![feature(box_syntax)]
 
 pub trait bomb { fn boom(&self, _: Ident); }
 pub struct S;
@@ -13,7 +10,6 @@ impl bomb for S { fn boom(&self, _: Ident) { } }
 
 pub struct Ident { name: usize }
 
-// macro_rules! int3 { () => ( unsafe { llvm_asm!( "int3" ); } ) }
 macro_rules! int3 { () => ( { } ) }
 
 fn Ident_new() -> Ident {
@@ -31,6 +27,6 @@ pub fn light_fuse(fld: Box<dyn bomb>) {
 }
 
 pub fn main() {
-    let b = box S as Box<dyn bomb>;
+    let b = Box::new(S) as Box<dyn bomb>;
     light_fuse(b);
 }

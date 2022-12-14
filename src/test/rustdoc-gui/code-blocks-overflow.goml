@@ -1,5 +1,5 @@
 // This test ensures that codeblocks content don't overflow.
-goto: file://|DOC_PATH|/lib2/sub_mod/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
 size: (1080, 600)
 // There should be two codeblocks: a rust one and a non-rust one.
 assert-count: (".docblock > .example-wrap", 2)

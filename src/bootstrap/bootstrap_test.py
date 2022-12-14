@@ -55,8 +55,8 @@ class ProgramOutOfDate(unittest.TestCase):
     def tearDown(self):
         rmtree(self.container)
 
-    def test_stamp_path_does_not_exists(self):
-        """Return True when the stamp file does not exists"""
+    def test_stamp_path_does_not_exist(self):
+        """Return True when the stamp file does not exist"""
         if os.path.exists(self.rustc_stamp_path):
             os.unlink(self.rustc_stamp_path)
         self.assertTrue(self.build.program_out_of_date(self.rustc_stamp_path, self.key))

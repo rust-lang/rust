@@ -1,27 +1,9 @@
 error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/E0206.rs:3:15
-   |
-LL | impl Copy for Foo { }
-   |               ^^^ type is not a structure or enumeration
-
-error[E0206]: the trait `Copy` may not be implemented for this type
-  --> $DIR/E0206.rs:10:15
+  --> $DIR/E0206.rs:4:15
    |
 LL | impl Copy for &'static mut Bar { }
    |               ^^^^^^^^^^^^^^^^ type is not a structure or enumeration
 
-error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
-  --> $DIR/E0206.rs:3:1
-   |
-LL | impl Copy for Foo { }
-   | ^^^^^^^^^^^^^^---
-   | |             |
-   | |             this is not defined in the current crate because arrays are always foreign
-   | impl doesn't use only types from inside the current crate
-   |
-   = note: define and implement a trait or new type instead
+error: aborting due to previous error
 
-error: aborting due to 3 previous errors
-
-Some errors have detailed explanations: E0117, E0206.
-For more information about an error, try `rustc --explain E0117`.
+For more information about this error, try `rustc --explain E0206`.

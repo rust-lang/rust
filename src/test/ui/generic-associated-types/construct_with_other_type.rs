@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 // check-pass
 
 use std::ops::Deref;
@@ -16,9 +14,9 @@ trait Baz {
 }
 
 impl<T> Baz for T where T: Foo {
-    type Quux<'a> where T: 'a = T;
+    type Quux<'a> = T where T: 'a;
 
-    type Baa<'a> where T: 'a = &'a <T as Foo>::Bar<'a, 'static>;
+    type Baa<'a> = &'a <T as Foo>::Bar<'a, 'static> where T: 'a;
 }
 
 fn main() {}

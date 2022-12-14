@@ -1,12 +1,13 @@
 // run-rustfix
-
-#![allow(unreachable_code)]
-#![allow(unused_macros)]
-#![allow(unused_variables)]
-#![allow(clippy::assertions_on_constants)]
-#![allow(clippy::eq_op)]
-#![allow(clippy::print_literal)]
 #![warn(clippy::to_string_in_format_args)]
+#![allow(unused)]
+#![allow(
+    clippy::assertions_on_constants,
+    clippy::double_parens,
+    clippy::eq_op,
+    clippy::print_literal,
+    clippy::uninlined_format_args
+)]
 
 use std::io::{stdout, Write};
 use std::ops::Deref;
@@ -114,4 +115,53 @@ fn main() {
     println!("error: something failed at {}", my_other_macro!());
     // https://github.com/rust-lang/rust-clippy/issues/7903
     println!("{foo}{foo:?}", foo = "foo".to_string());
+    print!("{}", (Location::caller().to_string()));
+    print!("{}", ((Location::caller()).to_string()));
+}
+
+fn issue8643(vendor_id: usize, product_id: usize, name: &str) {
+    println!(
+        "{:<9}  {:<10}  {}",
+        format!("0x{:x}", vendor_id),
+        format!("0x{:x}", product_id),
+        name
+    );
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/8855
+mod issue_8855 {
+    #![allow(dead_code)]
+
+    struct A {}
+
+    impl std::fmt::Display for A {
+        fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+            write!(f, "test")
+        }
+    }
+
+    fn main() {
+        let a = A {};
+        let b = A {};
+
+        let x = format!("{} {}", a, b.to_string());
+        dbg!(x);
+
+        let x = format!("{:>6} {:>6}", a, b.to_string());
+        dbg!(x);
+    }
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/9256
+mod issue_9256 {
+    #![allow(dead_code)]
+
+    fn print_substring(original: &str) {
+        assert!(original.len() > 10);
+        println!("{}", original[..10].to_string());
+    }
+
+    fn main() {
+        print_substring("Hello, world!");
+    }
 }

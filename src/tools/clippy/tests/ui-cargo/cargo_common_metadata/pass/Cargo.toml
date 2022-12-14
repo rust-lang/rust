@@ -1,5 +1,5 @@
 [package]
-name = "cargo_common_metadata"
+name = "cargo_common_metadata_pass"
 version = "0.1.0"
 publish = false
 description = "A test package for the cargo_common_metadata lint"

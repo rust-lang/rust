@@ -30,11 +30,11 @@ pub struct LifeTimeOnly<'a> {
 
 impl<'a> LifeTimeOnly<'a> {
 
-    //~ MONO_ITEM fn LifeTimeOnly::foo
+    //~ MONO_ITEM fn LifeTimeOnly::<'_>::foo
     pub fn foo(&self) {}
-    //~ MONO_ITEM fn LifeTimeOnly::bar
+    //~ MONO_ITEM fn LifeTimeOnly::<'_>::bar
     pub fn bar(&'a self) {}
-    //~ MONO_ITEM fn LifeTimeOnly::baz
+    //~ MONO_ITEM fn LifeTimeOnly::<'_>::baz
     pub fn baz<'b>(&'b self) {}
 
     pub fn non_instantiated<T>(&self) {}

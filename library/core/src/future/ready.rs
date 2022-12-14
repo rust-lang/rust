@@ -2,7 +2,7 @@ use crate::future::Future;
 use crate::pin::Pin;
 use crate::task::{Context, Poll};
 
-/// Creates a future that is immediately ready with a value.
+/// A future that is immediately ready with a value.
 ///
 /// This `struct` is created by [`ready()`]. See its
 /// documentation for more.
@@ -21,6 +21,30 @@ impl<T> Future for Ready<T> {
     #[inline]
     fn poll(mut self: Pin<&mut Self>, _cx: &mut Context<'_>) -> Poll<T> {
         Poll::Ready(self.0.take().expect("`Ready` polled after completion"))
+    }
+}
+
+impl<T> Ready<T> {
+    /// Consumes the `Ready`, returning the wrapped value.
+    ///
+    /// # Panics
+    ///
+    /// Will panic if this [`Ready`] was already polled to completion.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(ready_into_inner)]
+    /// use std::future;
+    ///
+    /// let a = future::ready(1);
+    /// assert_eq!(a.into_inner(), 1);
+    /// ```
+    #[unstable(feature = "ready_into_inner", issue = "101196")]
+    #[must_use]
+    #[inline]
+    pub fn into_inner(self) -> T {
+        self.0.expect("Called `into_inner()` on `Ready` after completion")
     }
 }
 

@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # FIXME(eddyb) provide `HOST_RUSTC` and `TARGET_RUSTC`
 # instead of hardcoding them everywhere they're needed.

@@ -7,10 +7,10 @@ LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref
    |                                 may outlive borrowed value `prefix`
    |
 note: closure is returned here
-  --> $DIR/does-not-live-long-enough.rs:5:55
+  --> $DIR/does-not-live-long-enough.rs:6:9
    |
-LL |     fn started_with<'a>(&'a self, prefix: &'a str) -> impl Iterator<Item=&'a str> {
-   |                                                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         self.data.iter().filter(|s| s.starts_with(prefix)).map(|s| s.as_ref())
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 help: to force the closure to take ownership of `prefix` (and any other referenced variables), use the `move` keyword
    |
 LL |         self.data.iter().filter(move |s| s.starts_with(prefix)).map(|s| s.as_ref())

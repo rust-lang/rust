@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 if [ -z $CHANNEL ]; then
 export CHANNEL='debug'
@@ -8,7 +8,7 @@ pushd $(dirname "$0") >/dev/null
 source config.sh
 
 # read nightly compiler from rust-toolchain file
-TOOLCHAIN=$(cat rust-toolchain)
+TOOLCHAIN=$(cat rust-toolchain | grep channel | sed 's/channel = "\(.*\)"/\1/')
 
 popd >/dev/null
 
@@ -20,4 +20,4 @@ fi
 cmd=$1
 shift
 
-RUSTDOCFLAGS="$RUSTFLAGS" cargo +${TOOLCHAIN} $cmd --target $TARGET_TRIPLE $@
+RUSTDOCFLAGS="$RUSTFLAGS" cargo +${TOOLCHAIN} $cmd $@

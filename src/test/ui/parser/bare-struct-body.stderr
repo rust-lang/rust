@@ -34,7 +34,9 @@ error[E0308]: mismatched types
   --> $DIR/bare-struct-body.rs:11:14
    |
 LL |     x.val == 42;
-   |              ^^ expected `()`, found integer
+   |     -----    ^^ expected `()`, found integer
+   |     |
+   |     expected because this is `()`
 
 error: aborting due to 3 previous errors
 

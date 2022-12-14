@@ -4,12 +4,12 @@ error: unused `Result` in tuple element 0 that must be used
 LL |     (Ok::<(), ()>(()),);
    |      ^^^^^^^^^^^^^^^^
    |
+   = note: this `Result` may be an `Err` variant, which should be handled
 note: the lint level is defined here
   --> $DIR/must_use-tuple.rs:1:9
    |
 LL | #![deny(unused_must_use)]
    |         ^^^^^^^^^^^^^^^
-   = note: this `Result` may be an `Err` variant, which should be handled
 
 error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:10:6
@@ -31,15 +31,15 @@ error: unused `Result` in tuple element 0 that must be used
   --> $DIR/must_use-tuple.rs:14:5
    |
 LL |     foo();
-   |     ^^^^^^
+   |     ^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 
 error: unused `Result` in tuple element 0 that must be used
-  --> $DIR/must_use-tuple.rs:16:6
+  --> $DIR/must_use-tuple.rs:16:7
    |
 LL |     ((Err::<(), ()>(()), ()), ());
-   |      ^^^^^^^^^^^^^^^^^^^^^^^
+   |       ^^^^^^^^^^^^^^^^^
    |
    = note: this `Result` may be an `Err` variant, which should be handled
 

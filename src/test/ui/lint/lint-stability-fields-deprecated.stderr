@@ -22,19 +22,19 @@ error: use of deprecated struct `cross_crate::lint_stability_fields::Deprecated`
 LL |         let Deprecated
    |             ^^^^^^^^^^
 
-error: use of deprecated struct `cross_crate::lint_stability_fields::Deprecated2`: text
+error: use of deprecated tuple struct `cross_crate::lint_stability_fields::Deprecated2`: text
   --> $DIR/lint-stability-fields-deprecated.rs:131:17
    |
 LL |         let x = Deprecated2(1, 2, 3);
    |                 ^^^^^^^^^^^
 
-error: use of deprecated struct `cross_crate::lint_stability_fields::Deprecated2`: text
+error: use of deprecated tuple struct `cross_crate::lint_stability_fields::Deprecated2`: text
   --> $DIR/lint-stability-fields-deprecated.rs:141:13
    |
 LL |         let Deprecated2
    |             ^^^^^^^^^^^
 
-error: use of deprecated struct `cross_crate::lint_stability_fields::Deprecated2`: text
+error: use of deprecated tuple struct `cross_crate::lint_stability_fields::Deprecated2`: text
   --> $DIR/lint-stability-fields-deprecated.rs:150:13
    |
 LL |         let Deprecated2

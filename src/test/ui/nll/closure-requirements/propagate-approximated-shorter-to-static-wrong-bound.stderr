@@ -1,18 +1,12 @@
 note: external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:35:47
    |
-LL |       establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-   |  _______________________________________________^
-LL | |
-LL | |
-LL | |         // Only works if 'x: 'y:
-LL | |         demand_y(x, y, x.get())
-LL | |     });
-   | |_____^
+LL |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
+   |                                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply::{closure#0} with closure substs [
                i16,
-               for<'r, 's, 't0, 't1, 't2, 't3> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrNamed('r) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrNamed('t0) }) std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('t1) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrNamed('t2) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrNamed('s) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrNamed('t3) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrNamed('t1) }) u32>)),
+               for<Region(BrAnon(0, None)), Region(BrAnon(1, None)), Region(BrAnon(2, None)), Region(BrAnon(3, None)), Region(BrAnon(4, None)), Region(BrAnon(5, None))> extern "rust-call" fn((&ReLateBound(DebruijnIndex(0), BoundRegion { var: 0, kind: BrAnon(0, None) }) std::cell::Cell<&'_#1r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 2, kind: BrAnon(2, None) }) std::cell::Cell<&'_#2r &ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(3, None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 4, kind: BrAnon(4, None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 1, kind: BrAnon(1, None) }) u32>, &ReLateBound(DebruijnIndex(0), BoundRegion { var: 5, kind: BrAnon(5, None) }) std::cell::Cell<&ReLateBound(DebruijnIndex(0), BoundRegion { var: 3, kind: BrAnon(3, None) }) u32>)),
                (),
            ]
    = note: late-bound region is '_#3r
@@ -23,14 +17,8 @@ LL | |     });
 note: no external requirements
   --> $DIR/propagate-approximated-shorter-to-static-wrong-bound.rs:34:1
    |
-LL | / fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
-LL | |     establish_relationships(&cell_a, &cell_b, |_outlives1, _outlives2, x, y| {
-LL | |
-LL | |
-...  |
-LL | |     });
-LL | | }
-   | |_^
+LL | fn supply<'a, 'b>(cell_a: Cell<&'a u32>, cell_b: Cell<&'b u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: defining type: supply
 
@@ -51,6 +39,10 @@ LL | |     });
    | |      |
    | |______`cell_a` escapes the function body here
    |        argument requires that `'a` must outlive `'static`
+   |
+   = note: requirement occurs because of the type `Cell<&'_#10r u32>`, which makes the generic argument `&'_#10r u32` invariant
+   = note: the struct `Cell<T>` is invariant over the parameter `T`
+   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 

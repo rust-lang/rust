@@ -1,9 +1,0 @@
-error[E0747]: type provided when a lifetime was expected
-  --> $DIR/issue-14303-path.rs:10:37
-   |
-LL | fn bar<'a, 'b, 'c, T>(x: foo::X<'a, T, 'b, 'c>) {}
-   |                                     ^
-
-error: aborting due to previous error
-
-For more information about this error, try `rustc --explain E0747`.

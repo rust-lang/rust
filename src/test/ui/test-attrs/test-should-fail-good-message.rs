@@ -1,5 +1,5 @@
 // run-pass
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 // compile-flags: --test
 #[test]
 #[should_panic(expected = "foo")]

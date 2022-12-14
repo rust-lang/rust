@@ -20,7 +20,7 @@ fn smoke() {
 #[test]
 fn drop_full() {
     let (tx, _rx) = sync_channel::<Box<isize>>(1);
-    tx.send(box 1).unwrap();
+    tx.send(Box::new(1)).unwrap();
 }
 
 #[test]
@@ -113,23 +113,25 @@ fn chan_gone_concurrent() {
 
 #[test]
 fn stress() {
+    let count = if cfg!(miri) { 100 } else { 10000 };
     let (tx, rx) = sync_channel::<i32>(0);
     thread::spawn(move || {
-        for _ in 0..10000 {
+        for _ in 0..count {
             tx.send(1).unwrap();
         }
     });
-    for _ in 0..10000 {
+    for _ in 0..count {
         assert_eq!(rx.recv().unwrap(), 1);
     }
 }
 
 #[test]
 fn stress_recv_timeout_two_threads() {
+    let count = if cfg!(miri) { 100 } else { 10000 };
     let (tx, rx) = sync_channel::<i32>(0);
 
     thread::spawn(move || {
-        for _ in 0..10000 {
+        for _ in 0..count {
             tx.send(1).unwrap();
         }
     });
@@ -146,12 +148,12 @@ fn stress_recv_timeout_two_threads() {
         }
     }
 
-    assert_eq!(recv_count, 10000);
+    assert_eq!(recv_count, count);
 }
 
 #[test]
 fn stress_recv_timeout_shared() {
-    const AMT: u32 = 1000;
+    const AMT: u32 = if cfg!(miri) { 100 } else { 1000 };
     const NTHREADS: u32 = 8;
     let (tx, rx) = sync_channel::<i32>(0);
     let (dtx, drx) = sync_channel::<()>(0);
@@ -191,7 +193,7 @@ fn stress_recv_timeout_shared() {
 
 #[test]
 fn stress_shared() {
-    const AMT: u32 = 1000;
+    const AMT: u32 = if cfg!(miri) { 100 } else { 1000 };
     const NTHREADS: u32 = 8;
     let (tx, rx) = sync_channel::<i32>(0);
     let (dtx, drx) = sync_channel::<()>(0);
@@ -238,7 +240,7 @@ fn oneshot_single_thread_send_port_close() {
     // Testing that the sender cleans up the payload if receiver is closed
     let (tx, rx) = sync_channel::<Box<i32>>(0);
     drop(rx);
-    assert!(tx.send(box 0).is_err());
+    assert!(tx.send(Box::new(0)).is_err());
 }
 
 #[test]
@@ -257,7 +259,7 @@ fn oneshot_single_thread_recv_chan_close() {
 #[test]
 fn oneshot_single_thread_send_then_recv() {
     let (tx, rx) = sync_channel::<Box<i32>>(1);
-    tx.send(box 10).unwrap();
+    tx.send(Box::new(10)).unwrap();
     assert!(*rx.recv().unwrap() == 10);
 }
 
@@ -333,7 +335,7 @@ fn oneshot_multi_task_recv_then_send() {
         assert!(*rx.recv().unwrap() == 10);
     });
 
-    tx.send(box 10).unwrap();
+    tx.send(Box::new(10)).unwrap();
 }
 
 #[test]
@@ -398,7 +400,7 @@ fn oneshot_multi_thread_send_recv_stress() {
     for _ in 0..stress_factor() {
         let (tx, rx) = sync_channel::<Box<i32>>(0);
         let _t = thread::spawn(move || {
-            tx.send(box 10).unwrap();
+            tx.send(Box::new(10)).unwrap();
         });
         assert!(*rx.recv().unwrap() == 10);
     }
@@ -418,7 +420,7 @@ fn stream_send_recv_stress() {
             }
 
             thread::spawn(move || {
-                tx.send(box i).unwrap();
+                tx.send(Box::new(i)).unwrap();
                 send(tx, i + 1);
             });
         }
@@ -438,12 +440,13 @@ fn stream_send_recv_stress() {
 
 #[test]
 fn recv_a_lot() {
+    let count = if cfg!(miri) { 1000 } else { 10000 };
     // Regression test that we don't run out of stack in scheduler context
-    let (tx, rx) = sync_channel(10000);
-    for _ in 0..10000 {
+    let (tx, rx) = sync_channel(count);
+    for _ in 0..count {
         tx.send(()).unwrap();
     }
-    for _ in 0..10000 {
+    for _ in 0..count {
         rx.recv().unwrap();
     }
 }

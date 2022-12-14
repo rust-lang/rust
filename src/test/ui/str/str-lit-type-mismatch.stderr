@@ -42,7 +42,7 @@ help: consider removing the leading `b`
    |
 LL -     let z: &str = b"foo";
 LL +     let z: &str = "foo";
-   | 
+   |
 
 error: aborting due to 3 previous errors
 

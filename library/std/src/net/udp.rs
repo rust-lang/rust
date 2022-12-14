@@ -2,7 +2,7 @@
 mod tests;
 
 use crate::fmt;
-use crate::io::{self, Error, ErrorKind};
+use crate::io::{self, ErrorKind};
 use crate::net::{Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use crate::sys_common::net as net_imp;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -175,7 +175,9 @@ impl UdpSocket {
     pub fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: A) -> io::Result<usize> {
         match addr.to_socket_addrs()?.next() {
             Some(addr) => self.0.send_to(buf, &addr),
-            None => Err(Error::new_const(ErrorKind::InvalidInput, &"no addresses to send data to")),
+            None => {
+                Err(io::const_io_error!(ErrorKind::InvalidInput, "no addresses to send data to"))
+            }
         }
     }
 
@@ -603,9 +605,9 @@ impl UdpSocket {
     ///
     /// let socket = UdpSocket::bind("127.0.0.1:34254").expect("couldn't bind to address");
     /// match socket.take_error() {
-    ///     Ok(Some(error)) => println!("UdpSocket error: {:?}", error),
+    ///     Ok(Some(error)) => println!("UdpSocket error: {error:?}"),
     ///     Ok(None) => println!("No error"),
-    ///     Err(error) => println!("UdpSocket.take_error failed: {:?}", error),
+    ///     Err(error) => println!("UdpSocket.take_error failed: {error:?}"),
     /// }
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -684,8 +686,8 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// let mut buf = [0; 10];
     /// match socket.recv(&mut buf) {
-    ///     Ok(received) => println!("received {} bytes {:?}", received, &buf[..received]),
-    ///     Err(e) => println!("recv function failed: {:?}", e),
+    ///     Ok(received) => println!("received {received} bytes {:?}", &buf[..received]),
+    ///     Err(e) => println!("recv function failed: {e:?}"),
     /// }
     /// ```
     #[stable(feature = "net2_mutators", since = "1.9.0")]
@@ -724,8 +726,8 @@ impl UdpSocket {
     /// socket.connect("127.0.0.1:8080").expect("connect function failed");
     /// let mut buf = [0; 10];
     /// match socket.peek(&mut buf) {
-    ///     Ok(received) => println!("received {} bytes", received),
-    ///     Err(e) => println!("peek function failed: {:?}", e),
+    ///     Ok(received) => println!("received {received} bytes"),
+    ///     Err(e) => println!("peek function failed: {e:?}"),
     /// }
     /// ```
     #[stable(feature = "peek", since = "1.18.0")]
@@ -768,7 +770,7 @@ impl UdpSocket {
     ///             // via platform-specific APIs such as epoll or IOCP
     ///             wait_for_fd();
     ///         }
-    ///         Err(e) => panic!("encountered IO error: {}", e),
+    ///         Err(e) => panic!("encountered IO error: {e}"),
     ///     }
     /// };
     /// println!("bytes: {:?}", &buf[..num_bytes_read]);

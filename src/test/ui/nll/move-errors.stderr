@@ -45,7 +45,7 @@ LL |     let a = [A("".to_string())][0];
    |             move occurs because value has type `A`, which does not implement the `Copy` trait
    |             help: consider borrowing here: `&[A("".to_string())][0]`
 
-error[E0507]: cannot move out of `a.0` which is behind a shared reference
+error[E0507]: cannot move out of `a` which is behind a shared reference
   --> $DIR/move-errors.rs:38:16
    |
 LL |     let A(s) = *a;
@@ -134,7 +134,7 @@ LL |         F(s, mut t) => (),
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
 
-error[E0507]: cannot move out of `x.0` which is behind a shared reference
+error[E0507]: cannot move out of `x` as enum variant `Err` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11
    |
 LL |     match *x {

@@ -13,7 +13,7 @@ help: try removing `&mut` here
    |
 LL -     h(&mut b);
 LL +     h(b);
-   | 
+   |
 
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
   --> $DIR/mut-borrow-of-mut-ref.rs:11:12
@@ -30,7 +30,7 @@ help: try removing `&mut` here
    |
 LL -     g(&mut &mut b);
 LL +     g(&mut b);
-   | 
+   |
 
 error[E0596]: cannot borrow `b` as mutable, as it is not declared as mutable
   --> $DIR/mut-borrow-of-mut-ref.rs:18:12
@@ -47,7 +47,7 @@ help: try removing `&mut` here
    |
 LL -     h(&mut &mut b);
 LL +     h(&mut b);
-   | 
+   |
 
 error[E0596]: cannot borrow `f` as mutable, as it is not declared as mutable
   --> $DIR/mut-borrow-of-mut-ref.rs:35:5

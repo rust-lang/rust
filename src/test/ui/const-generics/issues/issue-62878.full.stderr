@@ -4,13 +4,6 @@ error[E0770]: the type of const parameters must not depend on other generic para
 LL | fn foo<const N: usize, const A: [u8; N]>() {}
    |                                      ^ the type must not depend on the parameter `N`
 
-error[E0308]: mismatched types
-  --> $DIR/issue-62878.rs:10:15
-   |
-LL |     foo::<_, {[1]}>();
-   |               ^^^ expected `usize`, found array `[{integer}; 1]`
+error: aborting due to previous error
 
-error: aborting due to 2 previous errors
-
-Some errors have detailed explanations: E0308, E0770.
-For more information about an error, try `rustc --explain E0308`.
+For more information about this error, try `rustc --explain E0770`.

@@ -1,4 +1,6 @@
-use rustc_ast::ast::{self, BindingMode, Pat, PatField, PatKind, RangeEnd, RangeSyntax};
+use rustc_ast::ast::{
+    self, BindingAnnotation, ByRef, Pat, PatField, PatKind, RangeEnd, RangeSyntax,
+};
 use rustc_ast::ptr;
 use rustc_span::{BytePos, Span};
 
@@ -99,10 +101,10 @@ impl Rewrite for Pat {
                 write_list(&items, &fmt)
             }
             PatKind::Box(ref pat) => rewrite_unary_prefix(context, "box ", &**pat, shape),
-            PatKind::Ident(binding_mode, ident, ref sub_pat) => {
-                let (prefix, mutability) = match binding_mode {
-                    BindingMode::ByRef(mutability) => ("ref", mutability),
-                    BindingMode::ByValue(mutability) => ("", mutability),
+            PatKind::Ident(BindingAnnotation(by_ref, mutability), ident, ref sub_pat) => {
+                let prefix = match by_ref {
+                    ByRef::Yes => "ref",
+                    ByRef::No => "",
                 };
                 let mut_infix = format_mutability(mutability).trim();
                 let id_str = rewrite_ident(context, ident);
@@ -225,11 +227,10 @@ impl Rewrite for Pat {
             }
             PatKind::Tuple(ref items) => rewrite_tuple_pat(items, None, self.span, context, shape),
             PatKind::Path(ref q_self, ref path) => {
-                rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)
+                rewrite_path(context, PathContext::Expr, q_self, path, shape)
             }
             PatKind::TupleStruct(ref q_self, ref path, ref pat_vec) => {
-                let path_str =
-                    rewrite_path(context, PathContext::Expr, q_self.as_ref(), path, shape)?;
+                let path_str = rewrite_path(context, PathContext::Expr, q_self, path, shape)?;
                 rewrite_tuple_pat(pat_vec, Some(path_str), self.span, context, shape)
             }
             PatKind::Lit(ref expr) => expr.rewrite(context, shape),
@@ -269,7 +270,7 @@ impl Rewrite for Pat {
 }
 
 fn rewrite_struct_pat(
-    qself: &Option<ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     path: &ast::Path,
     fields: &[ast::PatField],
     ellipsis: bool,
@@ -279,7 +280,7 @@ fn rewrite_struct_pat(
 ) -> Option<String> {
     // 2 =  ` {`
     let path_shape = shape.sub_width(2)?;
-    let path_str = rewrite_path(context, PathContext::Expr, qself.as_ref(), path, path_shape)?;
+    let path_str = rewrite_path(context, PathContext::Expr, qself, path, path_shape)?;
 
     if fields.is_empty() && !ellipsis {
         return Some(format!("{} {{}}", path_str));
@@ -318,10 +319,12 @@ fn rewrite_struct_pat(
     let mut fields_str = write_list(&item_vec, &fmt)?;
     let one_line_width = h_shape.map_or(0, |shape| shape.width);
 
+    let has_trailing_comma = fmt.needs_trailing_separator();
+
     if ellipsis {
         if fields_str.contains('\n') || fields_str.len() > one_line_width {
             // Add a missing trailing comma.
-            if context.config.trailing_comma() == SeparatorTactic::Never {
+            if !has_trailing_comma {
                 fields_str.push(',');
             }
             fields_str.push('\n');
@@ -329,8 +332,7 @@ fn rewrite_struct_pat(
         } else {
             if !fields_str.is_empty() {
                 // there are preceding struct fields being matched on
-                if tactic == DefinitiveListTactic::Vertical {
-                    // if the tactic is Vertical, write_list already added a trailing ,
+                if has_trailing_comma {
                     fields_str.push(' ');
                 } else {
                     fields_str.push_str(", ");
@@ -456,11 +458,11 @@ fn rewrite_tuple_pat(
     context: &RewriteContext<'_>,
     shape: Shape,
 ) -> Option<String> {
-    let mut pat_vec: Vec<_> = pats.iter().map(|x| TuplePatField::Pat(x)).collect();
-
-    if pat_vec.is_empty() {
+    if pats.is_empty() {
         return Some(format!("{}()", path_str.unwrap_or_default()));
     }
+    let mut pat_vec: Vec<_> = pats.iter().map(TuplePatField::Pat).collect();
+
     let wildcard_suffix_len = count_wildcard_suffix_len(context, &pat_vec, span, shape);
     let (pat_vec, span) = if context.config.condense_wildcard_suffixes() && wildcard_suffix_len >= 2
     {
@@ -482,7 +484,7 @@ fn rewrite_tuple_pat(
     let path_str = path_str.unwrap_or_default();
 
     overflow::rewrite_with_parens(
-        &context,
+        context,
         &path_str,
         pat_vec.iter(),
         shape,

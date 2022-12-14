@@ -1,5 +1,4 @@
 #![crate_type = "lib"]
-#![feature(thread_local_const_init)]
 
 use std::cell::Cell;
 

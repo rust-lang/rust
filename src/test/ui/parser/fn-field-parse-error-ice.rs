@@ -3,7 +3,7 @@
 struct Baz {
     inner : dyn fn ()
     //~^ ERROR expected `,`, or `}`, found keyword `fn`
-    //~| ERROR functions are not allowed in struct definitions
+    //~| ERROR expected identifier, found keyword `fn`
     //~| ERROR cannot find type `dyn` in this scope
 }
 

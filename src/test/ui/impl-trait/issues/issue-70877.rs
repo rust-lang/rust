@@ -4,7 +4,7 @@ type FooArg<'a> = &'a dyn ToString;
 type FooRet = impl std::fmt::Debug;
 
 type FooItem = Box<dyn Fn(FooArg) -> FooRet>;
-type Foo = impl Iterator<Item = FooItem>; //~ ERROR: type mismatch
+type Foo = impl Iterator<Item = FooItem>;
 
 #[repr(C)]
 struct Bar(u8);
@@ -28,7 +28,7 @@ fn ham() -> Foo {
 fn oof() -> impl std::fmt::Debug {
     let mut bar = ham();
     let func = bar.next().unwrap();
-    return func(&"oof");
+    return func(&"oof"); //~ ERROR opaque type's hidden type cannot be another opaque type
 }
 
 fn main() {

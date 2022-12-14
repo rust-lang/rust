@@ -5,14 +5,14 @@
 //!
 //! For example, a type like:
 //!
-//! ```
+//! ```ignore (old code)
 //! #[derive(RustcEncodable, RustcDecodable)]
 //! struct Node { id: usize }
 //! ```
 //!
 //! would generate two implementations like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # struct Node { id: usize }
 //! impl<S: Encoder<E>, E> Encodable<S, E> for Node {
 //!     fn encode(&self, s: &mut S) -> Result<(), E> {
@@ -40,7 +40,7 @@
 //! Other interesting scenarios are when the item has type parameters or
 //! references other non-built-in types. A type definition like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # #[derive(RustcEncodable, RustcDecodable)]
 //! # struct Span;
 //! #[derive(RustcEncodable, RustcDecodable)]
@@ -49,7 +49,7 @@
 //!
 //! would yield functions like:
 //!
-//! ```
+//! ```ignore (old code)
 //! # #[derive(RustcEncodable, RustcDecodable)]
 //! # struct Span;
 //! # struct Spanned<T> { node: T, span: Span }
@@ -89,8 +89,7 @@ use crate::deriving::generic::ty::*;
 use crate::deriving::generic::*;
 use crate::deriving::pathvec_std;
 
-use rustc_ast::ptr::P;
-use rustc_ast::{Expr, ExprKind, MetaItem, Mutability};
+use rustc_ast::{AttrVec, ExprKind, MetaItem, Mutability};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{sym, Ident, Symbol};
 use rustc_span::Span;
@@ -101,53 +100,46 @@ pub fn expand_deriving_rustc_encodable(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let krate = sym::rustc_serialize;
     let typaram = sym::__S;
 
     let trait_def = TraitDef {
         span,
-        attributes: Vec::new(),
-        path: Path::new_(vec![krate, sym::Encodable], None, vec![], PathKind::Global),
+        path: Path::new_(vec![krate, sym::Encodable], vec![], PathKind::Global),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
-        is_unsafe: false,
         supports_unions: false,
         methods: vec![MethodDef {
             name: sym::encode,
             generics: Bounds {
                 bounds: vec![(
                     typaram,
-                    vec![Path::new_(vec![krate, sym::Encoder], None, vec![], PathKind::Global)],
+                    vec![Path::new_(vec![krate, sym::Encoder], vec![], PathKind::Global)],
                 )],
             },
-            explicit_self: borrowed_explicit_self(),
-            args: vec![(
-                Ptr(Box::new(Literal(Path::new_local(typaram))), Borrowed(None, Mutability::Mut)),
+            explicit_self: true,
+            nonself_args: vec![(
+                Ref(Box::new(Path(Path::new_local(typaram))), Mutability::Mut),
                 sym::s,
             )],
-            ret_ty: Literal(Path::new_(
+            ret_ty: Path(Path::new_(
                 pathvec_std!(result::Result),
-                None,
                 vec![
-                    Box::new(Tuple(Vec::new())),
-                    Box::new(Literal(Path::new_(
-                        vec![typaram, sym::Error],
-                        None,
-                        vec![],
-                        PathKind::Local,
-                    ))),
+                    Box::new(Unit),
+                    Box::new(Path(Path::new_(vec![typaram, sym::Error], vec![], PathKind::Local))),
                 ],
                 PathKind::Std,
             )),
-            attributes: Vec::new(),
-            is_unsafe: false,
+            attributes: AttrVec::new(),
             unify_fieldless_variants: false,
             combine_substructure: combine_substructure(Box::new(|a, b, c| {
                 encodable_substructure(a, b, c, krate)
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     trait_def.expand(cx, mitem, item, push)
@@ -158,8 +150,8 @@ fn encodable_substructure(
     trait_span: Span,
     substr: &Substructure<'_>,
     krate: Symbol,
-) -> P<Expr> {
-    let encoder = substr.nonself_args[0].clone();
+) -> BlockOrExpr {
+    let encoder = substr.nonselflike_args[0].clone();
     // throw an underscore in front to suppress unused variable warnings
     let blkarg = Ident::new(sym::_e, trait_span);
     let blkencoder = cx.expr_ident(trait_span, blkarg);
@@ -172,17 +164,17 @@ fn encodable_substructure(
         ],
     ));
 
-    match *substr.fields {
-        Struct(_, ref fields) => {
+    match substr.fields {
+        Struct(_, fields) => {
             let fn_emit_struct_field_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct_field]);
             let mut stmts = Vec::new();
-            for (i, &FieldInfo { name, ref self_, span, .. }) in fields.iter().enumerate() {
+            for (i, &FieldInfo { name, ref self_expr, span, .. }) in fields.iter().enumerate() {
                 let name = match name {
                     Some(id) => id.name,
                     None => Symbol::intern(&format!("_field{}", i)),
                 };
-                let self_ref = cx.expr_addr_of(span, self_.clone());
+                let self_ref = cx.expr_addr_of(span, self_expr.clone());
                 let enc = cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                 let lambda = cx.lambda1(span, enc, blkarg);
                 let call = cx.expr_call_global(
@@ -219,7 +211,7 @@ fn encodable_substructure(
             let fn_emit_struct_path =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_struct]);
 
-            cx.expr_call_global(
+            let expr = cx.expr_call_global(
                 trait_span,
                 fn_emit_struct_path,
                 vec![
@@ -228,10 +220,11 @@ fn encodable_substructure(
                     cx.expr_usize(trait_span, fields.len()),
                     blk,
                 ],
-            )
+            );
+            BlockOrExpr::new_expr(expr)
         }
 
-        EnumMatching(idx, _, variant, ref fields) => {
+        EnumMatching(idx, _, variant, fields) => {
             // We're not generating an AST that the borrow checker is expecting,
             // so we need to generate a unique local variable to take the
             // mutable loan out on, otherwise we get conflicts which don't
@@ -245,8 +238,8 @@ fn encodable_substructure(
             let mut stmts = Vec::new();
             if !fields.is_empty() {
                 let last = fields.len() - 1;
-                for (i, &FieldInfo { ref self_, span, .. }) in fields.iter().enumerate() {
-                    let self_ref = cx.expr_addr_of(span, self_.clone());
+                for (i, &FieldInfo { ref self_expr, span, .. }) in fields.iter().enumerate() {
+                    let self_ref = cx.expr_addr_of(span, self_expr.clone());
                     let enc =
                         cx.expr_call(span, fn_path.clone(), vec![self_ref, blkencoder.clone()]);
                     let lambda = cx.lambda1(span, enc, blkarg);
@@ -281,7 +274,7 @@ fn encodable_substructure(
                 vec![
                     blkencoder,
                     name,
-                    cx.expr_usize(trait_span, idx),
+                    cx.expr_usize(trait_span, *idx),
                     cx.expr_usize(trait_span, fields.len()),
                     blk,
                 ],
@@ -290,12 +283,12 @@ fn encodable_substructure(
             let blk = cx.lambda1(trait_span, call, blkarg);
             let fn_emit_enum_path: Vec<_> =
                 cx.def_site_path(&[sym::rustc_serialize, sym::Encoder, sym::emit_enum]);
-            let ret = cx.expr_call_global(
+            let expr = cx.expr_call_global(
                 trait_span,
                 fn_emit_enum_path,
                 vec![encoder, cx.expr_str(trait_span, substr.type_ident.name), blk],
             );
-            cx.expr_block(cx.block(trait_span, vec![me, cx.stmt_expr(ret)]))
+            BlockOrExpr::new_mixed(vec![me], Some(expr))
         }
 
         _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)"),

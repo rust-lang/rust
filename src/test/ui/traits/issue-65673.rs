@@ -7,6 +7,6 @@ trait Alias<T> = where T: Trait;
 
 impl<T> WithType for T {
     type Ctx = dyn Alias<T>;
-//~^ ERROR the size for values of type `(dyn Trait + 'static)` cannot be known at compilation time
+    //~^ ERROR at least one trait is required for an object type [E0224]
 }
 fn main() {}

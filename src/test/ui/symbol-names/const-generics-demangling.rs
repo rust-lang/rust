@@ -1,37 +1,62 @@
 // build-fail
-// compile-flags: -Z symbol-mangling-version=v0 --crate-name=c
+// revisions: legacy v0
+// compile-flags: --crate-name=c
+//[legacy]compile-flags: -C symbol-mangling-version=legacy -Z unstable-options
+//    [v0]compile-flags: -C symbol-mangling-version=v0
+//[legacy]normalize-stderr-test: "h[[:xdigit:]]{16}" -> "h[HASH]"
+//    [v0]normalize-stderr-test: "c\[.*?\]" -> "c[HASH]"
 #![feature(rustc_attrs)]
 
 pub struct Unsigned<const F: u8>;
 
-#[rustc_symbol_name]
-//~^ ERROR symbol-name(_RMCsno73SFvQKx_1cINtB0_8UnsignedKhb_E)
-//~| ERROR demangling(<c[464da6a86cb672f]::Unsigned<11u8>>)
-//~| ERROR demangling-alt(<c::Unsigned<11>>)
-impl Unsigned<11> {}
+impl Unsigned<11> {
+    #[rustc_symbol_name]
+    //[v0]~^ ERROR symbol-name(_RNvMCs
+    //[v0]~| ERROR demangling(<c[
+    //[v0]~| ERROR demangling-alt(<c::Unsigned<11>>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c21Unsigned$LT$11_u8$GT$
+    //[legacy]~|    ERROR demangling(c::Unsigned<11_u8>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Unsigned<11_u8>::f)
+    fn f() {}
+}
 
 pub struct Signed<const F: i16>;
 
-#[rustc_symbol_name]
-//~^ ERROR symbol-name(_RMs_Csno73SFvQKx_1cINtB2_6SignedKsn98_E)
-//~| ERROR demangling(<c[464da6a86cb672f]::Signed<-152i16>>)
-//~| ERROR demangling-alt(<c::Signed<-152>>)
-impl Signed<-152> {}
+impl Signed<-152> {
+    #[rustc_symbol_name]
+    //[v0]~^ ERROR symbol-name(_RNvMs_Cs
+    //[v0]~| ERROR demangling(<c[
+    //[v0]~| ERROR demangling-alt(<c::Signed<-152>>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c22Signed$LT$.152_i16$GT$
+    //[legacy]~|    ERROR demangling(c::Signed<.152_i16>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Signed<.152_i16>::f)
+    fn f() {}
+}
 
 pub struct Bool<const F: bool>;
 
-#[rustc_symbol_name]
-//~^ ERROR symbol-name(_RMs0_Csno73SFvQKx_1cINtB3_4BoolKb1_E)
-//~| ERROR demangling(<c[464da6a86cb672f]::Bool<true>>)
-//~| ERROR demangling-alt(<c::Bool<true>>)
-impl Bool<true> {}
+impl Bool<true> {
+    #[rustc_symbol_name]
+    //[v0]~^ ERROR symbol-name(_RNvMs0_Cs
+    //[v0]~| ERROR demangling(<c[
+    //[v0]~| ERROR demangling-alt(<c::Bool<true>>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c13Bool$LT$_$GT$
+    //[legacy]~|    ERROR demangling(c::Bool<_>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Bool<_>::f)
+    fn f() {}
+}
 
 pub struct Char<const F: char>;
 
-#[rustc_symbol_name]
-//~^ ERROR symbol-name(_RMs1_Csno73SFvQKx_1cINtB3_4CharKc2202_E)
-//~| ERROR demangling(<c[464da6a86cb672f]::Char<'∂'>>)
-//~| ERROR demangling-alt(<c::Char<'∂'>>)
-impl Char<'∂'> {}
+impl Char<'∂'> {
+    #[rustc_symbol_name]
+    //[v0]~^ ERROR symbol-name(_RNvMs1_Cs
+    //[v0]~| ERROR demangling(<c[
+    //[v0]~| ERROR demangling-alt(<c::Char<'∂'>>::f)
+    //[legacy]~^^^^ ERROR symbol-name(_ZN1c13Char$LT$_$GT$
+    //[legacy]~|    ERROR demangling(c::Char<_>::f::
+    //[legacy]~|    ERROR demangling-alt(c::Char<_>::f)
+    fn f() {}
+}
 
 fn main() {}

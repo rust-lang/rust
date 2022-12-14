@@ -18,6 +18,15 @@ impl Bar for () {
     //~^ Error method `bar` has incompatible signature for trait
 }
 
+trait Baz {
+    fn baz<U: Debug, T: Debug>(&self, _: &U, _: &T);
+}
+
+impl Baz for () {
+    fn baz<T: Debug>(&self, _: &impl Debug, _: &T) { }
+    //~^ Error method `baz` has incompatible signature for trait
+}
+
 // With non-local trait (#49841):
 
 use std::hash::{Hash, Hasher};

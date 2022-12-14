@@ -40,6 +40,17 @@ endif
 # e.g. for `$(CC) -o $(RUN_BINFILE)`.
 RUN_BINFILE = $(TMPDIR)/$(1)
 
+# Invoke the generated binary on the remote machine if compiletest was
+# configured to use a remote test device, otherwise run it on the current host.
+ifdef REMOTE_TEST_CLIENT
+# FIXME: if a test requires additional files, this will need to be changed to
+# also push them (by changing the 0 to the number of additional files, and
+# providing the path of the additional files as the last arguments).
+EXECUTE = $(REMOTE_TEST_CLIENT) run 0 $(RUN_BINFILE)
+else
+EXECUTE = $(RUN_BINFILE)
+endif
+
 # RUN and FAIL are basic way we will invoke the generated binary.  On
 # non-windows platforms, they set the LD_LIBRARY_PATH environment
 # variable before running the binary.
@@ -50,16 +61,16 @@ BIN = $(1)
 UNAME = $(shell uname)
 
 ifeq ($(UNAME),Darwin)
-RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
-FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
+RUN = $(TARGET_RPATH_ENV) $(EXECUTE)
+FAIL = $(TARGET_RPATH_ENV) $(EXECUTE) && exit 1 || exit 0
 DYLIB_GLOB = lib$(1)*.dylib
 DYLIB = $(TMPDIR)/lib$(1).dylib
 STATICLIB = $(TMPDIR)/lib$(1).a
 STATICLIB_GLOB = lib$(1)*.a
 else
 ifdef IS_WINDOWS
-RUN = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE)
-FAIL = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(RUN_BINFILE) && exit 1 || exit 0
+RUN = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(EXECUTE)
+FAIL = PATH="$(PATH):$(TARGET_RPATH_DIR)" $(EXECUTE) && exit 1 || exit 0
 DYLIB_GLOB = $(1)*.dll
 DYLIB = $(TMPDIR)/$(1).dll
 ifdef IS_MSVC
@@ -73,8 +84,8 @@ endif
 BIN = $(1).exe
 LLVM_FILECHECK := $(shell cygpath -u "$(LLVM_FILECHECK)")
 else
-RUN = $(TARGET_RPATH_ENV) $(RUN_BINFILE)
-FAIL = $(TARGET_RPATH_ENV) $(RUN_BINFILE) && exit 1 || exit 0
+RUN = $(TARGET_RPATH_ENV) $(EXECUTE)
+FAIL = $(TARGET_RPATH_ENV) $(EXECUTE) && exit 1 || exit 0
 DYLIB_GLOB = lib$(1)*.so
 DYLIB = $(TMPDIR)/lib$(1).so
 STATICLIB = $(TMPDIR)/lib$(1).a
@@ -90,7 +101,7 @@ NATIVE_STATICLIB = $(TMPDIR)/$(call NATIVE_STATICLIB_FILE,$(1))
 OUT_EXE=-Fe:`cygpath -w $(TMPDIR)/$(call BIN,$(1))` \
 	-Fo:`cygpath -w $(TMPDIR)/$(1).obj`
 else
-COMPILE_OBJ = $(CC) -c -o $(1) $(2)
+COMPILE_OBJ = $(CC) -v -c -o $(1) $(2)
 COMPILE_OBJ_CXX = $(CXX) -c -o $(1) $(2)
 NATIVE_STATICLIB_FILE = lib$(1).a
 NATIVE_STATICLIB = $(call STATICLIB,$(1))
@@ -120,7 +131,7 @@ else
 	# So we end up with the following hack: we link use static:-bundle to only
 	# link the parts of libstdc++ that we actually use, which doesn't include
 	# the dependency on the pthreads DLL.
-	EXTRARSCXXFLAGS := -l static:-bundle=stdc++ -Z unstable-options
+	EXTRARSCXXFLAGS := -l static:-bundle=stdc++
 endif
 else
 ifeq ($(UNAME),Darwin)

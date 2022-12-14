@@ -59,12 +59,6 @@ macro_rules! check {
 // CHECK: @NO_APP
 check!(reg "" reg i32 "mov");
 
-// CHECK-LABEL: reg_thumb:
-// CHECK: @APP
-// CHECK: mov r0, r0
-// CHECK: @NO_APP
-check!(reg_thumb "" reg_thumb i32 "mov");
-
 // CHECK-LABEL: sreg:
 // CHECK: @APP
 // CHECK: vmov.f32 s0, s0

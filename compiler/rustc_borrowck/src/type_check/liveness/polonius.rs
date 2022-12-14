@@ -10,17 +10,17 @@ use super::TypeChecker;
 type VarPointRelation = Vec<(Local, LocationIndex)>;
 type PathPointRelation = Vec<(MovePathIndex, LocationIndex)>;
 
-struct UseFactsExtractor<'me> {
+struct UseFactsExtractor<'me, 'tcx> {
     var_defined_at: &'me mut VarPointRelation,
     var_used_at: &'me mut VarPointRelation,
     location_table: &'me LocationTable,
     var_dropped_at: &'me mut VarPointRelation,
-    move_data: &'me MoveData<'me>,
+    move_data: &'me MoveData<'tcx>,
     path_accessed_at_base: &'me mut PathPointRelation,
 }
 
 // A Visitor to walk through the MIR and extract point-wise facts
-impl UseFactsExtractor<'_> {
+impl UseFactsExtractor<'_, '_> {
     fn location_to_index(&self, location: Location) -> LocationIndex {
         self.location_table.mid_index(location)
     }
@@ -53,8 +53,8 @@ impl UseFactsExtractor<'_> {
     }
 }
 
-impl Visitor<'tcx> for UseFactsExtractor<'_> {
-    fn visit_local(&mut self, &local: &Local, context: PlaceContext, location: Location) {
+impl<'a, 'tcx> Visitor<'tcx> for UseFactsExtractor<'a, 'tcx> {
+    fn visit_local(&mut self, local: Local, context: PlaceContext, location: Location) {
         match def_use::categorize(context) {
             Some(DefUse::Def) => self.insert_def(local, location),
             Some(DefUse::Use) => self.insert_use(local, location),
@@ -82,11 +82,11 @@ impl Visitor<'tcx> for UseFactsExtractor<'_> {
     }
 }
 
-pub(super) fn populate_access_facts(
-    typeck: &mut TypeChecker<'_, 'tcx>,
+pub(super) fn populate_access_facts<'a, 'tcx>(
+    typeck: &mut TypeChecker<'a, 'tcx>,
     body: &Body<'tcx>,
     location_table: &LocationTable,
-    move_data: &MoveData<'_>,
+    move_data: &MoveData<'tcx>,
     dropped_at: &mut Vec<(Local, Location)>,
 ) {
     debug!("populate_access_facts()");
@@ -121,9 +121,9 @@ pub(super) fn populate_access_facts(
     }
 }
 
-// For every potentially drop()-touched region `region` in `local`'s type
-// (`kind`), emit a Polonius `use_of_var_derefs_origin(local, origin)` fact.
-pub(super) fn add_drop_of_var_derefs_origin(
+/// For every potentially drop()-touched region `region` in `local`'s type
+/// (`kind`), emit a Polonius `use_of_var_derefs_origin(local, origin)` fact.
+pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     local: Local,
     kind: &GenericArg<'tcx>,

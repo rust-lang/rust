@@ -6,6 +6,6 @@ fn main() {
     let c = 'x';
     let d = &c;
 
-    let _ = d.is_digit(10);
-    let _ = char::is_digit(c, 10);
+    let _ = d.is_digit(8);
+    let _ = char::is_digit(c, 8);
 }

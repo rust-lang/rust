@@ -5,12 +5,11 @@
 
 extern crate test;
 
-use crate::common::{
-    expected_output_path, output_base_dir, output_relative_path, PanicStrategy, UI_EXTENSIONS,
-};
+use crate::common::{expected_output_path, output_base_dir, output_relative_path, UI_EXTENSIONS};
 use crate::common::{CompareMode, Config, Debugger, Mode, PassMode, TestPaths};
 use crate::util::logv;
 use getopts::Options;
+use lazycell::LazyCell;
 use std::env;
 use std::ffi::OsString;
 use std::fs;
@@ -61,15 +60,16 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "rustc-path", "path to rustc to use for compiling", "PATH")
         .optopt("", "rustdoc-path", "path to rustdoc to use for compiling", "PATH")
         .optopt("", "rust-demangler-path", "path to rust-demangler to use in tests", "PATH")
-        .reqopt("", "lldb-python", "path to python to use for doc tests", "PATH")
-        .reqopt("", "docck-python", "path to python to use for doc tests", "PATH")
+        .reqopt("", "python", "path to python to use for doc tests", "PATH")
         .optopt("", "jsondocck-path", "path to jsondocck to use for doc tests", "PATH")
+        .optopt("", "jsondoclint-path", "path to jsondoclint to use for doc tests", "PATH")
         .optopt("", "valgrind-path", "path to Valgrind executable for Valgrind tests", "PROGRAM")
         .optflag("", "force-valgrind", "fail if Valgrind tests cannot be run under Valgrind")
         .optopt("", "run-clang-based-tests-with", "path to Clang executable", "PATH")
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -92,6 +92,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optopt("", "run", "whether to execute run-* tests", "auto | always | never")
         .optflag("", "ignored", "run tests marked as ignored")
+        .optmulti("", "skip", "skip tests matching SUBSTRING. Can be passed multiple times", "SUBSTRING")
         .optflag("", "exact", "filters match exactly")
         .optopt(
             "",
@@ -102,7 +103,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         )
         .optmulti("", "host-rustcflags", "flags to pass to rustc for host", "FLAGS")
         .optmulti("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS")
-        .optopt("", "target-panic", "what panic strategy the target supports", "unwind | abort")
+        .optflag("", "optimize-tests", "run tests with optimizations enabled")
         .optflag("", "verbose", "run tests verbosely, showing all output")
         .optflag(
             "",
@@ -126,6 +127,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .reqopt("", "cc", "path to a C compiler", "PATH")
         .reqopt("", "cxx", "path to a C++ compiler", "PATH")
         .reqopt("", "cflags", "flags for the C compiler", "FLAGS")
+        .reqopt("", "cxxflags", "flags for the CXX compiler", "FLAGS")
         .optopt("", "ar", "path to an archiver", "PATH")
         .optopt("", "linker", "path to a linker", "PATH")
         .reqopt("", "llvm-components", "list of LLVM components built in", "LIST")
@@ -199,7 +201,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -221,9 +225,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         rustc_path: opt_path(matches, "rustc-path"),
         rustdoc_path: matches.opt_str("rustdoc-path").map(PathBuf::from),
         rust_demangler_path: matches.opt_str("rust-demangler-path").map(PathBuf::from),
-        lldb_python: matches.opt_str("lldb-python").unwrap(),
-        docck_python: matches.opt_str("docck-python").unwrap(),
+        python: matches.opt_str("python").unwrap(),
         jsondocck_path: matches.opt_str("jsondocck-path"),
+        jsondoclint_path: matches.opt_str("jsondoclint-path"),
         valgrind_path: matches.opt_str("valgrind-path"),
         force_valgrind: matches.opt_present("force-valgrind"),
         run_clang_based_tests_with: matches.opt_str("run-clang-based-tests-with"),
@@ -231,12 +235,14 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
+        sysroot_base: opt_path(matches, "sysroot-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
         debugger: None,
         run_ignored,
         filters: matches.free.clone(),
+        skip: matches.opt_strs("skip"),
         filter_exact: matches.opt_present("exact"),
         force_pass_mode: matches.opt_str("pass").map(|mode| {
             mode.parse::<PassMode>()
@@ -250,13 +256,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
-        host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
-        target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
-        target_panic: match matches.opt_str("target-panic").as_deref() {
-            Some("unwind") | None => PanicStrategy::Unwind,
-            Some("abort") => PanicStrategy::Abort,
-            _ => panic!("unknown `--target-panic` option `{}` given", mode),
-        },
+        host_rustcflags: matches.opt_strs("host-rustcflags"),
+        target_rustcflags: matches.opt_strs("target-rustcflags"),
+        optimize_tests: matches.opt_present("optimize-tests"),
         target,
         host: opt_str2(matches.opt_str("host")),
         cdb,
@@ -288,6 +290,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         cc: matches.opt_str("cc").unwrap(),
         cxx: matches.opt_str("cxx").unwrap(),
         cflags: matches.opt_str("cflags").unwrap(),
+        cxxflags: matches.opt_str("cxxflags").unwrap(),
         ar: matches.opt_str("ar").unwrap_or_else(|| String::from("ar")),
         linker: matches.opt_str("linker"),
         llvm_components: matches.opt_str("llvm-components").unwrap(),
@@ -295,6 +298,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         npm: matches.opt_str("npm"),
 
         force_rerun: matches.opt_present("force-rerun"),
+
+        target_cfg: LazyCell::new(),
     }
 }
 
@@ -312,14 +317,15 @@ pub fn log_config(config: &Config) {
     logv(c, format!("mode: {}", config.mode));
     logv(c, format!("run_ignored: {}", config.run_ignored));
     logv(c, format!("filters: {:?}", config.filters));
+    logv(c, format!("skip: {:?}", config.skip));
     logv(c, format!("filter_exact: {}", config.filter_exact));
     logv(
         c,
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
+    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
+    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
     logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
@@ -348,11 +354,6 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 pub fn run_tests(config: Config) {
-    // FIXME(#33435) Avoid spurious failures in codegen-units/partitioning tests.
-    if let Mode::CodegenUnits = config.mode {
-        let _ = fs::remove_dir_all("tmp/partitioning-tests");
-    }
-
     // If we want to collect rustfix coverage information,
     // we first make sure that the coverage file does not exist.
     // It will be created later on.
@@ -398,6 +399,8 @@ pub fn run_tests(config: Config) {
         make_tests(c, &mut tests);
     }
 
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
+
     let res = test::run_tests_console(&opts, tests);
     match res {
         Ok(true) => {}
@@ -441,7 +444,7 @@ fn configure_cdb(config: &Config) -> Option<Config> {
 fn configure_gdb(config: &Config) -> Option<Config> {
     config.gdb_version?;
 
-    if util::matches_env(&config.target, "msvc") {
+    if config.matches_env("msvc") {
         return None;
     }
 
@@ -485,11 +488,6 @@ fn configure_lldb(config: &Config) -> Option<Config> {
         return None;
     }
 
-    // Some older versions of LLDB seem to have problems with multiple
-    // instances running in parallel, so only run one test thread at a
-    // time.
-    env::set_var("RUST_TEST_THREADS", "1");
-
     Some(Config { debugger: Some(Debugger::Lldb), ..config.clone() })
 }
 
@@ -511,11 +509,12 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         shuffle: false,
         shuffle_seed: None,
         test_threads: None,
-        skip: vec![],
+        skip: config.skip.clone(),
         list: false,
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
+        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
     }
 }
 
@@ -546,6 +545,8 @@ fn common_inputs_stamp(config: &Config) -> Stamp {
         let path = rust_src_dir.join(file);
         stamp.add_path(&path);
     }
+
+    stamp.add_dir(&rust_src_dir.join("src/etc/natvis"));
 
     stamp.add_dir(&config.run_lib_path);
 
@@ -600,6 +601,7 @@ fn collect_tests_from_dir(
             debug!("found test file: {:?}", file_path.display());
             let paths =
                 TestPaths { file: file_path, relative_dir: relative_dir_path.to_path_buf() };
+
             tests.extend(make_test(config, &paths, inputs))
         } else if file_path.is_dir() {
             let relative_file_path = relative_dir_path.join(file.file_name());
@@ -670,6 +672,40 @@ fn stamp(config: &Config, testpaths: &TestPaths, revision: Option<&str>) -> Path
     output_base_dir(config, testpaths, revision).join("stamp")
 }
 
+fn files_related_to_test(
+    config: &Config,
+    testpaths: &TestPaths,
+    props: &EarlyProps,
+    revision: Option<&str>,
+) -> Vec<PathBuf> {
+    let mut related = vec![];
+
+    if testpaths.file.is_dir() {
+        // run-make tests use their individual directory
+        for entry in WalkDir::new(&testpaths.file) {
+            let path = entry.unwrap().into_path();
+            if path.is_file() {
+                related.push(path);
+            }
+        }
+    } else {
+        related.push(testpaths.file.clone());
+    }
+
+    for aux in &props.aux {
+        let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
+        related.push(path);
+    }
+
+    // UI test files.
+    for extension in UI_EXTENSIONS {
+        let path = expected_output_path(testpaths, revision, &config.compare_mode, extension);
+        related.push(path);
+    }
+
+    related
+}
+
 fn is_up_to_date(
     config: &Config,
     testpaths: &TestPaths,
@@ -691,18 +727,8 @@ fn is_up_to_date(
 
     // Check timestamps.
     let mut inputs = inputs.clone();
-    // Use `add_dir` to account for run-make tests, which use their individual directory
-    inputs.add_dir(&testpaths.file);
-
-    for aux in &props.aux {
-        let path = testpaths.file.parent().unwrap().join("auxiliary").join(aux);
+    for path in files_related_to_test(config, testpaths, props, revision) {
         inputs.add_path(&path);
-    }
-
-    // UI test files.
-    for extension in UI_EXTENSIONS {
-        let path = &expected_output_path(testpaths, revision, &config.compare_mode, extension);
-        inputs.add_path(path);
     }
 
     inputs < Stamp::from_path(&stamp_name)
@@ -747,12 +773,10 @@ fn make_test_name(
     testpaths: &TestPaths,
     revision: Option<&String>,
 ) -> test::TestName {
-    // Convert a complete path to something like
-    //
-    //    ui/foo/bar/baz.rs
-    let path = PathBuf::from(config.src_base.file_name().unwrap())
-        .join(&testpaths.relative_dir)
-        .join(&testpaths.file.file_name().unwrap());
+    // Print the name of the file, relative to the repository root.
+    // `src_base` looks like `/path/to/rust/src/test/ui`
+    let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
+    let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {
         Some(d) => format!("-{}", d),
         None => String::new(),
@@ -780,7 +804,10 @@ fn make_test_closure(
     let config = config.clone();
     let testpaths = testpaths.clone();
     let revision = revision.cloned();
-    test::DynTestFn(Box::new(move || runtest::run(config, &testpaths, revision.as_deref())))
+    test::DynTestFn(Box::new(move || {
+        runtest::run(config, &testpaths, revision.as_deref());
+        Ok(())
+    }))
 }
 
 /// Returns `true` if the given target is an Android target for the

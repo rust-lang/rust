@@ -25,34 +25,35 @@ extern crate rustc_data_structures;
 extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
+extern crate thin_vec;
 
 use rustc_ast::mut_visit::{self, visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;
 use rustc_ast_pretty::pprust;
-use rustc_data_structures::thin_vec::ThinVec;
 use rustc_parse::new_parser_from_source_str;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;
 use rustc_span::source_map::{FileName, Spanned, DUMMY_SP};
 use rustc_span::symbol::Ident;
+use thin_vec::thin_vec;
 
 fn parse_expr(ps: &ParseSess, src: &str) -> Option<P<Expr>> {
     let src_as_string = src.to_string();
 
     let mut p =
         new_parser_from_source_str(ps, FileName::Custom(src_as_string.clone()), src_as_string);
-    p.parse_expr().map_err(|mut e| e.cancel()).ok()
+    p.parse_expr().map_err(|e| e.cancel()).ok()
 }
 
 // Helper functions for building exprs
 fn expr(kind: ExprKind) -> P<Expr> {
-    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: ThinVec::new(), tokens: None })
+    P(Expr { id: DUMMY_NODE_ID, kind, span: DUMMY_SP, attrs: AttrVec::new(), tokens: None })
 }
 
 fn make_x() -> P<Expr> {
     let seg = PathSegment::from_ident(Ident::from_str("x"));
-    let path = Path { segments: vec![seg], span: DUMMY_SP, tokens: None };
+    let path = Path { segments: thin_vec![seg], span: DUMMY_SP, tokens: None };
     expr(ExprKind::Path(None, path))
 }
 
@@ -74,11 +75,15 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             2 => {
                 let seg = PathSegment::from_ident(Ident::from_str("x"));
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), vec![e, make_x()], DUMMY_SP))
-                });
+                    g(ExprKind::MethodCall(Box::new(MethodCall {
+                        seg: seg.clone(), receiver: e, args: vec![make_x()], span: DUMMY_SP
+                    }))
+                )});
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::MethodCall(seg.clone(), vec![make_x(), e], DUMMY_SP))
-                });
+                    g(ExprKind::MethodCall(Box::new(MethodCall {
+                        seg: seg.clone(), receiver: make_x(), args: vec![e], span: DUMMY_SP
+                    }))
+                )});
             }
             3..=8 => {
                 let op = Spanned {
@@ -113,14 +118,16 @@ fn iter_exprs(depth: usize, f: &mut dyn FnMut(P<Expr>)) {
             11 => {
                 let decl = P(FnDecl { inputs: vec![], output: FnRetTy::Default(DUMMY_SP) });
                 iter_exprs(depth - 1, &mut |e| {
-                    g(ExprKind::Closure(
-                        CaptureBy::Value,
-                        Async::No,
-                        Movability::Movable,
-                        decl.clone(),
-                        e,
-                        DUMMY_SP,
-                    ))
+                    g(ExprKind::Closure(Box::new(Closure {
+                        binder: ClosureBinder::NotPresent,
+                        capture_clause: CaptureBy::Value,
+                        asyncness: Async::No,
+                        movability: Movability::Movable,
+                        fn_decl: decl.clone(),
+                        body: e,
+                        fn_decl_span: DUMMY_SP,
+                        fn_arg_span: DUMMY_SP,
+                    })))
                 });
             }
             12 => {
@@ -195,7 +202,7 @@ impl MutVisitor for AddParens {
                 id: DUMMY_NODE_ID,
                 kind: ExprKind::Paren(e),
                 span: DUMMY_SP,
-                attrs: ThinVec::new(),
+                attrs: AttrVec::new(),
                 tokens: None,
             })
         });

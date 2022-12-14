@@ -8,6 +8,5 @@ fn mk_opaque() -> OpaqueType {
 trait AnotherTrait {}
 impl<T: Send> AnotherTrait for T {}
 impl AnotherTrait for OpaqueType {}
-//~^ ERROR conflicting implementations of trait `AnotherTrait` for type `impl OpaqueTrait`
-//~| ERROR cannot implement trait on type alias impl trait
+//~^ ERROR conflicting implementations of trait `AnotherTrait` for type `OpaqueType`
 fn main() {}

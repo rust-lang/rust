@@ -22,10 +22,8 @@ where
     let align = arg.layout.align.max(dl.i32_align).min(dl.i64_align).abi;
 
     if arg.layout.is_aggregate() {
-        arg.cast_to(Uniform { unit: Reg::i32(), total: size });
-        if !offset.is_aligned(align) {
-            arg.pad_with(Reg::i32());
-        }
+        let pad_i32 = !offset.is_aligned(align);
+        arg.cast_to_and_pad_i32(Uniform { unit: Reg::i32(), total: size }, pad_i32);
     } else {
         arg.extend_integer_width_to(32);
     }
@@ -42,7 +40,7 @@ where
         classify_ret(cx, &mut fn_abi.ret, &mut offset);
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

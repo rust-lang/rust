@@ -1,1 +1,1 @@
-int_module!(i16, i16);
+int_module!(i16);

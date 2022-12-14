@@ -1,6 +1,6 @@
 // aux-build:additional_doc.rs
 // build-aux-docs
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 extern crate my_rand;
 

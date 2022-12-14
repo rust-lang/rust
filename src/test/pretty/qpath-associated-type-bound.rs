@@ -8,9 +8,9 @@ mod m {
 }
 
 trait Tu {
-    fn dummy() { }
+    fn dummy() {}
 }
 
 fn foo<T: m::Tr>() { <T as m::Tr>::Ts::dummy(); }
 
-fn main() { }
+fn main() {}

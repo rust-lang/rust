@@ -1,5 +1,5 @@
 // run-pass
-// ignore-wasm32-bare compiled with panic=abort by default
+// needs-unwind
 
 #![feature(generators, generator_trait)]
 
@@ -102,7 +102,7 @@ fn dynamic_drop(a: &Allocator, c: bool) {
     };
 }
 
-struct TwoPtrs<'a>(Ptr<'a>, Ptr<'a>);
+struct TwoPtrs<'a>(Ptr<'a>, #[allow(unused_tuple_struct_fields)] Ptr<'a>);
 fn struct_dynamic_drop(a: &Allocator, c0: bool, c1: bool, c: bool) {
     for i in 0..2 {
         let x;

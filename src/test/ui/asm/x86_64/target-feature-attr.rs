@@ -1,6 +1,8 @@
 // only-x86_64
 
-#![feature(asm, avx512_target_feature)]
+#![feature(avx512_target_feature)]
+
+use std::arch::asm;
 
 #[target_feature(enable = "avx")]
 unsafe fn foo() {

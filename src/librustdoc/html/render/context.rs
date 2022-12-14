@@ -11,28 +11,28 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::source_map::FileName;
-use rustc_span::symbol::sym;
+use rustc_span::{sym, Symbol};
 
-use super::cache::{build_index, ExternalLocation};
 use super::print_item::{full_path, item_path, print_item};
-use super::templates;
+use super::search_index::build_index;
 use super::write_shared::write_shared;
 use super::{
-    collect_spans_and_sources, print_sidebar, settings, AllTypes, LinkFromSrc, NameDoc, StylePath,
-    BASIC_KEYWORDS,
+    collect_spans_and_sources, print_sidebar, scrape_examples_help, sidebar_module_like, AllTypes,
+    LinkFromSrc, NameDoc, StylePath, BASIC_KEYWORDS,
 };
 
-use crate::clean::{self, ExternalCrate};
-use crate::config::RenderOptions;
+use crate::clean::{self, types::ExternalLocation, ExternalCrate};
+use crate::config::{ModuleSorting, RenderOptions};
 use crate::docfs::{DocFS, PathError};
 use crate::error::Error;
 use crate::formats::cache::Cache;
 use crate::formats::item_type::ItemType;
 use crate::formats::FormatRenderer;
 use crate::html::escape::Escape;
-use crate::html::format::Buffer;
+use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
-use crate::html::{layout, sources};
+use crate::html::url_parts_builder::UrlPartsBuilder;
+use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
 
@@ -43,53 +43,53 @@ use crate::try_err;
 /// It is intended that this context is a lightweight object which can be fairly
 /// easily cloned because it is cloned per work-job (about once per item in the
 /// rustdoc tree).
-crate struct Context<'tcx> {
+pub(crate) struct Context<'tcx> {
     /// Current hierarchy of components leading down to what's currently being
     /// rendered
-    pub(crate) current: Vec<String>,
+    pub(crate) current: Vec<Symbol>,
     /// The current destination folder of where HTML artifacts should be placed.
     /// This changes as the context descends into the module hierarchy.
-    crate dst: PathBuf,
+    pub(crate) dst: PathBuf,
     /// A flag, which when `true`, will render pages which redirect to the
     /// real location of an item. This is used to allow external links to
     /// publicly reused items to redirect to the right location.
     pub(super) render_redirect_pages: bool,
     /// Tracks section IDs for `Deref` targets so they match in both the main
     /// body and the sidebar.
-    pub(super) deref_id_map: RefCell<FxHashMap<DefId, String>>,
+    pub(super) deref_id_map: FxHashMap<DefId, String>,
     /// The map used to ensure all generated 'id=' attributes are unique.
-    pub(super) id_map: RefCell<IdMap>,
+    pub(super) id_map: IdMap,
     /// Shared mutable state.
     ///
     /// Issue for improving the situation: [#82381][]
     ///
     /// [#82381]: https://github.com/rust-lang/rust/issues/82381
-    crate shared: Rc<SharedContext<'tcx>>,
-    /// This flag indicates whether `[src]` links should be generated or not. If
+    pub(crate) shared: Rc<SharedContext<'tcx>>,
+    /// This flag indicates whether source links should be generated or not. If
     /// the source files are present in the html rendering, then this will be
     /// `true`.
-    crate include_sources: bool,
+    pub(crate) include_sources: bool,
+    /// Collection of all types with notable traits referenced in the current module.
+    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
-#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 144);
+#[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Context<'_>, 160);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
-crate struct SharedContext<'tcx> {
-    crate tcx: TyCtxt<'tcx>,
+pub(crate) struct SharedContext<'tcx> {
+    pub(crate) tcx: TyCtxt<'tcx>,
     /// The path to the crate root source minus the file name.
     /// Used for simplifying paths to the highlighted source code files.
-    crate src_root: PathBuf,
+    pub(crate) src_root: PathBuf,
     /// This describes the layout of each page, and is not modified after
     /// creation of the context (contains info like the favicon and added html).
-    crate layout: layout::Layout,
+    pub(crate) layout: layout::Layout,
     /// The local file sources we've emitted and their respective url-paths.
-    crate local_sources: FxHashMap<PathBuf, String>,
+    pub(crate) local_sources: FxHashMap<PathBuf, String>,
     /// Show the memory layout of types in the docs.
     pub(super) show_type_layout: bool,
-    /// Whether the collapsed pass ran
-    collapsed: bool,
     /// The base-URL of the issue tracker for when an item has been tagged with
     /// an issue number.
     pub(super) issue_tracker_base_url: Option<String>,
@@ -98,17 +98,17 @@ crate struct SharedContext<'tcx> {
     created_dirs: RefCell<FxHashSet<PathBuf>>,
     /// This flag indicates whether listings of modules (in the side bar and documentation itself)
     /// should be ordered alphabetically or in order of appearance (in the source code).
-    pub(super) sort_modules_alphabetically: bool,
+    pub(super) module_sorting: ModuleSorting,
     /// Additional CSS files to be added to the generated docs.
-    crate style_files: Vec<StylePath>,
+    pub(crate) style_files: Vec<StylePath>,
     /// Suffix to be added on resource files (if suffix is "-v2" then "light.css" becomes
     /// "light-v2.css").
-    crate resource_suffix: String,
+    pub(crate) resource_suffix: String,
     /// Optional path string to be used to load static files on output pages. If not set, uses
     /// combinations of `../` to reach the documentation root.
-    crate static_root_path: Option<String>,
+    pub(crate) static_root_path: Option<String>,
     /// The fs handle we are working with.
-    crate fs: DocFS,
+    pub(crate) fs: DocFS,
     pub(super) codes: ErrorCodes,
     pub(super) playground: Option<markdown::Playground>,
     all: RefCell<AllTypes>,
@@ -120,19 +120,17 @@ crate struct SharedContext<'tcx> {
     /// the crate.
     redirections: Option<RefCell<FxHashMap<String, String>>>,
 
-    pub(crate) templates: tera::Tera,
-
     /// Correspondance map used to link types used in the source code pages to allow to click on
     /// links to jump to the type's definition.
-    crate span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
+    pub(crate) span_correspondance_map: FxHashMap<rustc_span::Span, LinkFromSrc>,
     /// The [`Cache`] used during rendering.
-    crate cache: Cache,
+    pub(crate) cache: Cache,
 
-    crate call_locations: AllCallLocations,
+    pub(crate) call_locations: AllCallLocations,
 }
 
 impl SharedContext<'_> {
-    crate fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
+    pub(crate) fn ensure_dir(&self, dst: &Path) -> Result<(), Error> {
         let mut dirs = self.created_dirs.borrow_mut();
         if !dirs.contains(dst) {
             try_err!(self.fs.create_dir_all(dst), dst);
@@ -142,13 +140,7 @@ impl SharedContext<'_> {
         Ok(())
     }
 
-    /// Returns the `collapsed_doc_value` of the given item if this is the main crate, otherwise
-    /// returns the `doc_value`.
-    crate fn maybe_collapsed_doc_value<'a>(&self, item: &'a clean::Item) -> Option<String> {
-        if self.collapsed { item.collapsed_doc_value() } else { item.doc_value() }
-    }
-
-    crate fn edition(&self) -> Edition {
+    pub(crate) fn edition(&self) -> Edition {
         self.tcx.sess.edition()
     }
 }
@@ -166,9 +158,8 @@ impl<'tcx> Context<'tcx> {
         self.shared.tcx.sess
     }
 
-    pub(super) fn derive_id(&self, id: String) -> String {
-        let mut map = self.id_map.borrow_mut();
-        map.derive(id)
+    pub(super) fn derive_id(&mut self, id: String) -> String {
+        self.id_map.derive(id)
     }
 
     /// String representation of how to get back to the root path of the 'doc/'
@@ -177,17 +168,17 @@ impl<'tcx> Context<'tcx> {
         "../".repeat(self.current.len())
     }
 
-    fn render_item(&self, it: &clean::Item, is_module: bool) -> String {
+    fn render_item(&mut self, it: &clean::Item, is_module: bool) -> String {
         let mut title = String::new();
         if !is_module {
-            title.push_str(&it.name.unwrap().as_str());
+            title.push_str(it.name.unwrap().as_str());
         }
         if !it.is_primitive() && !it.is_keyword() {
             if !is_module {
                 title.push_str(" in ");
             }
             // No need to include the namespace for primitive types and keywords
-            title.push_str(&self.current.join("::"));
+            title.push_str(&join_with_double_colon(&self.current));
         };
         title.push_str(" - Rust");
         let tyname = it.type_();
@@ -212,46 +203,54 @@ impl<'tcx> Context<'tcx> {
         } else {
             tyname.as_str()
         };
-        let page = layout::Page {
-            css_class: tyname_s,
-            root_path: &self.root_path(),
-            static_root_path: self.shared.static_root_path.as_deref(),
-            title: &title,
-            description: &desc,
-            keywords: &keywords,
-            resource_suffix: &self.shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
-        };
 
         if !self.render_redirect_pages {
+            let clone_shared = Rc::clone(&self.shared);
+            let page = layout::Page {
+                css_class: tyname_s,
+                root_path: &self.root_path(),
+                static_root_path: clone_shared.static_root_path.as_deref(),
+                title: &title,
+                description: &desc,
+                keywords: &keywords,
+                resource_suffix: &clone_shared.resource_suffix,
+            };
+            let mut page_buffer = Buffer::html();
+            print_item(self, it, &mut page_buffer, &page);
             layout::render(
-                &self.shared.templates,
-                &self.shared.layout,
+                &clone_shared.layout,
                 &page,
                 |buf: &mut _| print_sidebar(self, it, buf),
-                |buf: &mut _| print_item(self, &self.shared.templates, it, buf, &page),
-                &self.shared.style_files,
+                move |buf: &mut Buffer| buf.push_buffer(page_buffer),
+                &clone_shared.style_files,
             )
         } else {
-            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.def_id.expect_def_id()) {
-                let mut path = String::new();
-                for name in &names[..names.len() - 1] {
-                    path.push_str(name);
-                    path.push('/');
-                }
-                path.push_str(&item_path(ty, names.last().unwrap()));
-                match self.shared.redirections {
-                    Some(ref redirections) => {
-                        let mut current_path = String::new();
-                        for name in &self.current {
-                            current_path.push_str(name);
-                            current_path.push('/');
-                        }
-                        current_path.push_str(&item_path(ty, names.last().unwrap()));
-                        redirections.borrow_mut().insert(current_path, path);
+            if let Some(&(ref names, ty)) = self.cache().paths.get(&it.item_id.expect_def_id()) {
+                if self.current.len() + 1 != names.len()
+                    || self.current.iter().zip(names.iter()).any(|(a, b)| a != b)
+                {
+                    // We checked that the redirection isn't pointing to the current file,
+                    // preventing an infinite redirection loop in the generated
+                    // documentation.
+
+                    let mut path = String::new();
+                    for name in &names[..names.len() - 1] {
+                        path.push_str(name.as_str());
+                        path.push('/');
                     }
-                    None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                    path.push_str(&item_path(ty, names.last().unwrap().as_str()));
+                    match self.shared.redirections {
+                        Some(ref redirections) => {
+                            let mut current_path = String::new();
+                            for name in &self.current {
+                                current_path.push_str(name.as_str());
+                                current_path.push('/');
+                            }
+                            current_path.push_str(&item_path(ty, names.last().unwrap().as_str()));
+                            redirections.borrow_mut().insert(current_path, path);
+                        }
+                        None => return layout::redirect(&format!("{}{}", self.root_path(), path)),
+                    }
                 }
             }
             String::new()
@@ -262,6 +261,8 @@ impl<'tcx> Context<'tcx> {
     fn build_sidebar_items(&self, m: &clean::Module) -> BTreeMap<String, Vec<NameDoc>> {
         // BTreeMap instead of HashMap to get a sorted output
         let mut map: BTreeMap<_, Vec<_>> = BTreeMap::new();
+        let mut inserted: FxHashMap<ItemType, FxHashSet<Symbol>> = FxHashMap::default();
+
         for item in &m.items {
             if item.is_stripped() {
                 continue;
@@ -270,19 +271,25 @@ impl<'tcx> Context<'tcx> {
             let short = item.type_();
             let myname = match item.name {
                 None => continue,
-                Some(ref s) => s.to_string(),
+                Some(s) => s,
             };
-            let short = short.to_string();
-            map.entry(short).or_default().push((
-                myname,
-                Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
-            ));
+            if inserted.entry(short).or_default().insert(myname) {
+                let short = short.to_string();
+                let myname = myname.to_string();
+                map.entry(short).or_default().push((
+                    myname,
+                    Some(item.doc_value().map_or_else(String::new, |s| plain_text_summary(&s))),
+                ));
+            }
         }
 
-        if self.shared.sort_modules_alphabetically {
-            for items in map.values_mut() {
-                items.sort();
+        match self.shared.module_sorting {
+            ModuleSorting::Alphabetical => {
+                for items in map.values_mut() {
+                    items.sort();
+                }
             }
+            ModuleSorting::DeclarationOrder => {}
         }
         map
     }
@@ -297,13 +304,10 @@ impl<'tcx> Context<'tcx> {
     /// may happen, for example, with externally inlined items where the source
     /// of their crate documentation isn't known.
     pub(super) fn src_href(&self, item: &clean::Item) -> Option<String> {
-        self.href_from_span(item.span(self.tcx()), true)
+        self.href_from_span(item.span(self.tcx())?, true)
     }
 
-    crate fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
-        if span.is_dummy() {
-            return None;
-        }
+    pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         let mut root = self.root_path();
         let mut path = String::new();
         let cnum = span.cnum(self.sess());
@@ -315,7 +319,7 @@ impl<'tcx> Context<'tcx> {
         };
         let file = &file;
 
-        let symbol;
+        let krate_sym;
         let (krate, path) = if cnum == LOCAL_CRATE {
             if let Some(path) = self.shared.local_sources.get(file) {
                 (self.shared.layout.krate.as_str(), path)
@@ -343,8 +347,8 @@ impl<'tcx> Context<'tcx> {
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
             path.push_str(&fname.to_string_lossy());
-            symbol = krate.as_str();
-            (&*symbol, &path)
+            krate_sym = krate;
+            (krate_sym.as_str(), &path)
         };
 
         let anchor = if with_lines {
@@ -368,6 +372,35 @@ impl<'tcx> Context<'tcx> {
             path = path,
             anchor = anchor
         ))
+    }
+
+    pub(crate) fn href_from_span_relative(
+        &self,
+        span: clean::Span,
+        relative_to: &str,
+    ) -> Option<String> {
+        self.href_from_span(span, false).map(|s| {
+            let mut url = UrlPartsBuilder::new();
+            let mut dest_href_parts = s.split('/');
+            let mut cur_href_parts = relative_to.split('/');
+            for (cur_href_part, dest_href_part) in (&mut cur_href_parts).zip(&mut dest_href_parts) {
+                if cur_href_part != dest_href_part {
+                    url.push(dest_href_part);
+                    break;
+                }
+            }
+            for dest_href_part in dest_href_parts {
+                url.push(dest_href_part);
+            }
+            let loline = span.lo(self.sess()).line;
+            let hiline = span.hi(self.sess()).line;
+            format!(
+                "{}{}#{}",
+                "../".repeat(cur_href_parts.count()),
+                url.finish(),
+                if loline == hiline { loline.to_string() } else { format!("{loline}-{hiline}") }
+            )
+        })
     }
 }
 
@@ -393,18 +426,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             external_html,
             id_map,
             playground_url,
-            sort_modules_alphabetically,
+            module_sorting,
             themes: style_files,
             default_settings,
             extension_css,
             resource_suffix,
             static_root_path,
-            generate_search_filter,
-            unstable_features,
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
             call_locations,
+            no_emit_shared,
             ..
         } = options;
 
@@ -428,12 +460,10 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             default_settings,
             krate: krate.name(tcx).to_string(),
             css_file_extension: extension_css,
-            generate_search_filter,
             scrape_examples_extension: !call_locations.is_empty(),
         };
         let mut issue_tracker_base_url = None;
         let mut include_sources = true;
-        let templates = templates::load()?;
 
         // Crawl the crate attributes looking for attributes which control how we're
         // going to emit HTML
@@ -470,43 +500,28 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         );
 
         let (sender, receiver) = channel();
-        let mut scx = SharedContext {
+        let scx = SharedContext {
             tcx,
-            collapsed: krate.collapsed,
             src_root,
             local_sources,
             issue_tracker_base_url,
             layout,
             created_dirs: Default::default(),
-            sort_modules_alphabetically,
+            module_sorting,
             style_files,
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            codes: ErrorCodes::from(unstable_features.is_nightly_build()),
+            codes: ErrorCodes::from(options.unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
             redirections: if generate_redirect_map { Some(Default::default()) } else { None },
             show_type_layout,
-            templates,
             span_correspondance_map: matches,
             cache,
             call_locations,
         };
-
-        // Add the default themes to the `Vec` of stylepaths
-        //
-        // Note that these must be added before `sources::render` is called
-        // so that the resulting source pages are styled
-        //
-        // `light.css` is not disabled because it is the stylesheet that stays loaded
-        // by the browser as the theme stylesheet. The theme system (hackily) works by
-        // changing the href to this stylesheet. All other themes are disabled to
-        // prevent rule conflicts
-        scx.style_files.push(StylePath { path: PathBuf::from("light.css"), disabled: false });
-        scx.style_files.push(StylePath { path: PathBuf::from("dark.css"), disabled: true });
-        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css"), disabled: true });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
@@ -515,23 +530,27 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: Vec::new(),
             dst,
             render_redirect_pages: false,
-            id_map: RefCell::new(id_map),
-            deref_id_map: RefCell::new(FxHashMap::default()),
+            id_map,
+            deref_id_map: FxHashMap::default(),
             shared: Rc::new(scx),
             include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         };
 
         if emit_crate {
             sources::render(&mut cx, &krate)?;
         }
 
-        // Build our search index
-        let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
+        if !no_emit_shared {
+            // Build our search index
+            let index = build_index(&krate, &mut Rc::get_mut(&mut cx.shared).unwrap().cache, tcx);
 
-        // Write shared runs within a flock; disable thread dispatching of IO temporarily.
-        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
-        write_shared(&cx, &krate, index, &md_opts)?;
-        Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+            // Write shared runs within a flock; disable thread dispatching of IO temporarily.
+            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(true);
+            write_shared(&mut cx, &krate, index, &md_opts)?;
+            Rc::get_mut(&mut cx.shared).unwrap().fs.set_sync_only(false);
+        }
+
         Ok((cx, krate))
     }
 
@@ -540,87 +559,154 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             current: self.current.clone(),
             dst: self.dst.clone(),
             render_redirect_pages: self.render_redirect_pages,
-            deref_id_map: RefCell::new(FxHashMap::default()),
-            id_map: RefCell::new(IdMap::new()),
+            deref_id_map: FxHashMap::default(),
+            id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         }
     }
 
     fn after_krate(&mut self) -> Result<(), Error> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
-        let final_file = self.dst.join(&*crate_name.as_str()).join("all.html");
+        let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
+        let help_file = self.dst.join("help.html");
+        let scrape_examples_help_file = self.dst.join("scrape-examples-help.html");
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
         if !root_path.ends_with('/') {
             root_path.push('/');
         }
+        let shared = Rc::clone(&self.shared);
         let mut page = layout::Page {
             title: "List of all items in this crate",
             css_class: "mod",
             root_path: "../",
-            static_root_path: self.shared.static_root_path.as_deref(),
+            static_root_path: shared.static_root_path.as_deref(),
             description: "List of all items in this crate",
             keywords: BASIC_KEYWORDS,
-            resource_suffix: &self.shared.resource_suffix,
-            extra_scripts: &[],
-            static_extra_scripts: &[],
+            resource_suffix: &shared.resource_suffix,
         };
-        let sidebar = if let Some(ref version) = self.shared.cache.crate_version {
-            format!(
-                "<h2 class=\"location\">Crate {}</h2>\
-                     <div class=\"block version\">\
-                         <p>Version {}</p>\
-                     </div>\
-                     <a id=\"all-types\" href=\"index.html\"><p>Back to index</p></a>",
-                crate_name,
-                Escape(version),
-            )
-        } else {
-            String::new()
+        let all = shared.all.replace(AllTypes::new());
+        let mut sidebar = Buffer::html();
+        if shared.cache.crate_version.is_some() {
+            write!(sidebar, "<h2 class=\"location\">Crate {}</h2>", crate_name)
         };
-        let all = self.shared.all.replace(AllTypes::new());
+
+        let mut items = Buffer::html();
+        sidebar_module_like(&mut items, all.item_sections());
+        if !items.is_empty() {
+            sidebar.push_str("<div class=\"sidebar-elems\">");
+            sidebar.push_buffer(items);
+            sidebar.push_str("</div>");
+        }
+
         let v = layout::render(
-            &self.shared.templates,
-            &self.shared.layout,
+            &shared.layout,
             &page,
-            sidebar,
+            sidebar.into_inner(),
             |buf: &mut Buffer| all.print(buf),
-            &self.shared.style_files,
+            &shared.style_files,
         );
-        self.shared.fs.write(final_file, v)?;
+        shared.fs.write(final_file, v)?;
 
         // Generating settings page.
         page.title = "Rustdoc settings";
         page.description = "Settings of Rustdoc";
         page.root_path = "./";
 
-        let mut style_files = self.shared.style_files.clone();
         let sidebar = "<h2 class=\"location\">Settings</h2><div class=\"sidebar-elems\"></div>";
-        style_files.push(StylePath { path: PathBuf::from("settings.css"), disabled: false });
         let v = layout::render(
-            &self.shared.templates,
-            &self.shared.layout,
+            &shared.layout,
             &page,
             sidebar,
-            settings(
-                self.shared.static_root_path.as_deref().unwrap_or("./"),
-                &self.shared.resource_suffix,
-                &self.shared.style_files,
-            )?,
-            &style_files,
+            |buf: &mut Buffer| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                     <h1 class=\"fqn\">Rustdoc settings</h1>\
+                     <span class=\"out-of-band\">\
+                         <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                     </span>\
+                     </div>\
+                     <noscript>\
+                        <section>\
+                            You need to enable Javascript be able to update your settings.\
+                        </section>\
+                     </noscript>\
+                     <link rel=\"stylesheet\" type=\"text/css\" \
+                         href=\"{static_root_path}{settings_css}\">\
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                    static_root_path = page.get_static_root_path(),
+                    settings_css = static_files::STATIC_FILES.settings_css,
+                    settings_js = static_files::STATIC_FILES.settings_js,
+                )
+            },
+            &shared.style_files,
         );
-        self.shared.fs.write(settings_file, v)?;
-        if let Some(ref redirections) = self.shared.redirections {
+        shared.fs.write(settings_file, v)?;
+
+        // Generating help page.
+        page.title = "Rustdoc help";
+        page.description = "Documentation for Rustdoc";
+        page.root_path = "./";
+
+        let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &shared.layout,
+            &page,
+            sidebar,
+            |buf: &mut Buffer| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                     <h1 class=\"fqn\">Rustdoc help</h1>\
+                     <span class=\"out-of-band\">\
+                         <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                     </span>\
+                     </div>\
+                     <noscript>\
+                        <section>\
+                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
+                        </section>\
+                     </noscript>",
+                )
+            },
+            &shared.style_files,
+        );
+        shared.fs.write(help_file, v)?;
+
+        if shared.layout.scrape_examples_extension {
+            page.title = "About scraped examples";
+            page.description = "How the scraped examples feature works in Rustdoc";
+            let v = layout::render(
+                &shared.layout,
+                &page,
+                "",
+                scrape_examples_help(&*shared),
+                &shared.style_files,
+            );
+            shared.fs.write(scrape_examples_help_file, v)?;
+        }
+
+        if let Some(ref redirections) = shared.redirections {
             if !redirections.borrow().is_empty() {
                 let redirect_map_path =
-                    self.dst.join(&*crate_name.as_str()).join("redirect-map.json");
+                    self.dst.join(crate_name.as_str()).join("redirect-map.json");
                 let paths = serde_json::to_string(&*redirections.borrow()).unwrap();
-                self.shared.ensure_dir(&self.dst.join(&*crate_name.as_str()))?;
-                self.shared.fs.write(redirect_map_path, paths)?;
+                shared.ensure_dir(&self.dst.join(crate_name.as_str()))?;
+                shared.fs.write(redirect_map_path, paths)?;
             }
         }
+
+        // No need for it anymore.
+        drop(shared);
 
         // Flush pending errors.
         Rc::get_mut(&mut self.shared).unwrap().fs.close();
@@ -644,9 +730,8 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !self.render_redirect_pages {
             self.render_redirect_pages = item.is_stripped();
         }
-        let scx = &self.shared;
-        let item_name = item.name.as_ref().unwrap().to_string();
-        self.dst.push(&item_name);
+        let item_name = item.name.unwrap();
+        self.dst.push(&*item_name.as_str());
         self.current.push(item_name);
 
         info!("Recursing into {}", self.dst.display());
@@ -656,19 +741,17 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join("index.html");
-            scx.fs.write(joint_dst, buf)?;
+            self.shared.fs.write(joint_dst, buf)?;
         }
 
         // Render sidebar-items.js used throughout this module.
         if !self.render_redirect_pages {
-            let module = match *item.kind {
-                clean::StrippedItem(box clean::ModuleItem(ref m)) | clean::ModuleItem(ref m) => m,
-                _ => unreachable!(),
-            };
+            let (clean::StrippedItem(box clean::ModuleItem(ref module)) | clean::ModuleItem(ref module)) = *item.kind
+            else { unreachable!() };
             let items = self.build_sidebar_items(module);
-            let js_dst = self.dst.join("sidebar-items.js");
-            let v = format!("initSidebarItems({});", serde_json::to_string(&items).unwrap());
-            scx.fs.write(js_dst, v)?;
+            let js_dst = self.dst.join(&format!("sidebar-items{}.js", self.shared.resource_suffix));
+            let v = format!("window.SIDEBAR_ITEMS = {};", serde_json::to_string(&items).unwrap());
+            self.shared.fs.write(js_dst, v)?;
         }
         Ok(())
     }
@@ -699,7 +782,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         if !buf.is_empty() {
             let name = item.name.as_ref().unwrap();
             let item_type = item.type_();
-            let file_name = &item_path(item_type, &name.as_str());
+            let file_name = &item_path(item_type, name.as_str());
             self.shared.ensure_dir(&self.dst)?;
             let joint_dst = self.dst.join(file_name);
             self.shared.fs.write(joint_dst, buf)?;
@@ -724,6 +807,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
             }
         }
+
         Ok(())
     }
 

@@ -22,17 +22,17 @@ pub const fn empty<T>() -> Empty<T> {
     Empty(marker::PhantomData)
 }
 
+// Newtype for use in `PhantomData` to avoid
+// > error: const-stable function cannot use `#[feature(const_fn_fn_ptr_basics)]`
+// in `const fn empty<T>()` above.
+struct FnReturning<T>(fn() -> T);
+
 /// An iterator that yields nothing.
 ///
 /// This `struct` is created by the [`empty()`] function. See its documentation for more.
 #[must_use = "iterators are lazy and do nothing unless consumed"]
 #[stable(feature = "iter_empty", since = "1.2.0")]
-pub struct Empty<T>(marker::PhantomData<T>);
-
-#[stable(feature = "iter_empty_send_sync", since = "1.42.0")]
-unsafe impl<T> Send for Empty<T> {}
-#[stable(feature = "iter_empty_send_sync", since = "1.42.0")]
-unsafe impl<T> Sync for Empty<T> {}
+pub struct Empty<T>(marker::PhantomData<FnReturning<T>>);
 
 #[stable(feature = "core_impl_debug", since = "1.9.0")]
 impl<T> fmt::Debug for Empty<T> {

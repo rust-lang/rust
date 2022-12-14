@@ -3,16 +3,15 @@
 
 use crate::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
 use rustc_ast as ast;
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_hir::def::Res;
-use rustc_hir::{
-    GenericArg, HirId, Item, ItemKind, MutTy, Mutability, Node, Path, PathSegment, QPath, Ty,
-    TyKind,
-};
+use rustc_hir::{def_id::DefId, Expr, ExprKind, GenericArg, PatKind, Path, PathSegment, QPath};
+use rustc_hir::{HirId, Impl, Item, ItemKind, Node, Pat, Ty, TyKind};
 use rustc_middle::ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::hygiene::{ExpnKind, MacroKind};
 use rustc_span::symbol::{kw, sym, Symbol};
+use rustc_span::Span;
 
 declare_tool_lint! {
     pub rustc::DEFAULT_HASH_TYPES,
@@ -25,10 +24,7 @@ declare_lint_pass!(DefaultHashTypes => [DEFAULT_HASH_TYPES]);
 
 impl LateLintPass<'_> for DefaultHashTypes {
     fn check_path(&mut self, cx: &LateContext<'_>, path: &Path<'_>, hir_id: HirId) {
-        let def_id = match path.res {
-            Res::Def(rustc_hir::def::DefKind::Struct, id) => id,
-            _ => return,
-        };
+        let Res::Def(rustc_hir::def::DefKind::Struct, def_id) = path.res else { return };
         if matches!(cx.tcx.hir().get(hir_id), Node::Item(Item { kind: ItemKind::Use(..), .. })) {
             // don't lint imports, only actual usages
             return;
@@ -38,16 +34,63 @@ impl LateLintPass<'_> for DefaultHashTypes {
             Some(sym::HashSet) => "FxHashSet",
             _ => return,
         };
-        cx.struct_span_lint(DEFAULT_HASH_TYPES, path.span, |lint| {
-            let msg = format!(
-                "prefer `{}` over `{}`, it has better performance",
-                replace,
-                cx.tcx.item_name(def_id)
-            );
-            lint.build(&msg)
-                .note(&format!("a `use rustc_data_structures::fx::{}` may be necessary", replace))
-                .emit();
-        });
+        cx.struct_span_lint(
+            DEFAULT_HASH_TYPES,
+            path.span,
+            fluent::lint_default_hash_types,
+            |lint| {
+                lint.set_arg("preferred", replace)
+                    .set_arg("used", cx.tcx.item_name(def_id))
+                    .note(fluent::note)
+            },
+        );
+    }
+}
+
+/// Helper function for lints that check for expressions with calls and use typeck results to
+/// get the `DefId` and `SubstsRef` of the function.
+fn typeck_results_of_method_fn<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &Expr<'_>,
+) -> Option<(Span, DefId, ty::subst::SubstsRef<'tcx>)> {
+    match expr.kind {
+        ExprKind::MethodCall(segment, ..)
+            if let Some(def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id) =>
+        {
+            Some((segment.ident.span, def_id, cx.typeck_results().node_substs(expr.hir_id)))
+        },
+        _ => {
+            match cx.typeck_results().node_type(expr.hir_id).kind() {
+                &ty::FnDef(def_id, substs) => Some((expr.span, def_id, substs)),
+                _ => None,
+            }
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::POTENTIAL_QUERY_INSTABILITY,
+    Allow,
+    "require explicit opt-in when using potentially unstable methods or functions",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(QueryStability => [POTENTIAL_QUERY_INSTABILITY]);
+
+impl LateLintPass<'_> for QueryStability {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
+        if let Ok(Some(instance)) = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs) {
+            let def_id = instance.def_id();
+            if cx.tcx.has_attr(def_id, sym::rustc_lint_query_instability) {
+                cx.struct_span_lint(
+                    POTENTIAL_QUERY_INSTABILITY,
+                    span,
+                    fluent::lint_query_instability,
+                    |lint| lint.set_arg("query", cx.tcx.item_name(def_id)).note(fluent::note),
+                )
+            }
+        }
     }
 }
 
@@ -55,13 +98,6 @@ declare_tool_lint! {
     pub rustc::USAGE_OF_TY_TYKIND,
     Allow,
     "usage of `ty::TyKind` outside of the `ty::sty` module",
-    report_in_external_macro: true
-}
-
-declare_tool_lint! {
-    pub rustc::TY_PASS_BY_REFERENCE,
-    Allow,
-    "passing `Ty` or `TyCtxt` by reference",
     report_in_external_macro: true
 }
 
@@ -74,83 +110,119 @@ declare_tool_lint! {
 
 declare_lint_pass!(TyTyKind => [
     USAGE_OF_TY_TYKIND,
-    TY_PASS_BY_REFERENCE,
     USAGE_OF_QUALIFIED_TY,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for TyTyKind {
-    fn check_path(&mut self, cx: &LateContext<'_>, path: &'tcx Path<'tcx>, _: HirId) {
-        let segments = path.segments.iter().rev().skip(1).rev();
-
-        if let Some(last) = segments.last() {
-            let span = path.span.with_hi(last.ident.span.hi());
-            if lint_ty_kind_usage(cx, last) {
-                cx.struct_span_lint(USAGE_OF_TY_TYKIND, span, |lint| {
-                    lint.build("usage of `ty::TyKind::<kind>`")
-                        .span_suggestion(
-                            span,
-                            "try using ty::<kind> directly",
-                            "ty".to_string(),
-                            Applicability::MaybeIncorrect, // ty maybe needs an import
-                        )
-                        .emit();
-                })
-            }
+    fn check_path(
+        &mut self,
+        cx: &LateContext<'tcx>,
+        path: &rustc_hir::Path<'tcx>,
+        _: rustc_hir::HirId,
+    ) {
+        if let Some(segment) = path.segments.iter().nth_back(1)
+        && lint_ty_kind_usage(cx, &segment.res)
+        {
+            let span = path.span.with_hi(
+                segment.args.map_or(segment.ident.span, |a| a.span_ext).hi()
+            );
+            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, fluent::lint_tykind_kind, |lint| {
+                lint
+                    .span_suggestion(
+                        span,
+                        fluent::suggestion,
+                        "ty",
+                        Applicability::MaybeIncorrect, // ty maybe needs an import
+                    )
+            });
         }
     }
 
     fn check_ty(&mut self, cx: &LateContext<'_>, ty: &'tcx Ty<'tcx>) {
         match &ty.kind {
-            TyKind::Path(qpath) => {
-                if let QPath::Resolved(_, path) = qpath {
-                    if let Some(last) = path.segments.iter().last() {
-                        if lint_ty_kind_usage(cx, last) {
-                            cx.struct_span_lint(USAGE_OF_TY_TYKIND, path.span, |lint| {
-                                lint.build("usage of `ty::TyKind`")
-                                    .help("try using `Ty` instead")
-                                    .emit();
-                            })
-                        } else {
-                            if ty.span.from_expansion() {
-                                return;
-                            }
-                            if let Some(t) = is_ty_or_ty_ctxt(cx, ty) {
-                                if path.segments.len() > 1 {
-                                    cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, |lint| {
-                                        lint.build(&format!("usage of qualified `ty::{}`", t))
-                                            .span_suggestion(
-                                                path.span,
-                                                "try using it unqualified",
-                                                t,
-                                                // The import probably needs to be changed
-                                                Applicability::MaybeIncorrect,
-                                            )
-                                            .emit();
-                                    })
-                                }
+            TyKind::Path(QPath::Resolved(_, path)) => {
+                if lint_ty_kind_usage(cx, &path.res) {
+                    let hir = cx.tcx.hir();
+                    let span = match hir.find(hir.get_parent_node(ty.hir_id)) {
+                        Some(Node::Pat(Pat {
+                            kind:
+                                PatKind::Path(qpath)
+                                | PatKind::TupleStruct(qpath, ..)
+                                | PatKind::Struct(qpath, ..),
+                            ..
+                        })) => {
+                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                && qpath_ty.hir_id == ty.hir_id
+                            {
+                                Some(path.span)
+                            } else {
+                                None
                             }
                         }
-                    }
-                }
-            }
-            TyKind::Rptr(_, MutTy { ty: inner_ty, mutbl: Mutability::Not }) => {
-                if let Some(impl_did) = cx.tcx.impl_of_method(ty.hir_id.owner.to_def_id()) {
-                    if cx.tcx.impl_trait_ref(impl_did).is_some() {
-                        return;
-                    }
-                }
-                if let Some(t) = is_ty_or_ty_ctxt(cx, &inner_ty) {
-                    cx.struct_span_lint(TY_PASS_BY_REFERENCE, ty.span, |lint| {
-                        lint.build(&format!("passing `{}` by reference", t))
-                            .span_suggestion(
-                                ty.span,
-                                "try passing by value",
-                                t,
-                                // Changing type of function argument
-                                Applicability::MaybeIncorrect,
+                        Some(Node::Expr(Expr {
+                            kind: ExprKind::Path(qpath),
+                            ..
+                        })) => {
+                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                && qpath_ty.hir_id == ty.hir_id
+                            {
+                                Some(path.span)
+                            } else {
+                                None
+                            }
+                        }
+                        // Can't unify these two branches because qpath below is `&&` and above is `&`
+                        // and `A | B` paths don't play well together with adjustments, apparently.
+                        Some(Node::Expr(Expr {
+                            kind: ExprKind::Struct(qpath, ..),
+                            ..
+                        })) => {
+                            if let QPath::TypeRelative(qpath_ty, ..) = qpath
+                                && qpath_ty.hir_id == ty.hir_id
+                            {
+                                Some(path.span)
+                            } else {
+                                None
+                            }
+                        }
+                        _ => None
+                    };
+
+                    match span {
+                        Some(span) => {
+                            cx.struct_span_lint(
+                                USAGE_OF_TY_TYKIND,
+                                path.span,
+                                fluent::lint_tykind_kind,
+                                |lint| lint.span_suggestion(
+                                    span,
+                                    fluent::suggestion,
+                                    "ty",
+                                    Applicability::MaybeIncorrect, // ty maybe needs an import
+                                )
                             )
-                            .emit();
-                    })
+                        },
+                        None => cx.struct_span_lint(
+                            USAGE_OF_TY_TYKIND,
+                            path.span,
+                            fluent::lint_tykind,
+                            |lint| lint.help(fluent::help)
+                        )
+                    }
+                } else if !ty.span.from_expansion() && let Some(t) = is_ty_or_ty_ctxt(cx, &path) {
+                    if path.segments.len() > 1 {
+                        cx.struct_span_lint(USAGE_OF_QUALIFIED_TY, path.span, fluent::lint_ty_qualified, |lint| {
+                            lint
+                                .set_arg("ty", t.clone())
+                                .span_suggestion(
+                                    path.span,
+                                    fluent::suggestion,
+                                    t,
+                                    // The import probably needs to be changed
+                                    Applicability::MaybeIncorrect,
+                                )
+                        })
+                    }
                 }
             }
             _ => {}
@@ -158,49 +230,37 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
     }
 }
 
-fn lint_ty_kind_usage(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> bool {
-    if let Some(res) = segment.res {
-        if let Some(did) = res.opt_def_id() {
-            return cx.tcx.is_diagnostic_item(sym::TyKind, did);
-        }
+fn lint_ty_kind_usage(cx: &LateContext<'_>, res: &Res) -> bool {
+    if let Some(did) = res.opt_def_id() {
+        cx.tcx.is_diagnostic_item(sym::TyKind, did) || cx.tcx.is_diagnostic_item(sym::IrTyKind, did)
+    } else {
+        false
     }
-
-    false
 }
 
-fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, ty: &Ty<'_>) -> Option<String> {
-    if let TyKind::Path(qpath) = &ty.kind {
-        if let QPath::Resolved(_, path) = qpath {
-            match path.res {
-                Res::Def(_, def_id) => {
-                    if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(def_id)
-                    {
-                        return Some(format!(
-                            "{}{}",
-                            name,
-                            gen_args(path.segments.last().unwrap())
-                        ));
-                    }
-                }
-                // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
-                Res::SelfTy(None, Some((did, _))) => {
-                    if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
-                        if let Some(name @ (sym::Ty | sym::TyCtxt)) =
-                            cx.tcx.get_diagnostic_name(adt.did)
-                        {
-                            // NOTE: This path is currently unreachable as `Ty<'tcx>` is
-                            // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
-                            // is not actually allowed.
-                            //
-                            // I(@lcnr) still kept this branch in so we don't miss this
-                            // if we ever change it in the future.
-                            return Some(format!("{}<{}>", name, substs[0]));
-                        }
-                    }
-                }
-                _ => (),
+fn is_ty_or_ty_ctxt(cx: &LateContext<'_>, path: &Path<'_>) -> Option<String> {
+    match &path.res {
+        Res::Def(_, def_id) => {
+            if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(*def_id) {
+                return Some(format!("{}{}", name, gen_args(path.segments.last().unwrap())));
             }
         }
+        // Only lint on `&Ty` and `&TyCtxt` if it is used outside of a trait.
+        Res::SelfTyAlias { alias_to: did, is_trait_impl: false, .. } => {
+            if let ty::Adt(adt, substs) = cx.tcx.type_of(did).kind() {
+                if let Some(name @ (sym::Ty | sym::TyCtxt)) = cx.tcx.get_diagnostic_name(adt.did())
+                {
+                    // NOTE: This path is currently unreachable as `Ty<'tcx>` is
+                    // defined as a type alias meaning that `impl<'tcx> Ty<'tcx>`
+                    // is not actually allowed.
+                    //
+                    // I(@lcnr) still kept this branch in so we don't miss this
+                    // if we ever change it in the future.
+                    return Some(format!("{}<{}>", name, substs[0]));
+                }
+            }
+        }
+        _ => (),
     }
 
     None
@@ -212,11 +272,7 @@ fn gen_args(segment: &PathSegment<'_>) -> String {
             .args
             .iter()
             .filter_map(|arg| {
-                if let GenericArg::Lifetime(lt) = arg {
-                    Some(lt.name.ident().to_string())
-                } else {
-                    None
-                }
+                if let GenericArg::Lifetime(lt) = arg { Some(lt.ident.to_string()) } else { None }
             })
             .collect::<Vec<_>>();
 
@@ -238,8 +294,7 @@ declare_lint_pass!(LintPassImpl => [LINT_PASS_IMPL_WITHOUT_MACRO]);
 
 impl EarlyLintPass for LintPassImpl {
     fn check_item(&mut self, cx: &EarlyContext<'_>, item: &ast::Item) {
-        if let ast::ItemKind::Impl(box ast::ImplKind { of_trait: Some(lint_pass), .. }) = &item.kind
-        {
+        if let ast::ItemKind::Impl(box ast::Impl { of_trait: Some(lint_pass), .. }) = &item.kind {
             if let Some(last) = lint_pass.path.segments.last() {
                 if last.ident.name == sym::LintPass {
                     let expn_data = lint_pass.path.span.ctxt().outer_expn_data();
@@ -251,11 +306,8 @@ impl EarlyLintPass for LintPassImpl {
                         cx.struct_span_lint(
                             LINT_PASS_IMPL_WITHOUT_MACRO,
                             lint_pass.path.span,
-                            |lint| {
-                                lint.build("implementing `LintPass` by hand")
-                                    .help("try using `declare_lint_pass!` or `impl_lint_pass!` instead")
-                                    .emit();
-                            },
+                            fluent::lint_lintpass_by_hand,
+                            |lint| lint.help(fluent::help),
                         )
                     }
                 }
@@ -292,17 +344,130 @@ impl<'tcx> LateLintPass<'tcx> for ExistingDocKeyword {
                         if is_doc_keyword(v) {
                             return;
                         }
-                        cx.struct_span_lint(EXISTING_DOC_KEYWORD, attr.span, |lint| {
-                            lint.build(&format!(
-                                "Found non-existing keyword `{}` used in \
-                                     `#[doc(keyword = \"...\")]`",
-                                v,
-                            ))
-                            .help("only existing keywords are allowed in core/std")
-                            .emit();
-                        });
+                        cx.struct_span_lint(
+                            EXISTING_DOC_KEYWORD,
+                            attr.span,
+                            fluent::lint_non_existant_doc_keyword,
+                            |lint| lint.set_arg("keyword", v).help(fluent::help),
+                        );
                     }
                 }
+            }
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::UNTRANSLATABLE_DIAGNOSTIC,
+    Allow,
+    "prevent creation of diagnostics which cannot be translated",
+    report_in_external_macro: true
+}
+
+declare_tool_lint! {
+    pub rustc::DIAGNOSTIC_OUTSIDE_OF_IMPL,
+    Allow,
+    "prevent creation of diagnostics outside of `IntoDiagnostic`/`AddToDiagnostic` impls",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(Diagnostics => [ UNTRANSLATABLE_DIAGNOSTIC, DIAGNOSTIC_OUTSIDE_OF_IMPL ]);
+
+impl LateLintPass<'_> for Diagnostics {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let Some((span, def_id, substs)) = typeck_results_of_method_fn(cx, expr) else { return };
+        debug!(?span, ?def_id, ?substs);
+        let has_attr = ty::Instance::resolve(cx.tcx, cx.param_env, def_id, substs)
+            .ok()
+            .and_then(|inst| inst)
+            .map(|inst| cx.tcx.has_attr(inst.def_id(), sym::rustc_lint_diagnostics))
+            .unwrap_or(false);
+        if !has_attr {
+            return;
+        }
+
+        let mut found_parent_with_attr = false;
+        let mut found_impl = false;
+        for (hir_id, parent) in cx.tcx.hir().parent_iter(expr.hir_id) {
+            if let Some(owner_did) = hir_id.as_owner() {
+                found_parent_with_attr = found_parent_with_attr
+                    || cx.tcx.has_attr(owner_did.to_def_id(), sym::rustc_lint_diagnostics);
+            }
+
+            debug!(?parent);
+            if let Node::Item(Item { kind: ItemKind::Impl(impl_), .. }) = parent &&
+                let Impl { of_trait: Some(of_trait), .. } = impl_ &&
+                let Some(def_id) = of_trait.trait_def_id() &&
+                let Some(name) = cx.tcx.get_diagnostic_name(def_id) &&
+                matches!(name, sym::IntoDiagnostic | sym::AddToDiagnostic | sym::DecorateLint)
+            {
+                found_impl = true;
+                break;
+            }
+        }
+        debug!(?found_impl);
+        if !found_parent_with_attr && !found_impl {
+            cx.struct_span_lint(
+                DIAGNOSTIC_OUTSIDE_OF_IMPL,
+                span,
+                fluent::lint_diag_out_of_impl,
+                |lint| lint,
+            )
+        }
+
+        let mut found_diagnostic_message = false;
+        for ty in substs.types() {
+            debug!(?ty);
+            if let Some(adt_def) = ty.ty_adt_def() &&
+                let Some(name) =  cx.tcx.get_diagnostic_name(adt_def.did()) &&
+                matches!(name, sym::DiagnosticMessage | sym::SubdiagnosticMessage)
+            {
+                found_diagnostic_message = true;
+                break;
+            }
+        }
+        debug!(?found_diagnostic_message);
+        if !found_parent_with_attr && !found_diagnostic_message {
+            cx.struct_span_lint(
+                UNTRANSLATABLE_DIAGNOSTIC,
+                span,
+                fluent::lint_untranslatable_diag,
+                |lint| lint,
+            )
+        }
+    }
+}
+
+declare_tool_lint! {
+    pub rustc::BAD_OPT_ACCESS,
+    Deny,
+    "prevent using options by field access when there is a wrapper function",
+    report_in_external_macro: true
+}
+
+declare_lint_pass!(BadOptAccess => [ BAD_OPT_ACCESS ]);
+
+impl LateLintPass<'_> for BadOptAccess {
+    fn check_expr(&mut self, cx: &LateContext<'_>, expr: &Expr<'_>) {
+        let ExprKind::Field(base, target) = expr.kind else { return };
+        let Some(adt_def) = cx.typeck_results().expr_ty(base).ty_adt_def() else { return };
+        // Skip types without `#[rustc_lint_opt_ty]` - only so that the rest of the lint can be
+        // avoided.
+        if !cx.tcx.has_attr(adt_def.did(), sym::rustc_lint_opt_ty) {
+            return;
+        }
+
+        for field in adt_def.all_fields() {
+            if field.name == target.name &&
+                let Some(attr) = cx.tcx.get_attr(field.did, sym::rustc_lint_opt_deny_field_access) &&
+                let Some(items) = attr.meta_item_list()  &&
+                let Some(item) = items.first()  &&
+                let Some(lit) = item.lit()  &&
+                let ast::LitKind::Str(val, _) = lit.kind
+            {
+                cx.struct_span_lint(BAD_OPT_ACCESS, expr.span, val.as_str(), |lint|
+                    lint
+                );
             }
         }
     }

@@ -36,9 +36,8 @@ impl ClippyProjectInfo {
 }
 
 pub fn setup_rustc_src(rustc_path: &str) {
-    let rustc_source_dir = match check_and_get_rustc_dir(rustc_path) {
-        Ok(path) => path,
-        Err(_) => return,
+    let Ok(rustc_source_dir) = check_and_get_rustc_dir(rustc_path) else {
+        return
     };
 
     for project in CLIPPY_PROJECTS {
@@ -60,7 +59,7 @@ fn check_and_get_rustc_dir(rustc_path: &str) -> Result<PathBuf, ()> {
                 path = absolute_path;
             },
             Err(err) => {
-                eprintln!("error: unable to get the absolute path of rustc ({})", err);
+                eprintln!("error: unable to get the absolute path of rustc ({err})");
                 return Err(());
             },
         };
@@ -103,14 +102,14 @@ fn inject_deps_into_project(rustc_source_dir: &Path, project: &ClippyProjectInfo
 fn read_project_file(file_path: &str) -> Result<String, ()> {
     let path = Path::new(file_path);
     if !path.exists() {
-        eprintln!("error: unable to find the file `{}`", file_path);
+        eprintln!("error: unable to find the file `{file_path}`");
         return Err(());
     }
 
     match fs::read_to_string(path) {
         Ok(content) => Ok(content),
         Err(err) => {
-            eprintln!("error: the file `{}` could not be read ({})", file_path, err);
+            eprintln!("error: the file `{file_path}` could not be read ({err})");
             Err(())
         },
     }
@@ -124,10 +123,7 @@ fn inject_deps_into_manifest(
 ) -> std::io::Result<()> {
     // do not inject deps if we have already done so
     if cargo_toml.contains(RUSTC_PATH_SECTION) {
-        eprintln!(
-            "warn: dependencies are already setup inside {}, skipping file",
-            manifest_path
-        );
+        eprintln!("warn: dependencies are already setup inside {manifest_path}, skipping file");
         return Ok(());
     }
 
@@ -142,11 +138,7 @@ fn inject_deps_into_manifest(
 
     let new_deps = extern_crates.map(|dep| {
         // format the dependencies that are going to be put inside the Cargo.toml
-        format!(
-            "{dep} = {{ path = \"{source_path}/{dep}\" }}\n",
-            dep = dep,
-            source_path = rustc_source_dir.display()
-        )
+        format!("{dep} = {{ path = \"{}/{dep}\" }}\n", rustc_source_dir.display())
     });
 
     // format a new [dependencies]-block with the new deps we need to inject
@@ -163,11 +155,11 @@ fn inject_deps_into_manifest(
     // etc
     let new_manifest = cargo_toml.replacen("[dependencies]\n", &all_deps, 1);
 
-    // println!("{}", new_manifest);
+    // println!("{new_manifest}");
     let mut file = File::create(manifest_path)?;
     file.write_all(new_manifest.as_bytes())?;
 
-    println!("info: successfully setup dependencies inside {}", manifest_path);
+    println!("info: successfully setup dependencies inside {manifest_path}");
 
     Ok(())
 }
@@ -179,14 +171,10 @@ pub fn remove_rustc_src() {
 }
 
 fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
-    let mut cargo_content = if let Ok(content) = read_project_file(project.cargo_file) {
-        content
-    } else {
+    let Ok(mut cargo_content) = read_project_file(project.cargo_file) else {
         return false;
     };
-    let section_start = if let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) {
-        section_start
-    } else {
+    let Some(section_start) = cargo_content.find(RUSTC_PATH_SECTION) else {
         println!(
             "info: dependencies could not be found in `{}` for {}, skipping file",
             project.cargo_file, project.name
@@ -194,9 +182,7 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
         return true;
     };
 
-    let end_point = if let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) {
-        end_point
-    } else {
+    let Some(end_point) = cargo_content.find(DEPENDENCIES_SECTION) else {
         eprintln!(
             "error: the end of the rustc dependencies section could not be found in `{}`",
             project.cargo_file
@@ -214,8 +200,8 @@ fn remove_rustc_src_from_project(project: &ClippyProjectInfo) -> bool {
         },
         Err(err) => {
             eprintln!(
-                "error: unable to open file `{}` to remove rustc dependencies for {} ({})",
-                project.cargo_file, project.name, err
+                "error: unable to open file `{}` to remove rustc dependencies for {} ({err})",
+                project.cargo_file, project.name
             );
             false
         },

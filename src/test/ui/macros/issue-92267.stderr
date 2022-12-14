@@ -1,0 +1,16 @@
+error: argument never used
+  --> $DIR/issue-92267.rs:3:34
+   |
+LL | pub fn main() { println!("🦀%%%", 0) }
+   |                                   ^ argument never used
+   |
+note: format specifiers use curly braces, and the conversion specifier `
+      ` is unknown or unsupported
+  --> $DIR/issue-92267.rs:3:30
+   |
+LL | pub fn main() { println!("🦀%%%", 0) }
+   |                               ^^
+   = note: printf formatting not supported; see the documentation for `std::fmt`
+
+error: aborting due to previous error
+

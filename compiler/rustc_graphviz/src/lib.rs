@@ -4,18 +4,16 @@
 //! use with [Graphviz](https://www.graphviz.org/) by walking a labeled
 //! graph. (Graphviz can then automatically lay out the nodes and edges
 //! of the graph, and also optionally render the graph as an image or
-//! other [output formats](
-//! https://www.graphviz.org/content/output-formats), such as SVG.)
+//! other [output formats](https://www.graphviz.org/docs/outputs), such as SVG.)
 //!
 //! Rather than impose some particular graph data structure on clients,
 //! this library exposes two traits that clients can implement on their
 //! own structs before handing them over to the rendering function.
 //!
 //! Note: This library does not yet provide access to the full
-//! expressiveness of the [DOT language](
-//! https://www.graphviz.org/doc/info/lang.html). For example, there are
-//! many [attributes](https://www.graphviz.org/content/attrs) related to
-//! providing layout hints (e.g., left-to-right versus top-down, which
+//! expressiveness of the [DOT language](https://www.graphviz.org/doc/info/lang.html).
+//! For example, there are many [attributes](https://www.graphviz.org/doc/info/attrs.html)
+//! related to providing layout hints (e.g., left-to-right versus top-down, which
 //! algorithm to use, etc). The current intention of this library is to
 //! emit a human-readable .dot file with very regular structure suitable
 //! for easy post-processing.
@@ -275,7 +273,8 @@
     html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/",
     test(attr(allow(unused_variables), deny(warnings)))
 )]
-#![feature(nll)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 use LabelText::*;
 
@@ -292,7 +291,7 @@ pub enum LabelText<'a> {
     LabelStr(Cow<'a, str>),
 
     /// This kind of label uses the graphviz label escString type:
-    /// <https://www.graphviz.org/content/attrs#kescString>
+    /// <https://www.graphviz.org/docs/attr-types/escString>
     ///
     /// Occurrences of backslashes (`\`) are not escaped; instead they
     /// are interpreted as initiating an escString escape sequence.
@@ -307,12 +306,12 @@ pub enum LabelText<'a> {
     /// printed exactly as given, but between `<` and `>`. **No
     /// escaping is performed.**
     ///
-    /// [html]: https://www.graphviz.org/content/node-shapes#html
+    /// [html]: https://www.graphviz.org/doc/info/shapes.html#html
     HtmlStr(Cow<'a, str>),
 }
 
 /// The style for a node or edge.
-/// See <https://www.graphviz.org/doc/info/attrs.html#k:style> for descriptions.
+/// See <https://www.graphviz.org/docs/attr-types/style/> for descriptions.
 /// Note that some of these are not valid for edges.
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum Style {
@@ -411,7 +410,7 @@ impl<'a> Id<'a> {
     }
 
     pub fn as_slice(&'a self) -> &'a str {
-        &*self.name
+        &self.name
     }
 }
 
@@ -439,7 +438,7 @@ pub trait Labeller<'a> {
     /// Maps `n` to one of the [graphviz `shape` names][1]. If `None`
     /// is returned, no `shape` attribute is specified.
     ///
-    /// [1]: https://www.graphviz.org/content/node-shapes
+    /// [1]: https://www.graphviz.org/doc/info/shapes.html
     fn node_shape(&'a self, _node: &Self::Node) -> Option<LabelText<'a>> {
         None
     }
@@ -472,7 +471,11 @@ pub trait Labeller<'a> {
 /// Escape tags in such a way that it is suitable for inclusion in a
 /// Graphviz HTML label.
 pub fn escape_html(s: &str) -> String {
-    s.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;").replace(">", "&gt;")
+    s.replace('&', "&amp;")
+        .replace('\"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('\n', "<br align=\"left\"/>")
 }
 
 impl<'a> LabelText<'a> {
@@ -512,7 +515,7 @@ impl<'a> LabelText<'a> {
     pub fn to_dot_string(&self) -> String {
         match *self {
             LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
-            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s)),
+            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(s)),
             HtmlStr(ref s) => format!("<{}>", s),
         }
     }
@@ -526,7 +529,7 @@ impl<'a> LabelText<'a> {
             EscStr(s) => s,
             LabelStr(s) => {
                 if s.contains('\\') {
-                    (&*s).escape_default().to_string().into()
+                    s.escape_default().to_string().into()
                 } else {
                     s
                 }
@@ -659,7 +662,7 @@ where
         }
 
         writeln!(text, ";").unwrap();
-        w.write_all(&text[..])?;
+        w.write_all(&text)?;
 
         text.clear();
     }
@@ -684,7 +687,7 @@ where
         }
 
         writeln!(text, ";").unwrap();
-        w.write_all(&text[..])?;
+        w.write_all(&text)?;
 
         text.clear();
     }

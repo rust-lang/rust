@@ -1,6 +1,3 @@
-#![feature(generic_associated_types)]
-#![allow(incomplete_features)]
-
 trait Trait<T> {
     type Type<'a>
     where

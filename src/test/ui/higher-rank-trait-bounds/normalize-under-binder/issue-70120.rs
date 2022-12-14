@@ -1,3 +1,5 @@
+// check-pass
+
 pub trait MyTrait<'a> {
     type Output: 'a;
     fn gimme_value(&self) -> Self::Output;
@@ -23,7 +25,7 @@ where
 
 fn main() {
     let struc = MyStruct;
-    meow(struc, |foo| { //~ type mismatch
+    meow(struc, |foo| {
         println!("{:?}", foo);
     })
 }

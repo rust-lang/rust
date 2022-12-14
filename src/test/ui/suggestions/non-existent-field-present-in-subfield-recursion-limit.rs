@@ -1,4 +1,4 @@
-// In rustc_typeck::check::expr::no_such_field_err we recursively
+// In rustc_hir_analysis::check::expr::no_such_field_err we recursively
 // look in subfields for the field. This recursive search is limited
 // in depth for compile-time reasons and to avoid infinite recursion
 // in case of cycles. This file tests that the limit in the recursion

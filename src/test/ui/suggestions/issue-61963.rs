@@ -18,9 +18,19 @@ pub struct Qux<T>(T);
 pub struct Foo {
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
     //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition
     qux: Qux<Qux<Baz>>,
     bar: Box<Bar>,
     //~^ ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
+    //~| WARN this is accepted in the current edition
+    //~| ERROR trait objects without an explicit `dyn` are deprecated [bare_trait_objects]
     //~| WARN this is accepted in the current edition
 }
 

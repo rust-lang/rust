@@ -4,10 +4,10 @@ error: expected identifier, found reserved keyword `try`
 LL |     let try = "foo";
    |         ^^^ expected identifier, found reserved keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `try` to use it as an identifier
    |
 LL |     let r#try = "foo";
-   |         ~~~~~
+   |         ++
 
 error: aborting due to previous error
 

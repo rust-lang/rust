@@ -1,5 +1,5 @@
 warning: unused variable: `x`
-  --> $DIR/issue-89305.rs:11:13
+  --> $DIR/issue-89305.rs:13:13
    |
 LL |         let x: () = asm!("nop");
    |             ^ help: if this is intentional, prefix it with an underscore: `_x`

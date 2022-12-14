@@ -10,21 +10,21 @@ Core encoding and decoding interfaces.
     test(attr(allow(unused_variables), deny(warnings)))
 )]
 #![feature(never_type)]
-#![feature(nll)]
 #![feature(associated_type_bounds)]
 #![feature(min_specialization)]
 #![feature(core_intrinsics)]
 #![feature(maybe_uninit_slice)]
 #![feature(new_uninit)]
+#![feature(allocator_api)]
 #![cfg_attr(test, feature(test))]
 #![allow(rustc::internal)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 
 pub use self::serialize::{Decodable, Decoder, Encodable, Encoder};
 
 mod collection_impls;
 mod serialize;
-
-pub mod json;
 
 pub mod leb128;
 pub mod opaque;

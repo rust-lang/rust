@@ -4,11 +4,12 @@ use crate::ptr;
 /// A wrapper to inhibit compiler from automatically calling `T`’s destructor.
 /// This wrapper is 0-cost.
 ///
-/// `ManuallyDrop<T>` is subject to the same layout optimizations as `T`.
-/// As a consequence, it has *no effect* on the assumptions that the compiler makes
-/// about its contents. For example, initializing a `ManuallyDrop<&mut T>`
-/// with [`mem::zeroed`] is undefined behavior.
-/// If you need to handle uninitialized data, use [`MaybeUninit<T>`] instead.
+/// `ManuallyDrop<T>` is guaranteed to have the same layout as `T`, and is subject
+/// to the same layout optimizations as `T`. As a consequence, it has *no effect*
+/// on the assumptions that the compiler makes about its contents. For example,
+/// initializing a `ManuallyDrop<&mut T>` with [`mem::zeroed`] is undefined
+/// behavior. If you need to handle uninitialized data, use [`MaybeUninit<T>`]
+/// instead.
 ///
 /// Note that accessing the value inside a `ManuallyDrop<T>` is safe.
 /// This means that a `ManuallyDrop<T>` whose content has been dropped must not
@@ -64,7 +65,7 @@ impl<T> ManuallyDrop<T> {
     /// ```
     #[must_use = "if you don't need the wrapper, you can use `mem::forget` instead"]
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn new(value: T) -> ManuallyDrop<T> {
         ManuallyDrop { value }
@@ -82,7 +83,7 @@ impl<T> ManuallyDrop<T> {
     /// let _: Box<()> = ManuallyDrop::into_inner(x); // This drops the `Box`.
     /// ```
     #[stable(feature = "manually_drop", since = "1.20.0")]
-    #[rustc_const_stable(feature = "const_manually_drop", since = "1.36.0")]
+    #[rustc_const_stable(feature = "const_manually_drop", since = "1.32.0")]
     #[inline(always)]
     pub const fn into_inner(slot: ManuallyDrop<T>) -> T {
         slot.value

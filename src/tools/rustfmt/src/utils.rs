@@ -1,7 +1,7 @@
 use std::borrow::Cow;
 
 use rustc_ast::ast::{
-    self, Attribute, CrateSugar, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
+    self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Visibility,
     VisibilityKind,
 };
 use rustc_ast::ptr;
@@ -42,17 +42,9 @@ pub(crate) fn is_same_visibility(a: &Visibility, b: &Visibility) -> bool {
         (
             VisibilityKind::Restricted { path: p, .. },
             VisibilityKind::Restricted { path: q, .. },
-        ) => pprust::path_to_string(&p) == pprust::path_to_string(&q),
+        ) => pprust::path_to_string(p) == pprust::path_to_string(q),
         (VisibilityKind::Public, VisibilityKind::Public)
-        | (VisibilityKind::Inherited, VisibilityKind::Inherited)
-        | (
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-            VisibilityKind::Crate(CrateSugar::PubCrate),
-        )
-        | (
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-            VisibilityKind::Crate(CrateSugar::JustCrate),
-        ) => true,
+        | (VisibilityKind::Inherited, VisibilityKind::Inherited) => true,
         _ => false,
     }
 }
@@ -65,8 +57,6 @@ pub(crate) fn format_visibility(
     match vis.kind {
         VisibilityKind::Public => Cow::from("pub "),
         VisibilityKind::Inherited => Cow::from(""),
-        VisibilityKind::Crate(CrateSugar::PubCrate) => Cow::from("pub(crate) "),
-        VisibilityKind::Crate(CrateSugar::JustCrate) => Cow::from("crate "),
         VisibilityKind::Restricted { ref path, .. } => {
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
@@ -75,7 +65,7 @@ pub(crate) fn format_visibility(
                     .next()
                     .expect("Non-global path in pub(restricted)?");
             }
-            let is_keyword = |s: &str| s == "self" || s == "super";
+            let is_keyword = |s: &str| s == "crate" || s == "self" || s == "super";
             let path = segments_iter.collect::<Vec<_>>().join("::");
             let in_str = if is_keyword(&path) { "" } else { "in " };
 
@@ -148,8 +138,8 @@ pub(crate) fn format_extern(
 ) -> Cow<'static, str> {
     let abi = match ext {
         ast::Extern::None => "Rust".to_owned(),
-        ast::Extern::Implicit => "C".to_owned(),
-        ast::Extern::Explicit(abi) => abi.symbol_unescaped.to_string(),
+        ast::Extern::Implicit(_) => "C".to_owned(),
+        ast::Extern::Explicit(abi, _) => abi.symbol_unescaped.to_string(),
     };
 
     if abi == "Rust" && !is_mod {
@@ -260,7 +250,7 @@ fn is_skip(meta_item: &MetaItem) -> bool {
     match meta_item.kind {
         MetaItemKind::Word => {
             let path_str = pprust::path_to_string(&meta_item.path);
-            path_str == *skip_annotation().as_str() || path_str == *depr_skip_annotation().as_str()
+            path_str == skip_annotation().as_str() || path_str == depr_skip_annotation().as_str()
         }
         MetaItemKind::List(ref l) => {
             meta_item.has_name(sym::cfg_attr) && l.len() == 2 && is_skip_nested(&l[1])
@@ -273,7 +263,7 @@ fn is_skip(meta_item: &MetaItem) -> bool {
 fn is_skip_nested(meta_item: &NestedMetaItem) -> bool {
     match meta_item {
         NestedMetaItem::MetaItem(ref mi) => is_skip(mi),
-        NestedMetaItem::Literal(_) => false,
+        NestedMetaItem::Lit(_) => false,
     }
 }
 
@@ -489,9 +479,9 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Binary(_, _, ref expr)
         | ast::ExprKind::Index(_, ref expr)
         | ast::ExprKind::Unary(_, ref expr)
-        | ast::ExprKind::Closure(_, _, _, _, ref expr, _)
         | ast::ExprKind::Try(ref expr)
         | ast::ExprKind::Yield(Some(ref expr)) => is_block_expr(context, expr, repr),
+        ast::ExprKind::Closure(ref closure) => is_block_expr(context, &closure.body, repr),
         // This can only be a string lit
         ast::ExprKind::Lit(_) => {
             repr.contains('\n') && trimmed_last_line_width(repr) <= context.config.tab_spaces()
@@ -506,13 +496,14 @@ pub(crate) fn is_block_expr(context: &RewriteContext<'_>, expr: &ast::Expr, repr
         | ast::ExprKind::Continue(..)
         | ast::ExprKind::Err
         | ast::ExprKind::Field(..)
+        | ast::ExprKind::IncludedBytes(..)
         | ast::ExprKind::InlineAsm(..)
-        | ast::ExprKind::LlvmInlineAsm(..)
         | ast::ExprKind::Let(..)
         | ast::ExprKind::Path(..)
         | ast::ExprKind::Range(..)
         | ast::ExprKind::Repeat(..)
         | ast::ExprKind::Ret(..)
+        | ast::ExprKind::Yeet(..)
         | ast::ExprKind::Tup(..)
         | ast::ExprKind::Type(..)
         | ast::ExprKind::Yield(None)
@@ -647,9 +638,22 @@ pub(crate) fn trim_left_preserve_layout(
 }
 
 /// Based on the given line, determine if the next line can be indented or not.
-/// This allows to preserve the indentation of multi-line literals.
-pub(crate) fn indent_next_line(kind: FullCodeCharKind, _line: &str, config: &Config) -> bool {
-    !(kind.is_string() || (config.version() == Version::Two && kind.is_commented_string()))
+/// This allows to preserve the indentation of multi-line literals when
+/// re-inserted a code block that has been formatted separately from the rest
+/// of the code, such as code in macro defs or code blocks doc comments.
+pub(crate) fn indent_next_line(kind: FullCodeCharKind, line: &str, config: &Config) -> bool {
+    if kind.is_string() {
+        // If the string ends with '\', the string has been wrapped over
+        // multiple lines. If `format_strings = true`, then the indentation of
+        // strings wrapped over multiple lines will have been adjusted while
+        // formatting the code block, therefore the string's indentation needs
+        // to be adjusted for the code surrounding the code block.
+        config.format_strings() && line.ends_with('\\')
+    } else if config.version() == Version::Two {
+        !kind.is_commented_string()
+    } else {
+        true
+    }
 }
 
 pub(crate) fn is_empty_line(s: &str) -> bool {
@@ -689,7 +693,7 @@ mod test {
     #[test]
     fn test_remove_trailing_white_spaces() {
         let s = "    r#\"\n        test\n    \"#";
-        assert_eq!(remove_trailing_white_spaces(&s), s);
+        assert_eq!(remove_trailing_white_spaces(s), s);
     }
 
     #[test]
@@ -698,7 +702,7 @@ mod test {
         let config = Config::default();
         let indent = Indent::new(4, 0);
         assert_eq!(
-            trim_left_preserve_layout(&s, indent, &config),
+            trim_left_preserve_layout(s, indent, &config),
             Some("aaa\n    bbb\n    ccc".to_string())
         );
     }

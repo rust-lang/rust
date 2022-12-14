@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-57673-ice-on-deref-of-boxed-trait.rs:5:5
    |
 LL | fn ice(x: Box<dyn Iterator<Item=()>>) {
-   |                                       - possibly return type missing here?
+   |                                       - help: try adding a return type: `-> (dyn Iterator<Item = ()> + 'static)`
 LL |     *x
    |     ^^ expected `()`, found trait object `dyn Iterator`
    |

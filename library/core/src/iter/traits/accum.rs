@@ -10,6 +10,10 @@ use crate::num::Wrapping;
 /// [`sum()`]: Iterator::sum
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[rustc_on_unimplemented(
+    message = "a value of type `{Self}` cannot be made by summing an iterator over elements of type `{A}`",
+    label = "value of type `{Self}` cannot be made by summing a `std::iter::Iterator<Item={A}>`"
+)]
 pub trait Sum<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// "summing up" the items.
@@ -27,6 +31,10 @@ pub trait Sum<A = Self>: Sized {
 /// [`product()`]: Iterator::product
 /// [`FromIterator`]: iter::FromIterator
 #[stable(feature = "iter_arith_traits", since = "1.12.0")]
+#[rustc_on_unimplemented(
+    message = "a value of type `{Self}` cannot be made by multiplying all elements of type `{A}` from an iterator",
+    label = "value of type `{Self}` cannot be made by multiplying all elements from a `std::iter::Iterator<Item={A}>`"
+)]
 pub trait Product<A = Self>: Sized {
     /// Method which takes an iterator and generates `Self` from the elements by
     /// multiplying the items.
@@ -167,7 +175,7 @@ where
     where
         I: Iterator<Item = Result<U, E>>,
     {
-        iter::process_results(iter, |i| i.sum())
+        iter::try_process(iter, |i| i.sum())
     }
 }
 
@@ -183,7 +191,7 @@ where
     where
         I: Iterator<Item = Result<U, E>>,
     {
-        iter::process_results(iter, |i| i.product())
+        iter::try_process(iter, |i| i.product())
     }
 }
 
@@ -210,7 +218,7 @@ where
     where
         I: Iterator<Item = Option<U>>,
     {
-        iter.map(|x| x.ok_or(())).sum::<Result<_, _>>().ok()
+        iter::try_process(iter, |i| i.sum())
     }
 }
 
@@ -226,6 +234,6 @@ where
     where
         I: Iterator<Item = Option<U>>,
     {
-        iter.map(|x| x.ok_or(())).product::<Result<_, _>>().ok()
+        iter::try_process(iter, |i| i.product())
     }
 }

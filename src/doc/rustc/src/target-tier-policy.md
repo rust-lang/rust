@@ -3,6 +3,7 @@
 ## Table of Contents
 
 * [General](#general)
+* [Adding a new target](#adding-a-new-target)
 * [Tier 3 target policy](#tier-3-target-policy)
 * [Tier 2 target policy](#tier-2-target-policy)
   * [Tier 2 with host tools](#tier-2-with-host-tools)
@@ -62,12 +63,21 @@ not preclude an existing target's maintainers using issues (on the Rust
 repository or otherwise) to track requirements that have not yet been met, as
 appropriate; however, before officially proposing the introduction or promotion
 of a target, it should meet all of the necessary requirements. A target
-proposal is encouraged to quote the corresponding requirements verbatim as part
-of explaining how the target meets those requirements.
+proposal must quote the corresponding requirements verbatim and respond to them
+as part of explaining how the target meets those requirements. (For the
+requirements that simply state that the target or the target developers must
+not do something, it suffices to acknowledge the requirement.)
 
 For a list of all supported targets and their corresponding tiers ("tier 3",
 "tier 2", "tier 2 with host tools", "tier 1", or "tier 1 with host tools"), see
 [platform support](platform-support.md).
+
+Several parts of this policy require providing target-specific documentation.
+Such documentation should typically appear in a subdirectory of the
+platform-support section of this rustc manual, with a link from the target's
+entry in [platform support](platform-support.md). Use
+[TEMPLATE.md](platform-support/TEMPLATE.md) as a base, and see other
+documentation in that directory for examples.
 
 Note that a target must have already received approval for the next lower tier,
 and spent a reasonable amount of time at that tier, before making a proposal
@@ -94,6 +104,30 @@ approving teams may grant an exception for good reason. The word "may"
 indicates something entirely optional, and does not indicate guidance or
 recommendations. This language is based on [IETF RFC
 2119](https://tools.ietf.org/html/rfc2119).
+
+## Adding a new target
+
+New targets typically start as Tier 3 and then can be promoted later.
+To propose addition of a new target, open a pull request on [`rust-lang/rust`]:
+
+- Copy the [Tier 3 target policy](#tier-3-target-policy) to the description
+  and fill it out, see [example][tier3example].
+- Add a new description for the target in `src/doc/rustc/src/platform-support`
+  using the [template][platform_template].
+- Add the target to the [SUMMARY.md][summary] (allows wildcards) and
+  [platform-support.md][platformsupport] (must name all targets verbatim).
+  Link to the created description page.
+- Ensure the pull request is assigned to a member of the [Rust compiler team][rust_compiler_team] by commenting:
+  ```text
+  r? compiler-team
+  ```
+
+[tier3example]: https://github.com/rust-lang/rust/pull/94872
+[platform_template]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support/TEMPLATE.md
+[summary]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/SUMMARY.md
+[platformsupport]: https://github.com/rust-lang/rust/blob/master/src/doc/rustc/src/platform-support.md
+[rust_compiler_team]: https://www.rust-lang.org/governance/teams/compiler
+[`rust-lang/rust`]: https://github.com/rust-lang/rust
 
 ## Tier 3 target policy
 
@@ -124,6 +158,8 @@ approved by the appropriate team for that shared code before acceptance.
     the name of the target makes people extremely likely to form incorrect
     beliefs about what it targets, the name should be changed or augmented to
     disambiguate it.
+  - If possible, use only letters, numbers, dashes and underscores for the name.
+    Periods (`.`) are known to cause issues in Cargo.
 - Tier 3 targets may have unusual requirements to build or use, but must not
   create legal issues or impose onerous legal terms for the Rust project or for
   Rust developers or users.
@@ -139,17 +175,19 @@ approved by the appropriate team for that shared code before acceptance.
     or binary. In other words, the introduction of the target must not cause a
     user installing or running a version of Rust or the Rust tools to be
     subject to any new license requirements.
-  - If the target supports building host tools (such as `rustc` or `cargo`),
-    those host tools must not depend on proprietary (non-FOSS) libraries, other
-    than ordinary runtime libraries supplied by the platform and commonly used
-    by other binaries built for the target. For instance, `rustc` built for the
-    target may depend on a common proprietary C runtime library or console
-    output library, but must not depend on a proprietary code generation
-    library or code optimization library. Rust's license permits such
-    combinations, but the Rust project has no interest in maintaining such
-    combinations within the scope of Rust itself, even at tier 3.
-  - Targets should not require proprietary (non-FOSS) components to link a
-    functional binary or library.
+  - Compiling, linking, and emitting functional binaries, libraries, or other
+    code for the target (whether hosted on the target itself or cross-compiling
+    from another target) must not depend on proprietary (non-FOSS) libraries.
+    Host tools built for the target itself may depend on the ordinary runtime
+    libraries supplied by the platform and commonly used by other applications
+    built for the target, but those libraries must not be required for code
+    generation for the target; cross-compilation to the target must not require
+    such libraries at all. For instance, `rustc` built for the target may
+    depend on a common proprietary C runtime library or console output library,
+    but must not depend on a proprietary code generation library or code
+    optimization library. Rust's license permits such combinations, but the
+    Rust project has no interest in maintaining such combinations within the
+    scope of Rust itself, even at tier 3.
   - "onerous" here is an intentionally subjective term. At a minimum, "onerous"
     legal/licensing terms include but are *not* limited to: non-disclosure
     requirements, non-compete requirements, contributor license agreements
@@ -184,9 +222,9 @@ approved by the appropriate team for that shared code before acceptance.
   target not implementing those portions.
 - The target must provide documentation for the Rust community explaining how
   to build for the target, using cross-compilation if possible. If the target
-  supports running tests (even if they do not pass), the documentation must
-  explain how to run tests for the target, using emulation if possible or
-  dedicated hardware if necessary.
+  supports running binaries, or running tests (even if they do not pass), the
+  documentation must explain how to run such binaries or tests for the target,
+  using emulation if possible or dedicated hardware if necessary.
 - Tier 3 targets must not impose burden on the authors of pull requests, or
   other developers in the community, to maintain the target. In particular,
   do not post comments (automated or manual) on a PR that derail or suggest a

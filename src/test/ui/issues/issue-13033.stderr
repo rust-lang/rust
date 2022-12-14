@@ -1,15 +1,17 @@
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/issue-13033.rs:8:30
    |
-LL |     fn bar(&mut self, other: &mut dyn Foo);
-   |                              ------------ type in trait
-...
 LL |     fn bar(&mut self, other: &dyn Foo) {}
    |                              ^^^^^^^^
    |                              |
    |                              types differ in mutability
    |                              help: change the parameter type to match the trait: `&mut dyn Foo`
    |
+note: type in trait
+  --> $DIR/issue-13033.rs:2:30
+   |
+LL |     fn bar(&mut self, other: &mut dyn Foo);
+   |                              ^^^^^^^^^^^^
    = note: expected fn pointer `fn(&mut Baz, &mut dyn Foo)`
               found fn pointer `fn(&mut Baz, &dyn Foo)`
 

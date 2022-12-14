@@ -4,7 +4,7 @@ error: comparison operators cannot be chained
 LL |     T1<1>::C;
    |       ^ ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     T1::<1>::C;
    |       ++
@@ -15,7 +15,7 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
 LL |     T2<1, 2>::C;
    |         ^ expected one of `.`, `;`, `?`, `}`, or an operator
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     T2::<1, 2>::C;
    |       ++
@@ -26,7 +26,7 @@ error: expected one of `.`, `;`, `?`, `}`, or an operator, found `,`
 LL |     T3<1, 2, 3>::C;
    |         ^ expected one of `.`, `;`, `?`, `}`, or an operator
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL |     T3::<1, 2, 3>::C;
    |       ++

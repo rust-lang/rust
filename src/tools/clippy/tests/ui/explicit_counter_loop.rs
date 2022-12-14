@@ -1,4 +1,5 @@
 #![warn(clippy::explicit_counter_loop)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let mut vec = vec![1, 2, 3, 4];
@@ -155,6 +156,36 @@ mod issue_4677 {
         for _i in slice {
             count += 1;
             println!("{}", count);
+        }
+    }
+}
+
+mod issue_7920 {
+    pub fn test() {
+        let slice = &[1, 2, 3];
+
+        let index_usize: usize = 0;
+        let mut idx_usize: usize = 0;
+
+        // should suggest `enumerate`
+        for _item in slice {
+            if idx_usize == index_usize {
+                break;
+            }
+
+            idx_usize += 1;
+        }
+
+        let index_u32: u32 = 0;
+        let mut idx_u32: u32 = 0;
+
+        // should suggest `zip`
+        for _item in slice {
+            if idx_u32 == index_u32 {
+                break;
+            }
+
+            idx_u32 += 1;
         }
     }
 }

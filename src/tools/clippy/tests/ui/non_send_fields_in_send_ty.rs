@@ -1,4 +1,5 @@
 #![warn(clippy::non_send_fields_in_send_ty)]
+#![allow(suspicious_auto_trait_impls)]
 #![feature(extern_types)]
 
 use std::cell::UnsafeCell;
@@ -68,6 +69,11 @@ pub enum MyOption<T> {
 }
 
 unsafe impl<T> Send for MyOption<T> {}
+
+// Test types that contain `NonNull` instead of raw pointers (#8045)
+pub struct WrappedNonNull(UnsafeCell<NonNull<()>>);
+
+unsafe impl Send for WrappedNonNull {}
 
 // Multiple type parameters
 pub struct MultiParam<A, B> {

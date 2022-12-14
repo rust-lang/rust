@@ -12,6 +12,7 @@ use std::mem;
 mod rusti {
     extern "rust-intrinsic" {
         pub fn pref_align_of<T>() -> usize;
+        #[rustc_safe_intrinsic]
         pub fn min_align_of<T>() -> usize;
     }
 }
@@ -36,6 +37,7 @@ struct Outer {
           target_os = "emscripten",
           target_os = "freebsd",
           target_os = "fuchsia",
+          target_os = "illumos",
           target_os = "linux",
           target_os = "macos",
           target_os = "netbsd",

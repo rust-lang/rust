@@ -1,8 +1,8 @@
 error[E0277]: `T` cannot be shared between threads safely
-  --> $DIR/two-traits.rs:11:5
+  --> $DIR/two-traits.rs:11:14
    |
 LL |     type X = Self;
-   |     ^^^^^^^^^^^^^^ `T` cannot be shared between threads safely
+   |              ^^^^ `T` cannot be shared between threads safely
    |
 note: required by a bound in `Magic::X`
   --> $DIR/two-traits.rs:8:13

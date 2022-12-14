@@ -1,5 +1,5 @@
 error: expected identifier, found reserved identifier `_`
-  --> $DIR/struct_destructure_fail.rs:12:17
+  --> $DIR/struct_destructure_fail.rs:11:17
    |
 LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     ------      ^ expected identifier, found reserved identifier
@@ -7,25 +7,25 @@ LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     while parsing this struct
 
 error: functional record updates are not allowed in destructuring assignments
-  --> $DIR/struct_destructure_fail.rs:14:19
+  --> $DIR/struct_destructure_fail.rs:13:19
    |
 LL |     Struct { a, ..d } = Struct { a: 1, b: 2 };
    |                   ^ help: consider removing the trailing pattern
 
 error: base expression required after `..`
-  --> $DIR/struct_destructure_fail.rs:16:19
+  --> $DIR/struct_destructure_fail.rs:15:19
    |
 LL |     Struct { a, .. };
    |                   ^ add a base expression here
 
 error[E0026]: struct `Struct` does not have a field named `c`
-  --> $DIR/struct_destructure_fail.rs:11:20
+  --> $DIR/struct_destructure_fail.rs:10:20
    |
 LL |     Struct { a, b, c } = Struct { a: 0, b: 1 };
    |                    ^ struct `Struct` does not have this field
 
 error[E0027]: pattern does not mention field `b`
-  --> $DIR/struct_destructure_fail.rs:12:5
+  --> $DIR/struct_destructure_fail.rs:11:5
    |
 LL |     Struct { a, _ } = Struct { a: 1, b: 2 };
    |     ^^^^^^^^^^^^^^^ missing field `b`

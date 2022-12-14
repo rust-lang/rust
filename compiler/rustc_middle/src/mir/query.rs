@@ -1,15 +1,14 @@
 //! Values computed by queries that use MIR.
 
-use crate::mir::{Body, Promoted};
-use crate::ty::{self, Ty, TyCtxt};
-use rustc_data_structures::sync::Lrc;
+use crate::mir::{Body, ConstantKind, Promoted};
+use crate::ty::{self, OpaqueHiddenType, Ty, TyCtxt};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::vec_map::VecMap;
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_index::bit_set::BitMatrix;
 use rustc_index::vec::IndexVec;
-use rustc_middle::ty::OpaqueTypeKey;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use smallvec::SmallVec;
@@ -36,7 +35,6 @@ pub enum UnsafetyViolationDetails {
     UseOfMutableStatic,
     UseOfExternStatic,
     DerefOfRawPointer,
-    AssignToDroppingUnionField,
     AccessToUnionField,
     MutationOfLayoutConstrainedField,
     BorrowOfLayoutConstrainedField,
@@ -79,11 +77,6 @@ impl UnsafetyViolationDetails {
                 "raw pointers may be null, dangling or unaligned; they can violate aliasing rules \
                  and cause data races: all of these are undefined behavior",
             ),
-            AssignToDroppingUnionField => (
-                "assignment to union field that might need dropping",
-                "the previous content of the field will be dropped, which causes undefined \
-                 behavior if the field was not properly initialized",
-            ),
             AccessToUnionField => (
                 "access to union field",
                 "the field may not be properly initialized: using uninitialized data will cause \
@@ -114,13 +107,26 @@ pub struct UnsafetyViolation {
     pub details: UnsafetyViolationDetails,
 }
 
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, Debug)]
+#[derive(Copy, Clone, PartialEq, TyEncodable, TyDecodable, HashStable, Debug)]
+pub enum UnusedUnsafe {
+    /// `unsafe` block contains no unsafe operations
+    /// > ``unnecessary `unsafe` block``
+    Unused,
+    /// `unsafe` block nested under another (used) `unsafe` block
+    /// > ``… because it's nested under this `unsafe` block``
+    InUnsafeBlock(hir::HirId),
+}
+
+#[derive(TyEncodable, TyDecodable, HashStable, Debug)]
 pub struct UnsafetyCheckResult {
     /// Violations that are propagated *upwards* from this function.
-    pub violations: Lrc<[UnsafetyViolation]>,
-    /// `unsafe` blocks in this function, along with whether they are used. This is
-    /// used for the "unused_unsafe" lint.
-    pub unsafe_blocks: Lrc<[(hir::HirId, bool)]>,
+    pub violations: Vec<UnsafetyViolation>,
+
+    /// Used `unsafe` blocks in this function. This is used for the "unused_unsafe" lint.
+    pub used_unsafe_blocks: FxHashSet<hir::HirId>,
+
+    /// This is `Some` iff the item is not a closure.
+    pub unused_unsafes: Option<Vec<(hir::HirId, UnusedUnsafe)>>,
 }
 
 rustc_index::newtype_index! {
@@ -131,7 +137,7 @@ rustc_index::newtype_index! {
 }
 
 /// The layout of generator state.
-#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable)]
+#[derive(Clone, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct GeneratorLayout<'tcx> {
     /// The type of every local stored inside the generator.
     pub field_tys: IndexVec<GeneratorSavedLocal, Ty<'tcx>>,
@@ -211,14 +217,15 @@ pub struct BorrowCheckResult<'tcx> {
     /// All the opaque types that are restricted to concrete types
     /// by this function. Unlike the value in `TypeckResults`, this has
     /// unerased regions.
-    pub concrete_opaque_types: VecMap<OpaqueTypeKey<'tcx>, Ty<'tcx>>,
+    pub concrete_opaque_types: VecMap<LocalDefId, OpaqueHiddenType<'tcx>>,
     pub closure_requirements: Option<ClosureRegionRequirements<'tcx>>,
     pub used_mut_upvars: SmallVec<[Field; 8]>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 /// The result of the `mir_const_qualif` query.
 ///
-/// Each field (except `error_occured`) corresponds to an implementer of the `Qualif` trait in
+/// Each field (except `error_occurred`) corresponds to an implementer of the `Qualif` trait in
 /// `rustc_const_eval/src/transform/check_consts/qualifs.rs`. See that file for more information on each
 /// `Qualif`.
 #[derive(Clone, Copy, Debug, Default, TyEncodable, TyDecodable, HashStable)]
@@ -227,7 +234,7 @@ pub struct ConstQualifs {
     pub needs_drop: bool,
     pub needs_non_const_drop: bool,
     pub custom_eq: bool,
-    pub error_occured: Option<ErrorReported>,
+    pub tainted_by_errors: Option<ErrorGuaranteed>,
 }
 
 /// After we borrow check a closure, we are left with various
@@ -307,11 +314,12 @@ pub struct ClosureOutlivesRequirement<'tcx> {
     pub blame_span: Span,
 
     // ... due to this reason.
-    pub category: ConstraintCategory,
+    pub category: ConstraintCategory<'tcx>,
 }
 
 // Make sure this enum doesn't unintentionally grow
-rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(ConstraintCategory<'_>, 16);
 
 /// Outlives-constraints can be categorized to determine whether and why they
 /// are interesting (for error reporting). Order of variants indicates sort
@@ -319,8 +327,8 @@ rustc_data_structures::static_assert_size!(ConstraintCategory, 12);
 ///
 /// See also `rustc_const_eval::borrow_check::constraints`.
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
-pub enum ConstraintCategory {
+#[derive(TyEncodable, TyDecodable, HashStable, Lift, TypeVisitable, TypeFoldable)]
+pub enum ConstraintCategory<'tcx> {
     Return(ReturnConstraint),
     Yield,
     UseAsConst,
@@ -332,7 +340,9 @@ pub enum ConstraintCategory {
     ///
     /// We try to get the category that the closure used when reporting this.
     ClosureBounds,
-    CallArgument,
+
+    /// Contains the function type if available.
+    CallArgument(Option<Ty<'tcx>>),
     CopyBound,
     SizedBound,
     Assignment,
@@ -340,7 +350,7 @@ pub enum ConstraintCategory {
     /// like `Foo { field: my_val }`)
     Usage,
     OpaqueType,
-    ClosureUpvar(hir::HirId),
+    ClosureUpvar(Field),
 
     /// A constraint from a user-written predicate
     /// with the provided span, written on the item
@@ -359,10 +369,10 @@ pub enum ConstraintCategory {
 }
 
 #[derive(Copy, Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash)]
-#[derive(TyEncodable, TyDecodable, HashStable)]
+#[derive(TyEncodable, TyDecodable, HashStable, TypeVisitable, TypeFoldable)]
 pub enum ReturnConstraint {
     Normal,
-    ClosureUpvar(hir::HirId),
+    ClosureUpvar(Field),
 }
 
 /// The subject of a `ClosureOutlivesRequirement` -- that is, the thing
@@ -382,15 +392,15 @@ pub enum ClosureOutlivesSubject<'tcx> {
     Region(ty::RegionVid),
 }
 
-/// The constituent parts of an ADT or array.
+/// The constituent parts of a mir constant of kind ADT or array.
 #[derive(Copy, Clone, Debug, HashStable)]
-pub struct DestructuredConst<'tcx> {
+pub struct DestructuredConstant<'tcx> {
     pub variant: Option<VariantIdx>,
-    pub fields: &'tcx [&'tcx ty::Const<'tcx>],
+    pub fields: &'tcx [ConstantKind<'tcx>],
 }
 
 /// Coverage information summarized from a MIR if instrumented for source code coverage (see
-/// compiler option `-Zinstrument-coverage`). This information is generated by the
+/// compiler option `-Cinstrument-coverage`). This information is generated by the
 /// `InstrumentCoverage` MIR pass and can be retrieved via the `coverageinfo` query.
 #[derive(Clone, TyEncodable, TyDecodable, Debug, HashStable)]
 pub struct CoverageInfo {

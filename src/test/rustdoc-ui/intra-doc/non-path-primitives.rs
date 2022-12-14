@@ -28,7 +28,6 @@
 //! [unit::eq] //~ ERROR unresolved
 //! [tuple::eq] //~ ERROR unresolved
 //! [fn::eq] //~ ERROR unresolved
-//! [never::eq] //~ ERROR unresolved
 
 // FIXME(#78800): This breaks because it's a blanket impl
 // (I think? Might break for other reasons too.)

@@ -10,7 +10,7 @@ note: function defined here, with 2 generic parameters: `T`, `P`
   --> $DIR/issue-76595.rs:10:4
    |
 LL | fn test<T, const P: usize>() where Bool<{core::mem::size_of::<T>() > 4}>: True {
-   |    ^^^^ -        -
+   |    ^^^^ -  --------------
 help: add missing generic argument
    |
 LL |     test::<2, P>();

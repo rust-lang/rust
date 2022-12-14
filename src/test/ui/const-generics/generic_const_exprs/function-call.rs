@@ -1,4 +1,5 @@
 // check-pass
+// compile-flags: -Zdeduplicate-diagnostics=yes
 
 const fn foo<T>() -> usize {
     // We might instead branch on `std::mem::size_of::<*mut T>() < 8` here,

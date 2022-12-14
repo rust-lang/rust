@@ -8,23 +8,23 @@ pub fn mir_fn_to_generic_graph<'tcx>(tcx: TyCtxt<'tcx>, body: &Body<'_>) -> Grap
     let def_id = body.source.def_id();
     let def_name = graphviz_safe_def_name(def_id);
     let graph_name = format!("Mir_{}", def_name);
-    let dark_mode = tcx.sess.opts.debugging_opts.graphviz_dark_mode;
+    let dark_mode = tcx.sess.opts.unstable_opts.graphviz_dark_mode;
 
     // Nodes
     let nodes: Vec<Node> = body
-        .basic_blocks()
+        .basic_blocks
         .iter_enumerated()
         .map(|(block, _)| bb_to_graph_node(block, body, dark_mode))
         .collect();
 
     // Edges
     let mut edges = Vec::new();
-    for (source, _) in body.basic_blocks().iter_enumerated() {
+    for (source, _) in body.basic_blocks.iter_enumerated() {
         let def_id = body.source.def_id();
         let terminator = body[source].terminator();
         let labels = terminator.kind.fmt_successor_labels();
 
-        for (&target, label) in terminator.successors().zip(labels) {
+        for (target, label) in terminator.successors().zip(labels) {
             let src = node(def_id, source);
             let trg = node(def_id, target);
             edges.push(Edge::new(src, trg, label.to_string()));
@@ -50,7 +50,7 @@ fn bb_to_graph_node(block: BasicBlock, body: &Body<'_>, dark_mode: bool) -> Node
     let style = NodeStyle { title_bg: Some(bgcolor.to_owned()), ..Default::default() };
     let mut stmts: Vec<String> = data.statements.iter().map(|x| format!("{:?}", x)).collect();
 
-    // add the terminator to the stmts, gsgdt can print it out seperately
+    // add the terminator to the stmts, gsgdt can print it out separately
     let mut terminator_head = String::new();
     data.terminator().kind.fmt_head(&mut terminator_head).unwrap();
     stmts.push(terminator_head);

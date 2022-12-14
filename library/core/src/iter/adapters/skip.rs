@@ -33,21 +33,32 @@ where
     #[inline]
     fn next(&mut self) -> Option<I::Item> {
         if unlikely(self.n > 0) {
-            self.iter.nth(crate::mem::take(&mut self.n) - 1);
+            self.iter.nth(crate::mem::take(&mut self.n))
+        } else {
+            self.iter.next()
         }
-        self.iter.next()
     }
 
     #[inline]
     fn nth(&mut self, n: usize) -> Option<I::Item> {
-        // Can't just add n + self.n due to overflow.
         if self.n > 0 {
-            let to_skip = self.n;
-            self.n = 0;
-            // nth(n) skips n+1
-            self.iter.nth(to_skip - 1)?;
+            let skip: usize = crate::mem::take(&mut self.n);
+            // Checked add to handle overflow case.
+            let n = match skip.checked_add(n) {
+                Some(nth) => nth,
+                None => {
+                    // In case of overflow, load skip value, before loading `n`.
+                    // Because the amount of elements to iterate is beyond `usize::MAX`, this
+                    // is split into two `nth` calls where the `skip` `nth` call is discarded.
+                    self.iter.nth(skip - 1)?;
+                    n
+                }
+            };
+            // Load nth element including skip.
+            self.iter.nth(n)
+        } else {
+            self.iter.nth(n)
         }
-        self.iter.nth(n)
     }
 
     #[inline]
@@ -119,8 +130,8 @@ where
     #[rustc_inherit_overflow_checks]
     fn advance_by(&mut self, n: usize) -> Result<(), usize> {
         let mut rem = n;
-
         let step_one = self.n.saturating_add(rem);
+
         match self.iter.advance_by(step_one) {
             Ok(_) => {
                 rem -= step_one - self.n;
@@ -129,7 +140,7 @@ where
             Err(advanced) => {
                 let advanced_without_skip = advanced.saturating_sub(self.n);
                 self.n = self.n.saturating_sub(advanced);
-                return Err(advanced_without_skip);
+                return if n == 0 { Ok(()) } else { Err(advanced_without_skip) };
             }
         }
 
@@ -195,17 +206,7 @@ where
         if n == 0 { try { init } } else { self.iter.try_rfold(init, check(n, fold)).into_try() }
     }
 
-    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {

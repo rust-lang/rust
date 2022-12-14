@@ -76,7 +76,7 @@ impl<T> Trait2<T> for Foo {
     fn qux<'a>(x: &'a i32) -> &i32 { x } //~ ERROR functions generic over types or consts must be mangled
 }
 
-pub struct Bar<T>(T);
+pub struct Bar<T>(#[allow(unused_tuple_struct_fields)] T);
 
 impl<T> Bar<T> {
     
@@ -111,7 +111,7 @@ impl<T> Trait3 for Bar<T> {
     fn baz<U>() {} //~ ERROR functions generic over types or consts must be mangled
 }
 
-pub struct Baz<'a>(&'a i32);
+pub struct Baz<'a>(#[allow(unused_tuple_struct_fields)] &'a i32);
 
 impl<'a> Baz<'a> {
     #[no_mangle]

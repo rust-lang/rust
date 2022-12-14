@@ -19,6 +19,8 @@ pub trait Sized { }
 pub trait Copy { }
 #[lang = "receiver"]
 pub trait Receiver { }
+#[lang = "tuple_trait"]
+pub trait Tuple { }
 
 pub struct Result<T, E> { _a: T, _b: E }
 
@@ -29,7 +31,7 @@ impl Copy for &usize {}
 pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[lang = "fn_once"]
-pub trait FnOnce<Args> {
+pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
@@ -37,22 +39,14 @@ pub trait FnOnce<Args> {
 }
 
 #[lang = "fn_mut"]
-pub trait FnMut<Args> : FnOnce<Args> {
+pub trait FnMut<Args: Tuple> : FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[lang = "fn"]
-pub trait Fn<Args>: FnOnce<Args> {
+pub trait Fn<Args: Tuple>: FnOnce<Args> {
     /// Performs the call operation.
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
-}
-
-impl<'a, A, R> FnOnce<A> for &'a fn(A) -> R {
-    type Output = R;
-
-    extern "rust-call" fn call_once(self, args: A) -> R {
-        (*self)(args)
-    }
 }
 
 pub static mut STORAGE_FOO: fn(&usize, &mut u32) -> Result<(), ()> = arbitrary_black_box;
@@ -77,7 +71,7 @@ fn update_bar_value() {
     }
 }
 
-// CHECK: define void @test(){{.+}}addrspace(1)
+// CHECK: define dso_local void @test(){{.+}}addrspace(1)
 #[no_mangle]
 pub extern "C" fn test() {
     let mut buf = 7;

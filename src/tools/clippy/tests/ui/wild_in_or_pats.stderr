@@ -4,8 +4,8 @@ error: wildcard pattern covers any other pattern as it will match anyway
 LL |         "bar" | _ => {
    |         ^^^^^^^^^
    |
-   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
    = help: consider handling `_` separately
+   = note: `-D clippy::wildcard-in-or-patterns` implied by `-D warnings`
 
 error: wildcard pattern covers any other pattern as it will match anyway
   --> $DIR/wild_in_or_pats.rs:16:9

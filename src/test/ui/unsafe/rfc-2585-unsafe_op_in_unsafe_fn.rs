@@ -10,7 +10,8 @@ static mut VOID: () = ();
 
 unsafe fn deny_level() {
     unsf();
-    //~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[thir]~^^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe block
     *PTR;
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
@@ -25,7 +26,8 @@ unsafe fn deny_level() {
 #[deny(warnings)]
 unsafe fn warning_level() {
     unsf();
-    //~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[thir]~^^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe block
     *PTR;
     //~^ ERROR dereference of raw pointer is unsafe and requires unsafe block
     VOID = ();
@@ -56,7 +58,6 @@ unsafe fn allow_level() {
     VOID = ();
 
     unsafe { unsf() }
-    //~^ ERROR unnecessary `unsafe` block
 }
 
 unsafe fn nested_allow_level() {
@@ -68,16 +69,17 @@ unsafe fn nested_allow_level() {
         VOID = ();
 
         unsafe { unsf() }
-        //~^ ERROR unnecessary `unsafe` block
     }
 }
 
 fn main() {
     unsf();
-    //~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe block
+    //[thir]~^^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe block
     #[allow(unsafe_op_in_unsafe_fn)]
     {
         unsf();
-        //~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
+        //[mir]~^ ERROR call to unsafe function is unsafe and requires unsafe function or block
+        //[thir]~^^ ERROR call to unsafe function `unsf` is unsafe and requires unsafe function or block
     }
 }

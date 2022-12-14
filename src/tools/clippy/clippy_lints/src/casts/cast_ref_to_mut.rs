@@ -6,7 +6,7 @@ use rustc_middle::ty;
 
 use super::CAST_REF_TO_MUT;
 
-pub(super) fn check(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
+pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>) {
     if_chain! {
         if let ExprKind::Unary(UnOp::Deref, e) = &expr.kind;
         if let ExprKind::Cast(e, t) = &e.kind;

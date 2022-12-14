@@ -11,6 +11,4 @@ fn main() {
     m!('static);
     //~^ ERROR lifetime in trait object type must be followed by `+`
     //~| ERROR at least one trait is required for an object type
-    //~| WARN trait objects without an explicit `dyn` are deprecated
-    //~| WARN this is accepted in the current edition
 }

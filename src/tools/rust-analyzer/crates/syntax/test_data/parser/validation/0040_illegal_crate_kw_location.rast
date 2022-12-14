@@ -1,0 +1,96 @@
+SOURCE_FILE@0..98
+  USE@0..12
+    USE_KW@0..3 "use"
+    WHITESPACE@3..4 " "
+    USE_TREE@4..11
+      PATH@4..11
+        PATH_SEGMENT@4..11
+          COLON2@4..6 "::"
+          NAME_REF@6..11
+            CRATE_KW@6..11 "crate"
+    SEMICOLON@11..12 ";"
+  WHITESPACE@12..13 "\n"
+  USE@13..54
+    USE_KW@13..16 "use"
+    WHITESPACE@16..17 " "
+    USE_TREE@17..53
+      USE_TREE_LIST@17..53
+        L_CURLY@17..18 "{"
+        USE_TREE@18..23
+          PATH@18..23
+            PATH_SEGMENT@18..23
+              NAME_REF@18..23
+                CRATE_KW@18..23 "crate"
+        COMMA@23..24 ","
+        WHITESPACE@24..25 " "
+        USE_TREE@25..52
+          PATH@25..28
+            PATH_SEGMENT@25..28
+              NAME_REF@25..28
+                IDENT@25..28 "foo"
+          COLON2@28..30 "::"
+          USE_TREE_LIST@30..52
+            L_CURLY@30..31 "{"
+            USE_TREE@31..51
+              PATH@31..51
+                PATH@31..46
+                  PATH@31..41
+                    PATH@31..36
+                      PATH_SEGMENT@31..36
+                        NAME_REF@31..36
+                          CRATE_KW@31..36 "crate"
+                    COLON2@36..38 "::"
+                    PATH_SEGMENT@38..41
+                      NAME_REF@38..41
+                        IDENT@38..41 "foo"
+                  COLON2@41..43 "::"
+                  PATH_SEGMENT@43..46
+                    NAME_REF@43..46
+                      IDENT@43..46 "bar"
+                COLON2@46..48 "::"
+                PATH_SEGMENT@48..51
+                  NAME_REF@48..51
+                    IDENT@48..51 "baz"
+            R_CURLY@51..52 "}"
+        R_CURLY@52..53 "}"
+    SEMICOLON@53..54 ";"
+  WHITESPACE@54..55 "\n"
+  USE@55..72
+    USE_KW@55..58 "use"
+    WHITESPACE@58..59 " "
+    USE_TREE@59..71
+      PATH@59..71
+        PATH@59..64
+          PATH_SEGMENT@59..64
+            NAME_REF@59..64
+              IDENT@59..64 "hello"
+        COLON2@64..66 "::"
+        PATH_SEGMENT@66..71
+          NAME_REF@66..71
+            CRATE_KW@66..71 "crate"
+    SEMICOLON@71..72 ";"
+  WHITESPACE@72..73 "\n"
+  USE@73..97
+    USE_KW@73..76 "use"
+    WHITESPACE@76..77 " "
+    USE_TREE@77..96
+      PATH@77..96
+        PATH@77..89
+          PATH@77..82
+            PATH_SEGMENT@77..82
+              NAME_REF@77..82
+                IDENT@77..82 "hello"
+          COLON2@82..84 "::"
+          PATH_SEGMENT@84..89
+            NAME_REF@84..89
+              CRATE_KW@84..89 "crate"
+        COLON2@89..91 "::"
+        PATH_SEGMENT@91..96
+          NAME_REF@91..96
+            IDENT@91..96 "there"
+    SEMICOLON@96..97 ";"
+  WHITESPACE@97..98 "\n"
+error 6..11: The `crate` keyword is only allowed as the first segment of a path
+error 31..36: The `crate` keyword is only allowed as the first segment of a path
+error 66..71: The `crate` keyword is only allowed as the first segment of a path
+error 84..89: The `crate` keyword is only allowed as the first segment of a path

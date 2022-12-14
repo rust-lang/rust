@@ -7,12 +7,10 @@ LL |     Err(5)?;
    |           ^ the trait `From<{integer}>` is not implemented for `()`
    |
    = note: the question mark operation (`?`) implicitly performs a conversion on the error value using the `From` trait
-   = note: required because of the requirements on the impl of `FromResidual<Result<Infallible, {integer}>>` for `Result<i32, ()>`
-note: required by `from_residual`
-  --> $SRC_DIR/core/src/ops/try_trait.rs:LL:COL
-   |
-LL |     fn from_residual(residual: R) -> Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the following other types implement trait `FromResidual<R>`:
+             <Result<T, F> as FromResidual<Result<Infallible, E>>>
+             <Result<T, F> as FromResidual<Yeet<E>>>
+   = note: required for `Result<i32, ()>` to implement `FromResidual<Result<Infallible, {integer}>>`
 
 error: aborting due to previous error
 

@@ -1,15 +1,14 @@
 // run-rustfix
 #![warn(clippy::transmutes_expressible_as_ptr_casts)]
-// These two warnings currrently cover the cases transmutes_expressible_as_ptr_casts
+// These two warnings currently cover the cases transmutes_expressible_as_ptr_casts
 // would otherwise be responsible for
 #![warn(clippy::useless_transmute)]
 #![warn(clippy::transmute_ptr_to_ptr)]
-#![allow(unused_unsafe)]
-#![allow(dead_code)]
+#![allow(dead_code, unused_unsafe, clippy::borrow_as_ptr)]
 
 use std::mem::{size_of, transmute};
 
-// rustc_typeck::check::cast contains documentation about when a cast `e as U` is
+// rustc_hir_analysis::check::cast contains documentation about when a cast `e as U` is
 // valid, which we quote from below.
 fn main() {
     // We should see an error message for each transmute, and no error messages for
@@ -26,8 +25,8 @@ fn main() {
     let slice_ptr = &[0, 1, 2, 3] as *const [i32];
 
     // ... or pointer_kind(T) = pointer_kind(U_0); ptr-ptr-cast
-    let _ptr_to_unsized_transmute = unsafe { slice_ptr as *const [u16] };
-    let _ptr_to_unsized = slice_ptr as *const [u16];
+    let _ptr_to_unsized_transmute = unsafe { slice_ptr as *const [u32] };
+    let _ptr_to_unsized = slice_ptr as *const [u32];
     // TODO: We could try testing vtable casts here too, but maybe
     // we should wait until std::raw::TraitObject is stabilized?
 

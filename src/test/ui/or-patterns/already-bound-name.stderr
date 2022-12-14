@@ -92,7 +92,7 @@ LL |     let (B(A(a, _) | B(a)) | A(a, A(a, _) | B(a))) = B(B(1));
    |              first introduced with type `{integer}` here
    |
    = note: expected type `{integer}`
-              found type `E<{integer}>`
+              found enum `E<{integer}>`
    = note: a binding must have the same type in all alternatives
 
 error: aborting due to 15 previous errors

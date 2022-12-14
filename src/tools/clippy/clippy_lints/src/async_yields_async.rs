@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::source::snippet;
 use clippy_utils::ty::implements_trait;
 use rustc_errors::Applicability;
@@ -24,6 +24,7 @@ declare_clippy_lint! {
     ///   };
     /// }
     /// ```
+    ///
     /// Use instead:
     /// ```rust
     /// async fn foo() {}
@@ -34,6 +35,7 @@ declare_clippy_lint! {
     ///   };
     /// }
     /// ```
+    #[clippy::version = "1.48.0"]
     pub ASYNC_YIELDS_ASYNC,
     correctness,
     "async blocks that return a type that can be awaited"
@@ -52,7 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                     hir_id: body.value.hir_id,
                 };
                 let typeck_results = cx.tcx.typeck_body(body_id);
-                let expr_ty = typeck_results.expr_ty(&body.value);
+                let expr_ty = typeck_results.expr_ty(body.value);
 
                 if implements_trait(cx, expr_ty, future_trait_def_id, &[]) {
                     let return_expr_span = match &body.value.kind {
@@ -62,9 +64,10 @@ impl<'tcx> LateLintPass<'tcx> for AsyncYieldsAsync {
                         _ => None,
                     };
                     if let Some(return_expr_span) = return_expr_span {
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             cx,
                             ASYNC_YIELDS_ASYNC,
+                            body.value.hir_id,
                             return_expr_span,
                             "an async construct yields a type which is itself awaitable",
                             |db| {

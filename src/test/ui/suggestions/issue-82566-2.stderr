@@ -4,7 +4,7 @@ error: comparison operators cannot be chained
 LL | fn foo1() -> [(); Foo1<10>::SUM] {
    |                       ^  ^
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL | fn foo1() -> [(); Foo1::<10>::SUM] {
    |                       ++
@@ -15,7 +15,7 @@ error: expected one of `.`, `?`, `]`, or an operator, found `,`
 LL | fn foo2() -> [(); Foo2<10, 20>::SUM] {
    |                          ^ expected one of `.`, `?`, `]`, or an operator
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL | fn foo2() -> [(); Foo2::<10, 20>::SUM] {
    |                       ++
@@ -26,7 +26,7 @@ error: expected one of `.`, `?`, `]`, or an operator, found `,`
 LL | fn foo3() -> [(); Foo3<10, 20, 30>::SUM] {
    |                          ^ expected one of `.`, `?`, `]`, or an operator
    |
-help: use `::<...>` instead of `<...>` to specify type or const arguments
+help: use `::<...>` instead of `<...>` to specify lifetime, type, or const arguments
    |
 LL | fn foo3() -> [(); Foo3::<10, 20, 30>::SUM] {
    |                       ++

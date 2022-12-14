@@ -144,7 +144,7 @@ fn test_iterator_peekable_rfold() {
 #[test]
 fn test_iterator_peekable_next_if_eq() {
     // first, try on references
-    let xs = vec!["Heart", "of", "Gold"];
+    let xs = ["Heart", "of", "Gold"];
     let mut it = xs.into_iter().peekable();
     // try before `peek()`
     assert_eq!(it.next_if_eq(&"trillian"), None);
@@ -157,7 +157,7 @@ fn test_iterator_peekable_next_if_eq() {
     assert_eq!(it.next(), Some("Gold"));
 
     // make sure comparison works for owned values
-    let xs = vec![String::from("Ludicrous"), "speed".into()];
+    let xs = [String::from("Ludicrous"), "speed".into()];
     let mut it = xs.into_iter().peekable();
     // make sure basic functionality works
     assert_eq!(it.next_if_eq("Ludicrous"), Some("Ludicrous".into()));
@@ -167,7 +167,7 @@ fn test_iterator_peekable_next_if_eq() {
 
 #[test]
 fn test_iterator_peekable_mut() {
-    let mut it = vec![1, 2, 3].into_iter().peekable();
+    let mut it = [1, 2, 3].into_iter().peekable();
     if let Some(p) = it.peek_mut() {
         if *p == 1 {
             *p = 5;

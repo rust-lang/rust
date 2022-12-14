@@ -7,11 +7,27 @@
 
 use std::env;
 
-use bootstrap::{Build, Config, Subcommand, VERSION};
+use bootstrap::{t, Build, Config, Subcommand, VERSION};
 
 fn main() {
     let args = env::args().skip(1).collect::<Vec<_>>();
     let config = Config::parse(&args);
+
+    let mut build_lock;
+    let _build_lock_guard;
+    if cfg!(any(unix, windows)) {
+        build_lock = fd_lock::RwLock::new(t!(std::fs::File::create(config.out.join("lock"))));
+        _build_lock_guard = match build_lock.try_write() {
+            Ok(lock) => lock,
+            err => {
+                println!("warning: build directory locked, waiting for lock");
+                drop(err);
+                t!(build_lock.write())
+            }
+        };
+    } else {
+        println!("warning: file locking not supported for target, not locking build directory");
+    }
 
     // check_version warnings are not printed during setup
     let changelog_suggestion =
@@ -19,7 +35,7 @@ fn main() {
 
     // NOTE: Since `./configure` generates a `config.toml`, distro maintainers will see the
     // changelog warning, not the `x.py setup` message.
-    let suggest_setup = !config.config.exists() && !matches!(config.cmd, Subcommand::Setup { .. });
+    let suggest_setup = config.config.is_none() && !matches!(config.cmd, Subcommand::Setup { .. });
     if suggest_setup {
         println!("warning: you have not made a `config.toml`");
         println!(
@@ -30,6 +46,7 @@ fn main() {
         println!("{}", suggestion);
     }
 
+    let pre_commit = config.src.join(".git").join("hooks").join("pre-commit");
     Build::new(config).build();
 
     if suggest_setup {
@@ -40,6 +57,19 @@ fn main() {
         );
     } else if let Some(suggestion) = &changelog_suggestion {
         println!("{}", suggestion);
+    }
+
+    // Give a warning if the pre-commit script is in pre-commit and not pre-push.
+    // HACK: Since the commit script uses hard links, we can't actually tell if it was installed by x.py setup or not.
+    // We could see if it's identical to src/etc/pre-push.sh, but pre-push may have been modified in the meantime.
+    // Instead, look for this comment, which is almost certainly not in any custom hook.
+    if std::fs::read_to_string(pre_commit).map_or(false, |contents| {
+        contents.contains("https://github.com/rust-lang/rust/issues/77620#issuecomment-705144570")
+    }) {
+        println!(
+            "warning: You have the pre-push script installed to .git/hooks/pre-commit. \
+                  Consider moving it to .git/hooks/pre-push instead, which runs less often."
+        );
     }
 
     if suggest_setup || changelog_suggestion.is_some() {

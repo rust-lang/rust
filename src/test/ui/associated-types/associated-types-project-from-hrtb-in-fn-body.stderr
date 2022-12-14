@@ -1,14 +1,30 @@
-error[E0623]: lifetime mismatch
-  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
+error: lifetime may not live long enough
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:29
    |
-LL |     x: <I as Foo<&'a isize>>::A,
-   |                  --------- these two types are declared with different lifetimes...
-LL |     y: <I as Foo<&'b isize>>::A,
-   |                  ---------
+LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
 ...
 LL |     let z: I::A = if cond { x } else { y };
-   |                                        ^ ...but data from `x` flows into `y` here
+   |                             ^ assignment requires that `'a` must outlive `'b`
+   |
+   = help: consider adding the following bound: `'a: 'b`
 
-error: aborting due to previous error
+error: lifetime may not live long enough
+  --> $DIR/associated-types-project-from-hrtb-in-fn-body.rs:22:40
+   |
+LL | fn bar<'a, 'b, I : for<'x> Foo<&'x isize>>(
+   |        --  -- lifetime `'b` defined here
+   |        |
+   |        lifetime `'a` defined here
+...
+LL |     let z: I::A = if cond { x } else { y };
+   |                                        ^ assignment requires that `'b` must outlive `'a`
+   |
+   = help: consider adding the following bound: `'b: 'a`
 
-For more information about this error, try `rustc --explain E0623`.
+help: `'a` and `'b` must be the same: replace one with the other
+
+error: aborting due to 2 previous errors
+

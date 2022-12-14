@@ -1,4 +1,3 @@
-#![feature(use_nested_groups)]
 #![allow(dead_code)]
 #![deny(unused_imports)]
 

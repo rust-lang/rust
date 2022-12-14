@@ -1,6 +1,6 @@
 // run-pass
 #![allow(unreachable_code)]
-#![allow(unused_mut)] // rust-lang/rust#54586
+#![allow(for_loops_over_fallibles)]
 #![deny(unused_variables)]
 
 fn main() {

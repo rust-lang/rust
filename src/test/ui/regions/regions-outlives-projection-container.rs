@@ -34,7 +34,7 @@ fn with_assoc<'a,'b>() {
     // FIXME (#54943) NLL doesn't enforce WF condition in unreachable code if
     // `_x` is changed to `_`
     let _x: &'a WithAssoc<TheType<'b>> = loop { };
-    //~^ ERROR reference has a longer lifetime
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn with_assoc1<'a,'b>() where 'b : 'a {
@@ -52,7 +52,7 @@ fn without_assoc<'a,'b>() {
     // that `'b:'a` holds because the `'b` appears in `TheType<'b>`.
 
     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
-    //~^ ERROR reference has a longer lifetime
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn call_with_assoc<'a,'b>() {
@@ -61,13 +61,14 @@ fn call_with_assoc<'a,'b>() {
     // no data.
 
     call::<&'a WithAssoc<TheType<'b>>>();
-    //~^ ERROR reference has a longer lifetime
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn call_without_assoc<'a,'b>() {
     // As `without_assoc`, but in a distinct scenario.
 
-    call::<&'a WithoutAssoc<TheType<'b>>>(); //~ ERROR reference has a longer lifetime
+    call::<&'a WithoutAssoc<TheType<'b>>>();
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn call<T>() { }

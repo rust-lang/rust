@@ -1,6 +1,6 @@
 use super::unsupported;
 use crate::error::Error as StdError;
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io;
 use crate::os::{
@@ -8,10 +8,11 @@ use crate::os::{
     solid::ffi::{OsStrExt, OsStringExt},
 };
 use crate::path::{self, PathBuf};
-use crate::sys_common::rwlock::StaticRWLock;
+use crate::sync::RwLock;
+use crate::sys::common::small_c_string::run_with_cstr;
 use crate::vec;
 
-use super::{abi, error, itron, memchr};
+use super::{error, itron, memchr};
 
 // `solid` directly maps `errno`s to μITRON error codes.
 impl itron::error::ItronError {
@@ -26,7 +27,7 @@ pub fn errno() -> i32 {
 }
 
 pub fn error_string(errno: i32) -> String {
-    if let Some(name) = error::error_name(errno) { name.to_owned() } else { format!("{}", errno) }
+    if let Some(name) = error::error_name(errno) { name.to_owned() } else { format!("{errno}") }
 }
 
 pub fn getcwd() -> io::Result<PathBuf> {
@@ -78,7 +79,7 @@ pub fn current_exe() -> io::Result<PathBuf> {
     unsupported()
 }
 
-static ENV_LOCK: StaticRWLock = StaticRWLock::new();
+static ENV_LOCK: RwLock<()> = RwLock::new(());
 
 pub struct Env {
     iter: vec::IntoIter<(OsString, OsString)>,
@@ -139,45 +140,39 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    let k = CString::new(k.as_bytes()).ok()?;
-    unsafe {
+    let s = run_with_cstr(k.as_bytes(), |k| {
         let _guard = ENV_LOCK.read();
-        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        if s.is_null() {
-            None
-        } else {
-            Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        }
+        Ok(unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char)
+    })
+    .ok()?;
+
+    if s.is_null() {
+        None
+    } else {
+        Some(OsStringExt::from_vec(unsafe { CStr::from_ptr(s) }.to_bytes().to_vec()))
     }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = CString::new(k.as_bytes())?;
-    let v = CString::new(v.as_bytes())?;
-
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt_env(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    run_with_cstr(k.as_bytes(), |k| {
+        run_with_cstr(v.as_bytes(), |v| {
+            let _guard = ENV_LOCK.write();
+            cvt_env(unsafe { libc::setenv(k.as_ptr(), v.as_ptr(), 1) }).map(drop)
+        })
+    })
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let nbuf = CString::new(n.as_bytes())?;
-
-    unsafe {
+    run_with_cstr(n.as_bytes(), |nbuf| {
         let _guard = ENV_LOCK.write();
-        cvt_env(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+        cvt_env(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)
+    })
 }
 
 /// In kmclib, `setenv` and `unsetenv` don't always set `errno`, so this
 /// function just returns a generic error.
 fn cvt_env(t: c_int) -> io::Result<c_int> {
-    if t == -1 {
-        Err(io::Error::new_const(io::ErrorKind::Uncategorized, &"failure"))
-    } else {
-        Ok(t)
-    }
+    if t == -1 { Err(io::const_io_error!(io::ErrorKind::Uncategorized, "failure")) } else { Ok(t) }
 }
 
 pub fn temp_dir() -> PathBuf {
@@ -188,11 +183,8 @@ pub fn home_dir() -> Option<PathBuf> {
     None
 }
 
-pub fn exit(_code: i32) -> ! {
-    let tid = itron::task::try_current_task_id().unwrap_or(0);
-    loop {
-        abi::breakpoint_program_exited(tid as usize);
-    }
+pub fn exit(code: i32) -> ! {
+    rtabort!("exit({}) called", code);
 }
 
 pub fn getpid() -> u32 {

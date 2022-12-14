@@ -5,9 +5,10 @@ trait Foo<T, U> {}
 
 fn foo(x: &dyn for<'a, 'b> Foo<&'a u8, &'b u8>, y: &dyn for<'a> Foo<&'a u8, &'a u8>) {
     let z = match 22 {
-        //~^ ERROR mismatched types
         0 => x,
         _ => y,
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
     };
 }
 

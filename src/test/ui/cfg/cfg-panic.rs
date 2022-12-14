@@ -1,10 +1,7 @@
 // build-pass
 // compile-flags: -C panic=unwind
 // needs-unwind
-// ignore-emscripten no panic_unwind implementation
-// ignore-wasm32     no panic_unwind implementation
-// ignore-wasm64     no panic_unwind implementation
-#![feature(cfg_panic)]
+
 
 #[cfg(panic = "abort")]
 pub fn bad() -> i32 { }

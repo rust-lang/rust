@@ -1,12 +1,19 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(if_let_guard)]
-#![feature(nll)]
 #![recursion_limit = "256"]
+#![allow(rustc::potential_query_instability)]
+#![feature(never_type)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
+#[macro_use]
+extern crate tracing;
 
 mod dump_visitor;
 mod dumper;
 #[macro_use]
 mod span_utils;
+mod errors;
 mod sig;
 
 use rustc_ast as ast;
@@ -18,19 +25,17 @@ use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_hir_pretty::{enum_def_to_string, fn_to_string, ty_to_string};
-use rustc_middle::hir::map::Map;
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::hir::nested_filter;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::ty::{self, print::with_no_trimmed_paths, DefIdTree, TyCtxt};
 use rustc_middle::{bug, span_bug};
 use rustc_session::config::{CrateType, Input, OutputType};
 use rustc_session::cstore::ExternCrate;
 use rustc_session::output::{filename_for_metadata, out_filename};
-use rustc_span::source_map::Spanned;
 use rustc_span::symbol::Ident;
 use rustc_span::*;
 
 use std::cell::Cell;
-use std::default::Default;
 use std::env;
 use std::fs::File;
 use std::io::BufWriter;
@@ -45,12 +50,10 @@ use rls_data::{
     RefKind, Relation, RelationKind, SpanData,
 };
 
-use tracing::{debug, error, info};
-
 pub struct SaveContext<'tcx> {
     tcx: TyCtxt<'tcx>,
     maybe_typeck_results: Option<&'tcx ty::TypeckResults<'tcx>>,
-    access_levels: &'tcx AccessLevels,
+    effective_visibilities: &'tcx EffectiveVisibilities,
     span_utils: SpanUtils<'tcx>,
     config: Config,
     impl_counter: Cell<u32>,
@@ -90,8 +93,8 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
-    pub fn compilation_output(&self, crate_name: &str) -> PathBuf {
+    /// Returns path to the compilation output (e.g., libfoo-12345678.rmeta)
+    pub fn compilation_output(&self, crate_name: Symbol) -> PathBuf {
         let sess = &self.tcx.sess;
         // Save-analysis is emitted per whole session, not per each crate type
         let crate_type = sess.crate_types()[0];
@@ -108,17 +111,14 @@ impl<'tcx> SaveContext<'tcx> {
         }
     }
 
-    // List external crates used by the current crate.
+    /// List external crates used by the current crate.
     pub fn get_external_crates(&self) -> Vec<ExternalCrateData> {
         let mut result = Vec::with_capacity(self.tcx.crates(()).len());
 
         for &n in self.tcx.crates(()).iter() {
-            let span = match self.tcx.extern_crate(n.as_def_id()) {
-                Some(&ExternCrate { span, .. }) => span,
-                None => {
-                    debug!("skipping crate {}, no data", n);
-                    continue;
-                }
+            let Some(&ExternCrate { span, .. }) = self.tcx.extern_crate(n.as_def_id()) else {
+                debug!("skipping crate {}, no data", n);
+                continue;
             };
             let lo_loc = self.span_utils.sess.source_map().lookup_char_pos(span.lo());
             result.push(ExternalCrateData {
@@ -140,7 +140,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_extern_item_data(&self, item: &hir::ForeignItem<'_>) -> Option<Data> {
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let qualname = format!("::{}", self.tcx.def_path_str(def_id));
         let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
@@ -166,7 +166,6 @@ impl<'tcx> SaveContext<'tcx> {
                         },
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         arg_names,
                         None,
                     ),
@@ -205,7 +204,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_item_data(&self, item: &hir::Item<'_>) -> Option<Data> {
-        let def_id = item.def_id.to_def_id();
+        let def_id = item.owner_id.to_def_id();
         let attrs = self.tcx.hir().attrs(item.hir_id());
         match item.kind {
             hir::ItemKind::Fn(ref sig, ref generics, _) => {
@@ -222,7 +221,6 @@ impl<'tcx> SaveContext<'tcx> {
                         sig.header,
                         Some(item.ident.name),
                         generics,
-                        &item.vis,
                         &[],
                         None,
                     ),
@@ -283,7 +281,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
 
                 let sm = self.tcx.sess.source_map();
-                let filename = sm.span_to_filename(m.inner);
+                let filename = sm.span_to_filename(m.spans.inner_span);
 
                 filter!(self.span_utils, item.ident.span);
 
@@ -298,7 +296,7 @@ impl<'tcx> SaveContext<'tcx> {
                     children: m
                         .item_ids
                         .iter()
-                        .map(|i| id_from_def_id(i.def_id.to_def_id()))
+                        .map(|i| id_from_def_id(i.owner_id.to_def_id()))
                         .collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
@@ -311,7 +309,7 @@ impl<'tcx> SaveContext<'tcx> {
                 let qualname = format!("::{}", self.tcx.def_path_str(def_id));
                 filter!(self.span_utils, item.ident.span);
                 let value =
-                    enum_def_to_string(def, generics, item.ident.name, item.span, &item.vis);
+                    enum_def_to_string(def, generics, item.ident.name, item.span);
                 Some(Data::DefData(Def {
                     kind: DefKind::Enum,
                     id: id_from_def_id(def_id),
@@ -320,7 +318,7 @@ impl<'tcx> SaveContext<'tcx> {
                     qualname,
                     value,
                     parent: None,
-                    children: def.variants.iter().map(|v| id_from_hir_id(v.id, self)).collect(),
+                    children: def.variants.iter().map(|v| id_from_hir_id(v.hir_id, self)).collect(),
                     decl_id: None,
                     docs: self.docs_for_attrs(attrs),
                     sig: sig::item_signature(item, self),
@@ -364,7 +362,7 @@ impl<'tcx> SaveContext<'tcx> {
                             parent: None,
                             children: items
                                 .iter()
-                                .map(|i| id_from_def_id(i.id.def_id.to_def_id()))
+                                .map(|i| id_from_def_id(i.id.owner_id.to_def_id()))
                                 .collect(),
                             docs: String::new(),
                             sig: None,
@@ -555,7 +553,7 @@ impl<'tcx> SaveContext<'tcx> {
                     Some(Data::RefData(Ref {
                         kind: RefKind::Type,
                         span,
-                        ref_id: id_from_def_id(def.did),
+                        ref_id: id_from_def_id(def.did()),
                     }))
                 }
                 _ => {
@@ -564,16 +562,13 @@ impl<'tcx> SaveContext<'tcx> {
                 }
             },
             hir::ExprKind::MethodCall(ref seg, ..) => {
-                let method_id = match self.typeck_results().type_dependent_def_id(expr.hir_id) {
-                    Some(id) => id,
-                    None => {
-                        debug!("could not resolve method id for {:?}", expr);
-                        return None;
-                    }
+                let Some(method_id) = self.typeck_results().type_dependent_def_id(expr.hir_id) else {
+                    debug!("could not resolve method id for {:?}", expr);
+                    return None;
                 };
                 let (def_id, decl_id) = match self.tcx.associated_item(method_id).container {
-                    ty::ImplContainer(_) => (Some(method_id), None),
-                    ty::TraitContainer(_) => (None, Some(method_id)),
+                    ty::ImplContainer => (Some(method_id), None),
+                    ty::TraitContainer => (None, Some(method_id)),
                 };
                 let sub_span = seg.ident.span;
                 filter!(self.span_utils, sub_span);
@@ -598,19 +593,17 @@ impl<'tcx> SaveContext<'tcx> {
         match self.tcx.hir().get(hir_id) {
             Node::TraitRef(tr) => tr.path.res,
 
-            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => path.res,
-            Node::Visibility(&Spanned {
-                node: hir::VisibilityKind::Restricted { ref path, .. },
-                ..
-            }) => path.res,
-
-            Node::PathSegment(seg) => match seg.res {
-                Some(res) if res != Res::Err => res,
-                _ => {
+            Node::Item(&hir::Item { kind: hir::ItemKind::Use(path, _), .. }) => {
+                path.res.get(0).copied().unwrap_or(Res::Err)
+            }
+            Node::PathSegment(seg) => {
+                if seg.res != Res::Err {
+                    seg.res
+                } else {
                     let parent_node = self.tcx.hir().get_parent_node(hir_id);
                     self.get_path_res(parent_node)
                 }
-            },
+            }
 
             Node::Expr(&hir::Expr { kind: hir::ExprKind::Struct(ref qpath, ..), .. }) => {
                 self.typeck_results().qpath_res(qpath, hir_id)
@@ -629,16 +622,16 @@ impl<'tcx> SaveContext<'tcx> {
                 hir::QPath::TypeRelative(..) | hir::QPath::LangItem(..) => {
                     // #75962: `self.typeck_results` may be different from the `hir_id`'s result.
                     if self.tcx.has_typeck_results(hir_id.owner.to_def_id()) {
-                        self.tcx.typeck(hir_id.owner).qpath_res(qpath, hir_id)
+                        self.tcx.typeck(hir_id.owner.def_id).qpath_res(qpath, hir_id)
                     } else {
                         Res::Err
                     }
                 }
             },
 
-            Node::Binding(&hir::Pat {
-                kind: hir::PatKind::Binding(_, canonical_id, ..), ..
-            }) => Res::Local(canonical_id),
+            Node::Pat(&hir::Pat { kind: hir::PatKind::Binding(_, canonical_id, ..), .. }) => {
+                Res::Local(canonical_id)
+            }
 
             _ => Res::Err,
         }
@@ -656,7 +649,7 @@ impl<'tcx> SaveContext<'tcx> {
     }
 
     pub fn get_path_segment_data(&self, path_seg: &hir::PathSegment<'_>) -> Option<Ref> {
-        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id?)
+        self.get_path_segment_data_with_id(path_seg, path_seg.hir_id)
     }
 
     pub fn get_path_segment_data_with_id(
@@ -692,6 +685,7 @@ impl<'tcx> SaveContext<'tcx> {
                 | HirDefKind::AssocTy
                 | HirDefKind::Trait
                 | HirDefKind::OpaqueTy
+                | HirDefKind::ImplTraitPlaceholder
                 | HirDefKind::TyParam,
                 def_id,
             ) => Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(def_id) }),
@@ -702,21 +696,19 @@ impl<'tcx> SaveContext<'tcx> {
                 // This is a reference to a tuple struct or an enum variant where the def_id points
                 // to an invisible constructor function. That is not a very useful
                 // def, so adjust to point to the tuple struct or enum variant itself.
-                let parent_def_id = self.tcx.parent(def_id).unwrap();
+                let parent_def_id = self.tcx.parent(def_id);
                 Some(Ref { kind: RefKind::Type, span, ref_id: id_from_def_id(parent_def_id) })
             }
-            Res::Def(HirDefKind::Static | HirDefKind::Const | HirDefKind::AssocConst, _) => {
+            Res::Def(HirDefKind::Static(_) | HirDefKind::Const | HirDefKind::AssocConst, _) => {
                 Some(Ref { kind: RefKind::Variable, span, ref_id: id_from_def_id(res.def_id()) })
             }
             Res::Def(HirDefKind::AssocFn, decl_id) => {
                 let def_id = if decl_id.is_local() {
-                    let ti = self.tcx.associated_item(decl_id);
-
-                    self.tcx
-                        .associated_items(ti.container.id())
-                        .filter_by_name_unhygienic(ti.ident.name)
-                        .find(|item| item.defaultness.has_value())
-                        .map(|item| item.def_id)
+                    if self.tcx.impl_defaultness(decl_id).has_value() {
+                        Some(decl_id)
+                    } else {
+                        None
+                    }
                 } else {
                     None
                 };
@@ -739,6 +731,7 @@ impl<'tcx> SaveContext<'tcx> {
                 | HirDefKind::ForeignMod
                 | HirDefKind::LifetimeParam
                 | HirDefKind::AnonConst
+                | HirDefKind::InlineConst
                 | HirDefKind::Use
                 | HirDefKind::Field
                 | HirDefKind::GlobalAsm
@@ -748,7 +741,8 @@ impl<'tcx> SaveContext<'tcx> {
                 _,
             )
             | Res::PrimTy(..)
-            | Res::SelfTy(..)
+            | Res::SelfTyParam { .. }
+            | Res::SelfTyAlias { .. }
             | Res::ToolMod
             | Res::NonMacroAttr(..)
             | Res::SelfCtor(..)
@@ -813,7 +807,7 @@ impl<'tcx> SaveContext<'tcx> {
 
     fn lookup_def_id(&self, ref_id: hir::HirId) -> Option<DefId> {
         match self.get_path_res(ref_id) {
-            Res::PrimTy(_) | Res::SelfTy(..) | Res::Err => None,
+            Res::PrimTy(_) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Err => None,
             def => def.opt_def_id(),
         }
     }
@@ -822,9 +816,9 @@ impl<'tcx> SaveContext<'tcx> {
         let mut result = String::new();
 
         for attr in attrs {
-            if let Some(val) = attr.doc_str() {
+            if let Some((val, kind)) = attr.doc_str_and_comment_kind() {
                 // FIXME: Should save-analysis beautify doc strings itself or leave it to users?
-                result.push_str(&beautify_doc_string(val).as_str());
+                result.push_str(beautify_doc_string(val, kind).as_str());
                 result.push('\n');
             }
         }
@@ -860,10 +854,10 @@ impl<'l> PathCollector<'l> {
 }
 
 impl<'l> Visitor<'l> for PathCollector<'l> {
-    type Map = Map<'l>;
+    type NestedFilter = nested_filter::All;
 
-    fn nested_visit_map(&mut self) -> intravisit::NestedVisitorMap<Self::Map> {
-        intravisit::NestedVisitorMap::All(self.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.tcx.hir()
     }
 
     fn visit_pat(&mut self, p: &'l hir::Pat<'l>) {
@@ -874,23 +868,12 @@ impl<'l> Visitor<'l> for PathCollector<'l> {
             hir::PatKind::TupleStruct(ref path, ..) | hir::PatKind::Path(ref path) => {
                 self.collected_paths.push((p.hir_id, path));
             }
-            hir::PatKind::Binding(bm, _, ident, _) => {
+            hir::PatKind::Binding(hir::BindingAnnotation(_, mutbl), _, ident, _) => {
                 debug!(
                     "PathCollector, visit ident in pat {}: {:?} {:?}",
                     ident, p.span, ident.span
                 );
-                let immut = match bm {
-                    // Even if the ref is mut, you can't change the ref, only
-                    // the data pointed at, so showing the initialising expression
-                    // is still worthwhile.
-                    hir::BindingAnnotation::Unannotated | hir::BindingAnnotation::Ref => {
-                        hir::Mutability::Not
-                    }
-                    hir::BindingAnnotation::Mutable | hir::BindingAnnotation::RefMut => {
-                        hir::Mutability::Mut
-                    }
-                };
-                self.collected_idents.push((p.hir_id, ident, immut));
+                self.collected_idents.push((p.hir_id, ident, mutbl));
             }
             _ => {}
         }
@@ -910,8 +893,8 @@ pub struct DumpHandler<'a> {
 }
 
 impl<'a> DumpHandler<'a> {
-    pub fn new(odir: Option<&'a Path>, cratename: &str) -> DumpHandler<'a> {
-        DumpHandler { odir, cratename: cratename.to_owned() }
+    pub fn new(odir: Option<&'a Path>, cratename: Symbol) -> DumpHandler<'a> {
+        DumpHandler { odir, cratename: cratename.to_string() }
     }
 
     fn output_file(&self, ctx: &SaveContext<'_>) -> (BufWriter<File>, PathBuf) {
@@ -942,7 +925,7 @@ impl<'a> DumpHandler<'a> {
         info!("Writing output to {}", file_name.display());
 
         let output_file = BufWriter::new(File::create(&file_name).unwrap_or_else(|e| {
-            sess.fatal(&format!("Could not open {}: {}", file_name.display(), e))
+            sess.emit_fatal(errors::CouldNotOpen { file_name: file_name.as_path(), err: e })
         }));
 
         (output_file, file_name)
@@ -976,26 +959,26 @@ impl SaveHandler for CallbackHandler<'_> {
 
 pub fn process_crate<'l, 'tcx, H: SaveHandler>(
     tcx: TyCtxt<'tcx>,
-    cratename: &str,
+    cratename: Symbol,
     input: &'l Input,
     config: Option<Config>,
     mut handler: H,
 ) {
-    with_no_trimmed_paths(|| {
+    with_no_trimmed_paths!({
         tcx.dep_graph.with_ignore(|| {
             info!("Dumping crate {}", cratename);
 
-            // Privacy checking requires and is done after type checking; use a
-            // fallback in case the access levels couldn't have been correctly computed.
-            let access_levels = match tcx.sess.compile_status() {
-                Ok(..) => tcx.privacy_access_levels(()),
-                Err(..) => tcx.arena.alloc(AccessLevels::default()),
+            // Privacy checking must be done outside of type inference; use a
+            // fallback in case effective visibilities couldn't have been correctly computed.
+            let effective_visibilities = match tcx.sess.compile_status() {
+                Ok(..) => tcx.effective_visibilities(()),
+                Err(..) => tcx.arena.alloc(EffectiveVisibilities::default()),
             };
 
             let save_ctxt = SaveContext {
                 tcx,
                 maybe_typeck_results: None,
-                access_levels: &access_levels,
+                effective_visibilities: &effective_visibilities,
                 span_utils: SpanUtils::new(&tcx.sess),
                 config: find_config(config),
                 impl_counter: Cell::new(0),
@@ -1035,7 +1018,7 @@ fn find_config(supplied: Option<Config>) -> Config {
 
 // Helper function to escape quotes in a string
 fn escape(s: String) -> String {
-    s.replace("\"", "\"\"")
+    s.replace('\"', "\"\"")
 }
 
 // Helper function to determine if a span came from a
@@ -1059,7 +1042,7 @@ fn id_from_hir_id(id: hir::HirId, scx: &SaveContext<'_>) -> rls_data::Id {
         // crate (very unlikely to actually happen).
         rls_data::Id {
             krate: LOCAL_CRATE.as_u32(),
-            index: id.owner.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
+            index: id.owner.def_id.local_def_index.as_u32() | id.local_id.as_u32().reverse_bits(),
         }
     })
 }

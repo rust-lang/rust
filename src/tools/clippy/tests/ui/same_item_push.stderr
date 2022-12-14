@@ -4,8 +4,8 @@ error: it looks like the same item is being pushed into this Vec
 LL |         vec.push(item);
    |         ^^^
    |
-   = note: `-D clippy::same-item-push` implied by `-D warnings`
    = help: try using vec![item;SIZE] or vec.resize(NEW_SIZE, item)
+   = note: `-D clippy::same-item-push` implied by `-D warnings`
 
 error: it looks like the same item is being pushed into this Vec
   --> $DIR/same_item_push.rs:29:9

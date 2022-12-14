@@ -10,21 +10,26 @@
 #[unstable()]
 //~^ ERROR stability attributes may not be used outside of the standard library
 mod unstable {
-    mod inner { #![unstable()] }
-    //~^ ERROR stability attributes may not be used outside of the standard library
+    mod inner {
+        #![unstable()]
+        //~^ ERROR stability attributes may not be used outside of the standard library
+    }
 
-    #[unstable()] fn f() { }
+    #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    fn f() {}
 
-    #[unstable()] struct S;
+    #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
-    //~| ERROR stability attributes may not be used outside of the standard library
+    struct S;
 
-    #[unstable()] type T = S;
+    #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    type T = S;
 
-    #[unstable()] impl S { }
+    #[unstable()]
     //~^ ERROR stability attributes may not be used outside of the standard library
+    impl S {}
 }
 
 fn main() {}

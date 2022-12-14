@@ -24,7 +24,7 @@ pub(super) fn add_arg_comment<'tcx>(
     local: Option<mir::Local>,
     local_field: Option<usize>,
     params: &[Value],
-    arg_abi_mode: PassMode,
+    arg_abi_mode: &PassMode,
     arg_layout: TyAndLayout<'tcx>,
 ) {
     if !fx.clif_comments.enabled() {
@@ -82,8 +82,14 @@ pub(super) fn add_local_place_comments<'tcx>(
         return;
     }
     let TyAndLayout { ty, layout } = place.layout();
-    let rustc_target::abi::Layout { size, align, abi: _, variants: _, fields: _, largest_niche: _ } =
-        layout;
+    let rustc_target::abi::LayoutS {
+        size,
+        align,
+        abi: _,
+        variants: _,
+        fields: _,
+        largest_niche: _,
+    } = layout.0.0;
 
     let (kind, extra) = match *place.inner() {
         CPlaceInner::Var(place_local, var) => {

@@ -25,38 +25,48 @@
 //!
 //! This API is completely unstable and subject to change.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
 #![feature(array_windows)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
-#![feature(crate_visibility_modifier)]
-#![feature(format_args_capture)]
-#![feature(iter_order_by)]
-#![feature(iter_zip)]
-#![feature(never_type)]
-#![feature(nll)]
 #![feature(control_flow_enum)]
+#![feature(if_let_guard)]
+#![feature(iter_intersperse)]
+#![feature(iter_order_by)]
+#![feature(let_chains)]
+#![feature(min_specialization)]
+#![feature(never_type)]
+#![feature(rustc_attrs)]
 #![recursion_limit = "256"]
 
 #[macro_use]
 extern crate rustc_middle;
 #[macro_use]
 extern crate rustc_session;
+#[macro_use]
+extern crate tracing;
 
 mod array_into_iter;
 pub mod builtin;
 mod context;
+mod deref_into_dyn_supertrait;
 mod early;
 mod enum_intrinsics_non_enums;
+mod errors;
+mod expect;
+mod for_loops_over_fallibles;
 pub mod hidden_unicode_codepoints;
 mod internal;
 mod late;
+mod let_underscore;
 mod levels;
 mod methods;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
 mod noop_method_call;
+mod opaque_hidden_inferred_bound;
+mod pass_by_value;
 mod passes;
 mod redundant_semicolon;
 mod traits;
@@ -73,19 +83,24 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::lint::builtin::{
     BARE_TRAIT_OBJECTS, ELIDED_LIFETIMES_IN_PATHS, EXPLICIT_OUTLIVES_REQUIREMENTS,
 };
-use rustc_span::symbol::{Ident, Symbol};
+use rustc_span::symbol::Ident;
 use rustc_span::Span;
 
 use array_into_iter::ArrayIntoIter;
 use builtin::*;
+use deref_into_dyn_supertrait::*;
 use enum_intrinsics_non_enums::EnumIntrinsicsNonEnums;
+use for_loops_over_fallibles::*;
 use hidden_unicode_codepoints::*;
 use internal::*;
+use let_underscore::*;
 use methods::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
 use noop_method_call::*;
+use opaque_hidden_inferred_bound::*;
+use pass_by_value::*;
 use redundant_semicolon::*;
 use traits::*;
 use types::*;
@@ -93,9 +108,10 @@ use unused::*;
 
 /// Useful for other parts of the compiler / Clippy.
 pub use builtin::SoftLints;
-pub use context::{CheckLintNameResult, EarlyContext, LateContext, LintContext, LintStore};
-pub use early::check_ast_crate;
-pub use late::check_crate;
+pub use context::{CheckLintNameResult, FindLintError, LintStore};
+pub use context::{EarlyContext, LateContext, LintContext};
+pub use early::{check_ast_node, EarlyCheckNode};
+pub use late::{check_crate, unerased_lint_store};
 pub use passes::{EarlyLintPass, LateLintPass};
 pub use rustc_session::lint::Level::{self, *};
 pub use rustc_session::lint::{BufferedEarlyLint, FutureIncompatibleInfo, Lint, LintId};
@@ -103,6 +119,7 @@ pub use rustc_session::lint::{LintArray, LintPass};
 
 pub fn provide(providers: &mut Providers) {
     levels::provide(providers);
+    expect::provide(providers);
     *providers = Providers { lint_mod, ..*providers };
 }
 
@@ -110,127 +127,115 @@ fn lint_mod(tcx: TyCtxt<'_>, module_def_id: LocalDefId) {
     late::late_lint_mod(tcx, module_def_id, BuiltinCombinedModuleLateLintPass::new());
 }
 
-macro_rules! pre_expansion_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!($args, [KeywordIdents: KeywordIdents,]);
-    };
-}
+early_lint_methods!(
+    declare_combined_early_lint_pass,
+    [
+        pub BuiltinCombinedPreExpansionLintPass,
+        [
+            KeywordIdents: KeywordIdents,
+        ]
+    ]
+);
 
-macro_rules! early_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                UnusedParens: UnusedParens,
-                UnusedBraces: UnusedBraces,
-                UnusedImportBraces: UnusedImportBraces,
-                UnsafeCode: UnsafeCode,
-                AnonymousParameters: AnonymousParameters,
-                EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
-                NonCamelCaseTypes: NonCamelCaseTypes,
-                DeprecatedAttr: DeprecatedAttr::new(),
-                WhileTrue: WhileTrue,
-                NonAsciiIdents: NonAsciiIdents,
-                HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
-                IncompleteFeatures: IncompleteFeatures,
-                RedundantSemicolons: RedundantSemicolons,
-                UnusedDocComment: UnusedDocComment,
-            ]
-        );
-    };
-}
+early_lint_methods!(
+    declare_combined_early_lint_pass,
+    [
+        pub BuiltinCombinedEarlyLintPass,
+        [
+            UnusedParens: UnusedParens,
+            UnusedBraces: UnusedBraces,
+            UnusedImportBraces: UnusedImportBraces,
+            UnsafeCode: UnsafeCode,
+            SpecialModuleName: SpecialModuleName,
+            AnonymousParameters: AnonymousParameters,
+            EllipsisInclusiveRangePatterns: EllipsisInclusiveRangePatterns::default(),
+            NonCamelCaseTypes: NonCamelCaseTypes,
+            DeprecatedAttr: DeprecatedAttr::new(),
+            WhileTrue: WhileTrue,
+            NonAsciiIdents: NonAsciiIdents,
+            HiddenUnicodeCodepoints: HiddenUnicodeCodepoints,
+            IncompleteFeatures: IncompleteFeatures,
+            RedundantSemicolons: RedundantSemicolons,
+            UnusedDocComment: UnusedDocComment,
+            UnexpectedCfgs: UnexpectedCfgs,
+        ]
+    ]
+);
 
-macro_rules! declare_combined_early_pass {
-    ([$name:ident], $passes:tt) => (
-        early_lint_methods!(declare_combined_early_lint_pass, [pub $name, $passes]);
-    )
-}
+// FIXME: Make a separate lint type which does not require typeck tables.
 
-pre_expansion_lint_passes!(declare_combined_early_pass, [BuiltinCombinedPreExpansionLintPass]);
-early_lint_passes!(declare_combined_early_pass, [BuiltinCombinedEarlyLintPass]);
+late_lint_methods!(
+    declare_combined_late_lint_pass,
+    [
+        pub BuiltinCombinedLateLintPass,
+        [
+            // Tracks state across modules
+            UnnameableTestItems: UnnameableTestItems::new(),
+            // Tracks attributes of parents
+            MissingDoc: MissingDoc::new(),
+            // Builds a global list of all impls of `Debug`.
+            // FIXME: Turn the computation of types which implement Debug into a query
+            // and change this to a module lint pass
+            MissingDebugImplementations: MissingDebugImplementations::default(),
+            // Keeps a global list of foreign declarations.
+            ClashingExternDeclarations: ClashingExternDeclarations::new(),
+        ]
+    ]
+);
 
-macro_rules! late_lint_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                // FIXME: Look into regression when this is used as a module lint
-                // May Depend on constants elsewhere
-                UnusedBrokenConst: UnusedBrokenConst,
-                // Needs to run after UnusedAttributes as it marks all `feature` attributes as used.
-                UnstableFeatures: UnstableFeatures,
-                // Tracks state across modules
-                UnnameableTestItems: UnnameableTestItems::new(),
-                // Tracks attributes of parents
-                MissingDoc: MissingDoc::new(),
-                // Depends on access levels
-                // FIXME: Turn the computation of types which implement Debug into a query
-                // and change this to a module lint pass
-                MissingDebugImplementations: MissingDebugImplementations::default(),
-                ArrayIntoIter: ArrayIntoIter::default(),
-                ClashingExternDeclarations: ClashingExternDeclarations::new(),
-                DropTraitConstraints: DropTraitConstraints,
-                TemporaryCStringAsPtr: TemporaryCStringAsPtr,
-                NonPanicFmt: NonPanicFmt,
-                NoopMethodCall: NoopMethodCall,
-                EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
-                InvalidAtomicOrdering: InvalidAtomicOrdering,
-                NamedAsmLabels: NamedAsmLabels,
-            ]
-        );
-    };
-}
+late_lint_methods!(
+    declare_combined_late_lint_pass,
+    [
+        BuiltinCombinedModuleLateLintPass,
+        [
+            ForLoopsOverFallibles: ForLoopsOverFallibles,
+            DerefIntoDynSupertrait: DerefIntoDynSupertrait,
+            HardwiredLints: HardwiredLints,
+            ImproperCTypesDeclarations: ImproperCTypesDeclarations,
+            ImproperCTypesDefinitions: ImproperCTypesDefinitions,
+            VariantSizeDifferences: VariantSizeDifferences,
+            BoxPointers: BoxPointers,
+            PathStatements: PathStatements,
+            LetUnderscore: LetUnderscore,
+            // Depends on referenced function signatures in expressions
+            UnusedResults: UnusedResults,
+            NonUpperCaseGlobals: NonUpperCaseGlobals,
+            NonShorthandFieldPatterns: NonShorthandFieldPatterns,
+            UnusedAllocation: UnusedAllocation,
+            // Depends on types used in type definitions
+            MissingCopyImplementations: MissingCopyImplementations,
+            // Depends on referenced function signatures in expressions
+            MutableTransmutes: MutableTransmutes,
+            TypeAliasBounds: TypeAliasBounds,
+            TrivialConstraints: TrivialConstraints,
+            TypeLimits: TypeLimits::new(),
+            NonSnakeCase: NonSnakeCase,
+            InvalidNoMangleItems: InvalidNoMangleItems,
+            // Depends on effective visibilities
+            UnreachablePub: UnreachablePub,
+            ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
+            InvalidValue: InvalidValue,
+            DerefNullPtr: DerefNullPtr,
+            // May Depend on constants elsewhere
+            UnusedBrokenConst: UnusedBrokenConst,
+            UnstableFeatures: UnstableFeatures,
+            ArrayIntoIter: ArrayIntoIter::default(),
+            DropTraitConstraints: DropTraitConstraints,
+            TemporaryCStringAsPtr: TemporaryCStringAsPtr,
+            NonPanicFmt: NonPanicFmt,
+            NoopMethodCall: NoopMethodCall,
+            EnumIntrinsicsNonEnums: EnumIntrinsicsNonEnums,
+            InvalidAtomicOrdering: InvalidAtomicOrdering,
+            NamedAsmLabels: NamedAsmLabels,
+            OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
+        ]
+    ]
+);
 
-macro_rules! late_lint_mod_passes {
-    ($macro:path, $args:tt) => {
-        $macro!(
-            $args,
-            [
-                HardwiredLints: HardwiredLints,
-                ImproperCTypesDeclarations: ImproperCTypesDeclarations,
-                ImproperCTypesDefinitions: ImproperCTypesDefinitions,
-                VariantSizeDifferences: VariantSizeDifferences,
-                BoxPointers: BoxPointers,
-                PathStatements: PathStatements,
-                // Depends on referenced function signatures in expressions
-                UnusedResults: UnusedResults,
-                NonUpperCaseGlobals: NonUpperCaseGlobals,
-                NonShorthandFieldPatterns: NonShorthandFieldPatterns,
-                UnusedAllocation: UnusedAllocation,
-                // Depends on types used in type definitions
-                MissingCopyImplementations: MissingCopyImplementations,
-                // Depends on referenced function signatures in expressions
-                MutableTransmutes: MutableTransmutes,
-                TypeAliasBounds: TypeAliasBounds,
-                TrivialConstraints: TrivialConstraints,
-                TypeLimits: TypeLimits::new(),
-                NonSnakeCase: NonSnakeCase,
-                InvalidNoMangleItems: InvalidNoMangleItems,
-                // Depends on access levels
-                UnreachablePub: UnreachablePub,
-                ExplicitOutlivesRequirements: ExplicitOutlivesRequirements,
-                InvalidValue: InvalidValue,
-                DerefNullPtr: DerefNullPtr,
-            ]
-        );
-    };
-}
-
-macro_rules! declare_combined_late_pass {
-    ([$v:vis $name:ident], $passes:tt) => (
-        late_lint_methods!(declare_combined_late_lint_pass, [$v $name, $passes], ['tcx]);
-    )
-}
-
-// FIXME: Make a separate lint type which do not require typeck tables
-late_lint_passes!(declare_combined_late_pass, [pub BuiltinCombinedLateLintPass]);
-
-late_lint_mod_passes!(declare_combined_late_pass, [BuiltinCombinedModuleLateLintPass]);
-
-pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintStore {
+pub fn new_lint_store(internal_lints: bool) -> LintStore {
     let mut lint_store = LintStore::new();
 
-    register_builtins(&mut lint_store, no_interleave_lints);
+    register_builtins(&mut lint_store);
     if internal_lints {
         register_internals(&mut lint_store);
     }
@@ -241,39 +246,17 @@ pub fn new_lint_store(no_interleave_lints: bool, internal_lints: bool) -> LintSt
 /// Tell the `LintStore` about all the built-in lints (the ones
 /// defined in this crate and the ones defined in
 /// `rustc_session::lint::builtin`).
-fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
+fn register_builtins(store: &mut LintStore) {
     macro_rules! add_lint_group {
         ($name:expr, $($lint:ident),*) => (
             store.register_group(false, $name, None, vec![$(LintId::of($lint)),*]);
         )
     }
 
-    macro_rules! register_pass {
-        ($method:ident, $ty:ident, $constructor:expr) => {
-            store.register_lints(&$ty::get_lints());
-            store.$method(|| Box::new($constructor));
-        };
-    }
-
-    macro_rules! register_passes {
-        ($method:ident, [$($passes:ident: $constructor:expr,)*]) => (
-            $(
-                register_pass!($method, $passes, $constructor);
-            )*
-        )
-    }
-
-    if no_interleave_lints {
-        pre_expansion_lint_passes!(register_passes, register_pre_expansion_pass);
-        early_lint_passes!(register_passes, register_early_pass);
-        late_lint_passes!(register_passes, register_late_pass);
-        late_lint_mod_passes!(register_passes, register_late_mod_pass);
-    } else {
-        store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
-        store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
-    }
+    store.register_lints(&BuiltinCombinedPreExpansionLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedEarlyLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedModuleLateLintPass::get_lints());
+    store.register_lints(&BuiltinCombinedLateLintPass::get_lints());
 
     add_lint_group!(
         "nonstandard_style",
@@ -296,6 +279,7 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         PATH_STATEMENTS,
         UNUSED_ATTRIBUTES,
         UNUSED_MACROS,
+        UNUSED_MACRO_RULES,
         UNUSED_ALLOCATION,
         UNUSED_DOC_COMMENTS,
         UNUSED_EXTERN_CRATES,
@@ -305,6 +289,8 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
         UNUSED_BRACES,
         REDUNDANT_SEMICOLONS
     );
+
+    add_lint_group!("let_underscore", LET_UNDERSCORE_DROP, LET_UNDERSCORE_LOCK);
 
     add_lint_group!(
         "rust_2018_idioms",
@@ -479,28 +465,57 @@ fn register_builtins(store: &mut LintStore, no_interleave_lints: bool) {
          <https://github.com/rust-lang/rust/issues/59014> for more information",
     );
     store.register_removed("plugin_as_library", "plugins have been deprecated and retired");
+    store.register_removed(
+        "unsupported_naked_functions",
+        "converted into hard error, see RFC 2972 \
+         <https://github.com/rust-lang/rfcs/blob/master/text/2972-constrained-naked.md> for more information",
+    );
+    store.register_removed(
+        "mutable_borrow_reservation_conflict",
+        "now allowed, see issue #59159 \
+         <https://github.com/rust-lang/rust/issues/59159> for more information",
+    );
+    store.register_removed(
+        "const_err",
+        "converted into hard error, see issue #71800 \
+         <https://github.com/rust-lang/rust/issues/71800> for more information",
+    );
 }
 
 fn register_internals(store: &mut LintStore) {
     store.register_lints(&LintPassImpl::get_lints());
     store.register_early_pass(|| Box::new(LintPassImpl));
     store.register_lints(&DefaultHashTypes::get_lints());
-    store.register_late_pass(|| Box::new(DefaultHashTypes));
+    store.register_late_pass(|_| Box::new(DefaultHashTypes));
+    store.register_lints(&QueryStability::get_lints());
+    store.register_late_pass(|_| Box::new(QueryStability));
     store.register_lints(&ExistingDocKeyword::get_lints());
-    store.register_late_pass(|| Box::new(ExistingDocKeyword));
+    store.register_late_pass(|_| Box::new(ExistingDocKeyword));
     store.register_lints(&TyTyKind::get_lints());
-    store.register_late_pass(|| Box::new(TyTyKind));
+    store.register_late_pass(|_| Box::new(TyTyKind));
+    store.register_lints(&Diagnostics::get_lints());
+    store.register_late_pass(|_| Box::new(Diagnostics));
+    store.register_lints(&BadOptAccess::get_lints());
+    store.register_late_pass(|_| Box::new(BadOptAccess));
+    store.register_lints(&PassByValue::get_lints());
+    store.register_late_pass(|_| Box::new(PassByValue));
+    // FIXME(davidtwco): deliberately do not include `UNTRANSLATABLE_DIAGNOSTIC` and
+    // `DIAGNOSTIC_OUTSIDE_OF_IMPL` here because `-Wrustc::internal` is provided to every crate and
+    // these lints will trigger all of the time - change this once migration to diagnostic structs
+    // and translation is completed
     store.register_group(
         false,
         "rustc::internal",
         None,
         vec![
             LintId::of(DEFAULT_HASH_TYPES),
+            LintId::of(POTENTIAL_QUERY_INSTABILITY),
             LintId::of(USAGE_OF_TY_TYKIND),
+            LintId::of(PASS_BY_VALUE),
             LintId::of(LINT_PASS_IMPL_WITHOUT_MACRO),
-            LintId::of(TY_PASS_BY_REFERENCE),
             LintId::of(USAGE_OF_QUALIFIED_TY),
             LintId::of(EXISTING_DOC_KEYWORD),
+            LintId::of(BAD_OPT_ACCESS),
         ],
     );
 }

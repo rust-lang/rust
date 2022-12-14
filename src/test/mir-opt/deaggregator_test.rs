@@ -1,3 +1,5 @@
+// unit-test: Deaggregator
+
 struct Baz {
     x: usize,
     y: f32,

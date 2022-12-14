@@ -3,7 +3,7 @@
 // random #![feature] to ensure that crate attrs
 // do not offset things
 /// ```rust
-/// #![feature(nll)]
+/// #![feature(bool_to_option)]
 /// let x: char = 1;
 /// ```
 pub fn foo() {
@@ -13,7 +13,7 @@ pub fn foo() {
 /// Add some text around the test...
 ///
 /// ```rust
-/// #![feature(nll)]
+/// #![feature(bool_to_option)]
 /// let x: char = 1;
 /// ```
 ///
@@ -22,7 +22,7 @@ pub fn foo() {
 /// Let's also add a second test in the same doc comment.
 ///
 /// ```rust
-/// #![feature(nll)]
+/// #![feature(bool_to_option)]
 /// let x: char = 1;
 /// ```
 pub fn bar() {}

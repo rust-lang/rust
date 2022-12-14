@@ -301,10 +301,10 @@ fn test_show() {
     set.insert(1);
     set.insert(2);
 
-    let set_str = format!("{:?}", set);
+    let set_str = format!("{set:?}");
 
     assert!(set_str == "{1, 2}" || set_str == "{2, 1}");
-    assert_eq!(format!("{:?}", empty), "{}");
+    assert_eq!(format!("{empty:?}"), "{}");
 }
 
 #[test]
@@ -495,4 +495,10 @@ fn from_array() {
     // If you make a change that causes this line to no longer infer,
     // that's a problem!
     let _must_not_require_type_annotation = HashSet::from([1, 2]);
+}
+
+#[test]
+fn const_with_hasher() {
+    const X: HashSet<(), ()> = HashSet::with_hasher(());
+    assert_eq!(X.len(), 0);
 }

@@ -1,0 +1,11 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/multiple-def-uses-in-one-fn-infer.rs:10:5
+   |
+LL |     (42_i64, 60)
+   |     ^^^^^^^^^^^^
+   |     |
+   |     expected `i64`, got `i32`
+   |     this expression supplies two conflicting concrete types for the same opaque type
+
+error: aborting due to previous error
+

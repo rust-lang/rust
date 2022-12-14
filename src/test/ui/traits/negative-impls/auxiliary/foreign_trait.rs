@@ -1,4 +1,5 @@
 #![feature(negative_impls)]
+#![feature(with_negative_coherence)]
 
 pub trait ForeignTrait {}
 

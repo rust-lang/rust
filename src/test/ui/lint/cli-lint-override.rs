@@ -1,5 +1,5 @@
 // Tests that subsequent lints specified via the command line override
-// each other, except for ForceWarn and Forbid, which cannot be overriden.
+// each other, except for ForceWarn and Forbid, which cannot be overridden.
 //
 // revisions: warn_deny forbid_warn force_warn_deny
 //

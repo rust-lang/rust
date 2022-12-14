@@ -56,78 +56,30 @@ macro_rules! with_api {
                 fn drop($self: $S::FreeFunctions);
                 fn track_env_var(var: &str, value: Option<&str>);
                 fn track_path(path: &str);
+                fn literal_from_str(s: &str) -> Result<Literal<$S::Span, $S::Symbol>, ()>;
+                fn emit_diagnostic(diagnostic: Diagnostic<$S::Span>);
             },
             TokenStream {
                 fn drop($self: $S::TokenStream);
                 fn clone($self: &$S::TokenStream) -> $S::TokenStream;
-                fn new() -> $S::TokenStream;
                 fn is_empty($self: &$S::TokenStream) -> bool;
+                fn expand_expr($self: &$S::TokenStream) -> Result<$S::TokenStream, ()>;
                 fn from_str(src: &str) -> $S::TokenStream;
                 fn to_string($self: &$S::TokenStream) -> String;
                 fn from_token_tree(
-                    tree: TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>,
+                    tree: TokenTree<$S::TokenStream, $S::Span, $S::Symbol>,
                 ) -> $S::TokenStream;
-                fn into_iter($self: $S::TokenStream) -> $S::TokenStreamIter;
-            },
-            TokenStreamBuilder {
-                fn drop($self: $S::TokenStreamBuilder);
-                fn new() -> $S::TokenStreamBuilder;
-                fn push($self: &mut $S::TokenStreamBuilder, stream: $S::TokenStream);
-                fn build($self: $S::TokenStreamBuilder) -> $S::TokenStream;
-            },
-            TokenStreamIter {
-                fn drop($self: $S::TokenStreamIter);
-                fn clone($self: &$S::TokenStreamIter) -> $S::TokenStreamIter;
-                fn next(
-                    $self: &mut $S::TokenStreamIter,
-                ) -> Option<TokenTree<$S::Group, $S::Punct, $S::Ident, $S::Literal>>;
-            },
-            Group {
-                fn drop($self: $S::Group);
-                fn clone($self: &$S::Group) -> $S::Group;
-                fn new(delimiter: Delimiter, stream: $S::TokenStream) -> $S::Group;
-                fn delimiter($self: &$S::Group) -> Delimiter;
-                fn stream($self: &$S::Group) -> $S::TokenStream;
-                fn span($self: &$S::Group) -> $S::Span;
-                fn span_open($self: &$S::Group) -> $S::Span;
-                fn span_close($self: &$S::Group) -> $S::Span;
-                fn set_span($self: &mut $S::Group, span: $S::Span);
-            },
-            Punct {
-                fn new(ch: char, spacing: Spacing) -> $S::Punct;
-                fn as_char($self: $S::Punct) -> char;
-                fn spacing($self: $S::Punct) -> Spacing;
-                fn span($self: $S::Punct) -> $S::Span;
-                fn with_span($self: $S::Punct, span: $S::Span) -> $S::Punct;
-            },
-            Ident {
-                fn new(string: &str, span: $S::Span, is_raw: bool) -> $S::Ident;
-                fn span($self: $S::Ident) -> $S::Span;
-                fn with_span($self: $S::Ident, span: $S::Span) -> $S::Ident;
-            },
-            Literal {
-                fn drop($self: $S::Literal);
-                fn clone($self: &$S::Literal) -> $S::Literal;
-                fn from_str(s: &str) -> Result<$S::Literal, ()>;
-                fn to_string($self: &$S::Literal) -> String;
-                fn debug_kind($self: &$S::Literal) -> String;
-                fn symbol($self: &$S::Literal) -> String;
-                fn suffix($self: &$S::Literal) -> Option<String>;
-                fn integer(n: &str) -> $S::Literal;
-                fn typed_integer(n: &str, kind: &str) -> $S::Literal;
-                fn float(n: &str) -> $S::Literal;
-                fn f32(n: &str) -> $S::Literal;
-                fn f64(n: &str) -> $S::Literal;
-                fn string(string: &str) -> $S::Literal;
-                fn character(ch: char) -> $S::Literal;
-                fn byte_string(bytes: &[u8]) -> $S::Literal;
-                fn span($self: &$S::Literal) -> $S::Span;
-                fn set_span($self: &mut $S::Literal, span: $S::Span);
-                fn subspan(
-                    $self: &$S::Literal,
-                    start: Bound<usize>,
-                    end: Bound<usize>,
-                ) -> Option<$S::Span>;
+                fn concat_trees(
+                    base: Option<$S::TokenStream>,
+                    trees: Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>,
+                ) -> $S::TokenStream;
+                fn concat_streams(
+                    base: Option<$S::TokenStream>,
+                    streams: Vec<$S::TokenStream>,
+                ) -> $S::TokenStream;
+                fn into_trees(
+                    $self: $S::TokenStream
+                ) -> Vec<TokenTree<$S::TokenStream, $S::Span, $S::Symbol>>;
             },
             SourceFile {
                 fn drop($self: $S::SourceFile);
@@ -136,27 +88,8 @@ macro_rules! with_api {
                 fn path($self: &$S::SourceFile) -> String;
                 fn is_real($self: &$S::SourceFile) -> bool;
             },
-            MultiSpan {
-                fn drop($self: $S::MultiSpan);
-                fn new() -> $S::MultiSpan;
-                fn push($self: &mut $S::MultiSpan, span: $S::Span);
-            },
-            Diagnostic {
-                fn drop($self: $S::Diagnostic);
-                fn new(level: Level, msg: &str, span: $S::MultiSpan) -> $S::Diagnostic;
-                fn sub(
-                    $self: &mut $S::Diagnostic,
-                    level: Level,
-                    msg: &str,
-                    span: $S::MultiSpan,
-                );
-                fn emit($self: $S::Diagnostic);
-            },
             Span {
                 fn debug($self: $S::Span) -> String;
-                fn def_site() -> $S::Span;
-                fn call_site() -> $S::Span;
-                fn mixed_site() -> $S::Span;
                 fn source_file($self: $S::Span) -> $S::SourceFile;
                 fn parent($self: $S::Span) -> Option<$S::Span>;
                 fn source($self: $S::Span) -> $S::Span;
@@ -165,17 +98,21 @@ macro_rules! with_api {
                 fn before($self: $S::Span) -> $S::Span;
                 fn after($self: $S::Span) -> $S::Span;
                 fn join($self: $S::Span, other: $S::Span) -> Option<$S::Span>;
+                fn subspan($self: $S::Span, start: Bound<usize>, end: Bound<usize>) -> Option<$S::Span>;
                 fn resolved_at($self: $S::Span, at: $S::Span) -> $S::Span;
                 fn source_text($self: $S::Span) -> Option<String>;
                 fn save_span($self: $S::Span) -> usize;
                 fn recover_proc_macro_span(id: usize) -> $S::Span;
+            },
+            Symbol {
+                fn normalize_and_validate_ident(string: &str) -> Result<$S::Symbol, ()>;
             },
         }
     };
 }
 
 // FIXME(eddyb) this calls `encode` for each argument, but in reverse,
-// to avoid borrow conflicts from borrows started by `&mut` arguments.
+// to match the ordering in `reverse_decode`.
 macro_rules! reverse_encode {
     ($writer:ident;) => {};
     ($writer:ident; $first:ident $(, $rest:ident)*) => {
@@ -195,11 +132,15 @@ macro_rules! reverse_decode {
 }
 
 #[allow(unsafe_code)]
+mod arena;
+#[allow(unsafe_code)]
 mod buffer;
 #[forbid(unsafe_code)]
 pub mod client;
 #[allow(unsafe_code)]
 mod closure;
+#[forbid(unsafe_code)]
+mod fxhash;
 #[forbid(unsafe_code)]
 mod handle;
 #[macro_use]
@@ -207,33 +148,38 @@ mod handle;
 mod rpc;
 #[allow(unsafe_code)]
 mod scoped_cell;
+#[allow(unsafe_code)]
+mod selfless_reify;
 #[forbid(unsafe_code)]
 pub mod server;
+#[allow(unsafe_code)]
+mod symbol;
 
 use buffer::Buffer;
 pub use rpc::PanicMessage;
 use rpc::{Decode, DecodeMut, Encode, Reader, Writer};
 
-/// An active connection between a server and a client.
-/// The server creates the bridge (`Bridge::run_server` in `server.rs`),
-/// then passes it to the client through the function pointer in the `run`
-/// field of `client::Client`. The client holds its copy of the `Bridge`
+/// Configuration for establishing an active connection between a server and a
+/// client.  The server creates the bridge config (`run_server` in `server.rs`),
+/// then passes it to the client through the function pointer in the `run` field
+/// of `client::Client`. The client constructs a local `Bridge` from the config
 /// in TLS during its execution (`Bridge::{enter, with}` in `client.rs`).
 #[repr(C)]
-pub struct Bridge<'a> {
-    /// Reusable buffer (only `clear`-ed, never shrunk), primarily
-    /// used for making requests, but also for passing input to client.
-    cached_buffer: Buffer<u8>,
+pub struct BridgeConfig<'a> {
+    /// Buffer used to pass initial input to the client.
+    input: Buffer,
 
     /// Server-side function that the client uses to make requests.
-    dispatch: closure::Closure<'a, Buffer<u8>, Buffer<u8>>,
+    dispatch: closure::Closure<'a, Buffer, Buffer>,
 
     /// If 'true', always invoke the default panic hook
     force_show_panics: bool,
-}
 
-impl<'a> !Sync for Bridge<'a> {}
-impl<'a> !Send for Bridge<'a> {}
+    // Prevent Send and Sync impls. `!Send`/`!Sync` is the usual way of doing
+    // this, but that requires unstable features. rust-analyzer uses this code
+    // and avoids unstable features.
+    _marker: marker::PhantomData<*mut ()>,
+}
 
 #[forbid(unsafe_code)]
 #[allow(non_camel_case_types)]
@@ -250,7 +196,6 @@ mod api_tags {
                 }
                 rpc_encode_decode!(enum $name { $($method),* });
             )*
-
 
             pub(super) enum Method {
                 $($name($name)),*
@@ -294,42 +239,31 @@ impl<T, M> Unmark for Marked<T, M> {
         self.value
     }
 }
-impl<T, M> Unmark for &'a Marked<T, M> {
+impl<'a, T, M> Unmark for &'a Marked<T, M> {
     type Unmarked = &'a T;
     fn unmark(self) -> Self::Unmarked {
         &self.value
     }
 }
-impl<T, M> Unmark for &'a mut Marked<T, M> {
+impl<'a, T, M> Unmark for &'a mut Marked<T, M> {
     type Unmarked = &'a mut T;
     fn unmark(self) -> Self::Unmarked {
         &mut self.value
     }
 }
 
-impl<T: Mark> Mark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
+impl<T: Mark> Mark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
     fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark)
+        // Should be a no-op due to std's in-place collect optimizations.
+        unmarked.into_iter().map(T::mark).collect()
     }
 }
-impl<T: Unmark> Unmark for Option<T> {
-    type Unmarked = Option<T::Unmarked>;
+impl<T: Unmark> Unmark for Vec<T> {
+    type Unmarked = Vec<T::Unmarked>;
     fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark)
-    }
-}
-
-impl<T: Mark, E: Mark> Mark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        unmarked.map(T::mark).map_err(E::mark)
-    }
-}
-impl<T: Unmark, E: Unmark> Unmark for Result<T, E> {
-    type Unmarked = Result<T::Unmarked, E::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        self.map(T::unmark).map_err(E::unmark)
+        // Should be a no-op due to std's in-place collect optimizations.
+        self.into_iter().map(T::unmark).collect()
     }
 }
 
@@ -355,15 +289,16 @@ mark_noop! {
     (),
     bool,
     char,
-    &'a [u8],
-    &'a str,
+    &'_ [u8],
+    &'_ str,
     String,
+    u8,
     usize,
     Delimiter,
+    LitKind,
     Level,
     LineColumn,
     Spacing,
-    Bound<usize>,
 }
 
 rpc_encode_decode!(
@@ -390,42 +325,197 @@ rpc_encode_decode!(
     }
 );
 
-#[derive(Clone)]
-pub enum TokenTree<G, P, I, L> {
-    Group(G),
-    Punct(P),
-    Ident(I),
-    Literal(L),
-}
-
-impl<G: Mark, P: Mark, I: Mark, L: Mark> Mark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn mark(unmarked: Self::Unmarked) -> Self {
-        match unmarked {
-            TokenTree::Group(tt) => TokenTree::Group(G::mark(tt)),
-            TokenTree::Punct(tt) => TokenTree::Punct(P::mark(tt)),
-            TokenTree::Ident(tt) => TokenTree::Ident(I::mark(tt)),
-            TokenTree::Literal(tt) => TokenTree::Literal(L::mark(tt)),
-        }
-    }
-}
-impl<G: Unmark, P: Unmark, I: Unmark, L: Unmark> Unmark for TokenTree<G, P, I, L> {
-    type Unmarked = TokenTree<G::Unmarked, P::Unmarked, I::Unmarked, L::Unmarked>;
-    fn unmark(self) -> Self::Unmarked {
-        match self {
-            TokenTree::Group(tt) => TokenTree::Group(tt.unmark()),
-            TokenTree::Punct(tt) => TokenTree::Punct(tt.unmark()),
-            TokenTree::Ident(tt) => TokenTree::Ident(tt.unmark()),
-            TokenTree::Literal(tt) => TokenTree::Literal(tt.unmark()),
-        }
-    }
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
+pub enum LitKind {
+    Byte,
+    Char,
+    Integer,
+    Float,
+    Str,
+    StrRaw(u8),
+    ByteStr,
+    ByteStrRaw(u8),
+    Err,
 }
 
 rpc_encode_decode!(
-    enum TokenTree<G, P, I, L> {
+    enum LitKind {
+        Byte,
+        Char,
+        Integer,
+        Float,
+        Str,
+        StrRaw(n),
+        ByteStr,
+        ByteStrRaw(n),
+        Err,
+    }
+);
+
+macro_rules! mark_compound {
+    (struct $name:ident <$($T:ident),+> { $($field:ident),* $(,)? }) => {
+        impl<$($T: Mark),+> Mark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn mark(unmarked: Self::Unmarked) -> Self {
+                $name {
+                    $($field: Mark::mark(unmarked.$field)),*
+                }
+            }
+        }
+
+        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn unmark(self) -> Self::Unmarked {
+                $name {
+                    $($field: Unmark::unmark(self.$field)),*
+                }
+            }
+        }
+    };
+    (enum $name:ident <$($T:ident),+> { $($variant:ident $(($field:ident))?),* $(,)? }) => {
+        impl<$($T: Mark),+> Mark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn mark(unmarked: Self::Unmarked) -> Self {
+                match unmarked {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Mark::mark($field)))?
+                    })*
+                }
+            }
+        }
+
+        impl<$($T: Unmark),+> Unmark for $name <$($T),+> {
+            type Unmarked = $name <$($T::Unmarked),+>;
+            fn unmark(self) -> Self::Unmarked {
+                match self {
+                    $($name::$variant $(($field))? => {
+                        $name::$variant $((Unmark::unmark($field)))?
+                    })*
+                }
+            }
+        }
+    }
+}
+
+macro_rules! compound_traits {
+    ($($t:tt)*) => {
+        rpc_encode_decode!($($t)*);
+        mark_compound!($($t)*);
+    };
+}
+
+compound_traits!(
+    enum Bound<T> {
+        Included(x),
+        Excluded(x),
+        Unbounded,
+    }
+);
+
+compound_traits!(
+    enum Option<T> {
+        Some(t),
+        None,
+    }
+);
+
+compound_traits!(
+    enum Result<T, E> {
+        Ok(t),
+        Err(e),
+    }
+);
+
+#[derive(Copy, Clone)]
+pub struct DelimSpan<Span> {
+    pub open: Span,
+    pub close: Span,
+    pub entire: Span,
+}
+
+impl<Span: Copy> DelimSpan<Span> {
+    pub fn from_single(span: Span) -> Self {
+        DelimSpan { open: span, close: span, entire: span }
+    }
+}
+
+compound_traits!(struct DelimSpan<Span> { open, close, entire });
+
+#[derive(Clone)]
+pub struct Group<TokenStream, Span> {
+    pub delimiter: Delimiter,
+    pub stream: Option<TokenStream>,
+    pub span: DelimSpan<Span>,
+}
+
+compound_traits!(struct Group<TokenStream, Span> { delimiter, stream, span });
+
+#[derive(Clone)]
+pub struct Punct<Span> {
+    pub ch: u8,
+    pub joint: bool,
+    pub span: Span,
+}
+
+compound_traits!(struct Punct<Span> { ch, joint, span });
+
+#[derive(Copy, Clone, Eq, PartialEq)]
+pub struct Ident<Span, Symbol> {
+    pub sym: Symbol,
+    pub is_raw: bool,
+    pub span: Span,
+}
+
+compound_traits!(struct Ident<Span, Symbol> { sym, is_raw, span });
+
+#[derive(Clone, Eq, PartialEq)]
+pub struct Literal<Span, Symbol> {
+    pub kind: LitKind,
+    pub symbol: Symbol,
+    pub suffix: Option<Symbol>,
+    pub span: Span,
+}
+
+compound_traits!(struct Literal<Sp, Sy> { kind, symbol, suffix, span });
+
+#[derive(Clone)]
+pub enum TokenTree<TokenStream, Span, Symbol> {
+    Group(Group<TokenStream, Span>),
+    Punct(Punct<Span>),
+    Ident(Ident<Span, Symbol>),
+    Literal(Literal<Span, Symbol>),
+}
+
+compound_traits!(
+    enum TokenTree<TokenStream, Span, Symbol> {
         Group(tt),
         Punct(tt),
         Ident(tt),
         Literal(tt),
     }
+);
+
+#[derive(Clone, Debug)]
+pub struct Diagnostic<Span> {
+    pub level: Level,
+    pub message: String,
+    pub spans: Vec<Span>,
+    pub children: Vec<Diagnostic<Span>>,
+}
+
+compound_traits!(
+    struct Diagnostic<Span> { level, message, spans, children }
+);
+
+/// Globals provided alongside the initial inputs for a macro expansion.
+/// Provides values such as spans which are used frequently to avoid RPC.
+#[derive(Clone)]
+pub struct ExpnGlobals<Span> {
+    pub def_site: Span,
+    pub call_site: Span,
+    pub mixed_site: Span,
+}
+
+compound_traits!(
+    struct ExpnGlobals<Span> { def_site, call_site, mixed_site }
 );

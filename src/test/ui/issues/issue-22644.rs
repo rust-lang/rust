@@ -29,7 +29,7 @@ fn main() {
                    < //~ ERROR `<` is interpreted as a start of generic
                    5);
 
-    println!("{}", a as usize << long_name); //~ ERROR `<` is interpreted as a start of generic
+    println!("{}", a as usize << long_name); //~ ERROR `<<` is interpreted as a start of generic
 
     println!("{}", a: &mut 4); //~ ERROR expected type, found `4`
 }

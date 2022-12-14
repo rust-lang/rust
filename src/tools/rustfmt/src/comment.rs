@@ -3,6 +3,8 @@
 use std::{self, borrow::Cow, iter};
 
 use itertools::{multipeek, MultiPeek};
+use lazy_static::lazy_static;
+use regex::Regex;
 use rustc_span::Span;
 
 use crate::config::Config;
@@ -14,6 +16,17 @@ use crate::utils::{
     trimmed_last_line_width, unicode_str_width,
 };
 use crate::{ErrorKind, FormattingError};
+
+lazy_static! {
+    /// A regex matching reference doc links.
+    ///
+    /// ```markdown
+    /// /// An [example].
+    /// ///
+    /// /// [example]: this::is::a::link
+    /// ```
+    static ref REFERENCE_LINK_URL: Regex = Regex::new(r"^\[.+\]\s?:").unwrap();
+}
 
 fn is_custom_comment(comment: &str) -> bool {
     if !comment.starts_with("//") {
@@ -405,7 +418,7 @@ impl CodeBlockAttribute {
     /// attributes are valid rust attributes
     /// See <https://doc.rust-lang.org/rustdoc/print.html#attributes>
     fn new(attributes: &str) -> CodeBlockAttribute {
-        for attribute in attributes.split(",") {
+        for attribute in attributes.split(',') {
             match attribute.trim() {
                 "" | "rust" | "should_panic" | "no_run" | "edition2015" | "edition2018"
                 | "edition2021" => (),
@@ -419,16 +432,16 @@ impl CodeBlockAttribute {
 
 /// Block that is formatted as an item.
 ///
-/// An item starts with either a star `*` or a dash `-`. Different level of indentation are
-/// handled by shrinking the shape accordingly.
+/// An item starts with either a star `*` a dash `-` or a greater-than `>`.
+/// Different level of indentation are handled by shrinking the shape accordingly.
 struct ItemizedBlock {
     /// the lines that are identified as part of an itemized block
     lines: Vec<String>,
-    /// the number of whitespaces up to the item sigil
+    /// the number of characters (typically whitespaces) up to the item sigil
     indent: usize,
     /// the string that marks the start of an item
     opener: String,
-    /// sequence of whitespaces to prefix new lines that are part of the item
+    /// sequence of characters (typically whitespaces) to prefix new lines that are part of the item
     line_start: String,
 }
 
@@ -436,19 +449,32 @@ impl ItemizedBlock {
     /// Returns `true` if the line is formatted as an item
     fn is_itemized_line(line: &str) -> bool {
         let trimmed = line.trim_start();
-        trimmed.starts_with("* ") || trimmed.starts_with("- ")
+        trimmed.starts_with("* ") || trimmed.starts_with("- ") || trimmed.starts_with("> ")
     }
 
     /// Creates a new ItemizedBlock described with the given line.
     /// The `is_itemized_line` needs to be called first.
     fn new(line: &str) -> ItemizedBlock {
         let space_to_sigil = line.chars().take_while(|c| c.is_whitespace()).count();
-        let indent = space_to_sigil + 2;
+        // +2 = '* ', which will add the appropriate amount of whitespace to keep itemized
+        // content formatted correctly.
+        let mut indent = space_to_sigil + 2;
+        let mut line_start = " ".repeat(indent);
+
+        // Markdown blockquote start with a "> "
+        if line.trim_start().starts_with(">") {
+            // remove the original +2 indent because there might be multiple nested block quotes
+            // and it's easier to reason about the final indent by just taking the length
+            // of th new line_start. We update the indent because it effects the max width
+            // of each formatted line.
+            line_start = itemized_block_quote_start(line, line_start, 2);
+            indent = line_start.len();
+        }
         ItemizedBlock {
             lines: vec![line[indent..].to_string()],
             indent,
             opener: line[..indent].to_string(),
-            line_start: " ".repeat(indent),
+            line_start,
         }
     }
 
@@ -491,6 +517,25 @@ impl ItemizedBlock {
     }
 }
 
+/// Determine the line_start when formatting markdown block quotes.
+/// The original line_start likely contains indentation (whitespaces), which we'd like to
+/// replace with '> ' characters.
+fn itemized_block_quote_start(line: &str, mut line_start: String, remove_indent: usize) -> String {
+    let quote_level = line
+        .chars()
+        .take_while(|c| !c.is_alphanumeric())
+        .fold(0, |acc, c| if c == '>' { acc + 1 } else { acc });
+
+    for _ in 0..remove_indent {
+        line_start.pop();
+    }
+
+    for _ in 0..quote_level {
+        line_start.push_str("> ")
+    }
+    line_start
+}
+
 struct CommentRewrite<'a> {
     result: String,
     code_block_buffer: String,
@@ -506,6 +551,7 @@ struct CommentRewrite<'a> {
     opener: String,
     closer: String,
     line_start: String,
+    style: CommentStyle<'a>,
 }
 
 impl<'a> CommentRewrite<'a> {
@@ -515,10 +561,14 @@ impl<'a> CommentRewrite<'a> {
         shape: Shape,
         config: &'a Config,
     ) -> CommentRewrite<'a> {
-        let (opener, closer, line_start) = if block_style {
-            CommentStyle::SingleBullet.to_str_tuplet()
+        let ((opener, closer, line_start), style) = if block_style {
+            (
+                CommentStyle::SingleBullet.to_str_tuplet(),
+                CommentStyle::SingleBullet,
+            )
         } else {
-            comment_style(orig, config.normalize_comments()).to_str_tuplet()
+            let style = comment_style(orig, config.normalize_comments());
+            (style.to_str_tuplet(), style)
         };
 
         let max_width = shape
@@ -551,6 +601,7 @@ impl<'a> CommentRewrite<'a> {
             opener: opener.to_owned(),
             closer: closer.to_owned(),
             line_start: line_start.to_owned(),
+            style,
         };
         cr.result.push_str(opener);
         cr
@@ -563,11 +614,20 @@ impl<'a> CommentRewrite<'a> {
             result.push_str(line);
             result.push_str(match iter.peek() {
                 Some(next_line) if next_line.is_empty() => sep.trim_end(),
-                Some(..) => &sep,
+                Some(..) => sep,
                 None => "",
             });
         }
         result
+    }
+
+    /// Check if any characters were written to the result buffer after the start of the comment.
+    /// when calling [`CommentRewrite::new()`] the result buffer is initiazlied with the opening
+    /// characters for the comment.
+    fn buffer_contains_comment(&self) -> bool {
+        // if self.result.len() < self.opener.len() then an empty comment is in the buffer
+        // if self.result.len() > self.opener.len() then a non empty comment is in the buffer
+        self.result.len() != self.opener.len()
     }
 
     fn finish(mut self) -> String {
@@ -585,7 +645,12 @@ impl<'a> CommentRewrite<'a> {
             // the last few lines are part of an itemized block
             self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
-            self.result.push_str(&self.comment_line_separator);
+
+            // only push a comment_line_separator for ItemizedBlocks if the comment is not empty
+            if self.buffer_contains_comment() {
+                self.result.push_str(&self.comment_line_separator);
+            }
+
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
@@ -618,17 +683,29 @@ impl<'a> CommentRewrite<'a> {
         i: usize,
         line: &'a str,
         has_leading_whitespace: bool,
+        is_doc_comment: bool,
     ) -> bool {
-        let is_last = i == count_newlines(orig);
+        let num_newlines = count_newlines(orig);
+        let is_last = i == num_newlines;
+        let needs_new_comment_line = if self.style.is_block_comment() {
+            num_newlines > 0 || self.buffer_contains_comment()
+        } else {
+            self.buffer_contains_comment()
+        };
 
         if let Some(ref mut ib) = self.item_block {
-            if ib.add_line(&line) {
+            if ib.add_line(line) {
                 return false;
             }
             self.is_prev_line_multi_line = false;
             self.fmt.shape = Shape::legacy(self.max_width, self.fmt_indent);
             let item_fmt = ib.create_string_format(&self.fmt);
-            self.result.push_str(&self.comment_line_separator);
+
+            // only push a comment_line_separator if we need to start a new comment line
+            if needs_new_comment_line {
+                self.result.push_str(&self.comment_line_separator);
+            }
+
             self.result.push_str(&ib.opener);
             match rewrite_string(
                 &ib.trimmed_block_as_string(),
@@ -653,6 +730,10 @@ impl<'a> CommentRewrite<'a> {
                     {
                         let mut config = self.fmt.config.clone();
                         config.set().wrap_comments(false);
+                        let comment_max_width = config
+                            .doc_comment_code_block_width()
+                            .min(config.max_width());
+                        config.set().max_width(comment_max_width);
                         if let Some(s) =
                             crate::format_code_block(&self.code_block_buffer, &config, false)
                         {
@@ -684,8 +765,8 @@ impl<'a> CommentRewrite<'a> {
         self.item_block = None;
         if let Some(stripped) = line.strip_prefix("```") {
             self.code_block_attr = Some(CodeBlockAttribute::new(stripped))
-        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(&line) {
-            let ib = ItemizedBlock::new(&line);
+        } else if self.fmt.config.wrap_comments() && ItemizedBlock::is_itemized_line(line) {
+            let ib = ItemizedBlock::new(line);
             self.item_block = Some(ib);
             return false;
         }
@@ -713,10 +794,19 @@ impl<'a> CommentRewrite<'a> {
             }
         }
 
-        if self.fmt.config.wrap_comments()
+        let is_markdown_header_doc_comment = is_doc_comment && line.starts_with("#");
+
+        // We only want to wrap the comment if:
+        // 1) wrap_comments = true is configured
+        // 2) The comment is not the start of a markdown header doc comment
+        // 3) The comment width exceeds the shape's width
+        // 4) No URLS were found in the comment
+        let should_wrap_comment = self.fmt.config.wrap_comments()
+            && !is_markdown_header_doc_comment
             && unicode_str_width(line) > self.fmt.shape.width
-            && !has_url(line)
-        {
+            && !has_url(line);
+
+        if should_wrap_comment {
             match rewrite_string(line, &self.fmt, self.max_width) {
                 Some(ref s) => {
                     self.is_prev_line_multi_line = s.contains('\n');
@@ -806,7 +896,7 @@ fn rewrite_comment_inner(
         });
 
     for (i, (line, has_leading_whitespace)) in lines.enumerate() {
-        if rewriter.handle_line(orig, i, line, has_leading_whitespace) {
+        if rewriter.handle_line(orig, i, line, has_leading_whitespace, is_doc_comment) {
             break;
         }
     }
@@ -842,7 +932,11 @@ fn trim_custom_comment_prefix(s: &str) -> String {
 /// Returns `true` if the given string MAY include URLs or alike.
 fn has_url(s: &str) -> bool {
     // This function may return false positive, but should get its job done in most cases.
-    s.contains("https://") || s.contains("http://") || s.contains("ftp://") || s.contains("file://")
+    s.contains("https://")
+        || s.contains("http://")
+        || s.contains("ftp://")
+        || s.contains("file://")
+        || REFERENCE_LINK_URL.is_match(s)
 }
 
 /// Given the span, rewrite the missing comment inside it if available.
@@ -941,7 +1035,7 @@ fn left_trim_comment_line<'a>(line: &'a str, style: &CommentStyle<'_>) -> (&'a s
     {
         (&line[4..], true)
     } else if let CommentStyle::Custom(opener) = *style {
-        if let Some(ref stripped) = line.strip_prefix(opener) {
+        if let Some(stripped) = line.strip_prefix(opener) {
             (stripped, true)
         } else {
             (&line[opener.trim_end().len()..], false)
@@ -1384,7 +1478,7 @@ impl<'a> Iterator for LineClasses<'a> {
             None => unreachable!(),
         };
 
-        while let Some((kind, c)) = self.base.next() {
+        for (kind, c) in self.base.by_ref() {
             // needed to set the kind of the ending character on the last line
             self.kind = kind;
             if c == '\n' {
@@ -1570,7 +1664,7 @@ pub(crate) fn recover_comment_removed(
                 context.parse_sess.span_to_filename(span),
                 vec![FormattingError::from_span(
                     span,
-                    &context.parse_sess,
+                    context.parse_sess,
                     ErrorKind::LostComment,
                 )],
             );
@@ -1675,7 +1769,7 @@ impl<'a> Iterator for CommentReducer<'a> {
 fn remove_comment_header(comment: &str) -> &str {
     if comment.starts_with("///") || comment.starts_with("//!") {
         &comment[3..]
-    } else if let Some(ref stripped) = comment.strip_prefix("//") {
+    } else if let Some(stripped) = comment.strip_prefix("//") {
         stripped
     } else if (comment.starts_with("/**") && !comment.starts_with("/**/"))
         || comment.starts_with("/*!")

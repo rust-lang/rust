@@ -1,7 +1,7 @@
 use crate::error;
 use crate::fmt;
 use crate::io::{
-    self, Error, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
+    self, ErrorKind, IntoInnerError, IoSlice, Seek, SeekFrom, Write, DEFAULT_BUF_SIZE,
 };
 use crate::mem;
 use crate::ptr;
@@ -97,11 +97,11 @@ impl<W: Write> BufWriter<W> {
         BufWriter::with_capacity(DEFAULT_BUF_SIZE, inner)
     }
 
-    /// Creates a new `BufWriter<W>` with the specified buffer capacity.
+    /// Creates a new `BufWriter<W>` with at least the specified buffer capacity.
     ///
     /// # Examples
     ///
-    /// Creating a buffer with a buffer of a hundred bytes.
+    /// Creating a buffer with a buffer of at least a hundred bytes.
     ///
     /// ```no_run
     /// use std::io::BufWriter;
@@ -168,9 +168,9 @@ impl<W: Write> BufWriter<W> {
 
             match r {
                 Ok(0) => {
-                    return Err(Error::new_const(
+                    return Err(io::const_io_error!(
                         ErrorKind::WriteZero,
-                        &"failed to write the buffered data",
+                        "failed to write the buffered data",
                     ));
                 }
                 Ok(n) => guard.consume(n),

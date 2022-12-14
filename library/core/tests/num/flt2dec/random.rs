@@ -15,7 +15,7 @@ use rand::SeedableRng;
 pub fn decode_finite<T: DecodableFloat>(v: T) -> Decoded {
     match decode(v).1 {
         FullDecoded::Finite(decoded) => decoded,
-        full_decoded => panic!("expected finite, got {:?} instead", full_decoded),
+        full_decoded => panic!("expected finite, got {full_decoded:?} instead"),
     }
 }
 

@@ -1,6 +1,6 @@
 // we need to make sure that intra-doc links on trait impls get resolved in the right scope
 
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 pub mod inner {
     pub struct SomethingOutOfScope;

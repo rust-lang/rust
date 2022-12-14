@@ -10,22 +10,22 @@ impl<'_> IceCube<'_> {}
 //~^ ERROR `'_` cannot be used here
 
 struct Struct<'_> {
-//~^ ERROR `'_` cannot be used here
+    //~^ ERROR `'_` cannot be used here
     v: Vec<&'static char>
 }
 
 enum Enum<'_> {
-//~^ ERROR `'_` cannot be used here
+    //~^ ERROR `'_` cannot be used here
     Variant
 }
 
 union Union<'_> {
-//~^ ERROR `'_` cannot be used here
+    //~^ ERROR `'_` cannot be used here
     a: u32
 }
 
 trait Trait<'_> {
-//~^ ERROR `'_` cannot be used here
+    //~^ ERROR `'_` cannot be used here
 }
 
 fn foo<'_>() {

@@ -74,6 +74,86 @@ enum LargeEnum8 {
     ContainingMoreThanOneField([i32; 8000], [i32; 2], [i32; 9500], [i32; 30]),
 }
 
+enum LargeEnum9 {
+    A(Struct<()>),
+    B(Struct2),
+}
+
+enum LargeEnumOk2<T> {
+    A(T),
+    B(Struct2),
+}
+
+enum LargeEnumOk3<T> {
+    A(Struct<T>),
+    B(Struct2),
+}
+
+struct Struct<T> {
+    a: i32,
+    t: T,
+}
+
+struct Struct2 {
+    a: [i32; 8000],
+}
+
+#[derive(Copy, Clone)]
+enum CopyableLargeEnum {
+    A(bool),
+    B([u64; 8000]),
+}
+
+enum ManuallyCopyLargeEnum {
+    A(bool),
+    B([u64; 8000]),
+}
+
+impl Clone for ManuallyCopyLargeEnum {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl Copy for ManuallyCopyLargeEnum {}
+
+enum SomeGenericPossiblyCopyEnum<T> {
+    A(bool, std::marker::PhantomData<T>),
+    B([u64; 4000]),
+}
+
+impl<T: Copy> Clone for SomeGenericPossiblyCopyEnum<T> {
+    fn clone(&self) -> Self {
+        *self
+    }
+}
+
+impl<T: Copy> Copy for SomeGenericPossiblyCopyEnum<T> {}
+
+enum LargeEnumWithGenerics<T> {
+    Small,
+    Large((T, [u8; 512])),
+}
+
+struct Foo<T> {
+    foo: T,
+}
+
+enum WithGenerics {
+    Large([Foo<u64>; 64]),
+    Small(u8),
+}
+
+enum PossiblyLargeEnumWithConst<const U: usize> {
+    SmallBuffer([u8; 4]),
+    MightyBuffer([u16; U]),
+}
+
+enum LargeEnumOfConst {
+    Ok,
+    Error(PossiblyLargeEnumWithConst<256>),
+}
+
 fn main() {
     large_enum_variant!();
 }

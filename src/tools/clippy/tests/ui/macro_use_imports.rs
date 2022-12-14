@@ -4,6 +4,7 @@
 // run-rustfix
 // ignore-32bit
 
+#![feature(lint_reasons)]
 #![allow(unused_imports, unreachable_code, unused_variables, dead_code, unused_attributes)]
 #![allow(clippy::single_component_path_imports)]
 #![warn(clippy::macro_use_imports)]
@@ -40,7 +41,7 @@ mod a {
     }
 }
 
-// issue #7015, ICE due to calling `item_children` with local `DefId`
+// issue #7015, ICE due to calling `module_children` with local `DefId`
 #[macro_use]
 use a as b;
 

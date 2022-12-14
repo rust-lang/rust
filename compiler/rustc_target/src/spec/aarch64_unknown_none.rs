@@ -6,14 +6,16 @@
 //
 // For example, `-C target-cpu=cortex-a53`.
 
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelocModel, Target, TargetOptions};
+use super::{
+    Cc, LinkerFlavor, Lld, PanicStrategy, RelocModel, SanitizerSet, Target, TargetOptions,
+};
 
 pub fn target() -> Target {
     let opts = TargetOptions {
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
-        linker: Some("rust-lld".to_owned()),
-        features: "+strict-align,+neon,+fp-armv8".to_string(),
-        executables: true,
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
+        linker: Some("rust-lld".into()),
+        features: "+strict-align,+neon,+fp-armv8".into(),
+        supported_sanitizers: SanitizerSet::KCFI,
         relocation_model: RelocModel::Static,
         disable_redzone: true,
         max_atomic_width: Some(128),
@@ -21,10 +23,10 @@ pub fn target() -> Target {
         ..Default::default()
     };
     Target {
-        llvm_target: "aarch64-unknown-none".to_string(),
+        llvm_target: "aarch64-unknown-none".into(),
         pointer_width: 64,
-        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".to_string(),
-        arch: "aarch64".to_string(),
+        data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
+        arch: "aarch64".into(),
         options: opts,
     }
 }

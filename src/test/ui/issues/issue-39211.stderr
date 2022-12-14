@@ -1,5 +1,5 @@
 error: constant expression depends on a generic parameter
-  --> $DIR/issue-39211.rs:11:17
+  --> $DIR/issue-39211.rs:9:17
    |
 LL |     let a = [3; M::Row::DIM];
    |                 ^^^^^^^^^^^

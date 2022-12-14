@@ -1,0 +1,15 @@
+error: Undefined Behavior: using uninitialized data, but this operation requires initialized memory
+  --> $DIR/libc_pthread_mutex_double_destroy.rs:LL:CC
+   |
+LL |         libc::pthread_mutex_destroy(mutex.as_mut_ptr());
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ using uninitialized data, but this operation requires initialized memory
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/libc_pthread_mutex_double_destroy.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

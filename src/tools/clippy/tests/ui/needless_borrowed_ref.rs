@@ -1,17 +1,97 @@
 // run-rustfix
 
-#[warn(clippy::needless_borrowed_reference)]
-#[allow(unused_variables)]
-fn main() {
+#![warn(clippy::needless_borrowed_reference)]
+#![allow(
+    unused,
+    irrefutable_let_patterns,
+    non_shorthand_field_patterns,
+    clippy::needless_borrow
+)]
+
+fn main() {}
+
+struct Struct {
+    a: usize,
+    b: usize,
+    c: usize,
+}
+
+struct TupleStruct(u8, u8, u8);
+
+fn should_lint(
+    array: [u8; 4],
+    slice: &[u8],
+    slice_of_refs: &[&u8],
+    vec: Vec<u8>,
+    tuple: (u8, u8, u8),
+    tuple_struct: TupleStruct,
+    s: Struct,
+) {
     let mut v = Vec::<String>::new();
     let _ = v.iter_mut().filter(|&ref a| a.is_empty());
-    //                            ^ should be linted
 
     let var = 3;
     let thingy = Some(&var);
-    if let Some(&ref v) = thingy {
-        //          ^ should be linted
-    }
+    if let Some(&ref v) = thingy {}
+
+    if let &[&ref a, ref b] = slice_of_refs {}
+
+    let &[ref a, ..] = &array;
+    let &[ref a, ref b, ..] = &array;
+
+    if let &[ref a, ref b] = slice {}
+    if let &[ref a, ref b] = &vec[..] {}
+
+    if let &[ref a, ref b, ..] = slice {}
+    if let &[ref a, .., ref b] = slice {}
+    if let &[.., ref a, ref b] = slice {}
+
+    if let &[ref a, _] = slice {}
+
+    if let &(ref a, ref b, ref c) = &tuple {}
+    if let &(ref a, _, ref c) = &tuple {}
+    if let &(ref a, ..) = &tuple {}
+
+    if let &TupleStruct(ref a, ..) = &tuple_struct {}
+
+    if let &Struct {
+        ref a,
+        b: ref b,
+        c: ref renamed,
+    } = &s
+    {}
+
+    if let &Struct { ref a, b: _, .. } = &s {}
+}
+
+fn should_not_lint(
+    array: [u8; 4],
+    slice: &[u8],
+    slice_of_refs: &[&u8],
+    vec: Vec<u8>,
+    tuple: (u8, u8, u8),
+    tuple_struct: TupleStruct,
+    s: Struct,
+) {
+    if let [ref a] = slice {}
+    if let &[ref a, b] = slice {}
+    if let &[ref a, .., b] = slice {}
+
+    if let &(ref a, b, ..) = &tuple {}
+    if let &TupleStruct(ref a, b, ..) = &tuple_struct {}
+    if let &Struct { ref a, b, .. } = &s {}
+
+    // must not be removed as variables must be bound consistently across | patterns
+    if let (&[ref a], _) | ([], ref a) = (slice_of_refs, &1u8) {}
+
+    // the `&`s here technically could be removed, but it'd be noisy and without a `ref` doesn't match
+    // the lint name
+    if let &[] = slice {}
+    if let &[_] = slice {}
+    if let &[..] = slice {}
+    if let &(..) = &tuple {}
+    if let &TupleStruct(..) = &tuple_struct {}
+    if let &Struct { .. } = &s {}
 
     let mut var2 = 5;
     let thingy2 = Some(&mut var2);
@@ -28,18 +108,16 @@ fn main() {
     }
 }
 
-#[allow(dead_code)]
 enum Animal {
     Cat(u64),
     Dog(u64),
 }
 
-#[allow(unused_variables)]
-#[allow(dead_code)]
 fn foo(a: &Animal, b: &Animal) {
     match (a, b) {
-        (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (), // lifetime mismatch error if there is no '&ref'
+        // lifetime mismatch error if there is no '&ref' before `feature(nll)` stabilization in 1.63
+        (&Animal::Cat(v), &ref k) | (&ref k, &Animal::Cat(v)) => (),
         //                  ^    and   ^ should **not** be linted
-        (&Animal::Dog(ref a), &Animal::Dog(_)) => (), //              ^ should **not** be linted
+        (Animal::Dog(a), &Animal::Dog(_)) => (),
     }
 }

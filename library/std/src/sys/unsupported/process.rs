@@ -162,6 +162,15 @@ impl ExitCode {
     }
 }
 
+impl From<u8> for ExitCode {
+    fn from(code: u8) -> Self {
+        match code {
+            0 => Self::SUCCESS,
+            1..=255 => Self::FAILURE,
+        }
+    }
+}
+
 pub struct Process(!);
 
 impl Process {
@@ -190,6 +199,9 @@ impl<'a> Iterator for CommandArgs<'a> {
     type Item = &'a OsStr;
     fn next(&mut self) -> Option<&'a OsStr> {
         None
+    }
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (0, Some(0))
     }
 }
 

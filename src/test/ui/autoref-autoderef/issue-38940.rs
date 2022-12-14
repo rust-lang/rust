@@ -2,8 +2,10 @@
 // Test that the recursion limit can be changed. In this case, we have
 // deeply nested types that will fail the `Send` check by overflow
 // when the recursion limit is set very low.
+// compile-flags: -Zdeduplicate-diagnostics=yes
+
 #![allow(dead_code)]
-#![recursion_limit="10"]
+#![recursion_limit = "10"]
 macro_rules! link {
     ($outer:ident, $inner:ident) => {
         struct $outer($inner);
@@ -18,14 +20,17 @@ macro_rules! link {
                 &self.0
             }
         }
-    }
+    };
 }
+
 struct Bottom;
+
 impl Bottom {
     fn new() -> Bottom {
         Bottom
     }
 }
+
 link!(Top, A);
 link!(A, B);
 link!(B, C);
@@ -38,6 +43,7 @@ link!(H, I);
 link!(I, J);
 link!(J, K);
 link!(K, Bottom);
+
 fn main() {
     let t = Top::new();
     let x: &Bottom = &t;

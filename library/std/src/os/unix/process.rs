@@ -12,6 +12,16 @@ use crate::sealed::Sealed;
 use crate::sys;
 use crate::sys_common::{AsInner, AsInnerMut, FromInner, IntoInner};
 
+#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+type UserId = u32;
+#[cfg(not(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon")))]
+type GroupId = u32;
+
+#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
+type UserId = u16;
+#[cfg(any(target_os = "vxworks", target_os = "espidf", target_os = "horizon"))]
+type GroupId = u16;
+
 /// Unix-specific extensions to the [`process::Command`] builder.
 ///
 /// This trait is sealed: it cannot be implemented outside the standard library.
@@ -22,29 +32,17 @@ pub trait CommandExt: Sealed {
     /// `setuid` call in the child process. Failure in the `setuid`
     /// call will cause the spawn to fail.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn uid(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
-    ) -> &mut process::Command;
+    fn uid(&mut self, id: UserId) -> &mut process::Command;
 
     /// Similar to `uid`, but sets the group ID of the child process. This has
     /// the same semantics as the `uid` field.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn gid(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
-    ) -> &mut process::Command;
+    fn gid(&mut self, id: GroupId) -> &mut process::Command;
 
     /// Sets the supplementary group IDs for the calling process. Translates to
     /// a `setgroups` call in the child process.
-    #[unstable(feature = "setgroups", issue = "38527", reason = "")]
-    fn groups(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
-    ) -> &mut process::Command;
+    #[unstable(feature = "setgroups", issue = "90747")]
+    fn groups(&mut self, groups: &[GroupId]) -> &mut process::Command;
 
     /// Schedules a closure to be run just before the `exec` function is
     /// invoked.
@@ -103,7 +101,7 @@ pub trait CommandExt: Sealed {
     ///
     /// [`pre_exec`]: CommandExt::pre_exec
     #[stable(feature = "process_exec", since = "1.15.0")]
-    #[rustc_deprecated(since = "1.37.0", reason = "should be unsafe, use `pre_exec` instead")]
+    #[deprecated(since = "1.37.0", note = "should be unsafe, use `pre_exec` instead")]
     fn before_exec<F>(&mut self, f: F) -> &mut process::Command
     where
         F: FnMut() -> io::Result<()> + Send + Sync + 'static,
@@ -149,33 +147,53 @@ pub trait CommandExt: Sealed {
     fn arg0<S>(&mut self, arg: S) -> &mut process::Command
     where
         S: AsRef<OsStr>;
+
+    /// Sets the process group ID (PGID) of the child process. Equivalent to a
+    /// `setpgid` call in the child process, but may be more efficient.
+    ///
+    /// Process groups determine which processes receive signals.
+    ///
+    /// # Examples
+    ///
+    /// Pressing Ctrl-C in a terminal will send SIGINT to all processes in
+    /// the current foreground process group. By spawning the `sleep`
+    /// subprocess in a new process group, it will not receive SIGINT from the
+    /// terminal.
+    ///
+    /// The parent process could install a signal handler and manage the
+    /// subprocess on its own terms.
+    ///
+    /// A process group ID of 0 will use the process ID as the PGID.
+    ///
+    /// ```no_run
+    /// use std::process::Command;
+    /// use std::os::unix::process::CommandExt;
+    ///
+    /// Command::new("sleep")
+    ///     .arg("10")
+    ///     .process_group(0)
+    ///     .spawn()?
+    ///     .wait()?;
+    /// #
+    /// # Ok::<_, Box<dyn std::error::Error>>(())
+    /// ```
+    #[stable(feature = "process_set_process_group", since = "1.64.0")]
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CommandExt for process::Command {
-    fn uid(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
-    ) -> &mut process::Command {
+    fn uid(&mut self, id: UserId) -> &mut process::Command {
         self.as_inner_mut().uid(id);
         self
     }
 
-    fn gid(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] id: u32,
-        #[cfg(target_os = "vxworks")] id: u16,
-    ) -> &mut process::Command {
+    fn gid(&mut self, id: GroupId) -> &mut process::Command {
         self.as_inner_mut().gid(id);
         self
     }
 
-    fn groups(
-        &mut self,
-        #[cfg(not(target_os = "vxworks"))] groups: &[u32],
-        #[cfg(target_os = "vxworks")] groups: &[u16],
-    ) -> &mut process::Command {
+    fn groups(&mut self, groups: &[GroupId]) -> &mut process::Command {
         self.as_inner_mut().groups(groups);
         self
     }
@@ -201,13 +219,18 @@ impl CommandExt for process::Command {
         self.as_inner_mut().set_arg_0(arg.as_ref());
         self
     }
+
+    fn process_group(&mut self, pgroup: i32) -> &mut process::Command {
+        self.as_inner_mut().pgroup(pgroup);
+        self
+    }
 }
 
 /// Unix-specific extensions to [`process::ExitStatus`] and
 /// [`ExitStatusError`](process::ExitStatusError).
 ///
 /// On Unix, `ExitStatus` **does not necessarily represent an exit status**, as
-/// passed to the `exit` system call or returned by
+/// passed to the `_exit` system call or returned by
 /// [`ExitStatus::code()`](crate::process::ExitStatus::code).  It represents **any wait status**
 /// as returned by one of the `wait` family of system
 /// calls.
@@ -329,7 +352,7 @@ impl FromRawFd for process::Stdio {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedFd> for process::Stdio {
     #[inline]
     fn from(fd: OwnedFd) -> process::Stdio {
@@ -387,7 +410,7 @@ impl IntoRawFd for process::ChildStderr {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdin {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -395,7 +418,7 @@ impl AsFd for crate::process::ChildStdin {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdin> for OwnedFd {
     #[inline]
     fn from(child_stdin: crate::process::ChildStdin) -> OwnedFd {
@@ -403,7 +426,7 @@ impl From<crate::process::ChildStdin> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStdout {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -411,7 +434,7 @@ impl AsFd for crate::process::ChildStdout {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStdout> for OwnedFd {
     #[inline]
     fn from(child_stdout: crate::process::ChildStdout) -> OwnedFd {
@@ -419,7 +442,7 @@ impl From<crate::process::ChildStdout> for OwnedFd {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsFd for crate::process::ChildStderr {
     #[inline]
     fn as_fd(&self) -> BorrowedFd<'_> {
@@ -427,7 +450,7 @@ impl AsFd for crate::process::ChildStderr {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<crate::process::ChildStderr> for OwnedFd {
     #[inline]
     fn from(child_stderr: crate::process::ChildStderr) -> OwnedFd {

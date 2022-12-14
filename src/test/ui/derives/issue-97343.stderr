@@ -1,0 +1,21 @@
+error[E0109]: type arguments are not allowed on type parameter `Irrelevant`
+  --> $DIR/issue-97343.rs:4:23
+   |
+LL | #[derive(Debug)]
+   |          -----
+   |          |
+   |          not allowed on type parameter `Irrelevant`
+   |          in this derive macro expansion
+LL | pub struct Irrelevant<Irrelevant> {
+   |                       ^^^^^^^^^^ type argument not allowed
+   |
+note: type parameter `Irrelevant` defined here
+  --> $DIR/issue-97343.rs:4:23
+   |
+LL | pub struct Irrelevant<Irrelevant> {
+   |                       ^^^^^^^^^^
+   = note: this error originates in the derive macro `Debug` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0109`.

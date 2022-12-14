@@ -4,7 +4,7 @@
 #![warn(clippy::use_self)]
 #![allow(dead_code)]
 
-struct Foo {}
+struct Foo;
 
 impl Foo {
     fn new() -> Self {

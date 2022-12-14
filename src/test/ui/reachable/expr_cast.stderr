@@ -13,5 +13,12 @@ note: the lint level is defined here
 LL | #![deny(unreachable_code)]
    |         ^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error[E0605]: non-primitive cast: `()` as `!`
+  --> $DIR/expr_cast.rs:9:13
+   |
+LL |     let x = {return} as !;
+   |             ^^^^^^^^^^^^^ an `as` expression can only be used to convert between primitive types or to coerce to a specific trait object
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0605`.

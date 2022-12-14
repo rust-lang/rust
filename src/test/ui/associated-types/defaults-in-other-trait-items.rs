@@ -10,6 +10,7 @@ trait Tr {
         //~^ ERROR mismatched types
         //~| NOTE expected associated type, found `()`
         //~| NOTE expected associated type `<Self as Tr>::A`
+        //~| NOTE this expression has type `<Self as Tr>::A`
     }
 }
 

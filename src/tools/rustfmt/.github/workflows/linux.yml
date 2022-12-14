@@ -8,7 +8,9 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    name: (${{ matrix.target }}, nightly)
+    name: (${{ matrix.target }}, ${{ matrix.cfg_release_channel }})
+    env:
+      CFG_RELEASE_CHANNEL: ${{ matrix.cfg_release_channel }}
     strategy:
       # https://help.github.com/en/actions/getting-started-with-github-actions/about-github-actions#usage-limits
       # There's a limit of 60 concurrent jobs across all repos in the rust-lang organization.
@@ -20,10 +22,11 @@ jobs:
         target: [
           x86_64-unknown-linux-gnu,
         ]
+        cfg_release_channel: [nightly, stable]
 
     steps:
     - name: checkout
-      uses: actions/checkout@v2
+      uses: actions/checkout@v3
 
       # Run build
     - name: install rustup
@@ -32,11 +35,5 @@ jobs:
         sh rustup-init.sh -y --default-toolchain none
         rustup target add ${{ matrix.target }}
 
-    - name: build
-      run: |
-        rustc -Vv
-        cargo -V
-        cargo build
-
-    - name: test
-      run: cargo test
+    - name: Build and Test
+      run: ./ci/build_and_test.sh

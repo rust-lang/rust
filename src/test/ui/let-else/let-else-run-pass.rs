@@ -1,6 +1,6 @@
 // run-pass
 
-#![feature(let_else)]
+
 
 fn main() {
     #[allow(dead_code)]

@@ -1,6 +1,8 @@
 use std::fmt;
 
 use rustc_macros::HashStable_Generic;
+use rustc_span::symbol::sym;
+use rustc_span::{Span, Symbol};
 
 #[cfg(test)]
 mod tests;
@@ -13,14 +15,14 @@ pub enum Abi {
     // churn. The specific values are meaningless.
     Rust,
     C { unwind: bool },
-    Cdecl,
+    Cdecl { unwind: bool },
     Stdcall { unwind: bool },
-    Fastcall,
-    Vectorcall,
+    Fastcall { unwind: bool },
+    Vectorcall { unwind: bool },
     Thiscall { unwind: bool },
-    Aapcs,
-    Win64,
-    SysV64,
+    Aapcs { unwind: bool },
+    Win64 { unwind: bool },
+    SysV64 { unwind: bool },
     PtxKernel,
     Msp430Interrupt,
     X86Interrupt,
@@ -35,6 +37,29 @@ pub enum Abi {
     RustCall,
     PlatformIntrinsic,
     Unadjusted,
+    RustCold,
+}
+
+impl Abi {
+    pub fn supports_varargs(self) -> bool {
+        // * C and Cdecl obviously support varargs.
+        // * C can be based on SysV64 or Win64, so they must support varargs.
+        // * EfiApi is based on Win64 or C, so it also supports it.
+        //
+        // * Stdcall does not, because it would be impossible for the callee to clean
+        //   up the arguments. (callee doesn't know how many arguments are there)
+        // * Same for Fastcall, Vectorcall and Thiscall.
+        // * System can become Stdcall, so is also a no-no.
+        // * Other calling conventions are related to hardware or the compiler itself.
+        match self {
+            Self::C { .. }
+            | Self::Cdecl { .. }
+            | Self::Win64 { .. }
+            | Self::SysV64 { .. }
+            | Self::EfiApi => true,
+            _ => false,
+        }
+    }
 }
 
 #[derive(Copy, Clone)]
@@ -50,16 +75,22 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::Rust, name: "Rust" },
     AbiData { abi: Abi::C { unwind: false }, name: "C" },
     AbiData { abi: Abi::C { unwind: true }, name: "C-unwind" },
-    AbiData { abi: Abi::Cdecl, name: "cdecl" },
+    AbiData { abi: Abi::Cdecl { unwind: false }, name: "cdecl" },
+    AbiData { abi: Abi::Cdecl { unwind: true }, name: "cdecl-unwind" },
     AbiData { abi: Abi::Stdcall { unwind: false }, name: "stdcall" },
     AbiData { abi: Abi::Stdcall { unwind: true }, name: "stdcall-unwind" },
-    AbiData { abi: Abi::Fastcall, name: "fastcall" },
-    AbiData { abi: Abi::Vectorcall, name: "vectorcall" },
+    AbiData { abi: Abi::Fastcall { unwind: false }, name: "fastcall" },
+    AbiData { abi: Abi::Fastcall { unwind: true }, name: "fastcall-unwind" },
+    AbiData { abi: Abi::Vectorcall { unwind: false }, name: "vectorcall" },
+    AbiData { abi: Abi::Vectorcall { unwind: true }, name: "vectorcall-unwind" },
     AbiData { abi: Abi::Thiscall { unwind: false }, name: "thiscall" },
     AbiData { abi: Abi::Thiscall { unwind: true }, name: "thiscall-unwind" },
-    AbiData { abi: Abi::Aapcs, name: "aapcs" },
-    AbiData { abi: Abi::Win64, name: "win64" },
-    AbiData { abi: Abi::SysV64, name: "sysv64" },
+    AbiData { abi: Abi::Aapcs { unwind: false }, name: "aapcs" },
+    AbiData { abi: Abi::Aapcs { unwind: true }, name: "aapcs-unwind" },
+    AbiData { abi: Abi::Win64 { unwind: false }, name: "win64" },
+    AbiData { abi: Abi::Win64 { unwind: true }, name: "win64-unwind" },
+    AbiData { abi: Abi::SysV64 { unwind: false }, name: "sysv64" },
+    AbiData { abi: Abi::SysV64 { unwind: true }, name: "sysv64-unwind" },
     AbiData { abi: Abi::PtxKernel, name: "ptx-kernel" },
     AbiData { abi: Abi::Msp430Interrupt, name: "msp430-interrupt" },
     AbiData { abi: Abi::X86Interrupt, name: "x86-interrupt" },
@@ -75,6 +106,7 @@ const AbiDatas: &[AbiData] = &[
     AbiData { abi: Abi::RustCall, name: "rust-call" },
     AbiData { abi: Abi::PlatformIntrinsic, name: "platform-intrinsic" },
     AbiData { abi: Abi::Unadjusted, name: "unadjusted" },
+    AbiData { abi: Abi::RustCold, name: "rust-cold" },
 ];
 
 /// Returns the ABI with the given name (if any).
@@ -84,6 +116,142 @@ pub fn lookup(name: &str) -> Option<Abi> {
 
 pub fn all_names() -> Vec<&'static str> {
     AbiDatas.iter().map(|d| d.name).collect()
+}
+
+pub fn enabled_names(features: &rustc_feature::Features, span: Span) -> Vec<&'static str> {
+    AbiDatas
+        .iter()
+        .map(|d| d.name)
+        .filter(|name| is_enabled(features, span, name).is_ok())
+        .collect()
+}
+
+pub enum AbiDisabled {
+    Unstable { feature: Symbol, explain: &'static str },
+    Unrecognized,
+}
+
+pub fn is_enabled(
+    features: &rustc_feature::Features,
+    span: Span,
+    name: &str,
+) -> Result<(), AbiDisabled> {
+    let s = is_stable(name);
+    if let Err(AbiDisabled::Unstable { feature, .. }) = s {
+        if features.enabled(feature) || span.allows_unstable(feature) {
+            return Ok(());
+        }
+    }
+    s
+}
+
+pub fn is_stable(name: &str) -> Result<(), AbiDisabled> {
+    match name {
+        // Stable
+        "Rust" | "C" | "cdecl" | "stdcall" | "fastcall" | "aapcs" | "win64" | "sysv64"
+        | "system" => Ok(()),
+        "rust-intrinsic" => Err(AbiDisabled::Unstable {
+            feature: sym::intrinsics,
+            explain: "intrinsics are subject to change",
+        }),
+        "platform-intrinsic" => Err(AbiDisabled::Unstable {
+            feature: sym::platform_intrinsics,
+            explain: "platform intrinsics are experimental and possibly buggy",
+        }),
+        "vectorcall" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_vectorcall,
+            explain: "vectorcall is experimental and subject to change",
+        }),
+        "thiscall" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_thiscall,
+            explain: "thiscall is experimental and subject to change",
+        }),
+        "rust-call" => Err(AbiDisabled::Unstable {
+            feature: sym::unboxed_closures,
+            explain: "rust-call ABI is subject to change",
+        }),
+        "rust-cold" => Err(AbiDisabled::Unstable {
+            feature: sym::rust_cold_cc,
+            explain: "rust-cold is experimental and subject to change",
+        }),
+        "ptx-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_ptx,
+            explain: "PTX ABIs are experimental and subject to change",
+        }),
+        "unadjusted" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_unadjusted,
+            explain: "unadjusted ABI is an implementation detail and perma-unstable",
+        }),
+        "msp430-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_msp430_interrupt,
+            explain: "msp430-interrupt ABI is experimental and subject to change",
+        }),
+        "x86-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_x86_interrupt,
+            explain: "x86-interrupt ABI is experimental and subject to change",
+        }),
+        "amdgpu-kernel" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_amdgpu_kernel,
+            explain: "amdgpu-kernel ABI is experimental and subject to change",
+        }),
+        "avr-interrupt" | "avr-non-blocking-interrupt" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_avr_interrupt,
+            explain: "avr-interrupt and avr-non-blocking-interrupt ABIs are experimental and subject to change",
+        }),
+        "efiapi" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_efiapi,
+            explain: "efiapi ABI is experimental and subject to change",
+        }),
+        "C-cmse-nonsecure-call" => Err(AbiDisabled::Unstable {
+            feature: sym::abi_c_cmse_nonsecure_call,
+            explain: "C-cmse-nonsecure-call ABI is experimental and subject to change",
+        }),
+        "C-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "C-unwind ABI is experimental and subject to change",
+        }),
+        "stdcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "stdcall-unwind ABI is experimental and subject to change",
+        }),
+        "system-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "system-unwind ABI is experimental and subject to change",
+        }),
+        "thiscall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "thiscall-unwind ABI is experimental and subject to change",
+        }),
+        "cdecl-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "cdecl-unwind ABI is experimental and subject to change",
+        }),
+        "fastcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "fastcall-unwind ABI is experimental and subject to change",
+        }),
+        "vectorcall-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "vectorcall-unwind ABI is experimental and subject to change",
+        }),
+        "aapcs-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "aapcs-unwind ABI is experimental and subject to change",
+        }),
+        "win64-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "win64-unwind ABI is experimental and subject to change",
+        }),
+        "sysv64-unwind" => Err(AbiDisabled::Unstable {
+            feature: sym::c_unwind,
+            explain: "sysv64-unwind ABI is experimental and subject to change",
+        }),
+        "wasm" => Err(AbiDisabled::Unstable {
+            feature: sym::wasm_abi,
+            explain: "wasm ABI is experimental and subject to change",
+        }),
+        _ => Err(AbiDisabled::Unrecognized),
+    }
 }
 
 impl Abi {
@@ -101,32 +269,39 @@ impl Abi {
             C { unwind: false } => 1,
             C { unwind: true } => 2,
             // Platform-specific ABIs
-            Cdecl => 3,
-            Stdcall { unwind: false } => 4,
-            Stdcall { unwind: true } => 5,
-            Fastcall => 6,
-            Vectorcall => 7,
-            Thiscall { unwind: false } => 8,
-            Thiscall { unwind: true } => 9,
-            Aapcs => 10,
-            Win64 => 11,
-            SysV64 => 12,
-            PtxKernel => 13,
-            Msp430Interrupt => 14,
-            X86Interrupt => 15,
-            AmdGpuKernel => 16,
-            EfiApi => 17,
-            AvrInterrupt => 18,
-            AvrNonBlockingInterrupt => 19,
-            CCmseNonSecureCall => 20,
-            Wasm => 21,
+            Cdecl { unwind: false } => 3,
+            Cdecl { unwind: true } => 4,
+            Stdcall { unwind: false } => 5,
+            Stdcall { unwind: true } => 6,
+            Fastcall { unwind: false } => 7,
+            Fastcall { unwind: true } => 8,
+            Vectorcall { unwind: false } => 9,
+            Vectorcall { unwind: true } => 10,
+            Thiscall { unwind: false } => 11,
+            Thiscall { unwind: true } => 12,
+            Aapcs { unwind: false } => 13,
+            Aapcs { unwind: true } => 14,
+            Win64 { unwind: false } => 15,
+            Win64 { unwind: true } => 16,
+            SysV64 { unwind: false } => 17,
+            SysV64 { unwind: true } => 18,
+            PtxKernel => 19,
+            Msp430Interrupt => 20,
+            X86Interrupt => 21,
+            AmdGpuKernel => 22,
+            EfiApi => 23,
+            AvrInterrupt => 24,
+            AvrNonBlockingInterrupt => 25,
+            CCmseNonSecureCall => 26,
+            Wasm => 27,
             // Cross-platform ABIs
-            System { unwind: false } => 22,
-            System { unwind: true } => 23,
-            RustIntrinsic => 24,
-            RustCall => 25,
-            PlatformIntrinsic => 26,
-            Unadjusted => 27,
+            System { unwind: false } => 28,
+            System { unwind: true } => 29,
+            RustIntrinsic => 30,
+            RustCall => 31,
+            PlatformIntrinsic => 32,
+            Unadjusted => 33,
+            RustCold => 34,
         };
         debug_assert!(
             AbiDatas

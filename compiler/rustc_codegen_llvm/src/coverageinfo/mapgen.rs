@@ -1,26 +1,29 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
 use rustc_codegen_ssa::coverageinfo::map::{Counter, CounterExpression};
 use rustc_codegen_ssa::traits::{ConstMethods, CoverageInfoMethods};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexSet};
-use rustc_hir::def_id::{DefId, DefIdSet};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_hir::def::DefKind;
+use rustc_hir::def_id::DefIdSet;
 use rustc_llvm::RustString;
+use rustc_middle::bug;
+use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::coverage::CodeRegion;
-use rustc_span::Symbol;
+use rustc_middle::ty::TyCtxt;
 
 use std::ffi::CString;
 
-use tracing::debug;
-
 /// Generates and exports the Coverage Map.
 ///
-/// This Coverage Map complies with Coverage Mapping Format version 4 (zero-based encoded as 3),
-/// as defined at [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format)
-/// and published in Rust's November 2020 fork of LLVM. This version is supported by the LLVM
-/// coverage tools (`llvm-profdata` and `llvm-cov`) bundled with Rust's fork of LLVM.
+/// Rust Coverage Map generation supports LLVM Coverage Mapping Format versions
+/// 5 (LLVM 12, only) and 6 (zero-based encoded as 4 and 5, respectively), as defined at
+/// [LLVM Code Coverage Mapping Format](https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#llvm-code-coverage-mapping-format).
+/// These versions are supported by the LLVM coverage tools (`llvm-profdata` and `llvm-cov`)
+/// bundled with Rust's fork of LLVM.
 ///
 /// Consequently, Rust's bundled version of Clang also generates Coverage Maps compliant with
 /// the same version. Clang's implementation of Coverage Map generation was referenced when
@@ -30,11 +33,12 @@ use tracing::debug;
 pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     let tcx = cx.tcx;
 
-    // Ensure LLVM supports Coverage Map Version 4 (encoded as a zero-based value: 3).
-    // If not, the LLVM Version must be less than 11.
+    // Ensure the installed version of LLVM supports at least Coverage Map
+    // Version 5 (encoded as a zero-based value: 4), which was introduced with
+    // LLVM 12.
     let version = coverageinfo::mapping_version();
-    if version != 3 {
-        tcx.sess.fatal("rustc option `-Z instrument-coverage` requires LLVM 11 or higher.");
+    if version < 4 {
+        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -43,7 +47,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // functions exist. Generate synthetic functions with a (required) single counter, and add the
     // MIR `Coverage` code regions to the `function_coverage_map`, before calling
     // `ctx.take_function_coverage_map()`.
-    if !tcx.sess.instrument_coverage_except_unused_functions() {
+    if cx.codegen_unit.is_code_coverage_dead_code_cgu() {
         add_unused_functions(cx);
     }
 
@@ -57,7 +61,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         return;
     }
 
-    let mut mapgen = CoverageMapGenerator::new();
+    let mut mapgen = CoverageMapGenerator::new(tcx, version);
 
     // Encode coverage mappings and generate function records
     let mut function_data = Vec::new();
@@ -72,10 +76,18 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
         let coverage_mapping_buffer = llvm::build_byte_buffer(|coverage_mapping_buffer| {
             mapgen.write_coverage_mapping(expressions, counter_regions, coverage_mapping_buffer);
         });
-        debug_assert!(
-            !coverage_mapping_buffer.is_empty(),
-            "Every `FunctionCoverage` should have at least one counter"
-        );
+
+        if coverage_mapping_buffer.is_empty() {
+            if function_coverage.is_used() {
+                bug!(
+                    "A used function should have had coverage mapping data but did not: {}",
+                    mangled_function_name
+                );
+            } else {
+                debug!("unused function had no coverage mapping data: {}", mangled_function_name);
+                continue;
+            }
+        }
 
         function_data.push((mangled_function_name, source_hash, is_used, coverage_mapping_buffer));
     }
@@ -86,7 +98,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     });
 
     let filenames_size = filenames_buffer.len();
-    let filenames_val = cx.const_bytes(&filenames_buffer[..]);
+    let filenames_val = cx.const_bytes(&filenames_buffer);
     let filenames_ref = coverageinfo::hash_bytes(filenames_buffer);
 
     // Generate the LLVM IR representation of the coverage map and store it in a well-known global
@@ -112,15 +124,33 @@ struct CoverageMapGenerator {
 }
 
 impl CoverageMapGenerator {
-    fn new() -> Self {
-        Self { filenames: FxIndexSet::default() }
+    fn new(tcx: TyCtxt<'_>, version: u32) -> Self {
+        let mut filenames = FxIndexSet::default();
+        if version >= 5 {
+            // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
+            // requires setting the first filename to the compilation directory.
+            // Since rustc generates coverage maps with relative paths, the
+            // compilation directory can be combined with the relative paths
+            // to get absolute paths, if needed.
+            let working_dir = tcx
+                .sess
+                .opts
+                .working_dir
+                .remapped_path_if_available()
+                .to_string_lossy()
+                .to_string();
+            let c_filename =
+                CString::new(working_dir).expect("null error converting filename to C string");
+            filenames.insert(c_filename);
+        }
+        Self { filenames }
     }
 
     /// Using the `expressions` and `counter_regions` collected for the current function, generate
     /// the `mapping_regions` and `virtual_file_mapping`, and capture any new filenames. Then use
     /// LLVM APIs to encode the `virtual_file_mapping`, `expressions`, and `mapping_regions` into
     /// the given `coverage_mapping` byte buffer, compliant with the LLVM Coverage Mapping format.
-    fn write_coverage_mapping(
+    fn write_coverage_mapping<'a>(
         &mut self,
         expressions: Vec<CounterExpression>,
         counter_regions: impl Iterator<Item = (Counter, &'a CodeRegion)>,
@@ -144,7 +174,7 @@ impl CoverageMapGenerator {
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-            let same_file = current_file_name.as_ref().map_or(false, |p| *p == file_name);
+            let same_file = current_file_name.map_or(false, |p| p == file_name);
             if !same_file {
                 if current_file_name.is_some() {
                     current_file_id += 1;
@@ -179,9 +209,9 @@ impl CoverageMapGenerator {
     /// Construct coverage map header and the array of function records, and combine them into the
     /// coverage map. Save the coverage map data into the LLVM IR as a static global using a
     /// specific, well-known section and name.
-    fn generate_coverage_map(
+    fn generate_coverage_map<'ll>(
         self,
-        cx: &CodegenCx<'ll, 'tcx>,
+        cx: &CodegenCx<'ll, '_>,
         version: u32,
         filenames_size: usize,
         filenames_val: &'ll llvm::Value,
@@ -208,7 +238,7 @@ impl CoverageMapGenerator {
 /// Save the function record into the LLVM IR as a static global using a
 /// specific, well-known section and name.
 fn save_function_record(
-    cx: &CodegenCx<'ll, 'tcx>,
+    cx: &CodegenCx<'_, '_>,
     mangled_function_name: String,
     source_hash: u64,
     filenames_ref: u64,
@@ -217,7 +247,7 @@ fn save_function_record(
 ) {
     // Concatenate the encoded coverage mappings
     let coverage_mapping_size = coverage_mapping_buffer.len();
-    let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer[..]);
+    let coverage_mapping_val = cx.const_bytes(&coverage_mapping_buffer);
 
     let func_name_hash = coverageinfo::hash_str(&mangled_function_name);
     let func_name_hash_val = cx.const_u64(func_name_hash);
@@ -243,33 +273,42 @@ fn save_function_record(
 /// (functions referenced by other "used" or public items). Any other functions considered unused,
 /// or "Unreachable", were still parsed and processed through the MIR stage, but were not
 /// codegenned. (Note that `-Clink-dead-code` can force some unused code to be codegenned, but
-/// that flag is known to cause other errors, when combined with `-Z instrument-coverage`; and
+/// that flag is known to cause other errors, when combined with `-C instrument-coverage`; and
 /// `-Clink-dead-code` will not generate code for unused generic functions.)
 ///
 /// We can find the unused functions (including generic functions) by the set difference of all MIR
 /// `DefId`s (`tcx` query `mir_keys`) minus the codegenned `DefId`s (`tcx` query
 /// `codegened_and_inlined_items`).
 ///
-/// *HOWEVER* the codegenned `DefId`s are partitioned across multiple `CodegenUnit`s (CGUs), and
-/// this function is processing a `function_coverage_map` for the functions (`Instance`/`DefId`)
-/// allocated to only one of those CGUs. We must NOT inject any unused functions's `CodeRegion`s
-/// more than once, so we have to pick a CGUs `function_coverage_map` into which the unused
-/// function will be inserted.
+/// These unused functions are then codegen'd in one of the CGUs which is marked as the
+/// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
+/// code regions for the same function more than once which can lead to linker errors regarding
+/// duplicate symbols.
 fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
-    let tcx = cx.tcx;
+    assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
-    // FIXME(#79622): Can this solution be simplified and/or improved? Are there other sources
-    // of compiler state data that might help (or better sources that could be exposed, but
-    // aren't yet)?
+    let tcx = cx.tcx;
 
     let ignore_unused_generics = tcx.sess.instrument_coverage_except_unused_generics();
 
-    let all_def_ids: DefIdSet = tcx
+    let eligible_def_ids: DefIdSet = tcx
         .mir_keys(())
         .iter()
         .filter_map(|local_def_id| {
             let def_id = local_def_id.to_def_id();
-            if ignore_unused_generics && tcx.generics_of(def_id).requires_monomorphization(tcx) {
+            let kind = tcx.def_kind(def_id);
+            // `mir_keys` will give us `DefId`s for all kinds of things, not
+            // just "functions", like consts, statics, etc. Filter those out.
+            // If `ignore_unused_generics` was specified, filter out any
+            // generic functions from consideration as well.
+            if !matches!(
+                kind,
+                DefKind::Fn | DefKind::AssocFn | DefKind::Closure | DefKind::Generator
+            ) {
+                return None;
+            } else if ignore_unused_generics
+                && tcx.generics_of(def_id).requires_monomorphization(tcx)
+            {
                 return None;
             }
             Some(local_def_id.to_def_id())
@@ -278,79 +317,17 @@ fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
 
     let codegenned_def_ids = tcx.codegened_and_inlined_items(());
 
-    let mut unused_def_ids_by_file: FxHashMap<Symbol, Vec<DefId>> = FxHashMap::default();
-    for &non_codegenned_def_id in all_def_ids.difference(codegenned_def_ids) {
-        // Make sure the non-codegenned (unused) function has at least one MIR
-        // `Coverage` statement with a code region, and return its file name.
-        if let Some(non_codegenned_file_name) = tcx.covered_file_name(non_codegenned_def_id) {
-            let def_ids =
-                unused_def_ids_by_file.entry(*non_codegenned_file_name).or_insert_with(Vec::new);
-            def_ids.push(non_codegenned_def_id);
+    for &non_codegenned_def_id in eligible_def_ids.difference(codegenned_def_ids) {
+        let codegen_fn_attrs = tcx.codegen_fn_attrs(non_codegenned_def_id);
+
+        // If a function is marked `#[no_coverage]`, then skip generating a
+        // dead code stub for it.
+        if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NO_COVERAGE) {
+            debug!("skipping unused fn marked #[no_coverage]: {:?}", non_codegenned_def_id);
+            continue;
         }
-    }
 
-    if unused_def_ids_by_file.is_empty() {
-        // There are no unused functions with file names to add (in any CGU)
-        return;
-    }
-
-    // Each `CodegenUnit` (CGU) has its own function_coverage_map, and generates a specific binary
-    // with its own coverage map.
-    //
-    // Each covered function `Instance` can be included in only one coverage map, produced from a
-    // specific function_coverage_map, from a specific CGU.
-    //
-    // Since unused functions did not generate code, they are not associated with any CGU yet.
-    //
-    // To avoid injecting the unused functions in multiple coverage maps (for multiple CGUs)
-    // determine which function_coverage_map has the responsibility for publishing unreachable
-    // coverage, based on file name: For each unused function, find the CGU that generates the
-    // first function (based on sorted `DefId`) from the same file.
-    //
-    // Add a new `FunctionCoverage` to the `function_coverage_map`, with unreachable code regions
-    // for each region in it's MIR.
-
-    // Convert the `HashSet` of `codegenned_def_ids` to a sortable vector, and sort them.
-    let mut sorted_codegenned_def_ids: Vec<DefId> = codegenned_def_ids.iter().copied().collect();
-    sorted_codegenned_def_ids.sort_unstable();
-
-    let mut first_covered_def_id_by_file: FxHashMap<Symbol, DefId> = FxHashMap::default();
-    for &def_id in sorted_codegenned_def_ids.iter() {
-        if let Some(covered_file_name) = tcx.covered_file_name(def_id) {
-            // Only add files known to have unused functions
-            if unused_def_ids_by_file.contains_key(covered_file_name) {
-                first_covered_def_id_by_file.entry(*covered_file_name).or_insert(def_id);
-            }
-        }
-    }
-
-    // Get the set of def_ids with coverage regions, known by *this* CoverageContext.
-    let cgu_covered_def_ids: DefIdSet = match cx.coverage_context() {
-        Some(ctx) => ctx
-            .function_coverage_map
-            .borrow()
-            .keys()
-            .map(|&instance| instance.def.def_id())
-            .collect(),
-        None => return,
-    };
-
-    let cgu_covered_files: FxHashSet<Symbol> = first_covered_def_id_by_file
-        .iter()
-        .filter_map(
-            |(&file_name, def_id)| {
-                if cgu_covered_def_ids.contains(def_id) { Some(file_name) } else { None }
-            },
-        )
-        .collect();
-
-    // For each file for which this CGU is responsible for adding unused function coverage,
-    // get the `def_id`s for each unused function (if any), define a synthetic function with a
-    // single LLVM coverage counter, and add the function's coverage `CodeRegion`s. to the
-    // function_coverage_map.
-    for covered_file_name in cgu_covered_files {
-        for def_id in unused_def_ids_by_file.remove(&covered_file_name).into_iter().flatten() {
-            cx.define_unused_fn(def_id);
-        }
+        debug!("generating unused fn: {:?}", non_codegenned_def_id);
+        cx.define_unused_fn(non_codegenned_def_id);
     }
 }

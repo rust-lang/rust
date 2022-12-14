@@ -1,5 +1,4 @@
 #![warn(clippy::trailing_empty_array)]
-#![feature(const_generics_defaults)]
 
 // Do lint:
 

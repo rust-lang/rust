@@ -23,13 +23,6 @@ pub fn bar() {}
 /// ```
 pub fn foobar() {}
 
-/// barfoo
-///
-/// ```allow-fail,allowfail,allOw_fail
-/// boo
-/// ```
-pub fn barfoo() {}
-
 /// b
 ///
 /// ```test-harness,testharness,tesT_harness

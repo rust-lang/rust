@@ -1,18 +1,3 @@
-error[E0658]: destructuring assignments are unstable
-  --> $DIR/underscore.rs:8:9
-   |
-LL |         _
-   |         ^
-   |
-  ::: $DIR/main.rs:5:5
-   |
-LL |     underscore!();
-   |     ------------- in this macro invocation
-   |
-   = note: see issue #71126 <https://github.com/rust-lang/rust/issues/71126> for more information
-   = help: add `#![feature(destructuring_assignment)]` to the crate attributes to enable
-   = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
-
 error: in expressions, `_` can only be used on the left-hand side of an assignment
   --> $DIR/underscore.rs:8:9
    |
@@ -26,6 +11,5 @@ LL |     underscore!();
    |
    = note: this error originates in the macro `underscore` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0658`.

@@ -21,7 +21,7 @@ help: consider removing the `?Sized` bound to make the type parameter `Sized`
    |
 LL - pub struct AtLeastByte<T: ?Sized> {
 LL + pub struct AtLeastByte<T> {
-   | 
+   |
 help: borrowed types always have a statically known size
    |
 LL |     value: &T,

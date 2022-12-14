@@ -85,6 +85,7 @@ use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -177,7 +178,7 @@ struct IfThenScope {
 
 /// The target of an expression that breaks out of a scope
 #[derive(Clone, Copy, Debug)]
-crate enum BreakableTarget {
+pub(crate) enum BreakableTarget {
     Continue(region::Scope),
     Break(region::Scope),
     Return,
@@ -443,9 +444,10 @@ impl<'tcx> Scopes<'tcx> {
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Adding and removing scopes
     // ==========================
-    //  Start a breakable scope, which tracks where `continue`, `break` and
-    //  `return` should branch to.
-    crate fn in_breakable_scope<F>(
+
+    ///  Start a breakable scope, which tracks where `continue`, `break` and
+    ///  `return` should branch to.
+    pub(crate) fn in_breakable_scope<F>(
         &mut self,
         loop_block: Option<BasicBlock>,
         break_destination: Place<'tcx>,
@@ -466,9 +468,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let normal_exit_block = f(self);
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
-        let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
+        let break_block =
+            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
         if let Some(drops) = breakable_scope.continue_drops {
-            self.build_exit_tree(drops, loop_block);
+            self.build_exit_tree(drops, region_scope, span, loop_block);
         }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
@@ -498,7 +501,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// if let Some(x) = a && let Some(y) = b && let Some(z) = c { ... }
     ///
-    /// there are three possible ways the condition can be false and we may have
+    /// There are three possible ways the condition can be false and we may have
     /// to drop `x`, `x` and `y`, or neither depending on which binding fails.
     /// To handle this correctly we use a `DropTree` in a similar way to a
     /// `loop` expression and 'break' out on all of the 'else' paths.
@@ -507,9 +510,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// - We don't need to keep a stack of scopes in the `Builder` because the
     ///   'else' paths will only leave the innermost scope.
     /// - This is also used for match guards.
-    crate fn in_if_then_scope<F>(
+    pub(crate) fn in_if_then_scope<F>(
         &mut self,
         region_scope: region::Scope,
+        span: Span,
         f: F,
     ) -> (BasicBlock, BasicBlock)
     where
@@ -524,13 +528,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert!(if_then_scope.region_scope == region_scope);
 
         let else_block = self
-            .build_exit_tree(if_then_scope.else_drops, None)
+            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
             .map_or_else(|| self.cfg.start_new_block(), |else_block_and| unpack!(else_block_and));
 
         (then_block, else_block)
     }
 
-    crate fn in_opt_scope<F, R>(
+    pub(crate) fn in_opt_scope<F, R>(
         &mut self,
         opt_scope: Option<(region::Scope, SourceInfo)>,
         f: F,
@@ -553,7 +557,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     /// Convenience wrapper that pushes a scope and then executes `f`
     /// to build its contents, popping the scope afterwards.
-    crate fn in_scope<F, R>(
+    #[instrument(skip(self, f), level = "debug")]
+    pub(crate) fn in_scope<F, R>(
         &mut self,
         region_scope: (region::Scope, SourceInfo),
         lint_level: LintLevel,
@@ -562,34 +567,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     where
         F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
     {
-        debug!("in_scope(region_scope={:?})", region_scope);
         let source_scope = self.source_scope;
-        let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
-            // Use `maybe_lint_level_root_bounded` with `root_lint_level` as a bound
-            // to avoid adding Hir dependences on our parents.
-            // We estimate the true lint roots here to avoid creating a lot of source scopes.
-
-            let parent_root = tcx.maybe_lint_level_root_bounded(
-                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root,
-                self.hir_id,
-            );
-            let current_root = tcx.maybe_lint_level_root_bounded(current_hir_id, self.hir_id);
-
-            if parent_root != current_root {
-                self.source_scope = self.new_source_scope(
-                    region_scope.1.span,
-                    LintLevel::Explicit(current_root),
-                    None,
-                );
-            }
+            let parent_id =
+                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root;
+            self.maybe_new_source_scope(region_scope.1.span, None, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
         let mut block;
         let rv = unpack!(block = f(self));
         unpack!(block = self.pop_scope(region_scope, block));
         self.source_scope = source_scope;
-        debug!("in_scope: exiting region_scope={:?} block={:?}", region_scope, block);
+        debug!(?block);
         block.and(rv)
     }
 
@@ -597,14 +586,14 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// scope and call `pop_scope` afterwards. Note that these two
     /// calls must be paired; using `in_scope` as a convenience
     /// wrapper maybe preferable.
-    crate fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo)) {
+    pub(crate) fn push_scope(&mut self, region_scope: (region::Scope, SourceInfo)) {
         self.scopes.push_scope(region_scope, self.source_scope);
     }
 
     /// Pops a scope, which should have region scope `region_scope`,
     /// adding any drops onto the end of `block` that are needed.
     /// This must match 1-to-1 with `push_scope`.
-    crate fn pop_scope(
+    pub(crate) fn pop_scope(
         &mut self,
         region_scope: (region::Scope, SourceInfo),
         mut block: BasicBlock,
@@ -619,7 +608,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Sets up the drops for breaking from `block` to `target`.
-    crate fn break_scope(
+    pub(crate) fn break_scope(
         &mut self,
         mut block: BasicBlock,
         value: Option<&Expr<'tcx>>,
@@ -671,7 +660,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // a Coverage code region can be generated, `continue` needs no `Assign`; but
                 // without one, the `InstrumentCoverage` MIR pass cannot generate a code region for
                 // `continue`. Coverage will be missing unless we add a dummy `Assign` to MIR.
-                self.add_dummy_assignment(&span, block, source_info);
+                self.add_dummy_assignment(span, block, source_info);
             }
         }
 
@@ -690,7 +679,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         drops.add_entry(block, drop_idx);
 
-        // `build_drop_tree` doesn't have access to our source_info, so we
+        // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::Resume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
@@ -698,7 +687,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.cfg.start_new_block().unit()
     }
 
-    crate fn break_for_else(
+    pub(crate) fn break_for_else(
         &mut self,
         block: BasicBlock,
         target: region::Scope,
@@ -722,7 +711,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
         drops.add_entry(block, drop_idx);
 
-        // `build_drop_tree` doesn't have access to our source_info, so we
+        // `build_drop_trees` doesn't have access to our source_info, so we
         // create a dummy terminator now. `TerminatorKind::Resume` is used
         // because MIR type checking will panic if it hasn't been overwritten.
         self.cfg.terminate(block, source_info, TerminatorKind::Resume);
@@ -730,8 +719,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Add a dummy `Assign` statement to the CFG, with the span for the source code's `continue`
     // statement.
-    fn add_dummy_assignment(&mut self, span: &Span, block: BasicBlock, source_info: SourceInfo) {
-        let local_decl = LocalDecl::new(self.tcx.mk_unit(), *span).internal();
+    fn add_dummy_assignment(&mut self, span: Span, block: BasicBlock, source_info: SourceInfo) {
+        let local_decl = LocalDecl::new(self.tcx.mk_unit(), span).internal();
         let temp_place = Place::from(self.local_decls.push(local_decl));
         self.cfg.push_assign_unit(block, source_info, temp_place, self.tcx);
     }
@@ -755,8 +744,42 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ))
     }
 
+    /// Possibly creates a new source scope if `current_root` and `parent_root`
+    /// are different, or if -Zmaximal-hir-to-mir-coverage is enabled.
+    pub(crate) fn maybe_new_source_scope(
+        &mut self,
+        span: Span,
+        safety: Option<Safety>,
+        current_id: HirId,
+        parent_id: HirId,
+    ) {
+        let (current_root, parent_root) =
+            if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
+                // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
+                // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
+                // field that tracks lint levels for MIR locations.  Normally the number of source scopes
+                // is limited to the set of nodes with lint annotations. The -Zmaximal-hir-to-mir-coverage
+                // flag changes this behavior to maximize the number of source scopes, increasing the
+                // granularity of the MIR->HIR mapping.
+                (current_id, parent_id)
+            } else {
+                // Use `maybe_lint_level_root_bounded` with `self.hir_id` as a bound
+                // to avoid adding Hir dependencies on our parents.
+                // We estimate the true lint roots here to avoid creating a lot of source scopes.
+                (
+                    self.tcx.maybe_lint_level_root_bounded(current_id, self.hir_id),
+                    self.tcx.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                )
+            };
+
+        if current_root != parent_root {
+            let lint_level = LintLevel::Explicit(current_root);
+            self.source_scope = self.new_source_scope(span, lint_level, safety);
+        }
+    }
+
     /// Creates a new source scope, nested in the current one.
-    crate fn new_source_scope(
+    pub(crate) fn new_source_scope(
         &mut self,
         span: Span,
         lint_level: LintLevel,
@@ -791,38 +814,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Given a span and the current source scope, make a SourceInfo.
-    crate fn source_info(&self, span: Span) -> SourceInfo {
+    pub(crate) fn source_info(&self, span: Span) -> SourceInfo {
         SourceInfo { span, scope: self.source_scope }
     }
 
     // Finding scopes
     // ==============
+
     /// Returns the scope that we should use as the lifetime of an
     /// operand. Basically, an operand must live until it is consumed.
     /// This is similar to, but not quite the same as, the temporary
     /// scope (which can be larger or smaller).
     ///
     /// Consider:
-    ///
-    ///     let x = foo(bar(X, Y));
-    ///
+    /// ```ignore (illustrative)
+    /// let x = foo(bar(X, Y));
+    /// ```
     /// We wish to pop the storage for X and Y after `bar()` is
     /// called, not after the whole `let` is completed.
     ///
     /// As another example, if the second argument diverges:
-    ///
-    ///     foo(Box::new(2), panic!())
-    ///
+    /// ```ignore (illustrative)
+    /// foo(Box::new(2), panic!())
+    /// ```
     /// We would allocate the box but then free it on the unwinding
     /// path; we would also emit a free on the 'success' path from
     /// panic, but that will turn out to be removed as dead-code.
-    crate fn local_scope(&self) -> region::Scope {
+    pub(crate) fn local_scope(&self) -> region::Scope {
         self.scopes.topmost()
     }
 
     // Scheduling drops
     // ================
-    crate fn schedule_drop_storage_and_value(
+
+    pub(crate) fn schedule_drop_storage_and_value(
         &mut self,
         span: Span,
         region_scope: region::Scope,
@@ -836,7 +861,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// When called with `DropKind::Storage`, `place` shouldn't be the return
     /// place, or a function parameter.
-    crate fn schedule_drop(
+    pub(crate) fn schedule_drop(
         &mut self,
         span: Span,
         region_scope: region::Scope,
@@ -944,7 +969,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// Example: when compiling the call to `foo` here:
     ///
-    /// ```rust
+    /// ```ignore (illustrative)
     /// foo(bar(), ...)
     /// ```
     ///
@@ -955,7 +980,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// dropped). However, if no unwind occurs, then `_X` will be
     /// unconditionally consumed by the `call`:
     ///
-    /// ```
+    /// ```ignore (illustrative)
     /// bb {
     ///   ...
     ///   _R = CALL(foo, _X, ...)
@@ -965,11 +990,11 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// However, `_X` is still registered to be dropped, and so if we
     /// do nothing else, we would generate a `DROP(_X)` that occurs
     /// after the call. This will later be optimized out by the
-    /// drop-elaboation code, but in the meantime it can lead to
+    /// drop-elaboration code, but in the meantime it can lead to
     /// spurious borrow-check errors -- the problem, ironically, is
     /// not the `DROP(_X)` itself, but the (spurious) unwind pathways
     /// that it creates. See #64391 for an example.
-    crate fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
+    pub(crate) fn record_operands_moved(&mut self, operands: &[Operand<'tcx>]) {
         let local_scope = self.local_scope();
         let scope = self.scopes.scopes.last_mut().unwrap();
 
@@ -994,13 +1019,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Other
     // =====
+
     /// Returns the [DropIdx] for the innermost drop if the function unwound at
     /// this point. The `DropIdx` will be created if it doesn't already exist.
     fn diverge_cleanup(&mut self) -> DropIdx {
-        let is_generator = self.generator_kind.is_some();
-        let (uncached_scope, mut cached_drop) = self
-            .scopes
-            .scopes
+        // It is okay to use dummy span because the getting scope index on the topmost scope
+        // must always succeed.
+        self.diverge_cleanup_target(self.scopes.topmost(), DUMMY_SP)
+    }
+
+    /// This is similar to [diverge_cleanup](Self::diverge_cleanup) except its target is set to
+    /// some ancestor scope instead of the current scope.
+    /// It is possible to unwind to some ancestor scope if some drop panics as
+    /// the program breaks out of a if-then scope.
+    fn diverge_cleanup_target(&mut self, target_scope: region::Scope, span: Span) -> DropIdx {
+        let target = self.scopes.scope_index(target_scope, span);
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
             .iter()
             .enumerate()
             .rev()
@@ -1009,7 +1043,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             })
             .unwrap_or((0, ROOT_NODE));
 
-        for scope in &mut self.scopes.scopes[uncached_scope..] {
+        if uncached_scope > target {
+            return cached_drop;
+        }
+
+        let is_generator = self.generator_kind.is_some();
+        for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
                 if is_generator || drop.kind == DropKind::Value {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
@@ -1026,14 +1065,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// This path terminates in Resume. The path isn't created until after all
     /// of the non-unwind paths in this item have been lowered.
-    crate fn diverge_from(&mut self, start: BasicBlock) {
+    pub(crate) fn diverge_from(&mut self, start: BasicBlock) {
         debug_assert!(
             matches!(
                 self.cfg.block_data(start).terminator().kind,
                 TerminatorKind::Assert { .. }
                     | TerminatorKind::Call { .. }
+                    | TerminatorKind::Drop { .. }
                     | TerminatorKind::DropAndReplace { .. }
                     | TerminatorKind::FalseUnwind { .. }
+                    | TerminatorKind::InlineAsm { .. }
             ),
             "diverge_from called on block with terminator that cannot unwind."
         );
@@ -1047,7 +1088,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// [TerminatorKind::Yield].
     ///
     /// This path terminates in GeneratorDrop.
-    crate fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
+    pub(crate) fn generator_drop_cleanup(&mut self, yield_block: BasicBlock) {
         debug_assert!(
             matches!(
                 self.cfg.block_data(yield_block).terminator().kind,
@@ -1077,7 +1118,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Utility function for *non*-scope code to build their own drops
-    crate fn build_drop_and_replace(
+    pub(crate) fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
         span: Span,
@@ -1100,7 +1141,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// Creates an `Assert` terminator and return the success block.
     /// If the boolean condition operand is not the expected value,
     /// a runtime panic will be caused with the given message.
-    crate fn assert(
+    pub(crate) fn assert(
         &mut self,
         block: BasicBlock,
         cond: Operand<'tcx>,
@@ -1125,7 +1166,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// This is only needed for `match` arm scopes, because they have one
     /// entrance per pattern, but only one exit.
-    crate fn clear_top_scope(&mut self, region_scope: region::Scope) {
+    pub(crate) fn clear_top_scope(&mut self, region_scope: region::Scope) {
         let top_scope = self.scopes.scopes.last_mut().unwrap();
 
         assert_eq!(top_scope.region_scope, region_scope);
@@ -1220,21 +1261,24 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
+        else_scope: region::Scope,
+        span: Span,
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
+        let is_generator = self.generator_kind.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
-            let unwind_target = self.diverge_cleanup();
+            let unwind_target = self.diverge_cleanup_target(else_scope, span);
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.0.kind {
                     DropKind::Storage => {
-                        if self.generator_kind.is_some() {
+                        if is_generator {
                             let unwind_drop = self
                                 .scopes
                                 .unwind_drops
@@ -1261,7 +1305,7 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     }
 
     /// Build the unwind and generator drop trees.
-    crate fn build_drop_trees(&mut self) {
+    pub(crate) fn build_drop_trees(&mut self) {
         if self.generator_kind.is_some() {
             self.build_generator_drop_trees();
         } else {
@@ -1373,7 +1417,8 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::DropAndReplace { unwind, .. }
             | TerminatorKind::FalseUnwind { unwind, .. }
             | TerminatorKind::Call { cleanup: unwind, .. }
-            | TerminatorKind::Assert { cleanup: unwind, .. } => {
+            | TerminatorKind::Assert { cleanup: unwind, .. }
+            | TerminatorKind::InlineAsm { cleanup: unwind, .. } => {
                 *unwind = Some(to);
             }
             TerminatorKind::Goto { .. }
@@ -1384,8 +1429,7 @@ impl<'tcx> DropTreeBuilder<'tcx> for Unwind {
             | TerminatorKind::Unreachable
             | TerminatorKind::Yield { .. }
             | TerminatorKind::GeneratorDrop
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm { .. } => {
+            | TerminatorKind::FalseEdge { .. } => {
                 span_bug!(term.source_info.span, "cannot unwind from {:?}", term.kind)
             }
         }

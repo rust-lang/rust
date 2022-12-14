@@ -11,14 +11,14 @@ extern "C" {
     pub fn extern_foo();
 }
 
-struct Foo; //~ ERROR: struct is never constructed
+struct Foo; //~ ERROR: struct `Foo` is never constructed
 impl Foo {
-    fn foo(&self) { //~ ERROR: associated function is never used
+    fn foo(&self) { //~ ERROR: associated function `foo` is never used
         bar()
     }
 }
 
-fn bar() { //~ ERROR: function is never used
+fn bar() { //~ ERROR: function `bar` is never used
     fn baz() {}
 
     Foo.foo();
@@ -57,9 +57,9 @@ mod blah {
     }
 }
 
-enum c_void {} //~ ERROR: enum is never used
+enum c_void {} //~ ERROR: enum `c_void` is never used
 extern "C" {
-    fn free(p: *const c_void); //~ ERROR: function is never used
+    fn free(p: *const c_void); //~ ERROR: function `free` is never used
 }
 
 // Check provided method
@@ -73,7 +73,18 @@ mod inner {
     fn f() {}
 }
 
+fn anon_const() -> [(); {
+    fn blah() {} //~ ERROR: function `blah` is never used
+    1
+}] {
+    [(); {
+        fn blah() {} //~ ERROR: function `blah` is never used
+        1
+    }]
+}
+
 pub fn foo() {
     let a: &dyn inner::Trait = &1_isize;
     a.f();
+    anon_const();
 }

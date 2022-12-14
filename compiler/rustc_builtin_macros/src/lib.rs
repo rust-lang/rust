@@ -1,18 +1,23 @@
 //! This crate contains implementations of built-in macros and other code generating facilities
 //! injecting code into the crate before it is lowered to HIR.
 
+#![allow(rustc::potential_query_instability)]
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
+#![feature(array_windows)]
 #![feature(box_patterns)]
-#![feature(bool_to_option)]
-#![feature(crate_visibility_modifier)]
 #![feature(decl_macro)]
-#![feature(iter_zip)]
-#![feature(nll)]
+#![feature(if_let_guard)]
+#![feature(is_some_and)]
+#![feature(is_sorted)]
+#![feature(let_chains)]
 #![feature(proc_macro_internals)]
 #![feature(proc_macro_quote)]
 #![recursion_limit = "256"]
 
 extern crate proc_macro;
+
+#[macro_use]
+extern crate tracing;
 
 use crate::deriving::*;
 
@@ -20,28 +25,30 @@ use rustc_expand::base::{MacroExpanderFn, ResolverExpand, SyntaxExtensionKind};
 use rustc_expand::proc_macro::BangProcMacro;
 use rustc_span::symbol::sym;
 
-mod asm;
+mod alloc_error_handler;
 mod assert;
 mod cfg;
 mod cfg_accessible;
 mod cfg_eval;
 mod compile_error;
 mod concat;
+mod concat_bytes;
 mod concat_idents;
 mod derive;
 mod deriving;
+mod edition_panic;
 mod env;
 mod format;
 mod format_foreign;
 mod global_allocator;
-mod llvm_asm;
 mod log_syntax;
-mod panic;
 mod source_util;
 mod test;
 mod trace_macros;
+mod type_ascribe;
 mod util;
 
+pub mod asm;
 pub mod cmdline_attrs;
 pub mod proc_macro_harness;
 pub mod standard_library_imports;
@@ -65,6 +72,7 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         cfg: cfg::expand_cfg,
         column: source_util::expand_column,
         compile_error: compile_error::expand_compile_error,
+        concat_bytes: concat_bytes::expand_concat_bytes,
         concat_idents: concat_idents::expand_concat_idents,
         concat: concat::expand_concat,
         env: env::expand_env,
@@ -77,21 +85,24 @@ pub fn register_builtin_macros(resolver: &mut dyn ResolverExpand) {
         include_str: source_util::expand_include_str,
         include: source_util::expand_include,
         line: source_util::expand_line,
-        llvm_asm: llvm_asm::expand_llvm_asm,
         log_syntax: log_syntax::expand_log_syntax,
         module_path: source_util::expand_mod,
         option_env: env::expand_option_env,
-        core_panic: panic::expand_panic,
-        std_panic: panic::expand_panic,
+        core_panic: edition_panic::expand_panic,
+        std_panic: edition_panic::expand_panic,
+        unreachable: edition_panic::expand_unreachable,
         stringify: source_util::expand_stringify,
         trace_macros: trace_macros::expand_trace_macros,
+        type_ascribe: type_ascribe::expand_type_ascribe,
     }
 
     register_attr! {
+        alloc_error_handler: alloc_error_handler::expand,
         bench: test::expand_bench,
         cfg_accessible: cfg_accessible::Expander,
         cfg_eval: cfg_eval::expand,
-        derive: derive::Expander,
+        derive: derive::Expander(false),
+        derive_const: derive::Expander(true),
         global_allocator: global_allocator::expand,
         test: test::expand_test,
         test_case: test::expand_test_case,

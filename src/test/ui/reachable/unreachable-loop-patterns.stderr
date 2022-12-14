@@ -10,11 +10,5 @@ note: the lint level is defined here
 LL | #![deny(unreachable_patterns)]
    |         ^^^^^^^^^^^^^^^^^^^^
 
-error: unreachable pattern
-  --> $DIR/unreachable-loop-patterns.rs:18:14
-   |
-LL |     for _ in unimplemented!() as Void {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 

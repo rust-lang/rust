@@ -37,12 +37,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     ///
     /// only generates a single switch. If this happens this method returns
     /// `true`.
+    #[instrument(skip(self, candidate), level = "debug")]
     pub(super) fn simplify_candidate<'pat>(
         &mut self,
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> bool {
         // repeatedly simplify match pairs until fixed point is reached
-        debug!(?candidate, "simplify_candidate");
+        debug!("{candidate:#?}");
 
         // existing_bindings and new_bindings exists to keep the semantics in order.
         // Reversing the binding order for bindings after `@` changes the binding order in places
@@ -67,13 +68,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         loop {
             let match_pairs = mem::take(&mut candidate.match_pairs);
 
-            if let [MatchPair { pattern: Pat { kind: box PatKind::Or { pats }, .. }, place }] =
+            if let [MatchPair { pattern: Pat { kind: PatKind::Or { pats }, .. }, place }] =
                 &*match_pairs
             {
                 existing_bindings.extend_from_slice(&new_bindings);
                 mem::swap(&mut candidate.bindings, &mut existing_bindings);
-                candidate.subcandidates =
-                    self.create_or_subcandidates(candidate, place.clone(), pats);
+                candidate.subcandidates = self.create_or_subcandidates(candidate, &place, pats);
                 return true;
             }
 
@@ -113,7 +113,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // late as possible.
                 candidate
                     .match_pairs
-                    .sort_by_key(|pair| matches!(*pair.pattern.kind, PatKind::Or { .. }));
+                    .sort_by_key(|pair| matches!(pair.pattern.kind, PatKind::Or { .. }));
                 debug!(simplified = ?candidate, "simplify_candidate");
                 return false; // if we were not able to simplify any, done.
             }
@@ -126,12 +126,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     fn create_or_subcandidates<'pat>(
         &mut self,
         candidate: &Candidate<'pat, 'tcx>,
-        place: PlaceBuilder<'tcx>,
-        pats: &'pat [Pat<'tcx>],
+        place: &PlaceBuilder<'tcx>,
+        pats: &'pat [Box<Pat<'tcx>>],
     ) -> Vec<Candidate<'pat, 'tcx>> {
         pats.iter()
-            .map(|pat| {
-                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard);
+            .map(|box pat| {
+                let mut candidate = Candidate::new(place.clone(), pat, candidate.has_guard, self);
                 self.simplify_candidate(&mut candidate);
                 candidate
             })
@@ -149,24 +149,21 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         candidate: &mut Candidate<'pat, 'tcx>,
     ) -> Result<(), MatchPair<'pat, 'tcx>> {
         let tcx = self.tcx;
-        match *match_pair.pattern.kind {
+        match match_pair.pattern.kind {
             PatKind::AscribeUserType {
                 ref subpattern,
-                ascription: thir::Ascription { variance, user_ty, user_ty_span },
+                ascription: thir::Ascription { ref annotation, variance },
             } => {
                 // Apply the type ascription to the value at `match_pair.place`, which is the
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.ascriptions.push(Ascription {
-                        span: user_ty_span,
-                        user_ty,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        annotation: annotation.clone(),
+                        source,
                         variance,
                     });
                 }
 
-                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
 
                 Ok(())
             }
@@ -185,12 +182,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 ref subpattern,
                 is_primary: _,
             } => {
-                if let Ok(place_resolved) =
-                    match_pair.place.clone().try_upvars_resolved(self.tcx, self.typeck_results)
-                {
+                if let Some(source) = match_pair.place.try_to_place(self) {
                     candidate.bindings.push(Binding {
                         span: match_pair.pattern.span,
-                        source: place_resolved.into_place(self.tcx, self.typeck_results),
+                        source,
                         var_id: var,
                         binding_mode: mode,
                     });
@@ -198,7 +193,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 if let Some(subpattern) = subpattern.as_ref() {
                     // this is the `x @ P` case; have to keep matching against `P` now
-                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern));
+                    candidate.match_pairs.push(MatchPair::new(match_pair.place, subpattern, self));
                 }
 
                 Ok(())
@@ -209,8 +204,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 Err(match_pair)
             }
 
-            PatKind::Range(PatRange { lo, hi, end }) => {
-                let (range, bias) = match *lo.ty.kind() {
+            PatKind::Range(box PatRange { lo, hi, end }) => {
+                let (range, bias) = match *lo.ty().kind() {
                     ty::Char => {
                         (Some(('\u{0000}' as u128, '\u{10FFFF}' as u128, Size::from_bits(32))), 0)
                     }
@@ -228,15 +223,18 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     _ => (None, 0),
                 };
                 if let Some((min, max, sz)) = range {
-                    if let (Some(lo), Some(hi)) = (lo.val.try_to_bits(sz), hi.val.try_to_bits(sz)) {
-                        // We want to compare ranges numerically, but the order of the bitwise
-                        // representation of signed integers does not match their numeric order.
-                        // Thus, to correct the ordering, we need to shift the range of signed
-                        // integers to correct the comparison. This is achieved by XORing with a
-                        // bias (see pattern/_match.rs for another pertinent example of this
-                        // pattern).
-                        let (lo, hi) = (lo ^ bias, hi ^ bias);
-                        if lo <= min && (hi > max || hi == max && end == RangeEnd::Included) {
+                    // We want to compare ranges numerically, but the order of the bitwise
+                    // representation of signed integers does not match their numeric order. Thus,
+                    // to correct the ordering, we need to shift the range of signed integers to
+                    // correct the comparison. This is achieved by XORing with a bias (see
+                    // pattern/_match.rs for another pertinent example of this pattern).
+                    //
+                    // Also, for performance, it's important to only do the second `try_to_bits` if
+                    // necessary.
+                    let lo = lo.try_to_bits(sz).unwrap() ^ bias;
+                    if lo <= min {
+                        let hi = hi.try_to_bits(sz).unwrap() ^ bias;
+                        if hi > max || hi == max && end == RangeEnd::Included {
                             // Irrefutable pattern match.
                             return Ok(());
                         }
@@ -252,7 +250,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         &mut candidate.match_pairs,
                         &match_pair.place,
                         prefix,
-                        slice.as_ref(),
+                        slice,
                         suffix,
                     );
                     Ok(())
@@ -262,19 +260,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
 
             PatKind::Variant { adt_def, substs, variant_index, ref subpatterns } => {
-                let irrefutable = adt_def.variants.iter_enumerated().all(|(i, v)| {
+                let irrefutable = adt_def.variants().iter_enumerated().all(|(i, v)| {
                     i == variant_index || {
                         self.tcx.features().exhaustive_patterns
                             && !v
-                                .uninhabited_from(
-                                    self.tcx,
-                                    substs,
-                                    adt_def.adt_kind(),
-                                    self.param_env,
-                                )
-                                .is_empty()
+                                .inhabited_predicate(self.tcx, adt_def)
+                                .subst(self.tcx, substs)
+                                .apply_ignore_module(self.tcx, self.param_env)
                     }
-                }) && (adt_def.did.is_local()
+                }) && (adt_def.did().is_local()
                     || !adt_def.is_variant_list_non_exhaustive());
                 if irrefutable {
                     let place_builder = match_pair.place.downcast(adt_def, variant_index);
@@ -292,7 +286,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                     &mut candidate.match_pairs,
                     &match_pair.place,
                     prefix,
-                    slice.as_ref(),
+                    slice,
                     suffix,
                 );
                 Ok(())
@@ -306,7 +300,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
             PatKind::Deref { ref subpattern } => {
                 let place_builder = match_pair.place.deref();
-                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern));
+                candidate.match_pairs.push(MatchPair::new(place_builder, subpattern, self));
                 Ok(())
             }
 

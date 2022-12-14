@@ -2,7 +2,7 @@ error[E0220]: associated type `Assoc` not found for `V`
   --> $DIR/not_well_formed.rs:9:29
    |
 LL | type Foo<V> = impl Trait<V::Assoc>;
-   |                             ^^^^^ associated type `Assoc` not found
+   |                             ^^^^^ there is a similarly named associated type `Assoc` in the trait `TraitWithAssoc`
 
 error: aborting due to previous error
 

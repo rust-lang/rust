@@ -8,7 +8,7 @@ help: try removing the `+`
    |
 LL -     2 + +2;
 LL +     2 + 2;
-   | 
+   |
 
 error: aborting due to previous error
 

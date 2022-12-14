@@ -30,6 +30,7 @@
 //! platform-specific cfgs are allowed. Not sure yet how to deal with
 //! this in the long term.
 
+use crate::walk::{filter_dirs, walk};
 use std::iter::Iterator;
 use std::path::Path;
 
@@ -46,7 +47,7 @@ const EXCEPTION_PATHS: &[&str] = &[
     // pointer regardless of the target architecture. As a result,
     // we must use `#[cfg(windows)]` to conditionally compile the
     // correct `VaList` structure for windows.
-    "library/core/src/ffi.rs",
+    "library/core/src/ffi/mod.rs",
     "library/std/src/sys/", // Platform-specific code for std lives here.
     "library/std/src/os",   // Platform-specific public interfaces
     // Temporary `std` exceptions
@@ -58,13 +59,16 @@ const EXCEPTION_PATHS: &[&str] = &[
     "library/std/src/path.rs",
     "library/std/src/sys_common", // Should only contain abstractions over platforms
     "library/std/src/net/test.rs", // Utility helpers for tests
+    "library/std/src/panic.rs",   // fuchsia-specific panic backtrace handling
+    "library/std/src/personality.rs",
+    "library/std/src/personality/",
 ];
 
 pub fn check(path: &Path, bad: &mut bool) {
     // Sanity check that the complex parsing here works.
     let mut saw_target_arch = false;
     let mut saw_cfg_bang = false;
-    super::walk(path, &mut super::filter_dirs, &mut |entry, contents| {
+    walk(path, &mut filter_dirs, &mut |entry, contents| {
         let file = entry.path();
         let filestr = file.to_string_lossy().replace("\\", "/");
         if !filestr.ends_with(".rs") {
@@ -131,7 +135,7 @@ fn check_cfgs(
             continue;
         }
 
-        let preceeded_by_doc_comment = {
+        let preceded_by_doc_comment = {
             let pre_contents = &contents[..idx];
             let pre_newline = pre_contents.rfind('\n');
             let pre_doc_comment = pre_contents.rfind("///");
@@ -142,7 +146,7 @@ fn check_cfgs(
             }
         };
 
-        if preceeded_by_doc_comment {
+        if preceded_by_doc_comment {
             continue;
         }
 

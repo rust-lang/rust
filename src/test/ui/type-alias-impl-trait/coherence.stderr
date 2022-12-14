@@ -1,9 +1,14 @@
-error[E0207]: the type parameter `T` is not constrained by the impl trait, self type, or predicates
-  --> $DIR/coherence.rs:14:6
+error[E0117]: only traits defined in the current crate can be implemented for arbitrary types
+  --> $DIR/coherence.rs:14:1
    |
 LL | impl<T> foreign_crate::ForeignTrait for AliasOfForeignType<T> {}
-   |      ^ unconstrained type parameter
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^---------------------
+   | |                                       |
+   | |                                       `AliasOfForeignType<T>` is not defined in the current crate
+   | impl doesn't use only types from inside the current crate
+   |
+   = note: define and implement a trait or new type instead
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0207`.
+For more information about this error, try `rustc --explain E0117`.

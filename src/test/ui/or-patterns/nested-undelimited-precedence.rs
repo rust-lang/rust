@@ -5,8 +5,6 @@
 // types of patterns that allow undelimited subpatterns that could cause the same ambiguity.
 // Currently, those should be impossible due to precedence rule. This test enforces that.
 
-#![feature(or_patterns)]
-
 enum E {
     A,
     B,

@@ -1,5 +1,5 @@
 // stderr-per-bitwidth
-#![feature(const_raw_ptr_deref, never_type)]
+#![feature(never_type)]
 
 const _: &[!; 1] = unsafe { &*(1_usize as *const [!; 1]) }; //~ ERROR undefined behavior
 const _: &[!; 0] = unsafe { &*(1_usize as *const [!; 0]) }; // ok

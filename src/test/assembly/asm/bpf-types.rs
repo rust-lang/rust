@@ -1,9 +1,8 @@
-// min-llvm-version: 13.0
 // assembly-output: emit-asm
 // compile-flags: --target bpfel-unknown-none -C target_feature=+alu32
 // needs-llvm-components: bpf
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]

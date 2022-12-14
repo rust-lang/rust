@@ -1,0 +1,11 @@
+error[E0658]: use of unstable library feature 'unsafe_pin_internals'
+  --> $DIR/cant_access_internals.rs:12:15
+   |
+LL |     mem::take(phantom_pinned.pointer);
+   |               ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: add `#![feature(unsafe_pin_internals)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

@@ -4,7 +4,7 @@ use std::path::Path;
 
 use crate::config::FileName;
 use crate::emitter::{self, Emitter};
-use crate::syntux::session::ParseSess;
+use crate::parse::session::ParseSess;
 use crate::NewlineStyle;
 
 #[cfg(test)]

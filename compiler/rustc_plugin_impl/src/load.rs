@@ -1,27 +1,20 @@
 //! Used by `rustc` when loading a plugin.
 
+use crate::errors::{LoadPluginError, MalformedPluginAttribute};
 use crate::Registry;
+use libloading::Library;
 use rustc_ast::Crate;
-use rustc_errors::struct_span_err;
 use rustc_metadata::locator;
 use rustc_session::cstore::MetadataLoader;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
-use rustc_span::Span;
 
-use std::borrow::ToOwned;
 use std::env;
 use std::mem;
 use std::path::PathBuf;
 
 /// Pointer to a registrar function.
 type PluginRegistrarFn = fn(&mut Registry<'_>);
-
-fn call_malformed_plugin_attribute(sess: &Session, span: Span) {
-    struct_span_err!(sess, span, E0498, "malformed `plugin` attribute")
-        .span_label(span, "malformed attribute")
-        .emit();
-}
 
 /// Read plugin metadata and dynamically load registrar functions.
 pub fn load_plugins(
@@ -41,7 +34,9 @@ pub fn load_plugins(
                 Some(ident) if plugin.is_word() => {
                     load_plugin(&mut plugins, sess, metadata_loader, ident)
                 }
-                _ => call_malformed_plugin_attribute(sess, plugin.span()),
+                _ => {
+                    sess.emit_err(MalformedPluginAttribute { span: plugin.span() });
+                }
             }
         }
     }
@@ -56,37 +51,28 @@ fn load_plugin(
     ident: Ident,
 ) {
     let lib = locator::find_plugin_registrar(sess, metadata_loader, ident.span, ident.name);
-    let fun = dylink_registrar(sess, ident.span, lib);
+    let fun = dylink_registrar(lib).unwrap_or_else(|err| {
+        // This is fatal: there are almost certainly macros we need inside this crate, so
+        // continuing would spew "macro undefined" errors.
+        sess.emit_fatal(LoadPluginError { span: ident.span, msg: err.to_string() });
+    });
     plugins.push(fun);
 }
 
-// Dynamically link a registrar function into the compiler process.
-fn dylink_registrar(sess: &Session, span: Span, path: PathBuf) -> PluginRegistrarFn {
-    use rustc_metadata::dynamic_lib::DynamicLibrary;
-
+/// Dynamically link a registrar function into the compiler process.
+fn dylink_registrar(lib_path: PathBuf) -> Result<PluginRegistrarFn, libloading::Error> {
     // Make sure the path contains a / or the linker will search for it.
-    let path = env::current_dir().unwrap().join(&path);
+    let lib_path = env::current_dir().unwrap().join(&lib_path);
 
-    let lib = match DynamicLibrary::open(&path) {
-        Ok(lib) => lib,
-        // this is fatal: there are almost certainly macros we need
-        // inside this crate, so continue would spew "macro undefined"
-        // errors
-        Err(err) => sess.span_fatal(span, &err),
-    };
+    let lib = unsafe { Library::new(&lib_path) }?;
 
-    unsafe {
-        let registrar = match lib.symbol("__rustc_plugin_registrar") {
-            Ok(registrar) => mem::transmute::<*mut u8, PluginRegistrarFn>(registrar),
-            // again fatal if we can't register macros
-            Err(err) => sess.span_fatal(span, &err),
-        };
+    let registrar_sym = unsafe { lib.get::<PluginRegistrarFn>(b"__rustc_plugin_registrar") }?;
 
-        // Intentionally leak the dynamic library. We can't ever unload it
-        // since the library can make things that will live arbitrarily long
-        // (e.g., an Rc cycle or a thread).
-        mem::forget(lib);
+    // Intentionally leak the dynamic library. We can't ever unload it
+    // since the library can make things that will live arbitrarily long
+    // (e.g., an Rc cycle or a thread).
+    let registrar_sym = unsafe { registrar_sym.into_raw() };
+    mem::forget(lib);
 
-        registrar
-    }
+    Ok(*registrar_sym)
 }

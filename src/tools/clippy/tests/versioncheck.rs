@@ -3,33 +3,36 @@
 #![allow(clippy::single_match_else)]
 
 use rustc_tools_util::VersionInfo;
+use std::fs;
 
 #[test]
-fn check_that_clippy_lints_and_clippy_utils_have_the_same_version_as_clippy() {
+fn consistent_clippy_crate_versions() {
+    fn read_version(path: &str) -> String {
+        let contents = fs::read_to_string(path).unwrap_or_else(|e| panic!("error reading `{path}`: {e:?}"));
+        contents
+            .lines()
+            .filter_map(|l| l.split_once('='))
+            .find_map(|(k, v)| (k.trim() == "version").then(|| v.trim()))
+            .unwrap_or_else(|| panic!("error finding version in `{path}`"))
+            .to_string()
+    }
+
     // do not run this test inside the upstream rustc repo:
     // https://github.com/rust-lang/rust-clippy/issues/6683
     if option_env!("RUSTC_TEST_SUITE").is_some() {
         return;
     }
 
-    let clippy_meta = cargo_metadata::MetadataCommand::new()
-        .no_deps()
-        .exec()
-        .expect("could not obtain cargo metadata");
+    let clippy_version = read_version("Cargo.toml");
 
-    for krate in &["clippy_lints", "clippy_utils"] {
-        let krate_meta = cargo_metadata::MetadataCommand::new()
-            .current_dir(std::env::current_dir().unwrap().join(krate))
-            .no_deps()
-            .exec()
-            .expect("could not obtain cargo metadata");
-        assert_eq!(krate_meta.packages[0].version, clippy_meta.packages[0].version);
-        for package in &clippy_meta.packages[0].dependencies {
-            if package.name == *krate {
-                assert!(package.req.matches(&krate_meta.packages[0].version));
-                break;
-            }
-        }
+    let paths = [
+        "declare_clippy_lint/Cargo.toml",
+        "clippy_lints/Cargo.toml",
+        "clippy_utils/Cargo.toml",
+    ];
+
+    for path in paths {
+        assert_eq!(clippy_version, read_version(path), "{path} version differs");
     }
 }
 
@@ -50,7 +53,7 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
     // `RUSTC_REAL` if Clippy is build in the Rust repo with `./x.py`.
     let rustc = std::env::var("RUSTC_REAL").unwrap_or_else(|_| "rustc".to_string());
     let rustc_version = String::from_utf8(
-        std::process::Command::new(&rustc)
+        std::process::Command::new(rustc)
             .arg("--version")
             .output()
             .expect("failed to run `rustc --version`")
@@ -85,7 +88,7 @@ fn check_that_clippy_has_the_same_major_version_as_rustc() {
             // we don't want our tests failing suddenly
         },
         _ => {
-            panic!("Failed to parse rustc version: {:?}", vsplit);
+            panic!("Failed to parse rustc version: {vsplit:?}");
         },
     };
 }

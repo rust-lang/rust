@@ -1,3 +1,3 @@
 // pp-exact
 
-fn main() { }
+fn main() {}

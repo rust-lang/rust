@@ -20,7 +20,15 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         arr.iter().copied().map(String::from)
     }
 
-    if let Subcommand::Clippy { fix, .. } = builder.config.cmd {
+    if let Subcommand::Clippy {
+        fix,
+        clippy_lint_allow,
+        clippy_lint_deny,
+        clippy_lint_warn,
+        clippy_lint_forbid,
+        ..
+    } = &builder.config.cmd
+    {
         // disable the most spammy clippy lints
         let ignored_lints = vec![
             "many_single_char_names", // there are a lot in stdarch
@@ -32,7 +40,7 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
             "wrong_self_convention",
         ];
         let mut args = vec![];
-        if fix {
+        if *fix {
             #[rustfmt::skip]
             args.extend(strings(&[
                 "--fix", "-Zunstable-options",
@@ -44,6 +52,12 @@ fn args(builder: &Builder<'_>) -> Vec<String> {
         }
         args.extend(strings(&["--", "--cap-lints", "warn"]));
         args.extend(ignored_lints.iter().map(|lint| format!("-Aclippy::{}", lint)));
+        let mut clippy_lint_levels: Vec<String> = Vec::new();
+        clippy_lint_allow.iter().for_each(|v| clippy_lint_levels.push(format!("-A{}", v)));
+        clippy_lint_deny.iter().for_each(|v| clippy_lint_levels.push(format!("-D{}", v)));
+        clippy_lint_warn.iter().for_each(|v| clippy_lint_levels.push(format!("-W{}", v)));
+        clippy_lint_forbid.iter().for_each(|v| clippy_lint_levels.push(format!("-F{}", v)));
+        args.extend(clippy_lint_levels);
         args
     } else {
         vec![]
@@ -64,7 +78,7 @@ impl Step for Std {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("test")
+        run.all_krates("test").path("library")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -126,7 +140,13 @@ impl Step for Std {
             cargo_subcommand(builder.kind),
         );
 
-        cargo.arg("--all-targets");
+        // If we're not in stage 0, tests and examples will fail to compile
+        // from `core` definitions being loaded from two different `libcore`
+        // .rmeta and .rlib files.
+        if compiler.stage == 0 {
+            cargo.arg("--all-targets");
+        }
+
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         // Explicitly pass -p for all dependencies krates -- this will force cargo
@@ -162,7 +182,7 @@ impl Step for Rustc {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.all_krates("rustc-main")
+        run.all_krates("rustc-main").path("compiler")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -184,8 +204,8 @@ impl Step for Rustc {
             // the sysroot for the compiler to find. Otherwise, we're going to
             // fail when building crates that need to generate code (e.g., build
             // scripts and their dependencies).
-            builder.ensure(crate::compile::Std { target: compiler.host, compiler });
-            builder.ensure(crate::compile::Std { target, compiler });
+            builder.ensure(crate::compile::Std::new(compiler, compiler.host));
+            builder.ensure(crate::compile::Std::new(compiler, target));
         } else {
             builder.ensure(Std { target });
         }
@@ -243,12 +263,7 @@ impl Step for CodegenBackend {
     const DEFAULT: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.paths(&[
-            "compiler/rustc_codegen_cranelift",
-            "rustc_codegen_cranelift",
-            "compiler/rustc_codegen_gcc",
-            "rustc_codegen_gcc",
-        ])
+        run.paths(&["compiler/rustc_codegen_cranelift", "compiler/rustc_codegen_gcc"])
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -289,6 +304,68 @@ impl Step for CodegenBackend {
             vec![],
             true,
         );
+    }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct RustAnalyzer {
+    pub target: TargetSelection,
+}
+
+impl Step for RustAnalyzer {
+    type Output = ();
+    const ONLY_HOSTS: bool = true;
+    const DEFAULT: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.path("src/tools/rust-analyzer")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(RustAnalyzer { target: run.target });
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let compiler = builder.compiler(builder.top_stage, builder.config.build);
+        let target = self.target;
+
+        builder.ensure(Std { target });
+
+        let mut cargo = prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolStd,
+            target,
+            cargo_subcommand(builder.kind),
+            "src/tools/rust-analyzer",
+            SourceType::InTree,
+            &["rust-analyzer/in-rust-tree".to_owned()],
+        );
+
+        cargo.rustflag(
+            "-Zallow-features=proc_macro_internals,proc_macro_diagnostic,proc_macro_span",
+        );
+
+        // For ./x.py clippy, don't check those targets because
+        // linting tests and benchmarks can produce very noisy results
+        if builder.kind != Kind::Clippy {
+            // can't use `--all-targets` because `--examples` doesn't work well
+            cargo.arg("--bins");
+            cargo.arg("--tests");
+            cargo.arg("--benches");
+        }
+
+        builder.info(&format!(
+            "Checking stage{} {} artifacts ({} -> {})",
+            compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
+        ));
+        run_cargo(builder, cargo, args(builder), &stamp(builder, compiler, target), vec![], true);
+
+        /// Cargo's output path in a given stage, compiled by a particular
+        /// compiler for the specified target.
+        fn stamp(builder: &Builder<'_>, compiler: Compiler, target: TargetSelection) -> PathBuf {
+            builder.cargo_out(compiler, Mode::ToolStd, target).join(".rust-analyzer-check.stamp")
+        }
     }
 }
 
@@ -374,14 +451,16 @@ macro_rules! tool_check_step {
 }
 
 tool_check_step!(Rustdoc, "src/tools/rustdoc", "src/librustdoc", SourceType::InTree);
-// Clippy and Rustfmt are hybrids. They are external tools, but use a git subtree instead
+// Clippy, miri and Rustfmt are hybrids. They are external tools, but use a git subtree instead
 // of a submodule. Since the SourceType only drives the deny-warnings
 // behavior, treat it as in-tree so that any new warnings in clippy will be
 // rejected.
 tool_check_step!(Clippy, "src/tools/clippy", SourceType::InTree);
-tool_check_step!(Miri, "src/tools/miri", SourceType::Submodule);
-tool_check_step!(Rls, "src/tools/rls", SourceType::Submodule);
+tool_check_step!(Miri, "src/tools/miri", SourceType::InTree);
+tool_check_step!(CargoMiri, "src/tools/miri/cargo-miri", SourceType::InTree);
+tool_check_step!(Rls, "src/tools/rls", SourceType::InTree);
 tool_check_step!(Rustfmt, "src/tools/rustfmt", SourceType::InTree);
+tool_check_step!(MiroptTestTools, "src/tools/miropt-test-tools", SourceType::InTree);
 
 tool_check_step!(Bootstrap, "src/bootstrap", SourceType::InTree, false);
 

@@ -7,18 +7,14 @@
 pub use crate::def_id::DefPathHash;
 use crate::def_id::{CrateNum, DefIndex, LocalDefId, StableCrateId, CRATE_DEF_INDEX, LOCAL_CRATE};
 use crate::def_path_hash_map::DefPathHashMap;
-use crate::hir;
 
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_index::vec::IndexVec;
-use rustc_span::hygiene::ExpnId;
 use rustc_span::symbol::{kw, sym, Symbol};
-use rustc_span::Span;
 
 use std::fmt::{self, Write};
 use std::hash::Hash;
-use tracing::debug;
 
 /// The `DefPathTable` maps `DefIndex`es to `DefKey`s and vice versa.
 /// Internally the `DefPathTable` holds a tree of `DefKey`s, where each `DefKey`
@@ -51,13 +47,13 @@ impl DefPathTable {
             // Continuing with colliding DefPathHashes can lead to correctness
             // issues. We must abort compilation.
             //
-            // The likelyhood of such a collision is very small, so actually
+            // The likelihood of such a collision is very small, so actually
             // running into one could be indicative of a poor hash function
             // being used.
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collsion between {:?} and {:?}. \
+                "found DefPathHash collision between {:?} and {:?}. \
                     Compilation cannot continue.",
                 def_path1, def_path2
             );
@@ -100,16 +96,7 @@ impl DefPathTable {
 #[derive(Clone, Debug)]
 pub struct Definitions {
     table: DefPathTable,
-
-    // FIXME(eddyb) ideally all `LocalDefId`s would be HIR owners.
-    pub(super) def_id_to_hir_id: IndexVec<LocalDefId, Option<hir::HirId>>,
-    /// The reverse mapping of `def_id_to_hir_id`.
-    pub(super) hir_id_to_def_id: FxHashMap<hir::HirId, LocalDefId>,
-
-    /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
-    expansions_that_defined: FxHashMap<LocalDefId, ExpnId>,
-
-    def_id_to_span: IndexVec<LocalDefId, Span>,
+    next_disambiguator: FxHashMap<(LocalDefId, DefPathData), u32>,
 
     /// The [StableCrateId] of the local crate.
     stable_crate_id: StableCrateId,
@@ -152,6 +139,11 @@ impl DefKey {
         // DefPathHashes in this DefPathTable.
         DefPathHash::new(parent.stable_crate_id(), local_hash)
     }
+
+    #[inline]
+    pub fn get_opt_name(&self) -> Option<Symbol> {
+        self.disambiguated_data.data.get_opt_name()
+    }
 }
 
 /// A pair of `DefPathData` and an integer disambiguator. The integer is
@@ -173,7 +165,7 @@ impl DisambiguatedDefPathData {
                 if verbose && self.disambiguator != 0 {
                     write!(writer, "{}#{}", name, self.disambiguator)
                 } else {
-                    writer.write_str(&name.as_str())
+                    writer.write_str(name.as_str())
                 }
             }
             DefPathDataName::Anon { namespace } => {
@@ -261,12 +253,16 @@ pub enum DefPathData {
     // they are treated specially by the `def_path` function.
     /// The crate root (marker).
     CrateRoot,
-    // Catch-all for random `DefId` things like `DUMMY_NODE_ID`.
-    Misc,
 
     // Different kinds of items and item-like things:
     /// An impl.
     Impl,
+    /// An `extern` block.
+    ForeignMod,
+    /// A `use` item.
+    Use,
+    /// A global asm item.
+    GlobalAsm,
     /// Something in the type namespace.
     TypeNs(Symbol),
     /// Something in the value namespace.
@@ -318,19 +314,8 @@ impl Definitions {
         })
     }
 
-    #[inline]
-    #[track_caller]
-    pub fn local_def_id_to_hir_id(&self, id: LocalDefId) -> hir::HirId {
-        self.def_id_to_hir_id[id].unwrap()
-    }
-
-    #[inline]
-    pub fn opt_hir_id_to_local_def_id(&self, hir_id: hir::HirId) -> Option<LocalDefId> {
-        self.hir_id_to_def_id.get(&hir_id).copied()
-    }
-
     /// Adds a root definition (no parent) and a few other reserved definitions.
-    pub fn new(stable_crate_id: StableCrateId, crate_span: Span) -> Definitions {
+    pub fn new(stable_crate_id: StableCrateId) -> Definitions {
         let key = DefKey {
             parent: None,
             disambiguated_data: DisambiguatedDefPathData {
@@ -347,42 +332,28 @@ impl Definitions {
         let root = LocalDefId { local_def_index: table.allocate(key, def_path_hash) };
         assert_eq!(root.local_def_index, CRATE_DEF_INDEX);
 
-        let mut def_id_to_span = IndexVec::new();
-        // A relative span's parent must be an absolute span.
-        debug_assert_eq!(crate_span.data_untracked().parent, None);
-        let _root = def_id_to_span.push(crate_span);
-        debug_assert_eq!(_root, root);
-
-        Definitions {
-            table,
-            def_id_to_hir_id: Default::default(),
-            hir_id_to_def_id: Default::default(),
-            expansions_that_defined: Default::default(),
-            def_id_to_span,
-            stable_crate_id,
-        }
-    }
-
-    /// Retrieves the root definition.
-    pub fn get_root_def(&self) -> LocalDefId {
-        LocalDefId { local_def_index: CRATE_DEF_INDEX }
+        Definitions { table, next_disambiguator: Default::default(), stable_crate_id }
     }
 
     /// Adds a definition with a parent definition.
-    pub fn create_def(
-        &mut self,
-        parent: LocalDefId,
-        data: DefPathData,
-        expn_id: ExpnId,
-        mut next_disambiguator: impl FnMut(LocalDefId, DefPathData) -> u32,
-        span: Span,
-    ) -> LocalDefId {
-        debug!("create_def(parent={:?}, data={:?}, expn_id={:?})", parent, data, expn_id);
+    pub fn create_def(&mut self, parent: LocalDefId, data: DefPathData) -> LocalDefId {
+        // We can't use `Debug` implementation for `LocalDefId` here, since it tries to acquire a
+        // reference to `Definitions` and we're already holding a mutable reference.
+        debug!(
+            "create_def(parent={}, data={data:?})",
+            self.def_path(parent).to_string_no_crate_verbose(),
+        );
 
         // The root node must be created with `create_root_def()`.
         assert!(data != DefPathData::CrateRoot);
 
-        let disambiguator = next_disambiguator(parent, data);
+        // Find the next free disambiguator for this key.
+        let disambiguator = {
+            let next_disamb = self.next_disambiguator.entry((parent, data)).or_insert(0);
+            let disambiguator = *next_disamb;
+            *next_disamb = next_disamb.checked_add(1).expect("disambiguator overflow");
+            disambiguator
+        };
         let key = DefKey {
             parent: Some(parent.local_def_index),
             disambiguated_data: DisambiguatedDefPathData { data, disambiguator },
@@ -394,66 +365,29 @@ impl Definitions {
         debug!("create_def: after disambiguation, key = {:?}", key);
 
         // Create the definition.
-        let def_id = LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) };
-
-        if expn_id != ExpnId::root() {
-            self.expansions_that_defined.insert(def_id, expn_id);
-        }
-
-        // A relative span's parent must be an absolute span.
-        debug_assert_eq!(span.data_untracked().parent, None);
-        let _id = self.def_id_to_span.push(span);
-        debug_assert_eq!(_id, def_id);
-
-        def_id
-    }
-
-    /// Initializes the `LocalDefId` to `HirId` mapping once it has been generated during
-    /// AST to HIR lowering.
-    pub fn init_def_id_to_hir_id_mapping(
-        &mut self,
-        mapping: IndexVec<LocalDefId, Option<hir::HirId>>,
-    ) {
-        assert!(
-            self.def_id_to_hir_id.is_empty(),
-            "trying to initialize `LocalDefId` <-> `HirId` mappings twice"
-        );
-
-        // Build the reverse mapping of `def_id_to_hir_id`.
-        self.hir_id_to_def_id = mapping
-            .iter_enumerated()
-            .filter_map(|(def_id, hir_id)| hir_id.map(|hir_id| (hir_id, def_id)))
-            .collect();
-
-        self.def_id_to_hir_id = mapping;
-    }
-
-    pub fn expansion_that_defined(&self, id: LocalDefId) -> ExpnId {
-        self.expansions_that_defined.get(&id).copied().unwrap_or_else(ExpnId::root)
-    }
-
-    /// Retrieves the span of the given `DefId` if `DefId` is in the local crate.
-    #[inline]
-    pub fn def_span(&self, def_id: LocalDefId) -> Span {
-        self.def_id_to_span[def_id]
-    }
-
-    pub fn iter_local_def_id(&self) -> impl Iterator<Item = LocalDefId> + '_ {
-        self.def_id_to_hir_id.iter_enumerated().map(|(k, _)| k)
+        LocalDefId { local_def_index: self.table.allocate(key, def_path_hash) }
     }
 
     #[inline(always)]
-    pub fn local_def_path_hash_to_def_id(&self, hash: DefPathHash) -> LocalDefId {
+    pub fn local_def_path_hash_to_def_id(
+        &self,
+        hash: DefPathHash,
+        err: &mut dyn FnMut() -> !,
+    ) -> LocalDefId {
         debug_assert!(hash.stable_crate_id() == self.stable_crate_id);
         self.table
             .def_path_hash_to_index
             .get(&hash)
             .map(|local_def_index| LocalDefId { local_def_index })
-            .unwrap()
+            .unwrap_or_else(|| err())
     }
 
     pub fn def_path_hash_to_def_index_map(&self) -> &DefPathHashMap {
         &self.table.def_path_hash_to_index
+    }
+
+    pub fn num_definitions(&self) -> usize {
+        self.table.def_path_hashes.len()
     }
 }
 
@@ -469,7 +403,8 @@ impl DefPathData {
         match *self {
             TypeNs(name) | ValueNs(name) | MacroNs(name) | LifetimeNs(name) => Some(name),
 
-            Impl | CrateRoot | Misc | ClosureExpr | Ctor | AnonConst | ImplTrait => None,
+            Impl | ForeignMod | CrateRoot | Use | GlobalAsm | ClosureExpr | Ctor | AnonConst
+            | ImplTrait => None,
         }
     }
 
@@ -482,7 +417,9 @@ impl DefPathData {
             // Note that this does not show up in user print-outs.
             CrateRoot => DefPathDataName::Anon { namespace: kw::Crate },
             Impl => DefPathDataName::Anon { namespace: kw::Impl },
-            Misc => DefPathDataName::Anon { namespace: sym::misc },
+            ForeignMod => DefPathDataName::Anon { namespace: kw::Extern },
+            Use => DefPathDataName::Anon { namespace: kw::Use },
+            GlobalAsm => DefPathDataName::Anon { namespace: sym::global_asm },
             ClosureExpr => DefPathDataName::Anon { namespace: sym::closure },
             Ctor => DefPathDataName::Anon { namespace: sym::constructor },
             AnonConst => DefPathDataName::Anon { namespace: sym::constant },
@@ -494,7 +431,7 @@ impl DefPathData {
 impl fmt::Display for DefPathData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.name() {
-            DefPathDataName::Named(name) => f.write_str(&name.as_str()),
+            DefPathDataName::Named(name) => f.write_str(name.as_str()),
             // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
             DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
         }

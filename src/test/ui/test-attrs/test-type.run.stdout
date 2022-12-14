@@ -1,6 +1,6 @@
 
 running 3 tests
-test test_no_run ... ignored
+test test_no_run ... ignored, msg
 test test_ok ... ok
 test test_panic - should panic ... ok
 

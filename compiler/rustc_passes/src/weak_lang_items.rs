@@ -1,22 +1,13 @@
 //! Validity checking for weak lang items
 
-use rustc_ast::Attribute;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
-use rustc_hir as hir;
-use rustc_hir::intravisit::{self, NestedVisitorMap, Visitor};
 use rustc_hir::lang_items::{self, LangItem};
-use rustc_hir::weak_lang_items::WEAK_ITEMS_REFS;
+use rustc_hir::weak_lang_items::WEAK_LANG_ITEMS;
 use rustc_middle::middle::lang_items::required;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::config::CrateType;
-use rustc_span::symbol::Symbol;
-use rustc_span::Span;
 
-struct Context<'a, 'tcx> {
-    tcx: TyCtxt<'tcx>,
-    items: &'a mut lang_items::LanguageItems,
-}
+use crate::errors::{MissingLangItem, MissingPanicHandler, UnknownExternLangItem};
 
 /// Checks the crate for usage of weak lang items, returning a vector of all the
 /// language items required by this crate, but not defined yet.
@@ -27,14 +18,25 @@ pub fn check_crate<'tcx>(tcx: TyCtxt<'tcx>, items: &mut lang_items::LanguageItem
     if items.eh_personality().is_none() {
         items.missing.push(LangItem::EhPersonality);
     }
-    if tcx.sess.target.is_like_emscripten && items.eh_catch_typeinfo().is_none() {
+    if tcx.sess.target.os == "emscripten" && items.eh_catch_typeinfo().is_none() {
         items.missing.push(LangItem::EhCatchTypeinfo);
     }
 
-    {
-        let mut cx = Context { tcx, items };
-        tcx.hir().visit_all_item_likes(&mut cx.as_deep_visitor());
+    let crate_items = tcx.hir_crate_items(());
+    for id in crate_items.foreign_items() {
+        let attrs = tcx.hir().attrs(id.hir_id());
+        if let Some((lang_item, _)) = lang_items::extract(attrs) {
+            if let Some(item) = LangItem::from_name(lang_item) && item.is_weak() {
+                if items.get(item).is_none() {
+                    items.missing.push(item);
+                }
+            } else {
+                let span = tcx.def_span(id.owner_id);
+                tcx.sess.emit_err(UnknownExternLangItem { span, lang_item });
+            }
+        }
     }
+
     verify(tcx, items);
 }
 
@@ -60,48 +62,13 @@ fn verify<'tcx>(tcx: TyCtxt<'tcx>, items: &lang_items::LanguageItems) {
         }
     }
 
-    for (name, item) in WEAK_ITEMS_REFS.clone().into_sorted_vector().into_iter() {
-        if missing.contains(&item) && required(tcx, item) && items.require(item).is_err() {
+    for &item in WEAK_LANG_ITEMS.iter() {
+        if missing.contains(&item) && required(tcx, item) && items.get(item).is_none() {
             if item == LangItem::PanicImpl {
-                tcx.sess.err("`#[panic_handler]` function required, but not found");
-            } else if item == LangItem::Oom {
-                if !tcx.features().default_alloc_error_handler {
-                    tcx.sess.err("`#[alloc_error_handler]` function required, but not found");
-                    tcx.sess.note_without_error("Use `#![feature(default_alloc_error_handler)]` for a default error handler");
-                }
+                tcx.sess.emit_err(MissingPanicHandler);
             } else {
-                tcx.sess.err(&format!("language item required, but not found: `{}`", name));
+                tcx.sess.emit_err(MissingLangItem { name: item.name() });
             }
         }
-    }
-}
-
-impl<'a, 'tcx> Context<'a, 'tcx> {
-    fn register(&mut self, name: Symbol, span: Span) {
-        if let Some(&item) = WEAK_ITEMS_REFS.get(&name) {
-            if self.items.require(item).is_err() {
-                self.items.missing.push(item);
-            }
-        } else {
-            struct_span_err!(self.tcx.sess, span, E0264, "unknown external lang item: `{}`", name)
-                .emit();
-        }
-    }
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
-    type Map = intravisit::ErasedMap<'v>;
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
-    }
-
-    fn visit_foreign_item(&mut self, i: &hir::ForeignItem<'_>) {
-        let check_name = |attr: &Attribute, sym| attr.has_name(sym);
-        let attrs = self.tcx.hir().attrs(i.hir_id());
-        if let Some((lang_item, _)) = lang_items::extract(check_name, attrs) {
-            self.register(lang_item, i.span);
-        }
-        intravisit::walk_foreign_item(self, i)
     }
 }

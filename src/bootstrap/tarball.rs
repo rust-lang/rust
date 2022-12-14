@@ -3,9 +3,9 @@ use std::{
     process::Command,
 };
 
-use build_helper::t;
-
 use crate::builder::Builder;
+use crate::channel;
+use crate::util::t;
 
 #[derive(Copy, Clone)]
 pub(crate) enum OverlayKind {
@@ -51,11 +51,7 @@ impl OverlayKind {
             OverlayKind::RustDemangler => {
                 &["src/tools/rust-demangler/README.md", "LICENSE-APACHE", "LICENSE-MIT"]
             }
-            OverlayKind::RLS => &[
-                "src/tools/rls/README.md",
-                "src/tools/rls/LICENSE-APACHE",
-                "src/tools/rls/LICENSE-MIT",
-            ],
+            OverlayKind::RLS => &["src/tools/rls/README.md", "LICENSE-APACHE", "LICENSE-MIT"],
             OverlayKind::RustAnalyzer => &[
                 "src/tools/rust-analyzer/README.md",
                 "src/tools/rust-analyzer/LICENSE-APACHE",
@@ -79,7 +75,7 @@ impl OverlayKind {
             OverlayKind::Rustfmt => {
                 builder.rustfmt_info.version(builder, &builder.release_num("rustfmt"))
             }
-            OverlayKind::RLS => builder.rls_info.version(builder, &builder.release_num("rls")),
+            OverlayKind::RLS => builder.release(&builder.release_num("rls")),
             OverlayKind::RustAnalyzer => builder
                 .rust_analyzer_info
                 .version(builder, &builder.release_num("rust-analyzer/crates/rust-analyzer")),
@@ -103,6 +99,7 @@ pub(crate) struct Tarball<'a> {
 
     include_target_in_component_name: bool,
     is_preview: bool,
+    permit_symlinks: bool,
 }
 
 impl<'a> Tarball<'a> {
@@ -142,6 +139,7 @@ impl<'a> Tarball<'a> {
 
             include_target_in_component_name: false,
             is_preview: false,
+            permit_symlinks: false,
         }
     }
 
@@ -159,6 +157,10 @@ impl<'a> Tarball<'a> {
 
     pub(crate) fn is_preview(&mut self, is: bool) {
         self.is_preview = is;
+    }
+
+    pub(crate) fn permit_symlinks(&mut self, flag: bool) {
+        self.permit_symlinks = flag;
     }
 
     pub(crate) fn image_dir(&self) -> &Path {
@@ -263,11 +265,13 @@ impl<'a> Tarball<'a> {
         t!(std::fs::rename(&self.image_dir, &dest));
 
         self.run(|this, cmd| {
+            let distdir = crate::dist::distdir(this.builder);
+            t!(std::fs::create_dir_all(&distdir));
             cmd.arg("tarball")
                 .arg("--input")
                 .arg(&dest)
                 .arg("--output")
-                .arg(crate::dist::distdir(this.builder).join(this.package_name()));
+                .arg(distdir.join(this.package_name()));
         })
     }
 
@@ -294,8 +298,9 @@ impl<'a> Tarball<'a> {
     fn run(self, build_cli: impl FnOnce(&Tarball<'a>, &mut Command)) -> GeneratedTarball {
         t!(std::fs::create_dir_all(&self.overlay_dir));
         self.builder.create(&self.overlay_dir.join("version"), &self.overlay.version(self.builder));
-        if let Some(sha) = self.builder.rust_sha() {
-            self.builder.create(&self.overlay_dir.join("git-commit-hash"), &sha);
+        if let Some(info) = self.builder.rust_info().info() {
+            channel::write_commit_hash_file(&self.overlay_dir, &info.sha);
+            channel::write_commit_info_file(&self.overlay_dir, info);
         }
         for file in self.overlay.legal_and_readme() {
             self.builder.install(&self.builder.src.join(file), &self.overlay_dir, 0o644);
@@ -315,6 +320,18 @@ impl<'a> Tarball<'a> {
         }
         self.builder.run(&mut cmd);
 
+        // Ensure there are no symbolic links in the tarball. In particular,
+        // rustup-toolchain-install-master and most versions of Windows can't handle symbolic links.
+        let decompressed_output = self.temp_dir.join(&package_name);
+        if !self.builder.config.dry_run() && !self.permit_symlinks {
+            for entry in walkdir::WalkDir::new(&decompressed_output) {
+                let entry = t!(entry);
+                if entry.path_is_symlink() {
+                    panic!("generated a symlink in a tarball: {}", entry.path().display());
+                }
+            }
+        }
+
         // Use either the first compression format defined, or "gz" as the default.
         let ext = self
             .builder
@@ -327,7 +344,7 @@ impl<'a> Tarball<'a> {
 
         GeneratedTarball {
             path: crate::dist::distdir(self.builder).join(format!("{}.tar.{}", package_name, ext)),
-            decompressed_output: self.temp_dir.join(package_name),
+            decompressed_output,
             work: self.temp_dir,
         }
     }

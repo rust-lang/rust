@@ -1,0 +1,17 @@
+thread 'main' panicked at 'explicit panic', $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+error: Undefined Behavior: unwinding past a stack frame that does not allow unwinding
+  --> $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+   |
+LL |     unsafe { nounwind() }
+   |              ^^^^^^^^^^ unwinding past a stack frame that does not allow unwinding
+   |
+   = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
+   = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
+   = note: BACKTRACE:
+   = note: inside `main` at $DIR/exported_symbol_bad_unwind2.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

@@ -41,7 +41,7 @@ pub fn analyze_source_file(
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))] {
+    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         fn analyze_source_file_dispatch(src: &str,
                                     source_file_start_pos: BytePos,
                                     lines: &mut Vec<BytePos>,
@@ -247,7 +247,7 @@ fn analyze_source_file_generic(
             // The slow path:
             // This is either ASCII control character "DEL" or the beginning of
             // a multibyte char. Just decode to `char`.
-            let c = (&src[i..]).chars().next().unwrap();
+            let c = src[i..].chars().next().unwrap();
             char_len = c.len_utf8();
 
             let pos = BytePos::from_usize(i) + output_offset;

@@ -1,44 +1,41 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:6:5
+  --> $DIR/issue-62009-1.rs:6:22
    |
 LL | fn main() {
    |    ---- this is not `async`
 LL |     async { let (); }.await;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                      ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:8:5
+  --> $DIR/issue-62009-1.rs:10:6
    |
-LL |   fn main() {
-   |      ---- this is not `async`
+LL | fn main() {
+   |    ---- this is not `async`
 ...
-LL | /     async {
-LL | |
-LL | |         let task1 = print_dur().await;
-LL | |     }.await;
-   | |___________^ only allowed inside `async` functions and blocks
+LL |     }.await;
+   |      ^^^^^^ only allowed inside `async` functions and blocks
 
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-1.rs:12:5
+  --> $DIR/issue-62009-1.rs:12:15
    |
 LL | fn main() {
    |    ---- this is not `async`
 ...
 LL |     (|_| 2333).await;
-   |     ^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |               ^^^^^^ only allowed inside `async` functions and blocks
 
-error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
-  --> $DIR/issue-62009-1.rs:12:5
+error[E0277]: `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
+  --> $DIR/issue-62009-1.rs:12:15
    |
 LL |     (|_| 2333).await;
-   |     ^^^^^^^^^^^^^^^^ `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]` is not a future
+   |               ^^^^^^
+   |               |
+   |               `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` is not a future
+   |               help: remove the `.await`
    |
-   = help: the trait `Future` is not implemented for `[closure@$DIR/issue-62009-1.rs:12:5: 12:15]`
-note: required by `poll`
-  --> $SRC_DIR/core/src/future/future.rs:LL:COL
-   |
-LL |     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the trait `Future` is not implemented for closure `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]`
+   = note: [closure@$DIR/issue-62009-1.rs:12:6: 12:9] must be a future or must implement `IntoFuture` to be awaited
+   = note: required for `[closure@$DIR/issue-62009-1.rs:12:6: 12:9]` to implement `IntoFuture`
 
 error: aborting due to 4 previous errors
 

@@ -9,7 +9,7 @@
 //     'a : 'b
 
 fn test<'a,'b>(x: &'a i32) -> &'b i32
-    where 'a: 'static
+    where 'a: 'static //~ WARN unnecessary lifetime parameter `'a`
 {
     x
 }

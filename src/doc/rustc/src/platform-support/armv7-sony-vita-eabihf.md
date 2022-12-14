@@ -2,9 +2,7 @@
 
 **Tier: 3**
 
-This tier supports the ARM Cortex A9 processor running on a PlayStation Vita console. There are two variants of this target: `armv7-vita-newlibeabihf` which aims to have support for `std` crate using `newlib` as a bridge. The second option is `armv7-vita-eabihf` whose support for `std` crate does not involve a `libc` implementation, as it uses direct kernel syscalls to implement platform-specific parts.
-
-As a rule of thumb, use the first variant if you want interoperability with existing C code at the expense of having more overhead as it uses the C standard library. If this is not your case and you wish to depend only on rust crates (which I personally recommend doing) go for the second variant.
+This tier supports the ARM Cortex A9 processor running on a PlayStation Vita console. `armv7-vita-newlibeabihf` aims to have support for `std` crate using `newlib` as a bridge.
 
 ## Designated Developers
 
@@ -22,7 +20,7 @@ list in `config.toml`:
 ```toml
 [build]
 build-stage = 1
-target = ["armv7-sony-vita-newlibeabihf"]   # Or armv7-sony-vita-eabihf
+target = ["armv7-sony-vita-newlibeabihf"]
 ```
 
 ## Cross-compilation
@@ -46,7 +44,7 @@ TITLEID = "RUST00001"
 STATIC_DIR = "static"   # Folder where static assets should be placed (sce_sys folder is at $STATIC_DIR/sce_sys)
 CARGO_TARGET_DIR = { script = ["echo ${CARGO_TARGET_DIR:=target}"] }
 RUST_TARGET_PATH = { script = ["echo $(pwd)"]}
-RUST_TARGET = "armv7-sony-vita-eabihf" # or armv7-sony-vita-newlibeabihf
+RUST_TARGET = "armv7-sony-vita-newlibeabihf"
 CARGO_OUT_DIR = "${CARGO_TARGET_DIR}/${RUST_TARGET}/release"
 
 [tasks.xbuild]

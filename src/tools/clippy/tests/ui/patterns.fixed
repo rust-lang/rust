@@ -1,6 +1,7 @@
 // run-rustfix
-#![allow(unused)]
 #![warn(clippy::all)]
+#![allow(unused)]
+#![allow(clippy::uninlined_format_args)]
 
 fn main() {
     let v = Some(true);

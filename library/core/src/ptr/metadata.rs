@@ -50,6 +50,7 @@ use crate::hash::{Hash, Hasher};
 ///
 /// [`to_raw_parts`]: *const::to_raw_parts
 #[lang = "pointee_trait"]
+#[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Pointee {
     /// The type for metadata in pointers and references to `Self`.
     #[lang = "metadata_type"]
@@ -135,16 +136,16 @@ pub const fn from_raw_parts_mut<T: ?Sized>(
 }
 
 #[repr(C)]
-pub(crate) union PtrRepr<T: ?Sized> {
-    pub(crate) const_ptr: *const T,
-    pub(crate) mut_ptr: *mut T,
-    pub(crate) components: PtrComponents<T>,
+union PtrRepr<T: ?Sized> {
+    const_ptr: *const T,
+    mut_ptr: *mut T,
+    components: PtrComponents<T>,
 }
 
 #[repr(C)]
-pub(crate) struct PtrComponents<T: ?Sized> {
-    pub(crate) data_address: *const (),
-    pub(crate) metadata: <T as Pointee>::Metadata,
+struct PtrComponents<T: ?Sized> {
+    data_address: *const (),
+    metadata: <T as Pointee>::Metadata,
 }
 
 // Manual impl needed to avoid `T: Copy` bound.
@@ -180,27 +181,34 @@ pub struct DynMetadata<Dyn: ?Sized> {
     phantom: crate::marker::PhantomData<Dyn>,
 }
 
-/// The common prefix of all vtables. It is followed by function pointers for trait methods.
-///
-/// Private implementation detail of `DynMetadata::size_of` etc.
-#[repr(C)]
-struct VTable {
-    drop_in_place: fn(*mut ()),
-    size_of: usize,
-    align_of: usize,
+extern "C" {
+    /// Opaque type for accessing vtables.
+    ///
+    /// Private implementation detail of `DynMetadata::size_of` etc.
+    /// There is conceptually not actually any Abstract Machine memory behind this pointer.
+    type VTable;
 }
 
 impl<Dyn: ?Sized> DynMetadata<Dyn> {
     /// Returns the size of the type associated with this vtable.
     #[inline]
     pub fn size_of(self) -> usize {
-        self.vtable_ptr.size_of
+        // Note that "size stored in vtable" is *not* the same as "result of size_of_val_raw".
+        // Consider a reference like `&(i32, dyn Send)`: the vtable will only store the size of the
+        // `Send` part!
+        // SAFETY: DynMetadata always contains a valid vtable pointer
+        return unsafe {
+            crate::intrinsics::vtable_size(self.vtable_ptr as *const VTable as *const ())
+        };
     }
 
     /// Returns the alignment of the type associated with this vtable.
     #[inline]
     pub fn align_of(self) -> usize {
-        self.vtable_ptr.align_of
+        // SAFETY: DynMetadata always contains a valid vtable pointer
+        return unsafe {
+            crate::intrinsics::vtable_align(self.vtable_ptr as *const VTable as *const ())
+        };
     }
 
     /// Returns the size and alignment together as a `Layout`

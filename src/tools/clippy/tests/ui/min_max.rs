@@ -1,4 +1,5 @@
 #![warn(clippy::all)]
+#![allow(clippy::manual_clamp)]
 
 use std::cmp::max as my_max;
 use std::cmp::min as my_min;
@@ -19,8 +20,7 @@ impl NotOrd {
 }
 
 fn main() {
-    let x;
-    x = 2usize;
+    let x = 2usize;
     min(1, max(3, x));
     min(max(3, x), 1);
     max(min(x, 1), 3);
@@ -35,9 +35,7 @@ fn main() {
     let y = 2isize;
     min(max(y, -1), 3);
 
-    let s;
-    s = "Hello";
-
+    let s = "Hello";
     min("Apple", max("Zoo", s));
     max(min(s, "Apple"), "Zoo");
 

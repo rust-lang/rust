@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # Test to make sure that reachable extern fns are always available in final
 # productcs, including when LTO is used. In this test, the `foo` crate has a

@@ -1,10 +1,10 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/issue-58956.rs:7:11
    |
 LL | const _A: impl Lam = {
    |           ^^^^^^^^
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in variable binding
   --> $DIR/issue-58956.rs:9:17
    |
 LL |     let x: Wrap<impl Lam> = Wrap(B);

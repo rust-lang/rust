@@ -1,3 +1,4 @@
+#![allow(clippy::too_many_arguments, clippy::diverging_sub_expression)]
 #![warn(clippy::many_single_char_names)]
 
 fn bla() {

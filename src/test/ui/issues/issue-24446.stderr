@@ -6,6 +6,15 @@ LL |     static foo: dyn Fn() -> u32 = || -> u32 {
    |
    = help: the trait `Sized` is not implemented for `(dyn Fn() -> u32 + 'static)`
 
-error: aborting due to previous error
+error[E0277]: `(dyn Fn() -> u32 + 'static)` cannot be shared between threads safely
+  --> $DIR/issue-24446.rs:2:17
+   |
+LL |     static foo: dyn Fn() -> u32 = || -> u32 {
+   |                 ^^^^^^^^^^^^^^^ `(dyn Fn() -> u32 + 'static)` cannot be shared between threads safely
+   |
+   = help: the trait `Sync` is not implemented for `(dyn Fn() -> u32 + 'static)`
+   = note: shared static variables must have a type that implements `Sync`
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

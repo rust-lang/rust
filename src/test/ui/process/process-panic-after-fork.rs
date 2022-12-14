@@ -5,9 +5,8 @@
 // ignore-sgx no libc
 // ignore-emscripten no processes
 // ignore-sgx no processes
-// ignore-android: FIXME(#85261)
+// ignore-fuchsia no fork
 
-#![feature(bench_black_box)]
 #![feature(rustc_private)]
 #![feature(never_type)]
 #![feature(panic_always_abort)]
@@ -22,21 +21,6 @@ use std::process::{self, Command, ExitStatus};
 use std::sync::atomic::{AtomicU32, Ordering};
 
 use libc::c_int;
-
-#[cfg(not(target_os = "linux"))]
-fn getpid() -> u32 {
-    process::id()
-}
-
-/// We need to directly use the getpid syscall instead of using `process::id()`
-/// because the libc wrapper might return incorrect values after a process was
-/// forked.
-#[cfg(target_os = "linux")]
-fn getpid() -> u32 {
-    unsafe {
-        libc::syscall(libc::SYS_getpid) as _
-    }
-}
 
 /// This stunt allocator allows us to spot heap allocations in the child.
 struct PidChecking<A> {
@@ -59,7 +43,7 @@ impl<A> PidChecking<A> {
     fn check(&self) {
         let require_pid = self.require_pid.load(Ordering::Acquire);
         if require_pid != 0 {
-            let actual_pid = getpid();
+            let actual_pid = process::id();
             if require_pid != actual_pid {
                 unsafe {
                     libc::raise(libc::SIGUSR1);
@@ -94,7 +78,49 @@ unsafe impl<A:GlobalAlloc> GlobalAlloc for PidChecking<A> {
 fn expect_aborted(status: ExitStatus) {
     dbg!(status);
     let signal = status.signal().expect("expected child process to die of signal");
+
+    #[cfg(not(target_os = "android"))]
     assert!(signal == libc::SIGABRT || signal == libc::SIGILL || signal == libc::SIGTRAP);
+
+    #[cfg(target_os = "android")]
+    {
+        // Android signals an abort() call with SIGSEGV at address 0xdeadbaad
+        // See e.g. https://groups.google.com/g/android-ndk/c/laW1CJc7Icc
+        assert!(signal == libc::SIGSEGV);
+
+        // Additional checks performed:
+        // 1. Find last tombstone (similar to coredump but in text format) from the
+        //    same executable (path) as we are (must be because of usage of fork):
+        //    This ensures that we look into the correct tombstone.
+        // 2. Cause of crash is a SIGSEGV with address 0xdeadbaad.
+        // 3. libc::abort call is in one of top two functions on callstack.
+        // The last two steps distinguish between a normal SIGSEGV and one caused
+        // by libc::abort.
+
+        let this_exe = std::env::current_exe().unwrap().into_os_string().into_string().unwrap();
+        let exe_string = format!(">>> {this_exe} <<<");
+        let tombstone = (0..100)
+            .map(|n| format!("/data/tombstones/tombstone_{n:02}"))
+            .filter(|f| std::path::Path::new(&f).exists())
+            .map(|f| std::fs::read_to_string(&f).expect("Cannot read tombstone file"))
+            .filter(|f| f.contains(&exe_string))
+            .last()
+            .expect("no tombstone found");
+
+        println!("Content of tombstone:\n{tombstone}");
+
+        assert!(
+            tombstone.contains("signal 11 (SIGSEGV), code 1 (SEGV_MAPERR), fault addr deadbaad")
+        );
+        let abort_on_top = tombstone
+            .lines()
+            .skip_while(|l| !l.contains("backtrace:"))
+            .skip(1)
+            .take_while(|l| l.starts_with("    #"))
+            .take(2)
+            .any(|f| f.contains("/system/lib/libc.so (abort"));
+        assert!(abort_on_top);
+    }
 }
 
 fn main() {

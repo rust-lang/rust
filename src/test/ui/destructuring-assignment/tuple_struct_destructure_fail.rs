@@ -1,5 +1,3 @@
-#![feature(destructuring_assignment)]
-
 struct TupleStruct<S, T>(S, T);
 
 enum Enum<S, T> {

@@ -1,0 +1,13 @@
+[package]
+name = "issue_1567"
+version = "0.1.0"
+authors = ["Miri Team"]
+edition = "2018"
+
+[lib]
+# Regression test for https://github.com/rust-lang/miri/issues/1567: crate must have this crate-type set.
+# It must also depend on some other crate and use that dependency (we use byteorder).
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+byteorder = "1.0"

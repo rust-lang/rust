@@ -15,7 +15,7 @@ pub(super) fn check<'tcx>(
     e: &'tcx Expr<'_>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
-    args: &'tcx [Expr<'_>],
+    arg: &'tcx Expr<'_>,
 ) -> bool {
     match (&from_ty.kind(), &to_ty.kind()) {
         (ty::Int(ty::IntTy::I8) | ty::Uint(ty::UintTy::U8), ty::Bool) => {
@@ -23,9 +23,9 @@ pub(super) fn check<'tcx>(
                 cx,
                 TRANSMUTE_INT_TO_BOOL,
                 e.span,
-                &format!("transmute from a `{}` to a `bool`", from_ty),
+                &format!("transmute from a `{from_ty}` to a `bool`"),
                 |diag| {
-                    let arg = sugg::Sugg::hir(cx, &args[0], "..");
+                    let arg = sugg::Sugg::hir(cx, arg, "..");
                     let zero = sugg::Sugg::NonParen(Cow::from("0"));
                     diag.span_suggestion(
                         e.span,

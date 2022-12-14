@@ -1,4 +1,3 @@
-#![feature(destructuring_assignment)]
 struct Struct<S, T> {
     a: S,
     b: T,

@@ -13,44 +13,44 @@ anything, feel free to ask questions on issues or visit the `#clippy` on [Zulip]
 All contributors are expected to follow the [Rust Code of Conduct].
 
 - [Contributing to Clippy](#contributing-to-clippy)
-  - [Getting started](#getting-started)
-    - [High level approach](#high-level-approach)
-    - [Finding something to fix/improve](#finding-something-to-fiximprove)
-  - [Writing code](#writing-code)
+  - [The Clippy book](#the-clippy-book)
+  - [High level approach](#high-level-approach)
+  - [Finding something to fix/improve](#finding-something-to-fiximprove)
   - [Getting code-completion for rustc internals to work](#getting-code-completion-for-rustc-internals-to-work)
     - [IntelliJ Rust](#intellij-rust)
     - [Rust Analyzer](#rust-analyzer)
   - [How Clippy works](#how-clippy-works)
-  - [Syncing changes between Clippy and `rust-lang/rust`](#syncing-changes-between-clippy-and-rust-langrust)
-    - [Patching git-subtree to work with big repos](#patching-git-subtree-to-work-with-big-repos)
-    - [Performing the sync from `rust-lang/rust` to Clippy](#performing-the-sync-from-rust-langrust-to-clippy)
-    - [Performing the sync from Clippy to `rust-lang/rust`](#performing-the-sync-from-clippy-to-rust-langrust)
-    - [Defining remotes](#defining-remotes)
   - [Issue and PR triage](#issue-and-pr-triage)
   - [Bors and Homu](#bors-and-homu)
   - [Contributions](#contributions)
+  - [License](#license)
 
 [Zulip]: https://rust-lang.zulipchat.com/#narrow/stream/clippy
 [Rust Code of Conduct]: https://www.rust-lang.org/policies/code-of-conduct
 
-## Getting started
+## The Clippy book
 
-**Note: If this is your first time contributing to Clippy, you should
-first read the [Basics docs](doc/basics.md).**
+If you're new to Clippy and don't know where to start, the [Clippy book] includes
+a [developer guide] and is a good place to start your journey.
 
-### High level approach
+[Clippy book]: https://doc.rust-lang.org/nightly/clippy/index.html
+[developer guide]: https://doc.rust-lang.org/nightly/clippy/development/index.html
+
+## High level approach
 
 1. Find something to fix/improve
 2. Change code (likely some file in `clippy_lints/src/`)
-3. Follow the instructions in the [Basics docs](doc/basics.md) to get set up
+3. Follow the instructions in the [Basics docs](book/src/development/basics.md)
+   to get set up
 4. Run `cargo test` in the root directory and wiggle code until it passes
 5. Open a PR (also can be done after 2. if you run into problems)
 
-### Finding something to fix/improve
+## Finding something to fix/improve
 
-All issues on Clippy are mentored, if you want help simply ask @Manishearth, @flip1995, @phansch
-or @llogiq directly by mentioning them in the issue or over on [Zulip]. This list may be out of date.
-All currently active mentors can be found [here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
+All issues on Clippy are mentored, if you want help simply ask someone from the
+Clippy team directly by mentioning them in the issue or over on [Zulip]. All
+currently active team members can be found
+[here](https://github.com/rust-lang/highfive/blob/master/highfive/configs/rust-lang/rust-clippy.json#L3)
 
 Some issues are easier than others. The [`good-first-issue`] label can be used to find the easy
 issues. You can use `@rustbot claim` to assign the issue to yourself.
@@ -67,9 +67,9 @@ and resolved paths.
 
 [`T-AST`] issues will generally need you to match against a predefined syntax structure.
 To figure out how this syntax structure is encoded in the AST, it is recommended to run
-`rustc -Z ast-json` on an example of the structure and compare with the [nodes in the AST docs].
+`rustc -Z unpretty=ast-tree` on an example of the structure and compare with the [nodes in the AST docs].
 Usually the lint will end up to be a nested series of matches and ifs, [like so][deep-nesting].
-But we can make it nest-less by using [if_chain] macro, [like this][nest-less].
+But we can make it nest-less by using [let chains], [like this][nest-less].
 
 [`E-medium`] issues are generally pretty easy too, though it's recommended you work on an [`good-first-issue`]
 first. Sometimes they are only somewhat involved code wise, but not difficult per-se.
@@ -87,23 +87,9 @@ an AST expression). `match_def_path()` in Clippy's `utils` module can also be us
 [`E-medium`]: https://github.com/rust-lang/rust-clippy/labels/E-medium
 [`ty`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/ty
 [nodes in the AST docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_ast/ast/
-[deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/mem_forget.rs#L29-L43
-[if_chain]: https://docs.rs/if_chain/*/if_chain
-[nest-less]: https://github.com/rust-lang/rust-clippy/blob/557f6848bd5b7183f55c1e1522a326e9e1df6030/clippy_lints/src/bit_mask.rs#L124-L150
-
-## Writing code
-
-Have a look at the [docs for writing lints][adding_lints] for more details.
-
-If you want to add a new lint or change existing ones apart from bugfixing, it's
-also a good idea to give the [stability guarantees][rfc_stability] and
-[lint categories][rfc_lint_cats] sections of the [Clippy 1.0 RFC][clippy_rfc] a
-quick read.
-
-[adding_lints]: https://github.com/rust-lang/rust-clippy/blob/master/doc/adding_lints.md
-[clippy_rfc]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md
-[rfc_stability]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#stability-guarantees
-[rfc_lint_cats]: https://github.com/rust-lang/rfcs/blob/master/text/2476-clippy-uno.md#lint-audit-and-categories
+[deep-nesting]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/mem_forget.rs#L31-L45
+[let chains]: https://github.com/rust-lang/rust/pull/94927
+[nest-less]: https://github.com/rust-lang/rust-clippy/blob/5e4f0922911536f80d9591180fa604229ac13939/clippy_lints/src/bit_mask.rs#L133-L159
 
 ## Getting code-completion for rustc internals to work
 
@@ -118,30 +104,35 @@ which `IntelliJ Rust` will be able to understand.
 Run `cargo dev setup intellij --repo-path <repo-path>` where `<repo-path>` is a path to the rustc repo
 you just cloned.
 The command will add path-dependencies pointing towards rustc-crates inside the rustc repo to
-Clippys `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
+Clippy's `Cargo.toml`s and should allow `IntelliJ Rust` to understand most of the types that Clippy uses.
 Just make sure to remove the dependencies again before finally making a pull request!
 
 [rustc_repo]: https://github.com/rust-lang/rust/
 [IntelliJ_rust_homepage]: https://intellij-rust.github.io/
 
 ### Rust Analyzer
-As of [#6869][6869], [`rust-analyzer`][ra_homepage] can understand that Clippy uses compiler-internals
-using `extern crate` when `package.metadata.rust-analyzer.rustc_private` is set to `true` in Clippys `Cargo.toml.`
-You will required a `nightly` toolchain with the `rustc-dev` component installed.
-Make sure that in the `rust-analyzer` configuration, you set
+For [`rust-analyzer`][ra_homepage] to work correctly make sure that in the `rust-analyzer` configuration you set
+
+```json
+{ "rust-analyzer.rustc.source": "discover" }
 ```
-{ "rust-analyzer.rustcSource": "discover" }
-```
-and
-```
-{ "rust-analyzer.updates.channel": "nightly" }
-```
+
 You should be able to see information on things like `Expr` or `EarlyContext` now if you hover them, also
 a lot more type hints.
-This will work with `rust-analyzer 2021-03-15` shipped in nightly `1.52.0-nightly (107896c32 2021-03-15)` or later.
+
+To have `rust-analyzer` also work in the `clippy_dev` and `lintcheck` crates, add the following configuration
+
+```json
+{
+    "rust-analyzer.linkedProjects": [
+        "./Cargo.toml",
+        "clippy_dev/Cargo.toml",
+        "lintcheck/Cargo.toml",
+    ]
+}
+```
 
 [ra_homepage]: https://rust-analyzer.github.io/
-[6869]: https://github.com/rust-lang/rust-clippy/pull/6869
 
 ## How Clippy works
 
@@ -205,126 +196,6 @@ That's why the `else_if_without_else` example uses the `register_early_pass` fun
 [early_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.EarlyLintPass.html
 [late_lint_pass]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_lint/trait.LateLintPass.html
 
-## Syncing changes between Clippy and [`rust-lang/rust`]
-
-Clippy currently gets built with a pinned nightly version.
-
-In the `rust-lang/rust` repository, where rustc resides, there's a copy of Clippy
-that compiler hackers modify from time to time to adapt to changes in the unstable
-API of the compiler.
-
-We need to sync these changes back to this repository periodically, and the changes
-made to this repository in the meantime also need to be synced to the `rust-lang/rust` repository.
-
-To avoid flooding the `rust-lang/rust` PR queue, this two-way sync process is done
-in a bi-weekly basis if there's no urgent changes. This is done starting on the day of
-the Rust stable release and then every other week. That way we guarantee that we keep
-this repo up to date with the latest compiler API, and every feature in Clippy is available
-for 2 weeks in nightly, before it can get to beta. For reference, the first sync
-following this cadence was performed the 2020-08-27.
-
-This process is described in detail in the following sections. For general information
-about `subtree`s in the Rust repository see [Rust's `CONTRIBUTING.md`][subtree].
-
-### Patching git-subtree to work with big repos
-
-Currently there's a bug in `git-subtree` that prevents it from working properly
-with the [`rust-lang/rust`] repo. There's an open PR to fix that, but it's stale.
-Before continuing with the following steps, we need to manually apply that fix to
-our local copy of `git-subtree`.
-
-You can get the patched version of `git-subtree` from [here][gitgitgadget-pr].
-Put this file under `/usr/lib/git-core` (taking a backup of the previous file)
-and make sure it has the proper permissions:
-
-```bash
-sudo cp --backup /path/to/patched/git-subtree.sh /usr/lib/git-core/git-subtree
-sudo chmod --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
-sudo chown --reference=/usr/lib/git-core/git-subtree~ /usr/lib/git-core/git-subtree
-```
-
-_Note:_ The first time running `git subtree push` a cache has to be built. This
-involves going through the complete Clippy history once. For this you have to
-increase the stack limit though, which you can do with `ulimit -s 60000`.
-Make sure to run the `ulimit` command from the same session you call git subtree.
-
-_Note:_ If you are a Debian user, `dash` is the shell used by default for scripts instead of `sh`.
-This shell has a hardcoded recursion limit set to 1000. In order to make this process work,
-you need to force the script to run `bash` instead. You can do this by editing the first
-line of the `git-subtree` script and changing `sh` to `bash`.
-
-### Performing the sync from [`rust-lang/rust`] to Clippy
-
-Here is a TL;DR version of the sync process (all of the following commands have
-to be run inside the `rust` directory):
-
-1. Clone the [`rust-lang/rust`] repository or make sure it is up to date.
-2. Checkout the commit from the latest available nightly. You can get it using `rustup check`.
-3. Sync the changes to the rust-copy of Clippy to your Clippy fork:
-    ```bash
-    # Make sure to change `your-github-name` to your github name in the following command. Also be
-    # sure to either use a net-new branch, e.g. `sync-from-rust`, or delete the branch beforehand
-    # because changes cannot be fast forwarded
-    git subtree push -P src/tools/clippy git@github.com:your-github-name/rust-clippy sync-from-rust
-    ```
-
-    _Note:_ This will directly push to the remote repository. You can also push
-    to your local copy by replacing the remote address with `/path/to/rust-clippy`
-    directory.
-
-    _Note:_ Most of the time you have to create a merge commit in the
-    `rust-clippy` repo (this has to be done in the Clippy repo, not in the
-    rust-copy of Clippy):
-    ```bash
-    git fetch origin && git fetch upstream
-    git checkout sync-from-rust
-    git merge upstream/master
-    ```
-4. Open a PR to `rust-lang/rust-clippy` and wait for it to get merged (to
-   accelerate the process ping the `@rust-lang/clippy` team in your PR and/or
-   ~~annoy~~ ask them in the [Zulip] stream.)
-
-### Performing the sync from Clippy to [`rust-lang/rust`]
-
-All of the following commands have to be run inside the `rust` directory.
-
-1. Make sure Clippy itself is up-to-date by following the steps outlined in the previous
-section if necessary.
-
-2. Sync the `rust-lang/rust-clippy` master to the rust-copy of Clippy:
-    ```bash
-    git checkout -b sync-from-clippy
-    git subtree pull -P src/tools/clippy https://github.com/rust-lang/rust-clippy master
-    ```
-3. Open a PR to [`rust-lang/rust`]
-
-### Defining remotes
-
-You may want to define remotes, so you don't have to type out the remote
-addresses on every sync. You can do this with the following commands (these
-commands still have to be run inside the `rust` directory):
-
-```bash
-# Set clippy-upstream remote for pulls
-$ git remote add clippy-upstream https://github.com/rust-lang/rust-clippy
-# Make sure to not push to the upstream repo
-$ git remote set-url --push clippy-upstream DISABLED
-# Set clippy-origin remote to your fork for pushes
-$ git remote add clippy-origin git@github.com:your-github-name/rust-clippy
-# Set a local remote
-$ git remote add clippy-local /path/to/rust-clippy
-```
-
-You can then sync with the remote names from above, e.g.:
-
-```bash
-$ git subtree push -P src/tools/clippy clippy-local sync-from-rust
-```
-
-[gitgitgadget-pr]: https://github.com/gitgitgadget/git/pull/493
-[subtree]: https://rustc-dev-guide.rust-lang.org/contributing.html#external-dependencies-subtree
-[`rust-lang/rust`]: https://github.com/rust-lang/rust
-
 ## Issue and PR triage
 
 Clippy is following the [Rust triage procedure][triage] for issues and pull
@@ -374,6 +245,38 @@ commands [here][homu_instructions].
 Contributions to Clippy should be made in the form of GitHub pull requests. Each pull request will
 be reviewed by a core contributor (someone with permission to land patches) and either landed in the
 main tree or given feedback for changes that would be required.
+
+All PRs should include a `changelog` entry with a short comment explaining the change. The rule of thumb is basically,
+"what do you believe is important from an outsider's perspective?" Often, PRs are only related to a single property of a
+lint, and then it's good to mention that one. Otherwise, it's better to include too much detail than too little.
+
+Clippy's [changelog] is created from these comments. Every release, someone gets all commits from bors with a
+`changelog: XYZ` entry and combines them into the changelog. This is a manual process.
+
+Examples:
+- New lint
+  ```
+  changelog: new lint: [`missing_trait_methods`]
+  ```
+- False positive fix
+  ```
+  changelog: Fix [`unused_peekable`] false positive when peeked in a closure or called as `f(&mut peekable)`
+  ```
+- Purely internal change
+  ```
+  changelog: none
+  ```
+
+Note this it is fine for a PR to include multiple `changelog` entries, e.g.:
+```
+changelog: Something 1
+changelog: Something 2
+changelog: Something 3
+```
+
+[changelog]: CHANGELOG.md
+
+## License
 
 All code in this repository is under the [Apache-2.0] or the [MIT] license.
 

@@ -4,14 +4,14 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
-libc = "0.2"
+libloading = "0.7.1"
 odht = { version = "0.3.1", features = ["nightly"] }
 snap = "1"
 tracing = "0.1"
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
+tempfile = "3.2"
 rustc_middle = { path = "../rustc_middle" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_data_structures = { path = "../rustc_data_structures" }
@@ -27,6 +27,4 @@ rustc_ast = { path = "../rustc_ast" }
 rustc_expand = { path = "../rustc_expand" }
 rustc_span = { path = "../rustc_span" }
 rustc_session = { path = "../rustc_session" }
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["errhandlingapi", "libloaderapi"] }
+rustc_type_ir = { path = "../rustc_type_ir" }

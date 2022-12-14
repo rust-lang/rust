@@ -1,5 +1,4 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::snippet;
 use if_chain::if_chain;
 use rustc_data_structures::fx::FxHashMap;
@@ -8,6 +7,7 @@ use rustc_hir::{self as hir, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::symbol::Symbol;
+use std::fmt::Write as _;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -56,6 +56,7 @@ declare_clippy_lint! {
     /// # let y = 2;
     /// Foo { x, y };
     /// ```
+    #[clippy::version = "1.52.0"]
     pub INCONSISTENT_STRUCT_CONSTRUCTOR,
     pedantic,
     "the order of the field init shorthand is inconsistent with the order in the struct definition"
@@ -63,20 +64,20 @@ declare_clippy_lint! {
 
 declare_lint_pass!(InconsistentStructConstructor => [INCONSISTENT_STRUCT_CONSTRUCTOR]);
 
-impl LateLintPass<'_> for InconsistentStructConstructor {
+impl<'tcx> LateLintPass<'tcx> for InconsistentStructConstructor {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx hir::Expr<'_>) {
         if_chain! {
-            if !in_macro(expr.span);
+            if !expr.span.from_expansion();
             if let ExprKind::Struct(qpath, fields, base) = expr.kind;
             let ty = cx.typeck_results().expr_ty(expr);
             if let Some(adt_def) = ty.ty_adt_def();
             if adt_def.is_struct();
-            if let Some(variant) = adt_def.variants.iter().next();
+            if let Some(variant) = adt_def.variants().iter().next();
             if fields.iter().all(|f| f.is_shorthand);
             then {
                 let mut def_order_map = FxHashMap::default();
                 for (idx, field) in variant.fields.iter().enumerate() {
-                    def_order_map.insert(field.ident.name, idx);
+                    def_order_map.insert(field.name, idx);
                 }
 
                 if is_consistent_order(fields, &def_order_map) {
@@ -89,7 +90,7 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                 let mut fields_snippet = String::new();
                 let (last_ident, idents) = ordered_fields.split_last().unwrap();
                 for ident in idents {
-                    fields_snippet.push_str(&format!("{}, ", ident));
+                    let _ = write!(fields_snippet, "{ident}, ");
                 }
                 fields_snippet.push_str(&last_ident.to_string());
 
@@ -99,10 +100,8 @@ impl LateLintPass<'_> for InconsistentStructConstructor {
                         String::new()
                     };
 
-                let sugg = format!("{} {{ {}{} }}",
+                let sugg = format!("{} {{ {fields_snippet}{base_snippet} }}",
                     snippet(cx, qpath.span(), ".."),
-                    fields_snippet,
-                    base_snippet,
                     );
 
                 span_lint_and_sugg(

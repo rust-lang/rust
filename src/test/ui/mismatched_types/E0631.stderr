@@ -2,10 +2,12 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:7:5
    |
 LL |     foo(|_: isize| {});
-   |     ^^^ ---------- found signature of `fn(isize) -> _`
+   |     ^^^ ---------- found signature defined here
    |     |
-   |     expected signature of `fn(usize) -> _`
+   |     expected due to this
    |
+   = note: expected closure signature `fn(usize) -> _`
+              found closure signature `fn(isize) -> _`
 note: required by a bound in `foo`
   --> $DIR/E0631.rs:3:11
    |
@@ -16,27 +18,31 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/E0631.rs:8:5
    |
 LL |     bar(|_: isize| {});
-   |     ^^^ ---------- found signature of `fn(isize) -> _`
+   |     ^^^ ---------- found signature defined here
    |     |
-   |     expected signature of `fn(usize) -> _`
+   |     expected due to this
    |
+   = note: expected closure signature `fn(usize) -> _`
+              found closure signature `fn(isize) -> _`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
-LL | fn bar<F: Fn<usize>>(_: F) {}
-   |           ^^^^^^^^^ required by this bound in `bar`
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/E0631.rs:9:9
    |
 LL |     fn f(_: u64) {}
-   |     ------------ found signature of `fn(u64) -> _`
+   |     ------------ found signature defined here
 ...
 LL |     foo(f);
-   |     --- ^ expected signature of `fn(usize) -> _`
+   |     --- ^ expected due to this
    |     |
    |     required by a bound introduced by this call
    |
+   = note: expected function signature `fn(usize) -> _`
+              found function signature `fn(u64) -> _`
 note: required by a bound in `foo`
   --> $DIR/E0631.rs:3:11
    |
@@ -47,18 +53,20 @@ error[E0631]: type mismatch in function arguments
   --> $DIR/E0631.rs:10:9
    |
 LL |     fn f(_: u64) {}
-   |     ------------ found signature of `fn(u64) -> _`
+   |     ------------ found signature defined here
 ...
 LL |     bar(f);
-   |     --- ^ expected signature of `fn(usize) -> _`
+   |     --- ^ expected due to this
    |     |
    |     required by a bound introduced by this call
    |
+   = note: expected function signature `fn(usize) -> _`
+              found function signature `fn(u64) -> _`
 note: required by a bound in `bar`
   --> $DIR/E0631.rs:4:11
    |
-LL | fn bar<F: Fn<usize>>(_: F) {}
-   |           ^^^^^^^^^ required by this bound in `bar`
+LL | fn bar<F: Fn<(usize,)>>(_: F) {}
+   |           ^^^^^^^^^^^^ required by this bound in `bar`
 
 error: aborting due to 4 previous errors
 

@@ -2,7 +2,7 @@
 pub struct Foo {
     // @has - //pre "pub a: ()"
     pub a: (),
-    // @has - //pre "// some fields omitted"
+    // @has - //pre "/* private fields */"
     // @!has - //pre "b: ()"
     b: (),
     // @!has - //pre "c: usize"
@@ -16,7 +16,7 @@ pub struct Foo {
 pub struct Bar {
     // @has - //pre "pub a: ()"
     pub a: (),
-    // @!has - //pre "// some fields omitted"
+    // @!has - //pre "/* private fields */"
 }
 
 // @has structfields/enum.Qux.html
@@ -29,11 +29,11 @@ pub enum Qux {
         b: (),
         // @has - //pre "c: usize"
         c: usize,
-        // @has - //pre "// some fields omitted"
+        // @has - //pre "/* private fields */"
     },
 }
 
-// @has structfields/struct.Baz.html //pre "pub struct Baz { /* fields omitted */ }"
+// @has structfields/struct.Baz.html //pre "pub struct Baz { /* private fields */ }"
 pub struct Baz {
     x: u8,
     #[doc(hidden)]

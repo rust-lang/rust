@@ -10,59 +10,64 @@ use std::ffi::OsStr;
 use std::fs;
 use std::hash::{Hash, Hasher};
 use std::io::{self, Write};
-use std::iter::FromIterator;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use structopt::StructOpt;
+use clap::{AppSettings, CommandFactory, Parser};
 
 #[path = "test/mod.rs"]
 #[cfg(test)]
 mod cargo_fmt_tests;
 
-#[derive(StructOpt, Debug)]
-#[structopt(
+#[derive(Parser)]
+#[clap(
+    global_setting(AppSettings::NoAutoVersion),
     bin_name = "cargo fmt",
     about = "This utility formats all bin and lib files of \
              the current crate using rustfmt."
 )]
 pub struct Opts {
     /// No output printed to stdout
-    #[structopt(short = "q", long = "quiet")]
+    #[clap(short = 'q', long = "quiet")]
     quiet: bool,
 
     /// Use verbose output
-    #[structopt(short = "v", long = "verbose")]
+    #[clap(short = 'v', long = "verbose")]
     verbose: bool,
 
     /// Print rustfmt version and exit
-    #[structopt(long = "version")]
+    #[clap(long = "version")]
     version: bool,
 
     /// Specify package to format
-    #[structopt(short = "p", long = "package", value_name = "package")]
+    #[clap(
+        short = 'p',
+        long = "package",
+        value_name = "package",
+        multiple_values = true
+    )]
     packages: Vec<String>,
 
     /// Specify path to Cargo.toml
-    #[structopt(long = "manifest-path", value_name = "manifest-path")]
+    #[clap(long = "manifest-path", value_name = "manifest-path")]
     manifest_path: Option<String>,
 
     /// Specify message-format: short|json|human
-    #[structopt(long = "message-format", value_name = "message-format")]
+    #[clap(long = "message-format", value_name = "message-format")]
     message_format: Option<String>,
 
     /// Options passed to rustfmt
     // 'raw = true' to make `--` explicit.
-    #[structopt(name = "rustfmt_options", raw(true))]
+    #[clap(name = "rustfmt_options", raw(true))]
     rustfmt_options: Vec<String>,
 
     /// Format all packages, and also their local path-based dependencies
-    #[structopt(long = "all")]
+    #[clap(long = "all")]
     format_all: bool,
 
     /// Run rustfmt in check mode
-    #[structopt(long = "check")]
+    #[clap(long = "check")]
     check: bool,
 }
 
@@ -87,7 +92,7 @@ fn execute() -> i32 {
         }
     });
 
-    let opts = Opts::from_iter(args);
+    let opts = Opts::parse_from(args);
 
     let verbosity = match (opts.verbose, opts.quiet) {
         (false, false) => Verbosity::Normal,
@@ -204,7 +209,7 @@ fn convert_message_format_to_rustfmt_args(
 
 fn print_usage_to_stderr(reason: &str) {
     eprintln!("{}", reason);
-    let app = Opts::clap();
+    let app = Opts::command();
     app.after_help("")
         .write_help(&mut io::stderr())
         .expect("failed to write to stderr");
@@ -387,8 +392,7 @@ fn get_targets_root_only(
                         .unwrap_or_default()
                         == current_dir_manifest
             })
-            .map(|p| p.targets)
-            .flatten()
+            .flat_map(|p| p.targets)
             .collect(),
     };
 
@@ -401,12 +405,12 @@ fn get_targets_root_only(
 
 fn get_targets_recursive(
     manifest_path: Option<&Path>,
-    mut targets: &mut BTreeSet<Target>,
+    targets: &mut BTreeSet<Target>,
     visited: &mut BTreeSet<String>,
 ) -> Result<(), io::Error> {
     let metadata = get_cargo_metadata(manifest_path)?;
     for package in &metadata.packages {
-        add_targets(&package.targets, &mut targets);
+        add_targets(&package.targets, targets);
 
         // Look for local dependencies using information available since cargo v1.51
         // It's theoretically possible someone could use a newer version of rustfmt with
@@ -427,7 +431,7 @@ fn get_targets_recursive(
                     .any(|p| p.manifest_path.eq(&manifest_path))
             {
                 visited.insert(dependency.name.to_owned());
-                get_targets_recursive(Some(&manifest_path), &mut targets, visited)?;
+                get_targets_recursive(Some(&manifest_path), targets, visited)?;
             }
         }
     }

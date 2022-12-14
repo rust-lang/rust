@@ -1,6 +1,4 @@
 // check-pass
-#![feature(const_generics_defaults)]
-
 #[derive(Clone, PartialEq, Debug)]
 struct Example<T, const N: usize = 1usize>([T; N]);
 

@@ -3,8 +3,9 @@
 
 use crate::prelude::*;
 
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
+use rustc_session::config::OomStrategy;
+use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -19,7 +20,13 @@ pub(crate) fn codegen(
     if any_dynamic_crate {
         false
     } else if let Some(kind) = tcx.allocator_kind(()) {
-        codegen_inner(module, unwind_context, kind, tcx.lang_items().oom().is_some());
+        codegen_inner(
+            module,
+            unwind_context,
+            kind,
+            tcx.alloc_error_handler_kind(()).unwrap(),
+            tcx.sess.opts.unstable_opts.oom,
+        );
         true
     } else {
         false
@@ -30,7 +37,8 @@ fn codegen_inner(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
-    has_alloc_error_handler: bool,
+    alloc_error_handler_kind: AllocatorKind,
+    oom_strategy: OomStrategy,
 ) {
     let usize_ty = module.target_config().pointer_type();
 
@@ -71,7 +79,7 @@ fn codegen_inner(
         let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
+        ctx.func.signature = sig.clone();
         {
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
@@ -91,9 +99,7 @@ fn codegen_inner(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        module
-            .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap();
+        module.define_function(func_id, &mut ctx).unwrap();
         unwind_context.add_function(func_id, &ctx, module.isa());
     }
 
@@ -103,15 +109,15 @@ fn codegen_inner(
         returns: vec![],
     };
 
-    let callee_name = if has_alloc_error_handler { "__rg_oom" } else { "__rdl_oom" };
+    let callee_name = alloc_error_handler_kind.fn_name(sym::oom);
 
     let func_id =
         module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
 
-    let callee_func_id = module.declare_function(callee_name, Linkage::Import, &sig).unwrap();
+    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
     let mut ctx = Context::new();
-    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    ctx.func.signature = sig;
     {
         let mut func_ctx = FunctionBuilderContext::new();
         let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
@@ -130,8 +136,13 @@ fn codegen_inner(
         bcx.seal_all_blocks();
         bcx.finalize();
     }
-    module
-        .define_function(func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-        .unwrap();
+    module.define_function(func_id, &mut ctx).unwrap();
     unwind_context.add_function(func_id, &ctx, module.isa());
+
+    let data_id = module.declare_data(OomStrategy::SYMBOL, Linkage::Export, false, false).unwrap();
+    let mut data_ctx = DataContext::new();
+    data_ctx.set_align(1);
+    let val = oom_strategy.should_panic();
+    data_ctx.define(Box::new([val]));
+    module.define_data(data_id, &data_ctx).unwrap();
 }

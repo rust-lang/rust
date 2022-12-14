@@ -1,3 +1,4 @@
+#[allow(clippy::borrow_as_ptr)]
 fn main() {
     unsafe {
         let m = &mut () as *mut ();

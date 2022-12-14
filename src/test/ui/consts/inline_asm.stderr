@@ -1,5 +1,5 @@
 error[E0015]: inline assembly is not allowed in constants
-  --> $DIR/inline_asm.rs:3:24
+  --> $DIR/inline_asm.rs:5:24
    |
 LL | const _: () = unsafe { asm!("nop") };
    |                        ^^^^^^^^^^^

@@ -2,6 +2,7 @@ pub fn g() -> impl Iterator<Item=u8> {
     Some(1u8).into_iter()
 }
 
+#[allow(unused_parens)]
 pub fn h() -> (impl Iterator<Item=u8>) {
     Some(1u8).into_iter()
 }

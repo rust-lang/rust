@@ -1,8 +1,8 @@
-error[E0365]: `foo` is private, and cannot be re-exported
+error[E0365]: `foo` is only public within the crate, and cannot be re-exported outside
   --> $DIR/E0365.rs:5:9
    |
 LL | pub use foo as foo2;
-   |         ^^^^^^^^^^^ re-export of private `foo`
+   |         ^^^^^^^^^^^ re-export of crate public `foo`
    |
    = note: consider declaring type or module `foo` with `pub`
 

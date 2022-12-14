@@ -7,10 +7,10 @@ LL | |         loop {
 LL | |             yield
 LL | |         }
 LL | |     };
-   | |______^
+   | |_____^
    |
-   = note: `#[warn(unused_must_use)]` on by default
    = note: generators are lazy and do nothing unless resumed
+   = note: `#[warn(unused_must_use)]` on by default
 
 warning: 1 warning emitted
 

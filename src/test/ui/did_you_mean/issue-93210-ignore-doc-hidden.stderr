@@ -1,0 +1,19 @@
+error[E0609]: no field `hey` on type `A`
+  --> $DIR/issue-93210-ignore-doc-hidden.rs:15:18
+   |
+LL |     A::default().hey;
+   |                  ^^^ unknown field
+   |
+   = note: available fields are: `bye`
+
+error[E0609]: no field `hey` on type `B`
+  --> $DIR/issue-93210-ignore-doc-hidden.rs:20:18
+   |
+LL |     B::default().hey;
+   |                  ^^^ unknown field
+   |
+   = note: available fields are: `hello`, `bye`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0609`.

@@ -55,30 +55,6 @@ const LINKCHECK_EXCEPTIONS: &[(&str, &[&str])] = &[
 
 #[rustfmt::skip]
 const INTRA_DOC_LINK_EXCEPTIONS: &[(&str, &[&str])] = &[
-    // This will never have links that are not in other pages.
-    // To avoid repeating the exceptions twice, an empty list means all broken links are allowed.
-    ("reference/print.html", &[]),
-    // All the reference 'links' are actually ENBF highlighted as code
-    ("reference/comments.html", &[
-         "/</code> <code>!",
-         "*</code> <code>!",
-    ]),
-    ("reference/identifiers.html", &[
-         "a</code>-<code>z</code> <code>A</code>-<code>Z",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-         "a</code>-<code>z</code> <code>A</code>-<code>Z</code>] [<code>a</code>-<code>z</code> <code>A</code>-<code>Z</code> <code>0</code>-<code>9</code> <code>_",
-    ]),
-    ("reference/tokens.html", &[
-         "0</code>-<code>1",
-         "0</code>-<code>7",
-         "0</code>-<code>9",
-         "0</code>-<code>9",
-         "0</code>-<code>9</code> <code>a</code>-<code>f</code> <code>A</code>-<code>F",
-    ]),
-    ("reference/notation.html", &[
-         "b</code> <code>B",
-         "a</code>-<code>z",
-    ]),
     // This is being used in the sense of 'inclusive range', not a markdown link
     ("core/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
     ("std/ops/struct.RangeInclusive.html", &["begin</code>, <code>end"]),
@@ -182,8 +158,9 @@ impl Checker {
     fn walk(&mut self, dir: &Path, report: &mut Report) {
         for entry in t!(dir.read_dir()).map(|e| t!(e)) {
             let path = entry.path();
-            let kind = t!(entry.file_type());
-            if kind.is_dir() {
+            // Goes through symlinks
+            let metadata = t!(fs::metadata(&path));
+            if metadata.is_dir() {
                 self.walk(&path, report);
             } else {
                 self.check(&path, report);
@@ -214,6 +191,7 @@ impl Checker {
                 || url.starts_with("ftp:")
                 || url.starts_with("irc:")
                 || url.starts_with("data:")
+                || url.starts_with("mailto:")
             {
                 report.links_ignored_external += 1;
                 return;
@@ -347,11 +325,6 @@ impl Checker {
                     return;
                 }
 
-                // These appear to be broken in mdbook right now?
-                if fragment.starts_with('-') {
-                    return;
-                }
-
                 parse_ids(&mut target_ids.borrow_mut(), &pretty_path, target_source, report);
 
                 if target_ids.borrow().contains(*fragment) {
@@ -368,6 +341,33 @@ impl Checker {
             }
         });
 
+        self.check_intra_doc_links(file, &pretty_path, &source, report);
+
+        // we don't need the source anymore,
+        // so drop to reduce memory-usage
+        match self.cache.get_mut(&pretty_path).unwrap() {
+            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
+            _ => unreachable!("must be html file"),
+        }
+    }
+
+    fn check_intra_doc_links(
+        &mut self,
+        file: &Path,
+        pretty_path: &str,
+        source: &str,
+        report: &mut Report,
+    ) {
+        let relative = file.strip_prefix(&self.root).expect("should always be relative to root");
+        // Don't check the reference. It has several legitimate things that
+        // look like [<code>…</code>]. The reference has its own broken link
+        // checker in its CI which handles this using pulldown_cmark.
+        //
+        // This checks both the end of the root (when checking just the
+        // reference directory) or the beginning (when checking all docs).
+        if self.root.ends_with("reference") || relative.starts_with("reference") {
+            return;
+        }
         // Search for intra-doc links that rustdoc didn't warn about
         // FIXME(#77199, 77200) Rustdoc should just warn about these directly.
         // NOTE: only looks at one line at a time; in practice this should find most links
@@ -381,12 +381,6 @@ impl Checker {
                     println!("{}", &broken_link[0]);
                 }
             }
-        }
-        // we don't need the source anymore,
-        // so drop to reduce memory-usage
-        match self.cache.get_mut(&pretty_path).unwrap() {
-            FileEntry::HtmlFile { source, .. } => *source = Rc::new(String::new()),
-            _ => unreachable!("must be html file"),
         }
     }
 
@@ -488,16 +482,22 @@ fn is_exception(file: &Path, link: &str) -> bool {
 /// If the given HTML file contents is an HTML redirect, this returns the
 /// destination path given in the redirect.
 fn maybe_redirect(source: &str) -> Option<String> {
-    const REDIRECT: &str = "<p>Redirecting to <a href=";
+    const REDIRECT_RUSTDOC: (usize, &str) = (7, "<p>Redirecting to <a href=");
+    const REDIRECT_MDBOOK: (usize, &str) = (8 - 7, "<p>Redirecting to... <a href=");
 
     let mut lines = source.lines();
-    let redirect_line = lines.nth(7)?;
 
-    redirect_line.find(REDIRECT).map(|i| {
-        let rest = &redirect_line[(i + REDIRECT.len() + 1)..];
-        let pos_quote = rest.find('"').unwrap();
-        rest[..pos_quote].to_owned()
-    })
+    let mut find_redirect = |(line_rel, redirect_pattern): (usize, &str)| {
+        let redirect_line = lines.nth(line_rel)?;
+
+        redirect_line.find(redirect_pattern).map(|i| {
+            let rest = &redirect_line[(i + redirect_pattern.len() + 1)..];
+            let pos_quote = rest.find('"').unwrap();
+            rest[..pos_quote].to_owned()
+        })
+    };
+
+    find_redirect(REDIRECT_RUSTDOC).or_else(|| find_redirect(REDIRECT_MDBOOK))
 }
 
 fn with_attrs_in_source<F: FnMut(&str, usize, &str)>(source: &str, attr: &str, mut f: F) {

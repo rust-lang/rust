@@ -19,6 +19,7 @@ declare_clippy_lint! {
     /// # let b = 2;
     /// a + b < a;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub OVERFLOW_CHECK_CONDITIONAL,
     complexity,
     "overflow checks inspired by C which are likely to panic"

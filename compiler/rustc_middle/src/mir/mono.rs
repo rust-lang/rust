@@ -6,8 +6,9 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher};
 use rustc_hir::def_id::{CrateNum, DefId, LOCAL_CRATE};
-use rustc_hir::{HirId, ItemId};
-use rustc_query_system::ich::{NodeIdHashingMode, StableHashingContext};
+use rustc_hir::ItemId;
+use rustc_index::vec::Idx;
+use rustc_query_system::ich::StableHashingContext;
 use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::symbol::Symbol;
@@ -39,7 +40,7 @@ pub enum InstantiationMode {
     LocalCopy,
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Hash, HashStable)]
 pub enum MonoItem<'tcx> {
     Fn(Instance<'tcx>),
     Static(DefId),
@@ -80,7 +81,7 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(instance) => tcx.symbol_name(instance),
             MonoItem::Static(def_id) => tcx.symbol_name(Instance::mono(tcx, def_id)),
             MonoItem::GlobalAsm(item_id) => {
-                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.def_id))
+                SymbolName::new(tcx, &format!("global_asm_{:?}", item_id.owner_id))
             }
         }
     }
@@ -89,7 +90,7 @@ impl<'tcx> MonoItem<'tcx> {
         let generate_cgu_internal_copies = tcx
             .sess
             .opts
-            .debugging_opts
+            .unstable_opts
             .inline_in_all_cgus
             .unwrap_or_else(|| tcx.sess.opts.optimize != OptLevel::No)
             && !tcx.sess.link_dead_code();
@@ -179,15 +180,11 @@ impl<'tcx> MonoItem<'tcx> {
 
     pub fn local_span(&self, tcx: TyCtxt<'tcx>) -> Option<Span> {
         match *self {
-            MonoItem::Fn(Instance { def, .. }) => {
-                def.def_id().as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-            }
-            MonoItem::Static(def_id) => {
-                def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-            }
-            MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
+            MonoItem::Fn(Instance { def, .. }) => def.def_id().as_local(),
+            MonoItem::Static(def_id) => def_id.as_local(),
+            MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id),
         }
-        .map(|hir_id| tcx.hir().span(hir_id))
+        .map(|def_id| tcx.def_span(def_id))
     }
 
     // Only used by rustc_codegen_cranelift
@@ -201,26 +198,6 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::Fn(ref instance) => instance.def_id().krate,
             MonoItem::Static(def_id) => def_id.krate,
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
-        }
-    }
-}
-
-impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for MonoItem<'tcx> {
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        ::std::mem::discriminant(self).hash_stable(hcx, hasher);
-
-        match *self {
-            MonoItem::Fn(ref instance) => {
-                instance.hash_stable(hcx, hasher);
-            }
-            MonoItem::Static(def_id) => {
-                def_id.hash_stable(hcx, hasher);
-            }
-            MonoItem::GlobalAsm(item_id) => {
-                hcx.with_node_id_hashing_mode(NodeIdHashingMode::HashDefPath, |hcx| {
-                    item_id.hash_stable(hcx, hasher);
-                })
-            }
         }
     }
 }
@@ -247,6 +224,9 @@ pub struct CodegenUnit<'tcx> {
     items: FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)>,
     size_estimate: Option<usize>,
     primary: bool,
+    /// True if this is CGU is used to hold code coverage information for dead code,
+    /// false otherwise.
+    is_code_coverage_dead_code_cgu: bool,
 }
 
 /// Specifies the linkage type for a `MonoItem`.
@@ -277,7 +257,13 @@ pub enum Visibility {
 impl<'tcx> CodegenUnit<'tcx> {
     #[inline]
     pub fn new(name: Symbol) -> CodegenUnit<'tcx> {
-        CodegenUnit { name, items: Default::default(), size_estimate: None, primary: false }
+        CodegenUnit {
+            name,
+            items: Default::default(),
+            size_estimate: None,
+            primary: false,
+            is_code_coverage_dead_code_cgu: false,
+        }
     }
 
     pub fn name(&self) -> Symbol {
@@ -302,6 +288,15 @@ impl<'tcx> CodegenUnit<'tcx> {
 
     pub fn items_mut(&mut self) -> &mut FxHashMap<MonoItem<'tcx>, (Linkage, Visibility)> {
         &mut self.items
+    }
+
+    pub fn is_code_coverage_dead_code_cgu(&self) -> bool {
+        self.is_code_coverage_dead_code_cgu
+    }
+
+    /// Marks this CGU as the one used to contain code coverage information for dead code.
+    pub fn make_code_coverage_dead_code_cgu(&mut self) {
+        self.is_code_coverage_dead_code_cgu = true;
     }
 
     pub fn mangle_name(human_readable_name: &str) -> String {
@@ -338,10 +333,10 @@ impl<'tcx> CodegenUnit<'tcx> {
     }
 
     pub fn work_product_id(&self) -> WorkProductId {
-        WorkProductId::from_cgu_name(&self.name().as_str())
+        WorkProductId::from_cgu_name(self.name().as_str())
     }
 
-    pub fn work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
+    pub fn previous_work_product(&self, tcx: TyCtxt<'_>) -> WorkProduct {
         let work_product_id = self.work_product_id();
         tcx.dep_graph
             .previous_work_product(&work_product_id)
@@ -355,7 +350,7 @@ impl<'tcx> CodegenUnit<'tcx> {
         // The codegen tests rely on items being process in the same order as
         // they appear in the file, so for local items, we sort by node_id first
         #[derive(PartialEq, Eq, PartialOrd, Ord)]
-        pub struct ItemSortKey<'tcx>(Option<HirId>, SymbolName<'tcx>);
+        pub struct ItemSortKey<'tcx>(Option<usize>, SymbolName<'tcx>);
 
         fn item_sort_key<'tcx>(tcx: TyCtxt<'tcx>, item: MonoItem<'tcx>) -> ItemSortKey<'tcx> {
             ItemSortKey(
@@ -366,11 +361,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             // instances into account. The others don't matter for
                             // the codegen tests and can even make item order
                             // unstable.
-                            InstanceDef::Item(def) => def
-                                .did
-                                .as_local()
-                                .map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id)),
-                            InstanceDef::VtableShim(..)
+                            InstanceDef::Item(def) => def.did.as_local().map(Idx::index),
+                            InstanceDef::VTableShim(..)
                             | InstanceDef::ReifyShim(..)
                             | InstanceDef::Intrinsic(..)
                             | InstanceDef::FnPtrShim(..)
@@ -380,10 +372,8 @@ impl<'tcx> CodegenUnit<'tcx> {
                             | InstanceDef::CloneShim(..) => None,
                         }
                     }
-                    MonoItem::Static(def_id) => {
-                        def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-                    }
-                    MonoItem::GlobalAsm(item_id) => Some(item_id.hir_id()),
+                    MonoItem::Static(def_id) => def_id.as_local().map(Idx::index),
+                    MonoItem::GlobalAsm(item_id) => Some(item_id.owner_id.def_id.index()),
                 },
                 item.symbol_name(tcx),
             )
@@ -407,9 +397,11 @@ impl<'a, 'tcx> HashStable<StableHashingContext<'a>> for CodegenUnit<'tcx> {
             // The size estimate is not relevant to the hash
             size_estimate: _,
             primary: _,
+            is_code_coverage_dead_code_cgu,
         } = *self;
 
         name.hash_stable(hcx, hasher);
+        is_code_coverage_dead_code_cgu.hash_stable(hcx, hasher);
 
         let mut items: Vec<(Fingerprint, _)> = items
             .iter()
@@ -431,7 +423,7 @@ pub struct CodegenUnitNameBuilder<'tcx> {
     cache: FxHashMap<CrateNum, String>,
 }
 
-impl CodegenUnitNameBuilder<'tcx> {
+impl<'tcx> CodegenUnitNameBuilder<'tcx> {
     pub fn new(tcx: TyCtxt<'tcx>) -> Self {
         CodegenUnitNameBuilder { tcx, cache: Default::default() }
     }
@@ -446,7 +438,7 @@ impl CodegenUnitNameBuilder<'tcx> {
     ///
     /// This function will build CGU names of the form:
     ///
-    /// ```
+    /// ```text
     /// <crate-name>.<crate-disambiguator>[-in-<local-crate-id>](-<component>)*[.<special-suffix>]
     /// <local-crate-id> = <local-crate-name>.<local-crate-disambiguator>
     /// ```
@@ -467,10 +459,10 @@ impl CodegenUnitNameBuilder<'tcx> {
     {
         let cgu_name = self.build_cgu_name_no_mangle(cnum, components, special_suffix);
 
-        if self.tcx.sess.opts.debugging_opts.human_readable_cgu_names {
+        if self.tcx.sess.opts.unstable_opts.human_readable_cgu_names {
             cgu_name
         } else {
-            Symbol::intern(&CodegenUnit::mangle_name(&cgu_name.as_str()))
+            Symbol::intern(&CodegenUnit::mangle_name(cgu_name.as_str()))
         }
     }
 
@@ -530,6 +522,6 @@ impl CodegenUnitNameBuilder<'tcx> {
             write!(cgu_name, ".{}", special_suffix).unwrap();
         }
 
-        Symbol::intern(&cgu_name[..])
+        Symbol::intern(&cgu_name)
     }
 }

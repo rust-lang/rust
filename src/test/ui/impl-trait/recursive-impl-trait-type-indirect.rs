@@ -5,7 +5,7 @@
 #![allow(unconditional_recursion)]
 
 fn option(i: i32) -> impl Sized {
-    //~^ ERROR
+    //~^ ERROR cannot resolve opaque type
     if i < 0 { None } else { Some((option(i - 1), i)) }
 }
 

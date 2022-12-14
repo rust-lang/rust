@@ -1,13 +1,13 @@
-use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::diagnostics::span_lint_hir_and_then;
 use clippy_utils::higher;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{differing_macro_contexts, path_to_local, usage::is_potentially_mutated};
+use clippy_utils::{path_to_local, usage::is_potentially_mutated};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, NestedVisitorMap, Visitor};
+use rustc_hir::intravisit::{walk_expr, walk_fn, FnKind, Visitor};
 use rustc_hir::{BinOpKind, Body, Expr, ExprKind, FnDecl, HirId, PathSegment, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
+use rustc_middle::hir::nested_filter;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::Ty;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -39,6 +39,7 @@ declare_clippy_lint! {
     ///     do_something_with(value)
     /// }
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub UNNECESSARY_UNWRAP,
     complexity,
     "checks for calls of `unwrap[_err]()` that cannot fail"
@@ -65,6 +66,7 @@ declare_clippy_lint! {
     /// ```
     ///
     /// This code will always panic. The if condition should probably be inverted.
+    #[clippy::version = "pre 1.29.0"]
     pub PANICKING_UNWRAP,
     correctness,
     "checks for calls of `unwrap[_err]()` that will always fail"
@@ -152,14 +154,14 @@ fn collect_unwrap_info<'tcx>(
         return collect_unwrap_info(cx, if_expr, expr, branch, !invert, false);
     } else {
         if_chain! {
-            if let ExprKind::MethodCall(method_name, _, args, _) = &expr.kind;
-            if let Some(local_id) = path_to_local(&args[0]);
-            let ty = cx.typeck_results().expr_ty(&args[0]);
+            if let ExprKind::MethodCall(method_name, receiver, args, _) = &expr.kind;
+            if let Some(local_id) = path_to_local(receiver);
+            let ty = cx.typeck_results().expr_ty(receiver);
             let name = method_name.ident.as_str();
-            if is_relevant_option_call(cx, ty, &name) || is_relevant_result_call(cx, ty, &name);
+            if is_relevant_option_call(cx, ty, name) || is_relevant_result_call(cx, ty, name);
             then {
-                assert!(args.len() == 1);
-                let unwrappable = match name.as_ref() {
+                assert!(args.is_empty());
+                let unwrappable = match name {
                     "is_some" | "is_ok" => true,
                     "is_err" | "is_none" => false,
                     _ => unreachable!(),
@@ -213,7 +215,7 @@ impl<'a, 'tcx> UnwrappableVariablesVisitor<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
-    type Map = Map<'tcx>;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
         // Shouldn't lint when `expr` is in macro.
@@ -229,15 +231,16 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         } else {
             // find `unwrap[_err]()` calls:
             if_chain! {
-                if let ExprKind::MethodCall(method_name, _, args, _) = expr.kind;
-                if let Some(id) = path_to_local(&args[0]);
+                if let ExprKind::MethodCall(method_name, self_arg, ..) = expr.kind;
+                if let Some(id) = path_to_local(self_arg);
                 if [sym::unwrap, sym::expect, sym!(unwrap_err)].contains(&method_name.ident.name);
                 let call_to_unwrap = [sym::unwrap, sym::expect].contains(&method_name.ident.name);
                 if let Some(unwrappable) = self.unwrappables.iter()
                     .find(|u| u.local_id == id);
                 // Span contexts should not differ with the conditional branch
-                if !differing_macro_contexts(unwrappable.branch.span, expr.span);
-                if !differing_macro_contexts(unwrappable.branch.span, unwrappable.check.span);
+                let span_ctxt = expr.span.ctxt();
+                if unwrappable.branch.span.ctxt() == span_ctxt;
+                if unwrappable.check.span.ctxt() == span_ctxt;
                 then {
                     if call_to_unwrap == unwrappable.safe_to_unwrap {
                         let is_entire_condition = unwrappable.is_entire_condition;
@@ -248,14 +251,14 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             unwrappable.kind.error_variant_pattern()
                         };
 
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             self.cx,
                             UNNECESSARY_UNWRAP,
+                            expr.hir_id,
                             expr.span,
                             &format!(
-                                "called `{}` on `{}` after checking its variant with `{}`",
+                                "called `{}` on `{unwrappable_variable_name}` after checking its variant with `{}`",
                                 method_name.ident.name,
-                                unwrappable_variable_name,
                                 unwrappable.check_name.ident.as_str(),
                             ),
                             |diag| {
@@ -264,9 +267,7 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                                         unwrappable.check.span.with_lo(unwrappable.if_expr.span.lo()),
                                         "try",
                                         format!(
-                                            "if let {} = {}",
-                                            suggested_pattern,
-                                            unwrappable_variable_name,
+                                            "if let {suggested_pattern} = {unwrappable_variable_name}",
                                         ),
                                         // We don't track how the unwrapped value is used inside the
                                         // block or suggest deleting the unwrap, so we can't offer a
@@ -280,9 +281,10 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
                             },
                         );
                     } else {
-                        span_lint_and_then(
+                        span_lint_hir_and_then(
                             self.cx,
                             PANICKING_UNWRAP,
+                            expr.hir_id,
                             expr.span,
                             &format!("this call to `{}()` will always panic",
                             method_name.ident.name),
@@ -295,8 +297,8 @@ impl<'a, 'tcx> Visitor<'tcx> for UnwrappableVariablesVisitor<'a, 'tcx> {
         }
     }
 
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::OnlyBodies(self.cx.tcx.hir())
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
     }
 }
 
@@ -321,6 +323,6 @@ impl<'tcx> LateLintPass<'tcx> for Unwrap {
             unwrappables: Vec::new(),
         };
 
-        walk_fn(&mut v, kind, decl, body.id(), span, fn_id);
+        walk_fn(&mut v, kind, decl, body.id(), fn_id);
     }
 }

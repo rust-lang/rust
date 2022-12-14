@@ -2,7 +2,7 @@
 // `correct_region` for an explanation of how this test is setup; it's
 // somewhat intricate.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -25,13 +25,12 @@ where
 #[rustc_regions]
 fn no_region<'a, T>(a: Cell<&'a ()>, b: T) {
     with_signature(a, b, |x, y| {
-        //~^ ERROR the parameter type `T` may not live long enough
-        //
         // See `correct_region`, which explains the point of this
         // test.  The only difference is that, in the case of this
         // function, there is no where clause *anywhere*, and hence we
         // get an error (but reported by the closure creator).
         require(&x, &y)
+        //~^ ERROR the parameter type `T` may not live long enough
     })
 }
 
@@ -62,9 +61,9 @@ where
     T: 'b,
 {
     with_signature(a, b, |x, y| {
-        //~^ ERROR the parameter type `T` may not live long enough
         // See `correct_region`
         require(&x, &y)
+        //~^ ERROR the parameter type `T` may not live long enough
     })
 }
 

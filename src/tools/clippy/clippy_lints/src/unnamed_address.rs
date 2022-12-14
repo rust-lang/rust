@@ -24,6 +24,7 @@ declare_clippy_lint! {
     ///     // ...
     /// }
     /// ```
+    #[clippy::version = "1.44.0"]
     pub FN_ADDRESS_COMPARISONS,
     correctness,
     "comparison with an address of a function item"
@@ -47,6 +48,7 @@ declare_clippy_lint! {
     ///     ...
     /// }
     /// ```
+    #[clippy::version = "1.44.0"]
     pub VTABLE_ADDRESS_COMPARISONS,
     correctness,
     "comparison with an address of a trait vtable"

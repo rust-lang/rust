@@ -2,6 +2,7 @@
 
 #[cfg(target_arch = "x86_64")]
 use std::arch::x86_64::*;
+use std::hint::black_box;
 use std::io::Write;
 use std::ops::Generator;
 
@@ -86,6 +87,9 @@ fn main() {
     assert_eq!(houndred_f64 as i128, 100);
     assert_eq!(1u128.rotate_left(2), 4);
 
+    assert_eq!(black_box(f32::NAN) as i128, 0);
+    assert_eq!(black_box(f32::NAN) as u128, 0);
+
     // Test signed 128bit comparing
     let max = usize::MAX as i128;
     if 100i128 < 0i128 || 100i128 > max {
@@ -124,6 +128,25 @@ fn main() {
         0 => loop {},
         v => panic(v),
     };
+
+    if black_box(false) {
+        // Based on https://github.com/rust-lang/rust/blob/2f320a224e827b400be25966755a621779f797cc/src/test/ui/debuginfo/debuginfo_with_uninhabitable_field_and_unsized.rs
+        let _ = Foo::<dyn Send>::new();
+
+        #[allow(dead_code)]
+        struct Foo<T: ?Sized> {
+            base: Never,
+            value: T,
+        }
+
+        impl<T: ?Sized> Foo<T> {
+            pub fn new() -> Box<Foo<T>> {
+                todo!()
+            }
+        }
+
+        enum Never {}
+    }
 }
 
 fn panic(_: u128) {

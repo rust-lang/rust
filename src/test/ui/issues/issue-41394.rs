@@ -5,6 +5,7 @@ enum Foo {
 
 enum Bar {
     A = Foo::A as isize
+    //~^ const
 }
 
 fn main() {}

@@ -1,4 +1,6 @@
 // run-pass
+#![allow(unused_macro_rules)]
+
 use std::ops::*;
 
 #[derive(Copy, Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]

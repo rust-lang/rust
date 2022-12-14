@@ -21,6 +21,28 @@ LL |     assert_in_macro_def!();
    |
    = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
+error: identical args used in this `debug_assert_eq!` macro call
+  --> $DIR/eq_op_macros.rs:9:26
+   |
+LL |         debug_assert_eq!(a, a);
+   |                          ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: identical args used in this `debug_assert_ne!` macro call
+  --> $DIR/eq_op_macros.rs:10:26
+   |
+LL |         debug_assert_ne!(a, a);
+   |                          ^^^^
+...
+LL |     assert_in_macro_def!();
+   |     ---------------------- in this macro invocation
+   |
+   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
+
 error: identical args used in this `assert_eq!` macro call
   --> $DIR/eq_op_macros.rs:22:16
    |
@@ -44,28 +66,6 @@ error: identical args used in this `assert_ne!` macro call
    |
 LL |     assert_ne!(a + 1, a + 1);
    |                ^^^^^^^^^^^^
-
-error: identical args used in this `debug_assert_eq!` macro call
-  --> $DIR/eq_op_macros.rs:9:26
-   |
-LL |         debug_assert_eq!(a, a);
-   |                          ^^^^
-...
-LL |     assert_in_macro_def!();
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
-
-error: identical args used in this `debug_assert_ne!` macro call
-  --> $DIR/eq_op_macros.rs:10:26
-   |
-LL |         debug_assert_ne!(a, a);
-   |                          ^^^^
-...
-LL |     assert_in_macro_def!();
-   |     ---------------------- in this macro invocation
-   |
-   = note: this error originates in the macro `assert_in_macro_def` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: identical args used in this `debug_assert_eq!` macro call
   --> $DIR/eq_op_macros.rs:38:22

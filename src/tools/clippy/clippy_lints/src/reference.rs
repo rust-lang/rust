@@ -1,7 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use clippy_utils::source::{snippet_opt, snippet_with_applicability};
-use clippy_utils::sugg::Sugg;
 use if_chain::if_chain;
 use rustc_ast::ast::{Expr, ExprKind, Mutability, UnOp};
 use rustc_errors::Applicability;
@@ -23,14 +21,16 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust,ignore
-    /// // Bad
     /// let a = f(*&mut b);
     /// let c = *&d;
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust,ignore
     /// let a = f(b);
     /// let c = d;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub DEREF_ADDROF,
     complexity,
     "use of `*&` or `*&mut` in an expression"
@@ -50,17 +50,17 @@ impl EarlyLintPass for DerefAddrOf {
         if_chain! {
             if let ExprKind::Unary(UnOp::Deref, ref deref_target) = e.kind;
             if let ExprKind::AddrOf(_, ref mutability, ref addrof_target) = without_parens(deref_target).kind;
-            if !in_macro(addrof_target.span);
+            if deref_target.span.ctxt() == e.span.ctxt();
+            if !addrof_target.span.from_expansion();
             then {
                 let mut applicability = Applicability::MachineApplicable;
                 let sugg = if e.span.from_expansion() {
-                    #[allow(clippy::option_if_let_else)]
                     if let Some(macro_source) = snippet_opt(cx, e.span) {
                         // Remove leading whitespace from the given span
                         // e.g: ` $visitor` turns into `$visitor`
                         let trim_leading_whitespaces = |span| {
                             snippet_opt(cx, span).and_then(|snip| {
-                                #[allow(clippy::cast_possible_truncation)]
+                                #[expect(clippy::cast_possible_truncation)]
                                 snip.find(|c: char| !c.is_whitespace()).map(|pos| {
                                     span.lo() + BytePos(pos as u32)
                                 })
@@ -68,7 +68,7 @@ impl EarlyLintPass for DerefAddrOf {
                         };
 
                         let mut generate_snippet = |pattern: &str| {
-                            #[allow(clippy::cast_possible_truncation)]
+                            #[expect(clippy::cast_possible_truncation)]
                             macro_source.rfind(pattern).map(|pattern_pos| {
                                 let rpos = pattern_pos + pattern.len();
                                 let span_after_ref = e.span.with_lo(BytePos(e.span.lo().0 + rpos as u32));
@@ -99,61 +99,6 @@ impl EarlyLintPass for DerefAddrOf {
                         applicability,
                     );
                 }
-            }
-        }
-    }
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for references in expressions that use
-    /// auto dereference.
-    ///
-    /// ### Why is this bad?
-    /// The reference is a no-op and is automatically
-    /// dereferenced by the compiler and makes the code less clear.
-    ///
-    /// ### Example
-    /// ```rust
-    /// struct Point(u32, u32);
-    /// let point = Point(30, 20);
-    /// let x = (&point).0;
-    /// ```
-    /// Use instead:
-    /// ```rust
-    /// # struct Point(u32, u32);
-    /// # let point = Point(30, 20);
-    /// let x = point.0;
-    /// ```
-    pub REF_IN_DEREF,
-    complexity,
-    "Use of reference in auto dereference expression."
-}
-
-declare_lint_pass!(RefInDeref => [REF_IN_DEREF]);
-
-impl EarlyLintPass for RefInDeref {
-    fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
-        if_chain! {
-            if let ExprKind::Field(ref object, _) = e.kind;
-            if let ExprKind::Paren(ref parened) = object.kind;
-            if let ExprKind::AddrOf(_, _, ref inner) = parened.kind;
-            then {
-                let applicability = if inner.span.from_expansion() {
-                    Applicability::MaybeIncorrect
-                } else {
-                    Applicability::MachineApplicable
-                };
-                let sugg = Sugg::ast(cx, inner, "_").maybe_par();
-                span_lint_and_sugg(
-                    cx,
-                    REF_IN_DEREF,
-                    object.span,
-                    "creating a reference that is immediately dereferenced",
-                    "try this",
-                    sugg.to_string(),
-                    applicability,
-                );
             }
         }
     }

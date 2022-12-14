@@ -41,7 +41,7 @@
           <If Condition="(base.table.table.ctrl.pointer[i] &amp; 0x80) == 0">
             <!-- Bucket is populated -->
             <Exec>n--</Exec>
-            <Item Name="{((tuple$&lt;$T1, $T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__0}">((tuple$&lt;$T1, $T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__1</Item>
+            <Item Name="{((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__0}">((tuple$&lt;$T1,$T2&gt;*)base.table.table.ctrl.pointer)[-(i + 1)].__1</Item>
           </If>
           <Exec>i++</Exec>
         </Loop>
@@ -104,14 +104,14 @@
   </Type>
 
   <Type Name="std::ffi::os_str::OsString">
-    <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
+    <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
     <Expand>
       <Synthetic Name="[chars]">
-        <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer,[inner.inner.bytes.len]}</DisplayString>
+        <DisplayString>{(char*)inner.inner.bytes.buf.ptr.pointer.pointer,[inner.inner.bytes.len]}</DisplayString>
         <Expand>
           <ArrayItems>
             <Size>inner.inner.bytes.len</Size>
-            <ValuePointer>(char*)inner.inner.bytes.buf.ptr.pointer</ValuePointer>
+            <ValuePointer>(char*)inner.inner.bytes.buf.ptr.pointer.pointer</ValuePointer>
           </ArrayItems>
         </Expand>
       </Synthetic>

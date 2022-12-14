@@ -1,10 +1,10 @@
 error[E0728]: `await` is only allowed inside `async` functions and blocks
-  --> $DIR/issue-62009-2.rs:8:5
+  --> $DIR/issue-62009-2.rs:8:22
    |
 LL | fn main() {
    |    ---- this is not `async`
 LL |     (async || 2333)().await;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^ only allowed inside `async` functions and blocks
+   |                      ^^^^^^ only allowed inside `async` functions and blocks
 
 error: aborting due to previous error
 

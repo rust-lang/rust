@@ -1,4 +1,3 @@
-// min-llvm-version: 12.0.1
 // revisions: powerpc powerpc64
 // assembly-output: emit-asm
 //[powerpc] compile-flags: --target powerpc-unknown-linux-gnu
@@ -6,7 +5,7 @@
 //[powerpc64] compile-flags: --target powerpc64-unknown-linux-gnu
 //[powerpc64] needs-llvm-components: powerpc
 
-#![feature(no_core, lang_items, rustc_attrs, repr_simd)]
+#![feature(no_core, lang_items, rustc_attrs, repr_simd, asm_experimental_arch)]
 #![crate_type = "rlib"]
 #![no_core]
 #![allow(asm_sub_register, non_camel_case_types)]

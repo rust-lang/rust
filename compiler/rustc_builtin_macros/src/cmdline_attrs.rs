@@ -28,7 +28,13 @@ pub fn inject(mut krate: ast::Crate, parse_sess: &ParseSess, attrs: &[String]) -
             continue;
         }
 
-        krate.attrs.push(mk_attr(AttrStyle::Inner, path, args, start_span.to(end_span)));
+        krate.attrs.push(mk_attr(
+            &parse_sess.attr_id_generator,
+            AttrStyle::Inner,
+            path,
+            args,
+            start_span.to(end_span),
+        ));
     }
 
     krate

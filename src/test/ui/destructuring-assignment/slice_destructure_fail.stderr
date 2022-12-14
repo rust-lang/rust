@@ -1,5 +1,5 @@
 error: `..` can only be used once per slice pattern
-  --> $DIR/slice_destructure_fail.rs:5:14
+  --> $DIR/slice_destructure_fail.rs:3:14
    |
 LL |   [a, .., b, ..] = [0, 1];
    |       --     ^^ can only be used once per slice pattern
@@ -7,13 +7,13 @@ LL |   [a, .., b, ..] = [0, 1];
    |       previously used here
 
 error[E0527]: pattern requires 3 elements but array has 2
-  --> $DIR/slice_destructure_fail.rs:6:3
+  --> $DIR/slice_destructure_fail.rs:4:3
    |
 LL |   [a, a, b] = [1, 2];
    |   ^^^^^^^^^ expected 2 elements
 
 error[E0527]: pattern requires 1 element but array has 2
-  --> $DIR/slice_destructure_fail.rs:7:3
+  --> $DIR/slice_destructure_fail.rs:5:3
    |
 LL |   [_] = [1, 2];
    |   ^^^ expected 2 elements

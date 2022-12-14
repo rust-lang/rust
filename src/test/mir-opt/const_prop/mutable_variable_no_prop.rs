@@ -1,3 +1,4 @@
+// unit-test
 // compile-flags: -O
 
 static mut STATIC: u32 = 42;

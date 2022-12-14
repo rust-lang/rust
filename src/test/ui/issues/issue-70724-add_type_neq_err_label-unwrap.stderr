@@ -6,7 +6,6 @@ LL |     assert_eq!(a, 0);
    |     |
    |     fn() -> i32 {a}
    |     {integer}
-   |     help: you might have forgotten to call this function: `*left_val()`
    |
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -17,7 +16,7 @@ LL |     assert_eq!(a, 0);
    |     ^^^^^^^^^^^^^^^^ expected fn item, found integer
    |
    = note: expected fn item `fn() -> i32 {a}`
-                 found type `i32`
+                 found type `{integer}`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0277]: `fn() -> i32 {a}` doesn't implement `Debug`
@@ -29,8 +28,8 @@ LL | fn a() -> i32 {
 LL |     assert_eq!(a, 0);
    |     ^^^^^^^^^^^^^^^^ `fn() -> i32 {a}` cannot be formatted using `{:?}` because it doesn't implement `Debug`
    |
-   = help: the trait `Debug` is not implemented for `fn() -> i32 {a}`
-   = help: use parentheses to call the function: `a()`
+   = help: the trait `Debug` is not implemented for fn item `fn() -> i32 {a}`
+   = help: use parentheses to call this function: `a()`
    = note: this error originates in the macro `assert_eq` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 3 previous errors

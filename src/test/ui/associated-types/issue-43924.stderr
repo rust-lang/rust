@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `(dyn ToString + 'static): Default` is not satisfied
-  --> $DIR/issue-43924.rs:7:5
+  --> $DIR/issue-43924.rs:7:45
    |
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
+   |                                             ^^^^^^^^^^^^ the trait `Default` is not implemented for `(dyn ToString + 'static)`
    |
 note: required by a bound in `Foo::Out`
   --> $DIR/issue-43924.rs:7:15

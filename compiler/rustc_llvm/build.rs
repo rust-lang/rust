@@ -1,8 +1,31 @@
 use std::env;
+use std::ffi::{OsStr, OsString};
+use std::fmt::Display;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
 
-use build_helper::{output, tracked_env_var_os};
+const OPTIONAL_COMPONENTS: &[&str] = &[
+    "x86",
+    "arm",
+    "aarch64",
+    "amdgpu",
+    "avr",
+    "m68k",
+    "mips",
+    "powerpc",
+    "systemz",
+    "jsbackend",
+    "webassembly",
+    "msp430",
+    "sparc",
+    "nvptx",
+    "hexagon",
+    "riscv",
+    "bpf",
+];
+
+const REQUIRED_COMPONENTS: &[&str] =
+    &["ipo", "bitreader", "bitwriter", "linker", "asmparser", "lto", "coverage", "instrumentation"];
 
 fn detect_llvm_link() -> (&'static str, &'static str) {
     // Force the link mode we want, preferring static by default, but
@@ -14,13 +37,78 @@ fn detect_llvm_link() -> (&'static str, &'static str) {
     }
 }
 
+// Because Cargo adds the compiler's dylib path to our library search path, llvm-config may
+// break: the dylib path for the compiler, as of this writing, contains a copy of the LLVM
+// shared library, which means that when our freshly built llvm-config goes to load it's
+// associated LLVM, it actually loads the compiler's LLVM. In particular when building the first
+// compiler (i.e., in stage 0) that's a problem, as the compiler's LLVM is likely different from
+// the one we want to use. As such, we restore the environment to what bootstrap saw. This isn't
+// perfect -- we might actually want to see something from Cargo's added library paths -- but
+// for now it works.
+fn restore_library_path() {
+    let key = tracked_env_var_os("REAL_LIBRARY_PATH_VAR").expect("REAL_LIBRARY_PATH_VAR");
+    if let Some(env) = tracked_env_var_os("REAL_LIBRARY_PATH") {
+        env::set_var(&key, &env);
+    } else {
+        env::remove_var(&key);
+    }
+}
+
+/// Reads an environment variable and adds it to dependencies.
+/// Supposed to be used for all variables except those set for build scripts by cargo
+/// <https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts>
+fn tracked_env_var_os<K: AsRef<OsStr> + Display>(key: K) -> Option<OsString> {
+    println!("cargo:rerun-if-env-changed={}", key);
+    env::var_os(key)
+}
+
+fn rerun_if_changed_anything_in_dir(dir: &Path) {
+    let mut stack = dir
+        .read_dir()
+        .unwrap()
+        .map(|e| e.unwrap())
+        .filter(|e| &*e.file_name() != ".git")
+        .collect::<Vec<_>>();
+    while let Some(entry) = stack.pop() {
+        let path = entry.path();
+        if entry.file_type().unwrap().is_dir() {
+            stack.extend(path.read_dir().unwrap().map(|e| e.unwrap()));
+        } else {
+            println!("cargo:rerun-if-changed={}", path.display());
+        }
+    }
+}
+
+#[track_caller]
+fn output(cmd: &mut Command) -> String {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => {
+            println!("\n\nfailed to execute command: {:?}\nerror: {}\n\n", cmd, e);
+            std::process::exit(1);
+        }
+    };
+    if !output.status.success() {
+        panic!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}",
+            cmd, output.status
+        );
+    }
+    String::from_utf8(output.stdout).unwrap()
+}
+
 fn main() {
+    for component in REQUIRED_COMPONENTS.iter().chain(OPTIONAL_COMPONENTS.iter()) {
+        println!("cargo:rustc-check-cfg=values(llvm_component,\"{}\")", component);
+    }
+
     if tracked_env_var_os("RUST_CHECK").is_some() {
         // If we're just running `check`, there's no need for LLVM to be built.
         return;
     }
 
-    build_helper::restore_library_path();
+    restore_library_path();
 
     let target = env::var("TARGET").expect("TARGET was not set");
     let llvm_config =
@@ -70,42 +158,11 @@ fn main() {
     let host = env::var("HOST").expect("HOST was not set");
     let is_crossed = target != host;
 
-    let optional_components = &[
-        "x86",
-        "arm",
-        "aarch64",
-        "amdgpu",
-        "avr",
-        "m68k",
-        "mips",
-        "powerpc",
-        "systemz",
-        "jsbackend",
-        "webassembly",
-        "msp430",
-        "sparc",
-        "nvptx",
-        "hexagon",
-        "riscv",
-        "bpf",
-    ];
-
-    let required_components = &[
-        "ipo",
-        "bitreader",
-        "bitwriter",
-        "linker",
-        "asmparser",
-        "lto",
-        "coverage",
-        "instrumentation",
-    ];
-
     let components = output(Command::new(&llvm_config).arg("--components"));
     let mut components = components.split_whitespace().collect::<Vec<_>>();
-    components.retain(|c| optional_components.contains(c) || required_components.contains(c));
+    components.retain(|c| OPTIONAL_COMPONENTS.contains(c) || REQUIRED_COMPONENTS.contains(c));
 
-    for component in required_components {
+    for component in REQUIRED_COMPONENTS {
         if !components.contains(component) {
             panic!("require llvm component {} but wasn't found", component);
         }
@@ -160,11 +217,12 @@ fn main() {
         cfg.debug(false);
     }
 
-    build_helper::rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
+    rerun_if_changed_anything_in_dir(Path::new("llvm-wrapper"));
     cfg.file("llvm-wrapper/PassWrapper.cpp")
         .file("llvm-wrapper/RustWrapper.cpp")
         .file("llvm-wrapper/ArchiveWrapper.cpp")
         .file("llvm-wrapper/CoverageMappingWrapper.cpp")
+        .file("llvm-wrapper/SymbolWrapper.cpp")
         .file("llvm-wrapper/Linker.cpp")
         .cpp(true)
         .cpp_link_stdlib(None) // we handle this below
@@ -180,6 +238,15 @@ fn main() {
 
     if !is_crossed {
         cmd.arg("--system-libs");
+    }
+
+    if (target.starts_with("arm") && !target.contains("freebsd"))
+        || target.starts_with("mips-")
+        || target.starts_with("mipsel-")
+        || target.starts_with("powerpc-")
+    {
+        // 32-bit targets need to link libatomic.
+        println!("cargo:rustc-link-lib=atomic");
     } else if target.contains("windows-gnu") {
         println!("cargo:rustc-link-lib=shell32");
         println!("cargo:rustc-link-lib=uuid");
@@ -263,21 +330,25 @@ fn main() {
 
     let stdcppname = if target.contains("openbsd") {
         if target.contains("sparc64") { "estdc++" } else { "c++" }
-    } else if target.contains("freebsd") {
-        "c++"
-    } else if target.contains("darwin") {
+    } else if target.contains("darwin")
+        || target.contains("freebsd")
+        || target.contains("windows-gnullvm")
+    {
         "c++"
     } else if target.contains("netbsd") && llvm_static_stdcpp.is_some() {
         // NetBSD uses a separate library when relocation is required
-        "stdc++_pic"
+        "stdc++_p"
     } else if llvm_use_libcxx.is_some() {
         "c++"
     } else {
         "stdc++"
     };
 
-    // RISC-V requires libatomic for sub-word atomic operations
-    if target.starts_with("riscv") {
+    // RISC-V GCC erroneously requires libatomic for sub-word
+    // atomic operations. Some BSD uses Clang as its system
+    // compiler and provides no libatomic in its base system so
+    // does not want this.
+    if target.starts_with("riscv") && !target.contains("freebsd") && !target.contains("openbsd") {
         println!("cargo:rustc-link-lib=atomic");
     }
 
@@ -301,7 +372,7 @@ fn main() {
 
     // Libstdc++ depends on pthread which Rust doesn't link on MinGW
     // since nothing else requires it.
-    if target.contains("windows-gnu") {
+    if target.ends_with("windows-gnu") {
         println!("cargo:rustc-link-lib=static:-bundle=pthread");
     }
 }

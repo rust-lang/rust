@@ -1,9 +1,29 @@
 //! The point of this crate is to be able to have enough different "kinds" of
 //! documentation generated so we can test each different features.
+#![doc(html_playground_url="https://play.rust-lang.org/")]
 
 #![crate_name = "test_docs"]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
+#![feature(associated_type_defaults)]
+
+/*!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
+this crate even more!
+
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+Also, stop using `bar` as it's <span class="stab deprecated" title="">deprecated</span>.
+
+Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
+</span>.
+Finally, you can use `quz` only on <span class="stab portability"><code>Unix or x86-64</code>
+</span>.
+*/
 
 use std::convert::AsRef;
 use std::fmt;
@@ -27,6 +47,12 @@ use std::fmt;
 /// Let's say I'm just some text will ya?
 /// ```
 ///
+/// A failing to run one:
+///
+/// ```should_panic
+/// panic!("tadam");
+/// ```
+///
 /// An inlined `code`!
 pub fn foo() {}
 
@@ -47,7 +73,10 @@ impl AsRef<str> for Foo {
 }
 
 /// Just a normal enum.
+///
+/// # title!
 #[doc(alias = "ThisIsAnAlias")]
+#[non_exhaustive]
 pub enum WhoLetTheDogOut {
     /// Woof!
     Woof,
@@ -143,6 +172,10 @@ pub use crate::repro as repro2;
 /// ### Top-doc Prose sub-sub-heading
 ///
 /// Text below sub-sub-heading
+///
+/// #### You know the drill.
+///
+/// More text.
 pub struct HeavilyDocumentedStruct {
     /// # Title for field
     /// ## Sub-heading for field
@@ -256,4 +289,156 @@ impl HeavilyDocumentedUnion {
 #[macro_export]
 macro_rules! heavily_documented_macro {
     () => {};
+}
+
+pub trait EmptyTrait1 {}
+pub trait EmptyTrait2 {}
+pub trait EmptyTrait3 {}
+
+pub struct HasEmptyTraits{}
+
+impl EmptyTrait1 for HasEmptyTraits {}
+impl EmptyTrait2 for HasEmptyTraits {}
+#[doc(cfg(feature = "some-feature"))]
+impl EmptyTrait3 for HasEmptyTraits {}
+
+mod macros;
+pub use macros::*;
+
+#[doc(alias = "AliasForTheStdReexport")]
+pub use ::std as TheStdReexport;
+
+pub mod details {
+    /// We check the appearance of the `<details>`/`<summary>` in here.
+    ///
+    /// ## Hello
+    ///
+    /// <details>
+    /// <summary><h4>I'm a summary</h4></summary>
+    /// <div>I'm the content of the details!</div>
+    /// </details>
+    pub struct Details;
+
+    impl Details {
+        /// We check the appearance of the `<details>`/`<summary>` in here.
+        ///
+        /// ## Hello
+        ///
+        /// <details>
+        /// <summary><h4>I'm a summary</h4></summary>
+        /// <div>I'm the content of the details!</div>
+        /// </details>
+        pub fn method() {}
+    }
+}
+
+pub mod doc_block_table {
+
+    pub trait DocBlockTableTrait {
+        fn func();
+    }
+
+    /// Struct doc.
+    ///
+    /// | header1                  | header2                  |
+    /// |--------------------------|--------------------------|
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    pub struct DocBlockTable {}
+
+    impl DocBlockTableTrait for DocBlockTable {
+        /// Trait impl func doc for struct.
+        ///
+        /// | header1                  | header2                  |
+        /// |--------------------------|--------------------------|
+        /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+        fn func() {
+            println!();
+        }
+    }
+
+}
+
+pub struct NotableStructWithLongName<R>(R);
+
+impl<R: std::io::Read> NotableStructWithLongName<R> {
+    pub fn create_an_iterator_from_read(r: R) -> NotableStructWithLongName<R> { Self(r) }
+}
+
+impl<R: std::io::Read> std::iter::Iterator for NotableStructWithLongName<R> {
+    type Item = ();
+
+    fn next(&mut self) -> Option<Self::Item> { () }
+}
+
+pub trait TraitWithNoDocblocks {
+    fn first_fn(&self);
+    fn second_fn(&self);
+}
+
+pub struct TypeWithNoDocblocks;
+
+impl TypeWithNoDocblocks {
+    fn x() -> Option<Self> {
+        Some(Self)
+    }
+    fn y() -> Option<u32> {
+        // code comment
+        let t = Self::x()?;
+        Some(0)
+    }
+}
+
+impl TypeWithNoDocblocks {
+    pub fn first_fn(&self) {}
+    pub fn second_fn<'a>(&'a self) {
+        let x = 12;
+        let y = "a";
+        let z = false;
+    }
+}
+
+pub unsafe fn unsafe_fn() {}
+
+pub fn safe_fn() {}
+
+#[repr(C)]
+pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
+    s: S,
+    t: T,
+    e: E,
+    p: P,
+}
+
+pub struct StructWithPublicUndocumentedFields {
+    pub first: u32,
+    pub second: u32,
+}
+
+pub const CONST: u8 = 0;
+
+pub trait TraitWithoutGenerics {
+    const C: u8 = CONST;
+    type T = SomeType;
+
+    fn foo();
+}
+
+pub mod trait_members {
+    pub trait TraitMembers {
+        /// Some type
+        type Type;
+        /// Some function
+        fn function();
+        /// Some other function
+        fn function2();
+    }
+    pub struct HasTrait;
+    impl TraitMembers for HasTrait {
+        type Type = u8;
+        fn function() {}
+        fn function2() {}
+    }
 }

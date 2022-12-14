@@ -1,0 +1,10 @@
+error: this let-binding has unit value
+  --> $DIR/ice-8821.rs:7:5
+   |
+LL |     let _: () = FN();
+   |     ^^^^^^^^^^^^^^^^^ help: omit the `let` binding: `FN();`
+   |
+   = note: `-D clippy::let-unit-value` implied by `-D warnings`
+
+error: aborting due to previous error
+

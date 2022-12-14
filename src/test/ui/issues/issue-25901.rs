@@ -2,7 +2,7 @@ struct A;
 struct B;
 
 static S: &'static B = &A;
-//~^ ERROR calls in statics are limited to constant functions
+//~^ ERROR the trait bound
 
 use std::ops::Deref;
 

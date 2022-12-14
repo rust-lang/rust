@@ -13,14 +13,6 @@ impl Instant {
         panic!("time not implemented on this platform")
     }
 
-    pub const fn zero() -> Instant {
-        Instant(Duration::from_secs(0))
-    }
-
-    pub fn actually_monotonic() -> bool {
-        false
-    }
-
     pub fn checked_sub_instant(&self, other: &Instant) -> Option<Duration> {
         self.0.checked_sub(other.0)
     }

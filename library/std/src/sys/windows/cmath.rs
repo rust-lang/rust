@@ -44,7 +44,7 @@ mod shims {
 }
 
 // On 32-bit x86 MSVC these functions aren't defined, so we just define shims
-// which promote everything fo f64, perform the calculation, and then demote
+// which promote everything to f64, perform the calculation, and then demote
 // back to f32. While not precisely correct should be "correct enough" for now.
 #[cfg(all(target_env = "msvc", target_arch = "x86"))]
 mod shims {

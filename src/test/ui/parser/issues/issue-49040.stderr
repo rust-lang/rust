@@ -1,0 +1,15 @@
+error: expected item, found `;`
+  --> $DIR/issue-49040.rs:1:28
+   |
+LL | #![allow(unused_variables)];
+   |                            ^ help: remove this semicolon
+
+error[E0601]: `main` function not found in crate `issue_49040`
+  --> $DIR/issue-49040.rs:1:29
+   |
+LL | #![allow(unused_variables)];
+   |                             ^ consider adding a `main` function to `$DIR/issue-49040.rs`
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0601`.

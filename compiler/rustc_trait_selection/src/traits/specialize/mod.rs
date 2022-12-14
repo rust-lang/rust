@@ -12,29 +12,31 @@
 pub mod specialization_graph;
 use specialization_graph::GraphExt;
 
+use crate::errors::NegativePositiveConflict;
 use crate::infer::{InferCtxt, InferOk, TyCtxtInferExt};
 use crate::traits::select::IntercrateAmbiguityCause;
-use crate::traits::{self, coherence, FutureCompatOverlapErrorKind, ObligationCause, TraitEngine};
-use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
+use crate::traits::{
+    self, coherence, FutureCompatOverlapErrorKind, ObligationCause, ObligationCtxt,
+};
+use rustc_data_structures::fx::FxIndexSet;
+use rustc_errors::{error_code, DelayDm, Diagnostic};
 use rustc_hir::def_id::{DefId, LocalDefId};
-use rustc_middle::lint::LintDiagnosticBuilder;
-use rustc_middle::ty::subst::{InternalSubsts, Subst, SubstsRef};
-use rustc_middle::ty::{self, TyCtxt};
+use rustc_middle::ty::{self, ImplSubject, Ty, TyCtxt};
+use rustc_middle::ty::{InternalSubsts, SubstsRef};
 use rustc_session::lint::builtin::COHERENCE_LEAK_CHECK;
 use rustc_session::lint::builtin::ORDER_DEPENDENT_TRAIT_OBJECTS;
-use rustc_span::DUMMY_SP;
+use rustc_span::{Span, DUMMY_SP};
 
-use super::util::impl_trait_ref_and_oblig;
-use super::{FulfillmentContext, SelectionContext};
+use super::util;
+use super::SelectionContext;
 
 /// Information pertinent to an overlapping impl error.
 #[derive(Debug)]
-pub struct OverlapError {
+pub struct OverlapError<'tcx> {
     pub with_impl: DefId,
-    pub trait_desc: String,
-    pub self_desc: Option<String>,
-    pub intercrate_ambiguity_causes: Vec<IntercrateAmbiguityCause>,
+    pub trait_ref: ty::TraitRef<'tcx>,
+    pub self_ty: Option<Ty<'tcx>>,
+    pub intercrate_ambiguity_causes: FxIndexSet<IntercrateAmbiguityCause>,
     pub involves_placeholder: bool,
 }
 
@@ -52,7 +54,7 @@ pub struct OverlapError {
 ///
 /// For example, consider the following scenario:
 ///
-/// ```rust
+/// ```ignore (illustrative)
 /// trait Foo { ... }
 /// impl<T, U> Foo for (T, U) { ... }  // target impl
 /// impl<V> Foo for (V, V) { ... }     // source impl
@@ -64,7 +66,7 @@ pub struct OverlapError {
 /// where-clauses add some trickiness here, because they can be used to "define"
 /// an argument indirectly:
 ///
-/// ```rust
+/// ```ignore (illustrative)
 /// impl<'a, I, T: 'a> Iterator for Cloned<I>
 ///    where I: Iterator<Item = &'a T>, T: Clone
 /// ```
@@ -73,8 +75,8 @@ pub struct OverlapError {
 /// through associated type projection. We deal with such cases by using
 /// *fulfillment* to relate the two impls, requiring that all projections are
 /// resolved.
-pub fn translate_substs<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+pub fn translate_substs<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_impl: DefId,
     source_substs: SubstsRef<'tcx>,
@@ -85,7 +87,7 @@ pub fn translate_substs<'a, 'tcx>(
         param_env, source_impl, source_substs, target_node
     );
     let source_trait_ref =
-        infcx.tcx.impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
+        infcx.tcx.bound_impl_trait_ref(source_impl).unwrap().subst(infcx.tcx, &source_substs);
 
     // translate the Self and Param parts of the substitution, since those
     // vary across impls
@@ -117,9 +119,8 @@ pub fn translate_substs<'a, 'tcx>(
 /// Specialization is determined by the sets of types to which the impls apply;
 /// `impl1` specializes `impl2` if it applies to a subset of the types `impl2` applies
 /// to.
+#[instrument(skip(tcx), level = "debug")]
 pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId, DefId)) -> bool {
-    debug!("specializes({:?}, {:?})", impl1_def_id, impl2_def_id);
-
     // The feature gate should prevent introducing new specializations, but not
     // taking advantage of upstream ones.
     let features = tcx.features();
@@ -150,25 +151,21 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
     let impl1_trait_ref = tcx.impl_trait_ref(impl1_def_id).unwrap();
 
     // Create an infcx, taking the predicates of impl1 as assumptions:
-    tcx.infer_ctxt().enter(|infcx| {
-        // Normalize the trait reference. The WF rules ought to ensure
-        // that this always succeeds.
-        let impl1_trait_ref = match traits::fully_normalize(
-            &infcx,
-            FulfillmentContext::new(),
-            ObligationCause::dummy(),
-            penv,
-            impl1_trait_ref,
-        ) {
+    let infcx = tcx.infer_ctxt().build();
+    let impl1_trait_ref =
+        match traits::fully_normalize(&infcx, ObligationCause::dummy(), penv, impl1_trait_ref) {
             Ok(impl1_trait_ref) => impl1_trait_ref,
-            Err(err) => {
-                bug!("failed to fully normalize {:?}: {:?}", impl1_trait_ref, err);
+            Err(_errors) => {
+                tcx.sess.delay_span_bug(
+                    tcx.def_span(impl1_def_id),
+                    format!("failed to fully normalize {impl1_trait_ref}"),
+                );
+                impl1_trait_ref
             }
         };
 
-        // Attempt to prove that impl2 applies, given all of the above.
-        fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
-    })
+    // Attempt to prove that impl2 applies, given all of the above.
+    fulfill_implication(&infcx, penv, impl1_trait_ref, impl2_def_id).is_ok()
 }
 
 /// Attempt to fulfill all obligations of `target_impl` after unification with
@@ -176,8 +173,8 @@ pub(super) fn specializes(tcx: TyCtxt<'_>, (impl1_def_id, impl2_def_id): (DefId,
 /// generics of `target_impl`, including both those needed to unify with
 /// `source_trait_ref` and those whose identity is determined via a where
 /// clause in the impl.
-fn fulfill_implication<'a, 'tcx>(
-    infcx: &InferCtxt<'a, 'tcx>,
+fn fulfill_implication<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
     source_trait_ref: ty::TraitRef<'tcx>,
     target_impl: DefId,
@@ -187,78 +184,59 @@ fn fulfill_implication<'a, 'tcx>(
         param_env, source_trait_ref, target_impl
     );
 
+    let source_trait = ImplSubject::Trait(source_trait_ref);
+
     let selcx = &mut SelectionContext::new(&infcx);
     let target_substs = infcx.fresh_substs_for_item(DUMMY_SP, target_impl);
-    let (target_trait_ref, obligations) =
-        impl_trait_ref_and_oblig(selcx, param_env, target_impl, target_substs);
+    let (target_trait, obligations) =
+        util::impl_subject_and_oblig(selcx, param_env, target_impl, target_substs);
 
     // do the impls unify? If not, no specialization.
-    let more_obligations =
-        match infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait_ref, target_trait_ref)
-        {
-            Ok(InferOk { obligations, .. }) => obligations,
-            Err(_) => {
-                debug!(
-                    "fulfill_implication: {:?} does not unify with {:?}",
-                    source_trait_ref, target_trait_ref
-                );
-                return Err(());
-            }
-        };
+    let Ok(InferOk { obligations: more_obligations, .. }) =
+        infcx.at(&ObligationCause::dummy(), param_env).eq(source_trait, target_trait)
+    else {
+        debug!(
+            "fulfill_implication: {:?} does not unify with {:?}",
+            source_trait, target_trait
+        );
+        return Err(());
+    };
 
+    // Needs to be `in_snapshot` because this function is used to rebase
+    // substitutions, which may happen inside of a select within a probe.
+    let ocx = ObligationCtxt::new_in_snapshot(infcx);
     // attempt to prove all of the predicates for impl2 given those for impl1
     // (which are packed up in penv)
+    ocx.register_obligations(obligations.chain(more_obligations));
 
-    infcx.save_and_restore_in_snapshot_flag(|infcx| {
-        // If we came from `translate_substs`, we already know that the
-        // predicates for our impl hold (after all, we know that a more
-        // specialized impl holds, so our impl must hold too), and
-        // we only want to process the projections to determine the
-        // the types in our substs using RFC 447, so we can safely
-        // ignore region obligations, which allows us to avoid threading
-        // a node-id to assign them with.
-        //
-        // If we came from specialization graph construction, then
-        // we already make a mockery out of the region system, so
-        // why not ignore them a bit earlier?
-        let mut fulfill_cx = FulfillmentContext::new_ignoring_regions();
-        for oblig in obligations.chain(more_obligations) {
-            fulfill_cx.register_predicate_obligation(&infcx, oblig);
-        }
-        match fulfill_cx.select_all_or_error(infcx) {
-            Err(errors) => {
-                // no dice!
-                debug!(
-                    "fulfill_implication: for impls on {:?} and {:?}, \
-                     could not fulfill: {:?} given {:?}",
-                    source_trait_ref,
-                    target_trait_ref,
-                    errors,
-                    param_env.caller_bounds()
-                );
-                Err(())
-            }
+    let errors = ocx.select_all_or_error();
+    if !errors.is_empty() {
+        // no dice!
+        debug!(
+            "fulfill_implication: for impls on {:?} and {:?}, \
+                 could not fulfill: {:?} given {:?}",
+            source_trait,
+            target_trait,
+            errors,
+            param_env.caller_bounds()
+        );
+        return Err(());
+    }
 
-            Ok(()) => {
-                debug!(
-                    "fulfill_implication: an impl for {:?} specializes {:?}",
-                    source_trait_ref, target_trait_ref
-                );
+    debug!("fulfill_implication: an impl for {:?} specializes {:?}", source_trait, target_trait);
 
-                // Now resolve the *substitution* we built for the target earlier, replacing
-                // the inference variables inside with whatever we got from fulfillment.
-                Ok(infcx.resolve_vars_if_possible(target_substs))
-            }
-        }
-    })
+    // Now resolve the *substitution* we built for the target earlier, replacing
+    // the inference variables inside with whatever we got from fulfillment.
+    Ok(infcx.resolve_vars_if_possible(target_substs))
 }
 
-// Query provider for `specialization_graph_of`.
+/// Query provider for `specialization_graph_of`.
 pub(super) fn specialization_graph_provider(
     tcx: TyCtxt<'_>,
     trait_id: DefId,
 ) -> specialization_graph::Graph {
     let mut sg = specialization_graph::Graph::new();
+    let overlap_mode = specialization_graph::OverlapMode::get(tcx, trait_id);
 
     let mut trait_impls: Vec<_> = tcx.all_impls(trait_id).collect();
 
@@ -272,7 +250,7 @@ pub(super) fn specialization_graph_provider(
     for impl_def_id in trait_impls {
         if let Some(impl_def_id) = impl_def_id.as_local() {
             // This is where impl overlap checking happens:
-            let insert_result = sg.insert(tcx, impl_def_id.to_def_id());
+            let insert_result = sg.insert(tcx, impl_def_id.to_def_id(), overlap_mode);
             // Report error if there was one.
             let (overlap, used_to_be_allowed) = match insert_result {
                 Err(overlap) => (Some(overlap), None),
@@ -292,9 +270,14 @@ pub(super) fn specialization_graph_provider(
     sg
 }
 
-fn report_overlap_conflict(
-    tcx: TyCtxt<'_>,
-    overlap: OverlapError,
+// This function is only used when
+// encountering errors and inlining
+// it negatively impacts perf.
+#[cold]
+#[inline(never)]
+fn report_overlap_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
@@ -330,101 +313,59 @@ fn report_overlap_conflict(
     }
 }
 
-fn report_negative_positive_conflict(
-    tcx: TyCtxt<'_>,
-    overlap: &OverlapError,
+fn report_negative_positive_conflict<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: &OverlapError<'tcx>,
     local_impl_def_id: LocalDefId,
     negative_impl_def_id: DefId,
     positive_impl_def_id: DefId,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span = tcx
-        .sess
-        .source_map()
-        .guess_head_span(tcx.span_of_impl(local_impl_def_id.to_def_id()).unwrap());
-
-    let mut err = struct_span_err!(
-        tcx.sess,
-        impl_span,
-        E0751,
-        "found both positive and negative implementation of trait `{}`{}:",
-        overlap.trait_desc,
-        overlap.self_desc.clone().map_or_else(String::new, |ty| format!(" for type `{}`", ty))
-    );
-
-    match tcx.span_of_impl(negative_impl_def_id) {
-        Ok(span) => {
-            err.span_label(
-                tcx.sess.source_map().guess_head_span(span),
-                "negative implementation here".to_string(),
-            );
-        }
-        Err(cname) => {
-            err.note(&format!("negative implementation in crate `{}`", cname));
-        }
-    }
-
-    match tcx.span_of_impl(positive_impl_def_id) {
-        Ok(span) => {
-            err.span_label(
-                tcx.sess.source_map().guess_head_span(span),
-                "positive implementation here".to_string(),
-            );
-        }
-        Err(cname) => {
-            err.note(&format!("positive implementation in crate `{}`", cname));
-        }
-    }
-
-    sg.has_errored = true;
-    err.emit();
+    let mut err = tcx.sess.create_err(NegativePositiveConflict {
+        impl_span: tcx.def_span(local_impl_def_id),
+        trait_desc: overlap.trait_ref,
+        self_ty: overlap.self_ty,
+        negative_impl_span: tcx.span_of_impl(negative_impl_def_id),
+        positive_impl_span: tcx.span_of_impl(positive_impl_def_id),
+    });
+    sg.has_errored = Some(err.emit());
 }
 
-fn report_conflicting_impls(
-    tcx: TyCtxt<'_>,
-    overlap: OverlapError,
+fn report_conflicting_impls<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    overlap: OverlapError<'tcx>,
     impl_def_id: LocalDefId,
     used_to_be_allowed: Option<FutureCompatOverlapErrorKind>,
     sg: &mut specialization_graph::Graph,
 ) {
-    let impl_span =
-        tcx.sess.source_map().guess_head_span(tcx.span_of_impl(impl_def_id.to_def_id()).unwrap());
+    let impl_span = tcx.def_span(impl_def_id);
 
     // Work to be done after we've built the DiagnosticBuilder. We have to define it
     // now because the struct_lint methods don't return back the DiagnosticBuilder
     // that's passed in.
-    let decorate = |err: LintDiagnosticBuilder<'_>| {
-        let msg = format!(
-            "conflicting implementations of trait `{}`{}{}",
-            overlap.trait_desc,
-            overlap
-                .self_desc
-                .clone()
-                .map_or_else(String::new, |ty| { format!(" for type `{}`", ty) }),
-            match used_to_be_allowed {
-                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
-                _ => "",
-            }
-        );
-        let mut err = err.build(&msg);
+    fn decorate<'tcx>(
+        tcx: TyCtxt<'tcx>,
+        overlap: &OverlapError<'tcx>,
+        impl_span: Span,
+        err: &mut Diagnostic,
+    ) {
         match tcx.span_of_impl(overlap.with_impl) {
             Ok(span) => {
-                err.span_label(
-                    tcx.sess.source_map().guess_head_span(span),
-                    "first implementation here".to_string(),
-                );
+                err.span_label(span, "first implementation here");
 
                 err.span_label(
                     impl_span,
                     format!(
                         "conflicting implementation{}",
-                        overlap.self_desc.map_or_else(String::new, |ty| format!(" for `{}`", ty))
+                        overlap.self_ty.map_or_else(String::new, |ty| format!(" for `{}`", ty))
                     ),
                 );
             }
             Err(cname) => {
                 let msg = match to_pretty_impl_header(tcx, overlap.with_impl) {
-                    Some(s) => format!("conflicting implementation in crate `{}`:\n- {}", cname, s),
+                    Some(s) => {
+                        format!("conflicting implementation in crate `{}`:\n- {}", cname, s)
+                    }
                     None => format!("conflicting implementation in crate `{}`", cname),
                 };
                 err.note(&msg);
@@ -432,20 +373,39 @@ fn report_conflicting_impls(
         }
 
         for cause in &overlap.intercrate_ambiguity_causes {
-            cause.add_intercrate_ambiguity_hint(&mut err);
+            cause.add_intercrate_ambiguity_hint(err);
         }
 
         if overlap.involves_placeholder {
-            coherence::add_placeholder_note(&mut err);
+            coherence::add_placeholder_note(err);
         }
-        err.emit()
-    };
+    }
+
+    let msg = DelayDm(|| {
+        format!(
+            "conflicting implementations of trait `{}`{}{}",
+            overlap.trait_ref.print_only_trait_path(),
+            overlap.self_ty.map_or_else(String::new, |ty| format!(" for type `{ty}`")),
+            match used_to_be_allowed {
+                Some(FutureCompatOverlapErrorKind::Issue33140) => ": (E0119)",
+                _ => "",
+            }
+        )
+    });
 
     match used_to_be_allowed {
         None => {
-            sg.has_errored = true;
-            let err = struct_span_err!(tcx.sess, impl_span, E0119, "");
-            decorate(LintDiagnosticBuilder::new(err));
+            let reported = if overlap.with_impl.is_local()
+                || tcx.orphan_check_impl(impl_def_id).is_ok()
+            {
+                let mut err = tcx.sess.struct_span_err(impl_span, msg);
+                err.code(error_code!(E0119));
+                decorate(tcx, &overlap, impl_span, &mut err);
+                Some(err.emit())
+            } else {
+                Some(tcx.sess.delay_span_bug(impl_span, "impl should have failed the orphan check"))
+            };
+            sg.has_errored = reported;
         }
         Some(kind) => {
             let lint = match kind {
@@ -456,15 +416,19 @@ fn report_conflicting_impls(
                 lint,
                 tcx.hir().local_def_id_to_hir_id(impl_def_id),
                 impl_span,
-                decorate,
-            )
+                msg,
+                |err| {
+                    decorate(tcx, &overlap, impl_span, err);
+                    err
+                },
+            );
         }
     };
 }
 
 /// Recovers the "impl X for Y" signature from `impl_def_id` and returns it as a
 /// string.
-crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
+pub(crate) fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<String> {
     use std::fmt::Write;
 
     let trait_ref = tcx.impl_trait_ref(impl_def_id)?;
@@ -474,10 +438,10 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
 
     // FIXME: Currently only handles ?Sized.
     //        Needs to support ?Move and ?DynSized when they are implemented.
-    let mut types_without_default_bounds = FxHashSet::default();
+    let mut types_without_default_bounds = FxIndexSet::default();
     let sized_trait = tcx.lang_items().sized_trait();
 
-    if !substs.is_noop() {
+    if !substs.is_empty() {
         types_without_default_bounds.extend(substs.types());
         w.push('<');
         w.push_str(
@@ -499,11 +463,22 @@ crate fn to_pretty_impl_header(tcx: TyCtxt<'_>, impl_def_id: DefId) -> Option<St
     let mut pretty_predicates =
         Vec::with_capacity(predicates.len() + types_without_default_bounds.len());
 
-    for (p, _) in predicates {
-        if let Some(poly_trait_ref) = p.to_opt_poly_trait_ref() {
-            if Some(poly_trait_ref.value.def_id()) == sized_trait {
-                types_without_default_bounds.remove(poly_trait_ref.value.self_ty().skip_binder());
+    for (mut p, _) in predicates {
+        if let Some(poly_trait_ref) = p.to_opt_poly_trait_pred() {
+            if Some(poly_trait_ref.def_id()) == sized_trait {
+                types_without_default_bounds.remove(&poly_trait_ref.self_ty().skip_binder());
                 continue;
+            }
+
+            if ty::BoundConstness::ConstIfConst == poly_trait_ref.skip_binder().constness {
+                let new_trait_pred = poly_trait_ref.map_bound(|mut trait_pred| {
+                    trait_pred.constness = ty::BoundConstness::NotConst;
+                    trait_pred
+                });
+
+                p = tcx.mk_predicate(
+                    new_trait_pred.map_bound(|p| ty::PredicateKind::Clause(ty::Clause::Trait(p))),
+                )
             }
         }
         pretty_predicates.push(p.to_string());

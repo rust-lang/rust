@@ -3,7 +3,6 @@
 use rustc_macros::HashStable;
 use rustc_span::Symbol;
 
-use std::cmp::Ord;
 use std::fmt::{self, Debug, Formatter};
 
 rustc_index::newtype_index! {
@@ -21,9 +20,9 @@ rustc_index::newtype_index! {
 impl ExpressionOperandId {
     /// An expression operand for a "zero counter", as described in the following references:
     ///
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#counter>
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#tag>
-    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/11.0-2020-10-12/llvm/docs/CoverageMappingFormat.rst#counter-expressions>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#counter>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#tag>
+    /// * <https://github.com/rust-lang/llvm-project/blob/rustc/13.0-2021-09-30/llvm/docs/CoverageMappingFormat.rst#counter-expressions>
     ///
     /// This operand can be used to count two or more separate code regions with a single counter,
     /// if they run sequentially with no branches, by injecting the `Counter` in a `BasicBlock` for
@@ -46,7 +45,7 @@ impl CounterValueReference {
 
     /// Returns explicitly-requested zero-based version of the counter id, used
     /// during codegen. LLVM expects zero-based indexes.
-    pub fn zero_based_index(&self) -> u32 {
+    pub fn zero_based_index(self) -> u32 {
         let one_based_index = self.as_u32();
         debug_assert!(one_based_index > 0);
         one_based_index - 1
@@ -100,7 +99,7 @@ impl From<InjectedExpressionId> for ExpressionOperandId {
     }
 }
 
-#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Clone, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable, TypeVisitable)]
 pub enum CoverageKind {
     Counter {
         function_source_hash: u64,
@@ -148,18 +147,8 @@ impl Debug for CoverageKind {
     }
 }
 
-#[derive(
-    Clone,
-    TyEncodable,
-    TyDecodable,
-    Hash,
-    HashStable,
-    TypeFoldable,
-    PartialEq,
-    Eq,
-    PartialOrd,
-    Ord
-)]
+#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct CodeRegion {
     pub file_name: Symbol,
     pub start_line: u32,
@@ -178,7 +167,8 @@ impl Debug for CodeRegion {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable, TypeFoldable)]
+#[derive(Copy, Clone, Debug, PartialEq, TyEncodable, TyDecodable, Hash, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum Op {
     Subtract,
     Add,

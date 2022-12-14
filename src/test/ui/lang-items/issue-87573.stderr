@@ -1,0 +1,21 @@
+error[E0718]: `drop_in_place` language item must be applied to a function with at least 1 generic argument
+  --> $DIR/issue-87573.rs:20:1
+   |
+LL | #[lang = "drop_in_place"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |
+LL | fn drop_fn() {
+   |           - this function has 0 generic arguments
+
+error[E0718]: `start` language item must be applied to a function with 1 generic argument
+  --> $DIR/issue-87573.rs:26:1
+   |
+LL | #[lang = "start"]
+   | ^^^^^^^^^^^^^^^^^
+LL |
+LL | fn start(){}
+   |         - this function has 0 generic arguments
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0718`.

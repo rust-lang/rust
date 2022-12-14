@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # This tests ensure that atomic types are never lowered into runtime library calls that are not
 # guaranteed to be lock-free.

@@ -40,55 +40,59 @@ pub use crate::result::Result::{self, Err, Ok};
 #[doc(no_inline)]
 pub use core::prelude::v1::{
     assert, cfg, column, compile_error, concat, concat_idents, env, file, format_args,
-    format_args_nl, include, include_bytes, include_str, line, llvm_asm, log_syntax, module_path,
-    option_env, stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq,
-    PartialOrd,
+    format_args_nl, include, include_bytes, include_str, line, log_syntax, module_path, option_env,
+    stringify, trace_macros, Clone, Copy, Debug, Default, Eq, Hash, Ord, PartialEq, PartialOrd,
 };
 
 #[unstable(
-    feature = "asm",
-    issue = "72016",
-    reason = "inline assembly is not stable enough for use and is subject to change"
+    feature = "concat_bytes",
+    issue = "87555",
+    reason = "`concat_bytes` is not stable enough for use and is subject to change"
 )]
 #[doc(no_inline)]
-pub use core::prelude::v1::asm;
+pub use core::prelude::v1::concat_bytes;
 
-#[unstable(
-    feature = "global_asm",
-    issue = "35119",
-    reason = "`global_asm!` is not stable enough for use and is subject to change"
-)]
-#[doc(no_inline)]
-pub use core::prelude::v1::global_asm;
-
-// FIXME: Attribute and internal derive macros are not documented because for them rustdoc generates
-// dead links which fail link checker testing.
+// Do not `doc(inline)` these `doc(hidden)` items.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[allow(deprecated, deprecated_in_future)]
-#[doc(hidden)]
-pub use core::prelude::v1::{
-    bench, global_allocator, test, test_case, RustcDecodable, RustcEncodable,
-};
+#[allow(deprecated)]
+pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 
+// Do not `doc(no_inline)` so that they become doc items on their own
+// (no public module for them to be re-exported from).
+#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-#[doc(hidden)]
-pub use core::prelude::v1::derive;
+pub use core::prelude::v1::alloc_error_handler;
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use core::prelude::v1::{bench, derive, global_allocator, test, test_case};
 
+#[unstable(feature = "derive_const", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::derive_const;
+
+// Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_accessible",
     issue = "64797",
     reason = "`cfg_accessible` is not fully implemented"
 )]
-#[doc(hidden)]
 pub use core::prelude::v1::cfg_accessible;
 
+// Do not `doc(no_inline)` either.
 #[unstable(
     feature = "cfg_eval",
     issue = "82679",
     reason = "`cfg_eval` is a recently implemented feature"
 )]
-#[doc(hidden)]
 pub use core::prelude::v1::cfg_eval;
+
+// Do not `doc(no_inline)` either.
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::type_ascribe;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.

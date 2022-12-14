@@ -3,7 +3,7 @@
 //
 // This particular test case currently fails as the inference to `()` rather
 // than `!` happens as a result of an `as` cast, which is not currently tracked.
-// Crater did not find many cases of this occuring, but it is included for
+// Crater did not find many cases of this occurring, but it is included for
 // awareness.
 //
 // revisions: nofallback fallback
@@ -16,7 +16,7 @@ use std::marker::PhantomData;
 
 fn main() {
     let error = Closure::wrap(Box::new(move || {
-        //[fallback]~^ ERROR type mismatch resolving
+        //[fallback]~^ to be a closure that returns `()`, but it returns `!`
         panic!("Can't connect to server.");
     }) as Box<dyn FnMut()>);
 }

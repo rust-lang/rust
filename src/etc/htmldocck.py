@@ -41,15 +41,15 @@ There are a number of supported commands:
   `PATH` is relative to the output directory. It can be given as `-`
   which repeats the most recently used `PATH`.
 
-* `@has PATH PATTERN` and `@matches PATH PATTERN` checks for
-  the occurrence of the given pattern `PATTERN` in the specified file.
+* `@hasraw PATH PATTERN` and `@matchesraw PATH PATTERN` checks
+  for the occurrence of the given pattern `PATTERN` in the specified file.
   Only one occurrence of the pattern is enough.
 
-  For `@has`, `PATTERN` is a whitespace-normalized (every consecutive
+  For `@hasraw`, `PATTERN` is a whitespace-normalized (every consecutive
   whitespace being replaced by one single space character) string.
   The entire file is also whitespace-normalized including newlines.
 
-  For `@matches`, `PATTERN` is a Python-supported regular expression.
+  For `@matchesraw`, `PATTERN` is a Python-supported regular expression.
   The file remains intact but the regexp is matched without the `MULTILINE`
   and `IGNORECASE` options. You can still use a prefix `(?m)` or `(?i)`
   to override them, and `\A` and `\Z` for definitely matching
@@ -90,9 +90,23 @@ There are a number of supported commands:
   highlights for example. If you want to simply check for the presence of
   a given node or attribute, use an empty string (`""`) as a `PATTERN`.
 
-* `@count PATH XPATH COUNT' checks for the occurrence of the given XPath
+* `@count PATH XPATH COUNT` checks for the occurrence of the given XPath
   in the specified file. The number of occurrences must match the given
   count.
+
+* `@count PATH XPATH TEXT COUNT` checks for the occurrence of the given XPath
+  with the given text in the specified file. The number of occurrences must
+  match the given count.
+
+* `@snapshot NAME PATH XPATH` creates a snapshot test named NAME.
+  A snapshot test captures a subtree of the DOM, at the location
+  determined by the XPath, and compares it to a pre-recorded value
+  in a file. The file's name is the test's name with the `.rs` extension
+  replaced with `.NAME.html`, where NAME is the snapshot's name.
+
+  htmldocck supports the `--bless` option to accept the current subtree
+  as expected, saving it to the file determined by the snapshot's name.
+  compiletest's `--bless` flag is forwarded to htmldocck.
 
 * `@has-dir PATH` checks for the existence of the given directory.
 
@@ -136,6 +150,10 @@ except NameError:
 
 
 channel = os.environ["DOC_RUST_LANG_ORG_CHANNEL"]
+
+# Initialized in main
+rust_test_path = None
+bless = None
 
 class CustomHTMLParser(HTMLParser):
     """simplified HTML parser.
@@ -271,6 +289,11 @@ def flatten(node):
     return ''.join(acc)
 
 
+def make_xml(text):
+    xml = ET.XML('<xml>%s</xml>' % text)
+    return xml
+
+
 def normalize_xpath(path):
     path = path.replace("{{channel}}", channel)
     if path.startswith('//'):
@@ -363,9 +386,10 @@ def check_tree_attr(tree, path, attr, pat, regexp):
     return ret
 
 
-def check_tree_text(tree, path, pat, regexp):
+# Returns the number of occurrences matching the regex (`regexp`) and the text (`pat`).
+def check_tree_text(tree, path, pat, regexp, stop_at_first):
     path = normalize_xpath(path)
-    ret = False
+    match_count = 0
     try:
         for e in tree.findall(path):
             try:
@@ -373,18 +397,110 @@ def check_tree_text(tree, path, pat, regexp):
             except KeyError:
                 continue
             else:
-                ret = check_string(value, pat, regexp)
-                if ret:
-                    break
+                if check_string(value, pat, regexp):
+                    match_count += 1
+                    if stop_at_first:
+                        break
     except Exception:
         print('Failed to get path "{}"'.format(path))
         raise
-    return ret
+    return match_count
 
 
 def get_tree_count(tree, path):
     path = normalize_xpath(path)
     return len(tree.findall(path))
+
+
+def check_snapshot(snapshot_name, actual_tree, normalize_to_text):
+    assert rust_test_path.endswith('.rs')
+    snapshot_path = '{}.{}.{}'.format(rust_test_path[:-3], snapshot_name, 'html')
+    try:
+        with open(snapshot_path, 'r') as snapshot_file:
+            expected_str = snapshot_file.read().replace("{{channel}}", channel)
+    except FileNotFoundError:
+        if bless:
+            expected_str = None
+        else:
+            raise FailedCheck('No saved snapshot value')
+
+    if not normalize_to_text:
+        actual_str = ET.tostring(actual_tree).decode('utf-8')
+    else:
+        actual_str = flatten(actual_tree)
+
+    # Conditions:
+    #  1. Is --bless
+    #  2. Are actual and expected tree different
+    #  3. Are actual and expected text different
+    if not expected_str \
+        or (not normalize_to_text and \
+            not compare_tree(make_xml(actual_str), make_xml(expected_str), stderr)) \
+        or (normalize_to_text and actual_str != expected_str):
+
+        if bless:
+            with open(snapshot_path, 'w') as snapshot_file:
+                actual_str = actual_str.replace(channel, "{{channel}}")
+                snapshot_file.write(actual_str)
+        else:
+            print('--- expected ---\n')
+            print(expected_str)
+            print('\n\n--- actual ---\n')
+            print(actual_str)
+            print()
+            raise FailedCheck('Actual snapshot value is different than expected')
+
+
+# Adapted from https://github.com/formencode/formencode/blob/3a1ba9de2fdd494dd945510a4568a3afeddb0b2e/formencode/doctest_xml_compare.py#L72-L120
+def compare_tree(x1, x2, reporter=None):
+    if x1.tag != x2.tag:
+        if reporter:
+            reporter('Tags do not match: %s and %s' % (x1.tag, x2.tag))
+        return False
+    for name, value in x1.attrib.items():
+        if x2.attrib.get(name) != value:
+            if reporter:
+                reporter('Attributes do not match: %s=%r, %s=%r'
+                         % (name, value, name, x2.attrib.get(name)))
+            return False
+    for name in x2.attrib:
+        if name not in x1.attrib:
+            if reporter:
+                reporter('x2 has an attribute x1 is missing: %s'
+                         % name)
+            return False
+    if not text_compare(x1.text, x2.text):
+        if reporter:
+            reporter('text: %r != %r' % (x1.text, x2.text))
+        return False
+    if not text_compare(x1.tail, x2.tail):
+        if reporter:
+            reporter('tail: %r != %r' % (x1.tail, x2.tail))
+        return False
+    cl1 = list(x1)
+    cl2 = list(x2)
+    if len(cl1) != len(cl2):
+        if reporter:
+            reporter('children length differs, %i != %i'
+                     % (len(cl1), len(cl2)))
+        return False
+    i = 0
+    for c1, c2 in zip(cl1, cl2):
+        i += 1
+        if not compare_tree(c1, c2, reporter=reporter):
+            if reporter:
+                reporter('children %i do not match: %s'
+                         % (i, c1.tag))
+            return False
+    return True
+
+
+def text_compare(t1, t2):
+    if not t1 and not t2:
+        return True
+    if t1 == '*' or t2 == '*':
+        return True
+    return (t1 or '').strip() == (t2 or '').strip()
 
 
 def stderr(*args):
@@ -407,36 +523,44 @@ def print_err(lineno, context, err, message=None):
         stderr("\t{}".format(context))
 
 
+def get_nb_matching_elements(cache, c, regexp, stop_at_first):
+    tree = cache.get_tree(c.args[0])
+    pat, sep, attr = c.args[1].partition('/@')
+    if sep:  # attribute
+        tree = cache.get_tree(c.args[0])
+        return check_tree_attr(tree, pat, attr, c.args[2], False)
+    else:  # normalized text
+        pat = c.args[1]
+        if pat.endswith('/text()'):
+            pat = pat[:-7]
+        return check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp, stop_at_first)
+
+
 ERR_COUNT = 0
 
 
 def check_command(c, cache):
     try:
         cerr = ""
-        if c.cmd == 'has' or c.cmd == 'matches':  # string test
-            regexp = (c.cmd == 'matches')
-            if len(c.args) == 1 and not regexp:  # @has <path> = file existence
+        if c.cmd in ['has', 'hasraw', 'matches', 'matchesraw']:  # string test
+            regexp = c.cmd.startswith('matches')
+
+            # @has <path> = file existence
+            if len(c.args) == 1 and not regexp and 'raw' not in c.cmd:
                 try:
                     cache.get_file(c.args[0])
                     ret = True
                 except FailedCheck as err:
                     cerr = str(err)
                     ret = False
-            elif len(c.args) == 2:  # @has/matches <path> <pat> = string test
+            # @hasraw/matchesraw <path> <pat> = string test
+            elif len(c.args) == 2 and 'raw' in c.cmd:
                 cerr = "`PATTERN` did not match"
                 ret = check_string(cache.get_file(c.args[0]), c.args[1], regexp)
-            elif len(c.args) == 3:  # @has/matches <path> <pat> <match> = XML tree test
+            # @has/matches <path> <pat> <match> = XML tree test
+            elif len(c.args) == 3 and 'raw' not in c.cmd:
                 cerr = "`XPATH PATTERN` did not match"
-                tree = cache.get_tree(c.args[0])
-                pat, sep, attr = c.args[1].partition('/@')
-                if sep:  # attribute
-                    tree = cache.get_tree(c.args[0])
-                    ret = check_tree_attr(tree, pat, attr, c.args[2], regexp)
-                else:  # normalized text
-                    pat = c.args[1]
-                    if pat.endswith('/text()'):
-                        pat = pat[:-7]
-                    ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
+                ret = get_nb_matching_elements(cache, c, regexp, True) != 0
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
 
@@ -446,8 +570,40 @@ def check_command(c, cache):
                 found = get_tree_count(cache.get_tree(c.args[0]), c.args[1])
                 cerr = "Expected {} occurrences but found {}".format(expected, found)
                 ret = expected == found
+            elif len(c.args) == 4:  # @count <path> <pat> <text> <count> = count test
+                expected = int(c.args[3])
+                found = get_nb_matching_elements(cache, c, False, False)
+                cerr = "Expected {} occurrences but found {}".format(expected, found)
+                ret = found == expected
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
+        elif c.cmd == 'snapshot':  # snapshot test
+            if len(c.args) == 3:  # @snapshot <snapshot-name> <html-path> <xpath>
+                [snapshot_name, html_path, pattern] = c.args
+                tree = cache.get_tree(html_path)
+                xpath = normalize_xpath(pattern)
+                normalize_to_text = False
+                if xpath.endswith('/text()'):
+                    xpath = xpath[:-7]
+                    normalize_to_text = True
+
+                subtrees = tree.findall(xpath)
+                if len(subtrees) == 1:
+                    [subtree] = subtrees
+                    try:
+                        check_snapshot(snapshot_name, subtree, normalize_to_text)
+                        ret = True
+                    except FailedCheck as err:
+                        cerr = str(err)
+                        ret = False
+                elif len(subtrees) == 0:
+                    raise FailedCheck('XPATH did not match')
+                else:
+                    raise FailedCheck('Expected 1 match, but found {}'.format(len(subtrees)))
+            else:
+                raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
         elif c.cmd == 'has-dir':  # has-dir test
             if len(c.args) == 1:  # @has-dir <path> = has-dir test
                 try:
@@ -458,11 +614,13 @@ def check_command(c, cache):
                     ret = False
             else:
                 raise InvalidCheck('Invalid number of @{} arguments'.format(c.cmd))
+
         elif c.cmd == 'valid-html':
             raise InvalidCheck('Unimplemented @valid-html')
 
         elif c.cmd == 'valid-links':
             raise InvalidCheck('Unimplemented @valid-links')
+
         else:
             raise InvalidCheck('Unrecognized @{}'.format(c.cmd))
 
@@ -483,11 +641,19 @@ def check(target, commands):
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
-        stderr('Usage: {} <doc dir> <template>'.format(sys.argv[0]))
+    if len(sys.argv) not in [3, 4]:
+        stderr('Usage: {} <doc dir> <template> [--bless]'.format(sys.argv[0]))
         raise SystemExit(1)
 
-    check(sys.argv[1], get_commands(sys.argv[2]))
+    rust_test_path = sys.argv[2]
+    if len(sys.argv) > 3 and sys.argv[3] == '--bless':
+        bless = True
+    else:
+        # We only support `--bless` at the end of the arguments.
+        # This assert is to prevent silent failures.
+        assert '--bless' not in sys.argv
+        bless = False
+    check(sys.argv[1], get_commands(rust_test_path))
     if ERR_COUNT:
         stderr("\nEncountered {} errors".format(ERR_COUNT))
         raise SystemExit(1)

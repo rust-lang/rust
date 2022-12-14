@@ -1,0 +1,13 @@
+error: format argument must be a string literal
+  --> $DIR/unreachable-arg.rs:15:18
+   |
+LL |     unreachable!(a);
+   |                  ^
+   |
+help: you might be missing a string literal to format with
+   |
+LL |     unreachable!("{}", a);
+   |                  +++++
+
+error: aborting due to previous error
+

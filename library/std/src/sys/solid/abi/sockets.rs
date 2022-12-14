@@ -175,6 +175,9 @@ extern "C" {
     #[link_name = "SOLID_NET_Close"]
     pub fn close(s: c_int) -> c_int;
 
+    #[link_name = "SOLID_NET_Dup"]
+    pub fn dup(s: c_int) -> c_int;
+
     #[link_name = "SOLID_NET_GetPeerName"]
     pub fn getpeername(s: c_int, name: *mut sockaddr, namelen: *mut socklen_t) -> c_int;
 

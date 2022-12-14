@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	cp non-utf8 $(TMPDIR)/non-utf.rs

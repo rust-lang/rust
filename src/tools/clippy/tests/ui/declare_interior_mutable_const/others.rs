@@ -31,4 +31,25 @@ const NO_ANN: &dyn Display = &70;
 static STATIC_TUPLE: (AtomicUsize, String) = (ATOMIC, STRING);
 //^ there should be no lints on this line
 
+mod issue_8493 {
+    use std::cell::Cell;
+
+    thread_local! {
+        static _BAR: Cell<i32> = const { Cell::new(0) };
+    }
+
+    macro_rules! issue_8493 {
+        () => {
+            const _BAZ: Cell<usize> = Cell::new(0); //~ ERROR interior mutable
+            static _FOOBAR: () = {
+                thread_local! {
+                    static _VAR: Cell<i32> = const { Cell::new(0) };
+                }
+            };
+        };
+    }
+
+    issue_8493!();
+}
+
 fn main() {}

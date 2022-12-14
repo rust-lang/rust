@@ -6,7 +6,10 @@
 // ignore-windows - this is a unix-specific test
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia no execvp syscall
 #![feature(process_exec, rustc_private)]
+
+extern crate libc;
 
 use std::env;
 use std::io::Error;
@@ -14,23 +17,6 @@ use std::os::unix::process::CommandExt;
 use std::process::Command;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
-
-#[cfg(not(target_os = "linux"))]
-fn getpid() -> u32 {
-    use std::process;
-    process::id()
-}
-
-/// We need to directly use the getpid syscall instead of using `process::id()`
-/// because the libc wrapper might return incorrect values after a process was
-/// forked.
-#[cfg(target_os = "linux")]
-fn getpid() -> u32 {
-    extern crate libc;
-    unsafe {
-        libc::syscall(libc::SYS_getpid) as _
-    }
-}
 
 fn main() {
     if let Some(arg) = env::args().nth(1) {
@@ -83,12 +69,14 @@ fn main() {
     };
     assert_eq!(output.raw_os_error(), Some(102));
 
-    let pid = getpid();
+    let pid = unsafe { libc::getpid() };
+    assert!(pid >= 0);
     let output = unsafe {
         Command::new(&me)
             .arg("empty")
             .pre_exec(move || {
-                let child = getpid();
+                let child = libc::getpid();
+                assert!(child >= 0);
                 assert!(pid != child);
                 Ok(())
             })

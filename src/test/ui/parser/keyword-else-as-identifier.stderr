@@ -4,10 +4,10 @@ error: expected identifier, found keyword `else`
 LL |     let else = "foo";
    |         ^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `else` to use it as an identifier
    |
 LL |     let r#else = "foo";
-   |         ~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

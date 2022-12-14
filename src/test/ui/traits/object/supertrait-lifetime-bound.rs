@@ -1,16 +1,14 @@
-// check-pass
+trait Foo: 'static { }
 
-use std::any::Any;
+trait Bar<T>: Foo { }
 
-trait A<T>: Any {
-    fn m(&self) {}
+fn test1<T: ?Sized + Bar<S>, S>() { }
+
+fn test2<'a>() {
+    // Here: the type `dyn Bar<&'a u32>` references `'a`,
+    // and so it does not outlive `'static`.
+    test1::<dyn Bar<&'a u32>, _>();
+    //~^ ERROR lifetime may not live long enough
 }
 
-impl<S, T: 'static> A<S> for T {}
-
-fn call_obj<'a>() {
-    let obj: &dyn A<&'a ()> = &();
-    obj.m();
-}
-
-fn main() {}
+fn main() { }

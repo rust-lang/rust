@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
-use clippy_utils::in_macro;
 use if_chain::if_chain;
-use rustc_ast::ast::{BindingMode, Lifetime, Mutability, Param, PatKind, Path, TyKind};
+use rustc_ast::ast::{BindingAnnotation, ByRef, Lifetime, Mutability, Param, PatKind, Path, TyKind};
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -53,6 +52,7 @@ declare_clippy_lint! {
     ///     }
     /// }
     /// ```
+    #[clippy::version = "1.47.0"]
     pub NEEDLESS_ARBITRARY_SELF_TYPE,
     complexity,
     "type of `self` parameter is already by default `Self`"
@@ -78,7 +78,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
             let self_param = match (binding_mode, mutbl) {
                 (Mode::Ref(None), Mutability::Mut) => "&mut self".to_string(),
                 (Mode::Ref(Some(lifetime)), Mutability::Mut) => {
-                    if in_macro(lifetime.ident.span) {
+                    if lifetime.ident.span.from_expansion() {
                         applicability = Applicability::HasPlaceholders;
                         "&'_ mut self".to_string()
                     } else {
@@ -87,7 +87,7 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
                 },
                 (Mode::Ref(None), Mutability::Not) => "&self".to_string(),
                 (Mode::Ref(Some(lifetime)), Mutability::Not) => {
-                    if in_macro(lifetime.ident.span) {
+                    if lifetime.ident.span.from_expansion() {
                         applicability = Applicability::HasPlaceholders;
                         "&'_ self".to_string()
                     } else {
@@ -114,20 +114,20 @@ fn check_param_inner(cx: &EarlyContext<'_>, path: &Path, span: Span, binding_mod
 impl EarlyLintPass for NeedlessArbitrarySelfType {
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &Param) {
         // Bail out if the parameter it's not a receiver or was not written by the user
-        if !p.is_self() || in_macro(p.span) {
+        if !p.is_self() || p.span.from_expansion() {
             return;
         }
 
         match &p.ty.kind {
             TyKind::Path(None, path) => {
-                if let PatKind::Ident(BindingMode::ByValue(mutbl), _, _) = p.pat.kind {
+                if let PatKind::Ident(BindingAnnotation(ByRef::No, mutbl), _, _) = p.pat.kind {
                     check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Value, mutbl);
                 }
             },
             TyKind::Rptr(lifetime, mut_ty) => {
                 if_chain! {
                 if let TyKind::Path(None, path) = &mut_ty.ty.kind;
-                if let PatKind::Ident(BindingMode::ByValue(Mutability::Not), _, _) = p.pat.kind;
+                if let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind;
                     then {
                         check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Ref(*lifetime), mut_ty.mutbl);
                     }

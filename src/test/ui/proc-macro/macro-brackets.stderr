@@ -3,6 +3,11 @@ error[E0308]: mismatched types
    |
 LL | id![static X: u32 = 'a';];
    |                     ^^^ expected `u32`, found `char`
+   |
+help: you can cast a `char` to a `u32`, since a `char` always occupies 4 bytes
+   |
+LL | id![static X: u32 = 'a' as u32;];
+   |                         ++++++
 
 error: aborting due to previous error
 

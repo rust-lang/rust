@@ -29,50 +29,8 @@
 use crate::fmt;
 use crate::panic::{Location, PanicInfo};
 
-/// The underlying implementation of libcore's `panic!` macro when no formatting is used.
-#[cold]
-// never inline unless panic_immediate_abort to avoid code
-// bloat at the call sites as much as possible
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[track_caller]
-#[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
-pub const fn panic(expr: &'static str) -> ! {
-    // Use Arguments::new_v1 instead of format_args!("{}", expr) to potentially
-    // reduce size overhead. The format_args! macro uses str's Display trait to
-    // write expr, which calls Formatter::pad, which must accommodate string
-    // truncation and padding (even though none is used here). Using
-    // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
-    // output binary, saving up to a few kilobytes.
-    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
-}
-
-#[inline]
-#[track_caller]
-#[lang = "panic_str"] // needed for `non-fmt-panics` lint
-pub const fn panic_str(expr: &str) -> ! {
-    panic_display(&expr);
-}
-
-#[inline]
-#[track_caller]
-#[lang = "panic_display"] // needed for const-evaluated panics
-#[rustc_do_not_const_check] // hooked by const-eval
-pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
-    panic_fmt(format_args!("{}", *x));
-}
-
-#[cold]
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[track_caller]
-#[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
-fn panic_bounds_check(index: usize, len: usize) -> ! {
-    if cfg!(feature = "panic_immediate_abort") {
-        super::intrinsics::abort()
-    }
-
-    panic!("index out of bounds: the len is {} but the index is {}", len, index)
-}
+// First we define the two main entry points that all panics go through.
+// In the end both are just convenience wrappers around `panic_impl`.
 
 /// The entry point for panicking with a formatted message.
 ///
@@ -80,14 +38,14 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 /// site as much as possible (so that `panic!()` has as low an impact
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
-#[cold]
 // If panic_immediate_abort, inline the abort call,
 // otherwise avoid inlining because of it is cold path.
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[lang = "panic_fmt"] // needed for const-evaluated panics
 #[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
@@ -100,14 +58,110 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
         fn panic_impl(pi: &PanicInfo<'_>) -> !;
     }
 
-    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller());
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), true);
 
     // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
     unsafe { panic_impl(&pi) }
 }
 
+/// Like panic_fmt, but without unwinding and track_caller to reduce the impact on codesize.
+/// Also just works on `str`, as a `fmt::Arguments` needs more space to be passed.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[rustc_nounwind]
+pub fn panic_str_nounwind(msg: &'static str) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    // NOTE This function never crosses the FFI boundary; it's a Rust-to-Rust call
+    // that gets resolved to the `#[panic_handler]` function.
+    extern "Rust" {
+        #[lang = "panic_impl"]
+        fn panic_impl(pi: &PanicInfo<'_>) -> !;
+    }
+
+    // PanicInfo with the `can_unwind` flag set to false forces an abort.
+    let pieces = [msg];
+    let fmt = fmt::Arguments::new_v1(&pieces, &[]);
+    let pi = PanicInfo::internal_constructor(Some(&fmt), Location::caller(), false);
+
+    // SAFETY: `panic_impl` is defined in safe Rust code and thus is safe to call.
+    unsafe { panic_impl(&pi) }
+}
+
+// Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
+// above.
+
+/// The underlying implementation of libcore's `panic!` macro when no formatting is used.
+// never inline unless panic_immediate_abort to avoid code
+// bloat at the call sites as much as possible
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+#[lang = "panic"] // needed by codegen for panic on overflow and other `Assert` MIR terminators
+pub const fn panic(expr: &'static str) -> ! {
+    // Use Arguments::new_v1 instead of format_args!("{expr}") to potentially
+    // reduce size overhead. The format_args! macro uses str's Display trait to
+    // write expr, which calls Formatter::pad, which must accommodate string
+    // truncation and padding (even though none is used here). Using
+    // Arguments::new_v1 may allow the compiler to omit Formatter::pad from the
+    // output binary, saving up to a few kilobytes.
+    panic_fmt(fmt::Arguments::new_v1(&[expr], &[]));
+}
+
+#[inline]
+#[track_caller]
+#[rustc_diagnostic_item = "panic_str"]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_str(expr: &str) -> ! {
+    panic_display(&expr);
+}
+
+#[inline]
+#[track_caller]
+#[rustc_diagnostic_item = "unreachable_display"] // needed for `non-fmt-panics` lint
+pub fn unreachable_display<T: fmt::Display>(x: &T) -> ! {
+    panic_fmt(format_args!("internal error: entered unreachable code: {}", *x));
+}
+
+#[inline]
+#[track_caller]
+#[lang = "panic_display"] // needed for const-evaluated panics
+#[rustc_do_not_const_check] // hooked by const-eval
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
+pub const fn panic_display<T: fmt::Display>(x: &T) -> ! {
+    panic_fmt(format_args!("{}", *x));
+}
+
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[track_caller]
+#[lang = "panic_bounds_check"] // needed by codegen for panic on OOB array/slice access
+fn panic_bounds_check(index: usize, len: usize) -> ! {
+    if cfg!(feature = "panic_immediate_abort") {
+        super::intrinsics::abort()
+    }
+
+    panic!("index out of bounds: the len is {len} but the index is {index}")
+}
+
+/// Panic because we cannot unwind out of a function.
+///
+/// This function is called directly by the codegen backend, and must not have
+/// any extra arguments (including those synthesized by track_caller).
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
+#[rustc_nounwind]
+fn panic_no_unwind() -> ! {
+    panic_str_nounwind("panic in a function that cannot unwind")
+}
+
 /// This function is used instead of panic_fmt in const eval.
 #[lang = "const_panic_fmt"]
+#[rustc_const_unstable(feature = "core_panic", issue = "none")]
 pub const fn const_panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     if let Some(msg) = fmt.as_str() {
         panic_str(msg);
@@ -128,7 +182,8 @@ pub enum AssertKind {
 }
 
 /// Internal function for `assert_eq!` and `assert_ne!` macros
-#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_failed<T, U>(
@@ -145,7 +200,8 @@ where
 }
 
 /// Internal function for `assert_match!`
-#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[doc(hidden)]
 pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
@@ -153,17 +209,19 @@ pub fn assert_matches_failed<T: fmt::Debug + ?Sized>(
     right: &str,
     args: Option<fmt::Arguments<'_>>,
 ) -> ! {
-    // Use the Display implementation to display the pattern.
+    // The pattern is a string so it can be displayed directly.
     struct Pattern<'a>(&'a str);
     impl fmt::Debug for Pattern<'_> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            fmt::Display::fmt(self.0, f)
+            f.write_str(self.0)
         }
     }
     assert_failed_inner(AssertKind::Match, &left, &Pattern(right), args);
 }
 
 /// Non-generic version of the above functions, to avoid code bloat.
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 fn assert_failed_inner(
     kind: AssertKind,

@@ -26,36 +26,40 @@
 #![feature(allocator_api)]
 #![feature(array_windows)]
 #![feature(assert_matches)]
-#![feature(backtrace)]
-#![feature(bool_to_option)]
 #![feature(box_patterns)]
 #![feature(core_intrinsics)]
 #![feature(discriminant_kind)]
 #![feature(exhaustive_patterns)]
+#![feature(generators)]
+#![feature(get_mut_unchecked)]
 #![feature(if_let_guard)]
-#![feature(map_first_last)]
+#![feature(iter_from_generator)]
+#![feature(negative_impls)]
 #![feature(never_type)]
 #![feature(extern_types)]
 #![feature(new_uninit)]
-#![feature(nll)]
 #![feature(once_cell)]
-#![feature(let_else)]
+#![feature(let_chains)]
 #![feature(min_specialization)]
 #![feature(trusted_len)]
-#![feature(in_band_lifetimes)]
-#![feature(crate_visibility_modifier)]
+#![feature(type_alias_impl_trait)]
 #![feature(associated_type_bounds)]
 #![feature(rustc_attrs)]
-#![feature(half_open_range_patterns)]
 #![feature(control_flow_enum)]
 #![feature(associated_type_defaults)]
-#![feature(iter_zip)]
-#![feature(thread_local_const_init)]
 #![feature(trusted_step)]
 #![feature(try_blocks)]
 #![feature(try_reserve_kind)]
 #![feature(nonzero_ops)]
+#![feature(unwrap_infallible)]
+#![feature(decl_macro)]
+#![feature(drain_filter)]
+#![feature(intra_doc_pointers)]
+#![feature(yeet_expr)]
+#![feature(result_option_inspect)]
+#![feature(const_option)]
 #![recursion_limit = "512"]
+#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate bitflags;
@@ -81,14 +85,17 @@ pub mod query;
 pub mod arena;
 #[macro_use]
 pub mod dep_graph;
+pub(crate) mod error;
 pub mod hir;
 pub mod infer;
 pub mod lint;
+pub mod metadata;
 pub mod middle;
 pub mod mir;
 pub mod thir;
 pub mod traits;
 pub mod ty;
+mod values;
 
 pub mod util {
     pub mod bug;

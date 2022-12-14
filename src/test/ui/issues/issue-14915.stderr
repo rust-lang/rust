@@ -1,5 +1,5 @@
 error[E0369]: cannot add `{integer}` to `Box<isize>`
-  --> $DIR/issue-14915.rs:6:22
+  --> $DIR/issue-14915.rs:4:22
    |
 LL |     println!("{}", x + 1);
    |                    - ^ - {integer}

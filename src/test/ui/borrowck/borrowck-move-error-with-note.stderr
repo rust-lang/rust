@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of `f.0` which is behind a shared reference
+error[E0507]: cannot move out of `f` as enum variant `Foo1` which is behind a shared reference
   --> $DIR/borrowck-move-error-with-note.rs:11:11
    |
 LL |     match *f {

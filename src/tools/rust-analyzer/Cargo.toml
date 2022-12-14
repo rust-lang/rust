@@ -1,0 +1,34 @@
+[workspace]
+members = ["xtask/", "lib/*", "crates/*"]
+exclude = ["crates/proc-macro-test/imp"]
+
+[profile.dev]
+# Disabling debug info speeds up builds a bunch,
+# and we don't rely on it for debugging that much.
+debug = 0
+
+[profile.dev.package]
+# These speed up local tests.
+rowan.opt-level = 3
+rustc-hash.opt-level = 3
+smol_str.opt-level = 3
+text-size.opt-level = 3
+# This speeds up `cargo xtask dist`.
+miniz_oxide.opt-level = 3
+
+[profile.release]
+incremental = true
+# Set this to 1 or 2 to get more useful backtraces in debugger.
+debug = 0
+
+[patch.'crates-io']
+# rowan = { path = "../rowan" }
+
+# chalk-solve = { path = "../chalk/chalk-solve" }
+# chalk-ir = { path = "../chalk/chalk-ir" }
+# chalk-recursive = { path = "../chalk/chalk-recursive" }
+# chalk-derive = { path = "../chalk/chalk-derive" }
+
+# ungrammar = { path = "../ungrammar" }
+
+# salsa = { path = "../salsa" }

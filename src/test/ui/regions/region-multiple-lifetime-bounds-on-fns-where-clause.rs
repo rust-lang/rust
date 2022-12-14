@@ -6,20 +6,21 @@ fn a<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) where 
 
 fn b<'a, 'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Illegal now because there is no `'b:'a` declaration.
-    *x = *y; //~ ERROR E0623
-    *z = *y; //~ ERROR E0623
+    *x = *y;
+    *z = *y;
 }
 
 fn c<'a,'b, 'c>(x: &mut &'a isize, y: &mut &'b isize, z: &mut &'c isize) {
     // Here we try to call `foo` but do not know that `'a` and `'b` are
     // related as required.
-    a(x, y, z); //~ ERROR lifetime mismatch [E0623]
+    a(x, y, z);
 }
 
 fn d() {
     // 'a and 'b are early bound in the function `a` because they appear
     // inconstraints:
-    let _: fn(&mut &isize, &mut &isize, &mut &isize) = a; //~ ERROR E0308
+    let _: fn(&mut &isize, &mut &isize, &mut &isize) = a;
+    //~^ ERROR E0308
 }
 
 fn e() {

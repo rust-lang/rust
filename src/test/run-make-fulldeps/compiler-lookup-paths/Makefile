@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all: $(TMPDIR)/libnative.a
 	mkdir -p $(TMPDIR)/crate

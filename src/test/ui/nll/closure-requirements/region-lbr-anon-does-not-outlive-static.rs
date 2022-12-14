@@ -3,11 +3,11 @@
 // a variety of errors from the older, AST-based machinery (notably
 // borrowck), and then we get the NLL error at the end.
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 fn foo(x: &u32) -> &'static u32 {
     &*x
-        //~^ ERROR explicit lifetime required in the type of `x`
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

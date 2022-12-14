@@ -1,5 +1,3 @@
-// compile-flags:-Zborrowck=mir
-
 #![allow(warnings)]
 
 use std::fmt::Debug;

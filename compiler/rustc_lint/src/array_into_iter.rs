@@ -1,5 +1,5 @@
 use crate::{LateContext, LateLintPass, LintContext};
-use rustc_errors::Applicability;
+use rustc_errors::{fluent, Applicability};
 use rustc_hir as hir;
 use rustc_middle::ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment};
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             if let hir::ExprKind::Call(path, [arg]) = &arg.kind {
                 if let hir::ExprKind::Path(hir::QPath::LangItem(
                     hir::LangItem::IntoIterIntoIter,
-                    _,
+                    ..,
                 )) = &path.kind
                 {
                     self.for_expr_span = arg.span;
@@ -61,7 +61,7 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
         }
 
         // We only care about method call expressions.
-        if let hir::ExprKind::MethodCall(call, span, args, _) = &expr.kind {
+        if let hir::ExprKind::MethodCall(call, receiver_arg, ..) = &expr.kind {
             if call.ident.name != sym::into_iter {
                 return;
             }
@@ -75,13 +75,11 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             };
 
             // As this is a method call expression, we have at least one argument.
-            let receiver_arg = &args[0];
             let receiver_ty = cx.typeck_results().expr_ty(receiver_arg);
             let adjustments = cx.typeck_results().expr_adjustments(receiver_arg);
 
-            let target = match adjustments.last() {
-                Some(Adjustment { kind: Adjust::Borrow(_), target }) => target,
-                _ => return,
+            let Some(Adjustment { kind: Adjust::Borrow(_), target }) = adjustments.last() else {
+                return
             };
 
             let types =
@@ -120,38 +118,41 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
                 // to an array or to a slice.
                 _ => bug!("array type coerced to something other than array or slice"),
             };
-            cx.struct_span_lint(ARRAY_INTO_ITER, *span, |lint| {
-                let mut diag = lint.build(&format!(
-                    "this method call resolves to `<&{} as IntoIterator>::into_iter` \
-                    (due to backwards compatibility), \
-                    but will resolve to <{} as IntoIterator>::into_iter in Rust 2021",
-                    target, target,
-                ));
-                diag.span_suggestion(
-                    call.ident.span,
-                    "use `.iter()` instead of `.into_iter()` to avoid ambiguity",
-                    "iter".into(),
-                    Applicability::MachineApplicable,
-                );
-                if self.for_expr_span == expr.span {
+            cx.struct_span_lint(
+                ARRAY_INTO_ITER,
+                call.ident.span,
+                fluent::lint_array_into_iter,
+                |diag| {
+                    diag.set_arg("target", target);
                     diag.span_suggestion(
-                        receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
-                        "or remove `.into_iter()` to iterate by value",
-                        String::new(),
-                        Applicability::MaybeIncorrect,
+                        call.ident.span,
+                        fluent::use_iter_suggestion,
+                        "iter",
+                        Applicability::MachineApplicable,
                     );
-                } else if receiver_ty.is_array() {
-                    diag.multipart_suggestion(
-                        "or use `IntoIterator::into_iter(..)` instead of `.into_iter()` to explicitly iterate by value",
-                        vec![
-                            (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
-                            (receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()), ")".into()),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-                diag.emit();
-            })
+                    if self.for_expr_span == expr.span {
+                        diag.span_suggestion(
+                            receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                            fluent::remove_into_iter_suggestion,
+                            "",
+                            Applicability::MaybeIncorrect,
+                        );
+                    } else if receiver_ty.is_array() {
+                        diag.multipart_suggestion(
+                            fluent::use_explicit_into_iter_suggestion,
+                            vec![
+                                (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
+                                (
+                                    receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
+                                    ")".into(),
+                                ),
+                            ],
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
+                    diag
+                },
+            )
         }
     }
 }

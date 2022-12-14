@@ -1,8 +1,10 @@
 error[E0271]: type mismatch resolving `<T as Foo>::Y == i32`
-  --> $DIR/associated-types-multiple-types-one-trait.rs:13:5
+  --> $DIR/associated-types-multiple-types-one-trait.rs:13:12
    |
 LL |     want_y(t);
-   |     ^^^^^^ expected `i32`, found associated type
+   |     ------ ^ expected `i32`, found associated type
+   |     |
+   |     required by a bound introduced by this call
    |
    = note:         expected type `i32`
            found associated type `<T as Foo>::Y`
@@ -17,10 +19,12 @@ LL | fn have_x_want_y<T:Foo<X=u32, Y = i32>>(t: &T)
    |                             +++++++++
 
 error[E0271]: type mismatch resolving `<T as Foo>::X == u32`
-  --> $DIR/associated-types-multiple-types-one-trait.rs:18:5
+  --> $DIR/associated-types-multiple-types-one-trait.rs:18:12
    |
 LL |     want_x(t);
-   |     ^^^^^^ expected `u32`, found associated type
+   |     ------ ^ expected `u32`, found associated type
+   |     |
+   |     required by a bound introduced by this call
    |
    = note:         expected type `u32`
            found associated type `<T as Foo>::X`

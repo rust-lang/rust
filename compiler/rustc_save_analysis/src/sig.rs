@@ -167,9 +167,9 @@ impl<'hir> Sig for hir::Ty<'hir> {
             }
             hir::TyKind::Rptr(ref lifetime, ref mt) => {
                 let mut prefix = "&".to_owned();
-                prefix.push_str(&lifetime.name.ident().to_string());
+                prefix.push_str(&lifetime.ident.to_string());
                 prefix.push(' ');
-                if let hir::Mutability::Mut = mt.mutbl {
+                if mt.mutbl.is_mut() {
                     prefix.push_str("mut ");
                 };
 
@@ -286,7 +286,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                     refs: vec![SigElement { id, start, end }],
                 })
             }
-            hir::TyKind::Path(hir::QPath::LangItem(lang_item, _)) => {
+            hir::TyKind::Path(hir::QPath::LangItem(lang_item, _, _)) => {
                 Ok(text_sig(format!("#[lang = \"{}\"]", lang_item.name())))
             }
             hir::TyKind::TraitObject(bounds, ..) => {
@@ -310,13 +310,13 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let nested = bounds_to_string(&bounds);
                 Ok(text_sig(nested))
             }
-            hir::TyKind::Array(ref ty, ref anon_const) => {
+            hir::TyKind::Array(ref ty, ref length) => {
                 let nested_ty = ty.make(offset + 1, id, scx)?;
-                let expr = id_to_string(&scx.tcx.hir(), anon_const.body.hir_id).replace('\n', " ");
+                let expr = id_to_string(&scx.tcx.hir(), length.hir_id()).replace('\n', " ");
                 let text = format!("[{}; {}]", nested_ty.text, expr);
                 Ok(replace_text(nested_ty, text))
             }
-            hir::TyKind::OpaqueDef(item_id, _) => {
+            hir::TyKind::OpaqueDef(item_id, _, _) => {
                 let item = scx.tcx.hir().item(item_id);
                 item.make(offset, Some(item_id.hir_id()), scx)
             }
@@ -332,12 +332,12 @@ impl<'hir> Sig for hir::Item<'hir> {
         match self.kind {
             hir::ItemKind::Static(ref ty, m, ref body) => {
                 let mut text = "static ".to_owned();
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     text.push_str("mut ");
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -359,7 +359,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "const ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -416,7 +416,7 @@ impl<'hir> Sig for hir::Item<'hir> {
 
                 Ok(sig)
             }
-            hir::ItemKind::Macro(_) => {
+            hir::ItemKind::Macro(..) => {
                 let mut text = "macro".to_owned();
                 let name = self.ident.to_string();
                 text.push_str(&name);
@@ -428,7 +428,7 @@ impl<'hir> Sig for hir::Item<'hir> {
                 let mut text = "mod ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -561,7 +561,13 @@ impl<'hir> Sig for hir::Item<'hir> {
             hir::ItemKind::ForeignMod { .. } => Err("extern mod"),
             hir::ItemKind::GlobalAsm(_) => Err("global asm"),
             hir::ItemKind::ExternCrate(_) => Err("extern crate"),
-            hir::ItemKind::OpaqueTy(..) => Err("opaque type"),
+            hir::ItemKind::OpaqueTy(ref opaque) => {
+                if opaque.in_trait {
+                    Err("opaque type in trait")
+                } else {
+                    Err("opaque type")
+                }
+            }
             // FIXME should implement this (e.g., pub use).
             hir::ItemKind::Use(..) => Err("import"),
         }
@@ -573,7 +579,7 @@ impl<'hir> Sig for hir::Path<'hir> {
         let res = scx.get_path_res(id.ok_or("Missing id for Path")?);
 
         let (name, start, end) = match res {
-            Res::PrimTy(..) | Res::SelfTy(..) | Res::Err => {
+            Res::PrimTy(..) | Res::SelfTyParam { .. } | Res::SelfTyAlias { .. } | Res::Err => {
                 return Ok(Signature { text: path_to_string(self), defs: vec![], refs: vec![] });
             }
             Res::Def(DefKind::AssocConst | DefKind::Variant | DefKind::Ctor(..), _) => {
@@ -616,7 +622,7 @@ impl<'hir> Sig for hir::Generics<'hir> {
             if let hir::GenericParamKind::Const { .. } = param.kind {
                 param_text.push_str("const ");
             }
-            param_text.push_str(&param.name.ident().as_str());
+            param_text.push_str(param.name.ident().as_str());
             defs.push(SigElement {
                 id: id_from_hir_id(param.hir_id, scx),
                 start: offset + text.len(),
@@ -628,31 +634,6 @@ impl<'hir> Sig for hir::Generics<'hir> {
                 if let Some(default) = default {
                     param_text.push_str(" = ");
                     param_text.push_str(&id_to_string(&scx.tcx.hir(), default.hir_id));
-                }
-            }
-            if !param.bounds.is_empty() {
-                param_text.push_str(": ");
-                match param.kind {
-                    hir::GenericParamKind::Lifetime { .. } => {
-                        let bounds = param
-                            .bounds
-                            .iter()
-                            .map(|bound| match bound {
-                                hir::GenericBound::Outlives(lt) => lt.name.ident().to_string(),
-                                _ => panic!(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(" + ");
-                        param_text.push_str(&bounds);
-                        // FIXME add lifetime bounds refs.
-                    }
-                    hir::GenericParamKind::Type { .. } => {
-                        param_text.push_str(&bounds_to_string(param.bounds));
-                        // FIXME descend properly into bounds.
-                    }
-                    hir::GenericParamKind::Const { .. } => {
-                        // Const generics cannot contain bounds.
-                    }
                 }
             }
             text.push_str(&param_text);
@@ -712,7 +693,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push('}');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Tuple(fields, id) => {
+            hir::VariantData::Tuple(fields, id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,
@@ -731,7 +712,7 @@ impl<'hir> Sig for hir::Variant<'hir> {
                 text.push(')');
                 Ok(Signature { text, defs, refs })
             }
-            hir::VariantData::Unit(id) => {
+            hir::VariantData::Unit(id, _) => {
                 let name_def = SigElement {
                     id: id_from_hir_id(id, scx),
                     start: offset,
@@ -783,7 +764,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 }
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];
@@ -799,7 +780,7 @@ impl<'hir> Sig for hir::ForeignItem<'hir> {
                 let mut text = "type ".to_owned();
                 let name = self.ident.to_string();
                 let defs = vec![SigElement {
-                    id: id_from_def_id(self.def_id.to_def_id()),
+                    id: id_from_def_id(self.owner_id.to_def_id()),
                     start: offset + text.len(),
                     end: offset + text.len() + name.len(),
                 }];

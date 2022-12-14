@@ -1,8 +1,7 @@
 // run-rustfix
-
 #![warn(clippy::or_fun_call)]
 #![allow(dead_code)]
-#![allow(clippy::unnecessary_wraps)]
+#![allow(clippy::borrow_as_ptr, clippy::uninlined_format_args, clippy::unnecessary_wraps)]
 
 use std::collections::BTreeMap;
 use std::collections::HashMap;
@@ -90,8 +89,8 @@ fn or_fun_call() {
     let mut btree_vec = BTreeMap::<u64, Vec<i32>>::new();
     btree_vec.entry(42).or_insert(vec![]);
 
-    let stringy = Some(String::from(""));
-    let _ = stringy.unwrap_or("".to_owned());
+    let stringy = Some(String::new());
+    let _ = stringy.unwrap_or(String::new());
 
     let opt = Some(1);
     let hello = "Hello";
@@ -155,16 +154,101 @@ fn f() -> Option<()> {
 }
 
 mod issue6675 {
+    unsafe fn ptr_to_ref<'a, T>(p: *const T) -> &'a T {
+        #[allow(unused)]
+        let x = vec![0; 1000]; // future-proofing, make this function expensive.
+        &*p
+    }
+
     unsafe fn foo() {
-        let mut s = "test".to_owned();
-        None.unwrap_or(s.as_mut_vec());
+        let s = "test".to_owned();
+        let s = &s as *const _;
+        None.unwrap_or(ptr_to_ref(s));
     }
 
     fn bar() {
-        let mut s = "test".to_owned();
-        None.unwrap_or(unsafe { s.as_mut_vec() });
+        let s = "test".to_owned();
+        let s = &s as *const _;
+        None.unwrap_or(unsafe { ptr_to_ref(s) });
         #[rustfmt::skip]
-        None.unwrap_or( unsafe { s.as_mut_vec() }    );
+        None.unwrap_or( unsafe { ptr_to_ref(s) }    );
+    }
+}
+
+mod issue8239 {
+    fn more_than_max_suggestion_highest_lines_0() {
+        let frames = Vec::new();
+        frames
+            .iter()
+            .map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    fn more_to_max_suggestion_highest_lines_1() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        iter.map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                let _ = "";
+                let _ = "";
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    fn equal_to_max_suggestion_highest_lines() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        iter.map(|f: &String| f.to_lowercase())
+            .reduce(|mut acc, f| {
+                let _ = "";
+                acc.push_str(&f);
+                acc
+            })
+            .unwrap_or(String::new());
+    }
+
+    fn less_than_max_suggestion_highest_lines() {
+        let frames = Vec::new();
+        let iter = frames.iter();
+        let map = iter.map(|f: &String| f.to_lowercase());
+        map.reduce(|mut acc, f| {
+            acc.push_str(&f);
+            acc
+        })
+        .unwrap_or(String::new());
+    }
+}
+
+mod issue9608 {
+    fn sig_drop() {
+        enum X {
+            X(std::fs::File),
+            Y(u32),
+        }
+
+        let _ = None.unwrap_or(X::Y(0));
+    }
+}
+
+mod issue8993 {
+    fn g() -> i32 {
+        3
+    }
+
+    fn f(n: i32) -> i32 {
+        n
+    }
+
+    fn test_map_or() {
+        let _ = Some(4).map_or(g(), |v| v);
+        let _ = Some(4).map_or(g(), f);
+        let _ = Some(4).map_or(0, f);
     }
 }
 

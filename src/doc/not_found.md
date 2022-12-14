@@ -84,7 +84,7 @@ function on_submit(event) {
     if (form['from'].value === 'duckduckgo') {
         document.location.href = form.action + '?q=' + encodeURIComponent(q + ' site:doc.rust-lang.org');
     } else if (form['from'].value === 'library') {
-        document.location.href = 'std/index.html?search=' + encodeURIComponent(q);
+        document.location.href = '/std/index.html?search=' + encodeURIComponent(q);
     }
 }
 

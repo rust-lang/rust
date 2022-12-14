@@ -12,7 +12,6 @@ use core::intrinsics;
 use core::mem;
 use core::ptr;
 use core::sync::atomic::{AtomicBool, Ordering};
-use libc::{self, c_int};
 use unwind as uw;
 
 // This matches the layout of std::type_info in C++
@@ -48,8 +47,13 @@ static EXCEPTION_TYPE_INFO: TypeInfo = TypeInfo {
     name: b"rust_panic\0".as_ptr(),
 };
 
+// NOTE(nbdd0121): The `canary` field will be part of stable ABI after `c_unwind` stabilization.
+#[repr(C)]
 struct Exception {
-    // This is necessary because C++ code can capture our execption with
+    // See `gcc.rs` on why this is present. We already have a static here so just use it.
+    canary: *const TypeInfo,
+
+    // This is necessary because C++ code can capture our exception with
     // std::exception_ptr and rethrow it multiple times, possibly even in
     // another thread.
     caught: AtomicBool,
@@ -71,27 +75,38 @@ pub unsafe fn cleanup(ptr: *mut u8) -> Box<dyn Any + Send> {
     let catch_data = &*(ptr as *mut CatchData);
 
     let adjusted_ptr = __cxa_begin_catch(catch_data.ptr as *mut libc::c_void) as *mut Exception;
-    let out = if catch_data.is_rust_panic {
-        let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
-        if was_caught {
-            // Since cleanup() isn't allowed to panic, we just abort instead.
-            intrinsics::abort();
-        }
-        (*adjusted_ptr).data.take().unwrap()
-    } else {
+    if !catch_data.is_rust_panic {
         super::__rust_foreign_exception();
-    };
+    }
+
+    let canary = ptr::addr_of!((*adjusted_ptr).canary).read();
+    if !ptr::eq(canary, &EXCEPTION_TYPE_INFO) {
+        super::__rust_foreign_exception();
+    }
+
+    let was_caught = (*adjusted_ptr).caught.swap(true, Ordering::SeqCst);
+    if was_caught {
+        // Since cleanup() isn't allowed to panic, we just abort instead.
+        intrinsics::abort();
+    }
+    let out = (*adjusted_ptr).data.take().unwrap();
     __cxa_end_catch();
     out
 }
 
 pub unsafe fn panic(data: Box<dyn Any + Send>) -> u32 {
-    let sz = mem::size_of_val(&data);
-    let exception = __cxa_allocate_exception(sz) as *mut Exception;
+    let exception = __cxa_allocate_exception(mem::size_of::<Exception>()) as *mut Exception;
     if exception.is_null() {
         return uw::_URC_FATAL_PHASE1_ERROR as u32;
     }
-    ptr::write(exception, Exception { caught: AtomicBool::new(false), data: Some(data) });
+    ptr::write(
+        exception,
+        Exception {
+            canary: &EXCEPTION_TYPE_INFO,
+            caught: AtomicBool::new(false),
+            data: Some(data),
+        },
+    );
     __cxa_throw(exception as *mut _, &EXCEPTION_TYPE_INFO, exception_cleanup);
 }
 
@@ -105,17 +120,6 @@ extern "C" fn exception_cleanup(ptr: *mut libc::c_void) -> *mut libc::c_void {
     }
 }
 
-#[lang = "eh_personality"]
-unsafe extern "C" fn rust_eh_personality(
-    version: c_int,
-    actions: uw::_Unwind_Action,
-    exception_class: uw::_Unwind_Exception_Class,
-    exception_object: *mut uw::_Unwind_Exception,
-    context: *mut uw::_Unwind_Context,
-) -> uw::_Unwind_Reason_Code {
-    __gxx_personality_v0(version, actions, exception_class, exception_object, context)
-}
-
 extern "C" {
     fn __cxa_allocate_exception(thrown_size: libc::size_t) -> *mut libc::c_void;
     fn __cxa_begin_catch(thrown_exception: *mut libc::c_void) -> *mut libc::c_void;
@@ -125,11 +129,4 @@ extern "C" {
         tinfo: *const TypeInfo,
         dest: extern "C" fn(*mut libc::c_void) -> *mut libc::c_void,
     ) -> !;
-    fn __gxx_personality_v0(
-        version: c_int,
-        actions: uw::_Unwind_Action,
-        exception_class: uw::_Unwind_Exception_Class,
-        exception_object: *mut uw::_Unwind_Exception,
-        context: *mut uw::_Unwind_Context,
-    ) -> uw::_Unwind_Reason_Code;
 }

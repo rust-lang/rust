@@ -4,13 +4,13 @@ warning: trait-associated function `from_iter` will become ambiguous in Rust 202
 LL |     <Vec<i32>>::from_iter(None);
    |     ^^^^^^^^^^^^^^^^^^^^^ help: disambiguate the associated function: `<Vec<i32> as MyTrait<_>>::from_iter`
    |
+   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
+   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
 note: the lint level is defined here
   --> $DIR/generic-type-collision.rs:4:9
    |
 LL | #![warn(rust_2021_prelude_collisions)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/prelude.html>
 
 warning: 1 warning emitted
 

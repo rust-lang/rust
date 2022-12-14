@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 all:
 	# check that #[cfg_attr(..., ignore)] does the right thing.

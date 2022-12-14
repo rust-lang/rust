@@ -2,7 +2,7 @@ use super::{abi, error};
 use crate::{
     ffi::{CStr, CString, OsStr, OsString},
     fmt,
-    io::{self, IoSlice, IoSliceMut, SeekFrom},
+    io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom},
     mem::MaybeUninit,
     os::raw::{c_int, c_short},
     os::solid::ffi::OsStrExt,
@@ -77,6 +77,9 @@ pub struct OpenOptions {
     custom_flags: i32,
 }
 
+#[derive(Copy, Clone, Debug, Default)]
+pub struct FileTimes {}
+
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub struct FilePermissions(c_short);
 
@@ -126,6 +129,11 @@ impl FilePermissions {
     }
 }
 
+impl FileTimes {
+    pub fn set_accessed(&mut self, _t: SystemTime) {}
+    pub fn set_modified(&mut self, _t: SystemTime) {}
+}
+
 impl FileType {
     pub fn is_dir(&self) -> bool {
         self.is(abi::S_IFDIR)
@@ -167,15 +175,19 @@ impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
 
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
-        unsafe {
-            let mut out_dirent = MaybeUninit::uninit();
-            error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
+        let entry = unsafe {
+            let mut out_entry = MaybeUninit::uninit();
+            match error::SolidError::err_if_negative(abi::SOLID_FS_ReadDir(
                 self.inner.dirp,
-                out_dirent.as_mut_ptr(),
-            ))
-            .ok()?;
-            Some(Ok(DirEntry { entry: out_dirent.assume_init(), inner: Arc::clone(&self.inner) }))
-        }
+                out_entry.as_mut_ptr(),
+            )) {
+                Ok(_) => out_entry.assume_init(),
+                Err(e) if e.as_raw() == abi::SOLID_ERR_NOTFOUND => return None,
+                Err(e) => return Some(Err(e.as_io_error())),
+            }
+        };
+
+        (entry.d_name[0] != 0).then(|| Ok(DirEntry { entry, inner: Arc::clone(&self.inner) }))
     }
 }
 
@@ -289,7 +301,26 @@ impl OpenOptions {
 }
 
 fn cstr(path: &Path) -> io::Result<CString> {
-    Ok(CString::new(path.as_os_str().as_bytes())?)
+    let path = path.as_os_str().as_bytes();
+
+    if !path.starts_with(br"\") {
+        // Relative paths aren't supported
+        return Err(crate::io::const_io_error!(
+            crate::io::ErrorKind::Unsupported,
+            "relative path is not supported on this platform",
+        ));
+    }
+
+    // Apply the thread-safety wrapper
+    const SAFE_PREFIX: &[u8] = br"\TS";
+    let wrapped_path = [SAFE_PREFIX, &path, &[0]].concat();
+
+    CString::from_vec_with_nul(wrapped_path).map_err(|_| {
+        crate::io::const_io_error!(
+            io::ErrorKind::InvalidInput,
+            "path provided contains a nul byte",
+        )
+    })
 }
 
 impl File {
@@ -336,6 +367,30 @@ impl File {
             ))
             .map_err(|e| e.as_io_error())?;
             Ok(out_num_bytes.assume_init())
+        }
+    }
+
+    pub fn read_buf(&self, mut cursor: BorrowedCursor<'_>) -> io::Result<()> {
+        unsafe {
+            let len = cursor.capacity();
+            let mut out_num_bytes = MaybeUninit::uninit();
+            error::SolidError::err_if_negative(abi::SOLID_FS_Read(
+                self.fd.raw(),
+                cursor.as_mut().as_mut_ptr() as *mut u8,
+                len,
+                out_num_bytes.as_mut_ptr(),
+            ))
+            .map_err(|e| e.as_io_error())?;
+
+            // Safety: `out_num_bytes` is filled by the successful call to
+            // `SOLID_FS_Read`
+            let num_bytes_read = out_num_bytes.assume_init();
+
+            // Safety: `num_bytes_read` bytes were written to the unfilled
+            // portion of the buffer
+            cursor.advance(num_bytes_read);
+
+            Ok(())
         }
     }
 
@@ -407,6 +462,10 @@ impl File {
     pub fn set_permissions(&self, _perm: FilePermissions) -> io::Result<()> {
         unsupported()
     }
+
+    pub fn set_times(&self, _times: FileTimes) -> io::Result<()> {
+        unsupported()
+    }
 }
 
 impl Drop for File {
@@ -435,7 +494,7 @@ impl fmt::Debug for File {
 
 pub fn unlink(p: &Path) -> io::Result<()> {
     if stat(p)?.file_type().is_dir() {
-        Err(io::Error::new_const(io::ErrorKind::IsADirectory, &"is a directory"))
+        Err(io::const_io_error!(io::ErrorKind::IsADirectory, "is a directory"))
     } else {
         error::SolidError::err_if_negative(unsafe { abi::SOLID_FS_Unlink(cstr(p)?.as_ptr()) })
             .map_err(|e| e.as_io_error())?;
@@ -465,7 +524,7 @@ pub fn rmdir(p: &Path) -> io::Result<()> {
             .map_err(|e| e.as_io_error())?;
         Ok(())
     } else {
-        Err(io::Error::new_const(io::ErrorKind::NotADirectory, &"not a directory"))
+        Err(io::const_io_error!(io::ErrorKind::NotADirectory, "not a directory"))
     }
 }
 
@@ -485,7 +544,7 @@ pub fn remove_dir_all(path: &Path) -> io::Result<()> {
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
     // This target doesn't support symlinks
     stat(p)?;
-    Err(io::Error::new_const(io::ErrorKind::InvalidInput, &"not a symbolic link"))
+    Err(io::const_io_error!(io::ErrorKind::InvalidInput, "not a symbolic link"))
 }
 
 pub fn symlink(_original: &Path, _link: &Path) -> io::Result<()> {

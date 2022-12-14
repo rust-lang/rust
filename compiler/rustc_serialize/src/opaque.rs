@@ -1,7 +1,5 @@
-use crate::leb128::{self, max_leb128_len};
-use crate::serialize::{self, Encoder as _};
-use std::borrow::Cow;
-use std::convert::TryInto;
+use crate::leb128::{self, largest_max_leb128_len};
+use crate::serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fs::File;
 use std::io::{self, Write};
 use std::mem::MaybeUninit;
@@ -12,30 +10,28 @@ use std::ptr;
 // Encoder
 // -----------------------------------------------------------------------------
 
-pub type EncodeResult = Result<(), !>;
-
-pub struct Encoder {
+pub struct MemEncoder {
     pub data: Vec<u8>,
 }
 
-impl Encoder {
-    pub fn new(data: Vec<u8>) -> Encoder {
-        Encoder { data }
-    }
-
-    pub fn into_inner(self) -> Vec<u8> {
-        self.data
+impl MemEncoder {
+    pub fn new() -> MemEncoder {
+        MemEncoder { data: vec![] }
     }
 
     #[inline]
     pub fn position(&self) -> usize {
         self.data.len()
     }
+
+    pub fn finish(self) -> Vec<u8> {
+        self.data
+    }
 }
 
 macro_rules! write_leb128 {
     ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
+        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
         let old_len = $enc.data.len();
 
         if MAX_ENCODED_LEN > $enc.data.capacity() - old_len {
@@ -50,135 +46,134 @@ macro_rules! write_leb128 {
             let encoded = leb128::$fun(buf, $value);
             $enc.data.set_len(old_len + encoded.len());
         }
-
-        Ok(())
     }};
 }
 
-impl serialize::Encoder for Encoder {
-    type Error = !;
+/// A byte that [cannot occur in UTF8 sequences][utf8]. Used to mark the end of a string.
+/// This way we can skip validation and still be relatively sure that deserialization
+/// did not desynchronize.
+///
+/// [utf8]: https://en.wikipedia.org/w/index.php?title=UTF-8&oldid=1058865525#Codepage_layout
+const STR_SENTINEL: u8 = 0xC1;
 
+impl Encoder for MemEncoder {
     #[inline]
-    fn emit_unit(&mut self) -> EncodeResult {
-        Ok(())
-    }
-
-    #[inline]
-    fn emit_usize(&mut self, v: usize) -> EncodeResult {
+    fn emit_usize(&mut self, v: usize) {
         write_leb128!(self, v, usize, write_usize_leb128)
     }
 
     #[inline]
-    fn emit_u128(&mut self, v: u128) -> EncodeResult {
-        write_leb128!(self, v, u128, write_u128_leb128)
+    fn emit_u128(&mut self, v: u128) {
+        write_leb128!(self, v, u128, write_u128_leb128);
     }
 
     #[inline]
-    fn emit_u64(&mut self, v: u64) -> EncodeResult {
-        write_leb128!(self, v, u64, write_u64_leb128)
+    fn emit_u64(&mut self, v: u64) {
+        write_leb128!(self, v, u64, write_u64_leb128);
     }
 
     #[inline]
-    fn emit_u32(&mut self, v: u32) -> EncodeResult {
-        write_leb128!(self, v, u32, write_u32_leb128)
+    fn emit_u32(&mut self, v: u32) {
+        write_leb128!(self, v, u32, write_u32_leb128);
     }
 
     #[inline]
-    fn emit_u16(&mut self, v: u16) -> EncodeResult {
-        write_leb128!(self, v, u16, write_u16_leb128)
+    fn emit_u16(&mut self, v: u16) {
+        self.data.extend_from_slice(&v.to_le_bytes());
     }
 
     #[inline]
-    fn emit_u8(&mut self, v: u8) -> EncodeResult {
+    fn emit_u8(&mut self, v: u8) {
         self.data.push(v);
-        Ok(())
     }
 
     #[inline]
-    fn emit_isize(&mut self, v: isize) -> EncodeResult {
+    fn emit_isize(&mut self, v: isize) {
         write_leb128!(self, v, isize, write_isize_leb128)
     }
 
     #[inline]
-    fn emit_i128(&mut self, v: i128) -> EncodeResult {
+    fn emit_i128(&mut self, v: i128) {
         write_leb128!(self, v, i128, write_i128_leb128)
     }
 
     #[inline]
-    fn emit_i64(&mut self, v: i64) -> EncodeResult {
+    fn emit_i64(&mut self, v: i64) {
         write_leb128!(self, v, i64, write_i64_leb128)
     }
 
     #[inline]
-    fn emit_i32(&mut self, v: i32) -> EncodeResult {
+    fn emit_i32(&mut self, v: i32) {
         write_leb128!(self, v, i32, write_i32_leb128)
     }
 
     #[inline]
-    fn emit_i16(&mut self, v: i16) -> EncodeResult {
-        write_leb128!(self, v, i16, write_i16_leb128)
+    fn emit_i16(&mut self, v: i16) {
+        self.data.extend_from_slice(&v.to_le_bytes());
     }
 
     #[inline]
-    fn emit_i8(&mut self, v: i8) -> EncodeResult {
-        let as_u8: u8 = unsafe { std::mem::transmute(v) };
-        self.emit_u8(as_u8)
+    fn emit_i8(&mut self, v: i8) {
+        self.emit_u8(v as u8);
     }
 
     #[inline]
-    fn emit_bool(&mut self, v: bool) -> EncodeResult {
-        self.emit_u8(if v { 1 } else { 0 })
+    fn emit_bool(&mut self, v: bool) {
+        self.emit_u8(if v { 1 } else { 0 });
     }
 
     #[inline]
-    fn emit_f64(&mut self, v: f64) -> EncodeResult {
+    fn emit_f64(&mut self, v: f64) {
         let as_u64: u64 = v.to_bits();
-        self.emit_u64(as_u64)
+        self.emit_u64(as_u64);
     }
 
     #[inline]
-    fn emit_f32(&mut self, v: f32) -> EncodeResult {
+    fn emit_f32(&mut self, v: f32) {
         let as_u32: u32 = v.to_bits();
-        self.emit_u32(as_u32)
+        self.emit_u32(as_u32);
     }
 
     #[inline]
-    fn emit_char(&mut self, v: char) -> EncodeResult {
-        self.emit_u32(v as u32)
+    fn emit_char(&mut self, v: char) {
+        self.emit_u32(v as u32);
     }
 
     #[inline]
-    fn emit_str(&mut self, v: &str) -> EncodeResult {
-        self.emit_usize(v.len())?;
-        self.emit_raw_bytes(v.as_bytes())
+    fn emit_str(&mut self, v: &str) {
+        self.emit_usize(v.len());
+        self.emit_raw_bytes(v.as_bytes());
+        self.emit_u8(STR_SENTINEL);
     }
 
     #[inline]
-    fn emit_raw_bytes(&mut self, s: &[u8]) -> EncodeResult {
+    fn emit_raw_bytes(&mut self, s: &[u8]) {
         self.data.extend_from_slice(s);
-        Ok(())
     }
 }
 
-pub type FileEncodeResult = Result<(), io::Error>;
+pub type FileEncodeResult = Result<usize, io::Error>;
 
-// `FileEncoder` encodes data to file via fixed-size buffer.
-//
-// When encoding large amounts of data to a file, using `FileEncoder` may be
-// preferred over using `Encoder` to encode to a `Vec`, and then writing the
-// `Vec` to file, as the latter uses as much memory as there is encoded data,
-// while the former uses the fixed amount of memory allocated to the buffer.
-// `FileEncoder` also has the advantage of not needing to reallocate as data
-// is appended to it, but the disadvantage of requiring more error handling,
-// which has some runtime overhead.
+/// `FileEncoder` encodes data to file via fixed-size buffer.
+///
+/// When encoding large amounts of data to a file, using `FileEncoder` may be
+/// preferred over using `MemEncoder` to encode to a `Vec`, and then writing the
+/// `Vec` to file, as the latter uses as much memory as there is encoded data,
+/// while the former uses the fixed amount of memory allocated to the buffer.
+/// `FileEncoder` also has the advantage of not needing to reallocate as data
+/// is appended to it, but the disadvantage of requiring more error handling,
+/// which has some runtime overhead.
 pub struct FileEncoder {
-    // The input buffer. For adequate performance, we need more control over
-    // buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
-    // buffer access API, we can use it, and remove `buf` and `buffered`.
+    /// The input buffer. For adequate performance, we need more control over
+    /// buffering than `BufWriter` offers. If `BufWriter` ever offers a raw
+    /// buffer access API, we can use it, and remove `buf` and `buffered`.
     buf: Box<[MaybeUninit<u8>]>,
     buffered: usize,
     flushed: usize,
     file: File,
+    // This is used to implement delayed error handling, as described in the
+    // comment on `trait Encoder`.
+    res: Result<(), io::Error>,
 }
 
 impl FileEncoder {
@@ -190,16 +185,24 @@ impl FileEncoder {
     pub fn with_capacity<P: AsRef<Path>>(path: P, capacity: usize) -> io::Result<Self> {
         // Require capacity at least as large as the largest LEB128 encoding
         // here, so that we don't have to check or handle this on every write.
-        assert!(capacity >= max_leb128_len());
+        assert!(capacity >= largest_max_leb128_len());
 
         // Require capacity small enough such that some capacity checks can be
         // done using guaranteed non-overflowing add rather than sub, which
         // shaves an instruction off those code paths (on x86 at least).
-        assert!(capacity <= usize::MAX - max_leb128_len());
+        assert!(capacity <= usize::MAX - largest_max_leb128_len());
 
-        let file = File::create(path)?;
+        // Create the file for reading and writing, because some encoders do both
+        // (e.g. the metadata encoder when -Zmeta-stats is enabled)
+        let file = File::options().read(true).write(true).create(true).truncate(true).open(path)?;
 
-        Ok(FileEncoder { buf: Box::new_uninit_slice(capacity), buffered: 0, flushed: 0, file })
+        Ok(FileEncoder {
+            buf: Box::new_uninit_slice(capacity),
+            buffered: 0,
+            flushed: 0,
+            file,
+            res: Ok(()),
+        })
     }
 
     #[inline]
@@ -209,7 +212,7 @@ impl FileEncoder {
         self.flushed + self.buffered
     }
 
-    pub fn flush(&mut self) -> FileEncodeResult {
+    pub fn flush(&mut self) {
         // This is basically a copy of `BufWriter::flush`. If `BufWriter` ever
         // offers a raw buffer access API, we can use it, and remove this.
 
@@ -264,6 +267,12 @@ impl FileEncoder {
             }
         }
 
+        // If we've already had an error, do nothing. It'll get reported after
+        // `finish` is called.
+        if self.res.is_err() {
+            return;
+        }
+
         let mut guard = BufGuard::new(
             unsafe { MaybeUninit::slice_assume_init_mut(&mut self.buf[..self.buffered]) },
             &mut self.buffered,
@@ -273,18 +282,24 @@ impl FileEncoder {
         while !guard.done() {
             match self.file.write(guard.remaining()) {
                 Ok(0) => {
-                    return Err(io::Error::new(
+                    self.res = Err(io::Error::new(
                         io::ErrorKind::WriteZero,
                         "failed to write the buffered data",
                     ));
+                    return;
                 }
                 Ok(n) => guard.consume(n),
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-                Err(e) => return Err(e),
+                Err(e) => {
+                    self.res = Err(e);
+                    return;
+                }
             }
         }
+    }
 
-        Ok(())
+    pub fn file(&self) -> &File {
+        &self.file
     }
 
     #[inline]
@@ -293,14 +308,14 @@ impl FileEncoder {
     }
 
     #[inline]
-    fn write_one(&mut self, value: u8) -> FileEncodeResult {
+    fn write_one(&mut self, value: u8) {
         // We ensure this during `FileEncoder` construction.
         debug_assert!(self.capacity() >= 1);
 
         let mut buffered = self.buffered;
 
         if std::intrinsics::unlikely(buffered >= self.capacity()) {
-            self.flush()?;
+            self.flush();
             buffered = 0;
         }
 
@@ -311,12 +326,10 @@ impl FileEncoder {
         }
 
         self.buffered = buffered + 1;
-
-        Ok(())
     }
 
     #[inline]
-    fn write_all(&mut self, buf: &[u8]) -> FileEncodeResult {
+    fn write_all(&mut self, buf: &[u8]) {
         let capacity = self.capacity();
         let buf_len = buf.len();
 
@@ -324,7 +337,7 @@ impl FileEncoder {
             let mut buffered = self.buffered;
 
             if std::intrinsics::unlikely(buf_len > capacity - buffered) {
-                self.flush()?;
+                self.flush();
                 buffered = 0;
             }
 
@@ -337,16 +350,20 @@ impl FileEncoder {
             }
 
             self.buffered = buffered + buf_len;
-
-            Ok(())
         } else {
-            self.write_all_unbuffered(buf)
+            self.write_all_unbuffered(buf);
         }
     }
 
-    fn write_all_unbuffered(&mut self, mut buf: &[u8]) -> FileEncodeResult {
+    fn write_all_unbuffered(&mut self, mut buf: &[u8]) {
+        // If we've already had an error, do nothing. It'll get reported after
+        // `finish` is called.
+        if self.res.is_err() {
+            return;
+        }
+
         if self.buffered > 0 {
-            self.flush()?;
+            self.flush();
         }
 
         // This is basically a copy of `Write::write_all` but also updates our
@@ -356,33 +373,44 @@ impl FileEncoder {
         while !buf.is_empty() {
             match self.file.write(buf) {
                 Ok(0) => {
-                    return Err(io::Error::new(
+                    self.res = Err(io::Error::new(
                         io::ErrorKind::WriteZero,
                         "failed to write whole buffer",
                     ));
+                    return;
                 }
                 Ok(n) => {
                     buf = &buf[n..];
                     self.flushed += n;
                 }
                 Err(ref e) if e.kind() == io::ErrorKind::Interrupted => {}
-                Err(e) => return Err(e),
+                Err(e) => {
+                    self.res = Err(e);
+                    return;
+                }
             }
         }
+    }
 
-        Ok(())
+    pub fn finish(mut self) -> Result<usize, io::Error> {
+        self.flush();
+
+        let res = std::mem::replace(&mut self.res, Ok(()));
+        res.map(|()| self.position())
     }
 }
 
 impl Drop for FileEncoder {
     fn drop(&mut self) {
+        // Likely to be a no-op, because `finish` should have been called and
+        // it also flushes. But do it just in case.
         let _result = self.flush();
     }
 }
 
 macro_rules! file_encoder_write_leb128 {
     ($enc:expr, $value:expr, $int_ty:ty, $fun:ident) => {{
-        const MAX_ENCODED_LEN: usize = max_leb128_len!($int_ty);
+        const MAX_ENCODED_LEN: usize = $crate::leb128::max_leb128_len::<$int_ty>();
 
         // We ensure this during `FileEncoder` construction.
         debug_assert!($enc.capacity() >= MAX_ENCODED_LEN);
@@ -391,7 +419,7 @@ macro_rules! file_encoder_write_leb128 {
 
         // This can't overflow. See assertion in `FileEncoder::with_capacity`.
         if std::intrinsics::unlikely(buffered + MAX_ENCODED_LEN > $enc.capacity()) {
-            $enc.flush()?;
+            $enc.flush();
             buffered = 0;
         }
 
@@ -403,111 +431,102 @@ macro_rules! file_encoder_write_leb128 {
 
         let encoded = leb128::$fun(buf, $value);
         $enc.buffered = buffered + encoded.len();
-
-        Ok(())
     }};
 }
 
-impl serialize::Encoder for FileEncoder {
-    type Error = io::Error;
-
+impl Encoder for FileEncoder {
     #[inline]
-    fn emit_unit(&mut self) -> FileEncodeResult {
-        Ok(())
-    }
-
-    #[inline]
-    fn emit_usize(&mut self, v: usize) -> FileEncodeResult {
+    fn emit_usize(&mut self, v: usize) {
         file_encoder_write_leb128!(self, v, usize, write_usize_leb128)
     }
 
     #[inline]
-    fn emit_u128(&mut self, v: u128) -> FileEncodeResult {
+    fn emit_u128(&mut self, v: u128) {
         file_encoder_write_leb128!(self, v, u128, write_u128_leb128)
     }
 
     #[inline]
-    fn emit_u64(&mut self, v: u64) -> FileEncodeResult {
+    fn emit_u64(&mut self, v: u64) {
         file_encoder_write_leb128!(self, v, u64, write_u64_leb128)
     }
 
     #[inline]
-    fn emit_u32(&mut self, v: u32) -> FileEncodeResult {
+    fn emit_u32(&mut self, v: u32) {
         file_encoder_write_leb128!(self, v, u32, write_u32_leb128)
     }
 
     #[inline]
-    fn emit_u16(&mut self, v: u16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, u16, write_u16_leb128)
+    fn emit_u16(&mut self, v: u16) {
+        self.write_all(&v.to_le_bytes());
     }
 
     #[inline]
-    fn emit_u8(&mut self, v: u8) -> FileEncodeResult {
-        self.write_one(v)
+    fn emit_u8(&mut self, v: u8) {
+        self.write_one(v);
     }
 
     #[inline]
-    fn emit_isize(&mut self, v: isize) -> FileEncodeResult {
+    fn emit_isize(&mut self, v: isize) {
         file_encoder_write_leb128!(self, v, isize, write_isize_leb128)
     }
 
     #[inline]
-    fn emit_i128(&mut self, v: i128) -> FileEncodeResult {
+    fn emit_i128(&mut self, v: i128) {
         file_encoder_write_leb128!(self, v, i128, write_i128_leb128)
     }
 
     #[inline]
-    fn emit_i64(&mut self, v: i64) -> FileEncodeResult {
+    fn emit_i64(&mut self, v: i64) {
         file_encoder_write_leb128!(self, v, i64, write_i64_leb128)
     }
 
     #[inline]
-    fn emit_i32(&mut self, v: i32) -> FileEncodeResult {
+    fn emit_i32(&mut self, v: i32) {
         file_encoder_write_leb128!(self, v, i32, write_i32_leb128)
     }
 
     #[inline]
-    fn emit_i16(&mut self, v: i16) -> FileEncodeResult {
-        file_encoder_write_leb128!(self, v, i16, write_i16_leb128)
+    fn emit_i16(&mut self, v: i16) {
+        self.write_all(&v.to_le_bytes());
     }
 
     #[inline]
-    fn emit_i8(&mut self, v: i8) -> FileEncodeResult {
-        let as_u8: u8 = unsafe { std::mem::transmute(v) };
-        self.emit_u8(as_u8)
+    fn emit_i8(&mut self, v: i8) {
+        self.emit_u8(v as u8);
     }
 
     #[inline]
-    fn emit_bool(&mut self, v: bool) -> FileEncodeResult {
-        self.emit_u8(if v { 1 } else { 0 })
+    fn emit_bool(&mut self, v: bool) {
+        self.emit_u8(if v { 1 } else { 0 });
     }
 
     #[inline]
-    fn emit_f64(&mut self, v: f64) -> FileEncodeResult {
+    fn emit_f64(&mut self, v: f64) {
         let as_u64: u64 = v.to_bits();
-        self.emit_u64(as_u64)
+        self.emit_u64(as_u64);
     }
 
     #[inline]
-    fn emit_f32(&mut self, v: f32) -> FileEncodeResult {
+    fn emit_f32(&mut self, v: f32) {
         let as_u32: u32 = v.to_bits();
-        self.emit_u32(as_u32)
+        self.emit_u32(as_u32);
     }
 
     #[inline]
-    fn emit_char(&mut self, v: char) -> FileEncodeResult {
-        self.emit_u32(v as u32)
+    fn emit_char(&mut self, v: char) {
+        self.emit_u32(v as u32);
     }
 
     #[inline]
-    fn emit_str(&mut self, v: &str) -> FileEncodeResult {
-        self.emit_usize(v.len())?;
-        self.emit_raw_bytes(v.as_bytes())
+    fn emit_str(&mut self, v: &str) {
+        self.emit_usize(v.len());
+        self.emit_raw_bytes(v.as_bytes());
+        self.emit_u8(STR_SENTINEL);
     }
 
     #[inline]
-    fn emit_raw_bytes(&mut self, s: &[u8]) -> FileEncodeResult {
-        self.write_all(s)
+    fn emit_raw_bytes(&mut self, s: &[u8]) {
+        self.write_all(s);
     }
 }
 
@@ -515,15 +534,15 @@ impl serialize::Encoder for FileEncoder {
 // Decoder
 // -----------------------------------------------------------------------------
 
-pub struct Decoder<'a> {
+pub struct MemDecoder<'a> {
     pub data: &'a [u8],
     position: usize,
 }
 
-impl<'a> Decoder<'a> {
+impl<'a> MemDecoder<'a> {
     #[inline]
-    pub fn new(data: &'a [u8], position: usize) -> Decoder<'a> {
-        Decoder { data, position }
+    pub fn new(data: &'a [u8], position: usize) -> MemDecoder<'a> {
+        MemDecoder { data, position }
     }
 
     #[inline]
@@ -540,138 +559,124 @@ impl<'a> Decoder<'a> {
     pub fn advance(&mut self, bytes: usize) {
         self.position += bytes;
     }
-
-    #[inline]
-    pub fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
-        let start = self.position;
-        self.position += bytes;
-        &self.data[start..self.position]
-    }
 }
 
 macro_rules! read_leb128 {
-    ($dec:expr, $fun:ident) => {{
-        let (value, bytes_read) = leb128::$fun(&$dec.data[$dec.position..]);
-        $dec.position += bytes_read;
-        Ok(value)
-    }};
+    ($dec:expr, $fun:ident) => {{ leb128::$fun($dec.data, &mut $dec.position) }};
 }
 
-impl<'a> serialize::Decoder for Decoder<'a> {
-    type Error = String;
-
+impl<'a> Decoder for MemDecoder<'a> {
     #[inline]
-    fn read_nil(&mut self) -> Result<(), Self::Error> {
-        Ok(())
-    }
-
-    #[inline]
-    fn read_u128(&mut self) -> Result<u128, Self::Error> {
+    fn read_u128(&mut self) -> u128 {
         read_leb128!(self, read_u128_leb128)
     }
 
     #[inline]
-    fn read_u64(&mut self) -> Result<u64, Self::Error> {
+    fn read_u64(&mut self) -> u64 {
         read_leb128!(self, read_u64_leb128)
     }
 
     #[inline]
-    fn read_u32(&mut self) -> Result<u32, Self::Error> {
+    fn read_u32(&mut self) -> u32 {
         read_leb128!(self, read_u32_leb128)
     }
 
     #[inline]
-    fn read_u16(&mut self) -> Result<u16, Self::Error> {
-        read_leb128!(self, read_u16_leb128)
+    fn read_u16(&mut self) -> u16 {
+        let bytes = [self.data[self.position], self.data[self.position + 1]];
+        let value = u16::from_le_bytes(bytes);
+        self.position += 2;
+        value
     }
 
     #[inline]
-    fn read_u8(&mut self) -> Result<u8, Self::Error> {
+    fn read_u8(&mut self) -> u8 {
         let value = self.data[self.position];
         self.position += 1;
-        Ok(value)
+        value
     }
 
     #[inline]
-    fn read_usize(&mut self) -> Result<usize, Self::Error> {
+    fn read_usize(&mut self) -> usize {
         read_leb128!(self, read_usize_leb128)
     }
 
     #[inline]
-    fn read_i128(&mut self) -> Result<i128, Self::Error> {
+    fn read_i128(&mut self) -> i128 {
         read_leb128!(self, read_i128_leb128)
     }
 
     #[inline]
-    fn read_i64(&mut self) -> Result<i64, Self::Error> {
+    fn read_i64(&mut self) -> i64 {
         read_leb128!(self, read_i64_leb128)
     }
 
     #[inline]
-    fn read_i32(&mut self) -> Result<i32, Self::Error> {
+    fn read_i32(&mut self) -> i32 {
         read_leb128!(self, read_i32_leb128)
     }
 
     #[inline]
-    fn read_i16(&mut self) -> Result<i16, Self::Error> {
-        read_leb128!(self, read_i16_leb128)
+    fn read_i16(&mut self) -> i16 {
+        let bytes = [self.data[self.position], self.data[self.position + 1]];
+        let value = i16::from_le_bytes(bytes);
+        self.position += 2;
+        value
     }
 
     #[inline]
-    fn read_i8(&mut self) -> Result<i8, Self::Error> {
-        let as_u8 = self.data[self.position];
+    fn read_i8(&mut self) -> i8 {
+        let value = self.data[self.position];
         self.position += 1;
-        unsafe { Ok(::std::mem::transmute(as_u8)) }
+        value as i8
     }
 
     #[inline]
-    fn read_isize(&mut self) -> Result<isize, Self::Error> {
+    fn read_isize(&mut self) -> isize {
         read_leb128!(self, read_isize_leb128)
     }
 
     #[inline]
-    fn read_bool(&mut self) -> Result<bool, Self::Error> {
-        let value = self.read_u8()?;
-        Ok(value != 0)
+    fn read_bool(&mut self) -> bool {
+        let value = self.read_u8();
+        value != 0
     }
 
     #[inline]
-    fn read_f64(&mut self) -> Result<f64, Self::Error> {
-        let bits = self.read_u64()?;
-        Ok(f64::from_bits(bits))
+    fn read_f64(&mut self) -> f64 {
+        let bits = self.read_u64();
+        f64::from_bits(bits)
     }
 
     #[inline]
-    fn read_f32(&mut self) -> Result<f32, Self::Error> {
-        let bits = self.read_u32()?;
-        Ok(f32::from_bits(bits))
+    fn read_f32(&mut self) -> f32 {
+        let bits = self.read_u32();
+        f32::from_bits(bits)
     }
 
     #[inline]
-    fn read_char(&mut self) -> Result<char, Self::Error> {
-        let bits = self.read_u32()?;
-        Ok(std::char::from_u32(bits).unwrap())
+    fn read_char(&mut self) -> char {
+        let bits = self.read_u32();
+        std::char::from_u32(bits).unwrap()
     }
 
     #[inline]
-    fn read_str(&mut self) -> Result<Cow<'_, str>, Self::Error> {
-        let len = self.read_usize()?;
-        let s = std::str::from_utf8(&self.data[self.position..self.position + len]).unwrap();
-        self.position += len;
-        Ok(Cow::Borrowed(s))
+    fn read_str(&mut self) -> &'a str {
+        let len = self.read_usize();
+        let sentinel = self.data[self.position + len];
+        assert!(sentinel == STR_SENTINEL);
+        let s = unsafe {
+            std::str::from_utf8_unchecked(&self.data[self.position..self.position + len])
+        };
+        self.position += len + 1;
+        s
     }
 
     #[inline]
-    fn error(&mut self, err: &str) -> Self::Error {
-        err.to_string()
-    }
-
-    #[inline]
-    fn read_raw_bytes_into(&mut self, s: &mut [u8]) -> Result<(), String> {
+    fn read_raw_bytes(&mut self, bytes: usize) -> &'a [u8] {
         let start = self.position;
-        self.position += s.len();
-        s.copy_from_slice(&self.data[start..self.position]);
-        Ok(())
+        self.position += bytes;
+        &self.data[start..self.position]
     }
 }
 
@@ -682,67 +687,65 @@ impl<'a> serialize::Decoder for Decoder<'a> {
 
 // Specialize encoding byte slices. This specialization also applies to encoding `Vec<u8>`s, etc.,
 // since the default implementations call `encode` on their slices internally.
-impl serialize::Encodable<Encoder> for [u8] {
-    fn encode(&self, e: &mut Encoder) -> EncodeResult {
-        serialize::Encoder::emit_usize(e, self.len())?;
-        e.emit_raw_bytes(self)
+impl Encodable<MemEncoder> for [u8] {
+    fn encode(&self, e: &mut MemEncoder) {
+        Encoder::emit_usize(e, self.len());
+        e.emit_raw_bytes(self);
     }
 }
 
-impl serialize::Encodable<FileEncoder> for [u8] {
-    fn encode(&self, e: &mut FileEncoder) -> FileEncodeResult {
-        serialize::Encoder::emit_usize(e, self.len())?;
-        e.emit_raw_bytes(self)
+impl Encodable<FileEncoder> for [u8] {
+    fn encode(&self, e: &mut FileEncoder) {
+        Encoder::emit_usize(e, self.len());
+        e.emit_raw_bytes(self);
     }
 }
 
 // Specialize decoding `Vec<u8>`. This specialization also applies to decoding `Box<[u8]>`s, etc.,
 // since the default implementations call `decode` to produce a `Vec<u8>` internally.
-impl<'a> serialize::Decodable<Decoder<'a>> for Vec<u8> {
-    fn decode(d: &mut Decoder<'a>) -> Result<Self, String> {
-        let len = serialize::Decoder::read_usize(d)?;
-        Ok(d.read_raw_bytes(len).to_owned())
+impl<'a> Decodable<MemDecoder<'a>> for Vec<u8> {
+    fn decode(d: &mut MemDecoder<'a>) -> Self {
+        let len = Decoder::read_usize(d);
+        d.read_raw_bytes(len).to_owned()
     }
 }
 
-// An integer that will always encode to 8 bytes.
+/// An integer that will always encode to 8 bytes.
 pub struct IntEncodedWithFixedSize(pub u64);
 
 impl IntEncodedWithFixedSize {
     pub const ENCODED_SIZE: usize = 8;
 }
 
-impl serialize::Encodable<Encoder> for IntEncodedWithFixedSize {
+impl Encodable<MemEncoder> for IntEncodedWithFixedSize {
     #[inline]
-    fn encode(&self, e: &mut Encoder) -> EncodeResult {
+    fn encode(&self, e: &mut MemEncoder) {
         let _start_pos = e.position();
-        e.emit_raw_bytes(&self.0.to_le_bytes())?;
+        e.emit_raw_bytes(&self.0.to_le_bytes());
         let _end_pos = e.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-        Ok(())
     }
 }
 
-impl serialize::Encodable<FileEncoder> for IntEncodedWithFixedSize {
+impl Encodable<FileEncoder> for IntEncodedWithFixedSize {
     #[inline]
-    fn encode(&self, e: &mut FileEncoder) -> FileEncodeResult {
+    fn encode(&self, e: &mut FileEncoder) {
         let _start_pos = e.position();
-        e.emit_raw_bytes(&self.0.to_le_bytes())?;
+        e.emit_raw_bytes(&self.0.to_le_bytes());
         let _end_pos = e.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
-        Ok(())
     }
 }
 
-impl<'a> serialize::Decodable<Decoder<'a>> for IntEncodedWithFixedSize {
+impl<'a> Decodable<MemDecoder<'a>> for IntEncodedWithFixedSize {
     #[inline]
-    fn decode(decoder: &mut Decoder<'a>) -> Result<IntEncodedWithFixedSize, String> {
+    fn decode(decoder: &mut MemDecoder<'a>) -> IntEncodedWithFixedSize {
         let _start_pos = decoder.position();
         let bytes = decoder.read_raw_bytes(IntEncodedWithFixedSize::ENCODED_SIZE);
+        let value = u64::from_le_bytes(bytes.try_into().unwrap());
         let _end_pos = decoder.position();
         debug_assert_eq!((_end_pos - _start_pos), IntEncodedWithFixedSize::ENCODED_SIZE);
 
-        let value = u64::from_le_bytes(bytes.try_into().unwrap());
-        Ok(IntEncodedWithFixedSize(value))
+        IntEncodedWithFixedSize(value)
     }
 }

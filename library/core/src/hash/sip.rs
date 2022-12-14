@@ -14,10 +14,7 @@ use crate::ptr;
 ///
 /// See: <https://131002.net/siphash>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[rustc_deprecated(
-    since = "1.13.0",
-    reason = "use `std::collections::hash_map::DefaultHasher` instead"
-)]
+#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 #[doc(hidden)]
 pub struct SipHasher13 {
@@ -28,10 +25,7 @@ pub struct SipHasher13 {
 ///
 /// See: <https://131002.net/siphash/>
 #[unstable(feature = "hashmap_internals", issue = "none")]
-#[rustc_deprecated(
-    since = "1.13.0",
-    reason = "use `std::collections::hash_map::DefaultHasher` instead"
-)]
+#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 struct SipHasher24 {
     hasher: Hasher<Sip24Rounds>,
@@ -44,16 +38,13 @@ struct SipHasher24 {
 /// SipHash is a general-purpose hashing function: it runs at a good
 /// speed (competitive with Spooky and City) and permits strong _keyed_
 /// hashing. This lets you key your hash tables from a strong RNG, such as
-/// [`rand::os::OsRng`](https://doc.rust-lang.org/rand/rand/os/struct.OsRng.html).
+/// [`rand::os::OsRng`](https://docs.rs/rand/latest/rand/rngs/struct.OsRng.html).
 ///
 /// Although the SipHash algorithm is considered to be generally strong,
 /// it is not intended for cryptographic purposes. As such, all
 /// cryptographic uses of this implementation are _strongly discouraged_.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(
-    since = "1.13.0",
-    reason = "use `std::collections::hash_map::DefaultHasher` instead"
-)]
+#[deprecated(since = "1.13.0", note = "use `std::collections::hash_map::DefaultHasher` instead")]
 #[derive(Debug, Clone, Default)]
 pub struct SipHasher(SipHasher24);
 
@@ -105,7 +96,8 @@ macro_rules! compress {
 /// `copy_nonoverlapping` to let the compiler generate the most efficient way
 /// to load it from a possibly unaligned address.
 ///
-/// Unsafe because: unchecked indexing at i..i+size_of(int_ty)
+/// Safety: this performs unchecked indexing of `$buf` at
+/// `$i..$i+size_of::<$int_ty>()`, so that must be in-bounds.
 macro_rules! load_int_le {
     ($buf:expr, $i:expr, $int_ty:ident) => {{
         debug_assert!($i + mem::size_of::<$int_ty>() <= $buf.len());
@@ -123,9 +115,10 @@ macro_rules! load_int_le {
 /// `copy_nonoverlapping` calls that occur (via `load_int_le!`) all have fixed
 /// sizes and avoid calling `memcpy`, which is good for speed.
 ///
-/// Unsafe because: unchecked indexing at start..start+len
+/// Safety: this performs unchecked indexing of `buf` at `start..start+len`, so
+/// that must be in-bounds.
 #[inline]
-unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
+const unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
     debug_assert!(len < 8);
     let mut i = 0; // current byte index (from LSB) in the output u64
     let mut out = 0;
@@ -145,7 +138,8 @@ unsafe fn u8to64_le(buf: &[u8], start: usize, len: usize) -> u64 {
         out |= (unsafe { *buf.get_unchecked(start + i) } as u64) << (i * 8);
         i += 1;
     }
-    debug_assert_eq!(i, len);
+    //FIXME(fee1-dead): use debug_assert_eq
+    debug_assert!(i == len);
     out
 }
 
@@ -153,24 +147,26 @@ impl SipHasher {
     /// Creates a new `SipHasher` with the two initial keys set to 0.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.13.0",
-        reason = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
+    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
-    pub fn new() -> SipHasher {
+    pub const fn new() -> SipHasher {
         SipHasher::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher` that is keyed off the provided keys.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.13.0",
-        reason = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
+    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
     #[must_use]
-    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
+    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher {
         SipHasher(SipHasher24 { hasher: Hasher::new_with_keys(key0, key1) })
     }
 }
@@ -179,29 +175,31 @@ impl SipHasher13 {
     /// Creates a new `SipHasher13` with the two initial keys set to 0.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.13.0",
-        reason = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
-    pub fn new() -> SipHasher13 {
+    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+    pub const fn new() -> SipHasher13 {
         SipHasher13::new_with_keys(0, 0)
     }
 
     /// Creates a `SipHasher13` that is keyed off the provided keys.
     #[inline]
     #[unstable(feature = "hashmap_internals", issue = "none")]
-    #[rustc_deprecated(
+    #[deprecated(
         since = "1.13.0",
-        reason = "use `std::collections::hash_map::DefaultHasher` instead"
+        note = "use `std::collections::hash_map::DefaultHasher` instead"
     )]
-    pub fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
+    #[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+    pub const fn new_with_keys(key0: u64, key1: u64) -> SipHasher13 {
         SipHasher13 { hasher: Hasher::new_with_keys(key0, key1) }
     }
 }
 
 impl<S: Sip> Hasher<S> {
     #[inline]
-    fn new_with_keys(key0: u64, key1: u64) -> Hasher<S> {
+    const fn new_with_keys(key0: u64, key1: u64) -> Hasher<S> {
         let mut state = Hasher {
             k0: key0,
             k1: key1,
@@ -216,7 +214,7 @@ impl<S: Sip> Hasher<S> {
     }
 
     #[inline]
-    fn reset(&mut self) {
+    const fn reset(&mut self) {
         self.length = 0;
         self.state.v0 = self.k0 ^ 0x736f6d6570736575;
         self.state.v1 = self.k1 ^ 0x646f72616e646f6d;
@@ -227,10 +225,16 @@ impl<S: Sip> Hasher<S> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl super::Hasher for SipHasher {
+#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+impl const super::Hasher for SipHasher {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.0.hasher.write(msg)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.0.hasher.write_str(s);
     }
 
     #[inline]
@@ -240,10 +244,16 @@ impl super::Hasher for SipHasher {
 }
 
 #[unstable(feature = "hashmap_internals", issue = "none")]
-impl super::Hasher for SipHasher13 {
+#[rustc_const_unstable(feature = "const_hash", issue = "104061")]
+impl const super::Hasher for SipHasher13 {
     #[inline]
     fn write(&mut self, msg: &[u8]) {
         self.hasher.write(msg)
+    }
+
+    #[inline]
+    fn write_str(&mut self, s: &str) {
+        self.hasher.write_str(s);
     }
 
     #[inline]
@@ -252,7 +262,7 @@ impl super::Hasher for SipHasher13 {
     }
 }
 
-impl<S: Sip> super::Hasher for Hasher<S> {
+impl<S: ~const Sip> const super::Hasher for Hasher<S> {
     // Note: no integer hashing methods (`write_u*`, `write_i*`) are defined
     // for this type. We could add them, copy the `short_write` implementation
     // in librustc_data_structures/sip128.rs, and add `write_u*`/`write_i*`
@@ -308,6 +318,14 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     }
 
     #[inline]
+    fn write_str(&mut self, s: &str) {
+        // This hasher works byte-wise, and `0xFF` cannot show up in a `str`,
+        // so just hashing the one extra byte is enough to be prefix-free.
+        self.write(s.as_bytes());
+        self.write_u8(0xFF);
+    }
+
+    #[inline]
     fn finish(&self) -> u64 {
         let mut state = self.state;
 
@@ -324,7 +342,7 @@ impl<S: Sip> super::Hasher for Hasher<S> {
     }
 }
 
-impl<S: Sip> Clone for Hasher<S> {
+impl<S: Sip> const Clone for Hasher<S> {
     #[inline]
     fn clone(&self) -> Hasher<S> {
         Hasher {
@@ -348,6 +366,7 @@ impl<S: Sip> Default for Hasher<S> {
 }
 
 #[doc(hidden)]
+#[const_trait]
 trait Sip {
     fn c_rounds(_: &mut State);
     fn d_rounds(_: &mut State);
@@ -356,7 +375,7 @@ trait Sip {
 #[derive(Debug, Clone, Default)]
 struct Sip13Rounds;
 
-impl Sip for Sip13Rounds {
+impl const Sip for Sip13Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
         compress!(state);
@@ -373,7 +392,7 @@ impl Sip for Sip13Rounds {
 #[derive(Debug, Clone, Default)]
 struct Sip24Rounds;
 
-impl Sip for Sip24Rounds {
+impl const Sip for Sip24Rounds {
     #[inline]
     fn c_rounds(state: &mut State) {
         compress!(state);

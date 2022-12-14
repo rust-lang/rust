@@ -104,3 +104,13 @@ mod issue4546 {
         pub fn to_other_thingy(self: Pin<&Self>) {}
     }
 }
+
+mod issue_8480_8513 {
+    struct Cat(String);
+
+    impl Cat {
+        fn is_animal(&mut self) -> bool {
+            todo!();
+        }
+    }
+}

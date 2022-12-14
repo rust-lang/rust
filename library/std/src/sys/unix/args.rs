@@ -68,7 +68,8 @@ impl DoubleEndedIterator for Args {
     target_os = "l4re",
     target_os = "fuchsia",
     target_os = "redox",
-    target_os = "vxworks"
+    target_os = "vxworks",
+    target_os = "horizon"
 ))]
 mod imp {
     use super::Args;
@@ -150,7 +151,7 @@ mod imp {
     }
 }
 
-#[cfg(any(target_os = "macos", target_os = "ios"))]
+#[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
 mod imp {
     use super::Args;
     use crate::ffi::CStr;
@@ -191,7 +192,7 @@ mod imp {
     // for i in (0..[args count])
     //      res.push([args objectAtIndex:i])
     // res
-    #[cfg(target_os = "ios")]
+    #[cfg(any(target_os = "ios", target_os = "watchos"))]
     pub fn args() -> Args {
         use crate::ffi::OsString;
         use crate::mem;

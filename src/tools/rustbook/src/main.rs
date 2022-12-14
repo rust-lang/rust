@@ -3,54 +3,57 @@ use clap::crate_version;
 use std::env;
 use std::path::{Path, PathBuf};
 
-use clap::{App, AppSettings, ArgMatches, SubCommand};
+use clap::{arg, ArgMatches, Command};
 
 use mdbook::errors::Result as Result3;
 use mdbook::MDBook;
 
 fn main() {
+    let crate_version = format!("v{}", crate_version!());
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("warn")).init();
-    let d_message = "-d, --dest-dir=[dest-dir]
-'The output directory for your book{n}(Defaults to ./book when omitted)'";
-    let dir_message = "[dir]
-'A directory for your book{n}(Defaults to Current Directory when omitted)'";
+    let d_arg = arg!(-d --"dest-dir" <DEST_DIR>
+"The output directory for your book\n(Defaults to ./book when omitted)")
+    .required(false);
+    let dir_arg = arg!([dir]
+"A directory for your book\n(Defaults to Current Directory when omitted)");
 
-    let matches = App::new("rustbook")
+    let matches = Command::new("rustbook")
         .about("Build a book with mdBook")
         .author("Steve Klabnik <steve@steveklabnik.com>")
-        .version(&*format!("v{}", crate_version!()))
-        .setting(AppSettings::SubcommandRequired)
+        .version(&*crate_version)
+        .subcommand_required(true)
+        .arg_required_else_help(true)
         .subcommand(
-            SubCommand::with_name("build")
+            Command::new("build")
                 .about("Build the book from the markdown files")
-                .arg_from_usage(d_message)
-                .arg_from_usage(dir_message),
+                .arg(d_arg)
+                .arg(&dir_arg),
         )
         .subcommand(
-            SubCommand::with_name("test")
+            Command::new("test")
                 .about("Tests that a book's Rust code samples compile")
-                .arg_from_usage(dir_message),
+                .arg(dir_arg),
         )
         .get_matches();
 
     // Check which subcomamnd the user ran...
     match matches.subcommand() {
-        ("build", Some(sub_matches)) => {
+        Some(("build", sub_matches)) => {
             if let Err(e) = build(sub_matches) {
                 handle_error(e);
             }
         }
-        ("test", Some(sub_matches)) => {
+        Some(("test", sub_matches)) => {
             if let Err(e) = test(sub_matches) {
                 handle_error(e);
             }
         }
-        (_, _) => unreachable!(),
+        _ => unreachable!(),
     };
 }
 
 // Build command implementation
-pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
+pub fn build(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
     let mut book = load_book(&book_dir)?;
 
@@ -66,13 +69,13 @@ pub fn build(args: &ArgMatches<'_>) -> Result3<()> {
     Ok(())
 }
 
-fn test(args: &ArgMatches<'_>) -> Result3<()> {
+fn test(args: &ArgMatches) -> Result3<()> {
     let book_dir = get_book_dir(args);
     let mut book = load_book(&book_dir)?;
     book.test(vec![])
 }
 
-fn get_book_dir(args: &ArgMatches<'_>) -> PathBuf {
+fn get_book_dir(args: &ArgMatches) -> PathBuf {
     if let Some(dir) = args.value_of("dir") {
         // Check if path is relative from current dir, or absolute...
         let p = Path::new(dir);

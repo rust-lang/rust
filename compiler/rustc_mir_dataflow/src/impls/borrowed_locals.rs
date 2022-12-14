@@ -1,6 +1,6 @@
 use super::*;
 
-use crate::{AnalysisDomain, GenKill, GenKillAnalysis};
+use crate::{AnalysisDomain, CallReturnPlaces, GenKill, GenKillAnalysis};
 use rustc_middle::mir::visit::Visitor;
 use rustc_middle::mir::*;
 
@@ -10,42 +10,15 @@ use rustc_middle::mir::*;
 /// At present, this is used as a very limited form of alias analysis. For example,
 /// `MaybeBorrowedLocals` is used to compute which locals are live during a yield expression for
 /// immovable generators.
-pub struct MaybeBorrowedLocals {
-    ignore_borrow_on_drop: bool,
-}
+pub struct MaybeBorrowedLocals;
 
 impl MaybeBorrowedLocals {
-    /// A dataflow analysis that records whether a pointer or reference exists that may alias the
-    /// given local.
-    pub fn all_borrows() -> Self {
-        MaybeBorrowedLocals { ignore_borrow_on_drop: false }
-    }
-}
-
-impl MaybeBorrowedLocals {
-    /// During dataflow analysis, ignore the borrow that may occur when a place is dropped.
-    ///
-    /// Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut self` as a
-    /// parameter. In the general case, a drop impl could launder that reference into the
-    /// surrounding environment through a raw pointer, thus creating a valid `*mut` pointing to the
-    /// dropped local. We are not yet willing to declare this particular case UB, so we must treat
-    /// all dropped locals as mutably borrowed for now. See discussion on [#61069].
-    ///
-    /// In some contexts, we know that this borrow will never occur. For example, during
-    /// const-eval, custom drop glue cannot be run. Code that calls this should document the
-    /// assumptions that justify ignoring `Drop` terminators in this way.
-    ///
-    /// [#61069]: https://github.com/rust-lang/rust/pull/61069
-    pub fn unsound_ignore_borrow_on_drop(self) -> Self {
-        MaybeBorrowedLocals { ignore_borrow_on_drop: true, ..self }
-    }
-
     fn transfer_function<'a, T>(&'a self, trans: &'a mut T) -> TransferFunction<'a, T> {
-        TransferFunction { trans, ignore_borrow_on_drop: self.ignore_borrow_on_drop }
+        TransferFunction { trans }
     }
 }
 
-impl AnalysisDomain<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     type Domain = BitSet<Local>;
     const NAME: &'static str = "maybe_borrowed_locals";
 
@@ -59,7 +32,7 @@ impl AnalysisDomain<'tcx> for MaybeBorrowedLocals {
     }
 }
 
-impl GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
+impl<'tcx> GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
     type Idx = Local;
 
     fn statement_effect(
@@ -84,9 +57,7 @@ impl GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
         &self,
         _trans: &mut impl GenKill<Self::Idx>,
         _block: mir::BasicBlock,
-        _func: &mir::Operand<'tcx>,
-        _args: &[mir::Operand<'tcx>],
-        _dest_place: mir::Place<'tcx>,
+        _return_places: CallReturnPlaces<'_, 'tcx>,
     ) {
     }
 }
@@ -94,10 +65,9 @@ impl GenKillAnalysis<'tcx> for MaybeBorrowedLocals {
 /// A `Visitor` that defines the transfer function for `MaybeBorrowedLocals`.
 struct TransferFunction<'a, T> {
     trans: &'a mut T,
-    ignore_borrow_on_drop: bool,
 }
 
-impl<T> Visitor<'tcx> for TransferFunction<'a, T>
+impl<'tcx, T> Visitor<'tcx> for TransferFunction<'_, T>
 where
     T: GenKill<Local>,
 {
@@ -115,13 +85,7 @@ where
         self.super_rvalue(rvalue, location);
 
         match rvalue {
-            mir::Rvalue::AddressOf(_mt, borrowed_place) => {
-                if !borrowed_place.is_indirect() {
-                    self.trans.gen(borrowed_place.local);
-                }
-            }
-
-            mir::Rvalue::Ref(_, _kind, borrowed_place) => {
+            mir::Rvalue::AddressOf(_, borrowed_place) | mir::Rvalue::Ref(_, _, borrowed_place) => {
                 if !borrowed_place.is_indirect() {
                     self.trans.gen(borrowed_place.local);
                 }
@@ -138,7 +102,8 @@ where
             | mir::Rvalue::NullaryOp(..)
             | mir::Rvalue::UnaryOp(..)
             | mir::Rvalue::Discriminant(..)
-            | mir::Rvalue::Aggregate(..) => {}
+            | mir::Rvalue::Aggregate(..)
+            | mir::Rvalue::CopyForDeref(..) => {}
         }
     }
 
@@ -148,10 +113,15 @@ where
         match terminator.kind {
             mir::TerminatorKind::Drop { place: dropped_place, .. }
             | mir::TerminatorKind::DropAndReplace { place: dropped_place, .. } => {
-                // See documentation for `unsound_ignore_borrow_on_drop` for an explanation.
-                if !self.ignore_borrow_on_drop {
-                    self.trans.gen(dropped_place.local);
-                }
+                // Drop terminators may call custom drop glue (`Drop::drop`), which takes `&mut
+                // self` as a parameter. In the general case, a drop impl could launder that
+                // reference into the surrounding environment through a raw pointer, thus creating
+                // a valid `*mut` pointing to the dropped local. We are not yet willing to declare
+                // this particular case UB, so we must treat all dropped locals as mutably borrowed
+                // for now. See discussion on [#61069].
+                //
+                // [#61069]: https://github.com/rust-lang/rust/pull/61069
+                self.trans.gen(dropped_place.local);
             }
 
             TerminatorKind::Abort
@@ -169,4 +139,24 @@ where
             | TerminatorKind::Yield { .. } => {}
         }
     }
+}
+
+/// The set of locals that are borrowed at some point in the MIR body.
+pub fn borrowed_locals(body: &Body<'_>) -> BitSet<Local> {
+    struct Borrowed(BitSet<Local>);
+
+    impl GenKill<Local> for Borrowed {
+        #[inline]
+        fn gen(&mut self, elem: Local) {
+            self.0.gen(elem)
+        }
+        #[inline]
+        fn kill(&mut self, _: Local) {
+            // Ignore borrow invalidation.
+        }
+    }
+
+    let mut borrowed = Borrowed(BitSet::new_empty(body.local_decls.len()));
+    TransferFunction { trans: &mut borrowed }.visit_body(body);
+    borrowed.0
 }

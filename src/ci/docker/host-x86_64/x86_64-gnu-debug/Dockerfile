@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   xz-utils \
   lld \
-  clang
+  clang \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -31,11 +32,13 @@ RUN sh /scripts/sccache.sh
 ENV RUSTBUILD_FORCE_CLANG_BASED_TESTS 1
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
 
+# llvm.use-linker conflicts with downloading CI LLVM
+ENV NO_DOWNLOAD_CI_LLVM 1
+
 ENV RUST_CONFIGURE_ARGS \
       --build=x86_64-unknown-linux-gnu \
       --enable-debug \
       --enable-lld \
-      --enable-optimize \
       --set llvm.use-linker=lld \
       --set target.x86_64-unknown-linux-gnu.linker=clang \
       --set target.x86_64-unknown-linux-gnu.cc=clang \

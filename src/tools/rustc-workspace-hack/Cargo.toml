@@ -24,6 +24,7 @@ features = [
   "errhandlingapi",
   "evntrace",
   "fibersapi",
+  "handleapi",
   "in6addr",
   "inaddr",
   "ioapiset",
@@ -61,6 +62,7 @@ features = [
   "wincrypt",
   "windef",
   "winioctl",
+  "winnt",
   "winreg",
   "winsock2",
   "winuser",
@@ -70,21 +72,20 @@ features = [
 ]
 
 [dependencies]
-bstr = { version = "0.2.13", features = ["default"] }
-byteorder = { version = "1", features = ['default', 'std'] }
+bstr = { version = "0.2.17", features = ["default"] }
+clap = { version = "3.1.1", features = ["derive", "clap_derive"]}
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
-crossbeam-utils = { version = "0.8.0", features = ["nightly"] }
-libc = { version = "0.2.79", features = ["align"] }
+# Ensure `extra_traits` of libc, which is used transitively by Cargo.
+libc = { version = "0.2", features = ["extra_traits"] }
 # Ensure default features of libz-sys, which are disabled in some scenarios.
 libz-sys = { version = "1.1.2" }
-proc-macro2 = { version = "1", features = ["default"] }
-quote = { version = "1", features = ["default"] }
-rand_core_0_5 = { package = "rand_core", version = "0.5.1", features = ["getrandom", "alloc", "std"] }
-serde = { version = "1.0.82", features = ['derive'] }
+# Ensure default features of regex, which are disabled in some scenarios.
+regex = { version = "1.5.6" }
 serde_json = { version = "1.0.31", features = ["raw_value", "unbounded_depth"] }
-smallvec = { version = "1.6.1", features = ['union', 'may_dangle'] }
-syn = { version = "1", features = ['fold', 'full', 'extra-traits', 'visit', 'visit-mut'] }
+syn = { version = "1", features = ['full', 'visit'] }
 url = { version = "2.0", features = ['serde'] }
+# Ensure default features of rand, which are disabled in some scenarios.
+rand = { version = "0.8.5" }
 
 [target.'cfg(not(windows))'.dependencies]
 openssl = { version = "0.10.35", optional = true }

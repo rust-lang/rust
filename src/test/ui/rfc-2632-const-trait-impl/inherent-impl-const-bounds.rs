@@ -1,10 +1,11 @@
 // check-pass
 #![feature(const_trait_impl)]
-#![feature(const_fn_trait_bound)]
 
 struct S;
 
+#[const_trait]
 trait A {}
+#[const_trait]
 trait B {}
 
 impl const A for S {}

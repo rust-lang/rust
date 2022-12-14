@@ -26,7 +26,7 @@ fn h() -> u32 {
     0
 }
 
-struct S {}
+struct S;
 
 impl S {
     #[must_use]

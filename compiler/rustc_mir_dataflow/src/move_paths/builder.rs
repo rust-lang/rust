@@ -1,10 +1,11 @@
+use crate::move_paths::FxHashMap;
+use crate::un_derefer::UnDerefer;
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir::tcx::RvalueInitializationState;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, TyCtxt};
 use smallvec::{smallvec, SmallVec};
 
-use std::iter;
 use std::mem;
 
 use super::abs_domain::Lift;
@@ -20,6 +21,7 @@ struct MoveDataBuilder<'a, 'tcx> {
     param_env: ty::ParamEnv<'tcx>,
     data: MoveData<'tcx>,
     errors: Vec<(Place<'tcx>, MoveError<'tcx>)>,
+    un_derefer: UnDerefer<'tcx>,
 }
 
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
@@ -33,6 +35,7 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             tcx,
             param_env,
             errors: Vec::new(),
+            un_derefer: UnDerefer { tcx: tcx, derefer_sidetable: Default::default() },
             data: MoveData {
                 moves: IndexVec::new(),
                 loc_map: LocationMap::new(body),
@@ -95,6 +98,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     ///
     /// Maybe we should have separate "borrowck" and "moveck" modes.
     fn move_path_for(&mut self, place: Place<'tcx>) -> Result<MovePathIndex, MoveError<'tcx>> {
+        if let Some(new_place) = self.builder.un_derefer.derefer(place.as_ref(), self.builder.body)
+        {
+            return self.move_path_for(new_place);
+        }
+
         debug!("lookup({:?})", place);
         let mut base = self.builder.data.rev_lookup.locals[place.local];
 
@@ -199,10 +207,13 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     }
 }
 
+pub type MoveDat<'tcx> = Result<
+    (FxHashMap<Local, Place<'tcx>>, MoveData<'tcx>),
+    (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>),
+>;
+
 impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
-    fn finalize(
-        self,
-    ) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+    fn finalize(self) -> MoveDat<'tcx> {
         debug!("{}", {
             debug!("moves for {:?}:", self.body.span);
             for (j, mo) in self.data.moves.iter_enumerated() {
@@ -215,7 +226,11 @@ impl<'a, 'tcx> MoveDataBuilder<'a, 'tcx> {
             "done dumping moves"
         });
 
-        if !self.errors.is_empty() { Err((self.data, self.errors)) } else { Ok(self.data) }
+        if self.errors.is_empty() {
+            Ok((self.un_derefer.derefer_sidetable, self.data))
+        } else {
+            Err((self.data, self.errors))
+        }
     }
 }
 
@@ -223,12 +238,12 @@ pub(super) fn gather_moves<'tcx>(
     body: &Body<'tcx>,
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
-) -> Result<MoveData<'tcx>, (MoveData<'tcx>, Vec<(Place<'tcx>, MoveError<'tcx>)>)> {
+) -> MoveDat<'tcx> {
     let mut builder = MoveDataBuilder::new(body, tcx, param_env);
 
     builder.gather_args();
 
-    for (bb, block) in body.basic_blocks().iter_enumerated() {
+    for (bb, block) in body.basic_blocks.iter_enumerated() {
         for (i, stmt) in block.statements.iter().enumerate() {
             let source = Location { block: bb, statement_index: i };
             builder.gather_statement(source, stmt);
@@ -277,6 +292,12 @@ struct Gatherer<'b, 'a, 'tcx> {
 impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
     fn gather_statement(&mut self, stmt: &Statement<'tcx>) {
         match &stmt.kind {
+            StatementKind::Assign(box (place, Rvalue::CopyForDeref(reffed))) => {
+                assert!(place.projection.is_empty());
+                if self.builder.body.local_decls[place.local].is_deref_temp() {
+                    self.builder.un_derefer.derefer_sidetable.insert(place.local, *reffed);
+                }
+            }
             StatementKind::Assign(box (place, rval)) => {
                 self.create_move_path(*place);
                 if let RvalueInitializationState::Shallow = rval.initialization_state() {
@@ -293,30 +314,23 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             StatementKind::FakeRead(box (_, place)) => {
                 self.create_move_path(*place);
             }
-            StatementKind::LlvmInlineAsm(ref asm) => {
-                for (output, kind) in iter::zip(&*asm.outputs, &asm.asm.outputs) {
-                    if !kind.is_indirect {
-                        self.gather_init(output.as_ref(), InitKind::Deep);
-                    }
-                }
-                for (_, input) in asm.inputs.iter() {
-                    self.gather_operand(input);
-                }
-            }
             StatementKind::StorageLive(_) => {}
             StatementKind::StorageDead(local) => {
-                self.gather_move(Place::from(*local));
+                // DerefTemp locals (results of CopyForDeref) don't actually move anything.
+                if !self.builder.un_derefer.derefer_sidetable.contains_key(&local) {
+                    self.gather_move(Place::from(*local));
+                }
             }
-            StatementKind::SetDiscriminant { .. } => {
+            StatementKind::SetDiscriminant { .. } | StatementKind::Deinit(..) => {
                 span_bug!(
                     stmt.source_info.span,
-                    "SetDiscriminant should not exist during borrowck"
+                    "SetDiscriminant/Deinit should not exist during borrowck"
                 );
             }
             StatementKind::Retag { .. }
             | StatementKind::AscribeUserType(..)
             | StatementKind::Coverage(..)
-            | StatementKind::CopyNonOverlapping(..)
+            | StatementKind::Intrinsic(..)
             | StatementKind::Nop => {}
         }
     }
@@ -339,23 +353,12 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                     self.gather_operand(operand);
                 }
             }
+            Rvalue::CopyForDeref(..) => unreachable!(),
             Rvalue::Ref(..)
             | Rvalue::AddressOf(..)
             | Rvalue::Discriminant(..)
             | Rvalue::Len(..)
-            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _)
-            | Rvalue::NullaryOp(NullOp::Box, _) => {
-                // This returns an rvalue with uninitialized contents. We can't
-                // move out of it here because it is an rvalue - assignments always
-                // completely initialize their place.
-                //
-                // However, this does not matter - MIR building is careful to
-                // only emit a shallow free for the partially-initialized
-                // temporary.
-                //
-                // In any case, if we want to fix this, we have to register a
-                // special move and change the `statement_effect` functions.
-            }
+            | Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
         }
     }
 
@@ -399,7 +402,8 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
             TerminatorKind::Call {
                 ref func,
                 ref args,
-                ref destination,
+                destination,
+                target,
                 cleanup: _,
                 from_hir_call: _,
                 fn_span: _,
@@ -408,7 +412,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 for arg in args {
                     self.gather_operand(arg);
                 }
-                if let Some((destination, _bb)) = *destination {
+                if let Some(_bb) = target {
                     self.create_move_path(destination);
                     self.gather_init(destination.as_ref(), InitKind::NonPanicPathOnly);
                 }
@@ -419,6 +423,7 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
                 options: _,
                 line_spans: _,
                 destination: _,
+                cleanup: _,
             } => {
                 for op in operands {
                     match *op {
@@ -460,6 +465,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_move(&mut self, place: Place<'tcx>) {
         debug!("gather_move({:?}, {:?})", self.loc, place);
+        if let Some(new_place) = self.builder.un_derefer.derefer(place.as_ref(), self.builder.body)
+        {
+            self.gather_move(new_place);
+            return;
+        }
 
         if let [ref base @ .., ProjectionElem::Subslice { from, to, from_end: false }] =
             **place.projection
@@ -514,6 +524,11 @@ impl<'b, 'a, 'tcx> Gatherer<'b, 'a, 'tcx> {
 
     fn gather_init(&mut self, place: PlaceRef<'tcx>, kind: InitKind) {
         debug!("gather_init({:?}, {:?})", self.loc, place);
+
+        if let Some(new_place) = self.builder.un_derefer.derefer(place, self.builder.body) {
+            self.gather_init(new_place.as_ref(), kind);
+            return;
+        }
 
         let mut place = place;
 

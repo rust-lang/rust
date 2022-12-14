@@ -2,6 +2,10 @@ use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt;
 
+use core::hash::{Hash, Hasher};
+
+use itertools::Itertools;
+
 use rustc_ast::ast::{self, UseTreeKind};
 use rustc_span::{
     symbol::{self, sym},
@@ -10,7 +14,8 @@ use rustc_span::{
 
 use crate::comment::combine_strs_with_missing_comments;
 use crate::config::lists::*;
-use crate::config::{Edition, IndentStyle};
+use crate::config::ImportGranularity;
+use crate::config::{Edition, IndentStyle, Version};
 use crate::lists::{
     definitive_tactic, itemize_list, write_list, ListFormatting, ListItem, Separator,
 };
@@ -86,14 +91,20 @@ impl<'a> FmtVisitor<'a> {
 // sorting.
 
 // FIXME we do a lot of allocation to make our own representation.
-#[derive(Clone, Eq, PartialEq)]
-pub(crate) enum UseSegment {
+#[derive(Clone, Eq, Hash, PartialEq)]
+pub(crate) enum UseSegmentKind {
     Ident(String, Option<String>),
     Slf(Option<String>),
     Super(Option<String>),
     Crate(Option<String>),
     Glob,
     List(Vec<UseTree>),
+}
+
+#[derive(Clone, Eq, PartialEq)]
+pub(crate) struct UseSegment {
+    pub(crate) kind: UseSegmentKind,
+    pub(crate) version: Version,
 }
 
 #[derive(Clone)]
@@ -105,7 +116,7 @@ pub(crate) struct UseTree {
     // Additional fields for top level use items.
     // Should we have another struct for top-level use items rather than reusing this?
     visibility: Option<ast::Visibility>,
-    attrs: Option<Vec<ast::Attribute>>,
+    attrs: Option<ast::AttrVec>,
 }
 
 impl PartialEq for UseTree {
@@ -129,34 +140,38 @@ impl Spanned for UseTree {
 impl UseSegment {
     // Clone a version of self with any top-level alias removed.
     fn remove_alias(&self) -> UseSegment {
-        match *self {
-            UseSegment::Ident(ref s, _) => UseSegment::Ident(s.clone(), None),
-            UseSegment::Slf(_) => UseSegment::Slf(None),
-            UseSegment::Super(_) => UseSegment::Super(None),
-            UseSegment::Crate(_) => UseSegment::Crate(None),
-            _ => self.clone(),
+        let kind = match self.kind {
+            UseSegmentKind::Ident(ref s, _) => UseSegmentKind::Ident(s.clone(), None),
+            UseSegmentKind::Slf(_) => UseSegmentKind::Slf(None),
+            UseSegmentKind::Super(_) => UseSegmentKind::Super(None),
+            UseSegmentKind::Crate(_) => UseSegmentKind::Crate(None),
+            _ => return self.clone(),
+        };
+        UseSegment {
+            kind,
+            version: self.version,
         }
     }
 
     // Check if self == other with their aliases removed.
     fn equal_except_alias(&self, other: &Self) -> bool {
-        match (self, other) {
-            (UseSegment::Ident(ref s1, _), UseSegment::Ident(ref s2, _)) => s1 == s2,
-            (UseSegment::Slf(_), UseSegment::Slf(_))
-            | (UseSegment::Super(_), UseSegment::Super(_))
-            | (UseSegment::Crate(_), UseSegment::Crate(_))
-            | (UseSegment::Glob, UseSegment::Glob) => true,
-            (UseSegment::List(ref list1), UseSegment::List(ref list2)) => list1 == list2,
+        match (&self.kind, &other.kind) {
+            (UseSegmentKind::Ident(ref s1, _), UseSegmentKind::Ident(ref s2, _)) => s1 == s2,
+            (UseSegmentKind::Slf(_), UseSegmentKind::Slf(_))
+            | (UseSegmentKind::Super(_), UseSegmentKind::Super(_))
+            | (UseSegmentKind::Crate(_), UseSegmentKind::Crate(_))
+            | (UseSegmentKind::Glob, UseSegmentKind::Glob) => true,
+            (UseSegmentKind::List(ref list1), UseSegmentKind::List(ref list2)) => list1 == list2,
             _ => false,
         }
     }
 
     fn get_alias(&self) -> Option<&str> {
-        match self {
-            UseSegment::Ident(_, a)
-            | UseSegment::Slf(a)
-            | UseSegment::Super(a)
-            | UseSegment::Crate(a) => a.as_deref(),
+        match &self.kind {
+            UseSegmentKind::Ident(_, a)
+            | UseSegmentKind::Slf(a)
+            | UseSegmentKind::Super(a)
+            | UseSegmentKind::Crate(a) => a.as_deref(),
             _ => None,
         }
     }
@@ -170,33 +185,61 @@ impl UseSegment {
         if name.is_empty() || name == "{{root}}" {
             return None;
         }
-        Some(match name {
-            "self" => UseSegment::Slf(None),
-            "super" => UseSegment::Super(None),
-            "crate" => UseSegment::Crate(None),
+        let kind = match name {
+            "self" => UseSegmentKind::Slf(None),
+            "super" => UseSegmentKind::Super(None),
+            "crate" => UseSegmentKind::Crate(None),
             _ => {
                 let mod_sep = if modsep { "::" } else { "" };
-                UseSegment::Ident(format!("{}{}", mod_sep, name), None)
+                UseSegmentKind::Ident(format!("{}{}", mod_sep, name), None)
             }
+        };
+
+        Some(UseSegment {
+            kind,
+            version: context.config.version(),
         })
+    }
+
+    fn contains_comment(&self) -> bool {
+        if let UseSegmentKind::List(list) = &self.kind {
+            list.iter().any(|subtree| subtree.contains_comment())
+        } else {
+            false
+        }
     }
 }
 
-pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -> Vec<UseTree> {
+pub(crate) fn normalize_use_trees_with_granularity(
+    use_trees: Vec<UseTree>,
+    import_granularity: ImportGranularity,
+) -> Vec<UseTree> {
+    let merge_by = match import_granularity {
+        ImportGranularity::Item => return flatten_use_trees(use_trees, ImportGranularity::Item),
+        ImportGranularity::Preserve => return use_trees,
+        ImportGranularity::Crate => SharedPrefix::Crate,
+        ImportGranularity::Module => SharedPrefix::Module,
+        ImportGranularity::One => SharedPrefix::One,
+    };
+
     let mut result = Vec::with_capacity(use_trees.len());
     for use_tree in use_trees {
-        if use_tree.has_comment() || use_tree.attrs.is_some() {
+        if use_tree.contains_comment() || use_tree.attrs.is_some() {
             result.push(use_tree);
             continue;
         }
 
-        for flattened in use_tree.flatten() {
+        for mut flattened in use_tree.flatten(import_granularity) {
             if let Some(tree) = result
                 .iter_mut()
                 .find(|tree| tree.share_prefix(&flattened, merge_by))
             {
                 tree.merge(&flattened, merge_by);
             } else {
+                // If this is the first tree with this prefix, handle potential trailing ::self
+                if merge_by == SharedPrefix::Module {
+                    flattened = flattened.nest_trailing_self();
+                }
                 result.push(flattened);
             }
         }
@@ -204,21 +247,17 @@ pub(crate) fn merge_use_trees(use_trees: Vec<UseTree>, merge_by: SharedPrefix) -
     result
 }
 
-pub(crate) fn flatten_use_trees(use_trees: Vec<UseTree>) -> Vec<UseTree> {
+fn flatten_use_trees(
+    use_trees: Vec<UseTree>,
+    import_granularity: ImportGranularity,
+) -> Vec<UseTree> {
+    // Return non-sorted single occurance of the use-trees text string;
+    // order is by first occurance of the use-tree.
     use_trees
         .into_iter()
-        .flat_map(UseTree::flatten)
-        .map(|mut tree| {
-            // If a path ends in `::self`, rewrite it to `::{self}`.
-            if let Some(UseSegment::Slf(..)) = tree.path.last() {
-                let self_segment = tree.path.pop().unwrap();
-                tree.path.push(UseSegment::List(vec![UseTree::from_path(
-                    vec![self_segment],
-                    DUMMY_SP,
-                )]));
-            }
-            tree
-        })
+        .flat_map(|tree| tree.flatten(import_granularity))
+        .map(UseTree::nest_trailing_self)
+        .unique()
         .collect()
 }
 
@@ -230,19 +269,38 @@ impl fmt::Debug for UseTree {
 
 impl fmt::Debug for UseSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(self, f)
+        fmt::Display::fmt(&self.kind, f)
     }
 }
 
 impl fmt::Display for UseSegment {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(&self.kind, f)
+    }
+}
+
+impl Hash for UseSegment {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.kind.hash(state);
+    }
+}
+
+impl fmt::Debug for UseSegmentKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Display::fmt(self, f)
+    }
+}
+
+impl fmt::Display for UseSegmentKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match *self {
-            UseSegment::Glob => write!(f, "*"),
-            UseSegment::Ident(ref s, _) => write!(f, "{}", s),
-            UseSegment::Slf(..) => write!(f, "self"),
-            UseSegment::Super(..) => write!(f, "super"),
-            UseSegment::Crate(..) => write!(f, "crate"),
-            UseSegment::List(ref list) => {
+            UseSegmentKind::Glob => write!(f, "*"),
+            UseSegmentKind::Ident(ref s, Some(ref alias)) => write!(f, "{} as {}", s, alias),
+            UseSegmentKind::Ident(ref s, None) => write!(f, "{}", s),
+            UseSegmentKind::Slf(..) => write!(f, "self"),
+            UseSegmentKind::Super(..) => write!(f, "super"),
+            UseSegmentKind::Crate(..) => write!(f, "crate"),
+            UseSegmentKind::List(ref list) => {
                 write!(f, "{{")?;
                 for (i, item) in list.iter().enumerate() {
                     if i != 0 {
@@ -275,7 +333,7 @@ impl UseTree {
         shape: Shape,
     ) -> Option<String> {
         let vis = self.visibility.as_ref().map_or(Cow::from(""), |vis| {
-            crate::utils::format_visibility(context, &vis)
+            crate::utils::format_visibility(context, vis)
         });
         let use_str = self
             .rewrite(context, shape.offset_left(vis.len())?)
@@ -359,7 +417,7 @@ impl UseTree {
         list_item: Option<ListItem>,
         visibility: Option<ast::Visibility>,
         opt_lo: Option<BytePos>,
-        attrs: Option<Vec<ast::Attribute>>,
+        attrs: Option<ast::AttrVec>,
     ) -> UseTree {
         let span = if let Some(lo) = opt_lo {
             mk_sp(lo, a.span.hi())
@@ -386,13 +444,19 @@ impl UseTree {
             }
         }
 
+        let version = context.config.version();
+
         match a.kind {
             UseTreeKind::Glob => {
                 // in case of a global path and the glob starts at the root, e.g., "::*"
                 if a.prefix.segments.len() == 1 && leading_modsep {
-                    result.path.push(UseSegment::Ident("".to_owned(), None));
+                    let kind = UseSegmentKind::Ident("".to_owned(), None);
+                    result.path.push(UseSegment { kind, version });
                 }
-                result.path.push(UseSegment::Glob);
+                result.path.push(UseSegment {
+                    kind: UseSegmentKind::Glob,
+                    version,
+                });
             }
             UseTreeKind::Nested(ref list) => {
                 // Extract comments between nested use items.
@@ -413,18 +477,20 @@ impl UseTree {
                 // in case of a global path and the nested list starts at the root,
                 // e.g., "::{foo, bar}"
                 if a.prefix.segments.len() == 1 && leading_modsep {
-                    result.path.push(UseSegment::Ident("".to_owned(), None));
+                    let kind = UseSegmentKind::Ident("".to_owned(), None);
+                    result.path.push(UseSegment { kind, version });
                 }
-                result.path.push(UseSegment::List(
+                let kind = UseSegmentKind::List(
                     list.iter()
                         .zip(items)
                         .map(|(t, list_item)| {
                             Self::from_ast(context, &t.0, Some(list_item), None, None, None)
                         })
                         .collect(),
-                ));
+                );
+                result.path.push(UseSegment { kind, version });
             }
-            UseTreeKind::Simple(ref rename, ..) => {
+            UseTreeKind::Simple(ref rename) => {
                 // If the path has leading double colons and is composed of only 2 segments, then we
                 // bypass the call to path_to_imported_ident which would get only the ident and
                 // lose the path root, e.g., `that` in `::that`.
@@ -444,12 +510,14 @@ impl UseTree {
                         Some(rewrite_ident(context, ident).to_owned())
                     }
                 });
-                let segment = match name.as_ref() {
-                    "self" => UseSegment::Slf(alias),
-                    "super" => UseSegment::Super(alias),
-                    "crate" => UseSegment::Crate(alias),
-                    _ => UseSegment::Ident(name, alias),
+                let kind = match name.as_ref() {
+                    "self" => UseSegmentKind::Slf(alias),
+                    "super" => UseSegmentKind::Super(alias),
+                    "crate" => UseSegmentKind::Crate(alias),
+                    _ => UseSegmentKind::Ident(name, alias),
                 };
+
+                let segment = UseSegment { kind, version };
 
                 // `name` is already in result.
                 result.path.pop();
@@ -467,13 +535,13 @@ impl UseTree {
         let mut aliased_self = false;
 
         // Remove foo::{} or self without attributes.
-        match last {
+        match last.kind {
             _ if self.attrs.is_some() => (),
-            UseSegment::List(ref list) if list.is_empty() => {
+            UseSegmentKind::List(ref list) if list.is_empty() => {
                 self.path = vec![];
                 return self;
             }
-            UseSegment::Slf(None) if self.path.is_empty() && self.visibility.is_some() => {
+            UseSegmentKind::Slf(None) if self.path.is_empty() && self.visibility.is_some() => {
                 self.path = vec![];
                 return self;
             }
@@ -481,15 +549,19 @@ impl UseTree {
         }
 
         // Normalise foo::self -> foo.
-        if let UseSegment::Slf(None) = last {
+        if let UseSegmentKind::Slf(None) = last.kind {
             if !self.path.is_empty() {
                 return self;
             }
         }
 
         // Normalise foo::self as bar -> foo as bar.
-        if let UseSegment::Slf(_) = last {
-            if let Some(UseSegment::Ident(_, None)) = self.path.last() {
+        if let UseSegmentKind::Slf(_) = last.kind {
+            if let Some(UseSegment {
+                kind: UseSegmentKind::Ident(_, None),
+                ..
+            }) = self.path.last()
+            {
                 aliased_self = true;
             }
         }
@@ -497,9 +569,12 @@ impl UseTree {
         let mut done = false;
         if aliased_self {
             match self.path.last_mut() {
-                Some(UseSegment::Ident(_, ref mut old_rename)) => {
+                Some(UseSegment {
+                    kind: UseSegmentKind::Ident(_, ref mut old_rename),
+                    ..
+                }) => {
                     assert!(old_rename.is_none());
-                    if let UseSegment::Slf(Some(rename)) = last.clone() {
+                    if let UseSegmentKind::Slf(Some(rename)) = last.clone().kind {
                         *old_rename = Some(rename);
                         done = true;
                     }
@@ -513,15 +588,15 @@ impl UseTree {
         }
 
         // Normalise foo::{bar} -> foo::bar
-        if let UseSegment::List(ref list) = last {
+        if let UseSegmentKind::List(ref list) = last.kind {
             if list.len() == 1 && list[0].to_string() != "self" {
                 normalize_sole_list = true;
             }
         }
 
         if normalize_sole_list {
-            match last {
-                UseSegment::List(list) => {
+            match last.kind {
+                UseSegmentKind::List(list) => {
                     for seg in &list[0].path {
                         self.path.push(seg.clone());
                     }
@@ -532,10 +607,13 @@ impl UseTree {
         }
 
         // Recursively normalize elements of a list use (including sorting the list).
-        if let UseSegment::List(list) = last {
+        if let UseSegmentKind::List(list) = last.kind {
             let mut list = list.into_iter().map(UseTree::normalize).collect::<Vec<_>>();
             list.sort();
-            last = UseSegment::List(list);
+            last = UseSegment {
+                kind: UseSegmentKind::List(list),
+                version: last.version,
+            };
         }
 
         self.path.push(last);
@@ -544,6 +622,10 @@ impl UseTree {
 
     fn has_comment(&self) -> bool {
         self.list_item.as_ref().map_or(false, ListItem::has_comment)
+    }
+
+    fn contains_comment(&self) -> bool {
+        self.has_comment() || self.path.iter().any(|path| path.contains_comment())
     }
 
     fn same_visibility(&self, other: &UseTree) -> bool {
@@ -572,6 +654,7 @@ impl UseTree {
         if self.path.is_empty()
             || other.path.is_empty()
             || self.attrs.is_some()
+            || self.contains_comment()
             || !self.same_visibility(other)
         {
             false
@@ -586,21 +669,21 @@ impl UseTree {
         }
     }
 
-    fn flatten(self) -> Vec<UseTree> {
-        if self.path.is_empty() {
+    fn flatten(self, import_granularity: ImportGranularity) -> Vec<UseTree> {
+        if self.path.is_empty() || self.contains_comment() {
             return vec![self];
         }
-        match self.path.clone().last().unwrap() {
-            UseSegment::List(list) => {
+        match &self.path.clone().last().unwrap().kind {
+            UseSegmentKind::List(list) => {
                 if list.len() == 1 && list[0].path.len() == 1 {
-                    if let UseSegment::Slf(..) = list[0].path[0] {
+                    if let UseSegmentKind::Slf(..) = list[0].path[0].kind {
                         return vec![self];
                     };
                 }
                 let prefix = &self.path[..self.path.len() - 1];
                 let mut result = vec![];
                 for nested_use_tree in list {
-                    for flattend in &mut nested_use_tree.clone().flatten() {
+                    for flattend in &mut nested_use_tree.clone().flatten(import_granularity) {
                         let mut new_path = prefix.to_vec();
                         new_path.append(&mut flattend.path);
                         result.push(UseTree {
@@ -608,7 +691,11 @@ impl UseTree {
                             span: self.span,
                             list_item: None,
                             visibility: self.visibility.clone(),
-                            attrs: None,
+                            // only retain attributes for `ImportGranularity::Item`
+                            attrs: match import_granularity {
+                                ImportGranularity::Item => self.attrs.clone(),
+                                _ => None,
+                            },
                         });
                     }
                 }
@@ -622,7 +709,8 @@ impl UseTree {
     fn merge(&mut self, other: &UseTree, merge_by: SharedPrefix) {
         let mut prefix = 0;
         for (a, b) in self.path.iter().zip(other.path.iter()) {
-            if a.equal_except_alias(b) {
+            // only discard the alias at the root of the tree
+            if (prefix == 0 && a.equal_except_alias(b)) || a == b {
                 prefix += 1;
             } else {
                 break;
@@ -632,6 +720,21 @@ impl UseTree {
             self.path = new_path;
             self.span = self.span.to(other.span);
         }
+    }
+
+    /// If this tree ends in `::self`, rewrite it to `::{self}`.
+    fn nest_trailing_self(mut self) -> UseTree {
+        if let Some(UseSegment {
+            kind: UseSegmentKind::Slf(..),
+            ..
+        }) = self.path.last()
+        {
+            let self_segment = self.path.pop().unwrap();
+            let version = self_segment.version;
+            let kind = UseSegmentKind::List(vec![UseTree::from_path(vec![self_segment], DUMMY_SP)]);
+            self.path.push(UseSegment { kind, version });
+        }
+        self
     }
 }
 
@@ -645,7 +748,8 @@ fn merge_rest(
         return None;
     }
     if a.len() != len && b.len() != len {
-        if let UseSegment::List(ref list) = a[len] {
+        let version = a[len].version;
+        if let UseSegmentKind::List(ref list) = a[len].kind {
             let mut list = list.clone();
             merge_use_trees_inner(
                 &mut list,
@@ -653,7 +757,8 @@ fn merge_rest(
                 merge_by,
             );
             let mut new_path = b[..len].to_vec();
-            new_path.push(UseSegment::List(list));
+            let kind = UseSegmentKind::List(list);
+            new_path.push(UseSegment { kind, version });
             return Some(new_path);
         }
     } else if len == 1 {
@@ -662,15 +767,28 @@ fn merge_rest(
         } else {
             (&b[0], &a[1..])
         };
+        let kind = UseSegmentKind::Slf(common.get_alias().map(ToString::to_string));
+        let version = a[0].version;
         let mut list = vec![UseTree::from_path(
-            vec![UseSegment::Slf(common.get_alias().map(ToString::to_string))],
+            vec![UseSegment { kind, version }],
             DUMMY_SP,
         )];
         match rest {
-            [UseSegment::List(rest_list)] => list.extend(rest_list.clone()),
+            [
+                UseSegment {
+                    kind: UseSegmentKind::List(rest_list),
+                    ..
+                },
+            ] => list.extend(rest_list.clone()),
             _ => list.push(UseTree::from_path(rest.to_vec(), DUMMY_SP)),
         }
-        return Some(vec![b[0].clone(), UseSegment::List(list)]);
+        return Some(vec![
+            b[0].clone(),
+            UseSegment {
+                kind: UseSegmentKind::List(list),
+                version,
+            },
+        ]);
     } else {
         len -= 1;
     }
@@ -680,7 +798,9 @@ fn merge_rest(
     ];
     list.sort();
     let mut new_path = b[..len].to_vec();
-    new_path.push(UseSegment::List(list));
+    let kind = UseSegmentKind::List(list);
+    let version = a[0].version;
+    new_path.push(UseSegment { kind, version });
     Some(new_path)
 }
 
@@ -740,6 +860,12 @@ fn merge_use_trees_inner(trees: &mut Vec<UseTree>, use_tree: UseTree, merge_by: 
     trees.sort();
 }
 
+impl Hash for UseTree {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.path.hash(state);
+    }
+}
+
 impl PartialOrd for UseSegment {
     fn partial_cmp(&self, other: &UseSegment) -> Option<Ordering> {
         Some(self.cmp(other))
@@ -752,19 +878,33 @@ impl PartialOrd for UseTree {
 }
 impl Ord for UseSegment {
     fn cmp(&self, other: &UseSegment) -> Ordering {
-        use self::UseSegment::*;
+        use self::UseSegmentKind::*;
 
         fn is_upper_snake_case(s: &str) -> bool {
             s.chars()
                 .all(|c| c.is_uppercase() || c == '_' || c.is_numeric())
         }
 
-        match (self, other) {
-            (&Slf(ref a), &Slf(ref b))
-            | (&Super(ref a), &Super(ref b))
-            | (&Crate(ref a), &Crate(ref b)) => a.cmp(b),
-            (&Glob, &Glob) => Ordering::Equal,
-            (&Ident(ref ia, ref aa), &Ident(ref ib, ref ab)) => {
+        match (&self.kind, &other.kind) {
+            (Slf(ref a), Slf(ref b))
+            | (Super(ref a), Super(ref b))
+            | (Crate(ref a), Crate(ref b)) => match (a, b) {
+                (Some(sa), Some(sb)) => {
+                    if self.version == Version::Two {
+                        sa.trim_start_matches("r#").cmp(sb.trim_start_matches("r#"))
+                    } else {
+                        a.cmp(b)
+                    }
+                }
+                (_, _) => a.cmp(b),
+            },
+            (Glob, Glob) => Ordering::Equal,
+            (Ident(ref pia, ref aa), Ident(ref pib, ref ab)) => {
+                let (ia, ib) = if self.version == Version::Two {
+                    (pia.trim_start_matches("r#"), pib.trim_start_matches("r#"))
+                } else {
+                    (pia.as_str(), pib.as_str())
+                };
                 // snake_case < CamelCase < UPPER_SNAKE_CASE
                 if ia.starts_with(char::is_uppercase) && ib.starts_with(char::is_lowercase) {
                     return Ordering::Greater;
@@ -782,15 +922,21 @@ impl Ord for UseSegment {
                 if ident_ord != Ordering::Equal {
                     return ident_ord;
                 }
-                if aa.is_none() && ab.is_some() {
-                    return Ordering::Less;
+                match (aa, ab) {
+                    (None, Some(_)) => Ordering::Less,
+                    (Some(_), None) => Ordering::Greater,
+                    (Some(aas), Some(abs)) => {
+                        if self.version == Version::Two {
+                            aas.trim_start_matches("r#")
+                                .cmp(abs.trim_start_matches("r#"))
+                        } else {
+                            aas.cmp(abs)
+                        }
+                    }
+                    (None, None) => Ordering::Equal,
                 }
-                if aa.is_some() && ab.is_none() {
-                    return Ordering::Greater;
-                }
-                aa.cmp(ab)
             }
-            (&List(ref a), &List(ref b)) => {
+            (List(ref a), List(ref b)) => {
                 for (a, b) in a.iter().zip(b.iter()) {
                     let ord = a.cmp(b);
                     if ord != Ordering::Equal {
@@ -800,16 +946,16 @@ impl Ord for UseSegment {
 
                 a.len().cmp(&b.len())
             }
-            (&Slf(_), _) => Ordering::Less,
-            (_, &Slf(_)) => Ordering::Greater,
-            (&Super(_), _) => Ordering::Less,
-            (_, &Super(_)) => Ordering::Greater,
-            (&Crate(_), _) => Ordering::Less,
-            (_, &Crate(_)) => Ordering::Greater,
-            (&Ident(..), _) => Ordering::Less,
-            (_, &Ident(..)) => Ordering::Greater,
-            (&Glob, _) => Ordering::Less,
-            (_, &Glob) => Ordering::Greater,
+            (Slf(_), _) => Ordering::Less,
+            (_, Slf(_)) => Ordering::Greater,
+            (Super(_), _) => Ordering::Less,
+            (_, Super(_)) => Ordering::Greater,
+            (Crate(_), _) => Ordering::Less,
+            (_, Crate(_)) => Ordering::Greater,
+            (Ident(..), _) => Ordering::Less,
+            (_, Ident(..)) => Ordering::Greater,
+            (Glob, _) => Ordering::Less,
+            (_, Glob) => Ordering::Greater,
         }
     }
 }
@@ -853,7 +999,7 @@ fn rewrite_nested_use_tree(
     }
     let has_nested_list = use_tree_list.iter().any(|use_segment| {
         use_segment.path.last().map_or(false, |last_segment| {
-            matches!(last_segment, UseSegment::List(..))
+            matches!(last_segment.kind, UseSegmentKind::List(..))
         })
     });
 
@@ -904,17 +1050,19 @@ fn rewrite_nested_use_tree(
 
 impl Rewrite for UseSegment {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
-        Some(match self {
-            UseSegment::Ident(ref ident, Some(ref rename)) => format!("{} as {}", ident, rename),
-            UseSegment::Ident(ref ident, None) => ident.clone(),
-            UseSegment::Slf(Some(ref rename)) => format!("self as {}", rename),
-            UseSegment::Slf(None) => "self".to_owned(),
-            UseSegment::Super(Some(ref rename)) => format!("super as {}", rename),
-            UseSegment::Super(None) => "super".to_owned(),
-            UseSegment::Crate(Some(ref rename)) => format!("crate as {}", rename),
-            UseSegment::Crate(None) => "crate".to_owned(),
-            UseSegment::Glob => "*".to_owned(),
-            UseSegment::List(ref use_tree_list) => rewrite_nested_use_tree(
+        Some(match self.kind {
+            UseSegmentKind::Ident(ref ident, Some(ref rename)) => {
+                format!("{} as {}", ident, rename)
+            }
+            UseSegmentKind::Ident(ref ident, None) => ident.clone(),
+            UseSegmentKind::Slf(Some(ref rename)) => format!("self as {}", rename),
+            UseSegmentKind::Slf(None) => "self".to_owned(),
+            UseSegmentKind::Super(Some(ref rename)) => format!("super as {}", rename),
+            UseSegmentKind::Super(None) => "super".to_owned(),
+            UseSegmentKind::Crate(Some(ref rename)) => format!("crate as {}", rename),
+            UseSegmentKind::Crate(None) => "crate".to_owned(),
+            UseSegmentKind::Glob => "*".to_owned(),
+            UseSegmentKind::List(ref use_tree_list) => rewrite_nested_use_tree(
                 context,
                 use_tree_list,
                 // 1 = "{" and "}"
@@ -929,7 +1077,7 @@ impl Rewrite for UseTree {
     fn rewrite(&self, context: &RewriteContext<'_>, mut shape: Shape) -> Option<String> {
         let mut result = String::with_capacity(256);
         let mut iter = self.path.iter().peekable();
-        while let Some(ref segment) = iter.next() {
+        while let Some(segment) = iter.next() {
             let segment_str = segment.rewrite(context, shape)?;
             result.push_str(&segment_str);
             if iter.peek().is_some() {
@@ -943,7 +1091,7 @@ impl Rewrite for UseTree {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub(crate) enum SharedPrefix {
+enum SharedPrefix {
     Crate,
     Module,
     One,
@@ -963,6 +1111,7 @@ mod test {
 
         struct Parser<'a> {
             input: Peekable<Chars<'a>>,
+            version: Version,
         }
 
         impl<'a> Parser<'a> {
@@ -975,34 +1124,40 @@ mod test {
             }
 
             fn push_segment(
+                &self,
                 result: &mut Vec<UseSegment>,
                 buf: &mut String,
                 alias_buf: &mut Option<String>,
             ) {
+                let version = self.version;
                 if !buf.is_empty() {
                     let mut alias = None;
                     swap(alias_buf, &mut alias);
 
                     match buf.as_ref() {
                         "self" => {
-                            result.push(UseSegment::Slf(alias));
+                            let kind = UseSegmentKind::Slf(alias);
+                            result.push(UseSegment { kind, version });
                             *buf = String::new();
                             *alias_buf = None;
                         }
                         "super" => {
-                            result.push(UseSegment::Super(alias));
+                            let kind = UseSegmentKind::Super(alias);
+                            result.push(UseSegment { kind, version });
                             *buf = String::new();
                             *alias_buf = None;
                         }
                         "crate" => {
-                            result.push(UseSegment::Crate(alias));
+                            let kind = UseSegmentKind::Crate(alias);
+                            result.push(UseSegment { kind, version });
                             *buf = String::new();
                             *alias_buf = None;
                         }
                         _ => {
                             let mut name = String::new();
                             swap(buf, &mut name);
-                            result.push(UseSegment::Ident(name, alias));
+                            let kind = UseSegmentKind::Ident(name, alias);
+                            result.push(UseSegment { kind, version });
                         }
                     }
                 }
@@ -1017,21 +1172,29 @@ mod test {
                         '{' => {
                             assert!(buf.is_empty());
                             self.bump();
-                            result.push(UseSegment::List(self.parse_list()));
+                            let kind = UseSegmentKind::List(self.parse_list());
+                            result.push(UseSegment {
+                                kind,
+                                version: self.version,
+                            });
                             self.eat('}');
                         }
                         '*' => {
                             assert!(buf.is_empty());
                             self.bump();
-                            result.push(UseSegment::Glob);
+                            let kind = UseSegmentKind::Glob;
+                            result.push(UseSegment {
+                                kind,
+                                version: self.version,
+                            });
                         }
                         ':' => {
                             self.bump();
                             self.eat(':');
-                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                            self.push_segment(&mut result, &mut buf, &mut alias_buf);
                         }
                         '}' | ',' => {
-                            Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                            self.push_segment(&mut result, &mut buf, &mut alias_buf);
                             return UseTree {
                                 path: result,
                                 span: DUMMY_SP,
@@ -1057,7 +1220,7 @@ mod test {
                         }
                     }
                 }
-                Self::push_segment(&mut result, &mut buf, &mut alias_buf);
+                self.push_segment(&mut result, &mut buf, &mut alias_buf);
                 UseTree {
                     path: result,
                     span: DUMMY_SP,
@@ -1083,6 +1246,7 @@ mod test {
 
         let mut parser = Parser {
             input: s.chars().peekable(),
+            version: Version::One,
         };
         parser.parse_in_list()
     }
@@ -1098,7 +1262,10 @@ mod test {
     macro_rules! test_merge {
         ($by:ident, [$($input:expr),* $(,)*], [$($output:expr),* $(,)*]) => {
             assert_eq!(
-                merge_use_trees(parse_use_trees!($($input,)*), SharedPrefix::$by),
+                normalize_use_trees_with_granularity(
+                    parse_use_trees!($($input,)*),
+                    ImportGranularity::$by,
+                ),
                 parse_use_trees!($($output,)*),
             );
         }
@@ -1207,12 +1374,18 @@ mod test {
     #[test]
     fn test_flatten_use_trees() {
         assert_eq!(
-            flatten_use_trees(parse_use_trees!["foo::{a::{b, c}, d::e}"]),
+            flatten_use_trees(
+                parse_use_trees!["foo::{a::{b, c}, d::e}"],
+                ImportGranularity::Item
+            ),
             parse_use_trees!["foo::a::b", "foo::a::c", "foo::d::e"]
         );
 
         assert_eq!(
-            flatten_use_trees(parse_use_trees!["foo::{self, a, b::{c, d}, e::*}"]),
+            flatten_use_trees(
+                parse_use_trees!["foo::{self, a, b::{c, d}, e::*}"],
+                ImportGranularity::Item
+            ),
             parse_use_trees![
                 "foo::{self}",
                 "foo::a",
@@ -1226,12 +1399,13 @@ mod test {
     #[test]
     fn test_use_tree_flatten() {
         assert_eq!(
-            parse_use_tree("a::b::{c, d, e, f}").flatten(),
+            parse_use_tree("a::b::{c, d, e, f}").flatten(ImportGranularity::Item),
             parse_use_trees!("a::b::c", "a::b::d", "a::b::e", "a::b::f",)
         );
 
         assert_eq!(
-            parse_use_tree("a::b::{c::{d, e, f}, g, h::{i, j, k}}").flatten(),
+            parse_use_tree("a::b::{c::{d, e, f}, g, h::{i, j, k}}")
+                .flatten(ImportGranularity::Item),
             parse_use_trees![
                 "a::b::c::d",
                 "a::b::c::e",
@@ -1307,6 +1481,26 @@ mod test {
         assert!(
             parse_use_tree("std::cmp::{d, c, b, a}").normalize()
                 < parse_use_tree("std::cmp::{b, e, g, f}").normalize()
+        );
+    }
+
+    #[test]
+    fn test_use_tree_nest_trailing_self() {
+        assert_eq!(
+            parse_use_tree("a::b::self").nest_trailing_self(),
+            parse_use_tree("a::b::{self}")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::c").nest_trailing_self(),
+            parse_use_tree("a::b::c")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::{c, d}").nest_trailing_self(),
+            parse_use_tree("a::b::{c, d}")
+        );
+        assert_eq!(
+            parse_use_tree("a::b::{self, c}").nest_trailing_self(),
+            parse_use_tree("a::b::{self, c}")
         );
     }
 }

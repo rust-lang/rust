@@ -13,17 +13,17 @@
 
 // The minimum alignment guaranteed by the architecture. This value is used to
 // add fast paths for low alignment values.
-#[cfg(all(any(target_arch = "x86",
+#[cfg(any(target_arch = "x86",
               target_arch = "arm",
               target_arch = "mips",
               target_arch = "powerpc",
-              target_arch = "powerpc64")))]
+              target_arch = "powerpc64"))]
 const MIN_ALIGN: usize = 8;
-#[cfg(all(any(target_arch = "x86_64",
+#[cfg(any(target_arch = "x86_64",
               target_arch = "aarch64",
               target_arch = "mips64",
               target_arch = "s390x",
-              target_arch = "sparc64")))]
+              target_arch = "sparc64"))]
 const MIN_ALIGN: usize = 16;
 
 pub struct System;
@@ -156,7 +156,7 @@ mod platform {
     struct Header(*mut u8);
     const HEAP_ZERO_MEMORY: DWORD = 0x00000008;
     unsafe fn get_header<'a>(ptr: *mut u8) -> &'a mut Header {
-        &mut *(ptr as *mut Header).offset(-1)
+        &mut *(ptr as *mut Header).sub(1)
     }
     unsafe fn align_ptr(ptr: *mut u8, align: usize) -> *mut u8 {
         let aligned = ptr.add(align - (ptr as usize & (align - 1)));

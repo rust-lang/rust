@@ -13,7 +13,7 @@ error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:12:1
    |
 LL | gen_macro_rules!();
-   | ^^^^^^^^^^^^^^^^^^ not found in this scope
+   | ^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
 ...
 LL |         generated!();
    |         ------------ in this macro invocation
@@ -24,7 +24,7 @@ error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/gen-macro-rules-hygiene.rs:21:9
    |
 LL |         local_def;
-   |         ^^^^^^^^^ not found in this scope
+   |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`
 
 error: aborting due to 3 previous errors
 

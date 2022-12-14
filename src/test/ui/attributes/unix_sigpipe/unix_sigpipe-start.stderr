@@ -1,0 +1,8 @@
+error: `unix_sigpipe` attribute can only be used on `fn main()`
+  --> $DIR/unix_sigpipe-start.rs:5:1
+   |
+LL | #[unix_sigpipe = "inherit"]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

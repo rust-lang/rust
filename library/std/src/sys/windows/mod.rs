@@ -1,13 +1,13 @@
 #![allow(missing_docs, nonstandard_style)]
 
-use crate::ffi::{OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::io::ErrorKind;
+use crate::mem::MaybeUninit;
 use crate::os::windows::ffi::{OsStrExt, OsStringExt};
 use crate::path::PathBuf;
 use crate::time::Duration;
 
 pub use self::rand::hashmap_random_keys;
-pub use libc::strlen;
 
 #[macro_use]
 pub mod compat;
@@ -16,13 +16,12 @@ pub mod alloc;
 pub mod args;
 pub mod c;
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fs;
 pub mod handle;
 pub mod io;
+pub mod locks;
 pub mod memchr;
-pub mod mutex;
 pub mod net;
 pub mod os;
 pub mod os_str;
@@ -30,7 +29,7 @@ pub mod path;
 pub mod pipe;
 pub mod process;
 pub mod rand;
-pub mod rwlock;
+pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
@@ -38,20 +37,21 @@ pub mod thread_parker;
 pub mod time;
 cfg_if::cfg_if! {
     if #[cfg(not(target_vendor = "uwp"))] {
-        pub mod stdio;
         pub mod stack_overflow;
     } else {
-        pub mod stdio_uwp;
         pub mod stack_overflow_uwp;
-        pub use self::stdio_uwp as stdio;
         pub use self::stack_overflow_uwp as stack_overflow;
     }
 }
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {
     stack_overflow::init();
+
+    // Normally, `thread::spawn` will call `Thread::set_name` but since this thread already
+    // exists, we have to call it ourselves.
+    thread::Thread::set_name(&CStr::from_bytes_with_nul_unchecked(b"main\0"));
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -71,6 +71,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_FILE_NOT_FOUND => return NotFound,
         c::ERROR_PATH_NOT_FOUND => return NotFound,
         c::ERROR_NO_DATA => return BrokenPipe,
+        c::ERROR_INVALID_NAME => return InvalidFilename,
         c::ERROR_INVALID_PARAMETER => return InvalidInput,
         c::ERROR_NOT_ENOUGH_MEMORY | c::ERROR_OUTOFMEMORY => return OutOfMemory,
         c::ERROR_SEM_TIMEOUT
@@ -104,7 +105,7 @@ pub fn decode_error_kind(errno: i32) -> ErrorKind {
         c::ERROR_POSSIBLE_DEADLOCK => return Deadlock,
         c::ERROR_NOT_SAME_DEVICE => return CrossesDevices,
         c::ERROR_TOO_MANY_LINKS => return TooManyLinks,
-        c::ERROR_FILENAME_EXCED_RANGE => return FilenameTooLong,
+        c::ERROR_FILENAME_EXCED_RANGE => return InvalidFilename,
         _ => {}
     }
 
@@ -137,7 +138,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
             ($($n:literal,)+) => {
                 $(
                     if start[$n] == needle {
-                        return Some((&start[$n] as *const u16 as usize - ptr as usize) / 2);
+                        return Some(((&start[$n] as *const u16).addr() - ptr.addr()) / 2);
                     }
                 )+
             }
@@ -150,7 +151,7 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
     for c in start {
         if *c == needle {
-            return Some((c as *const u16 as usize - ptr as usize) / 2);
+            return Some(((c as *const u16).addr() - ptr.addr()) / 2);
         }
     }
     None
@@ -158,11 +159,17 @@ pub fn unrolled_find_u16s(needle: u16, haystack: &[u16]) -> Option<usize> {
 
 pub fn to_u16s<S: AsRef<OsStr>>(s: S) -> crate::io::Result<Vec<u16>> {
     fn inner(s: &OsStr) -> crate::io::Result<Vec<u16>> {
-        let mut maybe_result: Vec<u16> = s.encode_wide().collect();
+        // Most paths are ASCII, so reserve capacity for as much as there are bytes
+        // in the OsStr plus one for the null-terminating character. We are not
+        // wasting bytes here as paths created by this function are primarily used
+        // in an ephemeral fashion.
+        let mut maybe_result = Vec::with_capacity(s.len() + 1);
+        maybe_result.extend(s.encode_wide());
+
         if unrolled_find_u16s(0, &maybe_result).is_some() {
-            return Err(crate::io::Error::new_const(
+            return Err(crate::io::const_io_error!(
                 ErrorKind::InvalidInput,
-                &"strings passed to WinAPI cannot contain NULs",
+                "strings passed to WinAPI cannot contain NULs",
             ));
         }
         maybe_result.push(0);
@@ -192,8 +199,12 @@ where
 {
     // Start off with a stack buf but then spill over to the heap if we end up
     // needing more space.
-    let mut stack_buf = [0u16; 512];
-    let mut heap_buf = Vec::new();
+    //
+    // This initial size also works around `GetFullPathNameW` returning
+    // incorrect size hints for some short paths:
+    // https://github.com/dylni/normpath/issues/5
+    let mut stack_buf: [MaybeUninit<u16>; 512] = MaybeUninit::uninit_array();
+    let mut heap_buf: Vec<MaybeUninit<u16>> = Vec::new();
     unsafe {
         let mut n = stack_buf.len();
         loop {
@@ -202,6 +213,11 @@ where
             } else {
                 let extra = n - heap_buf.len();
                 heap_buf.reserve(extra);
+                // We used `reserve` and not `reserve_exact`, so in theory we
+                // may have gotten more than requested. If so, we'd like to use
+                // it... so long as we won't cause overflow.
+                n = heap_buf.capacity().min(c::DWORD::MAX as usize);
+                // Safety: MaybeUninit<u16> does not need initialization
                 heap_buf.set_len(n);
                 &mut heap_buf[..]
             };
@@ -216,17 +232,25 @@ where
             // error" is still 0 then we interpret it as a 0 length buffer and
             // not an actual error.
             c::SetLastError(0);
-            let k = match f1(buf.as_mut_ptr(), n as c::DWORD) {
+            let k = match f1(buf.as_mut_ptr().cast::<u16>(), n as c::DWORD) {
                 0 if c::GetLastError() == 0 => 0,
                 0 => return Err(crate::io::Error::last_os_error()),
                 n => n,
             } as usize;
             if k == n && c::GetLastError() == c::ERROR_INSUFFICIENT_BUFFER {
-                n *= 2;
-            } else if k >= n {
+                n = n.saturating_mul(2).min(c::DWORD::MAX as usize);
+            } else if k > n {
                 n = k;
+            } else if k == n {
+                // It is impossible to reach this point.
+                // On success, k is the returned string length excluding the null.
+                // On failure, k is the required buffer length including the null.
+                // Therefore k never equals n.
+                unreachable!();
             } else {
-                return Ok(f2(&buf[..k]));
+                // Safety: First `k` values are initialized.
+                let slice: &[u16] = MaybeUninit::slice_assume_init_ref(&buf[..k]);
+                return Ok(f2(slice));
             }
         }
     }
@@ -284,20 +308,30 @@ pub fn dur2timeout(dur: Duration) -> c::DWORD {
 /// that function for more information on `__fastfail`
 #[allow(unreachable_code)]
 pub fn abort_internal() -> ! {
+    #[allow(unused)]
     const FAST_FAIL_FATAL_APP_EXIT: usize = 7;
+    #[cfg(not(miri))] // inline assembly does not work in Miri
     unsafe {
         cfg_if::cfg_if! {
             if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
-                asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
+                core::arch::asm!("int $$0x29", in("ecx") FAST_FAIL_FATAL_APP_EXIT);
                 crate::intrinsics::unreachable();
             } else if #[cfg(all(target_arch = "arm", target_feature = "thumb-mode"))] {
-                asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
+                core::arch::asm!(".inst 0xDEFB", in("r0") FAST_FAIL_FATAL_APP_EXIT);
                 crate::intrinsics::unreachable();
             } else if #[cfg(target_arch = "aarch64")] {
-                asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
+                core::arch::asm!("brk 0xF003", in("x0") FAST_FAIL_FATAL_APP_EXIT);
                 crate::intrinsics::unreachable();
             }
         }
     }
     crate::intrinsics::abort();
 }
+
+/// Align the inner value to 8 bytes.
+///
+/// This is enough for almost all of the buffers we're likely to work with in
+/// the Windows APIs we use.
+#[repr(C, align(8))]
+#[derive(Copy, Clone)]
+pub(crate) struct Align8<T: ?Sized>(pub T);

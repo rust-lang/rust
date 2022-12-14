@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/collections-project-default.rs:59:5
+  --> $DIR/collections-project-default.rs:58:5
    |
 LL | fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
    |                                     ------------------------------------ expected `<C as Collection<i32>>::Sibling<f32>` because of return type

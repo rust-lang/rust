@@ -31,7 +31,7 @@ static mut frobulator: usize = 0xdeadbeef;
 
 pub fn main() {
     unsafe {
-        frobulator = 0xcafebabe;
+        frobulator = 0x12345678;
         println!("{} {} {}", i_live_in_more_text(), magic, frobulator);
     }
 }

@@ -1,10 +1,12 @@
 // pp-exact
 
 #![feature(box_syntax)]
+#![feature(inline_const)]
+#![feature(inline_const_pat)]
 #![feature(rustc_attrs)]
 #![feature(stmt_expr_attributes)]
 
-fn main() { }
+fn main() {}
 
 fn _0() {
 
@@ -16,6 +18,7 @@ fn _1() {
 
     #[rustc_dummy]
     unsafe {
+        #![rustc_dummy]
         // code
     }
 }
@@ -35,7 +38,7 @@ fn _2() {
 fn _3() {
 
     #[rustc_dummy]
-    match () { _ => { } }
+    match () { _ => {} }
 }
 
 fn _4() {
@@ -48,9 +51,9 @@ fn _4() {
 
     let _ =
         #[rustc_dummy] match () {
-                           #![rustc_dummy]
-                           () => (),
-                       };
+            #![rustc_dummy]
+            () => (),
+        };
 }
 
 fn _5() {
@@ -90,9 +93,9 @@ struct Bar(());
 fn _7() {
 
     #[rustc_dummy]
-    Foo{data: (),};
+    Foo { data: () };
 
-    let _ = #[rustc_dummy] Foo{data: (),};
+    let _ = #[rustc_dummy] Foo { data: () };
 }
 
 fn _8() {
@@ -117,13 +120,13 @@ fn _9() {
     stmt_mac!();
 
     #[rustc_dummy]
-    stmt_mac! { };
+    stmt_mac! {};
 
     #[rustc_dummy]
     stmt_mac![];
 
     #[rustc_dummy]
-    stmt_mac! { }
+    stmt_mac! {}
 
     let _ = ();
 }
@@ -133,7 +136,7 @@ macro_rules! expr_mac { () => { () } }
 fn _10() {
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac! { };
+    let _ = #[rustc_dummy] expr_mac! {};
 }
 
 fn _11() {
@@ -156,60 +159,66 @@ fn _11() {
     let _ = #[rustc_dummy] 0 as usize;
     let _ =
         #[rustc_dummy] while false {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] while let None = Some(()) {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] for _ in 0..0 {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] loop {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] match false {
-                           #![rustc_dummy]
-                           _ => (),
-                       };
+            #![rustc_dummy]
+            _ => (),
+        };
     let _ = #[rustc_dummy] || #[rustc_dummy] ();
     let _ = #[rustc_dummy] move || #[rustc_dummy] ();
     let _ =
         #[rustc_dummy] ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] move ||
-                           {
-                               #![rustc_dummy]
-                               #[rustc_dummy]
-                               ()
-                           };
+            {
+                #![rustc_dummy]
+                #[rustc_dummy]
+                ()
+            };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                       };
+            #![rustc_dummy]
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                       };
+            #![rustc_dummy]
+            let _ = ();
+        };
     let _ =
         #[rustc_dummy] {
-                           #![rustc_dummy]
-                           let _ = ();
-                           ()
-                       };
+            #![rustc_dummy]
+            let _ = ();
+            ()
+        };
+    let const {
+                    #![rustc_dummy]
+                } =
+        #[rustc_dummy] const {
+                #![rustc_dummy]
+            };
     let mut x = 0;
     let _ = #[rustc_dummy] x = 15;
     let _ = #[rustc_dummy] x += 15;
-    let s = Foo{data: (),};
+    let s = Foo { data: () };
     let _ = #[rustc_dummy] s.data;
     let _ = (#[rustc_dummy] s).data;
     let t = Bar(());
@@ -229,16 +238,15 @@ fn _11() {
     let _ = #[rustc_dummy] &mut 0;
     let _ = #[rustc_dummy] &#[rustc_dummy] 0;
     let _ = #[rustc_dummy] &mut #[rustc_dummy] 0;
-    // FIXME: pp bug, extra space after keyword?
-    while false { let _ = #[rustc_dummy] continue ; }
-    while true { let _ = #[rustc_dummy] break ; }
+    while false { let _ = #[rustc_dummy] continue; }
+    while true { let _ = #[rustc_dummy] break; }
     || #[rustc_dummy] return;
     let _ = #[rustc_dummy] expr_mac!();
     let _ = #[rustc_dummy] expr_mac![];
-    let _ = #[rustc_dummy] expr_mac! { };
-    let _ = #[rustc_dummy] Foo{data: (),};
-    let _ = #[rustc_dummy] Foo{..s};
-    let _ = #[rustc_dummy] Foo{data: (), ..s};
+    let _ = #[rustc_dummy] expr_mac! {};
+    let _ = #[rustc_dummy] Foo { data: () };
+    let _ = #[rustc_dummy] Foo { ..s };
+    let _ = #[rustc_dummy] Foo { data: (), ..s };
     let _ = #[rustc_dummy] (0);
 }
 
@@ -258,6 +266,6 @@ fn _12() {
     }
 }
 
-fn foo() { }
-fn foo3(_: i32, _: (), _: ()) { }
-fn qux(_: i32) { }
+fn foo() {}
+fn foo3(_: i32, _: (), _: ()) {}
+fn qux(_: i32) {}

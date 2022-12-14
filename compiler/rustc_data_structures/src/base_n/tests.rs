@@ -15,7 +15,9 @@ fn test_encode() {
         test(u64::MAX as u128, base);
         test(u128::MAX, base);
 
-        for i in 0..1_000 {
+        const N: u128 = if cfg!(miri) { 10 } else { 1000 };
+
+        for i in 0..N {
             test(i * 983, base);
         }
     }

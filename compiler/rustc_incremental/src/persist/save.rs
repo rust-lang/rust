@@ -13,9 +13,13 @@ use super::file_format;
 use super::fs::*;
 use super::work_product;
 
-/// Save and dump the DepGraph.
+/// Saves and writes the [`DepGraph`] to the file system.
 ///
-/// No query must be invoked after this function.
+/// This function saves both the dep-graph and the query result cache,
+/// and drops the result cache.
+///
+/// This function should only run after all queries have completed.
+/// Trying to execute a query afterwards would attempt to read the result cache we just dropped.
 pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     debug!("save_dep_graph()");
     tcx.dep_graph.with_ignore(|| {
@@ -24,7 +28,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
             return;
         }
         // This is going to be deleted in finalize_session_directory, so let's not create it
-        if sess.has_errors_or_delayed_span_bugs() {
+        if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
             return;
         }
 
@@ -35,7 +39,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
         sess.time("assert_dep_graph", || crate::assert_dep_graph(tcx));
         sess.time("check_dirty_clean", || dirty_clean::check_dirty_clean_annotations(tcx));
 
-        if sess.opts.debugging_opts.incremental_info {
+        if sess.opts.unstable_opts.incremental_info {
             tcx.dep_graph.print_incremental_info()
         }
 
@@ -75,6 +79,7 @@ pub fn save_dep_graph(tcx: TyCtxt<'_>) {
     })
 }
 
+/// Saves the work product index.
 pub fn save_work_product_index(
     sess: &Session,
     dep_graph: &DepGraph,
@@ -84,15 +89,16 @@ pub fn save_work_product_index(
         return;
     }
     // This is going to be deleted in finalize_session_directory, so let's not create it
-    if sess.has_errors_or_delayed_span_bugs() {
+    if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
         return;
     }
 
     debug!("save_work_product_index()");
     dep_graph.assert_ignored();
     let path = work_products_path(sess);
-    file_format::save_in(sess, path, "work product index", |e| {
-        encode_work_product_index(&new_work_products, e)
+    file_format::save_in(sess, path, "work product index", |mut e| {
+        encode_work_product_index(&new_work_products, &mut e);
+        e.finish()
     });
 
     // We also need to clean out old work-products, as not all of them are
@@ -103,27 +109,23 @@ pub fn save_work_product_index(
         if !new_work_products.contains_key(id) {
             work_product::delete_workproduct_files(sess, wp);
             debug_assert!(
-                wp.saved_file.as_ref().map_or(true, |file_name| {
-                    !in_incr_comp_dir_sess(sess, &file_name).exists()
-                })
+                !wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
             );
         }
     }
 
     // Check that we did not delete one of the current work-products:
     debug_assert!({
-        new_work_products
-            .iter()
-            .flat_map(|(_, wp)| wp.saved_file.iter())
-            .map(|name| in_incr_comp_dir_sess(sess, name))
-            .all(|path| path.exists())
+        new_work_products.iter().all(|(_, wp)| {
+            wp.saved_files.iter().all(|(_, path)| in_incr_comp_dir_sess(sess, path).exists())
+        })
     });
 }
 
 fn encode_work_product_index(
     work_products: &FxHashMap<WorkProductId, WorkProduct>,
     encoder: &mut FileEncoder,
-) -> FileEncodeResult {
+) {
     let serialized_products: Vec<_> = work_products
         .iter()
         .map(|(id, work_product)| SerializedWorkProduct {
@@ -135,10 +137,16 @@ fn encode_work_product_index(
     serialized_products.encode(encoder)
 }
 
-fn encode_query_cache(tcx: TyCtxt<'_>, encoder: &mut FileEncoder) -> FileEncodeResult {
+fn encode_query_cache(tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
     tcx.sess.time("incr_comp_serialize_result_cache", || tcx.serialize_query_result_cache(encoder))
 }
 
+/// Builds the dependency graph.
+///
+/// This function creates the *staging dep-graph*. When the dep-graph is modified by a query
+/// execution, the new dependency information is not kept in memory but directly
+/// output to this file. `save_dep_graph` then finalizes the staging dep-graph
+/// and moves it to the permanent dep-graph path
 pub fn build_dep_graph(
     sess: &Session,
     prev_graph: SerializedDepGraph,
@@ -164,31 +172,17 @@ pub fn build_dep_graph(
         }
     };
 
-    if let Err(err) = file_format::write_file_header(&mut encoder, sess.is_nightly_build()) {
-        sess.err(&format!(
-            "failed to write dependency graph header to `{}`: {}",
-            path_buf.display(),
-            err
-        ));
-        return None;
-    }
+    file_format::write_file_header(&mut encoder, sess.is_nightly_build());
 
     // First encode the commandline arguments hash
-    if let Err(err) = sess.opts.dep_tracking_hash(false).encode(&mut encoder) {
-        sess.err(&format!(
-            "failed to write dependency graph hash `{}`: {}",
-            path_buf.display(),
-            err
-        ));
-        return None;
-    }
+    sess.opts.dep_tracking_hash(false).encode(&mut encoder);
 
     Some(DepGraph::new(
         &sess.prof,
         prev_graph,
         prev_work_products,
         encoder,
-        sess.opts.debugging_opts.query_dep_graph,
-        sess.opts.debugging_opts.incremental_info,
+        sess.opts.unstable_opts.query_dep_graph,
+        sess.opts.unstable_opts.incremental_info,
     ))
 }

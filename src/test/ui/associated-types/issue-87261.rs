@@ -77,23 +77,23 @@ where
 
 fn main() {
     accepts_trait(returns_opaque());
-    //~^ ERROR type mismatch resolving `<impl Trait as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl Trait + 'static as Trait>::Associated == ()`
 
     accepts_trait(returns_opaque_derived());
-    //~^ ERROR type mismatch resolving `<impl DerivedTrait as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl DerivedTrait + 'static as Trait>::Associated == ()`
 
     accepts_trait(returns_opaque_foo());
-    //~^ ERROR type mismatch resolving `<impl Trait+Foo as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl Trait + Foo as Trait>::Associated == ()`
 
     accepts_trait(returns_opaque_derived_foo());
-    //~^ ERROR type mismatch resolving `<impl DerivedTrait+Foo as Trait>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl DerivedTrait + Foo as Trait>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic());
-    //~^ ERROR type mismatch resolving `<impl GenericTrait<()> as GenericTrait<()>>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic_foo());
-    //~^ ERROR type mismatch resolving `<impl GenericTrait<()>+Foo as GenericTrait<()>>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl GenericTrait<()> + Foo as GenericTrait<()>>::Associated == ()`
 
     accepts_generic_trait(returns_opaque_generic_duplicate());
-    //~^ ERROR type mismatch resolving `<impl GenericTrait<()>+GenericTrait<u8> as GenericTrait<()>>::Associated == ()`
+    //~^ ERROR type mismatch resolving `<impl GenericTrait<()> + GenericTrait<u8> as GenericTrait<()>>::Associated == ()`
 }

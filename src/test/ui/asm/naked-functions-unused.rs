@@ -1,8 +1,8 @@
 // revisions: x86_64 aarch64
+// needs-asm-support
 //[x86_64] only-x86_64
 //[aarch64] only-aarch64
 #![deny(unused)]
-#![feature(asm)]
 #![feature(naked_functions)]
 #![crate_type = "lib"]
 
@@ -12,6 +12,8 @@ pub trait Trait {
 }
 
 pub mod normal {
+    use std::arch::asm;
+
     pub extern "C" fn function(a: usize, b: usize) -> usize {
         //~^ ERROR unused variable: `a`
         //~| ERROR unused variable: `b`
@@ -50,6 +52,8 @@ pub mod normal {
 }
 
 pub mod naked {
+    use std::arch::asm;
+
     #[naked]
     pub extern "C" fn function(a: usize, b: usize) -> usize {
         unsafe { asm!("", options(noreturn)); }

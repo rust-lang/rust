@@ -49,14 +49,14 @@ impl fmt::Display for Svh {
 }
 
 impl<S: Encoder> Encodable<S> for Svh {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u64(self.as_u64().to_le())
+    fn encode(&self, s: &mut S) {
+        s.emit_u64(self.as_u64().to_le());
     }
 }
 
 impl<D: Decoder> Decodable<D> for Svh {
-    fn decode(d: &mut D) -> Result<Svh, D::Error> {
-        d.read_u64().map(u64::from_le).map(Svh::new)
+    fn decode(d: &mut D) -> Svh {
+        Svh::new(u64::from_le(d.read_u64()))
     }
 }
 

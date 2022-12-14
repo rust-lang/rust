@@ -11,8 +11,8 @@ use std::cmp::{Ord, Ordering};
 use rustc_ast::ast;
 use rustc_span::{symbol::sym, Span};
 
-use crate::config::{Config, GroupImportsTactic, ImportGranularity};
-use crate::imports::{flatten_use_trees, merge_use_trees, SharedPrefix, UseSegment, UseTree};
+use crate::config::{Config, GroupImportsTactic};
+use crate::imports::{normalize_use_trees_with_granularity, UseSegmentKind, UseTree};
 use crate::items::{is_mod_decl, rewrite_extern_crate, rewrite_mod};
 use crate::lists::{itemize_list, write_list, ListFormatting, ListItem};
 use crate::rewrite::RewriteContext;
@@ -26,14 +26,14 @@ use crate::visitor::FmtVisitor;
 fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
     match (&a.kind, &b.kind) {
         (&ast::ItemKind::Mod(..), &ast::ItemKind::Mod(..)) => {
-            a.ident.as_str().cmp(&b.ident.as_str())
+            a.ident.as_str().cmp(b.ident.as_str())
         }
         (&ast::ItemKind::ExternCrate(ref a_name), &ast::ItemKind::ExternCrate(ref b_name)) => {
             // `extern crate foo as bar;`
             //               ^^^ Comparing this.
-            let a_orig_name = a_name.map_or_else(|| a.ident.as_str(), rustc_span::Symbol::as_str);
-            let b_orig_name = b_name.map_or_else(|| b.ident.as_str(), rustc_span::Symbol::as_str);
-            let result = a_orig_name.cmp(&b_orig_name);
+            let a_orig_name = a_name.unwrap_or(a.ident.name);
+            let b_orig_name = b_name.unwrap_or(b.ident.name);
+            let result = a_orig_name.as_str().cmp(b_orig_name.as_str());
             if result != Ordering::Equal {
                 return result;
             }
@@ -44,7 +44,7 @@ fn compare_items(a: &ast::Item, b: &ast::Item) -> Ordering {
                 (Some(..), None) => Ordering::Greater,
                 (None, Some(..)) => Ordering::Less,
                 (None, None) => Ordering::Equal,
-                (Some(..), Some(..)) => a.ident.as_str().cmp(&b.ident.as_str()),
+                (Some(..), Some(..)) => a.ident.as_str().cmp(b.ident.as_str()),
             }
         }
         _ => unreachable!(),
@@ -107,18 +107,15 @@ fn rewrite_reorderable_or_regroupable_items(
             for (item, list_item) in normalized_items.iter_mut().zip(list_items) {
                 item.list_item = Some(list_item.clone());
             }
-            normalized_items = match context.config.imports_granularity() {
-                ImportGranularity::Crate => merge_use_trees(normalized_items, SharedPrefix::Crate),
-                ImportGranularity::Module => {
-                    merge_use_trees(normalized_items, SharedPrefix::Module)
-                }
-                ImportGranularity::Item => flatten_use_trees(normalized_items),
-                ImportGranularity::One => merge_use_trees(normalized_items, SharedPrefix::One),
-                ImportGranularity::Preserve => normalized_items,
-            };
+            normalized_items = normalize_use_trees_with_granularity(
+                normalized_items,
+                context.config.imports_granularity(),
+            );
 
             let mut regrouped_items = match context.config.group_imports() {
-                GroupImportsTactic::Preserve => vec![normalized_items],
+                GroupImportsTactic::Preserve | GroupImportsTactic::One => {
+                    vec![normalized_items]
+                }
                 GroupImportsTactic::StdExternalCrate => group_imports(normalized_items),
             };
 
@@ -185,16 +182,16 @@ fn group_imports(uts: Vec<UseTree>) -> Vec<Vec<UseTree>> {
             external_imports.push(ut);
             continue;
         }
-        match &ut.path[0] {
-            UseSegment::Ident(id, _) => match id.as_ref() {
+        match &ut.path[0].kind {
+            UseSegmentKind::Ident(id, _) => match id.as_ref() {
                 "std" | "alloc" | "core" => std_imports.push(ut),
                 _ => external_imports.push(ut),
             },
-            UseSegment::Slf(_) | UseSegment::Super(_) | UseSegment::Crate(_) => {
+            UseSegmentKind::Slf(_) | UseSegmentKind::Super(_) | UseSegmentKind::Crate(_) => {
                 local_imports.push(ut)
             }
             // These are probably illegal here
-            UseSegment::Glob | UseSegment::List(_) => external_imports.push(ut),
+            UseSegmentKind::Glob | UseSegmentKind::List(_) => external_imports.push(ut),
         }
     }
 

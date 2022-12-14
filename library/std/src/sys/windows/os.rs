@@ -64,7 +64,7 @@ pub fn error_string(mut errnum: i32) -> String {
         if res == 0 {
             // Sometimes FormatMessageW can fail e.g., system doesn't like langId,
             let fm_err = errno();
-            return format!("OS Error {} (FormatMessageW() returned error {})", errnum, fm_err);
+            return format!("OS Error {errnum} (FormatMessageW() returned error {fm_err})");
         }
 
         match String::from_utf16(&buf[..res]) {
@@ -99,11 +99,11 @@ impl Iterator for Env {
                 }
                 let p = self.cur as *const u16;
                 let mut len = 0;
-                while *p.offset(len) != 0 {
+                while *p.add(len) != 0 {
                     len += 1;
                 }
-                let s = slice::from_raw_parts(p, len as usize);
-                self.cur = self.cur.offset(len + 1);
+                let s = slice::from_raw_parts(p, len);
+                self.cur = self.cur.add(len + 1);
 
                 // Windows allows environment variables to start with an equals
                 // symbol (in any other position, this is the separator between
@@ -134,7 +134,7 @@ impl Drop for Env {
 pub fn env() -> Env {
     unsafe {
         let ch = c::GetEnvironmentStringsW();
-        if ch as usize == 0 {
+        if ch.is_null() {
             panic!("failure getting env string from OS: {}", io::Error::last_os_error());
         }
         Env { base: ch, cur: ch }
@@ -275,7 +275,7 @@ pub fn unsetenv(n: &OsStr) -> io::Result<()> {
 }
 
 pub fn temp_dir() -> PathBuf {
-    super::fill_utf16_buf(|buf, sz| unsafe { c::GetTempPathW(sz, buf) }, super::os2path).unwrap()
+    super::fill_utf16_buf(|buf, sz| unsafe { c::GetTempPath2W(sz, buf) }, super::os2path).unwrap()
 }
 
 #[cfg(not(target_vendor = "uwp"))]

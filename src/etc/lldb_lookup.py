@@ -55,6 +55,9 @@ def summary_lookup(valobj, dict):
     if rust_type == RustType.STD_REF_CELL:
         return StdRefSummaryProvider(valobj, dict)
 
+    if rust_type == RustType.STD_NONZERO_NUMBER:
+        return StdNonZeroNumberSummaryProvider(valobj, dict)
+
     return ""
 
 

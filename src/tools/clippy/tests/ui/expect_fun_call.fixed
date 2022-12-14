@@ -1,9 +1,14 @@
 // run-rustfix
-
 #![warn(clippy::expect_fun_call)]
-#![allow(clippy::to_string_in_format_args)]
+#![allow(clippy::to_string_in_format_args, clippy::uninlined_format_args)]
 
 /// Checks implementation of the `EXPECT_FUN_CALL` lint
+
+macro_rules! one {
+    () => {
+        1
+    };
+}
 
 fn main() {
     struct Foo;
@@ -30,6 +35,9 @@ fn main() {
 
     let with_none_and_as_str: Option<i32> = None;
     with_none_and_as_str.unwrap_or_else(|| panic!("Error {}: fake error", error_code));
+
+    let with_none_and_format_with_macro: Option<i32> = None;
+    with_none_and_format_with_macro.unwrap_or_else(|| panic!("Error {}: fake error", one!()));
 
     let with_ok: Result<(), ()> = Ok(());
     with_ok.expect("error");
@@ -92,4 +100,10 @@ fn main() {
         let opt_ref = &opt;
         opt_ref.unwrap_or_else(|| panic!("{:?}", opt_ref));
     }
+
+    let format_capture: Option<i32> = None;
+    format_capture.unwrap_or_else(|| panic!("{error_code}"));
+
+    let format_capture_and_value: Option<i32> = None;
+    format_capture_and_value.unwrap_or_else(|| panic!("{error_code}, {}", 1));
 }

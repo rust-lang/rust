@@ -1,7 +1,7 @@
 //! A helpful diagram for debugging dataflow problems.
 
 use std::borrow::Cow;
-use std::lazy::SyncOnceCell;
+use std::sync::OnceLock;
 use std::{io, ops, str};
 
 use regex::Regex;
@@ -10,7 +10,7 @@ use rustc_middle::mir::graphviz_safe_def_name;
 use rustc_middle::mir::{self, BasicBlock, Body, Location};
 
 use super::fmt::{DebugDiffWithAdapter, DebugWithAdapter, DebugWithContext};
-use super::{Analysis, Direction, Results, ResultsRefCursor, ResultsVisitor};
+use super::{Analysis, CallReturnPlaces, Direction, Results, ResultsRefCursor, ResultsVisitor};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum OutputStyle {
@@ -36,7 +36,7 @@ where
     style: OutputStyle,
 }
 
-impl<A> Formatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -52,7 +52,7 @@ pub struct CfgEdge {
     index: usize,
 }
 
-fn dataflow_successors(body: &Body<'tcx>, bb: BasicBlock) -> Vec<CfgEdge> {
+fn dataflow_successors(body: &Body<'_>, bb: BasicBlock) -> Vec<CfgEdge> {
     body[bb]
         .terminator()
         .successors()
@@ -61,7 +61,7 @@ fn dataflow_successors(body: &Body<'tcx>, bb: BasicBlock) -> Vec<CfgEdge> {
         .collect()
 }
 
-impl<A> dot::Labeller<'_> for Formatter<'a, 'tcx, A>
+impl<'tcx, A> dot::Labeller<'_> for Formatter<'_, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -100,7 +100,7 @@ where
     }
 }
 
-impl<A> dot::GraphWalk<'a> for Formatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> dot::GraphWalk<'a> for Formatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
 {
@@ -108,12 +108,12 @@ where
     type Edge = CfgEdge;
 
     fn nodes(&self) -> dot::Nodes<'_, Self::Node> {
-        self.body.basic_blocks().indices().collect::<Vec<_>>().into()
+        self.body.basic_blocks.indices().collect::<Vec<_>>().into()
     }
 
     fn edges(&self) -> dot::Edges<'_, Self::Edge> {
         self.body
-            .basic_blocks()
+            .basic_blocks
             .indices()
             .flat_map(|bb| dataflow_successors(self.body, bb))
             .collect::<Vec<_>>()
@@ -125,7 +125,7 @@ where
     }
 
     fn target(&self, edge: &Self::Edge) -> Self::Node {
-        self.body[edge.source].terminator().successors().nth(edge.index).copied().unwrap()
+        self.body[edge.source].terminator().successors().nth(edge.index).unwrap()
     }
 }
 
@@ -138,7 +138,7 @@ where
     style: OutputStyle,
 }
 
-impl<A> BlockFormatter<'a, 'tcx, A>
+impl<'a, 'tcx, A> BlockFormatter<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -216,9 +216,9 @@ where
         // Write the full dataflow state immediately after the terminator if it differs from the
         // state at block entry.
         self.results.seek_to_block_end(block);
-        if self.results.get() != &block_start_state || A::Direction::is_backward() {
+        if self.results.get() != &block_start_state || A::Direction::IS_BACKWARD {
             let after_terminator_name = match terminator.kind {
-                mir::TerminatorKind::Call { destination: Some(_), .. } => "(on unwind)",
+                mir::TerminatorKind::Call { target: Some(_), .. } => "(on unwind)",
                 _ => "(on end)",
             };
 
@@ -231,16 +231,15 @@ where
         // for the basic block itself. That way, we could display terminator-specific effects for
         // backward dataflow analyses as well as effects for `SwitchInt` terminators.
         match terminator.kind {
-            mir::TerminatorKind::Call {
-                destination: Some((return_place, _)),
-                ref func,
-                ref args,
-                ..
-            } => {
+            mir::TerminatorKind::Call { destination, .. } => {
                 self.write_row(w, "", "(on successful return)", |this, w, fmt| {
                     let state_on_unwind = this.results.get().clone();
                     this.results.apply_custom_effect(|analysis, state| {
-                        analysis.apply_call_return_effect(state, block, func, args, return_place);
+                        analysis.apply_call_return_effect(
+                            state,
+                            block,
+                            CallReturnPlaces::Call(destination),
+                        );
                     });
 
                     write!(
@@ -272,6 +271,31 @@ where
                         diff = diff_pretty(
                             this.results.get(),
                             &state_on_generator_drop,
+                            this.results.analysis()
+                        ),
+                    )
+                })?;
+            }
+
+            mir::TerminatorKind::InlineAsm { destination: Some(_), ref operands, .. } => {
+                self.write_row(w, "", "(on successful return)", |this, w, fmt| {
+                    let state_on_unwind = this.results.get().clone();
+                    this.results.apply_custom_effect(|analysis, state| {
+                        analysis.apply_call_return_effect(
+                            state,
+                            block,
+                            CallReturnPlaces::InlineAsm(operands),
+                        );
+                    });
+
+                    write!(
+                        w,
+                        r#"<td balign="left" colspan="{colspan}" {fmt} align="left">{diff}</td>"#,
+                        colspan = this.style.num_state_columns(),
+                        fmt = fmt,
+                        diff = diff_pretty(
+                            this.results.get(),
+                            &state_on_unwind,
                             this.results.analysis()
                         ),
                     )
@@ -366,7 +390,7 @@ where
         let mut afters = diffs.after.into_iter();
 
         let next_in_dataflow_order = |it: &mut std::vec::IntoIter<_>| {
-            if A::Direction::is_forward() { it.next().unwrap() } else { it.next_back().unwrap() }
+            if A::Direction::IS_FORWARD { it.next().unwrap() } else { it.next_back().unwrap() }
         };
 
         for (i, statement) in body[block].statements.iter().enumerate() {
@@ -451,7 +475,10 @@ where
                 r#"<td colspan="{colspan}" {fmt} align="left">{state}</td>"#,
                 colspan = this.style.num_state_columns(),
                 fmt = fmt,
-                state = format!("{:?}", DebugWithAdapter { this: state, ctxt: analysis }),
+                state = dot::escape_html(&format!(
+                    "{:?}",
+                    DebugWithAdapter { this: state, ctxt: analysis }
+                )),
             )
         })
     }
@@ -467,7 +494,7 @@ where
     after: Vec<String>,
 }
 
-impl<A> StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -490,7 +517,7 @@ where
     }
 }
 
-impl<A> ResultsVisitor<'a, 'tcx> for StateDiffCollector<'a, 'tcx, A>
+impl<'a, 'tcx, A> ResultsVisitor<'a, 'tcx> for StateDiffCollector<'a, 'tcx, A>
 where
     A: Analysis<'tcx>,
     A::Domain: DebugWithContext<A>,
@@ -500,10 +527,10 @@ where
     fn visit_block_start(
         &mut self,
         state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_forward() {
+        if A::Direction::IS_FORWARD {
             self.prev_state.clone_from(state);
         }
     }
@@ -511,10 +538,10 @@ where
     fn visit_block_end(
         &mut self,
         state: &Self::FlowState,
-        _block_data: &'mir mir::BasicBlockData<'tcx>,
+        _block_data: &mir::BasicBlockData<'tcx>,
         _block: BasicBlock,
     ) {
-        if A::Direction::is_backward() {
+        if A::Direction::IS_BACKWARD {
             self.prev_state.clone_from(state);
         }
     }
@@ -522,7 +549,7 @@ where
     fn visit_statement_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
@@ -534,7 +561,7 @@ where
     fn visit_statement_after_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _statement: &'mir mir::Statement<'tcx>,
+        _statement: &mir::Statement<'tcx>,
         _location: Location,
     ) {
         self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
@@ -544,7 +571,7 @@ where
     fn visit_terminator_before_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         if let Some(before) = self.before.as_mut() {
@@ -556,7 +583,7 @@ where
     fn visit_terminator_after_primary_effect(
         &mut self,
         state: &Self::FlowState,
-        _terminator: &'mir mir::Terminator<'tcx>,
+        _terminator: &mir::Terminator<'tcx>,
         _location: Location,
     ) {
         self.after.push(diff_pretty(state, &self.prev_state, self.analysis));
@@ -566,7 +593,7 @@ where
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: SyncOnceCell<regex::Regex> = SyncOnceCell::new();
+        static RE: OnceLock<regex::Regex> = OnceLock::new();
         RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }
@@ -604,9 +631,8 @@ where
         ret
     });
 
-    let mut html_diff = match html_diff {
-        Cow::Borrowed(_) => return raw_diff,
-        Cow::Owned(s) => s,
+    let Cow::Owned(mut html_diff) = html_diff else {
+        return raw_diff;
     };
 
     if inside_font_tag {

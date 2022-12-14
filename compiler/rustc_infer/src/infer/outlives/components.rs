@@ -3,8 +3,9 @@
 // RFC for reference.
 
 use rustc_data_structures::sso::SsoHashSet;
+use rustc_hir::def_id::DefId;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, Ty, TyCtxt, TypeFoldable};
+use rustc_middle::ty::{self, SubstsRef, Ty, TyCtxt, TypeVisitable};
 use smallvec::{smallvec, SmallVec};
 
 #[derive(Debug)]
@@ -45,11 +46,13 @@ pub enum Component<'tcx> {
     // them. This gives us room to improve the regionck reasoning in
     // the future without breaking backwards compat.
     EscapingProjection(Vec<Component<'tcx>>),
+
+    Opaque(DefId, SubstsRef<'tcx>),
 }
 
 /// Push onto `out` all the things that must outlive `'a` for the condition
 /// `ty0: 'a` to hold. Note that `ty0` must be a **fully resolved type**.
-pub fn push_outlives_components(
+pub fn push_outlives_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty0: Ty<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
@@ -59,7 +62,7 @@ pub fn push_outlives_components(
     debug!("components({:?}) = {:?}", ty0, out);
 }
 
-fn compute_components(
+fn compute_components<'tcx>(
     tcx: TyCtxt<'tcx>,
     ty: Ty<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
@@ -120,12 +123,23 @@ fn compute_components(
                 out.push(Component::Param(p));
             }
 
+            // Ignore lifetimes found in opaque types. Opaque types can
+            // have lifetimes in their substs which their hidden type doesn't
+            // actually use. If we inferred that an opaque type is outlived by
+            // its parameter lifetimes, then we could prove that any lifetime
+            // outlives any other lifetime, which is unsound.
+            // See https://github.com/rust-lang/rust/issues/84305 for
+            // more details.
+            ty::Opaque(def_id, substs) => {
+                out.push(Component::Opaque(def_id, substs));
+            },
+
             // For projections, we prefer to generate an obligation like
             // `<P0 as Trait<P1...Pn>>::Foo: 'a`, because this gives the
             // regionck more ways to prove that it holds. However,
             // regionck is not (at least currently) prepared to deal with
             // higher-ranked regions that may appear in the
-            // trait-ref. Therefore, if we see any higher-ranke regions,
+            // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
             ty::Projection(ref data) => {
@@ -168,7 +182,6 @@ fn compute_components(
             ty::Float(..) |       // OutlivesScalar
             ty::Never |           // ...
             ty::Adt(..) |         // OutlivesNominalType
-            ty::Opaque(..) |      // OutlivesNominalType (ish)
             ty::Foreign(..) |     // OutlivesNominalType
             ty::Str |             // OutlivesScalar (ish)
             ty::Slice(..) |       // ...
@@ -190,13 +203,17 @@ fn compute_components(
         }
 }
 
-fn compute_components_recursive(
+/// Collect [Component]s for *all* the substs of `parent`.
+///
+/// This should not be used to get the components of `parent` itself.
+/// Use [push_outlives_components] instead.
+pub(super) fn compute_components_recursive<'tcx>(
     tcx: TyCtxt<'tcx>,
     parent: GenericArg<'tcx>,
     out: &mut SmallVec<[Component<'tcx>; 4]>,
     visited: &mut SsoHashSet<GenericArg<'tcx>>,
 ) {
-    for child in parent.walk_shallow(tcx, visited) {
+    for child in parent.walk_shallow(visited) {
         match child.unpack() {
             GenericArgKind::Type(ty) => {
                 compute_components(tcx, ty, out, visited);

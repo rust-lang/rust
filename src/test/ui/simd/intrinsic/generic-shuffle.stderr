@@ -1,10 +1,10 @@
-error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: expected return type of length 2, found `Simd<u32, 4_usize>` with length 4
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: expected return type of length 2, found `Simd<u32, 4>` with length 4
   --> $DIR/generic-shuffle.rs:24:31
    |
 LL |         let _: Simd<u32, 4> = simd_shuffle(v, v, I);
    |                               ^^^^^^^^^^^^^^^^^^^^^
 
-error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: expected return element type `u32` (element of input `Simd<u32, 4_usize>`), found `Simd<f32, 2_usize>` with element type `f32`
+error[E0511]: invalid monomorphization of `simd_shuffle` intrinsic: expected return element type `u32` (element of input `Simd<u32, 4>`), found `Simd<f32, 2>` with element type `f32`
   --> $DIR/generic-shuffle.rs:27:31
    |
 LL |         let _: Simd<f32, 2> = simd_shuffle(v, v, I);

@@ -2,14 +2,14 @@
 
 use clippy_utils::ast_utils::{eq_field_pat, eq_id, eq_maybe_qself, eq_pat, eq_path};
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::{meets_msrv, msrvs, over};
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::over;
 use rustc_ast::mut_visit::*;
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
+use rustc_ast::{self as ast, Mutability, Pat, PatKind, PatKind::*, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_errors::Applicability;
 use rustc_lint::{EarlyContext, EarlyLintPass};
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::DUMMY_SP;
 
@@ -25,7 +25,7 @@ declare_clippy_lint! {
     /// *disjunctive normal form (DNF)* into *conjunctive normal form (CNF)*.
     ///
     /// ### Why is this bad?
-    /// In the example above, `Some` is repeated, which unncessarily complicates the pattern.
+    /// In the example above, `Some` is repeated, which unnecessarily complicates the pattern.
     ///
     /// ### Example
     /// ```rust
@@ -39,19 +39,19 @@ declare_clippy_lint! {
     ///     if let Some(0 | 2) = Some(0) {}
     /// }
     /// ```
+    #[clippy::version = "1.46.0"]
     pub UNNESTED_OR_PATTERNS,
     pedantic,
     "unnested or-patterns, e.g., `Foo(Bar) | Foo(Baz) instead of `Foo(Bar | Baz)`"
 }
 
-#[derive(Clone, Copy)]
 pub struct UnnestedOrPatterns {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl UnnestedOrPatterns {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -60,13 +60,13 @@ impl_lint_pass!(UnnestedOrPatterns => [UNNESTED_OR_PATTERNS]);
 
 impl EarlyLintPass for UnnestedOrPatterns {
     fn check_arm(&mut self, cx: &EarlyContext<'_>, a: &ast::Arm) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if self.msrv.meets(msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &a.pat);
         }
     }
 
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if self.msrv.meets(msrvs::OR_PATTERNS) {
             if let ast::ExprKind::Let(pat, _, _) = &e.kind {
                 lint_unnested_or_patterns(cx, pat);
             }
@@ -74,13 +74,13 @@ impl EarlyLintPass for UnnestedOrPatterns {
     }
 
     fn check_param(&mut self, cx: &EarlyContext<'_>, p: &ast::Param) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if self.msrv.meets(msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &p.pat);
         }
     }
 
     fn check_local(&mut self, cx: &EarlyContext<'_>, l: &ast::Local) {
-        if meets_msrv(self.msrv.as_ref(), &msrvs::OR_PATTERNS) {
+        if self.msrv.meets(msrvs::OR_PATTERNS) {
             lint_unnested_or_patterns(cx, &l.pat);
         }
     }
@@ -136,12 +136,12 @@ fn insert_necessary_parens(pat: &mut P<Pat>) {
     struct Visitor;
     impl MutVisitor for Visitor {
         fn visit_pat(&mut self, pat: &mut P<Pat>) {
-            use ast::{BindingMode::*, Mutability::*};
+            use ast::BindingAnnotation;
             noop_visit_pat(pat, self);
             let target = match &mut pat.kind {
                 // `i @ a | b`, `box a | b`, and `& mut? a | b`.
                 Ident(.., Some(p)) | Box(p) | Ref(p, _) if matches!(&p.kind, Or(ps) if ps.len() > 1) => p,
-                Ref(p, Not) if matches!(p.kind, Ident(ByValue(Mut), ..)) => p, // `&(mut x)`
+                Ref(p, Mutability::Not) if matches!(p.kind, Ident(BindingAnnotation::MUT, ..)) => p, // `&(mut x)`
                 _ => return,
             };
             target.kind = Paren(P(take_pat(target)));
@@ -162,9 +162,8 @@ fn unnest_or_patterns(pat: &mut P<Pat>) -> bool {
             noop_visit_pat(p, self);
 
             // Don't have an or-pattern? Just quit early on.
-            let alternatives = match &mut p.kind {
-                Or(ps) => ps,
-                _ => return,
+            let Or(alternatives) = &mut p.kind else {
+                return
             };
 
             // Collapse or-patterns directly nested in or-patterns.
@@ -229,6 +228,10 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
         // with which a pattern `C(p_0)` may be formed,
         // which we would want to join with other `C(p_j)`s.
         Ident(.., None) | Lit(_) | Wild | Path(..) | Range(..) | Rest | MacCall(_)
+        // Skip immutable refs, as grouping them saves few characters,
+        // and almost always requires adding parens (increasing noisiness).
+        // In the case of only two patterns, replacement adds net characters.
+        | Ref(_, Mutability::Not)
         // Dealt with elsewhere.
         | Or(_) | Paren(_) => false,
         // Transform `box x | ... | box y` into `box (x | y)`.
@@ -240,10 +243,10 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
             |k| matches!(k, Box(_)),
             |k| always_pat!(k, Box(p) => p),
         ),
-        // Transform `&m x | ... | &m y` into `&m (x | y)`.
-        Ref(target, m1) => extend_with_matching(
+        // Transform `&mut x | ... | &mut y` into `&mut (x | y)`.
+        Ref(target, Mutability::Mut) => extend_with_matching(
             target, start, alternatives,
-            |k| matches!(k, Ref(_, m2) if m1 == m2), // Mutabilities must match.
+            |k| matches!(k, Ref(_, Mutability::Mut)),
             |k| always_pat!(k, Ref(p, _) => p),
         ),
         // Transform `b @ p0 | ... b @ p1` into `b @ (p0 | p1)`.
@@ -288,9 +291,9 @@ fn transform_with_focus_on_idx(alternatives: &mut Vec<P<Pat>>, focus_idx: usize)
 /// So when we fixate on some `ident_k: pat_k`, we try to find `ident_k` in the other pattern
 /// and check that all `fp_i` where `i ∈ ((0...n) \ k)` between two patterns are equal.
 fn extend_with_struct_pat(
-    qself1: &Option<ast::QSelf>,
+    qself1: &Option<P<ast::QSelf>>,
     path1: &ast::Path,
-    fps1: &mut Vec<ast::PatField>,
+    fps1: &mut [ast::PatField],
     rest1: bool,
     start: usize,
     alternatives: &mut Vec<P<Pat>>,
@@ -331,7 +334,7 @@ fn extend_with_struct_pat(
 /// while also requiring `ps1[..n] ~ ps2[..n]` (pre) and `ps1[n + 1..] ~ ps2[n + 1..]` (post),
 /// where `~` denotes semantic equality.
 fn extend_with_matching_product(
-    targets: &mut Vec<P<Pat>>,
+    targets: &mut [P<Pat>],
     start: usize,
     alternatives: &mut Vec<P<Pat>>,
     predicate: impl Fn(&PatKind, &[P<Pat>], usize) -> bool,

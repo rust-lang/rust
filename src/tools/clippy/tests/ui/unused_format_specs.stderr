@@ -1,0 +1,54 @@
+error: empty precision specifier has no effect
+  --> $DIR/unused_format_specs.rs:8:17
+   |
+LL |     println!("{:.}", 1.0);
+   |                 ^
+   |
+   = note: a precision specifier is not required to format floats
+   = note: `-D clippy::unused-format-specs` implied by `-D warnings`
+help: remove the `.`
+   |
+LL -     println!("{:.}", 1.0);
+LL +     println!("{}", 1.0);
+   |
+
+error: empty precision specifier has no effect
+  --> $DIR/unused_format_specs.rs:9:18
+   |
+LL |     println!("{f:.} {f:.?}");
+   |                  ^
+   |
+   = note: a precision specifier is not required to format floats
+help: remove the `.`
+   |
+LL -     println!("{f:.} {f:.?}");
+LL +     println!("{f} {f:.?}");
+   |
+
+error: empty precision specifier has no effect
+  --> $DIR/unused_format_specs.rs:9:24
+   |
+LL |     println!("{f:.} {f:.?}");
+   |                        ^
+   |
+   = note: a precision specifier is not required to format floats
+help: remove the `.`
+   |
+LL -     println!("{f:.} {f:.?}");
+LL +     println!("{f:.} {f:?}");
+   |
+
+error: empty precision specifier has no effect
+  --> $DIR/unused_format_specs.rs:11:17
+   |
+LL |     println!("{:.}", 1);
+   |                 ^
+   |
+help: remove the `.`
+   |
+LL -     println!("{:.}", 1);
+LL +     println!("{}", 1);
+   |
+
+error: aborting due to 4 previous errors
+

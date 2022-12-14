@@ -94,7 +94,7 @@ fn test_into_inner_poison() {
     assert!(m.is_poisoned());
     match Arc::try_unwrap(m).unwrap().into_inner() {
         Err(e) => assert_eq!(e.into_inner(), NonCopy(10)),
-        Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {:?}", x),
+        Ok(x) => panic!("into_inner of poisoned Mutex is Ok: {x:?}"),
     }
 }
 
@@ -118,7 +118,7 @@ fn test_get_mut_poison() {
     assert!(m.is_poisoned());
     match Arc::try_unwrap(m).unwrap().get_mut() {
         Err(e) => assert_eq!(*e.into_inner(), NonCopy(10)),
-        Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {:?}", x),
+        Ok(x) => panic!("get_mut of poisoned Mutex is Ok: {x:?}"),
     }
 }
 

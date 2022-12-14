@@ -1,4 +1,4 @@
 fn main() {
-    let x = panic!();
-    x.clone(); //~ ERROR type annotations needed
+    let x = panic!(); //~ ERROR type annotations needed
+    x.clone();
 }

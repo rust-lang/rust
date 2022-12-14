@@ -4,8 +4,8 @@ warning: unused `Result` that must be used
 LL |     write!(&mut example, "{}", 42);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-W unused-must-use` implied by `-W unused`
    = note: this `Result` may be an `Err` variant, which should be handled
+   = note: `-W unused-must-use` implied by `-W unused`
    = note: this warning originates in the macro `write` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 warning: 1 warning emitted

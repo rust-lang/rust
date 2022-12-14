@@ -3,8 +3,8 @@ use rustc_ast::visit::Visitor;
 use rustc_span::Symbol;
 
 use crate::attr::MetaVisitor;
-use crate::syntux::parser::Parser;
-use crate::syntux::session::ParseSess;
+use crate::parse::macros::cfg_if::parse_cfg_if;
+use crate::parse::session::ParseSess;
 
 pub(crate) struct ModItem {
     pub(crate) item: ast::Item,
@@ -62,7 +62,7 @@ impl<'a, 'ast: 'a> CfgIfVisitor<'a> {
             }
         };
 
-        let items = Parser::parse_cfg_if(self.parse_sess, mac)?;
+        let items = parse_cfg_if(self.parse_sess, mac)?;
         self.mods
             .append(&mut items.into_iter().map(|item| ModItem { item }).collect());
 
@@ -84,15 +84,19 @@ impl PathVisitor {
 }
 
 impl<'ast> MetaVisitor<'ast> for PathVisitor {
-    fn visit_meta_name_value(&mut self, meta_item: &'ast ast::MetaItem, lit: &'ast ast::Lit) {
+    fn visit_meta_name_value(
+        &mut self,
+        meta_item: &'ast ast::MetaItem,
+        lit: &'ast ast::MetaItemLit,
+    ) {
         if meta_item.has_name(Symbol::intern("path")) && lit.kind.is_str() {
-            self.paths.push(lit_to_str(lit));
+            self.paths.push(meta_item_lit_to_str(lit));
         }
     }
 }
 
 #[cfg(not(windows))]
-fn lit_to_str(lit: &ast::Lit) -> String {
+fn meta_item_lit_to_str(lit: &ast::MetaItemLit) -> String {
     match lit.kind {
         ast::LitKind::Str(symbol, ..) => symbol.to_string(),
         _ => unreachable!(),
@@ -100,7 +104,7 @@ fn lit_to_str(lit: &ast::Lit) -> String {
 }
 
 #[cfg(windows)]
-fn lit_to_str(lit: &ast::Lit) -> String {
+fn meta_item_lit_to_str(lit: &ast::MetaItemLit) -> String {
     match lit.kind {
         ast::LitKind::Str(symbol, ..) => symbol.as_str().replace("/", "\\"),
         _ => unreachable!(),

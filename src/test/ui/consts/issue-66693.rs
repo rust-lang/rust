@@ -8,7 +8,8 @@ static _FOO: () = panic!(true);
 //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
 
 const fn _foo() {
-    panic!(&1); //~ ERROR: argument to `panic!()` in a const context must have type `&str`
+    panic!(&1);
+    //~^ ERROR: argument to `panic!()` in a const context must have type `&str`
 }
 
 // ensure that conforming panics don't cause an error

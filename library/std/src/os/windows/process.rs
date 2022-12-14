@@ -22,7 +22,7 @@ impl FromRawHandle for process::Stdio {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<OwnedHandle> for process::Stdio {
     fn from(handle: OwnedHandle) -> process::Stdio {
         let handle = sys::handle::Handle::from_inner(handle);
@@ -39,7 +39,7 @@ impl AsRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl AsHandle for process::Child {
     #[inline]
     fn as_handle(&self) -> BorrowedHandle<'_> {
@@ -54,7 +54,7 @@ impl IntoRawHandle for process::Child {
     }
 }
 
-#[unstable(feature = "io_safety", issue = "87074")]
+#[stable(feature = "io_safety", since = "1.63.0")]
 impl From<process::Child> for OwnedHandle {
     fn from(child: process::Child) -> OwnedHandle {
         child.into_inner().into_handle().into_inner()
@@ -159,8 +159,39 @@ pub trait CommandExt: Sealed {
     ///
     /// This is useful for passing arguments to `cmd.exe /c`, which doesn't follow
     /// `CommandLineToArgvW` escaping rules.
-    #[unstable(feature = "windows_process_extensions_raw_arg", issue = "29494")]
+    #[stable(feature = "windows_process_extensions_raw_arg", since = "1.62.0")]
     fn raw_arg<S: AsRef<OsStr>>(&mut self, text_to_append_as_is: S) -> &mut process::Command;
+
+    /// When [`process::Command`] creates pipes, request that our side is always async.
+    ///
+    /// By default [`process::Command`] may choose to use pipes where both ends
+    /// are opened for synchronous read or write operations. By using
+    /// `async_pipes(true)`, this behavior is overridden so that our side is
+    /// always async.
+    ///
+    /// This is important because if doing async I/O a pipe or a file has to be
+    /// opened for async access.
+    ///
+    /// The end of the pipe sent to the child process will always be synchronous
+    /// regardless of this option.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(windows_process_extensions_async_pipes)]
+    /// use std::os::windows::process::CommandExt;
+    /// use std::process::{Command, Stdio};
+    ///
+    /// # let program = "";
+    ///
+    /// Command::new(program)
+    ///     .async_pipes(true)
+    ///     .stdin(Stdio::piped())
+    ///     .stdout(Stdio::piped())
+    ///     .stderr(Stdio::piped());
+    /// ```
+    #[unstable(feature = "windows_process_extensions_async_pipes", issue = "98289")]
+    fn async_pipes(&mut self, always_async: bool) -> &mut process::Command;
 }
 
 #[stable(feature = "windows_process_extensions", since = "1.16.0")]
@@ -178,5 +209,51 @@ impl CommandExt for process::Command {
     fn raw_arg<S: AsRef<OsStr>>(&mut self, raw_text: S) -> &mut process::Command {
         self.as_inner_mut().raw_arg(raw_text.as_ref());
         self
+    }
+
+    fn async_pipes(&mut self, always_async: bool) -> &mut process::Command {
+        // FIXME: This currently has an intentional no-op implementation.
+        // For the time being our side of the pipes will always be async.
+        // Once the ecosystem has adjusted, we may then be able to start making
+        // use of synchronous pipes within the standard library.
+        let _ = always_async;
+        self
+    }
+}
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+pub trait ChildExt: Sealed {
+    /// Extracts the main thread raw handle, without taking ownership
+    #[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+    fn main_thread_handle(&self) -> BorrowedHandle<'_>;
+}
+
+#[unstable(feature = "windows_process_extensions_main_thread_handle", issue = "96723")]
+impl ChildExt for process::Child {
+    fn main_thread_handle(&self) -> BorrowedHandle<'_> {
+        self.handle.main_thread_handle()
+    }
+}
+
+/// Windows-specific extensions to [`process::ExitCode`].
+///
+/// This trait is sealed: it cannot be implemented outside the standard library.
+/// This is so that future additional methods are not breaking changes.
+#[unstable(feature = "windows_process_exit_code_from", issue = "none")]
+pub trait ExitCodeExt: Sealed {
+    /// Creates a new `ExitCode` from the raw underlying `u32` return value of
+    /// a process.
+    ///
+    /// The exit code should not be 259, as this conflicts with the `STILL_ACTIVE`
+    /// macro returned from the `GetExitCodeProcess` function to signal that the
+    /// process has yet to run to completion.
+    #[unstable(feature = "windows_process_exit_code_from", issue = "none")]
+    fn from_raw(raw: u32) -> Self;
+}
+
+#[unstable(feature = "windows_process_exit_code_from", issue = "none")]
+impl ExitCodeExt for process::ExitCode {
+    fn from_raw(raw: u32) -> Self {
+        process::ExitCode::from_inner(From::from(raw))
     }
 }

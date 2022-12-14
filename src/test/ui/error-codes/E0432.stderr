@@ -3,6 +3,8 @@ error[E0432]: unresolved import `something`
    |
 LL | use something::Foo;
    |     ^^^^^^^^^ maybe a missing crate `something`?
+   |
+   = help: consider adding `extern crate something` to use the `something` crate
 
 error: aborting due to previous error
 

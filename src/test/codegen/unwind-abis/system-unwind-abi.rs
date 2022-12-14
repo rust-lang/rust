@@ -1,6 +1,6 @@
 // compile-flags: -C opt-level=0
 
-// Test that `nounwind` atributes are correctly applied to exported `system` and `system-unwind`
+// Test that `nounwind` attributes are correctly applied to exported `system` and `system-unwind`
 // extern functions. `system-unwind` functions MUST NOT have this attribute. We disable
 // optimizations above to prevent LLVM from inferring the attribute.
 

@@ -31,7 +31,7 @@ pub trait Normalizable<'tcx>: fmt::Debug + TypeFoldable<'tcx> + Lift<'tcx> + Cop
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, Self>>;
 }
 
-impl Normalizable<'tcx> for Ty<'tcx> {
+impl<'tcx> Normalizable<'tcx> for Ty<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
@@ -40,7 +40,7 @@ impl Normalizable<'tcx> for Ty<'tcx> {
     }
 }
 
-impl Normalizable<'tcx> for ty::Predicate<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::Predicate<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
@@ -49,7 +49,7 @@ impl Normalizable<'tcx> for ty::Predicate<'tcx> {
     }
 }
 
-impl Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,
@@ -58,7 +58,7 @@ impl Normalizable<'tcx> for ty::PolyFnSig<'tcx> {
     }
 }
 
-impl Normalizable<'tcx> for ty::FnSig<'tcx> {
+impl<'tcx> Normalizable<'tcx> for ty::FnSig<'tcx> {
     fn type_op_method(
         tcx: TyCtxt<'tcx>,
         canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Normalize<Self>>>,

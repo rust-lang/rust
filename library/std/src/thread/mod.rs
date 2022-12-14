@@ -116,7 +116,7 @@
 //! Threads are able to have associated names for identification purposes. By default, spawned
 //! threads are unnamed. To specify a name for a thread, build the thread with [`Builder`] and pass
 //! the desired thread name to [`Builder::name`]. To retrieve the thread name from within the
-//! thread, use [`Thread::name`]. A couple examples of where the name of a thread gets used:
+//! thread, use [`Thread::name`]. A couple of examples where the name of a thread gets used:
 //!
 //! * If a panic occurs in a named thread, the thread name will be printed in the panic message.
 //! * The thread name is provided to the OS where applicable (e.g., `pthread_setname_np` in
@@ -124,9 +124,8 @@
 //!
 //! ## Stack size
 //!
-//! The default stack size for spawned threads is 2 MiB, though this particular stack size is
-//! subject to change in the future. There are two ways to manually specify the stack size for
-//! spawned threads:
+//! The default stack size is platform-dependent and subject to change. Currently it is 2MB on all
+//! Tier-1 platforms. There are two ways to manually specify the stack size for spawned threads:
 //!
 //! * Build the thread with [`Builder`] and pass the desired stack size to [`Builder::stack_size`].
 //! * Set the `RUST_MIN_STACK` environment variable to an integer representing the desired stack
@@ -146,9 +145,12 @@
 //! [`Cell`]: crate::cell::Cell
 //! [`RefCell`]: crate::cell::RefCell
 //! [`with`]: LocalKey::with
+//! [`thread_local!`]: crate::thread_local
 
 #![stable(feature = "rust1", since = "1.0.0")]
 #![deny(unsafe_op_in_unsafe_fn)]
+// Under `test`, `__FastLocalKeyInner` seems unused.
+#![cfg_attr(test, allow(dead_code))]
 
 #[cfg(all(test, not(target_os = "emscripten")))]
 mod tests;
@@ -158,15 +160,17 @@ use crate::cell::UnsafeCell;
 use crate::ffi::{CStr, CString};
 use crate::fmt;
 use crate::io;
-use crate::mem;
+use crate::marker::PhantomData;
+use crate::mem::{self, forget};
 use crate::num::NonZeroU64;
 use crate::num::NonZeroUsize;
 use crate::panic;
 use crate::panicking;
+use crate::pin::Pin;
+use crate::ptr::addr_of_mut;
 use crate::str;
 use crate::sync::Arc;
 use crate::sys::thread as imp;
-use crate::sys_common::mutex;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
 use crate::sys_common::thread_parker::Parker;
@@ -180,36 +184,53 @@ use crate::time::Duration;
 #[macro_use]
 mod local;
 
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+mod scoped;
+
+#[stable(feature = "scoped_threads", since = "1.63.0")]
+pub use scoped::{scope, Scope, ScopedJoinHandle};
+
 #[stable(feature = "rust1", since = "1.0.0")]
 pub use self::local::{AccessError, LocalKey};
 
-// The types used by the thread_local! macro to access TLS keys. Note that there
-// are two types, the "OS" type and the "fast" type. The OS thread local key
-// type is accessed via platform-specific API calls and is slow, while the fast
+// Provide the type used by the thread_local! macro to access TLS keys. This
+// needs to be kept in sync with the macro itself (in `local.rs`).
+// There are three types: "static", "fast", "OS". The "OS" thread local key
+// type is accessed via platform-specific API calls and is slow, while the "fast"
 // key type is accessed via code generated via LLVM, where TLS keys are set up
-// by the elf linker. Note that the OS TLS type is always available: on macOS
-// the standard library is compiled with support for older platform versions
-// where fast TLS was not available; end-user code is compiled with fast TLS
-// where available, but both are needed.
+// by the elf linker. "static" is for single-threaded platforms where a global
+// static is sufficient.
 
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(target_thread_local)]
+#[cfg(not(test))]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::fast::Key as __FastLocalKeyInner;
+
+// when building for tests, use real std's type
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(test)]
+#[cfg(all(
+    target_thread_local,
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
+pub use realstd::thread::__FastLocalKeyInner;
+
+#[unstable(feature = "libstd_thread_internals", issue = "none")]
+#[cfg(all(
+    not(target_thread_local),
+    not(all(target_family = "wasm", not(target_feature = "atomics"))),
+))]
 #[doc(hidden)]
 pub use self::local::os::Key as __OsLocalKeyInner;
+
 #[unstable(feature = "libstd_thread_internals", issue = "none")]
-#[cfg(all(target_arch = "wasm32", not(target_feature = "atomics")))]
+#[cfg(all(target_family = "wasm", not(target_feature = "atomics")))]
 #[doc(hidden)]
 pub use self::local::statik::Key as __StaticLocalKeyInner;
-
-// This is only used to make thread locals with `const { .. }` initialization
-// expressions unstable. If and/or when that syntax is stabilized with thread
-// locals this will simply be removed.
-#[doc(hidden)]
-#[unstable(feature = "thread_local_const_init", issue = "84223")]
-pub const fn require_unstable_const_init_thread_local() {}
 
 ////////////////////////////////////////////////////////////////////////////////
 // Builder
@@ -454,6 +475,20 @@ impl Builder {
         F: Send + 'a,
         T: Send + 'a,
     {
+        Ok(JoinHandle(unsafe { self.spawn_unchecked_(f, None) }?))
+    }
+
+    unsafe fn spawn_unchecked_<'a, 'scope, F, T>(
+        self,
+        f: F,
+        scope_data: Option<Arc<scoped::ScopeData>>,
+    ) -> io::Result<JoinInner<'scope, T>>
+    where
+        F: FnOnce() -> T,
+        F: Send + 'a,
+        T: Send + 'a,
+        'scope: 'a,
+    {
         let Builder { name, stack_size } = self;
 
         let stack_size = stack_size.unwrap_or_else(thread::min_stack);
@@ -463,12 +498,41 @@ impl Builder {
         }));
         let their_thread = my_thread.clone();
 
-        let my_packet: Arc<UnsafeCell<Option<Result<T>>>> = Arc::new(UnsafeCell::new(None));
+        let my_packet: Arc<Packet<'scope, T>> = Arc::new(Packet {
+            scope: scope_data,
+            result: UnsafeCell::new(None),
+            _marker: PhantomData,
+        });
         let their_packet = my_packet.clone();
 
         let output_capture = crate::io::set_output_capture(None);
         crate::io::set_output_capture(output_capture.clone());
 
+        // Pass `f` in `MaybeUninit` because actually that closure might *run longer than the lifetime of `F`*.
+        // See <https://github.com/rust-lang/rust/issues/101983> for more details.
+        // To prevent leaks we use a wrapper that drops its contents.
+        #[repr(transparent)]
+        struct MaybeDangling<T>(mem::MaybeUninit<T>);
+        impl<T> MaybeDangling<T> {
+            fn new(x: T) -> Self {
+                MaybeDangling(mem::MaybeUninit::new(x))
+            }
+            fn into_inner(self) -> T {
+                // SAFETY: we are always initiailized.
+                let ret = unsafe { self.0.assume_init_read() };
+                // Make sure we don't drop.
+                mem::forget(self);
+                ret
+            }
+        }
+        impl<T> Drop for MaybeDangling<T> {
+            fn drop(&mut self) {
+                // SAFETY: we are always initiailized.
+                unsafe { self.0.assume_init_drop() };
+            }
+        }
+
+        let f = MaybeDangling::new(f);
         let main = move || {
             if let Some(name) = their_thread.cname() {
                 imp::Thread::set_name(name);
@@ -476,6 +540,8 @@ impl Builder {
 
             crate::io::set_output_capture(output_capture);
 
+            // SAFETY: we constructed `f` initialized.
+            let f = f.into_inner();
             // SAFETY: the stack guard passed is the one for the current thread.
             // This means the current thread's stack and the new thread's stack
             // are properly set and protected from each other.
@@ -487,10 +553,20 @@ impl Builder {
             // closure (it is an Arc<...>) and `my_packet` will be stored in the
             // same `JoinInner` as this closure meaning the mutation will be
             // safe (not modify it and affect a value far away).
-            unsafe { *their_packet.get() = Some(try_result) };
+            unsafe { *their_packet.result.get() = Some(try_result) };
+            // Here `their_packet` gets dropped, and if this is the last `Arc` for that packet that
+            // will call `decrement_num_running_threads` and therefore signal that this thread is
+            // done.
+            drop(their_packet);
+            // Here, the lifetime `'a` and even `'scope` can end. `main` keeps running for a bit
+            // after that before returning itself.
         };
 
-        Ok(JoinHandle(JoinInner {
+        if let Some(scope_data) = &my_packet.scope {
+            scope_data.increment_num_running_threads();
+        }
+
+        Ok(JoinInner {
             // SAFETY:
             //
             // `imp::Thread::new` takes a closure with a `'static` lifetime, since it's passed
@@ -505,16 +581,16 @@ impl Builder {
             // exist after the thread has terminated, which is signaled by `Thread::join`
             // returning.
             native: unsafe {
-                Some(imp::Thread::new(
+                imp::Thread::new(
                     stack_size,
                     mem::transmute::<Box<dyn FnOnce() + 'a>, Box<dyn FnOnce() + 'static>>(
                         Box::new(main),
                     ),
-                )?)
+                )?
             },
             thread: my_thread,
-            packet: Packet(my_packet),
-        }))
+            packet: my_packet,
+        })
     }
 }
 
@@ -595,7 +671,7 @@ impl Builder {
 ///
 /// let receiver = thread::spawn(move || {
 ///     let value = rx.recv().expect("Unable to receive from channel");
-///     println!("{}", value);
+///     println!("{value}");
 /// });
 ///
 /// sender.join().expect("The sender thread has panicked");
@@ -615,7 +691,7 @@ impl Builder {
 /// });
 ///
 /// let result = computation.join().unwrap();
-/// println!("{}", result);
+/// println!("{result}");
 /// ```
 ///
 /// [`channels`]: crate::sync::mpsc
@@ -745,6 +821,8 @@ pub fn panicking() -> bool {
     panicking::panicking()
 }
 
+/// Use [`sleep`].
+///
 /// Puts the current thread to sleep for at least the specified amount of time.
 ///
 /// The thread may sleep longer than the duration specified due to scheduling
@@ -768,7 +846,7 @@ pub fn panicking() -> bool {
 /// thread::sleep_ms(2000);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::sleep`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::sleep`")]
 pub fn sleep_ms(ms: u32) {
     sleep(Duration::from_millis(ms as u64))
 }
@@ -815,10 +893,22 @@ pub fn sleep(dur: Duration) {
     imp::Thread::sleep(dur)
 }
 
+/// Used to ensure that `park` and `park_timeout` do not unwind, as that can
+/// cause undefined behaviour if not handled correctly (see #102398 for context).
+struct PanicGuard;
+
+impl Drop for PanicGuard {
+    fn drop(&mut self) {
+        rtabort!("an irrecoverable error occurred while synchronizing threads")
+    }
+}
+
 /// Blocks unless or until the current thread's token is made available.
 ///
 /// A call to `park` does not guarantee that the thread will remain parked
-/// forever, and callers should be prepared for this possibility.
+/// forever, and callers should be prepared for this possibility. However,
+/// it is guaranteed that this function will not panic (it may abort the
+/// process if the implementation encounters some rare errors).
 ///
 /// # park and unpark
 ///
@@ -903,10 +993,13 @@ pub fn sleep(dur: Duration) {
 /// [`thread::park_timeout`]: park_timeout
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
+    let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.parker.park();
+        current().inner.as_ref().parker().park();
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
 /// Use [`park_timeout`].
@@ -922,7 +1015,7 @@ pub fn park() {
 ///
 /// See the [park documentation][`park`] for more detail.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::thread::park_timeout`")]
+#[deprecated(since = "1.6.0", note = "replaced by `std::thread::park_timeout`")]
 pub fn park_timeout_ms(ms: u32) {
     park_timeout(Duration::from_millis(ms as u64))
 }
@@ -961,16 +1054,19 @@ pub fn park_timeout_ms(ms: u32) {
 ///     if elapsed >= timeout {
 ///         break;
 ///     }
-///     println!("restarting park_timeout after {:?}", elapsed);
+///     println!("restarting park_timeout after {elapsed:?}");
 ///     timeout_remaining = timeout - elapsed;
 /// }
 /// ```
 #[stable(feature = "park_timeout", since = "1.4.0")]
 pub fn park_timeout(dur: Duration) {
+    let guard = PanicGuard;
     // SAFETY: park_timeout is called on the parker owned by this thread.
     unsafe {
-        current().inner.parker.park_timeout(dur);
+        current().inner.as_ref().parker().park_timeout(dur);
     }
+    // No panic occurred, do not abort.
+    forget(guard);
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -979,10 +1075,13 @@ pub fn park_timeout(dur: Duration) {
 
 /// A unique identifier for a running thread.
 ///
-/// A `ThreadId` is an opaque object that has a unique value for each thread
-/// that creates one. `ThreadId`s are not guaranteed to correspond to a thread's
-/// system-designated identifier. A `ThreadId` can be retrieved from the [`id`]
-/// method on a [`Thread`].
+/// A `ThreadId` is an opaque object that uniquely identifies each thread
+/// created during the lifetime of a process. `ThreadId`s are guaranteed not to
+/// be reused, even when a thread terminates. `ThreadId`s are under the control
+/// of Rust's standard library and there may not be any relationship between
+/// `ThreadId` and the underlying platform's notion of a thread identifier --
+/// the two concepts cannot, therefore, be used interchangeably. A `ThreadId`
+/// can be retrieved from the [`id`] method on a [`Thread`].
 ///
 /// # Examples
 ///
@@ -1005,24 +1104,45 @@ pub struct ThreadId(NonZeroU64);
 impl ThreadId {
     // Generate a new unique thread ID.
     fn new() -> ThreadId {
-        // It is UB to attempt to acquire this mutex reentrantly!
-        static GUARD: mutex::StaticMutex = mutex::StaticMutex::new();
-        static mut COUNTER: u64 = 1;
+        #[cold]
+        fn exhausted() -> ! {
+            panic!("failed to generate unique thread ID: bitspace exhausted")
+        }
 
-        unsafe {
-            let guard = GUARD.lock();
+        cfg_if::cfg_if! {
+            if #[cfg(target_has_atomic = "64")] {
+                use crate::sync::atomic::{AtomicU64, Ordering::Relaxed};
 
-            // If we somehow use up all our bits, panic so that we're not
-            // covering up subtle bugs of IDs being reused.
-            if COUNTER == u64::MAX {
-                drop(guard); // in case the panic handler ends up calling `ThreadId::new()`, avoid reentrant lock acquire.
-                panic!("failed to generate unique thread ID: bitspace exhausted");
+                static COUNTER: AtomicU64 = AtomicU64::new(0);
+
+                let mut last = COUNTER.load(Relaxed);
+                loop {
+                    let Some(id) = last.checked_add(1) else {
+                        exhausted();
+                    };
+
+                    match COUNTER.compare_exchange_weak(last, id, Relaxed, Relaxed) {
+                        Ok(_) => return ThreadId(NonZeroU64::new(id).unwrap()),
+                        Err(id) => last = id,
+                    }
+                }
+            } else {
+                use crate::sync::{Mutex, PoisonError};
+
+                static COUNTER: Mutex<u64> = Mutex::new(0);
+
+                let mut counter = COUNTER.lock().unwrap_or_else(PoisonError::into_inner);
+                let Some(id) = counter.checked_add(1) else {
+                    // in case the panic handler ends up calling `ThreadId::new()`,
+                    // avoid reentrant lock acquire.
+                    drop(counter);
+                    exhausted();
+                };
+
+                *counter = id;
+                drop(counter);
+                ThreadId(NonZeroU64::new(id).unwrap())
             }
-
-            let id = COUNTER;
-            COUNTER += 1;
-
-            ThreadId(NonZeroU64::new(id).unwrap())
         }
     }
 
@@ -1052,6 +1172,12 @@ struct Inner {
     parker: Parker,
 }
 
+impl Inner {
+    fn parker(self: Pin<&Self>) -> Pin<&Parker> {
+        unsafe { Pin::map_unchecked(self, |inner| &inner.parker) }
+    }
+}
+
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
@@ -1073,14 +1199,28 @@ struct Inner {
 ///
 /// [`thread::current`]: current
 pub struct Thread {
-    inner: Arc<Inner>,
+    inner: Pin<Arc<Inner>>,
 }
 
 impl Thread {
     // Used only internally to construct a thread object without spawning
     // Panics if the name contains nuls.
     pub(crate) fn new(name: Option<CString>) -> Thread {
-        Thread { inner: Arc::new(Inner { name, id: ThreadId::new(), parker: Parker::new() }) }
+        // We have to use `unsafe` here to construct the `Parker` in-place,
+        // which is required for the UNIX implementation.
+        //
+        // SAFETY: We pin the Arc immediately after creation, so its address never
+        // changes.
+        let inner = unsafe {
+            let mut arc = Arc::<Inner>::new_uninit();
+            let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
+            addr_of_mut!((*ptr).name).write(name);
+            addr_of_mut!((*ptr).id).write(ThreadId::new());
+            Parker::new(addr_of_mut!((*ptr).parker));
+            Pin::new_unchecked(arc.assume_init())
+        };
+
+        Thread { inner }
     }
 
     /// Atomically makes the handle's token available if it is not already.
@@ -1116,7 +1256,7 @@ impl Thread {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn unpark(&self) {
-        self.inner.parker.unpark();
+        self.inner.as_ref().parker().unpark();
     }
 
     /// Gets the thread's unique identifier.
@@ -1246,41 +1386,75 @@ impl fmt::Debug for Thread {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = crate::result::Result<T, Box<dyn Any + Send + 'static>>;
 
-// This packet is used to communicate the return value between the spawned thread
-// and the rest of the program. Memory is shared through the `Arc` within and there's
-// no need for a mutex here because synchronization happens with `join()` (the
-// caller will never read this packet until the thread has exited).
+// This packet is used to communicate the return value between the spawned
+// thread and the rest of the program. It is shared through an `Arc` and
+// there's no need for a mutex here because synchronization happens with `join()`
+// (the caller will never read this packet until the thread has exited).
 //
-// This packet itself is then stored into a `JoinInner` which in turns is placed
-// in `JoinHandle` and `JoinGuard`. Due to the usage of `UnsafeCell` we need to
-// manually worry about impls like Send and Sync. The type `T` should
-// already always be Send (otherwise the thread could not have been created) and
-// this type is inherently Sync because no methods take &self. Regardless,
-// however, we add inheriting impls for Send/Sync to this type to ensure it's
-// Send/Sync and that future modifications will still appropriately classify it.
-struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
-
-unsafe impl<T: Send> Send for Packet<T> {}
-unsafe impl<T: Sync> Sync for Packet<T> {}
-
-/// Inner representation for JoinHandle
-struct JoinInner<T> {
-    native: Option<imp::Thread>,
-    thread: Thread,
-    packet: Packet<T>,
+// An Arc to the packet is stored into a `JoinInner` which in turns is placed
+// in `JoinHandle`.
+struct Packet<'scope, T> {
+    scope: Option<Arc<scoped::ScopeData>>,
+    result: UnsafeCell<Option<Result<T>>>,
+    _marker: PhantomData<Option<&'scope scoped::ScopeData>>,
 }
 
-impl<T> JoinInner<T> {
-    fn join(&mut self) -> Result<T> {
-        self.native.take().unwrap().join();
-        unsafe { (*self.packet.0.get()).take().unwrap() }
+// Due to the usage of `UnsafeCell` we need to manually implement Sync.
+// The type `T` should already always be Send (otherwise the thread could not
+// have been created) and the Packet is Sync because all access to the
+// `UnsafeCell` synchronized (by the `join()` boundary), and `ScopeData` is Sync.
+unsafe impl<'scope, T: Sync> Sync for Packet<'scope, T> {}
+
+impl<'scope, T> Drop for Packet<'scope, T> {
+    fn drop(&mut self) {
+        // If this packet was for a thread that ran in a scope, the thread
+        // panicked, and nobody consumed the panic payload, we make sure
+        // the scope function will panic.
+        let unhandled_panic = matches!(self.result.get_mut(), Some(Err(_)));
+        // Drop the result without causing unwinding.
+        // This is only relevant for threads that aren't join()ed, as
+        // join() will take the `result` and set it to None, such that
+        // there is nothing left to drop here.
+        // If this panics, we should handle that, because we're outside the
+        // outermost `catch_unwind` of our thread.
+        // We just abort in that case, since there's nothing else we can do.
+        // (And even if we tried to handle it somehow, we'd also need to handle
+        // the case where the panic payload we get out of it also panics on
+        // drop, and so on. See issue #86027.)
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| {
+            *self.result.get_mut() = None;
+        })) {
+            rtabort!("thread result panicked on drop");
+        }
+        // Book-keeping so the scope knows when it's done.
+        if let Some(scope) = &self.scope {
+            // Now that there will be no more user code running on this thread
+            // that can use 'scope, mark the thread as 'finished'.
+            // It's important we only do this after the `result` has been dropped,
+            // since dropping it might still use things it borrowed from 'scope.
+            scope.decrement_num_running_threads(unhandled_panic);
+        }
+    }
+}
+
+/// Inner representation for JoinHandle
+struct JoinInner<'scope, T> {
+    native: imp::Thread,
+    thread: Thread,
+    packet: Arc<Packet<'scope, T>>,
+}
+
+impl<'scope, T> JoinInner<'scope, T> {
+    fn join(mut self) -> Result<T> {
+        self.native.join();
+        Arc::get_mut(&mut self.packet).unwrap().result.get_mut().take().unwrap()
     }
 }
 
 /// An owned permission to join on a thread (block on its termination).
 ///
 /// A `JoinHandle` *detaches* the associated thread when it is dropped, which
-/// means that there is no longer any handle to thread and no way to `join`
+/// means that there is no longer any handle to the thread and no way to `join`
 /// on it.
 ///
 /// Due to platform restrictions, it is not possible to [`Clone`] this
@@ -1340,7 +1514,7 @@ impl<T> JoinInner<T> {
 /// [`thread::Builder::spawn`]: Builder::spawn
 /// [`thread::spawn`]: spawn
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinHandle<T>(JoinInner<T>);
+pub struct JoinHandle<T>(JoinInner<'static, T>);
 
 #[stable(feature = "joinhandle_impl_send_sync", since = "1.29.0")]
 unsafe impl<T> Send for JoinHandle<T> {}
@@ -1404,29 +1578,35 @@ impl<T> JoinHandle<T> {
     /// join_handle.join().expect("Couldn't join on the associated thread");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<T> {
+    pub fn join(self) -> Result<T> {
         self.0.join()
     }
 
-    /// Checks if the the associated thread is still running its main function.
+    /// Checks if the associated thread has finished running its main function.
     ///
-    /// This might return `false` for a brief moment after the thread's main
+    /// `is_finished` supports implementing a non-blocking join operation, by checking
+    /// `is_finished`, and calling `join` if it returns `true`. This function does not block. To
+    /// block while waiting on the thread to finish, use [`join`][Self::join].
+    ///
+    /// This might return `true` for a brief moment after the thread's main
     /// function has returned, but before the thread itself has stopped running.
-    #[unstable(feature = "thread_is_running", issue = "90470")]
-    pub fn is_running(&self) -> bool {
-        Arc::strong_count(&self.0.packet.0) > 1
+    /// However, once this returns `true`, [`join`][Self::join] can be expected
+    /// to return quickly, without blocking for any significant amount of time.
+    #[stable(feature = "thread_is_running", since = "1.61.0")]
+    pub fn is_finished(&self) -> bool {
+        Arc::strong_count(&self.0.packet) == 1
     }
 }
 
 impl<T> AsInner<imp::Thread> for JoinHandle<T> {
     fn as_inner(&self) -> &imp::Thread {
-        self.0.native.as_ref().unwrap()
+        &self.0.native
     }
 }
 
 impl<T> IntoInner<imp::Thread> for JoinHandle<T> {
     fn into_inner(self) -> imp::Thread {
-        self.0.native.unwrap()
+        self.0.native
     }
 }
 
@@ -1447,7 +1627,7 @@ fn _assert_sync_and_send() {
 ///
 /// Parallelism is a resource. A given machine provides a certain capacity for
 /// parallelism, i.e., a bound on the number of computations it can perform
-/// simultaneously. This number often corresponds to the amount of CPUs or
+/// simultaneously. This number often corresponds to the amount of CPUs a
 /// computer has, but it may diverge in various cases.
 ///
 /// Host environments such as VMs or container orchestrators may want to
@@ -1460,9 +1640,12 @@ fn _assert_sync_and_send() {
 /// The purpose of this API is to provide an easy and portable way to query
 /// the default amount of parallelism the program should use. Among other things it
 /// does not expose information on NUMA regions, does not account for
-/// differences in (co)processor capabilities, and will not modify the program's
-/// global state in order to more accurately query the amount of available
-/// parallelism.
+/// differences in (co)processor capabilities or current system load,
+/// and will not modify the program's global state in order to more accurately
+/// query the amount of available parallelism.
+///
+/// Where both fixed steady-state and burst limits are available the steady-state
+/// capacity will be used to ensure more predictable latencies.
 ///
 /// Resource limits can be changed during the runtime of a program, therefore the value is
 /// not cached and instead recomputed every time this function is called. It should not be
@@ -1486,7 +1669,15 @@ fn _assert_sync_and_send() {
 ///
 /// On Linux:
 /// - It may overcount the amount of parallelism available when limited by a
-///   process-wide affinity mask, or when affected by cgroup limits.
+///   process-wide affinity mask or cgroup quotas and `sched_getaffinity()` or cgroup fs can't be
+///   queried, e.g. due to sandboxing.
+/// - It may undercount the amount of parallelism if the current thread's affinity mask
+///   does not reflect the process' cpuset, e.g. due to pinned threads.
+/// - If the process is in a cgroup v1 cpu controller, this may need to
+///   scan mountpoints to find the corresponding cgroup v1 controller,
+///   which may take time on systems with large numbers of mountpoints.
+///   (This does not apply to cgroup v2, or to processes not in a
+///   cgroup.)
 ///
 /// On all targets:
 /// - It may overcount the amount of parallelism available when running in a VM
@@ -1505,7 +1696,6 @@ fn _assert_sync_and_send() {
 ///
 /// ```
 /// # #![allow(dead_code)]
-/// #![feature(available_parallelism)]
 /// use std::{io, thread};
 ///
 /// fn main() -> io::Result<()> {
@@ -1517,7 +1707,7 @@ fn _assert_sync_and_send() {
 #[doc(alias = "available_concurrency")] // Alias for a previous name we gave this API on unstable.
 #[doc(alias = "hardware_concurrency")] // Alias for C++ `std::thread::hardware_concurrency`.
 #[doc(alias = "num_cpus")] // Alias for a popular ecosystem crate which provides similar functionality.
-#[unstable(feature = "available_parallelism", issue = "74479")]
+#[stable(feature = "available_parallelism", since = "1.59.0")]
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
     imp::available_parallelism()
 }

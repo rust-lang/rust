@@ -35,8 +35,8 @@
 //!
 //! let version = parse_version(&[1, 2, 3, 4]);
 //! match version {
-//!     Ok(v) => println!("working with version: {:?}", v),
-//!     Err(e) => println!("error parsing header: {:?}", e),
+//!     Ok(v) => println!("working with version: {v:?}"),
+//!     Err(e) => println!("error parsing header: {e:?}"),
 //! }
 //! ```
 //!
@@ -436,7 +436,7 @@
 //! # use std::str::FromStr;
 //! let mut results = vec![];
 //! let mut errs = vec![];
-//! let nums: Vec<_> = vec!["17", "not a number", "99", "-27", "768"]
+//! let nums: Vec<_> = ["17", "not a number", "99", "-27", "768"]
 //!    .into_iter()
 //!    .map(u8::from_str)
 //!    // Save clones of the raw `Result` values to inspect
@@ -447,9 +447,9 @@
 //!    .collect();
 //! assert_eq!(errs.len(), 3);
 //! assert_eq!(nums, [17, 99]);
-//! println!("results {:?}", results);
-//! println!("errs {:?}", errs);
-//! println!("nums {:?}", nums);
+//! println!("results {results:?}");
+//! println!("errs {errs:?}");
+//! println!("nums {nums:?}");
 //! ```
 //!
 //! ## Collecting into `Result`
@@ -459,13 +459,13 @@
 //! [`Result`] of a collection of each contained value of the original
 //! [`Result`] values, or [`Err`] if any of the elements was [`Err`].
 //!
-//! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E
+//! [impl-FromIterator]: Result#impl-FromIterator%3CResult%3CA%2C%20E%3E%3E-for-Result%3CV%2C%20E%3E
 //!
 //! ```
-//! let v = vec![Ok(2), Ok(4), Err("err!"), Ok(8)];
+//! let v = [Ok(2), Ok(4), Err("err!"), Ok(8)];
 //! let res: Result<Vec<_>, &str> = v.into_iter().collect();
 //! assert_eq!(res, Err("err!"));
-//! let v = vec![Ok(2), Ok(4), Ok(8)];
+//! let v = [Ok(2), Ok(4), Ok(8)];
 //! let res: Result<Vec<_>, &str> = v.into_iter().collect();
 //! assert_eq!(res, Ok(vec![2, 4, 8]));
 //! ```
@@ -475,14 +475,14 @@
 //! to provide the [`product`][Iterator::product] and
 //! [`sum`][Iterator::sum] methods.
 //!
-//! [impl-Product]: Result#impl-Product%3CResult%3CU%2C%20E%3E%3E
-//! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E
+//! [impl-Product]: Result#impl-Product%3CResult%3CU%2C%20E%3E%3E-for-Result%3CT%2C%20E%3E
+//! [impl-Sum]: Result#impl-Sum%3CResult%3CU%2C%20E%3E%3E-for-Result%3CT%2C%20E%3E
 //!
 //! ```
-//! let v = vec![Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
+//! let v = [Err("error!"), Ok(1), Ok(2), Ok(3), Err("foo")];
 //! let res: Result<i32, &str> = v.into_iter().sum();
 //! assert_eq!(res, Err("error!"));
-//! let v: Vec<Result<i32, &str>> = vec![Ok(1), Ok(2), Ok(21)];
+//! let v = [Ok(1), Ok(2), Ok(21)];
 //! let res: Result<i32, &str> = v.into_iter().product();
 //! assert_eq!(res, Ok(42));
 //! ```
@@ -490,6 +490,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::iter::{self, FromIterator, FusedIterator, TrustedLen};
+use crate::marker::Destruct;
 use crate::ops::{self, ControlFlow, Deref, DerefMut};
 use crate::{convert, fmt, hint};
 
@@ -535,11 +536,37 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_ok(), false);
     /// ```
     #[must_use = "if you intended to assert that this is ok, consider `.unwrap()` instead"]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_ok(&self) -> bool {
         matches!(*self, Ok(_))
+    }
+
+    /// Returns `true` if the result is [`Ok`] and the value inside of it matches a predicate.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_some_and)]
+    ///
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), true);
+    ///
+    /// let x: Result<u32, &str> = Ok(0);
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
+    ///
+    /// let x: Result<u32, &str> = Err("hey");
+    /// assert_eq!(x.is_ok_and(|x| x > 1), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_ok_and(self, f: impl FnOnce(T) -> bool) -> bool {
+        match self {
+            Err(_) => false,
+            Ok(x) => f(x),
+        }
     }
 
     /// Returns `true` if the result is [`Err`].
@@ -556,68 +583,37 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.is_err(), true);
     /// ```
     #[must_use = "if you intended to assert that this is err, consider `.unwrap_err()` instead"]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn is_err(&self) -> bool {
         !self.is_ok()
     }
 
-    /// Returns `true` if the result is an [`Ok`] value containing the given value.
+    /// Returns `true` if the result is [`Err`] and the value inside of it matches a predicate.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(option_result_contains)]
+    /// #![feature(is_some_and)]
+    /// use std::io::{Error, ErrorKind};
     ///
-    /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.contains(&2), true);
+    /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::NotFound, "!"));
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), true);
     ///
-    /// let x: Result<u32, &str> = Ok(3);
-    /// assert_eq!(x.contains(&2), false);
+    /// let x: Result<u32, Error> = Err(Error::new(ErrorKind::PermissionDenied, "!"));
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), false);
     ///
-    /// let x: Result<u32, &str> = Err("Some error message");
-    /// assert_eq!(x.contains(&2), false);
+    /// let x: Result<u32, Error> = Ok(123);
+    /// assert_eq!(x.is_err_and(|x| x.kind() == ErrorKind::NotFound), false);
     /// ```
     #[must_use]
     #[inline]
-    #[unstable(feature = "option_result_contains", issue = "62358")]
-    pub fn contains<U>(&self, x: &U) -> bool
-    where
-        U: PartialEq<T>,
-    {
-        match self {
-            Ok(y) => x == y,
-            Err(_) => false,
-        }
-    }
-
-    /// Returns `true` if the result is an [`Err`] value containing the given value.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_contains_err)]
-    ///
-    /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.contains_err(&"Some error message"), false);
-    ///
-    /// let x: Result<u32, &str> = Err("Some error message");
-    /// assert_eq!(x.contains_err(&"Some error message"), true);
-    ///
-    /// let x: Result<u32, &str> = Err("Some other error message");
-    /// assert_eq!(x.contains_err(&"Some error message"), false);
-    /// ```
-    #[must_use]
-    #[inline]
-    #[unstable(feature = "result_contains_err", issue = "62358")]
-    pub fn contains_err<F>(&self, f: &F) -> bool
-    where
-        F: PartialEq<E>,
-    {
+    #[unstable(feature = "is_some_and", issue = "93050")]
+    pub fn is_err_and(self, f: impl FnOnce(E) -> bool) -> bool {
         match self {
             Ok(_) => false,
-            Err(e) => f == e,
+            Err(e) => f(e),
         }
     }
 
@@ -643,10 +639,16 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn ok(self) -> Option<T> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn ok(self) -> Option<T>
+    where
+        E: ~const Destruct,
+    {
         match self {
             Ok(x) => Some(x),
-            Err(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(x) => None,
         }
     }
 
@@ -668,9 +670,15 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn err(self) -> Option<E> {
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
+    pub const fn err(self) -> Option<E>
+    where
+        T: ~const Destruct,
+    {
         match self {
-            Ok(_) => None,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => None,
             Err(x) => Some(x),
         }
     }
@@ -696,7 +704,7 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.as_ref(), Err(&"Error"));
     /// ```
     #[inline]
-    #[rustc_const_stable(feature = "const_result", since = "1.48.0")]
+    #[rustc_const_stable(feature = "const_result_basics", since = "1.48.0")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub const fn as_ref(&self) -> Result<&T, &E> {
         match *self {
@@ -755,7 +763,7 @@ impl<T, E> Result<T, E> {
     ///
     /// for num in line.lines() {
     ///     match num.parse::<i32>().map(|i| i * 2) {
-    ///         Ok(n) => println!("{}", n),
+    ///         Ok(n) => println!("{n}"),
     ///         Err(..) => {}
     ///     }
     /// }
@@ -837,7 +845,7 @@ impl<T, E> Result<T, E> {
     /// Basic usage:
     ///
     /// ```
-    /// fn stringify(x: u32) -> String { format!("error code: {}", x) }
+    /// fn stringify(x: u32) -> String { format!("error code: {x}") }
     ///
     /// let x: Result<u32, u32> = Ok(2);
     /// assert_eq!(x.map_err(stringify), Ok(2));
@@ -852,6 +860,103 @@ impl<T, E> Result<T, E> {
             Ok(t) => Ok(t),
             Err(e) => Err(op(e)),
         }
+    }
+
+    /// Calls the provided closure with a reference to the contained value (if [`Ok`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_inspect)]
+    ///
+    /// let x: u8 = "4"
+    ///     .parse::<u8>()
+    ///     .inspect(|x| println!("original: {x}"))
+    ///     .map(|x| x.pow(3))
+    ///     .expect("failed to parse number");
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    pub fn inspect<F: FnOnce(&T)>(self, f: F) -> Self {
+        if let Ok(ref t) = self {
+            f(t);
+        }
+
+        self
+    }
+
+    /// Calls the provided closure with a reference to the contained error (if [`Err`]).
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_option_inspect)]
+    ///
+    /// use std::{fs, io};
+    ///
+    /// fn read() -> io::Result<String> {
+    ///     fs::read_to_string("address.txt")
+    ///         .inspect_err(|e| eprintln!("failed to read file: {e}"))
+    /// }
+    /// ```
+    #[inline]
+    #[unstable(feature = "result_option_inspect", issue = "91345")]
+    pub fn inspect_err<F: FnOnce(&E)>(self, f: F) -> Self {
+        if let Err(ref e) = self {
+            f(e);
+        }
+
+        self
+    }
+
+    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
+    ///
+    /// Coerces the [`Ok`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
+    /// and returns the new [`Result`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x: Result<String, u32> = Ok("hello".to_string());
+    /// let y: Result<&str, &u32> = Ok("hello");
+    /// assert_eq!(x.as_deref(), y);
+    ///
+    /// let x: Result<String, u32> = Err(42);
+    /// let y: Result<&str, &u32> = Err(&42);
+    /// assert_eq!(x.as_deref(), y);
+    /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
+    pub fn as_deref(&self) -> Result<&T::Target, &E>
+    where
+        T: Deref,
+    {
+        self.as_ref().map(|t| t.deref())
+    }
+
+    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
+    ///
+    /// Coerces the [`Ok`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
+    /// and returns the new [`Result`].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut s = "HELLO".to_string();
+    /// let mut x: Result<String, u32> = Ok("hello".to_string());
+    /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
+    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    ///
+    /// let mut i = 42;
+    /// let mut x: Result<String, u32> = Err(42);
+    /// let y: Result<&mut str, &mut u32> = Err(&mut i);
+    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
+    /// ```
+    #[stable(feature = "inner_deref", since = "1.47.0")]
+    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E>
+    where
+        T: DerefMut,
+    {
+        self.as_mut().map(|t| t.deref_mut())
     }
 
     /////////////////////////////////////////////////////////////////////////
@@ -904,12 +1009,293 @@ impl<T, E> Result<T, E> {
         IterMut { inner: self.as_mut().ok() }
     }
 
+    /////////////////////////////////////////////////////////////////////////
+    // Extract a value
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: Result::unwrap_or
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
+    /// [`unwrap_or_default`]: Result::unwrap_or_default
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Err`], with a panic message including the
+    /// passed message, and the content of the [`Err`].
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
+    /// ```
+    ///
+    /// # Recommended Message Style
+    ///
+    /// We recommend that `expect` messages are used to describe the reason you
+    /// _expect_ the `Result` should be `Ok`.
+    ///
+    /// ```should_panic
+    /// let path = std::env::var("IMPORTANT_PATH")
+    ///     .expect("env variable `IMPORTANT_PATH` should be set by `wrapper_script.sh`");
+    /// ```
+    ///
+    /// **Hint**: If you're having trouble remembering how to phrase expect
+    /// error messages remember to focus on the word "should" as in "env
+    /// variable should be set by blah" or "the given binary should be available
+    /// and executable by the current user".
+    ///
+    /// For more detail on expect message styles and the reasoning behind our recommendation please
+    /// refer to the section on ["Common Message
+    /// Styles"](../../std/error/index.html#common-message-styles) in the
+    /// [`std::error`](../../std/error/index.html) module docs.
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect", since = "1.4.0")]
+    pub fn expect(self, msg: &str) -> T
+    where
+        E: fmt::Debug,
+    {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed(msg, &e),
+        }
+    }
+
+    /// Returns the contained [`Ok`] value, consuming the `self` value.
+    ///
+    /// Because this function may panic, its use is generally discouraged.
+    /// Instead, prefer to use pattern matching and handle the [`Err`]
+    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
+    /// [`unwrap_or_default`].
+    ///
+    /// [`unwrap_or`]: Result::unwrap_or
+    /// [`unwrap_or_else`]: Result::unwrap_or_else
+    /// [`unwrap_or_default`]: Result::unwrap_or_default
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Err`], with a panic message provided by the
+    /// [`Err`]'s value.
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.unwrap(), 2);
+    /// ```
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// x.unwrap(); // panics with `emergency failure`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn unwrap(self) -> T
+    where
+        E: fmt::Debug,
+    {
+        match self {
+            Ok(t) => t,
+            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
+        }
+    }
+
+    /// Returns the contained [`Ok`] value or a default
+    ///
+    /// Consumes the `self` argument then, if [`Ok`], returns the contained
+    /// value, otherwise if [`Err`], returns the default value for that
+    /// type.
+    ///
+    /// # Examples
+    ///
+    /// Converts a string to an integer, turning poorly-formed strings
+    /// into 0 (the default value for integers). [`parse`] converts
+    /// a string to any other type that implements [`FromStr`], returning an
+    /// [`Err`] on error.
+    ///
+    /// ```
+    /// let good_year_from_input = "1909";
+    /// let bad_year_from_input = "190blarg";
+    /// let good_year = good_year_from_input.parse().unwrap_or_default();
+    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
+    ///
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
+    /// ```
+    ///
+    /// [`parse`]: str::parse
+    /// [`FromStr`]: crate::str::FromStr
+    #[inline]
+    #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
+    pub fn unwrap_or_default(self) -> T
+    where
+        T: Default,
+    {
+        match self {
+            Ok(x) => x,
+            Err(_) => Default::default(),
+        }
+    }
+
+    /// Returns the contained [`Err`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Ok`], with a panic message including the
+    /// passed message, and the content of the [`Ok`].
+    ///
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(10);
+    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "result_expect_err", since = "1.17.0")]
+    pub fn expect_err(self, msg: &str) -> E
+    where
+        T: fmt::Debug,
+    {
+        match self {
+            Ok(t) => unwrap_failed(msg, &t),
+            Err(e) => e,
+        }
+    }
+
+    /// Returns the contained [`Err`] value, consuming the `self` value.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the value is an [`Ok`], with a custom panic message provided
+    /// by the [`Ok`]'s value.
+    ///
+    /// # Examples
+    ///
+    /// ```should_panic
+    /// let x: Result<u32, &str> = Ok(2);
+    /// x.unwrap_err(); // panics with `2`
+    /// ```
+    ///
+    /// ```
+    /// let x: Result<u32, &str> = Err("emergency failure");
+    /// assert_eq!(x.unwrap_err(), "emergency failure");
+    /// ```
+    #[inline]
+    #[track_caller]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn unwrap_err(self) -> E
+    where
+        T: fmt::Debug,
+    {
+        match self {
+            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
+            Err(e) => e,
+        }
+    }
+
+    /// Returns the contained [`Ok`] value, but never panics.
+    ///
+    /// Unlike [`unwrap`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap` as a maintainability safeguard that will fail
+    /// to compile if the error type of the `Result` is later changed
+    /// to an error that can actually occur.
+    ///
+    /// [`unwrap`]: Result::unwrap
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_good_news() -> Result<String, !> {
+    ///     Ok("this is fine".into())
+    /// }
+    ///
+    /// let s: String = only_good_news().into_ok();
+    /// println!("{s}");
+    /// ```
+    #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+    #[inline]
+    pub fn into_ok(self) -> T
+    where
+        E: Into<!>,
+    {
+        match self {
+            Ok(x) => x,
+            Err(e) => e.into(),
+        }
+    }
+
+    /// Returns the contained [`Err`] value, but never panics.
+    ///
+    /// Unlike [`unwrap_err`], this method is known to never panic on the
+    /// result types it is implemented for. Therefore, it can be used
+    /// instead of `unwrap_err` as a maintainability safeguard that will fail
+    /// to compile if the ok type of the `Result` is later changed
+    /// to a type that can actually occur.
+    ///
+    /// [`unwrap_err`]: Result::unwrap_err
+    ///
+    /// # Examples
+    ///
+    /// Basic usage:
+    ///
+    /// ```
+    /// # #![feature(never_type)]
+    /// # #![feature(unwrap_infallible)]
+    ///
+    /// fn only_bad_news() -> Result<!, String> {
+    ///     Err("Oops, it failed".into())
+    /// }
+    ///
+    /// let error: String = only_bad_news().into_err();
+    /// println!("{error}");
+    /// ```
+    #[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
+    #[inline]
+    pub fn into_err(self) -> E
+    where
+        T: Into<!>,
+    {
+        match self {
+            Ok(x) => x.into(),
+            Err(e) => e,
+        }
+    }
+
     ////////////////////////////////////////////////////////////////////////
     // Boolean operations on the values, eager and lazy
     /////////////////////////////////////////////////////////////////////////
 
     /// Returns `res` if the result is [`Ok`], otherwise returns the [`Err`] value of `self`.
     ///
+    /// Arguments passed to `and` are eagerly evaluated; if you are passing the
+    /// result of a function call, it is recommended to use [`and_then`], which is
+    /// lazily evaluated.
+    ///
+    /// [`and_then`]: Result::and_then
     ///
     /// # Examples
     ///
@@ -933,10 +1319,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.and(y), Ok("different result type"));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn and<U>(self, res: Result<U, E>) -> Result<U, E> {
+    pub const fn and<U>(self, res: Result<U, E>) -> Result<U, E>
+    where
+        T: ~const Destruct,
+        U: ~const Destruct,
+        E: ~const Destruct,
+    {
         match self {
-            Ok(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Ok(x) => res,
             Err(e) => Err(e),
         }
     }
@@ -948,16 +1342,28 @@ impl<T, E> Result<T, E> {
     ///
     /// # Examples
     ///
-    /// Basic usage:
+    /// ```
+    /// fn sq_then_to_string(x: u32) -> Result<String, &'static str> {
+    ///     x.checked_mul(x).map(|sq| sq.to_string()).ok_or("overflowed")
+    /// }
+    ///
+    /// assert_eq!(Ok(2).and_then(sq_then_to_string), Ok(4.to_string()));
+    /// assert_eq!(Ok(1_000_000).and_then(sq_then_to_string), Err("overflowed"));
+    /// assert_eq!(Err("not a number").and_then(sq_then_to_string), Err("not a number"));
+    /// ```
+    ///
+    /// Often used to chain fallible operations that may return [`Err`].
     ///
     /// ```
-    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
-    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
+    /// use std::{io::ErrorKind, path::Path};
     ///
-    /// assert_eq!(Ok(2).and_then(sq).and_then(sq), Ok(16));
-    /// assert_eq!(Ok(2).and_then(sq).and_then(err), Err(4));
-    /// assert_eq!(Ok(2).and_then(err).and_then(sq), Err(2));
-    /// assert_eq!(Err(3).and_then(sq).and_then(sq), Err(3));
+    /// // Note: on Windows "/" maps to "C:\"
+    /// let root_modified_time = Path::new("/").metadata().and_then(|md| md.modified());
+    /// assert!(root_modified_time.is_ok());
+    ///
+    /// let should_fail = Path::new("/bad/path").metadata().and_then(|md| md.modified());
+    /// assert!(should_fail.is_err());
+    /// assert_eq!(should_fail.unwrap_err().kind(), ErrorKind::NotFound);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -998,11 +1404,19 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.or(y), Ok(2));
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn or<F>(self, res: Result<T, F>) -> Result<T, F> {
+    pub const fn or<F>(self, res: Result<T, F>) -> Result<T, F>
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+        F: ~const Destruct,
+    {
         match self {
             Ok(v) => Ok(v),
-            Err(_) => res,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => res,
         }
     }
 
@@ -1054,11 +1468,18 @@ impl<T, E> Result<T, E> {
     /// assert_eq!(x.unwrap_or(default), default);
     /// ```
     #[inline]
+    #[rustc_const_unstable(feature = "const_result_drop", issue = "92384")]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_or(self, default: T) -> T {
+    pub const fn unwrap_or(self, default: T) -> T
+    where
+        T: ~const Destruct,
+        E: ~const Destruct,
+    {
         match self {
             Ok(t) => t,
-            Err(_) => default,
+            // FIXME: ~const Drop doesn't quite work right yet
+            #[allow(unused_variables)]
+            Err(e) => default,
         }
     }
 
@@ -1147,365 +1568,155 @@ impl<T, E> Result<T, E> {
             Err(e) => e,
         }
     }
+
+    /////////////////////////////////////////////////////////////////////////
+    // Misc or niche
+    /////////////////////////////////////////////////////////////////////////
+
+    /// Returns `true` if the result is an [`Ok`] value containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(option_result_contains)]
+    ///
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.contains(&2), true);
+    ///
+    /// let x: Result<u32, &str> = Ok(3);
+    /// assert_eq!(x.contains(&2), false);
+    ///
+    /// let x: Result<u32, &str> = Err("Some error message");
+    /// assert_eq!(x.contains(&2), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "option_result_contains", issue = "62358")]
+    pub fn contains<U>(&self, x: &U) -> bool
+    where
+        U: PartialEq<T>,
+    {
+        match self {
+            Ok(y) => x == y,
+            Err(_) => false,
+        }
+    }
+
+    /// Returns `true` if the result is an [`Err`] value containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(result_contains_err)]
+    ///
+    /// let x: Result<u32, &str> = Ok(2);
+    /// assert_eq!(x.contains_err(&"Some error message"), false);
+    ///
+    /// let x: Result<u32, &str> = Err("Some error message");
+    /// assert_eq!(x.contains_err(&"Some error message"), true);
+    ///
+    /// let x: Result<u32, &str> = Err("Some other error message");
+    /// assert_eq!(x.contains_err(&"Some error message"), false);
+    /// ```
+    #[must_use]
+    #[inline]
+    #[unstable(feature = "result_contains_err", issue = "62358")]
+    pub fn contains_err<F>(&self, f: &F) -> bool
+    where
+        F: PartialEq<E>,
+    {
+        match self {
+            Ok(_) => false,
+            Err(e) => f == e,
+        }
+    }
 }
 
-impl<T: Copy, E> Result<&T, E> {
+impl<T, E> Result<&T, E> {
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by copying the contents of the
     /// `Ok` part.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_copied)]
     /// let val = 12;
     /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let copied = x.copied();
     /// assert_eq!(copied, Ok(12));
     /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied(self) -> Result<T, E> {
+    #[inline]
+    #[stable(feature = "result_copied", since = "1.59.0")]
+    pub fn copied(self) -> Result<T, E>
+    where
+        T: Copy,
+    {
         self.map(|&t| t)
     }
-}
 
-impl<T: Copy, E> Result<&mut T, E> {
-    /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by copying the contents of the
-    /// `Ok` part.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_copied)]
-    /// let mut val = 12;
-    /// let x: Result<&mut i32, i32> = Ok(&mut val);
-    /// assert_eq!(x, Ok(&mut 12));
-    /// let copied = x.copied();
-    /// assert_eq!(copied, Ok(12));
-    /// ```
-    #[unstable(feature = "result_copied", reason = "newly added", issue = "63168")]
-    pub fn copied(self) -> Result<T, E> {
-        self.map(|&mut t| t)
-    }
-}
-
-impl<T: Clone, E> Result<&T, E> {
     /// Maps a `Result<&T, E>` to a `Result<T, E>` by cloning the contents of the
     /// `Ok` part.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_cloned)]
     /// let val = 12;
     /// let x: Result<&i32, i32> = Ok(&val);
     /// assert_eq!(x, Ok(&12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned(self) -> Result<T, E> {
+    #[inline]
+    #[stable(feature = "result_cloned", since = "1.59.0")]
+    pub fn cloned(self) -> Result<T, E>
+    where
+        T: Clone,
+    {
         self.map(|t| t.clone())
     }
 }
 
-impl<T: Clone, E> Result<&mut T, E> {
+impl<T, E> Result<&mut T, E> {
+    /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by copying the contents of the
+    /// `Ok` part.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let mut val = 12;
+    /// let x: Result<&mut i32, i32> = Ok(&mut val);
+    /// assert_eq!(x, Ok(&mut 12));
+    /// let copied = x.copied();
+    /// assert_eq!(copied, Ok(12));
+    /// ```
+    #[inline]
+    #[stable(feature = "result_copied", since = "1.59.0")]
+    pub fn copied(self) -> Result<T, E>
+    where
+        T: Copy,
+    {
+        self.map(|&mut t| t)
+    }
+
     /// Maps a `Result<&mut T, E>` to a `Result<T, E>` by cloning the contents of the
     /// `Ok` part.
     ///
     /// # Examples
     ///
     /// ```
-    /// #![feature(result_cloned)]
     /// let mut val = 12;
     /// let x: Result<&mut i32, i32> = Ok(&mut val);
     /// assert_eq!(x, Ok(&mut 12));
     /// let cloned = x.cloned();
     /// assert_eq!(cloned, Ok(12));
     /// ```
-    #[unstable(feature = "result_cloned", reason = "newly added", issue = "63168")]
-    pub fn cloned(self) -> Result<T, E> {
+    #[inline]
+    #[stable(feature = "result_cloned", since = "1.59.0")]
+    pub fn cloned(self) -> Result<T, E>
+    where
+        T: Clone,
+    {
         self.map(|t| t.clone())
-    }
-}
-
-impl<T, E: fmt::Debug> Result<T, E> {
-    /// Returns the contained [`Ok`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Err`], with a panic message including the
-    /// passed message, and the content of the [`Err`].
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.expect("Testing expect"); // panics with `Testing expect: emergency failure`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect", since = "1.4.0")]
-    pub fn expect(self, msg: &str) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed(msg, &e),
-        }
-    }
-
-    /// Returns the contained [`Ok`] value, consuming the `self` value.
-    ///
-    /// Because this function may panic, its use is generally discouraged.
-    /// Instead, prefer to use pattern matching and handle the [`Err`]
-    /// case explicitly, or call [`unwrap_or`], [`unwrap_or_else`], or
-    /// [`unwrap_or_default`].
-    ///
-    /// [`unwrap_or`]: Result::unwrap_or
-    /// [`unwrap_or_else`]: Result::unwrap_or_else
-    /// [`unwrap_or_default`]: Result::unwrap_or_default
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Err`], with a panic message provided by the
-    /// [`Err`]'s value.
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// let x: Result<u32, &str> = Ok(2);
-    /// assert_eq!(x.unwrap(), 2);
-    /// ```
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// x.unwrap(); // panics with `emergency failure`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap(self) -> T {
-        match self {
-            Ok(t) => t,
-            Err(e) => unwrap_failed("called `Result::unwrap()` on an `Err` value", &e),
-        }
-    }
-}
-
-impl<T: fmt::Debug, E> Result<T, E> {
-    /// Returns the contained [`Err`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a panic message including the
-    /// passed message, and the content of the [`Ok`].
-    ///
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(10);
-    /// x.expect_err("Testing expect_err"); // panics with `Testing expect_err: 10`
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "result_expect_err", since = "1.17.0")]
-    pub fn expect_err(self, msg: &str) -> E {
-        match self {
-            Ok(t) => unwrap_failed(msg, &t),
-            Err(e) => e,
-        }
-    }
-
-    /// Returns the contained [`Err`] value, consuming the `self` value.
-    ///
-    /// # Panics
-    ///
-    /// Panics if the value is an [`Ok`], with a custom panic message provided
-    /// by the [`Ok`]'s value.
-    ///
-    /// # Examples
-    ///
-    /// ```should_panic
-    /// let x: Result<u32, &str> = Ok(2);
-    /// x.unwrap_err(); // panics with `2`
-    /// ```
-    ///
-    /// ```
-    /// let x: Result<u32, &str> = Err("emergency failure");
-    /// assert_eq!(x.unwrap_err(), "emergency failure");
-    /// ```
-    #[inline]
-    #[track_caller]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn unwrap_err(self) -> E {
-        match self {
-            Ok(t) => unwrap_failed("called `Result::unwrap_err()` on an `Ok` value", &t),
-            Err(e) => e,
-        }
-    }
-}
-
-impl<T: Default, E> Result<T, E> {
-    /// Returns the contained [`Ok`] value or a default
-    ///
-    /// Consumes the `self` argument then, if [`Ok`], returns the contained
-    /// value, otherwise if [`Err`], returns the default value for that
-    /// type.
-    ///
-    /// # Examples
-    ///
-    /// Converts a string to an integer, turning poorly-formed strings
-    /// into 0 (the default value for integers). [`parse`] converts
-    /// a string to any other type that implements [`FromStr`], returning an
-    /// [`Err`] on error.
-    ///
-    /// ```
-    /// let good_year_from_input = "1909";
-    /// let bad_year_from_input = "190blarg";
-    /// let good_year = good_year_from_input.parse().unwrap_or_default();
-    /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
-    ///
-    /// assert_eq!(1909, good_year);
-    /// assert_eq!(0, bad_year);
-    /// ```
-    ///
-    /// [`parse`]: str::parse
-    /// [`FromStr`]: crate::str::FromStr
-    #[inline]
-    #[stable(feature = "result_unwrap_or_default", since = "1.16.0")]
-    pub fn unwrap_or_default(self) -> T {
-        match self {
-            Ok(x) => x,
-            Err(_) => Default::default(),
-        }
-    }
-}
-
-#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
-impl<T, E: Into<!>> Result<T, E> {
-    /// Returns the contained [`Ok`] value, but never panics.
-    ///
-    /// Unlike [`unwrap`], this method is known to never panic on the
-    /// result types it is implemented for. Therefore, it can be used
-    /// instead of `unwrap` as a maintainability safeguard that will fail
-    /// to compile if the error type of the `Result` is later changed
-    /// to an error that can actually occur.
-    ///
-    /// [`unwrap`]: Result::unwrap
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// # #![feature(never_type)]
-    /// # #![feature(unwrap_infallible)]
-    ///
-    /// fn only_good_news() -> Result<String, !> {
-    ///     Ok("this is fine".into())
-    /// }
-    ///
-    /// let s: String = only_good_news().into_ok();
-    /// println!("{}", s);
-    /// ```
-    #[inline]
-    pub fn into_ok(self) -> T {
-        match self {
-            Ok(x) => x,
-            Err(e) => e.into(),
-        }
-    }
-}
-
-#[unstable(feature = "unwrap_infallible", reason = "newly added", issue = "61695")]
-impl<T: Into<!>, E> Result<T, E> {
-    /// Returns the contained [`Err`] value, but never panics.
-    ///
-    /// Unlike [`unwrap_err`], this method is known to never panic on the
-    /// result types it is implemented for. Therefore, it can be used
-    /// instead of `unwrap_err` as a maintainability safeguard that will fail
-    /// to compile if the ok type of the `Result` is later changed
-    /// to a type that can actually occur.
-    ///
-    /// [`unwrap_err`]: Result::unwrap_err
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    ///
-    /// ```
-    /// # #![feature(never_type)]
-    /// # #![feature(unwrap_infallible)]
-    ///
-    /// fn only_bad_news() -> Result<!, String> {
-    ///     Err("Oops, it failed".into())
-    /// }
-    ///
-    /// let error: String = only_bad_news().into_err();
-    /// println!("{}", error);
-    /// ```
-    #[inline]
-    pub fn into_err(self) -> E {
-        match self {
-            Ok(x) => x.into(),
-            Err(e) => e,
-        }
-    }
-}
-
-impl<T: Deref, E> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&Result<T, E>`) to `Result<&<T as Deref>::Target, &E>`.
-    ///
-    /// Coerces the [`Ok`] variant of the original [`Result`] via [`Deref`](crate::ops::Deref)
-    /// and returns the new [`Result`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let x: Result<String, u32> = Ok("hello".to_string());
-    /// let y: Result<&str, &u32> = Ok("hello");
-    /// assert_eq!(x.as_deref(), y);
-    ///
-    /// let x: Result<String, u32> = Err(42);
-    /// let y: Result<&str, &u32> = Err(&42);
-    /// assert_eq!(x.as_deref(), y);
-    /// ```
-    #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref(&self) -> Result<&T::Target, &E> {
-        self.as_ref().map(|t| t.deref())
-    }
-}
-
-impl<T: DerefMut, E> Result<T, E> {
-    /// Converts from `Result<T, E>` (or `&mut Result<T, E>`) to `Result<&mut <T as DerefMut>::Target, &mut E>`.
-    ///
-    /// Coerces the [`Ok`] variant of the original [`Result`] via [`DerefMut`](crate::ops::DerefMut)
-    /// and returns the new [`Result`].
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// let mut s = "HELLO".to_string();
-    /// let mut x: Result<String, u32> = Ok("hello".to_string());
-    /// let y: Result<&mut str, &mut u32> = Ok(&mut s);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
-    ///
-    /// let mut i = 42;
-    /// let mut x: Result<String, u32> = Err(42);
-    /// let y: Result<&mut str, &mut u32> = Err(&mut i);
-    /// assert_eq!(x.as_deref_mut().map(|x| { x.make_ascii_uppercase(); x }), y);
-    /// ```
-    #[stable(feature = "inner_deref", since = "1.47.0")]
-    pub fn as_deref_mut(&mut self) -> Result<&mut T::Target, &mut E> {
-        self.as_mut().map(|t| t.deref_mut())
     }
 }
 
@@ -1571,46 +1782,25 @@ impl<T, E> Result<Result<T, E>, E> {
     }
 }
 
-impl<T> Result<T, T> {
-    /// Returns the [`Ok`] value if `self` is `Ok`, and the [`Err`] value if
-    /// `self` is `Err`.
-    ///
-    /// In other words, this function returns the value (the `T`) of a
-    /// `Result<T, T>`, regardless of whether or not that result is `Ok` or
-    /// `Err`.
-    ///
-    /// This can be useful in conjunction with APIs such as
-    /// [`Atomic*::compare_exchange`], or [`slice::binary_search`], but only in
-    /// cases where you don't care if the result was `Ok` or not.
-    ///
-    /// [`Atomic*::compare_exchange`]: crate::sync::atomic::AtomicBool::compare_exchange
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// #![feature(result_into_ok_or_err)]
-    /// let ok: Result<u32, u32> = Ok(3);
-    /// let err: Result<u32, u32> = Err(4);
-    ///
-    /// assert_eq!(ok.into_ok_or_err(), 3);
-    /// assert_eq!(err.into_ok_or_err(), 4);
-    /// ```
-    #[inline]
-    #[unstable(feature = "result_into_ok_or_err", reason = "newly added", issue = "82223")]
-    pub const fn into_ok_or_err(self) -> T {
-        match self {
-            Ok(v) => v,
-            Err(v) => v,
-        }
-    }
-}
-
 // This is a separate function to reduce the code size of the methods
+#[cfg(not(feature = "panic_immediate_abort"))]
 #[inline(never)]
 #[cold]
 #[track_caller]
 fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
-    panic!("{}: {:?}", msg, error)
+    panic!("{msg}: {error:?}")
+}
+
+// This is a separate function to avoid constructing a `dyn Debug`
+// that gets immediately thrown away, since vtables don't get cleaned up
+// by dead code elimination if a trait object is constructed even if it goes
+// unused
+#[cfg(feature = "panic_immediate_abort")]
+#[inline]
+#[cold]
+#[track_caller]
+fn unwrap_failed<T>(_msg: &str, _error: &T) -> ! {
+    panic!()
 }
 
 /////////////////////////////////////////////////////////////////////////////
@@ -1618,7 +1808,12 @@ fn unwrap_failed(msg: &str, error: &dyn fmt::Debug) -> ! {
 /////////////////////////////////////////////////////////////////////////////
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Clone, E: Clone> Clone for Result<T, E> {
+#[rustc_const_unstable(feature = "const_clone", issue = "91805")]
+impl<T, E> const Clone for Result<T, E>
+where
+    T: ~const Clone + ~const Destruct,
+    E: ~const Clone + ~const Destruct,
+{
     #[inline]
     fn clone(&self) -> Self {
         match self {
@@ -1877,15 +2072,13 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// so the final value of `shared` is 6 (= `3 + 2 + 1`), not 16.
     #[inline]
     fn from_iter<I: IntoIterator<Item = Result<A, E>>>(iter: I) -> Result<V, E> {
-        // FIXME(#11084): This could be replaced with Iterator::scan when this
-        // performance bug is closed.
-
-        iter::process_results(iter.into_iter(), |i| i.collect())
+        iter::try_process(iter.into_iter(), |i| i.collect())
     }
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E> ops::Try for Result<T, E> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E> const ops::Try for Result<T, E> {
     type Output = T;
     type Residual = Result<convert::Infallible, E>;
 
@@ -1904,11 +2097,29 @@ impl<T, E> ops::Try for Result<T, E> {
 }
 
 #[unstable(feature = "try_trait_v2", issue = "84277")]
-impl<T, E, F: From<E>> ops::FromResidual<Result<convert::Infallible, E>> for Result<T, F> {
+#[rustc_const_unstable(feature = "const_convert", issue = "88674")]
+impl<T, E, F: ~const From<E>> const ops::FromResidual<Result<convert::Infallible, E>>
+    for Result<T, F>
+{
     #[inline]
+    #[track_caller]
     fn from_residual(residual: Result<convert::Infallible, E>) -> Self {
         match residual {
             Err(e) => Err(From::from(e)),
         }
     }
+}
+
+#[unstable(feature = "try_trait_v2_yeet", issue = "96374")]
+impl<T, E, F: From<E>> ops::FromResidual<ops::Yeet<E>> for Result<T, F> {
+    #[inline]
+    fn from_residual(ops::Yeet(e): ops::Yeet<E>) -> Self {
+        Err(From::from(e))
+    }
+}
+
+#[unstable(feature = "try_trait_v2_residual", issue = "91285")]
+#[rustc_const_unstable(feature = "const_try", issue = "74935")]
+impl<T, E> const ops::Residual<T> for Result<convert::Infallible, E> {
+    type TryType = Result<T, E>;
 }

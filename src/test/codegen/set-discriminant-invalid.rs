@@ -28,7 +28,7 @@ impl IntoError<Error> for Api
     #[no_mangle]
     fn into_error(self, error: Self::Source) -> Error {
         Error::Api {
-            source: (|v| v)(error),
+            source: error,
         }
     }
 }

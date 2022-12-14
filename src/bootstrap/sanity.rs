@@ -15,10 +15,9 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use build_helper::output;
-
 use crate::cache::INTERNER;
 use crate::config::Target;
+use crate::util::output;
 use crate::Build;
 
 pub struct Finder {
@@ -75,7 +74,7 @@ pub fn check(build: &mut Build) {
     let mut cmd_finder = Finder::new();
     // If we've got a git directory we're gonna need git to update
     // submodules and learn about various other aspects.
-    if build.rust_info.is_git() {
+    if build.rust_info().is_managed_git_subrepository() {
         cmd_finder.must_have("git");
     }
 
@@ -95,7 +94,18 @@ pub fn check(build: &mut Build) {
             .any(|build_llvm_ourselves| build_llvm_ourselves);
     let need_cmake = building_llvm || build.config.any_sanitizers_enabled();
     if need_cmake {
-        cmd_finder.must_have("cmake");
+        if cmd_finder.maybe_have("cmake").is_none() {
+            eprintln!(
+                "
+Couldn't find required command: cmake
+
+You should install cmake, or set `download-ci-llvm = true` in the
+`[llvm]` section section of `config.toml` to download LLVM rather
+than building it.
+"
+            );
+            crate::detail_exit(1);
+        }
     }
 
     build.config.python = build
@@ -104,7 +114,9 @@ pub fn check(build: &mut Build) {
         .take()
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| env::var_os("BOOTSTRAP_PYTHON").map(PathBuf::from)) // set by bootstrap.py
-        .or_else(|| Some(cmd_finder.must_have("python")));
+        .or_else(|| cmd_finder.maybe_have("python"))
+        .or_else(|| cmd_finder.maybe_have("python3"))
+        .or_else(|| cmd_finder.maybe_have("python2"));
 
     build.config.nodejs = build
         .config
@@ -128,6 +140,13 @@ pub fn check(build: &mut Build) {
         .map(|p| cmd_finder.must_have(p))
         .or_else(|| cmd_finder.maybe_have("gdb"));
 
+    build.config.reuse = build
+        .config
+        .reuse
+        .take()
+        .map(|p| cmd_finder.must_have(p))
+        .or_else(|| cmd_finder.maybe_have("reuse"));
+
     // We're gonna build some custom C code here and there, host triples
     // also build some C++ shims for LLVM so we need a C++ compiler.
     for target in &build.targets {
@@ -143,7 +162,15 @@ pub fn check(build: &mut Build) {
             continue;
         }
 
-        if !build.config.dry_run {
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
+        }
+
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cc(*target));
             if let Some(ar) = build.ar(*target) {
                 cmd_finder.must_have(ar);
@@ -152,7 +179,7 @@ pub fn check(build: &mut Build) {
     }
 
     for host in &build.hosts {
-        if !build.config.dry_run {
+        if !build.config.dry_run() {
             cmd_finder.must_have(build.cxx(*host).unwrap());
         }
     }
@@ -198,6 +225,14 @@ pub fn check(build: &mut Build) {
                             be specified in config.toml"
                 ),
             }
+        }
+
+        // Some environments don't want or need these tools, such as when testing Miri.
+        // FIXME: it would be better to refactor this code to split necessary setup from pure sanity
+        // checks, and have a regular flag for skipping the latter. Also see
+        // <https://github.com/rust-lang/rust/pull/103569#discussion_r1008741742>.
+        if env::var_os("BOOTSTRAP_SKIP_TARGET_SANITY").is_some() {
+            continue;
         }
 
         if need_cmake && target.contains("msvc") {

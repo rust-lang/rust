@@ -1,8 +1,11 @@
 // only-aarch64
 // only-linux
+// needs-asm-support
 // run-pass
 
-#![feature(asm, thread_local)]
+#![feature(thread_local)]
+
+use std::arch::asm;
 
 extern "C" fn f1() -> i32 {
     111
@@ -75,5 +78,7 @@ fn main() {
     std::thread::spawn(|| {
         assert_eq!(static_addr!(S1), &S1 as *const u32);
         assert_eq!(static_tls_addr!(S2), &S2 as *const u32);
-    }).join().unwrap();
+    })
+    .join()
+    .unwrap();
 }

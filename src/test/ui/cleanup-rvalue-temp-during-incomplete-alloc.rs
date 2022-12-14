@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 
 #![allow(unused_must_use)]
 #![allow(dead_code)]

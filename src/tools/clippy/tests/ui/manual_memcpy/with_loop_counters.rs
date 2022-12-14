@@ -59,7 +59,7 @@ pub fn manual_copy_with_counters(src: &[i32], dst: &mut [i32], dst2: &mut [i32])
     }
 
     // make sure parentheses are added properly to bitwise operators, which have lower precedence than
-    // arithmetric ones
+    // arithmetic ones
     let mut count = 0 << 1;
     for i in 0..1 << 1 {
         dst[count] = src[i + 2];

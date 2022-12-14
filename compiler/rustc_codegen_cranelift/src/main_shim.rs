@@ -1,8 +1,7 @@
-use cranelift_codegen::binemit::{NullStackMapSink, NullTrapSink};
 use rustc_hir::LangItem;
 use rustc_middle::ty::subst::GenericArg;
 use rustc_middle::ty::AssocKind;
-use rustc_session::config::EntryFnType;
+use rustc_session::config::{sigpipe, EntryFnType};
 use rustc_span::symbol::Ident;
 
 use crate::prelude::*;
@@ -16,12 +15,12 @@ pub(crate) fn maybe_create_entry_wrapper(
     is_jit: bool,
     is_primary_cgu: bool,
 ) {
-    let (main_def_id, is_main_fn) = match tcx.entry_fn(()) {
+    let (main_def_id, (is_main_fn, sigpipe)) = match tcx.entry_fn(()) {
         Some((def_id, entry_ty)) => (
             def_id,
             match entry_ty {
-                EntryFnType::Main => true,
-                EntryFnType::Start => false,
+                EntryFnType::Main { sigpipe } => (true, sigpipe),
+                EntryFnType::Start => (false, sigpipe::DEFAULT),
             },
         ),
         None => return,
@@ -36,7 +35,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         return;
     }
 
-    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn);
+    create_entry_fn(tcx, module, unwind_context, main_def_id, is_jit, is_main_fn, sigpipe);
 
     fn create_entry_fn(
         tcx: TyCtxt<'_>,
@@ -45,6 +44,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         rust_main_def_id: DefId,
         ignore_lang_start_wrapper: bool,
         is_main_fn: bool,
+        sigpipe: u8,
     ) {
         let main_ret_ty = tcx.fn_sig(rust_main_def_id).output();
         // Given that `main()` has no arguments,
@@ -52,7 +52,10 @@ pub(crate) fn maybe_create_entry_wrapper(
         // late-bound regions, since late-bound
         // regions must appear in the argument
         // listing.
-        let main_ret_ty = tcx.erase_regions(main_ret_ty.no_bound_vars().unwrap());
+        let main_ret_ty = tcx.normalize_erasing_regions(
+            ty::ParamEnv::reveal_all(),
+            main_ret_ty.no_bound_vars().unwrap(),
+        );
 
         let cmain_sig = Signature {
             params: vec![
@@ -60,10 +63,14 @@ pub(crate) fn maybe_create_entry_wrapper(
                 AbiParam::new(m.target_config().pointer_type()),
             ],
             returns: vec![AbiParam::new(m.target_config().pointer_type() /*isize*/)],
-            call_conv: CallConv::triple_default(m.isa().triple()),
+            call_conv: crate::conv_to_call_conv(
+                tcx.sess.target.options.entry_abi,
+                CallConv::triple_default(m.isa().triple()),
+            ),
         };
 
-        let cmain_func_id = m.declare_function("main", Linkage::Export, &cmain_sig).unwrap();
+        let entry_name = tcx.sess.target.options.entry_name.as_ref();
+        let cmain_func_id = m.declare_function(entry_name, Linkage::Export, &cmain_sig).unwrap();
 
         let instance = Instance::mono(tcx, rust_main_def_id).polymorphize(tcx);
 
@@ -72,7 +79,7 @@ pub(crate) fn maybe_create_entry_wrapper(
         let main_func_id = m.declare_function(main_name, Linkage::Import, &main_sig).unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), cmain_sig);
+        ctx.func.signature = cmain_sig;
         {
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
@@ -81,6 +88,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.switch_to_block(block);
             let arg_argc = bcx.append_block_param(block, m.target_config().pointer_type());
             let arg_argv = bcx.append_block_param(block, m.target_config().pointer_type());
+            let arg_sigpipe = bcx.ins().iconst(types::I8, sigpipe as i64);
 
             let main_func_ref = m.declare_func_in_func(main_func_id, &mut bcx.func);
 
@@ -107,7 +115,8 @@ pub(crate) fn maybe_create_entry_wrapper(
                     tcx.mk_substs([GenericArg::from(main_ret_ty)].iter()),
                 )
                 .unwrap()
-                .unwrap();
+                .unwrap()
+                .polymorphize(tcx);
 
                 let report_name = tcx.symbol_name(report).name;
                 let report_sig = get_function_sig(tcx, m.isa().triple(), report);
@@ -140,7 +149,8 @@ pub(crate) fn maybe_create_entry_wrapper(
                 let main_val = bcx.ins().func_addr(m.target_config().pointer_type(), main_func_ref);
 
                 let func_ref = m.declare_func_in_func(start_func_id, &mut bcx.func);
-                let call_inst = bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv]);
+                let call_inst =
+                    bcx.ins().call(func_ref, &[main_val, arg_argc, arg_argv, arg_sigpipe]);
                 bcx.inst_results(call_inst)[0]
             } else {
                 // using user-defined start fn
@@ -152,8 +162,7 @@ pub(crate) fn maybe_create_entry_wrapper(
             bcx.seal_all_blocks();
             bcx.finalize();
         }
-        m.define_function(cmain_func_id, &mut ctx, &mut NullTrapSink {}, &mut NullStackMapSink {})
-            .unwrap();
+        m.define_function(cmain_func_id, &mut ctx).unwrap();
         unwind_context.add_function(cmain_func_id, &ctx, m.isa());
     }
 }

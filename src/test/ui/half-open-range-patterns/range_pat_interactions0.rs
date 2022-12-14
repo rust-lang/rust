@@ -1,8 +1,7 @@
 // run-pass
 #![allow(incomplete_features)]
 #![feature(exclusive_range_pattern)]
-#![feature(half_open_range_patterns)]
-#![feature(inline_const)]
+#![feature(inline_const_pat)]
 
 fn main() {
     let mut if_lettable = vec![];

@@ -1,14 +1,12 @@
 use crate::infer::canonical::query_response;
 use crate::infer::{InferCtxt, InferOk};
-use crate::traits::engine::TraitEngineExt as _;
+use crate::traits;
 use crate::traits::query::type_op::TypeOpOutput;
 use crate::traits::query::Fallible;
-use crate::traits::{ObligationCause, TraitEngine};
-use rustc_infer::traits::TraitEngineExt as _;
+use rustc_infer::infer::region_constraints::RegionConstraintData;
 use rustc_span::source_map::DUMMY_SP;
 
 use std::fmt;
-use std::rc::Rc;
 
 pub struct CustomTypeOp<F, G> {
     closure: F,
@@ -18,29 +16,32 @@ pub struct CustomTypeOp<F, G> {
 impl<F, G> CustomTypeOp<F, G> {
     pub fn new<'tcx, R>(closure: F, description: G) -> Self
     where
-        F: FnOnce(&InferCtxt<'_, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+        F: FnOnce(&InferCtxt<'tcx>) -> Fallible<InferOk<'tcx, R>>,
         G: Fn() -> String,
     {
         CustomTypeOp { closure, description }
     }
 }
 
-impl<'tcx, F, R, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
+impl<'tcx, F, R: fmt::Debug, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
 where
-    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'tcx>) -> Fallible<InferOk<'tcx, R>>,
     G: Fn() -> String,
 {
     type Output = R;
+    /// We can't do any custom error reporting for `CustomTypeOp`, so
+    /// we can use `!` to enforce that the implementation never provides it.
+    type ErrorInfo = !;
 
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
 
-        scrape_region_constraints(infcx, || (self.closure)(infcx))
+        Ok(scrape_region_constraints(infcx, || (self.closure)(infcx))?.0)
     }
 }
 
@@ -55,13 +56,10 @@ where
 
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
-fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
-    infcx: &InferCtxt<'_, 'tcx>,
+pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
+    infcx: &InferCtxt<'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
-) -> Fallible<TypeOpOutput<'tcx, Op>> {
-    let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-    let dummy_body_id = ObligationCause::dummy().body_id;
-
+) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
     // During NLL, we expect that nobody will register region
     // obligations **except** as part of a custom type op (and, at the
     // end of each custom type op, we scrape out the region
@@ -75,12 +73,11 @@ fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
     );
 
     let InferOk { value, obligations } = infcx.commit_if_ok(|_| op())?;
-    debug_assert!(obligations.iter().all(|o| o.cause.body_id == dummy_body_id));
-    fulfill_cx.register_predicate_obligations(infcx, obligations);
-    if let Err(e) = fulfill_cx.select_all_or_error(infcx) {
+    let errors = traits::fully_solve_obligations(infcx, obligations);
+    if !errors.is_empty() {
         infcx.tcx.sess.diagnostic().delay_span_bug(
             DUMMY_SP,
-            &format!("errors selecting obligation during MIR typeck: {:?}", e),
+            &format!("errors selecting obligation during MIR typeck: {:?}", errors),
         );
     }
 
@@ -92,18 +89,24 @@ fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
         infcx.tcx,
         region_obligations
             .iter()
-            .map(|(_, r_o)| (r_o.sup_type, r_o.sub_region))
-            .map(|(ty, r)| (infcx.resolve_vars_if_possible(ty), r)),
+            .map(|r_o| (r_o.sup_type, r_o.sub_region, r_o.origin.to_constraint_category()))
+            .map(|(ty, r, cc)| (infcx.resolve_vars_if_possible(ty), r, cc)),
         &region_constraint_data,
     );
 
     if region_constraints.is_empty() {
-        Ok(TypeOpOutput { output: value, constraints: None, canonicalized_query: None })
+        Ok((
+            TypeOpOutput { output: value, constraints: None, error_info: None },
+            region_constraint_data,
+        ))
     } else {
-        Ok(TypeOpOutput {
-            output: value,
-            constraints: Some(Rc::new(region_constraints)),
-            canonicalized_query: None,
-        })
+        Ok((
+            TypeOpOutput {
+                output: value,
+                constraints: Some(infcx.tcx.arena.alloc(region_constraints)),
+                error_info: None,
+            },
+            region_constraint_data,
+        ))
     }
 }

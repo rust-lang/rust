@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(overflowing_literals)]
 
 // Test that we cleanup dynamic sized Box<[D]> properly when D has a

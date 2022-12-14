@@ -104,4 +104,14 @@ mod m4 {
 
 pub use m4::*;
 
+mod issue_8732 {
+    #[allow(unused_macros)]
+    macro_rules! some_macro {
+        () => {};
+    }
+
+    #[allow(unused_imports)]
+    pub(crate) use some_macro; // ok: macro exports are exempt
+}
+
 fn main() {}

@@ -1,7 +1,8 @@
 //! Checks that all error codes have at least one test to prevent having error
 //! codes that are silently not thrown by the compiler anymore.
 
-use std::collections::HashMap;
+use crate::walk::{filter_dirs, walk};
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fs::read_to_string;
 use std::path::Path;
@@ -10,8 +11,8 @@ use regex::Regex;
 
 // A few of those error codes can't be tested but all the others can and *should* be tested!
 const EXEMPTED_FROM_TEST: &[&str] = &[
-    "E0227", "E0279", "E0280", "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0514",
-    "E0519", "E0523", "E0554", "E0640", "E0717", "E0729",
+    "E0313", "E0377", "E0461", "E0462", "E0465", "E0476", "E0490", "E0514", "E0519", "E0523",
+    "E0554", "E0640", "E0717", "E0729", "E0789",
 ];
 
 // Some error codes don't have any tests apparently...
@@ -205,6 +206,7 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     let mut found_explanations = 0;
     let mut found_tests = 0;
     let mut error_codes: HashMap<String, ErrorCodeStatus> = HashMap::new();
+    let mut explanations: HashSet<String> = HashSet::new();
     // We want error codes which match the following cases:
     //
     // * foo(a, E0111, a)
@@ -216,19 +218,29 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     println!("Checking which error codes lack tests...");
 
     for path in paths {
-        super::walk(path, &mut |path| super::filter_dirs(path), &mut |entry, contents| {
+        walk(path, &mut filter_dirs, &mut |entry, contents| {
             let file_name = entry.file_name();
+            let entry_path = entry.path();
+
             if file_name == "error_codes.rs" {
                 extract_error_codes(contents, &mut error_codes, entry.path(), &mut errors);
                 found_explanations += 1;
-            } else if entry.path().extension() == Some(OsStr::new("stderr")) {
+            } else if entry_path.extension() == Some(OsStr::new("stderr")) {
                 extract_error_codes_from_tests(contents, &mut error_codes);
                 found_tests += 1;
-            } else if entry.path().extension() == Some(OsStr::new("rs")) {
+            } else if entry_path.extension() == Some(OsStr::new("rs")) {
                 let path = entry.path().to_string_lossy();
                 if PATHS_TO_IGNORE_FOR_EXTRACTION.iter().all(|c| !path.contains(c)) {
                     extract_error_codes_from_source(contents, &mut error_codes, &regex);
                 }
+            } else if entry_path
+                .parent()
+                .and_then(|p| p.file_name())
+                .map(|p| p == "error_codes")
+                .unwrap_or(false)
+                && entry_path.extension() == Some(OsStr::new("md"))
+            {
+                explanations.insert(file_name.to_str().unwrap().replace(".md", ""));
             }
         });
     }
@@ -240,12 +252,16 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
         eprintln!("No error code was found in compilation errors!");
         *bad = true;
     }
+    if explanations.is_empty() {
+        eprintln!("No error code explanation was found!");
+        *bad = true;
+    }
     if errors.is_empty() {
         println!("Found {} error codes", error_codes.len());
 
         for (err_code, error_status) in &error_codes {
             if !error_status.has_test && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
-                errors.push(format!("Error code {} needs to have at least one UI test!", err_code));
+                errors.push(format!("Error code {err_code} needs to have at least one UI test!"));
             } else if error_status.has_test && EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!(
                     "Error code {} has a UI test, it shouldn't be listed into EXEMPTED_FROM_TEST!",
@@ -282,11 +298,21 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
             }
         }
     }
+    if errors.is_empty() {
+        for explanation in explanations {
+            if !error_codes.contains_key(&explanation) {
+                errors.push(format!(
+                    "{} error code explanation should be listed in `error_codes.rs`",
+                    explanation
+                ));
+            }
+        }
+    }
     errors.sort();
     for err in &errors {
-        eprintln!("{}", err);
+        eprintln!("{err}");
     }
-    println!("Found {} error codes with no tests", errors.len());
+    println!("Found {} error(s) in error codes", errors.len());
     if !errors.is_empty() {
         *bad = true;
     }

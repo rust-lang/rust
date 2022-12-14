@@ -1,0 +1,9 @@
+error[E0284]: type annotations needed: cannot satisfy `<usize as SliceIndex<[u8]>>::Output == _`
+  --> $DIR/ub-nonnull.rs:19:30
+   |
+LL |     let out_of_bounds_ptr = &ptr[255];
+   |                              ^^^^^^^^ cannot satisfy `<usize as SliceIndex<[u8]>>::Output == _`
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0284`.

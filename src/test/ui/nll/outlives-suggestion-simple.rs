@@ -1,7 +1,5 @@
 // Test the simplest of outlives suggestions.
 
-#![feature(nll)]
-
 fn foo1<'a, 'b>(x: &'a usize) -> &'b usize {
     x //~ERROR lifetime may not live long enough
 }
@@ -70,7 +68,7 @@ pub struct Foo2<'a> {
 impl<'a> Foo2<'a> {
     // should not produce outlives suggestions to name 'self
     fn get_bar(&self) -> Bar2 {
-        Bar2::new(&self) //~ERROR borrowed data escapes outside of associated function
+        Bar2::new(&self) //~ERROR lifetime may not live long enough
     }
 }
 

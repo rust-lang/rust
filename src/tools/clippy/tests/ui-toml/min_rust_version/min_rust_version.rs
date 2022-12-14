@@ -1,6 +1,7 @@
-#![allow(clippy::redundant_clone)]
-#![warn(clippy::manual_non_exhaustive)]
+#![allow(clippy::redundant_clone, clippy::unnecessary_operation)]
+#![warn(clippy::manual_non_exhaustive, clippy::borrow_as_ptr, clippy::manual_bits)]
 
+use std::mem::{size_of, size_of_val};
 use std::ops::Deref;
 
 mod enums {
@@ -59,10 +60,39 @@ fn manual_strip_msrv() {
     }
 }
 
+fn check_index_refutable_slice() {
+    // This shouldn't trigger `clippy::index_refutable_slice` as the suggestion
+    // would only be valid from 1.42.0 onward
+    let slice: Option<&[u32]> = Some(&[1]);
+    if let Some(slice) = slice {
+        println!("{}", slice[0]);
+    }
+}
+
+fn map_clone_suggest_copied() {
+    // This should still trigger the lint but suggest `cloned()` instead of `copied()`
+    let _: Option<u64> = Some(&16).map(|b| *b);
+}
+
+fn borrow_as_ptr() {
+    let val = 1;
+    let _p = &val as *const i32;
+
+    let mut val_mut = 1;
+    let _p_mut = &mut val_mut as *mut i32;
+}
+
+fn manual_bits() {
+    size_of::<i8>() * 8;
+    size_of_val(&0u32) * 8;
+}
+
 fn main() {
     option_as_ref_deref();
     match_like_matches();
     match_same_arms();
     match_same_arms2();
     manual_strip_msrv();
+    check_index_refutable_slice();
+    borrow_as_ptr();
 }

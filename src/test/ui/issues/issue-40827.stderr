@@ -12,7 +12,7 @@ note: required because it appears within the type `Bar`
    |
 LL | enum Bar {
    |      ^^^
-   = note: required because of the requirements on the impl of `Send` for `Arc<Bar>`
+   = note: required for `Arc<Bar>` to implement `Send`
 note: required because it appears within the type `Foo`
   --> $DIR/issue-40827.rs:4:8
    |
@@ -38,7 +38,7 @@ note: required because it appears within the type `Bar`
    |
 LL | enum Bar {
    |      ^^^
-   = note: required because of the requirements on the impl of `Send` for `Arc<Bar>`
+   = note: required for `Arc<Bar>` to implement `Send`
 note: required because it appears within the type `Foo`
   --> $DIR/issue-40827.rs:4:8
    |

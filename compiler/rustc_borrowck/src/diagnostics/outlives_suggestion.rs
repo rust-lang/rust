@@ -2,11 +2,10 @@
 //! outlives constraints.
 
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::DiagnosticBuilder;
+use rustc_errors::Diagnostic;
 use rustc_middle::ty::RegionVid;
 use smallvec::SmallVec;
 use std::collections::BTreeMap;
-use tracing::debug;
 
 use crate::MirBorrowckCtxt;
 
@@ -55,14 +54,15 @@ impl OutlivesSuggestionBuilder {
             | RegionNameSource::NamedFreeRegion(..)
             | RegionNameSource::Static => true,
 
-            // Don't give suggestions for upvars, closure return types, or other unnamable
+            // Don't give suggestions for upvars, closure return types, or other unnameable
             // regions.
             RegionNameSource::SynthesizedFreeEnvRegion(..)
             | RegionNameSource::AnonRegionFromArgument(..)
             | RegionNameSource::AnonRegionFromUpvar(..)
             | RegionNameSource::AnonRegionFromOutput(..)
             | RegionNameSource::AnonRegionFromYieldTy(..)
-            | RegionNameSource::AnonRegionFromAsyncFn(..) => {
+            | RegionNameSource::AnonRegionFromAsyncFn(..)
+            | RegionNameSource::AnonRegionFromImplSignature(..) => {
                 debug!("Region {:?} is NOT suggestable", name);
                 false
             }
@@ -149,7 +149,7 @@ impl OutlivesSuggestionBuilder {
     }
 
     /// Add the outlives constraint `fr: outlived_fr` to the set of constraints we need to suggest.
-    crate fn collect_constraint(&mut self, fr: RegionVid, outlived_fr: RegionVid) {
+    pub(crate) fn collect_constraint(&mut self, fr: RegionVid, outlived_fr: RegionVid) {
         debug!("Collected {:?}: {:?}", fr, outlived_fr);
 
         // Add to set of constraints for final help note.
@@ -158,29 +158,28 @@ impl OutlivesSuggestionBuilder {
 
     /// Emit an intermediate note on the given `Diagnostic` if the involved regions are
     /// suggestable.
-    crate fn intermediate_suggestion(
+    pub(crate) fn intermediate_suggestion(
         &mut self,
         mbcx: &MirBorrowckCtxt<'_, '_>,
-        errci: &ErrorConstraintInfo,
-        diag: &mut DiagnosticBuilder<'_>,
+        errci: &ErrorConstraintInfo<'_>,
+        diag: &mut Diagnostic,
     ) {
         // Emit an intermediate note.
         let fr_name = self.region_vid_to_name(mbcx, errci.fr);
         let outlived_fr_name = self.region_vid_to_name(mbcx, errci.outlived_fr);
 
-        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name) {
-            if !matches!(outlived_fr_name.source, RegionNameSource::Static) {
-                diag.help(&format!(
-                    "consider adding the following bound: `{}: {}`",
-                    fr_name, outlived_fr_name
-                ));
-            }
+        if let (Some(fr_name), Some(outlived_fr_name)) = (fr_name, outlived_fr_name)
+            && !matches!(outlived_fr_name.source, RegionNameSource::Static)
+        {
+            diag.help(&format!(
+                "consider adding the following bound: `{fr_name}: {outlived_fr_name}`",
+            ));
         }
     }
 
     /// If there is a suggestion to emit, add a diagnostic to the buffer. This is the final
     /// suggestion including all collected constraints.
-    crate fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_>) {
+    pub(crate) fn add_suggestion(&self, mbcx: &mut MirBorrowckCtxt<'_, '_>) {
         // No constraints to add? Done.
         if self.constraints_to_add.is_empty() {
             debug!("No constraints to suggest.");
@@ -256,6 +255,6 @@ impl OutlivesSuggestionBuilder {
         diag.sort_span = mir_span.shrink_to_hi();
 
         // Buffer the diagnostic
-        diag.buffer(&mut mbcx.errors_buffer);
+        mbcx.buffer_non_error_diag(diag);
     }
 }

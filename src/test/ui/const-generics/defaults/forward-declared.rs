@@ -1,5 +1,3 @@
-#![feature(const_generics_defaults)]
-
 struct Foo<const N: usize = M, const M: usize = 10>;
 //~^ ERROR generic parameters with a default cannot use forward declared identifiers
 

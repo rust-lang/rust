@@ -1,5 +1,4 @@
 #![feature(unboxed_closures)]
-#![feature(rustc_attrs)]
 
 // Test for projection cache. We should be able to project distinct
 // lifetimes from `foo` as we reinstantiate it multiple times, but not
@@ -7,6 +6,8 @@
 // an contravariant position, which affects the results.
 
 // revisions: ok oneuse transmute krisskross
+//[ok] check-pass
+//[oneuse] check-pass
 
 #![allow(dead_code, unused_variables)]
 
@@ -35,16 +36,15 @@ fn baz<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
 
 #[cfg(transmute)] // one instantiations: BAD
 fn baz<'a,'b>(x: &'a u32) -> &'static u32 {
-   bar(foo, x) //[transmute]~ ERROR E0759
+   bar(foo, x) //[transmute]~ ERROR lifetime may not live long enough
 }
 
 #[cfg(krisskross)] // two instantiations, mixing and matching: BAD
 fn transmute<'a,'b>(x: &'a u32, y: &'b u32) -> (&'a u32, &'b u32) {
    let a = bar(foo, y);
    let b = bar(foo, x);
-   (a, b) //[krisskross]~ ERROR lifetime mismatch [E0623]
-   //[krisskross]~^ ERROR lifetime mismatch [E0623]
+   (a, b) //[krisskross]~ ERROR lifetime may not live long enough
+   //[krisskross]~^ ERROR lifetime may not live long enough
 }
 
-#[rustc_error]
-fn main() { } //[ok,oneuse]~ ERROR fatal error triggered by #[rustc_error]
+fn main() { }

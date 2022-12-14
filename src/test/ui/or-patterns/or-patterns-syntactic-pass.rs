@@ -7,7 +7,7 @@ fn main() {}
 
 // Test the `pat` macro fragment parser:
 macro_rules! accept_pat {
-    ($p:pat) => {}
+    ($p:pat) => {};
 }
 
 accept_pat!((p | q));
@@ -41,8 +41,8 @@ fn or_patterns() {
 
     // Top level of `match` arms:
     match 0 {
-        | A | B => {},
-        A | B => {},
+        | A | B => {}
+        A | B => {}
     }
 
     // Functions:
@@ -68,6 +68,8 @@ fn or_patterns() {
 
     // These bind as `(prefix p) | q` as opposed to `prefix (p | q)`:
     let (box 0 | 1); // Unstable; we *can* change the precedence if we want.
+                     //~^ WARN box pattern syntax is experimental
+                     //~| WARN unstable syntax
     let (&0 | 1);
     let (&mut 0 | 1);
     let (x @ 0 | 1);

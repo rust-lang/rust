@@ -1,5 +1,3 @@
-#![feature(generic_associated_types)]
-
 use std::{future::Future, pin::Pin};
 
 pub trait Foo {

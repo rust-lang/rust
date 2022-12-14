@@ -47,13 +47,12 @@ cargo +nightly fmt
 
 ## Limitations
 
-Rustfmt tries to work on as much Rust code as possible, sometimes, the code
-doesn't even need to compile! As we approach a 1.0 release we are also looking
-to limit areas of instability; in particular, post-1.0, the formatting of most
-code should not change as Rustfmt improves. However, there are some things that
-Rustfmt can't do or can't do well (and thus where formatting might change
-significantly, even post-1.0). We would like to reduce the list of limitations
-over time.
+Rustfmt tries to work on as much Rust code as possible. Sometimes, the code
+doesn't even need to compile! In general, we are looking to limit areas of
+instability; in particular, post-1.0, the formatting of most code should not
+change as Rustfmt improves. However, there are some things that Rustfmt can't
+do or can't do well (and thus where formatting might change significantly,
+even post-1.0). We would like to reduce the list of limitations over time.
 
 The following list enumerates areas where Rustfmt does not work or where the
 stability guarantees do not apply (we don't make a distinction between the two
@@ -102,6 +101,25 @@ read data from stdin. Alternatively, you can use `cargo fmt` to format all
 binary and library targets of your crate.
 
 You can run `rustfmt --help` for information about available arguments.
+The easiest way to run rustfmt against a project is with `cargo fmt`. `cargo fmt` works on both
+single-crate projects and [cargo workspaces](https://doc.rust-lang.org/book/ch14-03-cargo-workspaces.html).
+Please see `cargo fmt --help` for usage information.
+
+You can specify the path to your own `rustfmt` binary for cargo to use by setting the`RUSTFMT` 
+environment variable. This was added in v1.4.22, so you must have this version or newer to leverage this feature (`cargo fmt --version`)
+
+### Running `rustfmt` directly
+
+To format individual files or arbitrary codes from stdin, the `rustfmt` binary should be used. Some
+examples follow:
+
+- `rustfmt lib.rs main.rs` will format "lib.rs" and "main.rs" in place
+- `rustfmt` will read a code from stdin and write formatting to stdout
+  - `echo "fn     main() {}" | rustfmt` would emit "fn main() {}".
+
+For more information, including arguments and emit options, see `rustfmt --help`.
+
+### Verifying code is formatted
 
 When running with `--check`, Rustfmt will exit with `0` if Rustfmt would not
 make any formatting changes to the input, and `1` if Rustfmt would make changes.
@@ -117,7 +135,7 @@ completed without error (whether or not changes were made).
 * [Emacs](https://github.com/rust-lang/rust-mode)
 * [Sublime Text 3](https://packagecontrol.io/packages/RustFmt)
 * [Atom](atom.md)
-* Visual Studio Code using [vscode-rust](https://github.com/editor-rs/vscode-rust), [vsc-rustfmt](https://github.com/Connorcpu/vsc-rustfmt) or [rls_vscode](https://github.com/jonathandturner/rls_vscode) through RLS.
+* [Visual Studio Code](https://marketplace.visualstudio.com/items?itemName=rust-lang.rust-analyzer)
 * [IntelliJ or CLion](intellij.md)
 
 
@@ -129,7 +147,7 @@ rustfmt to exit with an error code if the input is not formatted correctly.
 It will also print any found differences. (Older versions of Rustfmt don't
 support `--check`, use `--write-mode diff`).
 
-A minimal Travis setup could look like this (requires Rust 1.24.0 or greater):
+A minimal Travis setup could look like this (requires Rust 1.31.0 or greater):
 
 ```yaml
 language: rust

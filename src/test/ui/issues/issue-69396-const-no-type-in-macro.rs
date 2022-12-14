@@ -4,7 +4,7 @@ macro_rules! suite {
             const A = "A".$fn();
             //~^ ERROR the name `A` is defined multiple times
             //~| ERROR missing type for `const` item
-            //~| ERROR the type placeholder `_` is not allowed within types on item signatures for constants
+            //~| ERROR the placeholder `_` is not allowed within types on item signatures for constants
         )*
     }
 }

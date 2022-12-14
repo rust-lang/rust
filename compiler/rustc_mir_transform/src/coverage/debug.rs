@@ -3,7 +3,7 @@
 //!
 //! To enable coverage, include the rustc command line option:
 //!
-//!   * `-Z instrument-coverage`
+//!   * `-C instrument-coverage`
 //!
 //! MIR Dump Files, with additional `CoverageGraph` graphviz and `CoverageSpan` spanview
 //! ------------------------------------------------------------------------------------
@@ -111,6 +111,7 @@
 use super::graph::{BasicCoverageBlock, BasicCoverageBlockData, CoverageGraph};
 use super::spans::CoverageSpan;
 
+use itertools::Itertools;
 use rustc_middle::mir::create_dump_file;
 use rustc_middle::mir::generic_graphviz::GraphvizWriter;
 use rustc_middle::mir::spanview::{self, SpanViewable};
@@ -122,14 +123,15 @@ use rustc_middle::ty::TyCtxt;
 use rustc_span::Span;
 
 use std::iter;
-use std::lazy::SyncOnceCell;
+use std::ops::Deref;
+use std::sync::OnceLock;
 
 pub const NESTED_INDENT: &str = "    ";
 
 const RUSTC_COVERAGE_DEBUG_OPTIONS: &str = "RUSTC_COVERAGE_DEBUG_OPTIONS";
 
 pub(super) fn debug_options<'a>() -> &'a DebugOptions {
-    static DEBUG_OPTIONS: SyncOnceCell<DebugOptions> = SyncOnceCell::new();
+    static DEBUG_OPTIONS: OnceLock<DebugOptions> = OnceLock::new();
 
     &DEBUG_OPTIONS.get_or_init(DebugOptions::from_env)
 }
@@ -148,7 +150,7 @@ impl DebugOptions {
         let mut counter_format = ExpressionFormat::default();
 
         if let Ok(env_debug_options) = std::env::var(RUSTC_COVERAGE_DEBUG_OPTIONS) {
-            for setting_str in env_debug_options.replace(" ", "").replace("-", "_").split(',') {
+            for setting_str in env_debug_options.replace(' ', "").replace('-', "_").split(',') {
                 let (option, value) = match setting_str.split_once('=') {
                     None => (setting_str, None),
                     Some((k, v)) => (k, Some(v)),
@@ -356,14 +358,12 @@ impl DebugCounters {
         if let Some(counters) = &self.some_counters {
             if let Some(DebugCounter { counter_kind, some_block_label }) = counters.get(&operand) {
                 if let CoverageKind::Expression { .. } = counter_kind {
-                    if let Some(block_label) = some_block_label {
-                        if debug_options().counter_format.block {
-                            return format!(
-                                "{}:({})",
-                                block_label,
-                                self.format_counter_kind(counter_kind)
-                            );
-                        }
+                    if let Some(label) = some_block_label && debug_options().counter_format.block {
+                        return format!(
+                            "{}:({})",
+                            label,
+                            self.format_counter_kind(counter_kind)
+                        );
                     }
                     return format!("({})", self.format_counter_kind(counter_kind));
                 }
@@ -435,11 +435,11 @@ impl GraphvizData {
     pub fn get_bcb_coverage_spans_with_counters(
         &self,
         bcb: BasicCoverageBlock,
-    ) -> Option<&Vec<(CoverageSpan, CoverageKind)>> {
+    ) -> Option<&[(CoverageSpan, CoverageKind)]> {
         if let Some(bcb_to_coverage_spans_with_counters) =
             self.some_bcb_to_coverage_spans_with_counters.as_ref()
         {
-            bcb_to_coverage_spans_with_counters.get(&bcb)
+            bcb_to_coverage_spans_with_counters.get(&bcb).map(Deref::deref)
         } else {
             None
         }
@@ -458,12 +458,9 @@ impl GraphvizData {
         }
     }
 
-    pub fn get_bcb_dependency_counters(
-        &self,
-        bcb: BasicCoverageBlock,
-    ) -> Option<&Vec<CoverageKind>> {
+    pub fn get_bcb_dependency_counters(&self, bcb: BasicCoverageBlock) -> Option<&[CoverageKind]> {
         if let Some(bcb_to_dependency_counters) = self.some_bcb_to_dependency_counters.as_ref() {
-            bcb_to_dependency_counters.get(&bcb)
+            bcb_to_dependency_counters.get(&bcb).map(Deref::deref)
         } else {
             None
         }
@@ -572,11 +569,11 @@ impl UsedExpressions {
     /// associated with a coverage span).
     pub fn validate(
         &mut self,
-        bcb_counters_without_direct_coverage_spans: &Vec<(
+        bcb_counters_without_direct_coverage_spans: &[(
             Option<BasicCoverageBlock>,
             BasicCoverageBlock,
             CoverageKind,
-        )>,
+        )],
     ) {
         if self.is_enabled() {
             let mut not_validated = bcb_counters_without_direct_coverage_spans
@@ -629,19 +626,19 @@ impl UsedExpressions {
 }
 
 /// Generates the MIR pass `CoverageSpan`-specific spanview dump file.
-pub(super) fn dump_coverage_spanview(
+pub(super) fn dump_coverage_spanview<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
     pass_name: &str,
     body_span: Span,
-    coverage_spans: &Vec<CoverageSpan>,
+    coverage_spans: &[CoverageSpan],
 ) {
     let mir_source = mir_body.source;
     let def_id = mir_source.def_id();
 
     let span_viewables = span_viewables(tcx, mir_body, basic_coverage_blocks, &coverage_spans);
-    let mut file = create_dump_file(tcx, "html", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "html", false, pass_name, &0, mir_body)
         .expect("Unexpected error creating MIR spanview HTML file");
     let crate_name = tcx.crate_name(def_id.krate);
     let item_name = tcx.def_path(def_id).to_filename_friendly_no_crate();
@@ -651,11 +648,11 @@ pub(super) fn dump_coverage_spanview(
 }
 
 /// Converts the computed `BasicCoverageBlockData`s into `SpanViewable`s.
-fn span_viewables(
+fn span_viewables<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     basic_coverage_blocks: &CoverageGraph,
-    coverage_spans: &Vec<CoverageSpan>,
+    coverage_spans: &[CoverageSpan],
 ) -> Vec<SpanViewable> {
     let mut span_viewables = Vec::new();
     for coverage_span in coverage_spans {
@@ -670,14 +667,14 @@ fn span_viewables(
 }
 
 /// Generates the MIR pass coverage-specific graphviz dump file.
-pub(super) fn dump_coverage_graphviz(
+pub(super) fn dump_coverage_graphviz<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     pass_name: &str,
     basic_coverage_blocks: &CoverageGraph,
     debug_counters: &DebugCounters,
     graphviz_data: &GraphvizData,
-    intermediate_expressions: &Vec<CoverageKind>,
+    intermediate_expressions: &[CoverageKind],
     debug_used_expressions: &UsedExpressions,
 ) {
     let mir_source = mir_body.source;
@@ -702,7 +699,7 @@ pub(super) fn dump_coverage_graphviz(
         edge_labels.retain(|label| label != "unreachable");
         let edge_counters = from_terminator
             .successors()
-            .map(|&successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
+            .map(|successor_bb| graphviz_data.get_edge_counter(from_bcb, successor_bb));
         iter::zip(&edge_labels, edge_counters)
             .map(|(label, some_counter)| {
                 if let Some(counter) = some_counter {
@@ -739,25 +736,24 @@ pub(super) fn dump_coverage_graphviz(
                         )
                     }
                 })
-                .collect::<Vec<_>>()
                 .join("\n  ")
         ));
     }
-    let mut file = create_dump_file(tcx, "dot", None, pass_name, &0, mir_source)
+    let mut file = create_dump_file(tcx, "dot", false, pass_name, &0, mir_body)
         .expect("Unexpected error creating BasicCoverageBlock graphviz DOT file");
     graphviz_writer
         .write_graphviz(tcx, &mut file)
         .expect("Unexpected error writing BasicCoverageBlock graphviz DOT file");
 }
 
-fn bcb_to_string_sections(
+fn bcb_to_string_sections<'tcx>(
     tcx: TyCtxt<'tcx>,
     mir_body: &mir::Body<'tcx>,
     debug_counters: &DebugCounters,
     bcb_data: &BasicCoverageBlockData,
-    some_coverage_spans_with_counters: Option<&Vec<(CoverageSpan, CoverageKind)>>,
-    some_dependency_counters: Option<&Vec<CoverageKind>>,
-    some_intermediate_expressions: Option<&Vec<CoverageKind>>,
+    some_coverage_spans_with_counters: Option<&[(CoverageSpan, CoverageKind)]>,
+    some_dependency_counters: Option<&[CoverageKind]>,
+    some_intermediate_expressions: Option<&[CoverageKind]>,
 ) -> Vec<String> {
     let len = bcb_data.basic_blocks.len();
     let mut sections = Vec::new();
@@ -768,7 +764,6 @@ fn bcb_to_string_sections(
                 .map(|expression| {
                     format!("Intermediate {}", debug_counters.format_counter(expression))
                 })
-                .collect::<Vec<_>>()
                 .join("\n"),
         );
     }
@@ -783,7 +778,6 @@ fn bcb_to_string_sections(
                         covspan.format(tcx, mir_body)
                     )
                 })
-                .collect::<Vec<_>>()
                 .join("\n"),
         );
     }
@@ -793,7 +787,6 @@ fn bcb_to_string_sections(
             dependency_counters
                 .iter()
                 .map(|counter| debug_counters.format_counter(counter))
-                .collect::<Vec<_>>()
                 .join("  \n"),
         ));
     }
@@ -817,7 +810,7 @@ fn bcb_to_string_sections(
 
 /// Returns a simple string representation of a `TerminatorKind` variant, independent of any
 /// values it might hold.
-pub(super) fn term_type(kind: &TerminatorKind<'tcx>) -> &'static str {
+pub(super) fn term_type(kind: &TerminatorKind<'_>) -> &'static str {
     match kind {
         TerminatorKind::Goto { .. } => "Goto",
         TerminatorKind::SwitchInt { .. } => "SwitchInt",

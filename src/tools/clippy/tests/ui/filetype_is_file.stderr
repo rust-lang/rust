@@ -4,8 +4,8 @@ error: `FileType::is_file()` only covers regular files
 LL |     if fs::metadata("foo.txt")?.file_type().is_file() {
    |        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::filetype-is-file` implied by `-D warnings`
    = help: use `!FileType::is_dir()` instead
+   = note: `-D clippy::filetype-is-file` implied by `-D warnings`
 
 error: `!FileType::is_file()` only denies regular files
   --> $DIR/filetype_is_file.rs:13:8

@@ -3,28 +3,19 @@
 
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait MyTrait {
     type Assoc<'a, 'b> where 'b: 'a;
     fn do_sth(arg: Self::Assoc<'_, '_>);
+    fn do_sth2(arg: Self::Assoc<'_, '_>) {}
 }
 
-struct A;
-struct B;
-struct C;
+struct Foo;
 
-impl MyTrait for A {
-    type Assoc<'a, 'b> where 'b: 'a = u32;
+impl MyTrait for Foo {
+    type Assoc<'a, 'b> = u32 where 'b: 'a;
+
     fn do_sth(_: u32) {}
-}
-impl MyTrait for B {
-    type Assoc<'a, 'b> where 'b: 'a = u32;
-    fn do_sth(_: Self::Assoc<'_, '_>) {}
-}
-impl MyTrait for C {
-    type Assoc<'a, 'b> where 'b: 'a = u32;
-    fn do_sth(_: Self::Assoc<'static, 'static>) {}
+    fn do_sth2(_: Self::Assoc<'static, 'static>) {}
 }
 
-fn main () {}
+fn main() {}

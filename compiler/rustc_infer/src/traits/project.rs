@@ -10,7 +10,7 @@ use rustc_data_structures::{
 };
 use rustc_middle::ty::{self, Ty};
 
-pub use rustc_middle::traits::Reveal;
+pub use rustc_middle::traits::{EvaluationResult, Reveal};
 
 pub(crate) type UndoLog<'tcx> =
     snapshot_map::UndoLog<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>;
@@ -20,7 +20,7 @@ pub struct MismatchedProjectionTypes<'tcx> {
     pub err: ty::error::TypeError<'tcx>,
 }
 
-#[derive(Clone, TypeFoldable)]
+#[derive(Clone, TypeFoldable, TypeVisitable)]
 pub struct Normalized<'tcx, T> {
     pub value: T,
     pub obligations: Vec<PredicateObligation<'tcx>>,
@@ -70,7 +70,7 @@ pub struct ProjectionCache<'a, 'tcx> {
     undo_log: &'a mut InferCtxtUndoLogs<'tcx>,
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 pub struct ProjectionCacheStorage<'tcx> {
     map: SnapshotMapStorage<ProjectionCacheKey<'tcx>, ProjectionCacheEntry<'tcx>>,
 }
@@ -80,7 +80,7 @@ pub struct ProjectionCacheKey<'tcx> {
     ty: ty::ProjectionTy<'tcx>,
 }
 
-impl ProjectionCacheKey<'tcx> {
+impl<'tcx> ProjectionCacheKey<'tcx> {
     pub fn new(ty: ty::ProjectionTy<'tcx>) -> Self {
         Self { ty }
     }
@@ -92,7 +92,42 @@ pub enum ProjectionCacheEntry<'tcx> {
     Ambiguous,
     Recur,
     Error,
-    NormalizedTy(NormalizedTy<'tcx>),
+    NormalizedTy {
+        ty: Normalized<'tcx, ty::Term<'tcx>>,
+        /// If we were able to successfully evaluate the
+        /// corresponding cache entry key during predicate
+        /// evaluation, then this field stores the final
+        /// result obtained from evaluating all of the projection
+        /// sub-obligations. During evaluation, we will skip
+        /// evaluating the cached sub-obligations in `ty`
+        /// if this field is set. Evaluation only
+        /// cares about the final result, so we don't
+        /// care about any region constraint side-effects
+        /// produced by evaluating the sub-boligations.
+        ///
+        /// Additionally, we will clear out the sub-obligations
+        /// entirely if we ever evaluate the cache entry (along
+        /// with all its sub obligations) to `EvaluatedToOk`.
+        /// This affects all users of the cache, not just evaluation.
+        /// Since a result of `EvaluatedToOk` means that there were
+        /// no region obligations that need to be tracked, it's
+        /// fine to forget about the sub-obligations - they
+        /// don't provide any additional information. However,
+        /// we do *not* discard any obligations when we see
+        /// `EvaluatedToOkModuloRegions` - we don't know
+        /// which sub-obligations may introduce region constraints,
+        /// so we keep them all to be safe.
+        ///
+        /// When we are not performing evaluation
+        /// (e.g. in `FulfillmentContext`), we ignore this field,
+        /// and always re-process the cached sub-obligations
+        /// (which may have been cleared out - see the above
+        /// paragraph).
+        /// This ensures that we do not lose any regions
+        /// constraints that arise from processing the
+        /// sub-obligations.
+        complete: Option<EvaluationResult>,
+    },
 }
 
 impl<'tcx> ProjectionCacheStorage<'tcx> {
@@ -139,7 +174,11 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     }
 
     /// Indicates that `key` was normalized to `value`.
-    pub fn insert_ty(&mut self, key: ProjectionCacheKey<'tcx>, value: NormalizedTy<'tcx>) {
+    pub fn insert_term(
+        &mut self,
+        key: ProjectionCacheKey<'tcx>,
+        value: Normalized<'tcx, ty::Term<'tcx>>,
+    ) {
         debug!(
             "ProjectionCacheEntry::insert_ty: adding cache entry: key={:?}, value={:?}",
             key, value
@@ -149,8 +188,39 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
             debug!("Not overwriting Recur");
             return;
         }
-        let fresh_key = map.insert(key, ProjectionCacheEntry::NormalizedTy(value));
+        let fresh_key =
+            map.insert(key, ProjectionCacheEntry::NormalizedTy { ty: value, complete: None });
         assert!(!fresh_key, "never started projecting `{:?}`", key);
+    }
+
+    /// Mark the relevant projection cache key as having its derived obligations
+    /// complete, so they won't have to be re-computed (this is OK to do in a
+    /// snapshot - if the snapshot is rolled back, the obligations will be
+    /// marked as incomplete again).
+    pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>, result: EvaluationResult) {
+        let mut map = self.map();
+        match map.get(&key) {
+            Some(&ProjectionCacheEntry::NormalizedTy { ref ty, complete: _ }) => {
+                info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
+                let mut ty = ty.clone();
+                if result.must_apply_considering_regions() {
+                    ty.obligations = vec![];
+                }
+                map.insert(key, ProjectionCacheEntry::NormalizedTy { ty, complete: Some(result) });
+            }
+            ref value => {
+                // Type inference could "strand behind" old cache entries. Leave
+                // them alone for now.
+                info!("ProjectionCacheEntry::complete({:?}) - ignoring {:?}", key, value);
+            }
+        };
+    }
+
+    pub fn is_complete(&mut self, key: ProjectionCacheKey<'tcx>) -> Option<EvaluationResult> {
+        self.map().get(&key).and_then(|res| match res {
+            ProjectionCacheEntry::NormalizedTy { ty: _, complete } => *complete,
+            _ => None,
+        })
     }
 
     /// Indicates that trying to normalize `key` resulted in

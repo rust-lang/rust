@@ -73,5 +73,14 @@ pub fn attribute_to_string(attr: &ast::Attribute) -> String {
 }
 
 pub fn to_string(f: impl FnOnce(&mut State<'_>)) -> String {
-    State::new().to_string(f)
+    State::to_string(f)
+}
+
+pub fn crate_to_string_for_macros(krate: &ast::Crate) -> String {
+    State::to_string(|s| {
+        s.print_inner_attributes(&krate.attrs);
+        for item in &krate.items {
+            s.print_item(item);
+        }
+    })
 }

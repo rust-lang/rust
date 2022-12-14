@@ -1,5 +1,5 @@
 error[E0658]: mutable references are not allowed in constants
-  --> $DIR/write_to_mut_ref_dest.rs:10:27
+  --> $DIR/write_to_mut_ref_dest.rs:11:27
    |
 LL |         let b: *mut u32 = &mut a;
    |                           ^^^^^^
@@ -7,14 +7,14 @@ LL |         let b: *mut u32 = &mut a;
    = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
    = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
-error[E0658]: dereferencing raw pointers in constants is unstable
-  --> $DIR/write_to_mut_ref_dest.rs:11:18
+error[E0658]: dereferencing raw mutable pointers in constants is unstable
+  --> $DIR/write_to_mut_ref_dest.rs:12:18
    |
 LL |         unsafe { *b = 5; }
    |                  ^^^^^^
    |
-   = note: see issue #51911 <https://github.com/rust-lang/rust/issues/51911> for more information
-   = help: add `#![feature(const_raw_ptr_deref)]` to the crate attributes to enable
+   = note: see issue #57349 <https://github.com/rust-lang/rust/issues/57349> for more information
+   = help: add `#![feature(const_mut_refs)]` to the crate attributes to enable
 
 error: aborting due to 2 previous errors
 

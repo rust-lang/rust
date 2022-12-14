@@ -5,7 +5,7 @@
 // that is captured by the closure
 
 // More specifically we test that the if the mutable reference isn't root variable of a capture
-// but rather accessed while acessing the precise capture.
+// but rather accessed while accessing the precise capture.
 
 fn mut_tuple() {
     let mut t = (10, 10);

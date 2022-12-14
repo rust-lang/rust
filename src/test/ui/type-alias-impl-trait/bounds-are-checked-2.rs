@@ -4,10 +4,10 @@
 #![feature(type_alias_impl_trait)]
 
 type X<T> = impl Clone;
-//~^ ERROR the trait bound `T: Clone` is not satisfied
 
 fn f<T: Clone>(t: T) -> X<T> {
     t
+    //~^ ERROR the trait bound `T: Clone` is not satisfied
 }
 
 fn g<T>(o: Option<X<T>>) -> Option<X<T>> {

@@ -3,15 +3,13 @@
 #![no_core]
 #![feature(no_core)]
 
-// @count macro.json "$.index[*][?(@.name=='macro')].inner.items[*]" 2
-
-// @set repro_id = macro.json "$.index[*][?(@.name=='repro')].id"
-// @has - "$.index[*][?(@.name=='macro')].inner.items[*]" $repro_id
+// @set repro_id = "$.index[*][?(@.name=='repro')].id"
 #[macro_export]
 macro_rules! repro {
     () => {};
 }
 
-// @set repro2_id = macro.json "$.index[*][?(@.inner.name=='repro2')].id"
-// @has - "$.index[*][?(@.name=='macro')].inner.items[*]" $repro2_id
+// @set repro2_id = "$.index[*][?(@.inner.name=='repro2')].id"
 pub use crate::repro as repro2;
+
+// @ismany "$.index[*][?(@.name=='macro')].inner.items[*]" $repro_id $repro2_id

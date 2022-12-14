@@ -43,18 +43,6 @@ macro_rules! impls_defined {
 }
 
 macro_rules! test_op {
-    ($fn_name:ident, $op:ident::$method:ident($lhs:literal, $rhs:literal), $result:literal, $($t:ty),+) => {
-        #[test]
-        fn $fn_name() {
-            impls_defined!($op, $method($lhs, $rhs), $result, $($t),+);
-        }
-    };
-    ($fn_name:ident, $op:ident::$method:ident(&mut $lhs:literal, $rhs:literal), $result:literal, $($t:ty),+) => {
-        #[test]
-        fn $fn_name() {
-            impls_defined!($op, $method(&mut $lhs, $rhs), $result, $($t),+);
-        }
-    };
     ($fn_name:ident, $op:ident::$method:ident($lhs:literal), $result:literal, $($t:ty),+) => {
         #[test]
         fn $fn_name() {

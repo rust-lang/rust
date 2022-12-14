@@ -12,12 +12,12 @@ use crate::error;
 use crate::fmt;
 use crate::io::Error;
 
-pub use bufreader::BufReader;
-pub use bufwriter::BufWriter;
+#[stable(feature = "rust1", since = "1.0.0")]
+pub use self::{bufreader::BufReader, bufwriter::BufWriter, linewriter::LineWriter};
+use linewritershim::LineWriterShim;
+
 #[stable(feature = "bufwriter_into_parts", since = "1.56.0")]
 pub use bufwriter::WriterPanicked;
-pub use linewriter::LineWriter;
-use linewritershim::LineWriterShim;
 
 /// An error returned by [`BufWriter::into_inner`] which combines an error that
 /// happened while writing out the buffer, and the buffered writer object

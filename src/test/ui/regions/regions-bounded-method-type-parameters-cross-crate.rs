@@ -17,7 +17,8 @@ fn call_into_maybe_owned<'x,F:IntoMaybeOwned<'x>>(f: F) {
 
 fn call_bigger_region<'x, 'y>(a: Inv<'x>, b: Inv<'y>) {
     // Here the value provided for 'y is 'y, and hence 'y:'x does not hold.
-    a.bigger_region(b) //~ ERROR lifetime mismatch [E0623]
+    a.bigger_region(b)
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() { }

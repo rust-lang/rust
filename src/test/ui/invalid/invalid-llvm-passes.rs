@@ -1,4 +1,4 @@
 // build-fail
-// compile-flags: -Cpasses=unknown-pass -Z new-llvm-pass-manager=yes
+// compile-flags: -Cpasses=unknown-pass
 
 fn main() {}

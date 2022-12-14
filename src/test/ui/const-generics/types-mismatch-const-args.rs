@@ -15,6 +15,8 @@ fn a<'a, 'b>() {
     //~^ ERROR mismatched types
     let _: A<'a, u16, {2u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data: PhantomData };
     //~^ ERROR mismatched types
+    let _: A<'a, u16, {4u32}, {3u32}> = A::<'b, u32, {2u32}, {3u32}> { data: PhantomData };
+    //~^ ERROR mismatched types
 }
 
 pub fn main() {}

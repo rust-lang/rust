@@ -1,8 +1,8 @@
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/issue-33017.rs:12:5
+  --> $DIR/issue-33017.rs:12:27
    |
 LL |     default type Output = Self;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^ the trait `Copy` is not implemented for `T`
+   |                           ^^^^ the trait `Copy` is not implemented for `T`
    |
 note: required by a bound in `UncheckedCopy::Output`
   --> $DIR/issue-33017.rs:8:31

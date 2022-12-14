@@ -5,5 +5,4 @@ impl Drop for dyn MyTrait {
     fn drop(&mut self) {}
 }
 
-fn main() {
-}
+fn main() {}

@@ -4,8 +4,8 @@ error: approximate value of `f{32, 64}::consts::PI` found
 LL |     let _x = 3.14;
    |              ^^^^
    |
-   = note: `#[deny(clippy::approx_constant)]` on by default
    = help: consider using the constant directly
+   = note: `#[deny(clippy::approx_constant)]` on by default
 
 error: aborting due to previous error
 

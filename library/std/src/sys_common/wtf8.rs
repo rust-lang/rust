@@ -22,9 +22,10 @@ use core::str::next_code_point;
 
 use crate::borrow::Cow;
 use crate::char;
+use crate::collections::TryReserveError;
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
-use crate::iter::FromIterator;
+use crate::iter::FusedIterator;
 use crate::mem;
 use crate::ops;
 use crate::rc::Rc;
@@ -88,6 +89,24 @@ impl CodePoint {
         self.value
     }
 
+    /// Returns the numeric value of the code point if it is a leading surrogate.
+    #[inline]
+    pub fn to_lead_surrogate(&self) -> Option<u16> {
+        match self.value {
+            lead @ 0xD800..=0xDBFF => Some(lead as u16),
+            _ => None,
+        }
+    }
+
+    /// Returns the numeric value of the code point if it is a trailing surrogate.
+    #[inline]
+    pub fn to_trail_surrogate(&self) -> Option<u16> {
+        match self.value {
+            trail @ 0xDC00..=0xDFFF => Some(trail as u16),
+            _ => None,
+        }
+    }
+
     /// Optionally returns a Unicode scalar value for the code point.
     ///
     /// Returns `None` if the code point is a surrogate (from U+D800 to U+DFFF).
@@ -116,6 +135,14 @@ impl CodePoint {
 #[derive(Eq, PartialEq, Ord, PartialOrd, Clone)]
 pub struct Wtf8Buf {
     bytes: Vec<u8>,
+
+    /// Do we know that `bytes` holds a valid UTF-8 encoding? We can easily
+    /// know this if we're constructed from a `String` or `&str`.
+    ///
+    /// It is possible for `bytes` to have valid UTF-8 without this being
+    /// set, such as when we're concatenating `&Wtf8`'s and surrogates become
+    /// paired, as we don't bother to rescan the entire string.
+    is_known_utf8: bool,
 }
 
 impl ops::Deref for Wtf8Buf {
@@ -146,13 +173,13 @@ impl Wtf8Buf {
     /// Creates a new, empty WTF-8 string.
     #[inline]
     pub fn new() -> Wtf8Buf {
-        Wtf8Buf { bytes: Vec::new() }
+        Wtf8Buf { bytes: Vec::new(), is_known_utf8: true }
     }
 
     /// Creates a new, empty WTF-8 string with pre-allocated capacity for `capacity` bytes.
     #[inline]
     pub fn with_capacity(capacity: usize) -> Wtf8Buf {
-        Wtf8Buf { bytes: Vec::with_capacity(capacity) }
+        Wtf8Buf { bytes: Vec::with_capacity(capacity), is_known_utf8: true }
     }
 
     /// Creates a WTF-8 string from a UTF-8 `String`.
@@ -162,7 +189,7 @@ impl Wtf8Buf {
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
     pub fn from_string(string: String) -> Wtf8Buf {
-        Wtf8Buf { bytes: string.into_bytes() }
+        Wtf8Buf { bytes: string.into_bytes(), is_known_utf8: true }
     }
 
     /// Creates a WTF-8 string from a UTF-8 `&str` slice.
@@ -172,11 +199,12 @@ impl Wtf8Buf {
     /// Since WTF-8 is a superset of UTF-8, this always succeeds.
     #[inline]
     pub fn from_str(str: &str) -> Wtf8Buf {
-        Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()) }
+        Wtf8Buf { bytes: <[_]>::to_vec(str.as_bytes()), is_known_utf8: true }
     }
 
     pub fn clear(&mut self) {
-        self.bytes.clear()
+        self.bytes.clear();
+        self.is_known_utf8 = true;
     }
 
     /// Creates a WTF-8 string from a potentially ill-formed UTF-16 slice of 16-bit code units.
@@ -192,9 +220,11 @@ impl Wtf8Buf {
                     let surrogate = surrogate.unpaired_surrogate();
                     // Surrogates are known to be in the code point range.
                     let code_point = unsafe { CodePoint::from_u32_unchecked(surrogate as u32) };
+                    // The string will now contain an unpaired surrogate.
+                    string.is_known_utf8 = false;
                     // Skip the WTF-8 concatenation check,
                     // surrogate pairs are already decoded by decode_utf16
-                    string.push_code_point_unchecked(code_point)
+                    string.push_code_point_unchecked(code_point);
                 }
             }
         }
@@ -202,7 +232,7 @@ impl Wtf8Buf {
     }
 
     /// Copied from String::push
-    /// This does **not** include the WTF-8 concatenation check.
+    /// This does **not** include the WTF-8 concatenation check or `is_known_utf8` check.
     fn push_code_point_unchecked(&mut self, code_point: CodePoint) {
         let mut bytes = [0; 4];
         let bytes = char::encode_utf8_raw(code_point.value, &mut bytes);
@@ -216,6 +246,9 @@ impl Wtf8Buf {
 
     #[inline]
     pub fn as_mut_slice(&mut self) -> &mut Wtf8 {
+        // Safety: `Wtf8` doesn't expose any way to mutate the bytes that would
+        // cause them to change from well-formed UTF-8 to ill-formed UTF-8,
+        // which would break the assumptions of the `is_known_utf8` field.
         unsafe { Wtf8::from_mut_bytes_unchecked(&mut self.bytes) }
     }
 
@@ -231,9 +264,46 @@ impl Wtf8Buf {
         self.bytes.reserve(additional)
     }
 
+    /// Tries to reserve capacity for at least `additional` more length units
+    /// in the given `Wtf8Buf`. The `Wtf8Buf` may reserve more space to avoid
+    /// frequent reallocations. After calling `try_reserve`, capacity will be
+    /// greater than or equal to `self.len() + additional`. Does nothing if
+    /// capacity is already sufficient. This method preserves the contents even
+    /// if an error occurs.
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    #[inline]
+    pub fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.bytes.try_reserve(additional)
+    }
+
     #[inline]
     pub fn reserve_exact(&mut self, additional: usize) {
         self.bytes.reserve_exact(additional)
+    }
+
+    /// Tries to reserve the minimum capacity for exactly `additional`
+    /// length units in the given `Wtf8Buf`. After calling
+    /// `try_reserve_exact`, capacity will be greater than or equal to
+    /// `self.len() + additional` if it returns `Ok(())`.
+    /// Does nothing if the capacity is already sufficient.
+    ///
+    /// Note that the allocator may give the `Wtf8Buf` more space than it
+    /// requests. Therefore, capacity can not be relied upon to be precisely
+    /// minimal. Prefer [`try_reserve`] if future insertions are expected.
+    ///
+    /// [`try_reserve`]: Wtf8Buf::try_reserve
+    ///
+    /// # Errors
+    ///
+    /// If the capacity overflows, or the allocator reports a failure, then an error
+    /// is returned.
+    #[inline]
+    pub fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError> {
+        self.bytes.try_reserve_exact(additional)
     }
 
     #[inline]
@@ -276,7 +346,15 @@ impl Wtf8Buf {
                 self.push_char(decode_surrogate_pair(lead, trail));
                 self.bytes.extend_from_slice(other_without_trail_surrogate);
             }
-            _ => self.bytes.extend_from_slice(&other.bytes),
+            _ => {
+                // If we'll be pushing a string containing a surrogate, we may
+                // no longer have UTF-8.
+                if other.next_surrogate(0).is_some() {
+                    self.is_known_utf8 = false;
+                }
+
+                self.bytes.extend_from_slice(&other.bytes);
+            }
         }
     }
 
@@ -293,13 +371,19 @@ impl Wtf8Buf {
     /// like concatenating ill-formed UTF-16 strings effectively would.
     #[inline]
     pub fn push(&mut self, code_point: CodePoint) {
-        if let trail @ 0xDC00..=0xDFFF = code_point.to_u32() {
+        if let Some(trail) = code_point.to_trail_surrogate() {
             if let Some(lead) = (&*self).final_lead_surrogate() {
                 let len_without_lead_surrogate = self.len() - 3;
                 self.bytes.truncate(len_without_lead_surrogate);
-                self.push_char(decode_surrogate_pair(lead, trail as u16));
+                self.push_char(decode_surrogate_pair(lead, trail));
                 return;
             }
+
+            // We're pushing a trailing surrogate.
+            self.is_known_utf8 = false;
+        } else if code_point.to_lead_surrogate().is_some() {
+            // We're pushing a leading surrogate.
+            self.is_known_utf8 = false;
         }
 
         // No newly paired surrogates at the boundary.
@@ -326,9 +410,10 @@ impl Wtf8Buf {
     /// (that is, if the string contains surrogates),
     /// the original WTF-8 string is returned instead.
     pub fn into_string(self) -> Result<String, Wtf8Buf> {
-        match self.next_surrogate(0) {
-            None => Ok(unsafe { String::from_utf8_unchecked(self.bytes) }),
-            Some(_) => Err(self),
+        if self.is_known_utf8 || self.next_surrogate(0).is_none() {
+            Ok(unsafe { String::from_utf8_unchecked(self.bytes) })
+        } else {
+            Err(self)
         }
     }
 
@@ -338,6 +423,11 @@ impl Wtf8Buf {
     ///
     /// Surrogates are replaced with `"\u{FFFD}"` (the replacement character “�”)
     pub fn into_string_lossy(mut self) -> String {
+        // Fast path: If we already have UTF-8, we can return it immediately.
+        if self.is_known_utf8 {
+            return unsafe { String::from_utf8_unchecked(self.bytes) };
+        }
+
         let mut pos = 0;
         loop {
             match self.next_surrogate(pos) {
@@ -360,7 +450,7 @@ impl Wtf8Buf {
     /// Converts a `Box<Wtf8>` into a `Wtf8Buf`.
     pub fn from_box(boxed: Box<Wtf8>) -> Wtf8Buf {
         let bytes: Box<[u8]> = unsafe { mem::transmute(boxed) };
-        Wtf8Buf { bytes: bytes.into_vec() }
+        Wtf8Buf { bytes: bytes.into_vec(), is_known_utf8: false }
     }
 }
 
@@ -538,6 +628,11 @@ impl Wtf8 {
         }
     }
 
+    /// Creates an owned `Wtf8Buf` from a borrowed `Wtf8`.
+    pub fn to_owned(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_vec(), is_known_utf8: false }
+    }
+
     /// Lossily converts the string to UTF-8.
     /// Returns a UTF-8 `&str` slice if the contents are well-formed in UTF-8.
     ///
@@ -627,7 +722,8 @@ impl Wtf8 {
     }
 
     pub fn clone_into(&self, buf: &mut Wtf8Buf) {
-        self.bytes.clone_into(&mut buf.bytes)
+        buf.is_known_utf8 = false;
+        self.bytes.clone_into(&mut buf.bytes);
     }
 
     /// Boxes this `Wtf8`.
@@ -667,12 +763,12 @@ impl Wtf8 {
 
     #[inline]
     pub fn to_ascii_lowercase(&self) -> Wtf8Buf {
-        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase() }
+        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase(), is_known_utf8: false }
     }
 
     #[inline]
     pub fn to_ascii_uppercase(&self) -> Wtf8Buf {
-        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase() }
+        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase(), is_known_utf8: false }
     }
 
     #[inline]
@@ -793,7 +889,7 @@ pub unsafe fn slice_unchecked(s: &Wtf8, begin: usize, end: usize) -> &Wtf8 {
 #[inline(never)]
 pub fn slice_error_fail(s: &Wtf8, begin: usize, end: usize) -> ! {
     assert!(begin <= end);
-    panic!("index {} and/or {} in `{:?}` do not lie on character boundary", begin, end, s);
+    panic!("index {begin} and/or {end} in `{s:?}` do not lie on character boundary");
 }
 
 /// Iterator for the code points of a WTF-8 string.
@@ -809,7 +905,8 @@ impl<'a> Iterator for Wtf8CodePoints<'a> {
 
     #[inline]
     fn next(&mut self) -> Option<CodePoint> {
-        next_code_point(&mut self.bytes).map(|c| CodePoint { value: c })
+        // SAFETY: `self.bytes` has been created from a WTF-8 string
+        unsafe { next_code_point(&mut self.bytes).map(|c| CodePoint { value: c }) }
     }
 
     #[inline]
@@ -860,6 +957,9 @@ impl<'a> Iterator for EncodeWide<'a> {
         (low + ext, high.and_then(|n| n.checked_mul(2)).and_then(|n| n.checked_add(ext)))
     }
 }
+
+#[stable(feature = "encode_wide_fused_iterator", since = "1.62.0")]
+impl FusedIterator for EncodeWide<'_> {}
 
 impl Hash for CodePoint {
     #[inline]

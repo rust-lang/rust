@@ -4,7 +4,7 @@ version = "0.0.0"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rust-lang/rust.git"
 description = "Implementation of Rust panics via stack unwinding"
-edition = "2018"
+edition = "2021"
 
 [lib]
 test = false
@@ -17,4 +17,4 @@ core = { path = "../core" }
 libc = { version = "0.2", default-features = false }
 unwind = { path = "../unwind" }
 compiler_builtins = "0.1.0"
-cfg-if = "0.1.8"
+cfg-if = "1.0"

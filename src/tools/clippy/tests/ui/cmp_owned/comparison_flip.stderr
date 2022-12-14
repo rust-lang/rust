@@ -1,0 +1,18 @@
+error: this creates an owned instance just for comparison
+  --> $DIR/comparison_flip.rs:8:8
+   |
+LL |     if a.to_string() != "bar" {
+   |        ^^^^^^^^^^^^^ help: try: `a`
+   |
+   = note: `-D clippy::cmp-owned` implied by `-D warnings`
+
+error: this creates an owned instance just for comparison
+  --> $DIR/comparison_flip.rs:12:17
+   |
+LL |     if "bar" != a.to_string() {
+   |        ---------^^^^^^^^^^^^^
+   |        |
+   |        help: try: `a != "bar"`
+
+error: aborting due to 2 previous errors
+

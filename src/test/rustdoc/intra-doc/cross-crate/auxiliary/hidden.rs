@@ -1,5 +1,5 @@
 #![crate_name = "hidden_dep"]
-#![deny(broken_intra_doc_links)]
+#![deny(rustdoc::broken_intra_doc_links)]
 
 #[doc(hidden)]
 pub mod __reexport {

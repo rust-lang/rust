@@ -1,12 +1,13 @@
-use gccjit::{FunctionType, ToRValue};
+use gccjit::{FunctionType, GlobalKind, ToRValue};
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_middle::bug;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::OomStrategy;
 use rustc_span::symbol::sym;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) {
     let context = &mods.context;
     let usize =
         match tcx.sess.target.pointer_width {
@@ -89,14 +90,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         .collect();
     let func = context.new_function(None, FunctionType::Exported, void, &args, name, false);
 
-    let kind =
-        if has_alloc_error_handler {
-            AllocatorKind::Global
-        }
-        else {
-            AllocatorKind::Default
-        };
-    let callee = kind.fn_name(sym::oom);
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
     let args: Vec<_> = types.iter().enumerate()
         .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
         .collect();
@@ -113,4 +107,10 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
     let _ret = context.new_call(None, callee, &args);
     //llvm::LLVMSetTailCall(ret, True);
     block.end_with_void_return(None);
+
+    let name = OomStrategy::SYMBOL.to_string();
+    let global = context.new_global(None, GlobalKind::Exported, i8, name);
+    let value = tcx.sess.opts.unstable_opts.oom.should_panic();
+    let value = context.new_rvalue_from_int(i8, value as i32);
+    global.global_set_initializer_rvalue(value);
 }

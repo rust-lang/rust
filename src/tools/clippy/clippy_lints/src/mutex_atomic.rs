@@ -27,17 +27,19 @@ declare_clippy_lint! {
     /// ### Example
     /// ```rust
     /// # let y = true;
-    ///
-    /// // Bad
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(&y);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
+    /// # let y = true;
     /// # use std::sync::atomic::AtomicBool;
     /// let x = AtomicBool::new(y);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUTEX_ATOMIC,
-    perf,
+    nursery,
     "using a mutex where an atomic value could be used instead"
 }
 
@@ -59,11 +61,14 @@ declare_clippy_lint! {
     /// ```rust
     /// # use std::sync::Mutex;
     /// let x = Mutex::new(0usize);
+    /// ```
     ///
-    /// // Good
+    /// Use instead:
+    /// ```rust
     /// # use std::sync::atomic::AtomicUsize;
     /// let x = AtomicUsize::new(0usize);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MUTEX_INTEGER,
     nursery,
     "using a mutex for an integer type"
@@ -79,9 +84,8 @@ impl<'tcx> LateLintPass<'tcx> for Mutex {
                 let mutex_param = subst.type_at(0);
                 if let Some(atomic_name) = get_atomic_name(mutex_param) {
                     let msg = format!(
-                        "consider using an `{}` instead of a `Mutex` here; if you just want the locking \
-                         behavior and not the internal type, consider using `Mutex<()>`",
-                        atomic_name
+                        "consider using an `{atomic_name}` instead of a `Mutex` here; if you just want the locking \
+                         behavior and not the internal type, consider using `Mutex<()>`"
                     );
                     match *mutex_param.kind() {
                         ty::Uint(t) if t != ty::UintTy::Usize => span_lint(cx, MUTEX_INTEGER, expr.span, &msg),

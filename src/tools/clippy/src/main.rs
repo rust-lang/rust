@@ -17,6 +17,7 @@ Common options:
     --fix                    Automatically apply lint suggestions. This flag implies `--no-deps`
     -h, --help               Print this message
     -V, --version            Print version info and exit
+    --explain LINT           Print the documentation for a given lint
 
 Other options are the same as `cargo check`.
 
@@ -34,12 +35,12 @@ You can use tool lints to allow or deny lints from your code, eg.:
 "#;
 
 fn show_help() {
-    println!("{}", CARGO_CLIPPY_HELP);
+    println!("{CARGO_CLIPPY_HELP}");
 }
 
 fn show_version() {
     let version_info = rustc_tools_util::get_version_info!();
-    println!("{}", version_info);
+    println!("{version_info}");
 }
 
 pub fn main() {
@@ -51,6 +52,16 @@ pub fn main() {
 
     if env::args().any(|a| a == "--version" || a == "-V") {
         show_version();
+        return;
+    }
+
+    if let Some(pos) = env::args().position(|a| a == "--explain") {
+        if let Some(mut lint) = env::args().nth(pos + 1) {
+            lint.make_ascii_lowercase();
+            clippy_lints::explain(&lint.strip_prefix("clippy::").unwrap_or(&lint).replace('-', "_"));
+        } else {
+            show_help();
+        }
         return;
     }
 
@@ -96,7 +107,7 @@ impl ClippyCmd {
             clippy_args.push("--no-deps".into());
         }
 
-        ClippyCmd {
+        Self {
             cargo_subcommand,
             args,
             clippy_args,
@@ -120,11 +131,15 @@ impl ClippyCmd {
         let clippy_args: String = self
             .clippy_args
             .iter()
-            .map(|arg| format!("{}__CLIPPY_HACKERY__", arg))
+            .map(|arg| format!("{arg}__CLIPPY_HACKERY__"))
             .collect();
+
+        // Currently, `CLIPPY_TERMINAL_WIDTH` is used only to format "unknown field" error messages.
+        let terminal_width = termize::dimensions().map_or(0, |(w, _)| w);
 
         cmd.env("RUSTC_WORKSPACE_WRAPPER", Self::path())
             .env("CLIPPY_ARGS", clippy_args)
+            .env("CLIPPY_TERMINAL_WIDTH", terminal_width.to_string())
             .arg(self.cargo_subcommand)
             .args(&self.args);
 

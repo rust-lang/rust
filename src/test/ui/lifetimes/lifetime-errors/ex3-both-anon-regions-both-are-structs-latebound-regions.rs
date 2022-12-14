@@ -3,7 +3,8 @@ struct Ref<'a> {
 }
 
 fn foo<'a, 'b>(mut x: Vec<Ref<'a>>, y: Ref<'b>) {
-    x.push(y); //~ ERROR lifetime mismatch
+    x.push(y);
+    //~^ ERROR lifetime may not live long enough
 }
 
 fn main() {}

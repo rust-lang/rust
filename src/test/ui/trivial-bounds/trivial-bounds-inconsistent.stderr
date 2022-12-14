@@ -35,7 +35,7 @@ help: the clause will not be checked when the type alias is used, and should be 
    |
 LL - type Y where i32: Foo = ();
 LL + type Y  = ();
-   | 
+   |
 
 warning: trait bound i32: Foo does not depend on any type or lifetime parameters
   --> $DIR/trivial-bounds-inconsistent.rs:22:19

@@ -1,10 +1,10 @@
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/issue-83929-impl-trait-in-generic-default.rs:1:16
    |
 LL | struct Foo<T = impl Copy>(T);
    |                ^^^^^^^^^
 
-error[E0562]: `impl Trait` not allowed outside of function and method return types
+error[E0562]: `impl Trait` only allowed in function and inherent method return types, not in type
   --> $DIR/issue-83929-impl-trait-in-generic-default.rs:4:20
    |
 LL | type Result<T, E = impl std::error::Error> = std::result::Result<T, E>;

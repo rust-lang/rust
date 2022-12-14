@@ -4,8 +4,7 @@
 // Polonius because of these missing `killed` facts.
 
 // check-pass
-// compile-flags: -Z borrowck=mir -Z polonius
-// ignore-compare-mode-nll
+// compile-flags: -Z polonius
 
 use std::{io, mem};
 use std::io::Read;

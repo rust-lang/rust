@@ -1,5 +1,5 @@
 // run-pass
-// ignore-emscripten no subprocess support
+// needs-unwind
 
 #![feature(internal_output_capture)]
 

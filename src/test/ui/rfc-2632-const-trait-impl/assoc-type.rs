@@ -1,4 +1,3 @@
-// FIXME(fee1-dead): this should have a better error message
 #![feature(const_trait_impl)]
 
 struct NonConstAdd(i32);
@@ -11,15 +10,17 @@ impl std::ops::Add for NonConstAdd {
     }
 }
 
+#[const_trait]
 trait Foo {
     type Bar: ~const std::ops::Add;
 }
 
 impl const Foo for NonConstAdd {
     type Bar = NonConstAdd;
-    //~^ ERROR
+    //~^ ERROR: cannot add `NonConstAdd` to `NonConstAdd` in const contexts
 }
 
+#[const_trait]
 trait Baz {
     type Qux: std::ops::Add;
 }

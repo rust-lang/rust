@@ -10,7 +10,7 @@ error[E0425]: cannot find value `local_use` in this scope
   --> $DIR/mixed-site-span.rs:13:9
    |
 LL |         proc_macro_rules!();
-   |         ^^^^^^^^^^^^^^^^^^^ not found in this scope
+   |         ^^^^^^^^^^^^^^^^^^^ help: a local variable with a similar name exists: `local_def`
    |
    = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -18,7 +18,7 @@ error[E0425]: cannot find value `local_def` in this scope
   --> $DIR/mixed-site-span.rs:17:9
    |
 LL |         local_def;
-   |         ^^^^^^^^^ not found in this scope
+   |         ^^^^^^^^^ help: a local variable with a similar name exists: `local_use`
 
 error[E0412]: cannot find type `ItemUse` in crate `$crate`
   --> $DIR/mixed-site-span.rs:24:1
@@ -26,7 +26,7 @@ error[E0412]: cannot find type `ItemUse` in crate `$crate`
 LL | pass_dollar_crate!();
    | ^^^^^^^^^^^^^^^^^^^^ not found in `$crate`
    |
-   = note: this error originates in the macro `proc_macro_rules` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `proc_macro_rules` which comes from the expansion of the macro `pass_dollar_crate` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 4 previous errors
 

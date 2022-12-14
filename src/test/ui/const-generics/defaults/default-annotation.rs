@@ -1,6 +1,5 @@
 // run-pass
 #![feature(staged_api)]
-#![feature(const_generics_defaults)]
 #![allow(incomplete_features)]
 // FIXME(const_generics_defaults): It seems like we aren't testing the right thing here,
 // I would assume that we want the attributes to apply to the const parameter defaults

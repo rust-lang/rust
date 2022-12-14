@@ -1,10 +1,9 @@
 use rustc_errors::Applicability;
 use rustc_hir::{
-    intravisit::{walk_expr, NestedVisitorMap, Visitor},
-    Expr, ExprKind, Stmt, StmtKind,
+    intravisit::{walk_expr, Visitor},
+    Closure, Expr, ExprKind, Stmt, StmtKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::map::Map;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{source_map::Span, sym, Symbol};
 
@@ -40,6 +39,7 @@ declare_clippy_lint! {
     ///     println!("{}", elem);
     /// }
     /// ```
+    #[clippy::version = "1.53.0"]
     pub NEEDLESS_FOR_EACH,
     pedantic,
     "using `for_each` where a `for` loop would be simpler"
@@ -47,21 +47,20 @@ declare_clippy_lint! {
 
 declare_lint_pass!(NeedlessForEach => [NEEDLESS_FOR_EACH]);
 
-impl LateLintPass<'_> for NeedlessForEach {
+impl<'tcx> LateLintPass<'tcx> for NeedlessForEach {
     fn check_stmt(&mut self, cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'_>) {
-        let expr = match stmt.kind {
-            StmtKind::Expr(expr) | StmtKind::Semi(expr) => expr,
-            _ => return,
+        let (StmtKind::Expr(expr) | StmtKind::Semi(expr)) = stmt.kind else {
+             return
         };
 
         if_chain! {
             // Check the method name is `for_each`.
-            if let ExprKind::MethodCall(method_name, _, [for_each_recv, for_each_arg], _) = expr.kind;
+            if let ExprKind::MethodCall(method_name, for_each_recv, [for_each_arg], _) = expr.kind;
             if method_name.ident.name == Symbol::intern("for_each");
             // Check `for_each` is an associated function of `Iterator`.
             if is_trait_method(cx, expr, sym::Iterator);
             // Checks the receiver of `for_each` is also a method call.
-            if let ExprKind::MethodCall(_, _, [iter_recv], _) = for_each_recv.kind;
+            if let ExprKind::MethodCall(_, iter_recv, [], _) = for_each_recv.kind;
             // Skip the lint if the call chain is too long. e.g. `v.field.iter().for_each()` or
             // `v.foo().iter().for_each()` must be skipped.
             if matches!(
@@ -72,12 +71,12 @@ impl LateLintPass<'_> for NeedlessForEach {
             if has_iter_method(cx, cx.typeck_results().expr_ty(iter_recv)).is_some();
             // Skip the lint if the body is not block because this is simpler than `for` loop.
             // e.g. `v.iter().for_each(f)` is simpler and clearer than using `for` loop.
-            if let ExprKind::Closure(_, _, body_id, ..) = for_each_arg.kind;
-            let body = cx.tcx.hir().body(body_id);
+            if let ExprKind::Closure(&Closure { body, .. }) = for_each_arg.kind;
+            let body = cx.tcx.hir().body(body);
             if let ExprKind::Block(..) = body.value.kind;
             then {
                 let mut ret_collector = RetCollector::default();
-                ret_collector.visit_expr(&body.value);
+                ret_collector.visit_expr(body.value);
 
                 // Skip the lint if `return` is used in `Loop` in order not to suggest using `'label`.
                 if ret_collector.ret_in_loop {
@@ -135,8 +134,6 @@ struct RetCollector {
 }
 
 impl<'tcx> Visitor<'tcx> for RetCollector {
-    type Map = Map<'tcx>;
-
     fn visit_expr(&mut self, expr: &Expr<'_>) {
         match expr.kind {
             ExprKind::Ret(..) => {
@@ -158,9 +155,5 @@ impl<'tcx> Visitor<'tcx> for RetCollector {
         }
 
         walk_expr(self, expr);
-    }
-
-    fn nested_visit_map(&mut self) -> NestedVisitorMap<Self::Map> {
-        NestedVisitorMap::None
     }
 }

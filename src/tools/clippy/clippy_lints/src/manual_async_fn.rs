@@ -1,13 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_then;
-use clippy_utils::match_function_call;
-use clippy_utils::paths::FUTURE_FROM_GENERATOR;
+use clippy_utils::match_function_call_with_def_id;
 use clippy_utils::source::{position_before_rarrow, snippet_block, snippet_opt};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
 use rustc_hir::{
-    AsyncGeneratorKind, Block, Body, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound, HirId,
-    IsAsync, ItemKind, LifetimeName, TraitRef, Ty, TyKind, TypeBindingKind,
+    AsyncGeneratorKind, Block, Body, Closure, Expr, ExprKind, FnDecl, FnRetTy, GeneratorKind, GenericArg, GenericBound,
+    HirId, ItemKind, LifetimeName, Term, TraitRef, Ty, TyKind, TypeBindingKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -30,6 +29,7 @@ declare_clippy_lint! {
     /// ```rust
     /// async fn foo() -> i32 { 42 }
     /// ```
+    #[clippy::version = "1.45.0"]
     pub MANUAL_ASYNC_FN,
     style,
     "manual implementations of `async` functions can be simplified using the dedicated syntax"
@@ -49,7 +49,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
     ) {
         if_chain! {
             if let Some(header) = kind.header();
-            if header.asyncness == IsAsync::NotAsync;
+            if !header.asyncness.is_async();
             // Check that this function returns `impl Future`
             if let FnRetTy::Return(ret_ty) = decl.output;
             if let Some((trait_ref, output_lifetimes)) = future_trait_ref(cx, ret_ty);
@@ -73,11 +73,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                             if let Some(ret_pos) = position_before_rarrow(&header_snip);
                             if let Some((ret_sugg, ret_snip)) = suggested_ret(cx, output);
                             then {
-                                let help = format!("make the function `async` and {}", ret_sugg);
+                                let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
                                     &help,
-                                    format!("async {}{}", &header_snip[..ret_pos], ret_snip),
+                                    format!("async {}{ret_snip}", &header_snip[..ret_pos]),
                                     Applicability::MachineApplicable
                                 );
 
@@ -85,7 +85,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 diag.span_suggestion(
                                     block.span,
                                     "move the body of the async block to the enclosing function",
-                                    body_snip.to_string(),
+                                    body_snip,
                                     Applicability::MachineApplicable
                                 );
                             }
@@ -102,7 +102,7 @@ fn future_trait_ref<'tcx>(
     ty: &'tcx Ty<'tcx>,
 ) -> Option<(&'tcx TraitRef<'tcx>, Vec<LifetimeName>)> {
     if_chain! {
-        if let TyKind::OpaqueDef(item_id, bounds) = ty.kind;
+        if let TyKind::OpaqueDef(item_id, bounds, false) = ty.kind;
         let item = cx.tcx.hir().item(item_id);
         if let ItemKind::OpaqueTy(opaque) = &item.kind;
         if let Some(trait_ref) = opaque.bounds.iter().find_map(|bound| {
@@ -118,7 +118,7 @@ fn future_trait_ref<'tcx>(
                 .iter()
                 .filter_map(|bound| {
                     if let GenericArg::Lifetime(lt) = bound {
-                        Some(lt.name)
+                        Some(lt.res)
                     } else {
                         None
                     }
@@ -139,9 +139,9 @@ fn future_output_ty<'tcx>(trait_ref: &'tcx TraitRef<'tcx>) -> Option<&'tcx Ty<'t
         if args.bindings.len() == 1;
         let binding = &args.bindings[0];
         if binding.ident.name == sym::Output;
-        if let TypeBindingKind::Equality{ty: output} = binding.kind;
+        if let TypeBindingKind::Equality { term: Term::Ty(output) } = binding.kind;
         then {
-            return Some(output)
+            return Some(output);
         }
     }
 
@@ -153,7 +153,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
         .iter()
         .filter_map(|ty| {
             if let TyKind::Rptr(lt, _) = ty.kind {
-                Some(lt.name)
+                Some(lt.res)
             } else {
                 None
             }
@@ -165,7 +165,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     // - There's only one output lifetime bound using `+ '_`
     // - All input lifetimes are explicitly bound to the output
     input_lifetimes.is_empty()
-        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Underscore))
+        || (output_lifetimes.len() == 1 && matches!(output_lifetimes[0], LifetimeName::Infer))
         || input_lifetimes
             .iter()
             .all(|in_lt| output_lifetimes.iter().any(|out_lt| in_lt == out_lt))
@@ -174,10 +174,17 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
 fn desugared_async_block<'tcx>(cx: &LateContext<'tcx>, block: &'tcx Block<'tcx>) -> Option<&'tcx Body<'tcx>> {
     if_chain! {
         if let Some(block_expr) = block.expr;
-        if let Some(args) = match_function_call(cx, block_expr, &FUTURE_FROM_GENERATOR);
+        if let Some(args) = cx
+            .tcx
+            .lang_items()
+            .identity_future_fn()
+            .and_then(|def_id| match_function_call_with_def_id(cx, block_expr, def_id));
         if args.len() == 1;
-        if let Expr{kind: ExprKind::Closure(_, _, body_id, ..), ..} = args[0];
-        let closure_body = cx.tcx.hir().body(body_id);
+        if let Expr {
+            kind: ExprKind::Closure(&Closure { body, .. }),
+            ..
+        } = args[0];
+        let closure_body = cx.tcx.hir().body(body);
         if closure_body.generator_kind == Some(GeneratorKind::Async(AsyncGeneratorKind::Block));
         then {
             return Some(closure_body);
@@ -191,11 +198,11 @@ fn suggested_ret(cx: &LateContext<'_>, output: &Ty<'_>) -> Option<(&'static str,
     match output.kind {
         TyKind::Tup(tys) if tys.is_empty() => {
             let sugg = "remove the return type";
-            Some((sugg, "".into()))
+            Some((sugg, String::new()))
         },
         _ => {
             let sugg = "return the output of the future directly";
-            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {}", snip)))
+            snippet_opt(cx, output.span).map(|snip| (sugg, format!(" -> {snip}")))
         },
     }
 }

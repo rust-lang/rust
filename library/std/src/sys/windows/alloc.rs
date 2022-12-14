@@ -16,6 +16,7 @@ mod tests;
 // Flag to indicate that the memory returned by `HeapAlloc` should be zeroed.
 const HEAP_ZERO_MEMORY: c::DWORD = 0x00000008;
 
+#[link(name = "kernel32")]
 extern "system" {
     // Get a handle to the default heap of the current process, or null if the operation fails.
     //
@@ -159,7 +160,7 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         // Create a correctly aligned pointer offset from the start of the allocated block,
         // and write a header before it.
 
-        let offset = layout.align() - (ptr as usize & (layout.align() - 1));
+        let offset = layout.align() - (ptr.addr() & (layout.align() - 1));
         // SAFETY: `MIN_ALIGN` <= `offset` <= `layout.align()` and the size of the allocated
         // block is `layout.align() + layout.size()`. `aligned` will thus be a correctly aligned
         // pointer inside the allocated block with at least `layout.size()` bytes after it and at
@@ -168,7 +169,7 @@ unsafe fn allocate(layout: Layout, zeroed: bool) -> *mut u8 {
         // SAFETY: Because the size and alignment of a header is <= `MIN_ALIGN` and `aligned`
         // is aligned to at least `MIN_ALIGN` and has at least `MIN_ALIGN` bytes of padding before
         // it, it is safe to write a header directly before it.
-        unsafe { ptr::write((aligned as *mut Header).offset(-1), Header(ptr)) };
+        unsafe { ptr::write((aligned as *mut Header).sub(1), Header(ptr)) };
 
         // SAFETY: The returned pointer does not point to the to the start of an allocated block,
         // but there is a header readable directly before it containing the location of the start
@@ -213,7 +214,7 @@ unsafe impl GlobalAlloc for System {
 
                 // SAFETY: Because of the contract of `System`, `ptr` is guaranteed to be non-null
                 // and have a header readable directly before it.
-                unsafe { ptr::read((ptr as *mut Header).offset(-1)).0 }
+                unsafe { ptr::read((ptr as *mut Header).sub(1)).0 }
             }
         };
 

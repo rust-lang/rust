@@ -1,14 +1,59 @@
-error: return type should be `!`
-  --> $DIR/alloc-error-handler-bad-signature-2.rs:12:3
+error[E0308]: mismatched types
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:10:1
    |
-LL | ) {
-   |   ^
-
-error: argument should be `Layout`
-  --> $DIR/alloc-error-handler-bad-signature-2.rs:11:11
+LL |    #[alloc_error_handler]
+   |    ---------------------- in this procedural macro expansion
+LL |    fn oom(
+   |  __^
+   | | _|
+   | ||
+LL | ||     info: Layout,
+LL | || ) {
+   | ||_- arguments to this function are incorrect
+LL | |      loop {}
+LL | |  }
+   | |__^ expected struct `Layout`, found struct `core::alloc::Layout`
    |
+   = note: struct `core::alloc::Layout` and struct `Layout` have similar names, but are actually distinct types
+note: struct `core::alloc::Layout` is defined in crate `core`
+  --> $SRC_DIR/core/src/alloc/layout.rs:LL:COL
+   |
+LL | pub struct Layout {
+   | ^^^^^^^^^^^^^^^^^
+note: struct `Layout` is defined in the current crate
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:7:1
+   |
+LL | struct Layout;
+   | ^^^^^^^^^^^^^
+note: function defined here
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:10:4
+   |
+LL | fn oom(
+   |    ^^^
 LL |     info: Layout,
-   |           ^^^^^^
+   |     ------------
+   = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error[E0308]: mismatched types
+  --> $DIR/alloc-error-handler-bad-signature-2.rs:10:1
+   |
+LL |    #[alloc_error_handler]
+   |    ---------------------- in this procedural macro expansion
+LL |    fn oom(
+   |  __^
+   | | _|
+   | ||
+LL | ||     info: Layout,
+LL | || ) {
+   | ||_^ expected `!`, found `()`
+LL | |      loop {}
+LL | |  }
+   | |__- expected `!` because of return type
+   |
+   = note:   expected type `!`
+           found unit type `()`
+   = note: this error originates in the attribute macro `alloc_error_handler` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to 2 previous errors
 
+For more information about this error, try `rustc --explain E0308`.

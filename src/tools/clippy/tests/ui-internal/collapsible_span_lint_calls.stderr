@@ -1,5 +1,5 @@
 error: this call is collapsible
-  --> $DIR/collapsible_span_lint_calls.rs:35:9
+  --> $DIR/collapsible_span_lint_calls.rs:36:9
    |
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.span_suggestion(expr.span, help_msg, sugg.to_string(), Applicability::MachineApplicable);
@@ -14,7 +14,7 @@ LL | #![deny(clippy::internal)]
    = note: `#[deny(clippy::collapsible_span_lint_calls)]` implied by `#[deny(clippy::internal)]`
 
 error: this call is collapsible
-  --> $DIR/collapsible_span_lint_calls.rs:38:9
+  --> $DIR/collapsible_span_lint_calls.rs:39:9
    |
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.span_help(expr.span, help_msg);
@@ -22,23 +22,23 @@ LL | |         });
    | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), help_msg)`
 
 error: this call is collapsible
-  --> $DIR/collapsible_span_lint_calls.rs:41:9
+  --> $DIR/collapsible_span_lint_calls.rs:42:9
    |
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.help(help_msg);
 LL | |         });
    | |__________^ help: collapse into: `span_lint_and_help(cx, TEST_LINT, expr.span, lint_msg, None, help_msg)`
 
-error: this call is collspible
-  --> $DIR/collapsible_span_lint_calls.rs:44:9
+error: this call is collapsible
+  --> $DIR/collapsible_span_lint_calls.rs:45:9
    |
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.span_note(expr.span, note_msg);
 LL | |         });
    | |__________^ help: collapse into: `span_lint_and_note(cx, TEST_LINT, expr.span, lint_msg, Some(expr.span), note_msg)`
 
-error: this call is collspible
-  --> $DIR/collapsible_span_lint_calls.rs:47:9
+error: this call is collapsible
+  --> $DIR/collapsible_span_lint_calls.rs:48:9
    |
 LL | /         span_lint_and_then(cx, TEST_LINT, expr.span, lint_msg, |db| {
 LL | |             db.note(note_msg);

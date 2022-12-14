@@ -24,7 +24,7 @@ fn main() {
     let _a = || { match l1 { L1::A => (), L1::B => () } };
     // (except if the match is already non-exhaustive)
     let _b = || { match l1 { L1::A => () } };
-    //~^ ERROR: non-exhaustive patterns: `B` not covered [E0004]
+    //~^ ERROR: non-exhaustive patterns: `L1::B` not covered [E0004]
 
     // l2 should not be captured as it is a non-exhaustive SingleVariant
     // defined in this crate

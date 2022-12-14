@@ -1,4 +1,3 @@
-use crate::convert::TryFrom;
 use crate::fmt;
 use crate::io::{self, IoSlice, IoSliceMut};
 use crate::net::{Ipv4Addr, Ipv6Addr, Shutdown, SocketAddr};
@@ -364,6 +363,4 @@ pub mod netc {
 
     #[derive(Copy, Clone)]
     pub struct sockaddr {}
-
-    pub type socklen_t = usize;
 }

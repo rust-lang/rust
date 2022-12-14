@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # check that rustc builds all crate_type attributes
 # delete rlib

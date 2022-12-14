@@ -2,7 +2,7 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_diagnostic_item;
-use clippy_utils::{can_mut_borrow_both, differing_macro_contexts, eq_expr_value};
+use clippy_utils::{can_mut_borrow_both, eq_expr_value, in_constant, std_or_core};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{BinOpKind, Block, Expr, ExprKind, PatKind, QPath, Stmt, StmtKind};
@@ -15,6 +15,8 @@ use rustc_span::{sym, Span};
 declare_clippy_lint! {
     /// ### What it does
     /// Checks for manual swapping.
+    ///
+    /// Note that the lint will not be emitted in const blocks, as the suggestion would not be applicable.
     ///
     /// ### Why is this bad?
     /// The `std::mem::swap` function exposes the intent better
@@ -35,6 +37,7 @@ declare_clippy_lint! {
     /// let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub MANUAL_SWAP,
     complexity,
     "manual swap of two variables"
@@ -60,6 +63,7 @@ declare_clippy_lint! {
     /// # let mut b = 2;
     /// std::mem::swap(&mut a, &mut b);
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub ALMOST_SWAPPED,
     correctness,
     "`foo = bar; bar = foo` sequence"
@@ -94,7 +98,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
                             cx,
                             MANUAL_SWAP,
                             span,
-                            &format!("this looks like you are swapping elements of `{}` manually", slice),
+                            &format!("this looks like you are swapping elements of `{slice}` manually"),
                             "try",
                             format!(
                                 "{}.swap({}, {})",
@@ -113,20 +117,22 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
 
     let first = Sugg::hir_with_applicability(cx, e1, "..", &mut applicability);
     let second = Sugg::hir_with_applicability(cx, e2, "..", &mut applicability);
+    let Some(sugg) = std_or_core(cx) else { return };
+
     span_lint_and_then(
         cx,
         MANUAL_SWAP,
         span,
-        &format!("this looks like you are swapping `{}` and `{}` manually", first, second),
+        &format!("this looks like you are swapping `{first}` and `{second}` manually"),
         |diag| {
             diag.span_suggestion(
                 span,
                 "try",
-                format!("std::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
+                format!("{sugg}::mem::swap({}, {})", first.mut_addr(), second.mut_addr()),
                 applicability,
             );
             if !is_xor_based {
-                diag.note("or maybe you should use `std::mem::replace`?");
+                diag.note(&format!("or maybe you should use `{sugg}::mem::replace`?"));
             }
         },
     );
@@ -134,6 +140,10 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
 
 /// Implementation of the `MANUAL_SWAP` lint.
 fn check_manual_swap(cx: &LateContext<'_>, block: &Block<'_>) {
+    if in_constant(cx, block.hir_id) {
+        return;
+    }
+
     for w in block.stmts.windows(3) {
         if_chain! {
             // let t = foo();
@@ -168,7 +178,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
         if_chain! {
             if let StmtKind::Semi(first) = w[0].kind;
             if let StmtKind::Semi(second) = w[1].kind;
-            if !differing_macro_contexts(first.span, second.span);
+            if first.span.ctxt() == second.span.ctxt();
             if let ExprKind::Assign(lhs0, rhs0, _) = first.kind;
             if let ExprKind::Assign(lhs1, rhs1, _) = second.kind;
             if eq_expr_value(cx, lhs0, rhs1);
@@ -178,7 +188,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 let rhs0 = Sugg::hir_opt(cx, rhs0);
                 let (what, lhs, rhs) = if let (Some(first), Some(second)) = (lhs0, rhs0) {
                     (
-                        format!(" `{}` and `{}`", first, second),
+                        format!(" `{first}` and `{second}`"),
                         first.mut_addr().to_string(),
                         second.mut_addr().to_string(),
                     )
@@ -187,26 +197,27 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                 };
 
                 let span = first.span.to(second.span);
+                let Some(sugg) = std_or_core(cx) else { return };
 
                 span_lint_and_then(cx,
-                                   ALMOST_SWAPPED,
-                                   span,
-                                   &format!("this looks like you are trying to swap{}", what),
-                                   |diag| {
-                                       if !what.is_empty() {
-                                           diag.span_suggestion(
-                                               span,
-                                               "try",
-                                               format!(
-                                                   "std::mem::swap({}, {})",
-                                                   lhs,
-                                                   rhs,
-                                               ),
-                                               Applicability::MaybeIncorrect,
-                                           );
-                                           diag.note("or maybe you should use `std::mem::replace`?");
-                                       }
-                                   });
+                    ALMOST_SWAPPED,
+                    span,
+                    &format!("this looks like you are trying to swap{what}"),
+                    |diag| {
+                        if !what.is_empty() {
+                            diag.span_suggestion(
+                                span,
+                                "try",
+                                format!(
+                                    "{sugg}::mem::swap({lhs}, {rhs})",
+                                ),
+                                Applicability::MaybeIncorrect,
+                            );
+                            diag.note(
+                                &format!("or maybe you should use `{sugg}::mem::replace`?")
+                            );
+                        }
+                    });
             }
         }
     }

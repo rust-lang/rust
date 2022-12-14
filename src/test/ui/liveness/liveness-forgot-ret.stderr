@@ -5,6 +5,11 @@ LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; }
    |    -              ^^^^^ expected `isize`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
+   |
+help: consider returning the local binding `a`
+   |
+LL | fn f(a: isize) -> isize { if god_exists(a) { return 5; }; a }
+   |                                                           +
 
 error: aborting due to previous error
 

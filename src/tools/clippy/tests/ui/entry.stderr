@@ -1,5 +1,5 @@
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:24:5
+  --> $DIR/entry.rs:25:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         m.insert(k, v);
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::map-entry` implied by `-D warnings`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:29:5
+  --> $DIR/entry.rs:30:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -28,10 +28,11 @@ LL +             v
 LL +         } else {
 LL +             v2
 LL +         }
- ...
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:38:5
+  --> $DIR/entry.rs:39:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -50,10 +51,11 @@ LL +             v
 LL +         } else {
 LL +             v2
 LL +         }
- ...
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:47:5
+  --> $DIR/entry.rs:48:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         if true {
@@ -72,10 +74,12 @@ LL +             e.insert(v);
 LL +         } else {
 LL +             e.insert(v2);
 LL +             return;
- ...
+LL +         }
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:57:5
+  --> $DIR/entry.rs:58:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -92,7 +96,7 @@ LL +     });
    |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:63:5
+  --> $DIR/entry.rs:64:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
@@ -111,10 +115,14 @@ LL +             1 if true => {
 LL +                 v
 LL +             },
 LL +             _ => {
- ...
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:75:5
+  --> $DIR/entry.rs:76:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         match 0 {
@@ -133,10 +141,12 @@ LL +             0 => foo(),
 LL +             _ => {
 LL +                 e.insert(v2);
 LL +             },
- ...
+LL +         };
+LL +     }
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:85:5
+  --> $DIR/entry.rs:86:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         foo();
@@ -155,10 +165,29 @@ LL +         match 0 {
 LL +             0 if false => {
 LL +                 v
 LL +             },
- ...
+LL +             1 => {
+LL +                 foo();
+LL +                 v
+LL +             },
+LL +             2 | 3 => {
+LL +                 for _ in 0..2 {
+LL +                     foo();
+LL +                 }
+LL +                 if true {
+LL +                     v
+LL +                 } else {
+LL +                     v2
+LL +                 }
+LL +             },
+LL +             _ => {
+LL +                 v2
+LL +             },
+LL +         }
+LL +     });
+   |
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:119:5
+  --> $DIR/entry.rs:120:5
    |
 LL | /     if !m.contains_key(&m!(k)) {
 LL | |         m.insert(m!(k), m!(v));
@@ -166,7 +195,7 @@ LL | |     }
    | |_____^ help: try this: `m.entry(m!(k)).or_insert_with(|| m!(v));`
 
 error: usage of `contains_key` followed by `insert` on a `HashMap`
-  --> $DIR/entry.rs:151:5
+  --> $DIR/entry.rs:152:5
    |
 LL | /     if !m.contains_key(&k) {
 LL | |         let x = (String::new(), String::new());

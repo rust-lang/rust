@@ -4,8 +4,8 @@ error: trivial regex
 LL |     let pipe_in_wrong_position = Regex::new("|");
    |                                             ^^^
    |
-   = note: `-D clippy::trivial-regex` implied by `-D warnings`
    = help: the regex is unlikely to be useful as it is
+   = note: `-D clippy::trivial-regex` implied by `-D warnings`
 
 error: trivial regex
   --> $DIR/regex.rs:14:60

@@ -1,5 +1,5 @@
 pub use jobserver_crate::Client;
-use std::lazy::SyncLazy;
+use std::sync::LazyLock;
 
 // We can only call `from_env` once per process
 
@@ -18,7 +18,7 @@ use std::lazy::SyncLazy;
 // Also note that we stick this in a global because there could be
 // multiple rustc instances in this process, and the jobserver is
 // per-process.
-static GLOBAL_CLIENT: SyncLazy<Client> = SyncLazy::new(|| unsafe {
+static GLOBAL_CLIENT: LazyLock<Client> = LazyLock::new(|| unsafe {
     Client::from_env().unwrap_or_else(|| {
         let client = Client::new(32).expect("failed to create jobserver");
         // Acquire a token for the main thread which we can release later

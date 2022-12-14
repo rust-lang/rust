@@ -2,7 +2,6 @@
 // an object. This should yield errors unless `A` (and the object)
 // both have suitable bounds.
 
-
 trait SomeTrait {
     fn get(&self) -> isize;
 }

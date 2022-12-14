@@ -1,16 +1,14 @@
 // run-pass
 
-#![feature(generic_associated_types)]
-
 use std::fmt::Display;
 
 trait StreamingIterator {
-    type Item<'a>;
+    type Item<'a> where Self: 'a;
     // Applying the lifetime parameter `'a` to `Self::Item` inside the trait.
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>>;
 }
 
-struct Foo<T: StreamingIterator> {
+struct Foo<T: StreamingIterator + 'static> {
     // Applying a concrete lifetime to the constructor outside the trait.
     bar: <T as StreamingIterator>::Item<'static>,
 }
@@ -30,7 +28,7 @@ struct StreamEnumerate<I> {
 }
 
 impl<I: StreamingIterator> StreamingIterator for StreamEnumerate<I> {
-    type Item<'a> = (usize, I::Item<'a>);
+    type Item<'a> = (usize, I::Item<'a>) where Self: 'a;
     fn next<'a>(&'a mut self) -> Option<Self::Item<'a>> {
         match self.iter.next() {
             None => None,
@@ -44,7 +42,7 @@ impl<I: StreamingIterator> StreamingIterator for StreamEnumerate<I> {
 }
 
 impl<I: Iterator> StreamingIterator for I {
-    type Item<'a> = <I as Iterator>::Item;
+    type Item<'a> = <I as Iterator>::Item where Self: 'a;
     fn next(&mut self) -> Option<<I as StreamingIterator>::Item<'_>> {
         Iterator::next(self)
     }

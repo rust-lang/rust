@@ -63,8 +63,7 @@ mod traits {
     }
     impl<T: PrivTr> Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
         //~^ WARNING hard error
-    impl<T: PrivTr> PubTr for Pub<T> {} //~ ERROR private trait `traits::PrivTr` in public interface
-        //~^ WARNING hard error
+    impl<T: PrivTr> PubTr for Pub<T> {} // OK, trait impl predicates
 }
 
 mod traits_where {
@@ -87,9 +86,7 @@ mod traits_where {
     impl<T> Pub<T> where T: PrivTr {}
         //~^ ERROR private trait `traits_where::PrivTr` in public interface
         //~| WARNING hard error
-    impl<T> PubTr for Pub<T> where T: PrivTr {}
-        //~^ ERROR private trait `traits_where::PrivTr` in public interface
-        //~| WARNING hard error
+    impl<T> PubTr for Pub<T> where T: PrivTr {} // OK, trait impl predicates
 }
 
 mod generics {

@@ -4,11 +4,10 @@ pub mod alloc;
 pub mod args;
 #[path = "../unix/cmath.rs"]
 pub mod cmath;
-pub mod condvar;
 pub mod env;
 pub mod fs;
 pub mod io;
-pub mod mutex;
+pub mod locks;
 pub mod net;
 pub mod os;
 #[path = "../unix/os_str.rs"]
@@ -17,7 +16,6 @@ pub mod os_str;
 pub mod path;
 pub mod pipe;
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
 pub mod thread;
 #[cfg(target_thread_local)]

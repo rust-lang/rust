@@ -4,22 +4,12 @@ error: lifetime in trait object type must be followed by `+`
 LL |     m!('static);
    |        ^^^^^^^
 
-warning: trait objects without an explicit `dyn` are deprecated
-  --> $DIR/trait-object-macro-matcher.rs:11:8
-   |
-LL |     m!('static);
-   |        ^^^^^^^ help: use `dyn`: `dyn 'static`
-   |
-   = note: `#[warn(bare_trait_objects)]` on by default
-   = warning: this is accepted in the current edition (Rust 2015) but is a hard error in Rust 2021!
-   = note: for more information, see <https://doc.rust-lang.org/nightly/edition-guide/rust-2021/warnings-promoted-to-error.html>
-
 error[E0224]: at least one trait is required for an object type
   --> $DIR/trait-object-macro-matcher.rs:11:8
    |
 LL |     m!('static);
    |        ^^^^^^^
 
-error: aborting due to 2 previous errors; 1 warning emitted
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0224`.

@@ -8,7 +8,8 @@ struct S<'b>(&'b i32);
 impl<'b> S<'b> {
     fn bar<'a>(&'a mut self) -> &'a mut &'a i32 {
         let ref mut x = self.0;
-        x //~ ERROR mismatched types
+        x
+        //~^ ERROR lifetime may not live long enough
     }
 }
 

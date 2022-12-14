@@ -19,4 +19,6 @@ fn main() {
     // no object safety error
     Trait::nonexistent(());
     //~^ ERROR no function or associated item named `nonexistent` found
+    //~| WARN trait objects without an explicit `dyn` are deprecated
+    //~| WARN this is accepted in the current edition
 }

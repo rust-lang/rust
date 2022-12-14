@@ -49,7 +49,7 @@ where
         let mut c = match layout.abi {
             Abi::Uninhabited => return Ok(()),
 
-            Abi::Scalar(scalar) => match scalar.value {
+            Abi::Scalar(scalar) => match scalar.primitive() {
                 abi::Int(..) | abi::Pointer => Class::Int,
                 abi::F32 | abi::F64 => Class::Sse,
             },
@@ -239,7 +239,7 @@ where
         x86_64_arg_or_ret(&mut fn_abi.ret, false);
     }
 
-    for arg in &mut fn_abi.args {
+    for arg in fn_abi.args.iter_mut() {
         if arg.is_ignore() {
             continue;
         }

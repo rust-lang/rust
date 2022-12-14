@@ -3,6 +3,11 @@ error: expected one of `!`, `(`, `+`, `,`, `::`, `:`, `<`, `=`, or `>`, found `/
    |
 LL | type closure = Box<lt/fn()>;
    |                      ^ expected one of 9 possible tokens
+   |
+help: you might have meant to end the type parameters here
+   |
+LL | type closure = Box<lt>/fn()>;
+   |                      +
 
 error: aborting due to previous error
 

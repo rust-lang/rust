@@ -3,7 +3,7 @@ mod tests;
 
 use crate::fmt;
 use crate::sync::{mutex, poison, LockResult, MutexGuard, PoisonError};
-use crate::sys_common::condvar as sys;
+use crate::sys::locks as sys;
 use crate::time::{Duration, Instant};
 
 /// A type indicating whether a timed wait on a condition variable returned
@@ -122,8 +122,10 @@ impl Condvar {
     /// let condvar = Condvar::new();
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_locks", since = "1.63.0")]
     #[must_use]
-    pub fn new() -> Condvar {
+    #[inline]
+    pub const fn new() -> Condvar {
         Condvar { inner: sys::Condvar::new() }
     }
 
@@ -303,7 +305,7 @@ impl Condvar {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_deprecated(since = "1.6.0", reason = "replaced by `std::sync::Condvar::wait_timeout`")]
+    #[deprecated(since = "1.6.0", note = "replaced by `std::sync::Condvar::wait_timeout`")]
     pub fn wait_timeout_ms<'a, T>(
         &self,
         guard: MutexGuard<'a, T>,

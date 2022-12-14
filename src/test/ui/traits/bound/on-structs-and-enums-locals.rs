@@ -8,8 +8,8 @@ struct Foo<T:Trait> {
 
 fn main() {
     let foo = Foo {
-    //~^ ERROR E0277
         x: 3
+    //~^ ERROR E0277
     };
 
     let baz: Foo<usize> = loop { };

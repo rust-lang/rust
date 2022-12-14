@@ -1,4 +1,4 @@
--include ../tools.mk
+include ../tools.mk
 
 # ignore-windows-msvc
 
@@ -16,7 +16,7 @@ RUSTC_FLAGS = \
     -l foo \
     -l static=baz \
     -l foo \
-    -Z print-link-args
+    --print link-args
 
 all: $(call DYLIB,foo) $(call STATICLIB,bar) $(call STATICLIB,baz)
 	$(RUSTC) $(RUSTC_FLAGS) main.rs

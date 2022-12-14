@@ -3,7 +3,7 @@ error[E0453]: allow(non_snake_case) incompatible with previous forbid
    |
 LL | #![forbid(non_snake_case)]
    |           -------------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 
@@ -12,7 +12,7 @@ error[E0453]: allow(non_snake_case) incompatible with previous forbid
    |
 LL | #![forbid(non_snake_case)]
    |           -------------- `forbid` level set here
-LL | 
+LL |
 LL | #[allow(non_snake_case)]
    |         ^^^^^^^^^^^^^^ overruled by previous forbid
 

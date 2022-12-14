@@ -1,6 +1,8 @@
 #![feature(const_trait_impl)]
 
+#[const_trait]
 pub trait MyTrait {
+    fn defaulted_func(&self) {}
     fn func(self);
 }
 

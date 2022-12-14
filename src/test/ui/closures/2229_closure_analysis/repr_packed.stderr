@@ -17,7 +17,7 @@ LL |     let mut c = #[rustc_capture_analysis]
    = help: add `#![feature(stmt_expr_attributes)]` to the crate attributes to enable
 
 error[E0658]: attributes on expressions are experimental
-  --> $DIR/repr_packed.rs:78:13
+  --> $DIR/repr_packed.rs:79:13
    |
 LL |     let c = #[rustc_capture_analysis]
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -83,8 +83,13 @@ LL | |         println!("({}, {})", z1, z2);
 LL | |     };
    | |_____^
    |
+note: Capturing foo[] -> ImmBorrow
+  --> $DIR/repr_packed.rs:50:28
+   |
+LL |         let z1: &String = &foo.x;
+   |                            ^^^^^
 note: Capturing foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:51:33
+  --> $DIR/repr_packed.rs:52:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
@@ -102,13 +107,13 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> MutBorrow
-  --> $DIR/repr_packed.rs:51:33
+  --> $DIR/repr_packed.rs:52:33
    |
 LL |         let z2: &mut u16 = &mut foo.y;
    |                                 ^^^^^
 
 error: First Pass analysis includes:
-  --> $DIR/repr_packed.rs:81:5
+  --> $DIR/repr_packed.rs:82:5
    |
 LL | /     || {
 LL | |
@@ -120,18 +125,18 @@ LL | |     };
    | |_____^
    |
 note: Capturing foo[] -> ImmBorrow
-  --> $DIR/repr_packed.rs:84:24
+  --> $DIR/repr_packed.rs:85:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^
 note: Capturing foo[(0, 0)] -> ByValue
-  --> $DIR/repr_packed.rs:88:18
+  --> $DIR/repr_packed.rs:89:18
    |
 LL |         let _z = foo.x;
    |                  ^^^^^
 
 error: Min Capture analysis includes:
-  --> $DIR/repr_packed.rs:81:5
+  --> $DIR/repr_packed.rs:82:5
    |
 LL | /     || {
 LL | |
@@ -143,7 +148,7 @@ LL | |     };
    | |_____^
    |
 note: Min Capture foo[] -> ByValue
-  --> $DIR/repr_packed.rs:84:24
+  --> $DIR/repr_packed.rs:85:24
    |
 LL |         println!("{}", foo.x);
    |                        ^^^^^ foo[] used here

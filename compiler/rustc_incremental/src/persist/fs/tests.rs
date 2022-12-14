@@ -13,7 +13,7 @@ fn test_all_except_most_recent() {
         .keys()
         .cloned()
         .collect::<FxHashSet<PathBuf>>(),
-        vec![PathBuf::from("1"), PathBuf::from("2"), PathBuf::from("3"), PathBuf::from("4"),]
+        [PathBuf::from("1"), PathBuf::from("2"), PathBuf::from("3"), PathBuf::from("4"),]
             .into_iter()
             .collect::<FxHashSet<PathBuf>>()
     );
@@ -40,7 +40,7 @@ fn test_find_source_directory_in_iter() {
     // Find newest
     assert_eq!(
         find_source_directory_in_iter(
-            vec![
+            [
                 PathBuf::from("crate-dir/s-3234-0000-svh"),
                 PathBuf::from("crate-dir/s-2234-0000-svh"),
                 PathBuf::from("crate-dir/s-1234-0000-svh")
@@ -54,7 +54,7 @@ fn test_find_source_directory_in_iter() {
     // Filter out "-working"
     assert_eq!(
         find_source_directory_in_iter(
-            vec![
+            [
                 PathBuf::from("crate-dir/s-3234-0000-working"),
                 PathBuf::from("crate-dir/s-2234-0000-svh"),
                 PathBuf::from("crate-dir/s-1234-0000-svh")
@@ -66,12 +66,12 @@ fn test_find_source_directory_in_iter() {
     );
 
     // Handle empty
-    assert_eq!(find_source_directory_in_iter(vec![].into_iter(), &already_visited), None);
+    assert_eq!(find_source_directory_in_iter([].into_iter(), &already_visited), None);
 
     // Handle only working
     assert_eq!(
         find_source_directory_in_iter(
-            vec![
+            [
                 PathBuf::from("crate-dir/s-3234-0000-working"),
                 PathBuf::from("crate-dir/s-2234-0000-working"),
                 PathBuf::from("crate-dir/s-1234-0000-working")

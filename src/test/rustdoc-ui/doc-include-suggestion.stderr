@@ -4,9 +4,9 @@ warning: unknown `doc` attribute `include`
 LL | #[doc(include = "external-cross-doc.md")]
    | ------^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^-- help: use `doc = include_str!` instead: `#[doc = include_str!("external-cross-doc.md")]`
    |
-   = note: `#[warn(invalid_doc_attributes)]` on by default
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #82730 <https://github.com/rust-lang/rust/issues/82730>
+   = note: `#[warn(invalid_doc_attributes)]` on by default
 
 warning: 1 warning emitted
 

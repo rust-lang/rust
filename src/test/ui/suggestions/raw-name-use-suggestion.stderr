@@ -4,10 +4,10 @@ error: expected identifier, found keyword `break`
 LL |     pub fn break() {}
    |            ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `break` to use it as an identifier
    |
 LL |     pub fn r#break() {}
-   |            ~~~~~~~
+   |            ++
 
 error: expected identifier, found keyword `let`
   --> $DIR/raw-name-use-suggestion.rs:7:10
@@ -15,10 +15,10 @@ error: expected identifier, found keyword `let`
 LL |     foo::let();
    |          ^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `let` to use it as an identifier
    |
 LL |     foo::r#let();
-   |          ~~~~~
+   |          ++
 
 error[E0425]: cannot find function `r#break` in this scope
   --> $DIR/raw-name-use-suggestion.rs:8:5

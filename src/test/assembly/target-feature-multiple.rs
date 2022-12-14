@@ -23,6 +23,7 @@
 trait Sized {}
 #[lang = "copy"]
 trait Copy {}
+impl Copy for u32 {}
 
 // Use of these requires target features to be enabled
 extern "unadjusted" {

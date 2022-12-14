@@ -52,19 +52,15 @@ fn test_arena_alloc_nested() {
 
     impl<'a> Wrap<'a> {
         fn alloc_inner<F: Fn() -> Inner>(&self, f: F) -> &Inner {
-            let r: &EI<'_> = self.0.alloc(EI::I(f()));
-            if let &EI::I(ref i) = r {
-                i
-            } else {
-                panic!("mismatch");
+            match self.0.alloc(EI::I(f())) {
+                EI::I(i) => i,
+                _ => panic!("mismatch"),
             }
         }
         fn alloc_outer<F: Fn() -> Outer<'a>>(&self, f: F) -> &Outer<'_> {
-            let r: &EI<'_> = self.0.alloc(EI::O(f()));
-            if let &EI::O(ref o) = r {
-                o
-            } else {
-                panic!("mismatch");
+            match self.0.alloc(EI::O(f())) {
+                EI::O(o) => o,
+                _ => panic!("mismatch"),
             }
         }
     }
@@ -79,7 +75,11 @@ fn test_arena_alloc_nested() {
 #[test]
 pub fn test_copy() {
     let arena = TypedArena::default();
-    for _ in 0..100000 {
+    #[cfg(not(miri))]
+    const N: usize = 100000;
+    #[cfg(miri)]
+    const N: usize = 1000;
+    for _ in 0..N {
         arena.alloc(Point { x: 1, y: 2, z: 3 });
     }
 }
@@ -106,7 +106,11 @@ struct Noncopy {
 #[test]
 pub fn test_noncopy() {
     let arena = TypedArena::default();
-    for _ in 0..100000 {
+    #[cfg(not(miri))]
+    const N: usize = 100000;
+    #[cfg(miri)]
+    const N: usize = 1000;
+    for _ in 0..N {
         arena.alloc(Noncopy { string: "hello world".to_string(), array: vec![1, 2, 3, 4, 5] });
     }
 }
@@ -114,7 +118,11 @@ pub fn test_noncopy() {
 #[test]
 pub fn test_typed_arena_zero_sized() {
     let arena = TypedArena::default();
-    for _ in 0..100000 {
+    #[cfg(not(miri))]
+    const N: usize = 100000;
+    #[cfg(miri)]
+    const N: usize = 1000;
+    for _ in 0..N {
         arena.alloc(());
     }
 }
@@ -124,7 +132,11 @@ pub fn test_typed_arena_clear() {
     let mut arena = TypedArena::default();
     for _ in 0..10 {
         arena.clear();
-        for _ in 0..10000 {
+        #[cfg(not(miri))]
+        const N: usize = 10000;
+        #[cfg(miri)]
+        const N: usize = 100;
+        for _ in 0..N {
             arena.alloc(Point { x: 1, y: 2, z: 3 });
         }
     }

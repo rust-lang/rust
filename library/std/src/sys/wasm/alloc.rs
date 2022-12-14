@@ -1,8 +1,8 @@
-//! This is an implementation of a global allocator on the wasm32 platform when
+//! This is an implementation of a global allocator on wasm targets when
 //! emscripten is not in use. In that situation there's no actual runtime for us
 //! to lean on for allocation, so instead we provide our own!
 //!
-//! The wasm32 instruction set has two instructions for getting the current
+//! The wasm instruction set has two instructions for getting the current
 //! amount of memory and growing the amount of memory. These instructions are the
 //! foundation on which we're able to build an allocator, so we do so! Note that
 //! the instructions are also pretty "global" and this is the "global" allocator
@@ -24,7 +24,7 @@ static mut DLMALLOC: dlmalloc::Dlmalloc = dlmalloc::Dlmalloc::new();
 unsafe impl GlobalAlloc for System {
     #[inline]
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling malloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.malloc(layout.size(), layout.align()) }
@@ -32,7 +32,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn alloc_zeroed(&self, layout: Layout) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling calloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.calloc(layout.size(), layout.align()) }
@@ -40,7 +40,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling free() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.free(ptr, layout.size(), layout.align()) }
@@ -48,7 +48,7 @@ unsafe impl GlobalAlloc for System {
 
     #[inline]
     unsafe fn realloc(&self, ptr: *mut u8, layout: Layout, new_size: usize) -> *mut u8 {
-        // SAFETY: DLMALLOC access is guranteed to be safe because the lock gives us unique and non-reentrant access.
+        // SAFETY: DLMALLOC access is guaranteed to be safe because the lock gives us unique and non-reentrant access.
         // Calling realloc() is safe because preconditions on this function match the trait method preconditions.
         let _lock = lock::lock();
         unsafe { DLMALLOC.realloc(ptr, layout.size(), layout.align(), new_size) }

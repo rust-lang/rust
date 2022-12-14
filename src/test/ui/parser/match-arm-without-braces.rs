@@ -45,9 +45,9 @@ fn main() {
           15;
     }
     match S::get(16) {
-        Some(Val::Foo) => 17
-        _ => 18, //~ ERROR expected one of
-    }
+        Some(Val::Foo) => 17 //~ ERROR expected `,` following `match` arm
+        _ => 18,
+    };
     match S::get(19) {
         Some(Val::Foo) =>
           20; //~ ERROR `match` arm body without braces

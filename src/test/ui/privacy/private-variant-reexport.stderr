@@ -1,4 +1,4 @@
-error[E0364]: `V` is private, and cannot be re-exported
+error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/private-variant-reexport.rs:2:13
    |
 LL |     pub use ::E::V;
@@ -10,7 +10,7 @@ note: consider marking `V` as `pub` in the imported module
 LL |     pub use ::E::V;
    |             ^^^^^^
 
-error[E0364]: `V` is private, and cannot be re-exported
+error[E0364]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/private-variant-reexport.rs:6:19
    |
 LL |     pub use ::E::{V};
@@ -22,11 +22,11 @@ note: consider marking `V` as `pub` in the imported module
 LL |     pub use ::E::{V};
    |                   ^
 
-error[E0365]: `V` is private, and cannot be re-exported
+error[E0365]: `V` is only public within the crate, and cannot be re-exported outside
   --> $DIR/private-variant-reexport.rs:10:22
    |
 LL |     pub use ::E::V::{self};
-   |                      ^^^^ re-export of private `V`
+   |                      ^^^^ re-export of crate public `V`
    |
    = note: consider declaring type or module `V` with `pub`
 

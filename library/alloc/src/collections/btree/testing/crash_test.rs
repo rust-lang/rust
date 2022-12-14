@@ -1,3 +1,4 @@
+// We avoid relying on anything else in the crate, apart from the `Debug` trait.
 use crate::fmt::Debug;
 use std::cmp::Ordering;
 use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
@@ -7,8 +8,7 @@ use std::sync::atomic::{AtomicUsize, Ordering::SeqCst};
 /// Events are `clone`, `drop` or some anonymous `query`.
 ///
 /// Crash test dummies are identified and ordered by an id, so they can be used
-/// as keys in a BTreeMap. The implementation intentionally uses does not rely
-/// on anything defined in the crate, apart from the `Debug` trait.
+/// as keys in a BTreeMap.
 #[derive(Debug)]
 pub struct CrashTestDummy {
     pub id: usize,

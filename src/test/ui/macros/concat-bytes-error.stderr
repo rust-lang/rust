@@ -1,0 +1,181 @@
+error: expected a byte literal
+  --> $DIR/concat-bytes-error.rs:4:19
+   |
+LL |     concat_bytes!(pie);
+   |                   ^^^
+   |
+   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+
+error: expected a byte literal
+  --> $DIR/concat-bytes-error.rs:5:19
+   |
+LL |     concat_bytes!(pie, pie);
+   |                   ^^^  ^^^
+   |
+   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+
+error: cannot concatenate string literals
+  --> $DIR/concat-bytes-error.rs:6:19
+   |
+LL |     concat_bytes!("tnrsi", "tnri");
+   |                   ^^^^^^^ help: try using a byte string: `b"tnrsi"`
+
+error: cannot concatenate float literals
+  --> $DIR/concat-bytes-error.rs:7:19
+   |
+LL |     concat_bytes!(2.8);
+   |                   ^^^
+
+error: cannot concatenate numeric literals
+  --> $DIR/concat-bytes-error.rs:8:19
+   |
+LL |     concat_bytes!(300);
+   |                   ^^^ help: try wrapping the number in an array: `[300]`
+
+error: cannot concatenate character literals
+  --> $DIR/concat-bytes-error.rs:9:19
+   |
+LL |     concat_bytes!('a');
+   |                   ^^^ help: try using a byte character: `b'a'`
+
+error: cannot concatenate boolean literals
+  --> $DIR/concat-bytes-error.rs:10:19
+   |
+LL |     concat_bytes!(true, false);
+   |                   ^^^^
+
+error: cannot concatenate numeric literals
+  --> $DIR/concat-bytes-error.rs:11:19
+   |
+LL |     concat_bytes!(42, b"va", b'l');
+   |                   ^^ help: try wrapping the number in an array: `[42]`
+
+error: cannot concatenate numeric literals
+  --> $DIR/concat-bytes-error.rs:12:19
+   |
+LL |     concat_bytes!(42, b"va", b'l', [1, 2]);
+   |                   ^^ help: try wrapping the number in an array: `[42]`
+
+error: cannot concatenate string literals
+  --> $DIR/concat-bytes-error.rs:14:9
+   |
+LL |         "hi",
+   |         ^^^^
+
+error: cannot concatenate character literals
+  --> $DIR/concat-bytes-error.rs:17:9
+   |
+LL |         'a',
+   |         ^^^ help: try using a byte character: `b'a'`
+
+error: cannot concatenate boolean literals
+  --> $DIR/concat-bytes-error.rs:20:9
+   |
+LL |         true,
+   |         ^^^^
+
+error: cannot concatenate boolean literals
+  --> $DIR/concat-bytes-error.rs:23:9
+   |
+LL |         false,
+   |         ^^^^^
+
+error: cannot concatenate float literals
+  --> $DIR/concat-bytes-error.rs:26:9
+   |
+LL |         2.6,
+   |         ^^^
+
+error: numeric literal is out of bounds
+  --> $DIR/concat-bytes-error.rs:29:9
+   |
+LL |         265,
+   |         ^^^
+
+error: expected a byte literal
+  --> $DIR/concat-bytes-error.rs:32:9
+   |
+LL |         -33,
+   |         ^^^
+   |
+   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:35:9
+   |
+LL |         b"hi!",
+   |         ^^^^^^
+   |
+   = note: byte strings are treated as arrays of bytes
+   = help: try flattening the array
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:38:9
+   |
+LL |         [5, 6, 7],
+   |         ^^^^^^^^^
+
+error: cannot concatenate numeric literals
+  --> $DIR/concat-bytes-error.rs:40:19
+   |
+LL |     concat_bytes!(5u16);
+   |                   ^^^^ help: try wrapping the number in an array: `[5u16]`
+
+error: numeric literal is not a `u8`
+  --> $DIR/concat-bytes-error.rs:41:20
+   |
+LL |     concat_bytes!([5u16]);
+   |                    ^^^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:42:23
+   |
+LL |     concat_bytes!([3; ()]);
+   |                       ^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:43:23
+   |
+LL |     concat_bytes!([3; -2]);
+   |                       ^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:44:25
+   |
+LL |     concat_bytes!([pie; -2]);
+   |                         ^^
+
+error: expected a byte literal
+  --> $DIR/concat-bytes-error.rs:45:20
+   |
+LL |     concat_bytes!([pie; 2]);
+   |                    ^^^
+   |
+   = note: only byte literals (like `b"foo"`, `b's'`, and `[3, 4, 5]`) can be passed to `concat_bytes!()`
+
+error: cannot concatenate float literals
+  --> $DIR/concat-bytes-error.rs:46:20
+   |
+LL |     concat_bytes!([2.2; 0]);
+   |                    ^^^
+
+error: repeat count is not a positive number
+  --> $DIR/concat-bytes-error.rs:47:25
+   |
+LL |     concat_bytes!([5.5; ()]);
+   |                         ^^
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:48:20
+   |
+LL |     concat_bytes!([[1, 2, 3]; 3]);
+   |                    ^^^^^^^^^
+
+error: cannot concatenate doubly nested array
+  --> $DIR/concat-bytes-error.rs:49:20
+   |
+LL |     concat_bytes!([[42; 2]; 3]);
+   |                    ^^^^^^^
+
+error: aborting due to 28 previous errors
+

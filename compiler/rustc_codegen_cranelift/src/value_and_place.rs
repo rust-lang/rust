@@ -19,12 +19,12 @@ fn codegen_field<'tcx>(
     };
 
     if let Some(extra) = extra {
-        if !field_layout.is_unsized() {
+        if field_layout.is_sized() {
             return simple(fx);
         }
         match field_layout.ty.kind() {
             ty::Slice(..) | ty::Str | ty::Foreign(..) => simple(fx),
-            ty::Adt(def, _) if def.repr.packed() => {
+            ty::Adt(def, _) if def.repr().packed() => {
                 assert_eq!(layout.align.abi.bytes(), 1);
                 simple(fx)
             }
@@ -50,7 +50,7 @@ fn codegen_field<'tcx>(
 }
 
 fn scalar_pair_calculate_b_offset(tcx: TyCtxt<'_>, a_scalar: Scalar, b_scalar: Scalar) -> Offset32 {
-    let b_offset = a_scalar.value.size(&tcx).align_to(b_scalar.value.align(&tcx).abi);
+    let b_offset = a_scalar.size(&tcx).align_to(b_scalar.align(&tcx).abi);
     Offset32::new(b_offset.bytes().try_into().unwrap())
 }
 
@@ -107,6 +107,50 @@ impl<'tcx> CValue<'tcx> {
         }
     }
 
+    // FIXME remove
+    /// Forces the data value of a dyn* value to the stack and returns a pointer to it as well as the
+    /// vtable pointer.
+    pub(crate) fn dyn_star_force_data_on_stack(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+    ) -> (Value, Value) {
+        assert!(self.1.ty.is_dyn_star());
+
+        match self.0 {
+            CValueInner::ByRef(ptr, None) => {
+                let (a_scalar, b_scalar) = match self.1.abi {
+                    Abi::ScalarPair(a, b) => (a, b),
+                    _ => unreachable!("dyn_star_force_data_on_stack({:?})", self),
+                };
+                let b_offset = scalar_pair_calculate_b_offset(fx.tcx, a_scalar, b_scalar);
+                let clif_ty2 = scalar_to_clif_type(fx.tcx, b_scalar);
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                let vtable = ptr.offset(fx, b_offset).load(fx, clif_ty2, flags);
+                (ptr.get_addr(fx), vtable)
+            }
+            CValueInner::ByValPair(data, vtable) => {
+                let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
+                    kind: StackSlotKind::ExplicitSlot,
+                    // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
+                    // specify stack slot alignment.
+                    size: (u32::try_from(fx.target_config.pointer_type().bytes()).unwrap() + 15)
+                        / 16
+                        * 16,
+                });
+                let data_ptr = Pointer::stack_slot(stack_slot);
+                let mut flags = MemFlags::new();
+                flags.set_notrap();
+                data_ptr.store(fx, data, flags);
+
+                (data_ptr.get_addr(fx), vtable)
+            }
+            CValueInner::ByRef(_, Some(_)) | CValueInner::ByVal(_) => {
+                unreachable!("dyn_star_force_data_on_stack({:?})", self)
+            }
+        }
+    }
+
     pub(crate) fn try_to_ptr(self) -> Option<(Pointer, Option<Value>)> {
         match self.0 {
             CValueInner::ByRef(ptr, meta) => Some((ptr, meta)),
@@ -122,7 +166,7 @@ impl<'tcx> CValue<'tcx> {
                 let clif_ty = match layout.abi {
                     Abi::Scalar(scalar) => scalar_to_clif_type(fx.tcx, scalar),
                     Abi::Vector { element, count } => scalar_to_clif_type(fx.tcx, element)
-                        .by(u16::try_from(count).unwrap())
+                        .by(u32::try_from(count).unwrap())
                         .unwrap(),
                     _ => unreachable!("{:?}", layout.ty),
                 };
@@ -236,6 +280,10 @@ impl<'tcx> CValue<'tcx> {
         crate::unsize::coerce_unsized_into(fx, self, dest);
     }
 
+    pub(crate) fn coerce_dyn_star(self, fx: &mut FunctionCx<'_, '_, 'tcx>, dest: CPlace<'tcx>) {
+        crate::unsize::coerce_dyn_star(fx, self, dest);
+    }
+
     /// If `ty` is signed, `const_val` must already be sign extended.
     pub(crate) fn const_val(
         fx: &mut FunctionCx<'_, '_, 'tcx>,
@@ -316,7 +364,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &mut FunctionCx<'_, '_, 'tcx>,
         layout: TyAndLayout<'tcx>,
     ) -> CPlace<'tcx> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         if layout.size.bytes() == 0 {
             return CPlace {
                 inner: CPlaceInner::Addr(Pointer::dangling(layout.align.pref), None),
@@ -324,12 +372,17 @@ impl<'tcx> CPlace<'tcx> {
             };
         }
 
-        let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+        if layout.size.bytes() >= u64::from(u32::MAX - 16) {
+            fx.tcx
+                .sess
+                .fatal(&format!("values of type {} are too big to store on the stack", layout.ty));
+        }
+
+        let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
             kind: StackSlotKind::ExplicitSlot,
             // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
             // specify stack slot alignment.
             size: (u32::try_from(layout.size.bytes()).unwrap() + 15) / 16 * 16,
-            offset: None,
         });
         CPlace { inner: CPlaceInner::Addr(Pointer::stack_slot(stack_slot), None), layout }
     }
@@ -421,7 +474,7 @@ impl<'tcx> CPlace<'tcx> {
     }
 
     pub(crate) fn write_cvalue(self, fx: &mut FunctionCx<'_, '_, 'tcx>, from: CValue<'tcx>) {
-        assert_assignable(fx, from.layout().ty, self.layout().ty);
+        assert_assignable(fx, from.layout().ty, self.layout().ty, 16);
 
         self.write_cvalue_maybe_transmute(fx, from, "write_cvalue");
     }
@@ -467,12 +520,11 @@ impl<'tcx> CPlace<'tcx> {
                 }
                 _ if src_ty.is_vector() || dst_ty.is_vector() => {
                     // FIXME do something more efficient for transmutes between vectors and integers.
-                    let stack_slot = fx.bcx.create_stack_slot(StackSlotData {
+                    let stack_slot = fx.bcx.create_sized_stack_slot(StackSlotData {
                         kind: StackSlotKind::ExplicitSlot,
                         // FIXME Don't force the size to a multiple of 16 bytes once Cranelift gets a way to
                         // specify stack slot alignment.
                         size: (src_ty.bytes() + 15) / 16 * 16,
-                        offset: None,
                     });
                     let ptr = Pointer::stack_slot(stack_slot);
                     ptr.store(fx, data, MemFlags::trusted());
@@ -512,6 +564,26 @@ impl<'tcx> CPlace<'tcx> {
         let dst_layout = self.layout();
         let to_ptr = match self.inner {
             CPlaceInner::Var(_local, var) => {
+                if let ty::Array(element, len) = dst_layout.ty.kind() {
+                    // Can only happen for vector types
+                    let len =
+                        u32::try_from(len.eval_usize(fx.tcx, ParamEnv::reveal_all())).unwrap();
+                    let vector_ty = fx.clif_type(*element).unwrap().by(len).unwrap();
+
+                    let data = match from.0 {
+                        CValueInner::ByRef(ptr, None) => {
+                            let mut flags = MemFlags::new();
+                            flags.set_notrap();
+                            ptr.load(fx, vector_ty, flags)
+                        }
+                        CValueInner::ByVal(_)
+                        | CValueInner::ByValPair(_, _)
+                        | CValueInner::ByRef(_, Some(_)) => bug!("array should be ByRef"),
+                    };
+
+                    fx.bcx.def_var(var, data);
+                    return;
+                }
                 let data = CValue(from.0, dst_layout).load_scalar(fx);
                 let dst_ty = fx.clif_type(self.layout().ty).unwrap();
                 transmute_value(fx, var, data, dst_ty);
@@ -583,18 +655,26 @@ impl<'tcx> CPlace<'tcx> {
                 let src_align = src_layout.align.abi.bytes() as u8;
                 let dst_align = dst_layout.align.abi.bytes() as u8;
                 fx.bcx.emit_small_memory_copy(
-                    fx.module.target_config(),
+                    fx.target_config,
                     to_addr,
                     from_addr,
                     size,
                     dst_align,
                     src_align,
                     true,
-                    MemFlags::trusted(),
+                    flags,
                 );
             }
             CValueInner::ByRef(_, Some(_)) => todo!(),
         }
+    }
+
+    pub(crate) fn place_opaque_cast(
+        self,
+        fx: &mut FunctionCx<'_, '_, 'tcx>,
+        ty: Ty<'tcx>,
+    ) -> CPlace<'tcx> {
+        CPlace { inner: self.inner, layout: fx.layout_of(ty) }
     }
 
     pub(crate) fn place_field(
@@ -605,14 +685,39 @@ impl<'tcx> CPlace<'tcx> {
         let layout = self.layout();
 
         match self.inner {
-            CPlaceInner::Var(local, var) => {
-                if let Abi::Vector { .. } = layout.abi {
+            CPlaceInner::Var(local, var) => match layout.ty.kind() {
+                ty::Array(_, _) => {
+                    // Can only happen for vector types
                     return CPlace {
                         inner: CPlaceInner::VarLane(local, var, field.as_u32().try_into().unwrap()),
                         layout: layout.field(fx, field.as_u32().try_into().unwrap()),
                     };
                 }
-            }
+                ty::Adt(adt_def, substs) if layout.ty.is_simd() => {
+                    let f0_ty = adt_def.non_enum_variant().fields[0].ty(fx.tcx, substs);
+
+                    match f0_ty.kind() {
+                        ty::Array(_, _) => {
+                            assert_eq!(field.as_u32(), 0);
+                            return CPlace {
+                                inner: CPlaceInner::Var(local, var),
+                                layout: layout.field(fx, field.as_u32().try_into().unwrap()),
+                            };
+                        }
+                        _ => {
+                            return CPlace {
+                                inner: CPlaceInner::VarLane(
+                                    local,
+                                    var,
+                                    field.as_u32().try_into().unwrap(),
+                                ),
+                                layout: layout.field(fx, field.as_u32().try_into().unwrap()),
+                            };
+                        }
+                    }
+                }
+                _ => {}
+            },
             CPlaceInner::VarPair(local, var1, var2) => {
                 let layout = layout.field(&*fx, field.index());
 
@@ -629,7 +734,12 @@ impl<'tcx> CPlace<'tcx> {
 
         let (field_ptr, field_layout) = codegen_field(fx, base, extra, layout, field);
         if field_layout.is_unsized() {
-            CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
+            if let ty::Foreign(_) = field_layout.ty.kind() {
+                assert!(extra.is_none());
+                CPlace::for_ptr(field_ptr, field_layout)
+            } else {
+                CPlace::for_ptr_with_extra(field_ptr, extra.unwrap(), field_layout)
+            }
         } else {
             CPlace::for_ptr(field_ptr, field_layout)
         }
@@ -673,8 +783,8 @@ impl<'tcx> CPlace<'tcx> {
         index: Value,
     ) -> CPlace<'tcx> {
         let (elem_layout, ptr) = match self.layout().ty.kind() {
-            ty::Array(elem_ty, _) => (fx.layout_of(elem_ty), self.to_ptr()),
-            ty::Slice(elem_ty) => (fx.layout_of(elem_ty), self.to_ptr_maybe_unsized().0),
+            ty::Array(elem_ty, _) => (fx.layout_of(*elem_ty), self.to_ptr()),
+            ty::Slice(elem_ty) => (fx.layout_of(*elem_ty), self.to_ptr_maybe_unsized().0),
             _ => bug!("place_index({:?})", self.layout().ty),
         };
 
@@ -715,7 +825,7 @@ impl<'tcx> CPlace<'tcx> {
         fx: &FunctionCx<'_, '_, 'tcx>,
         variant: VariantIdx,
     ) -> Self {
-        assert!(!self.layout().is_unsized());
+        assert!(self.layout().is_sized());
         let layout = self.layout().for_variant(fx, variant);
         CPlace { inner: self.inner, layout }
     }
@@ -726,18 +836,25 @@ pub(crate) fn assert_assignable<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     from_ty: Ty<'tcx>,
     to_ty: Ty<'tcx>,
+    limit: usize,
 ) {
+    if limit == 0 {
+        // assert_assignable exists solely to catch bugs in cg_clif. it isn't necessary for
+        // soundness. don't attempt to check deep types to avoid exponential behavior in certain
+        // cases.
+        return;
+    }
     match (from_ty.kind(), to_ty.kind()) {
         (ty::Ref(_, a, _), ty::Ref(_, b, _))
         | (
             ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }),
             ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }),
         ) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::Ref(_, a, _), ty::RawPtr(TypeAndMut { ty: b, mutbl: _ }))
         | (ty::RawPtr(TypeAndMut { ty: a, mutbl: _ }), ty::Ref(_, b, _)) => {
-            assert_assignable(fx, a, b);
+            assert_assignable(fx, *a, *b, limit - 1);
         }
         (ty::FnPtr(_), ty::FnPtr(_)) => {
             let from_sig = fx.tcx.normalize_erasing_late_bound_regions(
@@ -754,7 +871,8 @@ pub(crate) fn assert_assignable<'tcx>(
             );
             // fn(&T) -> for<'l> fn(&'l T) is allowed
         }
-        (&ty::Dynamic(from_traits, _), &ty::Dynamic(to_traits, _)) => {
+        (&ty::Dynamic(from_traits, _, _from_kind), &ty::Dynamic(to_traits, _, _to_kind)) => {
+            // FIXME(dyn-star): Do the right thing with DynKinds
             for (from, to) in from_traits.iter().zip(to_traits) {
                 let from =
                     fx.tcx.normalize_erasing_late_bound_regions(ParamEnv::reveal_all(), from);
@@ -767,24 +885,55 @@ pub(crate) fn assert_assignable<'tcx>(
             }
             // dyn for<'r> Trait<'r> -> dyn Trait<'_> is allowed
         }
-        (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
-            if adt_def_a.did == adt_def_b.did =>
-        {
-            let mut types_a = substs_a.types();
-            let mut types_b = substs_b.types();
+        (&ty::Tuple(types_a), &ty::Tuple(types_b)) => {
+            let mut types_a = types_a.iter();
+            let mut types_b = types_b.iter();
             loop {
                 match (types_a.next(), types_b.next()) {
-                    (Some(a), Some(b)) => assert_assignable(fx, a, b),
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
                     (None, None) => return,
                     (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
                 }
             }
         }
+        (&ty::Adt(adt_def_a, substs_a), &ty::Adt(adt_def_b, substs_b))
+            if adt_def_a.did() == adt_def_b.did() =>
+        {
+            let mut types_a = substs_a.types();
+            let mut types_b = substs_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (ty::Array(a, _), ty::Array(b, _)) => assert_assignable(fx, *a, *b, limit - 1),
+        (&ty::Closure(def_id_a, substs_a), &ty::Closure(def_id_b, substs_b))
+            if def_id_a == def_id_b =>
+        {
+            let mut types_a = substs_a.types();
+            let mut types_b = substs_b.types();
+            loop {
+                match (types_a.next(), types_b.next()) {
+                    (Some(a), Some(b)) => assert_assignable(fx, a, b, limit - 1),
+                    (None, None) => return,
+                    (Some(_), None) | (None, Some(_)) => panic!("{:#?}/{:#?}", from_ty, to_ty),
+                }
+            }
+        }
+        (ty::Param(_), _) | (_, ty::Param(_)) if fx.tcx.sess.opts.unstable_opts.polymorphize => {
+            // No way to check if it is correct or not with polymorphization enabled
+        }
         _ => {
             assert_eq!(
-                from_ty, to_ty,
+                from_ty,
+                to_ty,
                 "Can't write value with incompatible type {:?} to place with type {:?}\n\n{:#?}",
-                from_ty, to_ty, fx,
+                from_ty.kind(),
+                to_ty.kind(),
+                fx,
             );
         }
     }

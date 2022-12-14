@@ -12,11 +12,11 @@ note: required because it appears within the type `Sleep`
    |
 LL | struct Sleep(std::marker::PhantomPinned);
    |        ^^^^^
-note: required by `Pin::<P>::new`
+note: required by a bound in `Pin::<P>::new`
   --> $SRC_DIR/core/src/pin.rs:LL:COL
    |
-LL |     pub const fn new(pointer: P) -> Pin<P> {
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL | impl<P: Deref<Target: Unpin>> Pin<P> {
+   |                       ^^^^^ required by this bound in `Pin::<P>::new`
 
 error: aborting due to previous error
 

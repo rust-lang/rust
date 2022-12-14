@@ -3,17 +3,15 @@ error[E0072]: recursive type `ListNode` has infinite size
    |
 LL | / struct
 LL | | ListNode
-LL | | {
-LL | |     head: u8,
-LL | |     tail: Option<ListNode>,
-   | |           ---------------- recursive without indirection
-LL | | }
-   | |_^ recursive type has infinite size
+   | |________^
+...
+LL |       tail: Option<ListNode>,
+   |                    -------- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ListNode` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     tail: Box<Option<ListNode>>,
-   |           ++++                +
+LL |     tail: Option<Box<ListNode>>,
+   |                  ++++        +
 
 error: aborting due to previous error
 

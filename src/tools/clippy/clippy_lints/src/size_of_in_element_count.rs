@@ -7,8 +7,9 @@ use if_chain::if_chain;
 use rustc_hir::BinOpKind;
 use rustc_hir::{Expr, ExprKind};
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{self, Ty, TyS, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
+use rustc_span::sym;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -29,6 +30,7 @@ declare_clippy_lint! {
     /// let mut y = [2u8; SIZE];
     /// unsafe { copy_nonoverlapping(x.as_ptr(), y.as_mut_ptr(), size_of::<u8>() * SIZE) };
     /// ```
+    #[clippy::version = "1.50.0"]
     pub SIZE_OF_IN_ELEMENT_COUNT,
     correctness,
     "using `size_of::<T>` or `size_of_val::<T>` where a count of elements of `T` is expected"
@@ -36,15 +38,14 @@ declare_clippy_lint! {
 
 declare_lint_pass!(SizeOfInElementCount => [SIZE_OF_IN_ELEMENT_COUNT]);
 
-fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) -> Option<Ty<'tcx>> {
+fn get_size_of_ty<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) -> Option<Ty<'tcx>> {
     match expr.kind {
         ExprKind::Call(count_func, _func_args) => {
             if_chain! {
                 if !inverted;
                 if let ExprKind::Path(ref count_func_qpath) = count_func.kind;
                 if let Some(def_id) = cx.qpath_res(count_func_qpath, count_func.hir_id).opt_def_id();
-                if match_def_path(cx, def_id, &paths::MEM_SIZE_OF)
-                    || match_def_path(cx, def_id, &paths::MEM_SIZE_OF_VAL);
+                if matches!(cx.tcx.get_diagnostic_name(def_id), Some(sym::mem_size_of | sym::mem_size_of_val));
                 then {
                     cx.typeck_results().node_substs(count_func.hir_id).types().next()
                 } else {
@@ -63,7 +64,10 @@ fn get_size_of_ty(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, inverted: bool) 
     }
 }
 
-fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
+fn get_pointee_ty_and_count_expr<'tcx>(
+    cx: &LateContext<'tcx>,
+    expr: &'tcx Expr<'_>,
+) -> Option<(Ty<'tcx>, &'tcx Expr<'tcx>)> {
     const FUNCTIONS: [&[&str]; 8] = [
         &paths::PTR_COPY_NONOVERLAPPING,
         &paths::PTR_COPY,
@@ -104,15 +108,15 @@ fn get_pointee_ty_and_count_expr(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) -
     };
     if_chain! {
         // Find calls to copy_{from,to}{,_nonoverlapping} and write_bytes methods
-        if let ExprKind::MethodCall(method_path, _, [ptr_self, .., count], _) = expr.kind;
+        if let ExprKind::MethodCall(method_path, ptr_self, [.., count], _) = expr.kind;
         let method_ident = method_path.ident.as_str();
-        if METHODS.iter().any(|m| *m == &*method_ident);
+        if METHODS.iter().any(|m| *m == method_ident);
 
         // Get the pointee type
         if let ty::RawPtr(TypeAndMut { ty: pointee_ty, .. }) =
             cx.typeck_results().expr_ty(ptr_self).kind();
         then {
-            return Some((pointee_ty, count));
+            return Some((*pointee_ty, count));
         }
     };
     None
@@ -134,7 +138,7 @@ impl<'tcx> LateLintPass<'tcx> for SizeOfInElementCount {
             // Find a size_of call in the count parameter expression and
             // check that it's the same type
             if let Some(ty_used_for_size_of) = get_size_of_ty(cx, count_expr, false);
-            if TyS::same_type(pointee_ty, ty_used_for_size_of);
+            if pointee_ty == ty_used_for_size_of;
             then {
                 span_lint_and_help(
                     cx,

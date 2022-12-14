@@ -1,20 +1,26 @@
 impl u8 {
-//~^ error: only a single inherent implementation marked with `#[lang = "u8"]` is allowed for the `u8` primitive
+//~^ error: cannot define inherent `impl` for primitive types
     pub const B: u8 = 0;
 }
 
 impl str {
-//~^ error: only a single inherent implementation marked with `#[lang = "str"]` is allowed for the `str` primitive
+//~^ error: cannot define inherent `impl` for primitive types
     fn foo() {}
     fn bar(self) {}
 }
 
 impl char {
-//~^ error: only a single inherent implementation marked with `#[lang = "char"]` is allowed for the `char` primitive
+//~^ error: cannot define inherent `impl` for primitive types
     pub const B: u8 = 0;
     pub const C: u8 = 0;
     fn foo() {}
     fn bar(self) {}
+}
+
+struct MyType;
+impl &MyType {
+//~^ error: cannot define inherent `impl` for primitive types
+    pub fn for_ref(self) {}
 }
 
 fn main() {}

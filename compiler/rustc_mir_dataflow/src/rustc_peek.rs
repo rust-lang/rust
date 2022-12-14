@@ -1,15 +1,16 @@
-use std::borrow::Borrow;
-
-use rustc_ast::ast;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
-use rustc_target::spec::abi::Abi;
 
-use rustc_index::bit_set::BitSet;
+use rustc_index::bit_set::ChunkedBitSet;
 use rustc_middle::mir::MirPass;
 use rustc_middle::mir::{self, Body, Local, Location};
 use rustc_middle::ty::{self, Ty, TyCtxt};
 
+use crate::errors::{
+    PeekArgumentNotALocal, PeekArgumentUntracked, PeekBitNotSet, PeekMustBeNotTemporary,
+    PeekMustBePlaceOrRefPlace, StopAfterDataFlowEndedCompilation,
+};
+use crate::framework::BitSetExt;
 use crate::impls::{
     DefinitelyInitializedPlaces, MaybeInitializedPlaces, MaybeLiveLocals, MaybeUninitializedPlaces,
 };
@@ -20,6 +21,7 @@ use crate::{Analysis, JoinSemiLattice, Results, ResultsCursor};
 
 pub struct SanityCheck;
 
+// FIXME: This should be a `MirLint`, but it needs to be moved back to `rustc_mir_transform` first.
 impl<'tcx> MirPass<'tcx> for SanityCheck {
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         use crate::has_rustc_mir_with;
@@ -31,44 +33,42 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
             debug!("running rustc_peek::SanityCheck on {}", tcx.def_path_str(def_id));
         }
 
-        let attributes = tcx.get_attrs(def_id);
         let param_env = tcx.param_env(def_id);
-        let move_data = MoveData::gather_moves(body, tcx, param_env).unwrap();
+        let (_, move_data) = MoveData::gather_moves(body, tcx, param_env).unwrap();
         let mdpe = MoveDataParamEnv { move_data, param_env };
-        let sess = &tcx.sess;
 
-        if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_maybe_init).is_some() {
+        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_init).is_some() {
             let flow_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_inits);
+            sanity_check_via_rustc_peek(tcx, body, &flow_inits);
         }
 
-        if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_maybe_uninit).is_some() {
+        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_maybe_uninit).is_some() {
             let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_uninits);
+            sanity_check_via_rustc_peek(tcx, body, &flow_uninits);
         }
 
-        if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_definite_init).is_some() {
+        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_definite_init).is_some() {
             let flow_def_inits = DefinitelyInitializedPlaces::new(tcx, body, &mdpe)
                 .into_engine(tcx, body)
                 .iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_def_inits);
+            sanity_check_via_rustc_peek(tcx, body, &flow_def_inits);
         }
 
-        if has_rustc_mir_with(sess, &attributes, sym::rustc_peek_liveness).is_some() {
+        if has_rustc_mir_with(tcx, def_id, sym::rustc_peek_liveness).is_some() {
             let flow_liveness = MaybeLiveLocals.into_engine(tcx, body).iterate_to_fixpoint();
 
-            sanity_check_via_rustc_peek(tcx, body, &attributes, &flow_liveness);
+            sanity_check_via_rustc_peek(tcx, body, &flow_liveness);
         }
 
-        if has_rustc_mir_with(sess, &attributes, sym::stop_after_dataflow).is_some() {
-            tcx.sess.fatal("stop_after_dataflow ended compilation");
+        if has_rustc_mir_with(tcx, def_id, sym::stop_after_dataflow).is_some() {
+            tcx.sess.emit_fatal(StopAfterDataFlowEndedCompilation);
         }
     }
 }
@@ -92,7 +92,6 @@ impl<'tcx> MirPass<'tcx> for SanityCheck {
 pub fn sanity_check_via_rustc_peek<'tcx, A>(
     tcx: TyCtxt<'tcx>,
     body: &Body<'tcx>,
-    _attributes: &[ast::Attribute],
     results: &Results<'tcx, A>,
 ) where
     A: RustcPeekAt<'tcx>,
@@ -102,7 +101,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
 
     let mut cursor = ResultsCursor::new(body, results);
 
-    let peek_calls = body.basic_blocks().iter_enumerated().filter_map(|(bb, block_data)| {
+    let peek_calls = body.basic_blocks.iter_enumerated().filter_map(|(bb, block_data)| {
         PeekCall::from_terminator(tcx, block_data.terminator()).map(|call| (bb, block_data, call))
     });
 
@@ -138,9 +137,7 @@ pub fn sanity_check_via_rustc_peek<'tcx, A>(
             }
 
             _ => {
-                let msg = "rustc_peek: argument expression \
-                           must be either `place` or `&place`";
-                tcx.sess.span_err(call.span, msg);
+                tcx.sess.emit_err(PeekMustBePlaceOrRefPlace { span: call.span });
             }
         }
     }
@@ -197,9 +194,8 @@ impl PeekCall {
             &terminator.kind
         {
             if let ty::FnDef(def_id, substs) = *func.literal.ty().kind() {
-                let sig = tcx.fn_sig(def_id);
                 let name = tcx.item_name(def_id);
-                if sig.abi() != Abi::RustIntrinsic || name != sym::rustc_peek {
+                if !tcx.is_intrinsic(def_id) || name != sym::rustc_peek {
                     return None;
                 }
 
@@ -210,18 +206,12 @@ impl PeekCall {
                         if let Some(local) = place.as_local() {
                             local
                         } else {
-                            tcx.sess.diagnostic().span_err(
-                                span,
-                                "dataflow::sanity_check cannot feed a non-temp to rustc_peek.",
-                            );
+                            tcx.sess.emit_err(PeekMustBeNotTemporary { span });
                             return None;
                         }
                     }
                     _ => {
-                        tcx.sess.diagnostic().span_err(
-                            span,
-                            "dataflow::sanity_check cannot feed a non-temp to rustc_peek.",
-                        );
+                        tcx.sess.emit_err(PeekMustBeNotTemporary { span });
                         return None;
                     }
                 };
@@ -247,7 +237,7 @@ pub trait RustcPeekAt<'tcx>: Analysis<'tcx> {
 impl<'tcx, A, D> RustcPeekAt<'tcx> for A
 where
     A: Analysis<'tcx, Domain = D> + HasMoveData<'tcx>,
-    D: JoinSemiLattice + Clone + Borrow<BitSet<MovePathIndex>>,
+    D: JoinSemiLattice + Clone + BitSetExt<MovePathIndex>,
 {
     fn peek_at(
         &self,
@@ -258,15 +248,15 @@ where
     ) {
         match self.move_data().rev_lookup.find(place.as_ref()) {
             LookupResult::Exact(peek_mpi) => {
-                let bit_state = flow_state.borrow().contains(peek_mpi);
+                let bit_state = flow_state.contains(peek_mpi);
                 debug!("rustc_peek({:?} = &{:?}) bit_state: {}", call.arg, place, bit_state);
                 if !bit_state {
-                    tcx.sess.span_err(call.span, "rustc_peek: bit not set");
+                    tcx.sess.emit_err(PeekBitNotSet { span: call.span });
                 }
             }
 
             LookupResult::Parent(..) => {
-                tcx.sess.span_err(call.span, "rustc_peek: argument untracked");
+                tcx.sess.emit_err(PeekArgumentUntracked { span: call.span });
             }
         }
     }
@@ -277,17 +267,17 @@ impl<'tcx> RustcPeekAt<'tcx> for MaybeLiveLocals {
         &self,
         tcx: TyCtxt<'tcx>,
         place: mir::Place<'tcx>,
-        flow_state: &BitSet<Local>,
+        flow_state: &ChunkedBitSet<Local>,
         call: PeekCall,
     ) {
         info!(?place, "peek_at");
         let Some(local) = place.as_local() else {
-            tcx.sess.span_err(call.span, "rustc_peek: argument was not a local");
+            tcx.sess.emit_err(PeekArgumentNotALocal { span: call.span });
             return;
         };
 
         if !flow_state.contains(local) {
-            tcx.sess.span_err(call.span, "rustc_peek: bit not set");
+            tcx.sess.emit_err(PeekBitNotSet { span: call.span });
         }
     }
 }

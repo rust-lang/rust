@@ -1,15 +1,9 @@
-use crate::mir::interpret::Scalar;
-use crate::ty::{self, Ty, TyCtxt};
-use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use smallvec::{smallvec, SmallVec};
 
-use super::{
-    AssertMessage, BasicBlock, InlineAsmOperand, Operand, Place, SourceInfo, Successors,
-    SuccessorsMut,
-};
+use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind};
+use rustc_ast::InlineAsmTemplatePiece;
 pub use rustc_ast::Mutability;
 use rustc_macros::HashStable;
-use rustc_span::Span;
 use std::borrow::Cow;
 use std::fmt::{self, Debug, Formatter, Write};
 use std::iter;
@@ -17,7 +11,7 @@ use std::slice;
 
 pub use super::query::*;
 
-#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
+#[derive(Debug, Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq)]
 pub struct SwitchTargets {
     /// Possible values. The locations to branch to in each case
     /// are found in the corresponding indices from the `targets` vector.
@@ -78,6 +72,13 @@ impl SwitchTargets {
     pub fn all_targets_mut(&mut self) -> &mut [BasicBlock] {
         &mut self.targets
     }
+
+    /// Finds the `BasicBlock` to which this `SwitchInt` will branch given the
+    /// specific value.  This cannot fail, as it'll return the `otherwise`
+    /// branch if there's not a specific match for the value.
+    pub fn target_for_value(&self, value: u128) -> BasicBlock {
+        self.iter().find_map(|(v, t)| (v == value).then_some(t)).unwrap_or_else(|| self.otherwise())
+    }
 }
 
 pub struct SwitchTargetsIter<'a> {
@@ -98,175 +99,15 @@ impl<'a> Iterator for SwitchTargetsIter<'a> {
 
 impl<'a> ExactSizeIterator for SwitchTargetsIter<'a> {}
 
-#[derive(Clone, TyEncodable, TyDecodable, Hash, HashStable, PartialEq, PartialOrd)]
-pub enum TerminatorKind<'tcx> {
-    /// Block should have one successor in the graph; we jump there.
-    Goto { target: BasicBlock },
-
-    /// Operand evaluates to an integer; jump depending on its value
-    /// to one of the targets, and otherwise fallback to `otherwise`.
-    SwitchInt {
-        /// The discriminant value being tested.
-        discr: Operand<'tcx>,
-
-        /// The type of value being tested.
-        /// This is always the same as the type of `discr`.
-        /// FIXME: remove this redundant information. Currently, it is relied on by pretty-printing.
-        switch_ty: Ty<'tcx>,
-
-        targets: SwitchTargets,
-    },
-
-    /// Indicates that the landing pad is finished and unwinding should
-    /// continue. Emitted by `build::scope::diverge_cleanup`.
-    Resume,
-
-    /// Indicates that the landing pad is finished and that the process
-    /// should abort. Used to prevent unwinding for foreign items.
-    Abort,
-
-    /// Indicates a normal return. The return place should have
-    /// been filled in before this executes. This can occur multiple times
-    /// in different basic blocks.
-    Return,
-
-    /// Indicates a terminator that can never be reached.
-    Unreachable,
-
-    /// Drop the `Place`.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock> },
-
-    /// Drop the `Place` and assign the new value over it. This ensures
-    /// that the assignment to `P` occurs *even if* the destructor for
-    /// place unwinds. Its semantics are best explained by the
-    /// elaboration:
-    ///
-    /// ```
-    /// BB0 {
-    ///   DropAndReplace(P <- V, goto BB1, unwind BB2)
-    /// }
-    /// ```
-    ///
-    /// becomes
-    ///
-    /// ```
-    /// BB0 {
-    ///   Drop(P, goto BB1, unwind BB2)
-    /// }
-    /// BB1 {
-    ///   // P is now uninitialized
-    ///   P <- V
-    /// }
-    /// BB2 {
-    ///   // P is now uninitialized -- its dtor panicked
-    ///   P <- V
-    /// }
-    /// ```
-    ///
-    /// Note that DropAndReplace is eliminated as part of the `ElaborateDrops` pass.
-    DropAndReplace {
-        place: Place<'tcx>,
-        value: Operand<'tcx>,
-        target: BasicBlock,
-        unwind: Option<BasicBlock>,
-    },
-
-    /// Block ends with a call of a function.
-    Call {
-        /// The function that’s being called.
-        func: Operand<'tcx>,
-        /// Arguments the function is called with.
-        /// These are owned by the callee, which is free to modify them.
-        /// This allows the memory occupied by "by-value" arguments to be
-        /// reused across function calls without duplicating the contents.
-        args: Vec<Operand<'tcx>>,
-        /// Destination for the return value. If some, the call is converging.
-        destination: Option<(Place<'tcx>, BasicBlock)>,
-        /// Cleanups to be done if the call unwinds.
-        cleanup: Option<BasicBlock>,
-        /// `true` if this is from a call in HIR rather than from an overloaded
-        /// operator. True for overloaded function call.
-        from_hir_call: bool,
-        /// This `Span` is the span of the function, without the dot and receiver
-        /// (e.g. `foo(a, b)` in `x.foo(a, b)`
-        fn_span: Span,
-    },
-
-    /// Jump to the target if the condition has the expected value,
-    /// otherwise panic with a message and a cleanup target.
-    Assert {
-        cond: Operand<'tcx>,
-        expected: bool,
-        msg: AssertMessage<'tcx>,
-        target: BasicBlock,
-        cleanup: Option<BasicBlock>,
-    },
-
-    /// A suspend point.
-    Yield {
-        /// The value to return.
-        value: Operand<'tcx>,
-        /// Where to resume to.
-        resume: BasicBlock,
-        /// The place to store the resume argument in.
-        resume_arg: Place<'tcx>,
-        /// Cleanup to be done if the generator is dropped at this suspend point.
-        drop: Option<BasicBlock>,
-    },
-
-    /// Indicates the end of the dropping of a generator.
-    GeneratorDrop,
-
-    /// A block where control flow only ever takes one real path, but borrowck
-    /// needs to be more conservative.
-    FalseEdge {
-        /// The target normal control flow will take.
-        real_target: BasicBlock,
-        /// A block control flow could conceptually jump to, but won't in
-        /// practice.
-        imaginary_target: BasicBlock,
-    },
-    /// A terminator for blocks that only take one path in reality, but where we
-    /// reserve the right to unwind in borrowck, even if it won't happen in practice.
-    /// This can arise in infinite loops with no function calls for example.
-    FalseUnwind {
-        /// The target normal control flow will take.
-        real_target: BasicBlock,
-        /// The imaginary cleanup block link. This particular path will never be taken
-        /// in practice, but in order to avoid fragility we want to always
-        /// consider it in borrowck. We don't want to accept programs which
-        /// pass borrowck only when `panic=abort` or some assertions are disabled
-        /// due to release vs. debug mode builds. This needs to be an `Option` because
-        /// of the `remove_noop_landing_pads` and `abort_unwinding_calls` passes.
-        unwind: Option<BasicBlock>,
-    },
-
-    /// Block ends with an inline assembly block. This is a terminator since
-    /// inline assembly is allowed to diverge.
-    InlineAsm {
-        /// The template for the inline assembly, with placeholders.
-        template: &'tcx [InlineAsmTemplatePiece],
-
-        /// The operands for the inline assembly, as `Operand`s or `Place`s.
-        operands: Vec<InlineAsmOperand<'tcx>>,
-
-        /// Miscellaneous options for the inline assembly.
-        options: InlineAsmOptions,
-
-        /// Source spans for each line of the inline assembly code. These are
-        /// used to map assembler errors back to the line in the source code.
-        line_spans: &'tcx [Span],
-
-        /// Destination block after the inline assembly returns, unless it is
-        /// diverging (InlineAsmOptions::NORETURN).
-        destination: Option<BasicBlock>,
-    },
-}
-#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable)]
+#[derive(Clone, Debug, TyEncodable, TyDecodable, HashStable, TypeFoldable, TypeVisitable)]
 pub struct Terminator<'tcx> {
     pub source_info: SourceInfo,
     pub kind: TerminatorKind<'tcx>,
 }
+
+pub type Successors<'a> = impl Iterator<Item = BasicBlock> + 'a;
+pub type SuccessorsMut<'a> =
+    iter::Chain<std::option::IntoIter<&'a mut BasicBlock>, slice::IterMut<'a, BasicBlock>>;
 
 impl<'tcx> Terminator<'tcx> {
     pub fn successors(&self) -> Successors<'_> {
@@ -287,17 +128,8 @@ impl<'tcx> Terminator<'tcx> {
 }
 
 impl<'tcx> TerminatorKind<'tcx> {
-    pub fn if_(
-        tcx: TyCtxt<'tcx>,
-        cond: Operand<'tcx>,
-        t: BasicBlock,
-        f: BasicBlock,
-    ) -> TerminatorKind<'tcx> {
-        TerminatorKind::SwitchInt {
-            discr: cond,
-            switch_ty: tcx.types.bool,
-            targets: SwitchTargets::static_if(0, f, t),
-        }
+    pub fn if_(cond: Operand<'tcx>, t: BasicBlock, f: BasicBlock) -> TerminatorKind<'tcx> {
+        TerminatorKind::SwitchInt { discr: cond, targets: SwitchTargets::static_if(0, f, t) }
     }
 
     pub fn successors(&self) -> Successors<'_> {
@@ -308,29 +140,37 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. }
-            | InlineAsm { destination: None, .. } => None.into_iter().chain(&[]),
-            Goto { target: ref t }
-            | Call { destination: None, cleanup: Some(ref t), .. }
-            | Call { destination: Some((_, ref t)), cleanup: None, .. }
-            | Yield { resume: ref t, drop: None, .. }
-            | DropAndReplace { target: ref t, unwind: None, .. }
-            | Drop { target: ref t, unwind: None, .. }
-            | Assert { target: ref t, cleanup: None, .. }
-            | FalseUnwind { real_target: ref t, unwind: None }
-            | InlineAsm { destination: Some(ref t), .. } => Some(t).into_iter().chain(&[]),
-            Call { destination: Some((_, ref t)), cleanup: Some(ref u), .. }
-            | Yield { resume: ref t, drop: Some(ref u), .. }
-            | DropAndReplace { target: ref t, unwind: Some(ref u), .. }
-            | Drop { target: ref t, unwind: Some(ref u), .. }
-            | Assert { target: ref t, cleanup: Some(ref u), .. }
-            | FalseUnwind { real_target: ref t, unwind: Some(ref u) } => {
-                Some(t).into_iter().chain(slice::from_ref(u))
+            | Call { target: None, cleanup: None, .. }
+            | InlineAsm { destination: None, cleanup: None, .. } => {
+                None.into_iter().chain((&[]).into_iter().copied())
             }
-            SwitchInt { ref targets, .. } => None.into_iter().chain(&targets.targets[..]),
-            FalseEdge { ref real_target, ref imaginary_target } => {
-                Some(real_target).into_iter().chain(slice::from_ref(imaginary_target))
+            Goto { target: t }
+            | Call { target: None, cleanup: Some(t), .. }
+            | Call { target: Some(t), cleanup: None, .. }
+            | Yield { resume: t, drop: None, .. }
+            | DropAndReplace { target: t, unwind: None, .. }
+            | Drop { target: t, unwind: None, .. }
+            | Assert { target: t, cleanup: None, .. }
+            | FalseUnwind { real_target: t, unwind: None }
+            | InlineAsm { destination: Some(t), cleanup: None, .. }
+            | InlineAsm { destination: None, cleanup: Some(t), .. } => {
+                Some(t).into_iter().chain((&[]).into_iter().copied())
             }
+            Call { target: Some(t), cleanup: Some(ref u), .. }
+            | Yield { resume: t, drop: Some(ref u), .. }
+            | DropAndReplace { target: t, unwind: Some(ref u), .. }
+            | Drop { target: t, unwind: Some(ref u), .. }
+            | Assert { target: t, cleanup: Some(ref u), .. }
+            | FalseUnwind { real_target: t, unwind: Some(ref u) }
+            | InlineAsm { destination: Some(t), cleanup: Some(ref u), .. } => {
+                Some(t).into_iter().chain(slice::from_ref(u).into_iter().copied())
+            }
+            SwitchInt { ref targets, .. } => {
+                None.into_iter().chain(targets.targets.iter().copied())
+            }
+            FalseEdge { real_target, ref imaginary_target } => Some(real_target)
+                .into_iter()
+                .chain(slice::from_ref(imaginary_target).into_iter().copied()),
         }
     }
 
@@ -342,26 +182,30 @@ impl<'tcx> TerminatorKind<'tcx> {
             | GeneratorDrop
             | Return
             | Unreachable
-            | Call { destination: None, cleanup: None, .. }
-            | InlineAsm { destination: None, .. } => None.into_iter().chain(&mut []),
+            | Call { target: None, cleanup: None, .. }
+            | InlineAsm { destination: None, cleanup: None, .. } => None.into_iter().chain(&mut []),
             Goto { target: ref mut t }
-            | Call { destination: None, cleanup: Some(ref mut t), .. }
-            | Call { destination: Some((_, ref mut t)), cleanup: None, .. }
+            | Call { target: None, cleanup: Some(ref mut t), .. }
+            | Call { target: Some(ref mut t), cleanup: None, .. }
             | Yield { resume: ref mut t, drop: None, .. }
             | DropAndReplace { target: ref mut t, unwind: None, .. }
             | Drop { target: ref mut t, unwind: None, .. }
             | Assert { target: ref mut t, cleanup: None, .. }
             | FalseUnwind { real_target: ref mut t, unwind: None }
-            | InlineAsm { destination: Some(ref mut t), .. } => Some(t).into_iter().chain(&mut []),
-            Call { destination: Some((_, ref mut t)), cleanup: Some(ref mut u), .. }
+            | InlineAsm { destination: Some(ref mut t), cleanup: None, .. }
+            | InlineAsm { destination: None, cleanup: Some(ref mut t), .. } => {
+                Some(t).into_iter().chain(&mut [])
+            }
+            Call { target: Some(ref mut t), cleanup: Some(ref mut u), .. }
             | Yield { resume: ref mut t, drop: Some(ref mut u), .. }
             | DropAndReplace { target: ref mut t, unwind: Some(ref mut u), .. }
             | Drop { target: ref mut t, unwind: Some(ref mut u), .. }
             | Assert { target: ref mut t, cleanup: Some(ref mut u), .. }
-            | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) } => {
+            | FalseUnwind { real_target: ref mut t, unwind: Some(ref mut u) }
+            | InlineAsm { destination: Some(ref mut t), cleanup: Some(ref mut u), .. } => {
                 Some(t).into_iter().chain(slice::from_mut(u))
             }
-            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets[..]),
+            SwitchInt { ref mut targets, .. } => None.into_iter().chain(&mut targets.targets),
             FalseEdge { ref mut real_target, ref mut imaginary_target } => {
                 Some(real_target).into_iter().chain(slice::from_mut(imaginary_target))
             }
@@ -378,13 +222,13 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm { .. } => None,
+            | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref unwind, .. }
             | TerminatorKind::Assert { cleanup: ref unwind, .. }
             | TerminatorKind::DropAndReplace { ref unwind, .. }
             | TerminatorKind::Drop { ref unwind, .. }
-            | TerminatorKind::FalseUnwind { ref unwind, .. } => Some(unwind),
+            | TerminatorKind::FalseUnwind { ref unwind, .. }
+            | TerminatorKind::InlineAsm { cleanup: ref unwind, .. } => Some(unwind),
         }
     }
 
@@ -398,21 +242,19 @@ impl<'tcx> TerminatorKind<'tcx> {
             | TerminatorKind::GeneratorDrop
             | TerminatorKind::Yield { .. }
             | TerminatorKind::SwitchInt { .. }
-            | TerminatorKind::FalseEdge { .. }
-            | TerminatorKind::InlineAsm { .. } => None,
+            | TerminatorKind::FalseEdge { .. } => None,
             TerminatorKind::Call { cleanup: ref mut unwind, .. }
             | TerminatorKind::Assert { cleanup: ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut unwind, .. }
             | TerminatorKind::Drop { ref mut unwind, .. }
-            | TerminatorKind::FalseUnwind { ref mut unwind, .. } => Some(unwind),
+            | TerminatorKind::FalseUnwind { ref mut unwind, .. }
+            | TerminatorKind::InlineAsm { cleanup: ref mut unwind, .. } => Some(unwind),
         }
     }
 
-    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, Ty<'tcx>, &SwitchTargets)> {
+    pub fn as_switch(&self) -> Option<(&Operand<'tcx>, &SwitchTargets)> {
         match self {
-            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
-                Some((discr, switch_ty, targets))
-            }
+            TerminatorKind::SwitchInt { discr, targets } => Some((discr, targets)),
             _ => None,
         }
     }
@@ -471,9 +313,7 @@ impl<'tcx> TerminatorKind<'tcx> {
                 write!(fmt, "replace({:?} <- {:?})", place, value)
             }
             Call { func, args, destination, .. } => {
-                if let Some((destination, _)) = destination {
-                    write!(fmt, "{:?} = ", destination)?;
-                }
+                write!(fmt, "{:?} = ", destination)?;
                 write!(fmt, "{:?}(", func)?;
                 for (index, arg) in args.iter().enumerate() {
                     if index > 0 {
@@ -549,27 +389,18 @@ impl<'tcx> TerminatorKind<'tcx> {
         match *self {
             Return | Resume | Abort | Unreachable | GeneratorDrop => vec![],
             Goto { .. } => vec!["".into()],
-            SwitchInt { ref targets, switch_ty, .. } => ty::tls::with(|tcx| {
-                let param_env = ty::ParamEnv::empty();
-                let switch_ty = tcx.lift(switch_ty).unwrap();
-                let size = tcx.layout_of(param_env.and(switch_ty)).unwrap().size;
-                targets
-                    .values
-                    .iter()
-                    .map(|&u| {
-                        ty::Const::from_scalar(tcx, Scalar::from_uint(u, size), switch_ty)
-                            .to_string()
-                            .into()
-                    })
-                    .chain(iter::once("otherwise".into()))
-                    .collect()
-            }),
-            Call { destination: Some(_), cleanup: Some(_), .. } => {
+            SwitchInt { ref targets, .. } => targets
+                .values
+                .iter()
+                .map(|&u| Cow::Owned(u.to_string()))
+                .chain(iter::once("otherwise".into()))
+                .collect(),
+            Call { target: Some(_), cleanup: Some(_), .. } => {
                 vec!["return".into(), "unwind".into()]
             }
-            Call { destination: Some(_), cleanup: None, .. } => vec!["return".into()],
-            Call { destination: None, cleanup: Some(_), .. } => vec!["unwind".into()],
-            Call { destination: None, cleanup: None, .. } => vec![],
+            Call { target: Some(_), cleanup: None, .. } => vec!["return".into()],
+            Call { target: None, cleanup: Some(_), .. } => vec!["unwind".into()],
+            Call { target: None, cleanup: None, .. } => vec![],
             Yield { drop: Some(_), .. } => vec!["resume".into(), "drop".into()],
             Yield { drop: None, .. } => vec!["resume".into()],
             DropAndReplace { unwind: None, .. } | Drop { unwind: None, .. } => {
@@ -583,8 +414,12 @@ impl<'tcx> TerminatorKind<'tcx> {
             FalseEdge { .. } => vec!["real".into(), "imaginary".into()],
             FalseUnwind { unwind: Some(_), .. } => vec!["real".into(), "cleanup".into()],
             FalseUnwind { unwind: None, .. } => vec!["real".into()],
-            InlineAsm { destination: Some(_), .. } => vec!["".into()],
-            InlineAsm { destination: None, .. } => vec![],
+            InlineAsm { destination: Some(_), cleanup: Some(_), .. } => {
+                vec!["return".into(), "unwind".into()]
+            }
+            InlineAsm { destination: Some(_), cleanup: None, .. } => vec!["return".into()],
+            InlineAsm { destination: None, cleanup: Some(_), .. } => vec!["unwind".into()],
+            InlineAsm { destination: None, cleanup: None, .. } => vec![],
         }
     }
 }

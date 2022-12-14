@@ -4,10 +4,15 @@
 //! The goal is to move the definition of `MetaItem` and things that don't need to be in `syntax`
 //! to this crate.
 
+#![feature(let_chains)]
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
+
 #[macro_use]
 extern crate rustc_macros;
 
 mod builtin;
+mod session_diagnostics;
 
 pub use builtin::*;
 pub use IntType::*;

@@ -8,13 +8,12 @@
 // run-pass
 
 #![allow(dead_code)]
-#![feature(in_band_lifetimes)]
 
 trait Trait<'a> { }
 
-impl Trait<'b> for &'a u32 { }
+impl<'a, 'b> Trait<'b> for &'a u32 { }
 
-fn foo(x: &'x u32) -> impl Trait<'y>
+fn foo<'x, 'y>(x: &'x u32) -> impl Trait<'y>
 where 'x: 'y
 {
     x

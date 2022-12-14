@@ -1,7 +1,6 @@
 // build-fail
 
 // Regression test for #66975
-#![warn(const_err)]
 #![feature(never_type)]
 
 struct PrintName;
@@ -12,5 +11,5 @@ impl PrintName {
 }
 
 fn main() {
-    let _ = PrintName::VOID;
+    let _ = PrintName::VOID; //~ constant
 }

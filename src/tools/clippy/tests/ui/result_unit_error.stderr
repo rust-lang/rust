@@ -4,8 +4,8 @@ error: this returns a `Result<_, ()>`
 LL | pub fn returns_unit_error() -> Result<u32, ()> {
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::result-unit-err` implied by `-D warnings`
    = help: use a custom `Error` type instead
+   = note: `-D clippy::result-unit-err` implied by `-D warnings`
 
 error: this returns a `Result<_, ()>`
   --> $DIR/result_unit_error.rs:12:5

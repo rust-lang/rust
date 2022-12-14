@@ -12,7 +12,7 @@ impl Bar for BarImpl {
 }
 
 
-struct Foo<B: Bar>(B);
+struct Foo<B: Bar>(#[allow(unused_tuple_struct_fields)] B);
 
 impl<B: Bar> Drop for Foo<B> {
     fn drop(&mut self) {

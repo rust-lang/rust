@@ -12,8 +12,8 @@ fn expect_bound_supply_named<'x>() {
     // Here we give a type annotation that `x` should be free. We get
     // an error because of that.
     closure_expecting_bound(|x: &'x u32| {
-        //~^ ERROR mismatched types
-        //~| ERROR mismatched types
+        //~^ ERROR lifetime may not live long enough
+        //~| ERROR lifetime may not live long enough
 
         // Borrowck doesn't get a chance to run, but if it did it should error
         // here.

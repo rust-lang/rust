@@ -1,3 +1,5 @@
+//! Looks for items missing (or incorrectly having) doctests.
+//!
 //! This pass is overloaded and runs two different lints.
 //!
 //! - MISSING_DOC_CODE_EXAMPLES: this lint is **UNSTABLE** and looks for public items missing doctests.
@@ -15,7 +17,7 @@ use rustc_middle::lint::LintLevelSource;
 use rustc_session::lint;
 use rustc_span::symbol::sym;
 
-crate const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
+pub(crate) const CHECK_DOC_TEST_VISIBILITY: Pass = Pass {
     name: "check_doc_test_visibility",
     run: check_doc_test_visibility,
     description: "run various visibility-related lints on doctests",
@@ -25,7 +27,7 @@ struct DocTestVisibilityLinter<'a, 'tcx> {
     cx: &'a mut DocContext<'tcx>,
 }
 
-crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+pub(crate) fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Crate {
     let mut coll = DocTestVisibilityLinter { cx };
     coll.visit_crate(&krate);
     krate
@@ -33,9 +35,9 @@ crate fn check_doc_test_visibility(krate: Crate, cx: &mut DocContext<'_>) -> Cra
 
 impl<'a, 'tcx> DocVisitor for DocTestVisibilityLinter<'a, 'tcx> {
     fn visit_item(&mut self, item: &Item) {
-        let dox = item.attrs.collapsed_doc_value().unwrap_or_else(String::new);
+        let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
 
-        look_for_tests(self.cx, &dox, &item);
+        look_for_tests(self.cx, &dox, item);
 
         self.visit_item_recur(item)
     }
@@ -53,23 +55,23 @@ impl crate::doctest::Tester for Tests {
     }
 }
 
-crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
-    if !cx.cache.access_levels.is_public(item.def_id.expect_def_id())
+pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> bool {
+    if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, item.item_id.expect_def_id())
         || matches!(
             *item.kind,
             clean::StructFieldItem(_)
                 | clean::VariantItem(_)
-                | clean::AssocConstItem(_, _)
-                | clean::AssocTypeItem(_, _)
-                | clean::TypedefItem(_, _)
+                | clean::AssocConstItem(..)
+                | clean::AssocTypeItem(..)
+                | clean::TypedefItem(_)
                 | clean::StaticItem(_)
                 | clean::ConstantItem(_)
                 | clean::ExternCrateItem { .. }
                 | clean::ImportItem(_)
                 | clean::PrimitiveItem(_)
-                | clean::KeywordItem(_)
+                | clean::KeywordItem
                 // check for trait impl
-                | clean::ImplItem(clean::Impl { trait_: Some(_), .. })
+                | clean::ImplItem(box clean::Impl { trait_: Some(_), .. })
         )
     {
         return false;
@@ -77,7 +79,7 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
 
     // The `expect_def_id()` should be okay because `local_def_id_to_hir_id`
     // would presumably panic if a fake `DefIndex` were passed.
-    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.def_id.expect_def_id().expect_local());
+    let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.item_id.expect_def_id().expect_local());
 
     // check if parent is trait impl
     if let Some(parent_hir_id) = cx.tcx.hir().find_parent_node(hir_id) {
@@ -104,20 +106,18 @@ crate fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -> boo
     level != lint::Level::Allow || matches!(source, LintLevelSource::Default)
 }
 
-crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
-    let hir_id = match DocContext::as_local_hir_id(cx.tcx, item.def_id) {
-        Some(hir_id) => hir_id,
-        None => {
-            // If non-local, no need to check anything.
-            return;
-        }
+pub(crate) fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
+    let Some(hir_id) = DocContext::as_local_hir_id(cx.tcx, item.item_id)
+    else {
+        // If non-local, no need to check anything.
+        return;
     };
 
     let mut tests = Tests { found_tests: 0 };
 
     find_testable_code(dox, &mut tests, ErrorCodes::No, false, None);
 
-    if tests.found_tests == 0 && cx.tcx.sess.is_nightly_build() {
+    if tests.found_tests == 0 && cx.tcx.features().rustdoc_missing_doc_code_examples {
         if should_have_doc_example(cx, item) {
             debug!("reporting error for {:?} (hir_id={:?})", item, hir_id);
             let sp = item.attr_span(cx.tcx);
@@ -125,17 +125,19 @@ crate fn look_for_tests<'tcx>(cx: &DocContext<'tcx>, dox: &str, item: &Item) {
                 crate::lint::MISSING_DOC_CODE_EXAMPLES,
                 hir_id,
                 sp,
-                |lint| lint.build("missing code example in this documentation").emit(),
+                "missing code example in this documentation",
+                |lint| lint,
             );
         }
     } else if tests.found_tests > 0
-        && !cx.cache.access_levels.is_public(item.def_id.expect_def_id())
+        && !cx.cache.effective_visibilities.is_exported(cx.tcx, item.item_id.expect_def_id())
     {
         cx.tcx.struct_span_lint_hir(
             crate::lint::PRIVATE_DOC_TESTS,
             hir_id,
             item.attr_span(cx.tcx),
-            |lint| lint.build("documentation test in private item").emit(),
+            "documentation test in private item",
+            |lint| lint,
         );
     }
 }

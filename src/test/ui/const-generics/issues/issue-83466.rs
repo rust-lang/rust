@@ -1,5 +1,5 @@
 // regression test for #83466- tests that generic arg mismatch errors between
-// consts and types are not supressed when there are explicit late bound lifetimes
+// consts and types are not suppressed when there are explicit late bound lifetimes
 
 struct S;
 impl S {

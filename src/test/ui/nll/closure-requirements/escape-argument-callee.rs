@@ -12,7 +12,7 @@
 // that appear free in its type (hence, we see it before the closure's
 // "external requirements" report).
 
-// compile-flags:-Zborrowck=mir -Zverbose
+// compile-flags:-Zverbose
 
 #![feature(rustc_attrs)]
 

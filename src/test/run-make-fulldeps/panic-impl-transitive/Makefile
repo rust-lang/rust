@@ -1,4 +1,4 @@
--include ../../run-make-fulldeps/tools.mk
+include ../../run-make-fulldeps/tools.mk
 
 # NOTE we use --emit=llvm-ir to avoid running the linker (linking will fail because there's no main
 # in this crate)

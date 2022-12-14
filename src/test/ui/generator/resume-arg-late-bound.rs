@@ -14,5 +14,4 @@ fn main() {
     };
     test(gen);
     //~^ ERROR mismatched types
-    //~| ERROR mismatched types
 }

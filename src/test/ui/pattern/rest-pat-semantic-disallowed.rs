@@ -1,5 +1,5 @@
 // Here we test that rest patterns, i.e. `..`, are not allowed
-// outside of slice (+ ident patterns witin those), tuple,
+// outside of slice (+ ident patterns within those), tuple,
 // and tuple struct patterns and that duplicates are caught in these contexts.
 
 #![feature(box_patterns)]

@@ -4,6 +4,8 @@ use std::rc::Rc;
 use std::sync::Arc;
 
 #[warn(clippy::vtable_address_comparisons)]
+#[allow(clippy::borrow_as_ptr)]
+
 fn main() {
     let a: *const dyn Debug = &1 as &dyn Debug;
     let b: *const dyn Debug = &1 as &dyn Debug;

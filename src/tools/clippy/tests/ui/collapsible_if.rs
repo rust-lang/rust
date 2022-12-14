@@ -155,6 +155,11 @@ fn main() {
         if matches!(true, true) {}
     }
 
+    // Issue #9375
+    if matches!(true, true) && truth() {
+        if matches!(true, true) {}
+    }
+
     if true {
         #[cfg(not(teehee))]
         if true {

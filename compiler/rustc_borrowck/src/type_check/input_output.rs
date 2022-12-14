@@ -10,10 +10,8 @@
 use rustc_index::vec::Idx;
 use rustc_infer::infer::LateBoundRegionConversionTime;
 use rustc_middle::mir::*;
-use rustc_middle::traits::ObligationCause;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::Ty;
 use rustc_span::Span;
-use rustc_trait_selection::traits::query::normalize::AtExt;
 
 use crate::universal_regions::UniversalRegions;
 
@@ -30,6 +28,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let (&normalized_output_ty, normalized_input_tys) =
             normalized_inputs_and_output.split_last().unwrap();
 
+        debug!(?normalized_output_ty);
+        debug!(?normalized_input_tys);
+
         let mir_def_id = body.source.def_id().expect_local();
 
         // If the user explicitly annotated the input types, extract
@@ -41,8 +42,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             user_provided_sig = None;
         } else {
             let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig = typeck_results.user_provided_sigs.get(&mir_def_id.to_def_id()).map(
-                |user_provided_poly_sig| {
+            user_provided_sig =
+                typeck_results.user_provided_sigs.get(&mir_def_id).map(|user_provided_poly_sig| {
                     // Instantiate the canonicalized variables from
                     // user-provided signature (e.g., the `_` in the code
                     // above) with fresh variables.
@@ -54,15 +55,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     // Replace the bound items in the fn sig with fresh
                     // variables, so that they represent the view from
                     // "inside" the closure.
-                    self.infcx
-                        .replace_bound_vars_with_fresh_vars(
-                            body.span,
-                            LateBoundRegionConversionTime::FnCall,
-                            poly_sig,
-                        )
-                        .0
-                },
-            );
+                    self.infcx.replace_bound_vars_with_fresh_vars(
+                        body.span,
+                        LateBoundRegionConversionTime::FnCall,
+                        poly_sig,
+                    )
+                });
         }
 
         debug!(?normalized_input_tys, ?body.local_decls);
@@ -75,10 +73,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                     .delay_span_bug(body.span, "found more normalized_input_ty than local_decls");
                 break;
             }
+
             // In MIR, argument N is stored in local N+1.
             let local = Local::new(argument_index + 1);
 
             let mir_input_ty = body.local_decls[local].ty;
+
             let mir_input_span = body.local_decls[local].source_info.span;
             self.equate_normalized_input_or_output(
                 normalized_input_ty,
@@ -100,6 +100,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 // If the user explicitly annotated the input types, enforce those.
                 let user_provided_input_ty =
                     self.normalize(user_provided_input_ty, Locations::All(mir_input_span));
+
                 self.equate_normalized_input_or_output(
                     user_provided_input_ty,
                     mir_input_ty,
@@ -108,9 +109,29 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         }
 
-        assert!(body.yield_ty().is_some() == universal_regions.yield_ty.is_some());
-        if let Some(mir_yield_ty) = body.yield_ty() {
-            let ur_yield_ty = universal_regions.yield_ty.unwrap();
+        debug!(
+            "equate_inputs_and_outputs: body.yield_ty {:?}, universal_regions.yield_ty {:?}",
+            body.yield_ty(),
+            universal_regions.yield_ty
+        );
+
+        // We will not have a universal_regions.yield_ty if we yield (by accident)
+        // outside of a generator and return an `impl Trait`, so emit a delay_span_bug
+        // because we don't want to panic in an assert here if we've already got errors.
+        if body.yield_ty().is_some() != universal_regions.yield_ty.is_some() {
+            self.tcx().sess.delay_span_bug(
+                body.span,
+                &format!(
+                    "Expected body to have yield_ty ({:?}) iff we have a UR yield_ty ({:?})",
+                    body.yield_ty(),
+                    universal_regions.yield_ty,
+                ),
+            );
+        }
+
+        if let (Some(mir_yield_ty), Some(ur_yield_ty)) =
+            (body.yield_ty(), universal_regions.yield_ty)
+        {
             let yield_span = body.local_decls[RETURN_PLACE].source_info.span;
             self.equate_normalized_input_or_output(ur_yield_ty, mir_yield_ty, yield_span);
         }
@@ -118,9 +139,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // Return types are a bit more complex. They may contain opaque `impl Trait` types.
         let mir_output_ty = body.local_decls[RETURN_PLACE].ty;
         let output_span = body.local_decls[RETURN_PLACE].source_info.span;
-        if let Err(terr) = self.eq_opaque_type_and_type(
-            mir_output_ty,
+        if let Err(terr) = self.eq_types(
             normalized_output_ty,
+            mir_output_ty,
             Locations::All(output_span),
             ConstraintCategory::BoringNoLocation,
         ) {
@@ -140,9 +161,9 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             let user_provided_output_ty = user_provided_sig.output();
             let user_provided_output_ty =
                 self.normalize(user_provided_output_ty, Locations::All(output_span));
-            if let Err(err) = self.eq_opaque_type_and_type(
-                mir_output_ty,
+            if let Err(err) = self.eq_types(
                 user_provided_output_ty,
+                mir_output_ty,
                 Locations::All(output_span),
                 ConstraintCategory::BoringNoLocation,
             ) {
@@ -158,7 +179,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         }
     }
 
-    #[instrument(skip(self, span), level = "debug")]
+    #[instrument(skip(self), level = "debug")]
     fn equate_normalized_input_or_output(&mut self, a: Ty<'tcx>, b: Ty<'tcx>, span: Span) {
         if let Err(_) =
             self.eq_types(a, b, Locations::All(span), ConstraintCategory::BoringNoLocation)
@@ -167,30 +188,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             // `rustc_traits::normalize_after_erasing_regions`. Ideally, we'd
             // like to normalize *before* inserting into `local_decls`, but
             // doing so ends up causing some other trouble.
-            let b = match self
-                .infcx
-                .at(&ObligationCause::dummy(), ty::ParamEnv::empty())
-                .normalize(b)
-            {
-                Ok(n) => {
-                    debug!("equate_inputs_and_outputs: {:?}", n);
-                    if n.obligations.iter().all(|o| {
-                        matches!(
-                            o.predicate.kind().skip_binder(),
-                            ty::PredicateKind::RegionOutlives(_)
-                                | ty::PredicateKind::TypeOutlives(_)
-                        )
-                    }) {
-                        n.value
-                    } else {
-                        b
-                    }
-                }
-                Err(_) => {
-                    debug!("equate_inputs_and_outputs: NoSolution");
-                    b
-                }
-            };
+            let b = self.normalize(b, Locations::All(span));
+
             // Note: if we have to introduce new placeholders during normalization above, then we won't have
             // added those universes to the universe info, which we would want in `relate_tys`.
             if let Err(terr) =

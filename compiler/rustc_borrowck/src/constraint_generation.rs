@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_infer::infer::InferCtxt;
 use rustc_middle::mir::visit::TyContext;
 use rustc_middle::mir::visit::Visitor;
@@ -5,8 +7,8 @@ use rustc_middle::mir::{
     BasicBlock, BasicBlockData, Body, Local, Location, Place, PlaceRef, ProjectionElem, Rvalue,
     SourceInfo, Statement, StatementKind, Terminator, TerminatorKind, UserTypeProjection,
 };
-use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::subst::SubstsRef;
+use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, RegionVid, Ty};
 
 use crate::{
@@ -14,8 +16,8 @@ use crate::{
     places_conflict, region_infer::values::LivenessValues,
 };
 
-pub(super) fn generate_constraints<'cx, 'tcx>(
-    infcx: &InferCtxt<'cx, 'tcx>,
+pub(super) fn generate_constraints<'tcx>(
+    infcx: &InferCtxt<'tcx>,
     liveness_constraints: &mut LivenessValues<RegionVid>,
     all_facts: &mut Option<AllFacts>,
     location_table: &LocationTable,
@@ -31,14 +33,14 @@ pub(super) fn generate_constraints<'cx, 'tcx>(
         body,
     };
 
-    for (bb, data) in body.basic_blocks().iter_enumerated() {
+    for (bb, data) in body.basic_blocks.iter_enumerated() {
         cg.visit_basic_block_data(bb, data);
     }
 }
 
 /// 'cg = the duration of the constraint generation process itself.
-struct ConstraintGeneration<'cg, 'cx, 'tcx> {
-    infcx: &'cg InferCtxt<'cx, 'tcx>,
+struct ConstraintGeneration<'cg, 'tcx> {
+    infcx: &'cg InferCtxt<'tcx>,
     all_facts: &'cg mut Option<AllFacts>,
     location_table: &'cg LocationTable,
     liveness_constraints: &'cg mut LivenessValues<RegionVid>,
@@ -46,7 +48,7 @@ struct ConstraintGeneration<'cg, 'cx, 'tcx> {
     body: &'cg Body<'tcx>,
 }
 
-impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
+impl<'cg, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'tcx> {
     fn visit_basic_block_data(&mut self, bb: BasicBlock, data: &BasicBlockData<'tcx>) {
         self.super_basic_block_data(bb, data);
     }
@@ -60,8 +62,8 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
 
     /// We sometimes have `region` within an rvalue, or within a
     /// call. Make them live at the location where they appear.
-    fn visit_region(&mut self, region: &ty::Region<'tcx>, location: Location) {
-        self.add_regular_live_constraint(*region, location);
+    fn visit_region(&mut self, region: ty::Region<'tcx>, location: Location) {
+        self.add_regular_live_constraint(region, location);
         self.super_region(region);
     }
 
@@ -140,9 +142,7 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
         // A `Call` terminator's return value can be a local which has borrows,
         // so we need to record those as `killed` as well.
         if let TerminatorKind::Call { destination, .. } = terminator.kind {
-            if let Some((place, _)) = destination {
-                self.record_killed_borrows_for_place(place, location);
-            }
+            self.record_killed_borrows_for_place(destination, location);
         }
 
         self.super_terminator(terminator, location);
@@ -151,21 +151,21 @@ impl<'cg, 'cx, 'tcx> Visitor<'tcx> for ConstraintGeneration<'cg, 'cx, 'tcx> {
     fn visit_ascribe_user_ty(
         &mut self,
         _place: &Place<'tcx>,
-        _variance: &ty::Variance,
+        _variance: ty::Variance,
         _user_ty: &UserTypeProjection,
         _location: Location,
     ) {
     }
 }
 
-impl<'cx, 'cg, 'tcx> ConstraintGeneration<'cx, 'cg, 'tcx> {
+impl<'cx, 'tcx> ConstraintGeneration<'cx, 'tcx> {
     /// Some variable with type `live_ty` is "regular live" at
     /// `location` -- i.e., it may be used later. This means that all
     /// regions appearing in the type `live_ty` must be live at
     /// `location`.
     fn add_regular_live_constraint<T>(&mut self, live_ty: T, location: Location)
     where
-        T: TypeFoldable<'tcx>,
+        T: TypeVisitable<'tcx>,
     {
         debug!("add_regular_live_constraint(live_ty={:?}, location={:?})", live_ty, location);
 

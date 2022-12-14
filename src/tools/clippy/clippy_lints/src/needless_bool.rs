@@ -6,10 +6,10 @@ use clippy_utils::diagnostics::{span_lint, span_lint_and_sugg};
 use clippy_utils::higher;
 use clippy_utils::source::snippet_with_applicability;
 use clippy_utils::sugg::Sugg;
-use clippy_utils::{is_else_clause, is_expn_of};
+use clippy_utils::{get_parent_node, is_else_clause, is_expn_of, peel_blocks, peel_blocks_with_stmt};
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::{BinOpKind, Block, Expr, ExprKind, StmtKind, UnOp};
+use rustc_hir::{BinOpKind, Block, Expr, ExprKind, HirId, Node, UnOp};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Spanned;
@@ -30,17 +30,23 @@ declare_clippy_lint! {
     /// shorter code.
     ///
     /// ### Example
-    /// ```rust,ignore
+    /// ```rust
+    /// # let x = true;
     /// if x {
     ///     false
     /// } else {
     ///     true
     /// }
+    /// # ;
     /// ```
-    /// Could be written as
-    /// ```rust,ignore
+    ///
+    /// Use instead:
+    /// ```rust
+    /// # let x = true;
     /// !x
+    /// # ;
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NEEDLESS_BOOL,
     complexity,
     "if-statements with plain booleans in the then- and else-clause, e.g., `if p { true } else { false }`"
@@ -65,12 +71,43 @@ declare_clippy_lint! {
     /// if x {}
     /// if !y {}
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub BOOL_COMPARISON,
     complexity,
     "comparing a variable to a boolean, e.g., `if x == true` or `if x != true`"
 }
 
 declare_lint_pass!(NeedlessBool => [NEEDLESS_BOOL]);
+
+fn condition_needs_parentheses(e: &Expr<'_>) -> bool {
+    let mut inner = e;
+    while let ExprKind::Binary(_, i, _)
+    | ExprKind::Call(i, _)
+    | ExprKind::Cast(i, _)
+    | ExprKind::Type(i, _)
+    | ExprKind::Index(i, _) = inner.kind
+    {
+        if matches!(
+            i.kind,
+            ExprKind::Block(..)
+                | ExprKind::ConstBlock(..)
+                | ExprKind::If(..)
+                | ExprKind::Loop(..)
+                | ExprKind::Match(..)
+        ) {
+            return true;
+        }
+        inner = i;
+    }
+    false
+}
+
+fn is_parent_stmt(cx: &LateContext<'_>, id: HirId) -> bool {
+    matches!(
+        get_parent_node(cx.tcx, id),
+        Some(Node::Stmt(..) | Node::Block(Block { stmts: &[], .. }))
+    )
+}
 
 impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
@@ -97,6 +134,10 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     snip = snip.blockify();
                 }
 
+                if condition_needs_parentheses(cond) && is_parent_stmt(cx, e.hir_id) {
+                    snip = snip.maybe_par();
+                }
+
                 span_lint_and_sugg(
                     cx,
                     NEEDLESS_BOOL,
@@ -107,8 +148,8 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     applicability,
                 );
             };
-            if let ExprKind::Block(then, _) = then.kind {
-                match (fetch_bool_block(then), fetch_bool_expr(r#else)) {
+            if let Some((a, b)) = fetch_bool_block(then).and_then(|a| Some((a, fetch_bool_block(r#else)?))) {
+                match (a, b) {
                     (RetBool(true), RetBool(true)) | (Bool(true), Bool(true)) => {
                         span_lint(
                             cx,
@@ -131,8 +172,6 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessBool {
                     (Bool(false), Bool(true)) => reduce(false, true),
                     _ => (),
                 }
-            } else {
-                panic!("IfExpr `then` node is not an `ExprKind::Block`");
             }
         }
     }
@@ -153,14 +192,14 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                 BinOpKind::Eq => {
                     let true_case = Some((|h| h, "equality checks against true are unnecessary"));
                     let false_case = Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "equality checks against false can be replaced by a negation",
                     ));
                     check_comparison(cx, e, true_case, false_case, true_case, false_case, ignore_no_literal);
                 },
                 BinOpKind::Ne => {
                     let true_case = Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "inequality checks against true can be replaced by a negation",
                     ));
                     let false_case = Some((|h| h, "inequality checks against false are unnecessary"));
@@ -172,12 +211,12 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                     ignore_case,
                     Some((|h| h, "greater than checks against false are unnecessary")),
                     Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "less than comparison against true can be replaced by a negation",
                     )),
                     ignore_case,
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| (!l).bit_and(&r),
+                        |l: Sugg<'tcx>, r: Sugg<'tcx>| (!l).bit_and(&r),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),
@@ -185,14 +224,14 @@ impl<'tcx> LateLintPass<'tcx> for BoolComparison {
                     cx,
                     e,
                     Some((
-                        |h: Sugg<'_>| !h,
+                        |h: Sugg<'tcx>| !h,
                         "less than comparison against true can be replaced by a negation",
                     )),
                     ignore_case,
                     ignore_case,
                     Some((|h| h, "greater than checks against false are unnecessary")),
                     Some((
-                        |l: Sugg<'_>, r: Sugg<'_>| l.bit_and(&(!r)),
+                        |l: Sugg<'tcx>, r: Sugg<'tcx>| l.bit_and(&(!r)),
                         "order comparisons between booleans can be simplified",
                     )),
                 ),
@@ -235,8 +274,6 @@ fn check_comparison<'a, 'tcx>(
     right_false: Option<(impl FnOnce(Sugg<'a>) -> Sugg<'a>, &str)>,
     no_literal: Option<(impl FnOnce(Sugg<'a>, Sugg<'a>) -> Sugg<'a>, &str)>,
 ) {
-    use self::Expression::{Bool, Other};
-
     if let ExprKind::Binary(op, left_side, right_side) = e.kind {
         let (l_ty, r_ty) = (
             cx.typeck_results().expr_ty(left_side),
@@ -268,19 +305,19 @@ fn check_comparison<'a, 'tcx>(
             }
 
             match (fetch_bool_expr(left_side), fetch_bool_expr(right_side)) {
-                (Bool(true), Other) => left_true.map_or((), |(h, m)| {
+                (Some(true), None) => left_true.map_or((), |(h, m)| {
                     suggest_bool_comparison(cx, e, right_side, applicability, m, h);
                 }),
-                (Other, Bool(true)) => right_true.map_or((), |(h, m)| {
+                (None, Some(true)) => right_true.map_or((), |(h, m)| {
                     suggest_bool_comparison(cx, e, left_side, applicability, m, h);
                 }),
-                (Bool(false), Other) => left_false.map_or((), |(h, m)| {
+                (Some(false), None) => left_false.map_or((), |(h, m)| {
                     suggest_bool_comparison(cx, e, right_side, applicability, m, h);
                 }),
-                (Other, Bool(false)) => right_false.map_or((), |(h, m)| {
+                (None, Some(false)) => right_false.map_or((), |(h, m)| {
                     suggest_bool_comparison(cx, e, left_side, applicability, m, h);
                 }),
-                (Other, Other) => no_literal.map_or((), |(h, m)| {
+                (None, None) => no_literal.map_or((), |(h, m)| {
                     let left_side = Sugg::hir_with_applicability(cx, left_side, "..", &mut applicability);
                     let right_side = Sugg::hir_with_applicability(cx, right_side, "..", &mut applicability);
                     span_lint_and_sugg(
@@ -329,41 +366,20 @@ fn suggest_bool_comparison<'a, 'tcx>(
 enum Expression {
     Bool(bool),
     RetBool(bool),
-    Other,
 }
 
-fn fetch_bool_block(block: &Block<'_>) -> Expression {
-    match (&*block.stmts, block.expr.as_ref()) {
-        (&[], Some(e)) => fetch_bool_expr(&**e),
-        (&[ref e], None) => {
-            if let StmtKind::Semi(e) = e.kind {
-                if let ExprKind::Ret(_) = e.kind {
-                    fetch_bool_expr(e)
-                } else {
-                    Expression::Other
-                }
-            } else {
-                Expression::Other
-            }
-        },
-        _ => Expression::Other,
+fn fetch_bool_block(expr: &Expr<'_>) -> Option<Expression> {
+    match peel_blocks_with_stmt(expr).kind {
+        ExprKind::Ret(Some(ret)) => Some(Expression::RetBool(fetch_bool_expr(ret)?)),
+        _ => Some(Expression::Bool(fetch_bool_expr(expr)?)),
     }
 }
 
-fn fetch_bool_expr(expr: &Expr<'_>) -> Expression {
-    match expr.kind {
-        ExprKind::Block(block, _) => fetch_bool_block(block),
-        ExprKind::Lit(ref lit_ptr) => {
-            if let LitKind::Bool(value) = lit_ptr.node {
-                Expression::Bool(value)
-            } else {
-                Expression::Other
-            }
-        },
-        ExprKind::Ret(Some(expr)) => match fetch_bool_expr(expr) {
-            Expression::Bool(value) => Expression::RetBool(value),
-            _ => Expression::Other,
-        },
-        _ => Expression::Other,
+fn fetch_bool_expr(expr: &Expr<'_>) -> Option<bool> {
+    if let ExprKind::Lit(ref lit_ptr) = peel_blocks(expr).kind {
+        if let LitKind::Bool(value) = lit_ptr.node {
+            return Some(value);
+        }
     }
+    None
 }

@@ -1,10 +1,22 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/panic-assoc-never-type.rs:10:21
+  --> $DIR/panic-assoc-never-type.rs:9:21
    |
 LL |     const VOID: ! = panic!();
-   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:10:21
+   |                     ^^^^^^^^ the evaluated program panicked at 'explicit panic', $DIR/panic-assoc-never-type.rs:9:21
    |
-   = note: this error originates in the macro `$crate::panic::panic_2015` (in Nightly builds, run with -Z macro-backtrace for more info)
+   = note: this error originates in the macro `$crate::panic::panic_2015` which comes from the expansion of the macro `panic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: erroneous constant used
+  --> $DIR/panic-assoc-never-type.rs:14:13
+   |
+LL |     let _ = PrintName::VOID;
+   |             ^^^^^^^^^^^^^^^
+
+note: erroneous constant used
+  --> $DIR/panic-assoc-never-type.rs:14:13
+   |
+LL |     let _ = PrintName::VOID;
+   |             ^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

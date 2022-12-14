@@ -6,7 +6,7 @@
 const _: Option<Vec<i32>> = {
     let y: Option<Vec<i32>> = None;
     let x = Some(Vec::new());
-    //[stock,precise]~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock,precise]~^ ERROR destructor of
 
     if true {
         x
@@ -19,7 +19,7 @@ const _: Option<Vec<i32>> = {
 // existing analysis.
 const _: Vec<i32> = {
     let vec_tuple = (Vec::new(),);
-    //[stock]~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock]~^ ERROR destructor of
 
     vec_tuple.0
 };
@@ -27,7 +27,7 @@ const _: Vec<i32> = {
 // This applies to single-field enum variants as well.
 const _: Vec<i32> = {
     let x: Result<_, Vec<i32>> = Ok(Vec::new());
-    //[stock]~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock]~^ ERROR destructor of
 
     match x {
         Ok(x) | Err(x) => x,
@@ -37,7 +37,7 @@ const _: Vec<i32> = {
 const _: Option<Vec<i32>> = {
     let mut some = Some(Vec::new());
     let mut tmp = None;
-    //[stock,precise]~^ ERROR destructors cannot be evaluated at compile-time
+    //[stock,precise]~^ ERROR destructor of
 
     let mut i = 0;
     while i < 10 {

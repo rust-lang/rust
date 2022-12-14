@@ -74,7 +74,7 @@ fn test_intersperse_with() {
     struct NotClone {
         u: u32,
     }
-    let r = vec![NotClone { u: 0 }, NotClone { u: 1 }]
+    let r = [NotClone { u: 0 }, NotClone { u: 1 }]
         .into_iter()
         .intersperse_with(|| NotClone { u: 2 })
         .collect::<Vec<_>>();
@@ -120,7 +120,7 @@ fn test_intersperse_fold() {
 
 #[test]
 fn test_intersperse_collect_string() {
-    let contents = vec![1, 2, 3];
+    let contents = [1, 2, 3];
 
     let contents_string = contents
         .into_iter()

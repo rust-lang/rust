@@ -4,12 +4,6 @@ error[E0637]: `'_` cannot be used here
 LL | fn underscore_lifetime<'_>(str1: &'_ str, str2: &'_ str) -> &'_ str {
    |                        ^^ `'_` is a reserved lifetime name
 
-error[E0637]: `&` without an explicit lifetime name cannot be used here
-  --> $DIR/E0637.rs:13:13
-   |
-LL |     T: Into<&u32>,
-   |             ^ explicit lifetime name needed here
-
 error[E0106]: missing lifetime specifier
   --> $DIR/E0637.rs:1:62
    |
@@ -21,6 +15,12 @@ help: consider introducing a named lifetime parameter
    |
 LL | fn underscore_lifetime<'a, '_>(str1: &'a str, str2: &'a str) -> &'a str {
    |                        +++            ~~             ~~          ~~
+
+error[E0637]: `&` without an explicit lifetime name cannot be used here
+  --> $DIR/E0637.rs:13:13
+   |
+LL |     T: Into<&u32>,
+   |             ^ explicit lifetime name needed here
 
 error: aborting due to 3 previous errors
 

@@ -1,0 +1,22 @@
+warning: non-binding let on a type that implements `Drop`
+  --> $DIR/let_underscore_drop.rs:13:5
+   |
+LL |     let _ = NontrivialDrop;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/let_underscore_drop.rs:2:9
+   |
+LL | #![warn(let_underscore_drop)]
+   |         ^^^^^^^^^^^^^^^^^^^
+help: consider binding to an unused variable to avoid immediately dropping the value
+   |
+LL |     let _unused = NontrivialDrop;
+   |         ~~~~~~~
+help: consider immediately dropping the value
+   |
+LL |     drop(NontrivialDrop);
+   |     ~~~~~              +
+
+warning: 1 warning emitted
+

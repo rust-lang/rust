@@ -2,17 +2,22 @@ error[E0061]: this function takes 2 arguments but 1 argument was supplied
   --> $DIR/issue-3044.rs:3:23
    |
 LL |       needlesArr.iter().fold(|x, y| {
-   |  _______________________^^^^_-
-   | |                       |
-   | |                       expected 2 arguments
+   |  _______________________^^^^-
+LL | |
 LL | |     });
-   | |_____- supplied 1 argument
+   | |______- an argument is missing
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
    |
 LL |     fn fold<B, F>(mut self, init: B, mut f: F) -> B
    |        ^^^^
+help: provide the argument
+   |
+LL ~     needlesArr.iter().fold(|x, y| {
+LL +
+LL ~     }, /* value */);
+   |
 
 error: aborting due to previous error
 

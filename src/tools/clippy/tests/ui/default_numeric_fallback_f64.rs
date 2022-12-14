@@ -2,12 +2,15 @@
 // aux-build:macro_rules.rs
 
 #![warn(clippy::default_numeric_fallback)]
-#![allow(unused)]
-#![allow(clippy::never_loop)]
-#![allow(clippy::no_effect)]
-#![allow(clippy::unnecessary_operation)]
-#![allow(clippy::branches_sharing_code)]
-#![allow(clippy::match_single_binding)]
+#![allow(
+    unused,
+    clippy::never_loop,
+    clippy::no_effect,
+    clippy::unnecessary_operation,
+    clippy::branches_sharing_code,
+    clippy::match_single_binding,
+    clippy::let_unit_value
+)]
 
 #[macro_use]
 extern crate macro_rules;
@@ -30,6 +33,7 @@ mod basic_expr {
         let x: [f64; 3] = [1., 2., 3.];
         let x: (f64, f64) = if true { (1., 2.) } else { (3., 4.) };
         let x: _ = 1.;
+        const X: f32 = 1.;
     }
 }
 
@@ -55,6 +59,14 @@ mod nested_local {
 
             // Should NOT lint this because this literal is bound to `_` of outer `Local`.
             2.
+        };
+
+        const X: f32 = {
+            // Should lint this because this literal is not bound to any types.
+            let y = 1.;
+
+            // Should NOT lint this because this literal is bound to `_` of outer `Local`.
+            1.
         };
     }
 }
@@ -134,7 +146,7 @@ mod enum_ctor {
 }
 
 mod method_calls {
-    struct StructForMethodCallTest {}
+    struct StructForMethodCallTest;
 
     impl StructForMethodCallTest {
         fn concrete_arg(&self, f: f64) {}

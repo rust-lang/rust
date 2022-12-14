@@ -4,7 +4,9 @@
 // ignore-openbsd no support for libbacktrace without filename
 // ignore-sgx no processes
 // ignore-msvc see #62897 and `backtrace-debuginfo.rs` test
+// ignore-fuchsia Backtraces not symbolized
 // compile-flags:-g
+// compile-flags:-Cstrip=none
 
 use std::env;
 use std::process::{Command, Stdio};
@@ -43,6 +45,7 @@ fn expected(fn_name: &str) -> String {
     format!(" backtrace::{}", fn_name)
 }
 
+#[cfg(not(panic = "abort"))]
 fn contains_verbose_expected(s: &str, fn_name: &str) -> bool {
     // HACK(eddyb) work around the fact that verbosely demangled stack traces
     // (from `RUST_BACKTRACE=full`, or, as is the case here, panic-in-panic)
@@ -88,28 +91,31 @@ fn runtest(me: &str) {
     assert!(!s.contains("stack backtrace") && !s.contains(" - foo"),
             "bad output3: {}", s);
 
-    // Make sure a stack trace is printed
-    let p = template(me).arg("double-fail").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
-    assert!(!out.status.success());
-    let s = str::from_utf8(&out.stderr).unwrap();
-    // loosened the following from double::h to double:: due to
-    // spurious failures on mac, 32bit, optimized
-    assert!(s.contains("stack backtrace") && contains_verbose_expected(s, "double"),
-            "bad output3: {}", s);
+    #[cfg(not(panic = "abort"))]
+    {
+        // Make sure a stack trace is printed
+        let p = template(me).arg("double-fail").spawn().unwrap();
+        let out = p.wait_with_output().unwrap();
+        assert!(!out.status.success());
+        let s = str::from_utf8(&out.stderr).unwrap();
+        // loosened the following from double::h to double:: due to
+        // spurious failures on mac, 32bit, optimized
+        assert!(s.contains("stack backtrace") && contains_verbose_expected(s, "double"),
+                "bad output3: {}", s);
 
-    // Make sure a stack trace isn't printed too many times
-    let p = template(me).arg("double-fail")
-                                .env("RUST_BACKTRACE", "1").spawn().unwrap();
-    let out = p.wait_with_output().unwrap();
-    assert!(!out.status.success());
-    let s = str::from_utf8(&out.stderr).unwrap();
-    let mut i = 0;
-    for _ in 0..2 {
-        i += s[i + 10..].find("stack backtrace").unwrap() + 10;
+        // Make sure a stack trace isn't printed too many times
+        let p = template(me).arg("double-fail")
+                                    .env("RUST_BACKTRACE", "1").spawn().unwrap();
+        let out = p.wait_with_output().unwrap();
+        assert!(!out.status.success());
+        let s = str::from_utf8(&out.stderr).unwrap();
+        let mut i = 0;
+        for _ in 0..2 {
+            i += s[i + 10..].find("stack backtrace").unwrap() + 10;
+        }
+        assert!(s[i + 10..].find("stack backtrace").is_none(),
+                "bad output4: {}", s);
     }
-    assert!(s[i + 10..].find("stack backtrace").is_none(),
-            "bad output4: {}", s);
 }
 
 fn main() {

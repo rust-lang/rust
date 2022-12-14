@@ -38,7 +38,15 @@ error[E0308]: mismatched types
   --> $DIR/recover-from-semicolon-trailing-item.rs:14:9
    |
 LL |     foo("");
-   |         ^^ expected `usize`, found `&str`
+   |     --- ^^ expected `usize`, found `&str`
+   |     |
+   |     arguments to this function are incorrect
+   |
+note: function defined here
+  --> $DIR/recover-from-semicolon-trailing-item.rs:6:4
+   |
+LL | fn foo(a: usize) {};
+   |    ^^^ --------
 
 error: aborting due to 6 previous errors
 

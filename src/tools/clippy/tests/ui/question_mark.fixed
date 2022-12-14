@@ -1,5 +1,6 @@
 // run-rustfix
 #![allow(unreachable_code)]
+#![allow(dead_code)]
 #![allow(clippy::unnecessary_wraps)]
 
 fn some_func(a: Option<u32>) -> Option<u32> {
@@ -133,28 +134,104 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
         return func_returning_result();
     }
 
+    // no warning
+    let _ = if let Err(e) = x { Err(e) } else { Ok(0) };
+
     Ok(y)
 }
 
-fn main() {
-    some_func(Some(42));
-    some_func(None);
-    some_other_func(Some(42));
+// see issue #8019
+pub enum NotOption {
+    None,
+    First,
+    AfterFirst,
+}
 
-    let copy_struct = CopyStruct { opt: Some(54) };
-    copy_struct.func();
+fn obj(_: i32) -> Result<(), NotOption> {
+    Err(NotOption::First)
+}
 
-    let move_struct = MoveStruct {
-        opt: Some(vec![42, 1337]),
-    };
-    move_struct.ref_func();
-    move_struct.clone().mov_func_reuse();
-    move_struct.mov_func_no_use();
+fn f() -> NotOption {
+    if obj(2).is_err() {
+        return NotOption::None;
+    }
+    NotOption::First
+}
 
-    let so = SeemsOption::Some(45);
-    returns_something_similar_to_option(so);
+fn do_something() {}
 
-    func();
+fn err_immediate_return() -> Result<i32, i32> {
+    func_returning_result()?;
+    Ok(1)
+}
 
-    let _ = result_func(Ok(42));
+fn err_immediate_return_and_do_something() -> Result<i32, i32> {
+    func_returning_result()?;
+    do_something();
+    Ok(1)
+}
+
+// No warning
+fn no_immediate_return() -> Result<i32, i32> {
+    if let Err(err) = func_returning_result() {
+        do_something();
+        return Err(err);
+    }
+    Ok(1)
+}
+
+// No warning
+fn mixed_result_and_option() -> Option<i32> {
+    if let Err(err) = func_returning_result() {
+        return Some(err);
+    }
+    None
+}
+
+// No warning
+fn else_if_check() -> Result<i32, i32> {
+    if true {
+        Ok(1)
+    } else if let Err(e) = func_returning_result() {
+        Err(e)
+    } else {
+        Err(-1)
+    }
+}
+
+// No warning
+#[allow(clippy::manual_map)]
+#[rustfmt::skip]
+fn option_map() -> Option<bool> {
+    if let Some(a) = Some(false) {
+        Some(!a)
+    } else {
+        None
+    }
+}
+
+pub struct PatternedError {
+    flag: bool,
+}
+
+// No warning
+fn pattern() -> Result<(), PatternedError> {
+    let res = Ok(());
+
+    if let Err(err @ PatternedError { flag: true }) = res {
+        return Err(err);
+    }
+
+    res
+}
+
+fn main() {}
+
+// should not lint, `?` operator not available in const context
+const fn issue9175(option: Option<()>) -> Option<()> {
+    if option.is_none() {
+        return None;
+    }
+    //stuff
+    Some(())
 }

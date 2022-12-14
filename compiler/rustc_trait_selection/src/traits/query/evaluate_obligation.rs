@@ -1,8 +1,8 @@
+use rustc_middle::ty;
+
 use crate::infer::canonical::OriginalQueryValues;
 use crate::infer::InferCtxt;
-use crate::traits::{
-    EvaluationResult, OverflowError, PredicateObligation, SelectionContext, TraitQueryMode,
-};
+use crate::traits::{EvaluationResult, OverflowError, PredicateObligation, SelectionContext};
 
 pub trait InferCtxtExt<'tcx> {
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool;
@@ -29,7 +29,7 @@ pub trait InferCtxtExt<'tcx> {
     ) -> EvaluationResult;
 }
 
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     /// Evaluates whether the predicate can be satisfied (by any means)
     /// in the given `ParamEnv`.
     fn predicate_may_hold(&self, obligation: &PredicateObligation<'tcx>) -> bool {
@@ -64,14 +64,25 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         obligation: &PredicateObligation<'tcx>,
     ) -> Result<EvaluationResult, OverflowError> {
         let mut _orig_values = OriginalQueryValues::default();
-        let c_pred = self.canonicalize_query_keep_static(
-            obligation.param_env.and(obligation.predicate),
-            &mut _orig_values,
-        );
+
+        let param_env = match obligation.predicate.kind().skip_binder() {
+            ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
+                // we ignore the value set to it.
+                let mut _constness = pred.constness;
+                obligation
+                    .param_env
+                    .with_constness(_constness.and(obligation.param_env.constness()))
+            }
+            // constness has no effect on the given predicate.
+            _ => obligation.param_env.without_const(),
+        };
+
+        let c_pred = self
+            .canonicalize_query_keep_static(param_env.and(obligation.predicate), &mut _orig_values);
         // Run canonical query. If overflow occurs, rerun from scratch but this time
         // in standard trait query mode so that overflow is handled appropriately
         // within `SelectionContext`.
-        self.tcx.at(obligation.cause.span(self.tcx)).evaluate_obligation(c_pred)
+        self.tcx.at(obligation.cause.span()).evaluate_obligation(c_pred)
     }
 
     // Helper function that canonicalizes and runs the query. If an
@@ -84,7 +95,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         match self.evaluate_obligation(obligation) {
             Ok(result) => result,
             Err(OverflowError::Canonical) => {
-                let mut selcx = SelectionContext::with_query_mode(&self, TraitQueryMode::Standard);
+                let mut selcx = SelectionContext::new(&self);
                 selcx.evaluate_root_obligation(obligation).unwrap_or_else(|r| match r {
                     OverflowError::Canonical => {
                         span_bug!(
@@ -95,9 +106,11 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
                         )
                     }
                     OverflowError::ErrorReporting => EvaluationResult::EvaluatedToErr,
+                    OverflowError::Error(_) => EvaluationResult::EvaluatedToErr,
                 })
             }
             Err(OverflowError::ErrorReporting) => EvaluationResult::EvaluatedToErr,
+            Err(OverflowError::Error(_)) => EvaluationResult::EvaluatedToErr,
         }
     }
 }

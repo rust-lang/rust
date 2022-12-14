@@ -1,4 +1,5 @@
 // run-pass
+// needs-unwind
 #![allow(unused_variables)]
 #![allow(stable_features)]
 

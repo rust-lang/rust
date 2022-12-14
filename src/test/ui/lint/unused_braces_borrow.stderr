@@ -13,7 +13,7 @@ help: remove these braces
    |
 LL -     consume({ a.b });
 LL +     consume(a.b);
-   | 
+   |
 
 warning: 1 warning emitted
 

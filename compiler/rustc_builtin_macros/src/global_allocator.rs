@@ -4,11 +4,12 @@ use rustc_ast::expand::allocator::{
     AllocatorKind, AllocatorMethod, AllocatorTy, ALLOCATOR_METHODS,
 };
 use rustc_ast::ptr::P;
-use rustc_ast::{self as ast, Attribute, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
-use rustc_ast::{FnKind, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
+use rustc_ast::{self as ast, AttrVec, Expr, FnHeader, FnSig, Generics, Param, StmtKind};
+use rustc_ast::{Fn, ItemKind, Mutability, Stmt, Ty, TyKind, Unsafe};
 use rustc_expand::base::{Annotatable, ExtCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
+use thin_vec::thin_vec;
 
 pub fn expand(
     ecx: &mut ExtCtxt<'_>,
@@ -19,37 +20,34 @@ pub fn expand(
     check_builtin_macro_attribute(ecx, meta_item, sym::global_allocator);
 
     let orig_item = item.clone();
-    let not_static = || {
-        ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
-        vec![orig_item.clone()]
-    };
 
     // Allow using `#[global_allocator]` on an item statement
     // FIXME - if we get deref patterns, use them to reduce duplication here
-    let (item, is_stmt) = match &item {
-        Annotatable::Item(item) => match item.kind {
-            ItemKind::Static(..) => (item, false),
-            _ => return not_static(),
-        },
-        Annotatable::Stmt(stmt) => match &stmt.kind {
-            StmtKind::Item(item_) => match item_.kind {
-                ItemKind::Static(..) => (item_, true),
-                _ => return not_static(),
-            },
-            _ => return not_static(),
-        },
-        _ => return not_static(),
-    };
+    let (item, is_stmt, ty_span) =
+        if let Annotatable::Item(item) = &item
+            && let ItemKind::Static(ty, ..) = &item.kind
+        {
+            (item, false, ecx.with_def_site_ctxt(ty.span))
+        } else if let Annotatable::Stmt(stmt) = &item
+            && let StmtKind::Item(item) = &stmt.kind
+            && let ItemKind::Static(ty, ..) = &item.kind
+        {
+            (item, true, ecx.with_def_site_ctxt(ty.span))
+        } else {
+            ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
+            return vec![orig_item.clone()]
+        };
 
     // Generate a bunch of new items using the AllocFnFactory
     let span = ecx.with_def_site_ctxt(item.span);
-    let f = AllocFnFactory { span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
+    let f =
+        AllocFnFactory { span, ty_span, kind: AllocatorKind::Global, global: item.ident, cx: ecx };
 
     // Generate item statements for the allocator methods.
     let stmts = ALLOCATOR_METHODS.iter().map(|method| f.allocator_fn(method)).collect();
 
     // Generate anonymous constant serving as container for the allocator methods.
-    let const_ty = ecx.ty(span, TyKind::Tup(Vec::new()));
+    let const_ty = ecx.ty(ty_span, TyKind::Tup(Vec::new()));
     let const_body = ecx.expr_block(ecx.block(span, stmts));
     let const_item = ecx.item_const(span, Ident::new(kw::Underscore, span), const_ty, const_body);
     let const_item = if is_stmt {
@@ -64,6 +62,7 @@ pub fn expand(
 
 struct AllocFnFactory<'a, 'b> {
     span: Span,
+    ty_span: Span,
     kind: AllocatorKind,
     global: Ident,
     cx: &'b ExtCtxt<'a>,
@@ -84,37 +83,35 @@ impl AllocFnFactory<'_, '_> {
         let decl = self.cx.fn_decl(abi_args, ast::FnRetTy::Ty(output_ty));
         let header = FnHeader { unsafety: Unsafe::Yes(self.span), ..FnHeader::default() };
         let sig = FnSig { decl, header, span: self.span };
-        let block = Some(self.cx.block_expr(output_expr));
-        let kind = ItemKind::Fn(Box::new(FnKind(
-            ast::Defaultness::Final,
+        let body = Some(self.cx.block_expr(output_expr));
+        let kind = ItemKind::Fn(Box::new(Fn {
+            defaultness: ast::Defaultness::Final,
             sig,
-            Generics::default(),
-            block,
-        )));
+            generics: Generics::default(),
+            body,
+        }));
         let item = self.cx.item(
             self.span,
             Ident::from_str_and_span(&self.kind.fn_name(method.name), self.span),
             self.attrs(),
             kind,
         );
-        self.cx.stmt_item(self.span, item)
+        self.cx.stmt_item(self.ty_span, item)
     }
 
     fn call_allocator(&self, method: Symbol, mut args: Vec<P<Expr>>) -> P<Expr> {
         let method = self.cx.std_path(&[sym::alloc, sym::GlobalAlloc, method]);
-        let method = self.cx.expr_path(self.cx.path(self.span, method));
-        let allocator = self.cx.path_ident(self.span, self.global);
+        let method = self.cx.expr_path(self.cx.path(self.ty_span, method));
+        let allocator = self.cx.path_ident(self.ty_span, self.global);
         let allocator = self.cx.expr_path(allocator);
-        let allocator = self.cx.expr_addr_of(self.span, allocator);
+        let allocator = self.cx.expr_addr_of(self.ty_span, allocator);
         args.insert(0, allocator);
 
-        self.cx.expr_call(self.span, method, args)
+        self.cx.expr_call(self.ty_span, method, args)
     }
 
-    fn attrs(&self) -> Vec<Attribute> {
-        let special = sym::rustc_std_internal_symbol;
-        let special = self.cx.meta_word(self.span, special);
-        vec![self.cx.attribute(special)]
+    fn attrs(&self) -> AttrVec {
+        thin_vec![self.cx.attr_word(sym::rustc_std_internal_symbol, self.span)]
     }
 
     fn arg_ty(

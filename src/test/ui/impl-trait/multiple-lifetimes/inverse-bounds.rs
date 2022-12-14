@@ -1,7 +1,5 @@
 // edition:2018
 // check-pass
-// revisions: migrate mir
-//[mir]compile-flags: -Z borrowck=mir
 
 trait Trait<'a, 'b> {}
 impl<T> Trait<'_, '_> for T {}

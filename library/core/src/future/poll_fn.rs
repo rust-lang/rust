@@ -5,12 +5,13 @@ use crate::task::{Context, Poll};
 
 /// Creates a future that wraps a function returning [`Poll`].
 ///
-/// Polling the future delegates to the wrapped function.
+/// Polling the future delegates to the wrapped function. If the returned future is pinned, then the
+/// captured environment of the wrapped function is also pinned in-place, so as long as the closure
+/// does not move out of its captures it can soundly create pinned references to them.
 ///
 /// # Examples
 ///
 /// ```
-/// #![feature(future_poll_fn)]
 /// # async fn run() {
 /// use core::future::poll_fn;
 /// use std::task::{Context, Poll};
@@ -23,7 +24,7 @@ use crate::task::{Context, Poll};
 /// assert_eq!(read_future.await, "Hello, World!".to_owned());
 /// # }
 /// ```
-#[unstable(feature = "future_poll_fn", issue = "72302")]
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
 pub fn poll_fn<T, F>(f: F) -> PollFn<F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T>,
@@ -36,29 +37,30 @@ where
 /// This `struct` is created by [`poll_fn()`]. See its
 /// documentation for more.
 #[must_use = "futures do nothing unless you `.await` or poll them"]
-#[unstable(feature = "future_poll_fn", issue = "72302")]
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
 pub struct PollFn<F> {
     f: F,
 }
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
-impl<F> Unpin for PollFn<F> {}
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
+impl<F: Unpin> Unpin for PollFn<F> {}
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
 impl<F> fmt::Debug for PollFn<F> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PollFn").finish()
     }
 }
 
-#[unstable(feature = "future_poll_fn", issue = "72302")]
+#[stable(feature = "future_poll_fn", since = "1.64.0")]
 impl<T, F> Future for PollFn<F>
 where
     F: FnMut(&mut Context<'_>) -> Poll<T>,
 {
     type Output = T;
 
-    fn poll(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
-        (&mut self.f)(cx)
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<T> {
+        // SAFETY: We are not moving out of the pinned field.
+        (unsafe { &mut self.get_unchecked_mut().f })(cx)
     }
 }

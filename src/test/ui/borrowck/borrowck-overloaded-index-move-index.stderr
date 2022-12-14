@@ -3,7 +3,7 @@ error[E0505]: cannot move out of `s` because it is borrowed
    |
 LL |     let rs = &mut s;
    |              ------ borrow of `s` occurs here
-LL | 
+LL |
 LL |     println!("{}", f[s]);
    |                      ^ move out of `s` occurs here
 ...
@@ -33,6 +33,11 @@ LL |     println!("{}", f[s]);
 ...
 LL |     f[s] = 10;
    |       ^ value used here after move
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     println!("{}", f[s.clone()]);
+   |                       ++++++++
 
 error: aborting due to 3 previous errors
 

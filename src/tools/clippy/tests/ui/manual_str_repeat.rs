@@ -1,10 +1,9 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::manual_str_repeat)]
 
 use std::borrow::Cow;
-use std::iter::{repeat, FromIterator};
+use std::iter::repeat;
 
 fn main() {
     let _: String = std::iter::repeat("test").take(10).collect();
@@ -54,13 +53,13 @@ fn main() {
     let _: String = repeat(x).take(count).collect();
 }
 
+#[clippy::msrv = "1.15"]
 fn _msrv_1_15() {
-    #![clippy::msrv = "1.15"]
     // `str::repeat` was stabilized in 1.16. Do not lint this
     let _: String = std::iter::repeat("test").take(10).collect();
 }
 
+#[clippy::msrv = "1.16"]
 fn _msrv_1_16() {
-    #![clippy::msrv = "1.16"]
     let _: String = std::iter::repeat("test").take(10).collect();
 }

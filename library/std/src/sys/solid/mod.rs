@@ -15,6 +15,7 @@ mod itron {
     pub mod thread;
     pub(super) mod time;
     use super::unsupported;
+    pub mod wait_flag;
 }
 
 pub mod alloc;
@@ -37,17 +38,25 @@ pub mod path;
 pub mod pipe;
 #[path = "../unsupported/process.rs"]
 pub mod process;
-pub mod rwlock;
 pub mod stdio;
-pub use self::itron::{condvar, mutex, thread};
+pub use self::itron::thread;
 pub mod memchr;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
 pub mod time;
+pub use self::itron::wait_flag;
+
+mod rwlock;
+
+pub mod locks {
+    pub use super::itron::condvar::*;
+    pub use super::itron::mutex::*;
+    pub use super::rwlock::*;
+}
 
 // SAFETY: must be called only once during runtime initialization.
 // NOTE: this is not guaranteed to run, for example when Rust code is called externally.
-pub unsafe fn init(_argc: isize, _argv: *const *const u8) {}
+pub unsafe fn init(_argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
 
 // SAFETY: must be called only once during runtime cleanup.
 pub unsafe fn cleanup() {}
@@ -57,9 +66,9 @@ pub fn unsupported<T>() -> crate::io::Result<T> {
 }
 
 pub fn unsupported_err() -> crate::io::Error {
-    crate::io::Error::new_const(
+    crate::io::const_io_error!(
         crate::io::ErrorKind::Unsupported,
-        &"operation not supported on this platform",
+        "operation not supported on this platform",
     )
 }
 
@@ -67,30 +76,17 @@ pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
     error::decode_error_kind(code)
 }
 
-#[inline(always)]
+#[inline]
 pub fn abort_internal() -> ! {
-    loop {
-        abi::breakpoint_abort();
-    }
-}
-
-// This function is needed by the panic runtime. The symbol is named in
-// pre-link args for the target specification, so keep that in sync.
-#[cfg(not(test))]
-#[no_mangle]
-// NB. used by both libunwind and libpanic_abort
-pub extern "C" fn __rust_abort() {
-    abort_internal();
+    unsafe { libc::abort() }
 }
 
 pub fn hashmap_random_keys() -> (u64, u64) {
     unsafe {
         let mut out = crate::mem::MaybeUninit::<[u64; 2]>::uninit();
         let result = abi::SOLID_RNG_SampleRandomBytes(out.as_mut_ptr() as *mut u8, 16);
-        assert_eq!(result, 0, "SOLID_RNG_SampleRandomBytes failed: {}", result);
+        assert_eq!(result, 0, "SOLID_RNG_SampleRandomBytes failed: {result}");
         let [x1, x2] = out.assume_init();
         (x1, x2)
     }
 }
-
-pub use libc::strlen;

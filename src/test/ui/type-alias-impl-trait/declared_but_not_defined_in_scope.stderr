@@ -1,8 +1,10 @@
-error: could not find defining uses
+error: unconstrained opaque type
   --> $DIR/declared_but_not_defined_in_scope.rs:7:20
    |
 LL |     pub type Boo = impl ::std::fmt::Debug;
    |                    ^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: `Boo` must be used in combination with a concrete type within the same module
 
 error[E0308]: mismatched types
   --> $DIR/declared_but_not_defined_in_scope.rs:11:5
@@ -11,11 +13,11 @@ LL |     pub type Boo = impl ::std::fmt::Debug;
    |                    ---------------------- the expected opaque type
 ...
 LL | fn bomp() -> boo::Boo {
-   |              -------- expected `impl Debug` because of return type
+   |              -------- expected `Boo` because of return type
 LL |     ""
    |     ^^ expected opaque type, found `&str`
    |
-   = note: expected opaque type `impl Debug`
+   = note: expected opaque type `Boo`
                 found reference `&'static str`
 
 error: aborting due to 2 previous errors

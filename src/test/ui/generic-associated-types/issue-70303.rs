@@ -1,9 +1,7 @@
 // check-pass
 
-#![feature(generic_associated_types)]
-
 trait Document {
-    type Cursor<'a>: DocCursor<'a>;
+    type Cursor<'a>: DocCursor<'a> where Self: 'a;
 
     fn cursor(&self) -> Self::Cursor<'_>;
 }

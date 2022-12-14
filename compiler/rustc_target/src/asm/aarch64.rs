@@ -1,5 +1,8 @@
 use super::{InlineAsmArch, InlineAsmType};
+use crate::spec::{RelocModel, Target};
+use rustc_data_structures::fx::FxHashSet;
 use rustc_macros::HashStable_Generic;
+use rustc_span::Symbol;
 use std::fmt;
 
 def_reg_class! {
@@ -57,16 +60,34 @@ impl AArch64InlineAsmRegClass {
     pub fn supported_types(
         self,
         _arch: InlineAsmArch,
-    ) -> &'static [(InlineAsmType, Option<&'static str>)] {
+    ) -> &'static [(InlineAsmType, Option<Symbol>)] {
         match self {
             Self::reg => types! { _: I8, I16, I32, I64, F32, F64; },
             Self::vreg | Self::vreg_low16 => types! {
-                "fp": I8, I16, I32, I64, F32, F64,
+                neon: I8, I16, I32, I64, F32, F64,
                     VecI8(8), VecI16(4), VecI32(2), VecI64(1), VecF32(2), VecF64(1),
                     VecI8(16), VecI16(8), VecI32(4), VecI64(2), VecF32(4), VecF64(2);
             },
             Self::preg => &[],
         }
+    }
+}
+
+pub fn target_reserves_x18(target: &Target) -> bool {
+    target.os == "android" || target.os == "fuchsia" || target.is_like_osx || target.is_like_windows
+}
+
+fn reserved_x18(
+    _arch: InlineAsmArch,
+    _reloc_model: RelocModel,
+    _target_features: &FxHashSet<Symbol>,
+    target: &Target,
+    _is_clobber: bool,
+) -> Result<(), &'static str> {
+    if target_reserves_x18(target) {
+        Err("x18 is a reserved register on this target")
+    } else {
+        Ok(())
     }
 }
 
@@ -90,6 +111,7 @@ def_regs! {
         x15: reg = ["x15", "w15"],
         x16: reg = ["x16", "w16"],
         x17: reg = ["x17", "w17"],
+        x18: reg = ["x18", "w18"] % reserved_x18,
         x20: reg = ["x20", "w20"],
         x21: reg = ["x21", "w21"],
         x22: reg = ["x22", "w22"],
@@ -149,8 +171,6 @@ def_regs! {
         p14: preg = ["p14"],
         p15: preg = ["p15"],
         ffr: preg = ["ffr"],
-        #error = ["x18", "w18"] =>
-            "x18 is used as a reserved register on some targets and cannot be used as an operand for inline asm",
         #error = ["x19", "w19"] =>
             "x19 is used internally by LLVM and cannot be used as an operand for inline asm",
         #error = ["x29", "w29", "fp", "wfp"] =>

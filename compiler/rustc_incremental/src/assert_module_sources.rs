@@ -5,6 +5,7 @@
 //! The user adds annotations to the crate of the following form:
 //!
 //! ```
+//! # #![feature(rustc_attrs)]
 //! #![rustc_partition_reused(module="spike", cfg="rpass2")]
 //! #![rustc_partition_codegened(module="spike-x", cfg="rpass2")]
 //! ```
@@ -22,25 +23,22 @@
 //! was re-used.
 
 use rustc_ast as ast;
+use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::mir::mono::CodegenUnitNameBuilder;
 use rustc_middle::ty::TyCtxt;
 use rustc_session::cgu_reuse_tracker::*;
 use rustc_span::symbol::{sym, Symbol};
-use std::collections::BTreeSet;
 
+#[allow(missing_docs)]
 pub fn assert_module_sources(tcx: TyCtxt<'_>) {
     tcx.dep_graph.with_ignore(|| {
         if tcx.sess.opts.incremental.is_none() {
             return;
         }
 
-        let available_cgus = tcx
-            .collect_and_partition_mono_items(())
-            .1
-            .iter()
-            .map(|cgu| cgu.name().to_string())
-            .collect::<BTreeSet<String>>();
+        let available_cgus =
+            tcx.collect_and_partition_mono_items(()).1.iter().map(|cgu| cgu.name()).collect();
 
         let ams = AssertModuleSource { tcx, available_cgus };
 
@@ -52,10 +50,10 @@ pub fn assert_module_sources(tcx: TyCtxt<'_>) {
 
 struct AssertModuleSource<'tcx> {
     tcx: TyCtxt<'tcx>,
-    available_cgus: BTreeSet<String>,
+    available_cgus: FxHashSet<Symbol>,
 }
 
-impl AssertModuleSource<'tcx> {
+impl<'tcx> AssertModuleSource<'tcx> {
     fn check_attr(&self, attr: &ast::Attribute) {
         let (expected_reuse, comp_kind) = if attr.has_name(sym::rustc_partition_reused) {
             (CguReuse::PreLto, ComparisonKind::AtLeast)
@@ -78,7 +76,7 @@ impl AssertModuleSource<'tcx> {
             return;
         };
 
-        if !self.tcx.sess.opts.debugging_opts.query_dep_graph {
+        if !self.tcx.sess.opts.unstable_opts.query_dep_graph {
             self.tcx.sess.span_fatal(
                 attr.span,
                 "found CGU-reuse attribute but `-Zquery-dep-graph` was not specified",
@@ -123,18 +121,17 @@ impl AssertModuleSource<'tcx> {
 
         debug!("mapping '{}' to cgu name '{}'", self.field(attr, sym::module), cgu_name);
 
-        if !self.available_cgus.contains(&*cgu_name.as_str()) {
+        if !self.available_cgus.contains(&cgu_name) {
+            let mut cgu_names: Vec<&str> =
+                self.available_cgus.iter().map(|cgu| cgu.as_str()).collect();
+            cgu_names.sort();
             self.tcx.sess.span_err(
                 attr.span,
                 &format!(
                     "no module named `{}` (mangled: {}). Available modules: {}",
                     user_path,
                     cgu_name,
-                    self.available_cgus
-                        .iter()
-                        .map(|cgu| cgu.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")
+                    cgu_names.join(", ")
                 ),
             );
         }

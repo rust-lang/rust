@@ -2,8 +2,8 @@ use rustc_apfloat::ieee::{Double, Single};
 use rustc_apfloat::Float;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 use rustc_target::abi::Size;
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
+use std::num::NonZeroU8;
 
 use crate::ty::TyCtxt;
 
@@ -123,7 +123,7 @@ pub struct ScalarInt {
     /// The first `size` bytes of `data` are the value.
     /// Do not try to read less or more bytes than that. The remaining bytes must be 0.
     data: u128,
-    size: u8,
+    size: NonZeroU8,
 }
 
 // Cannot derive these, as the derives take references to the fields, and we
@@ -135,33 +135,31 @@ impl<CTX> crate::ty::HashStable<CTX> for ScalarInt {
         // Since `Self` is a packed struct, that would create a possibly unaligned reference,
         // which is UB.
         { self.data }.hash_stable(hcx, hasher);
-        self.size.hash_stable(hcx, hasher);
+        self.size.get().hash_stable(hcx, hasher);
     }
 }
 
 impl<S: Encoder> Encodable<S> for ScalarInt {
-    fn encode(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_u128(self.data)?;
-        s.emit_u8(self.size)
+    fn encode(&self, s: &mut S) {
+        s.emit_u128(self.data);
+        s.emit_u8(self.size.get());
     }
 }
 
 impl<D: Decoder> Decodable<D> for ScalarInt {
-    fn decode(d: &mut D) -> Result<ScalarInt, D::Error> {
-        Ok(ScalarInt { data: d.read_u128()?, size: d.read_u8()? })
+    fn decode(d: &mut D) -> ScalarInt {
+        ScalarInt { data: d.read_u128(), size: NonZeroU8::new(d.read_u8()).unwrap() }
     }
 }
 
 impl ScalarInt {
-    pub const TRUE: ScalarInt = ScalarInt { data: 1_u128, size: 1 };
+    pub const TRUE: ScalarInt = ScalarInt { data: 1_u128, size: NonZeroU8::new(1).unwrap() };
 
-    pub const FALSE: ScalarInt = ScalarInt { data: 0_u128, size: 1 };
-
-    pub const ZST: ScalarInt = ScalarInt { data: 0_u128, size: 0 };
+    pub const FALSE: ScalarInt = ScalarInt { data: 0_u128, size: NonZeroU8::new(1).unwrap() };
 
     #[inline]
     pub fn size(self) -> Size {
-        Size::from_bytes(self.size)
+        Size::from_bytes(self.size.get())
     }
 
     /// Make sure the `data` fits in `size`.
@@ -185,7 +183,7 @@ impl ScalarInt {
 
     #[inline]
     pub fn null(size: Size) -> Self {
-        Self { data: 0, size: size.bytes() as u8 }
+        Self { data: 0, size: NonZeroU8::new(size.bytes() as u8).unwrap() }
     }
 
     #[inline]
@@ -197,7 +195,7 @@ impl ScalarInt {
     pub fn try_from_uint(i: impl Into<u128>, size: Size) -> Option<Self> {
         let data = i.into();
         if size.truncate(data) == data {
-            Some(Self { data, size: size.bytes() as u8 })
+            Some(Self { data, size: NonZeroU8::new(size.bytes() as u8).unwrap() })
         } else {
             None
         }
@@ -209,7 +207,7 @@ impl ScalarInt {
         // `into` performed sign extension, we have to truncate
         let truncated = size.truncate(i as u128);
         if size.sign_extend(truncated) as i128 == i {
-            Some(Self { data: truncated, size: size.bytes() as u8 })
+            Some(Self { data: truncated, size: NonZeroU8::new(size.bytes() as u8).unwrap() })
         } else {
             None
         }
@@ -225,7 +223,7 @@ impl ScalarInt {
     #[inline]
     pub fn to_bits(self, target_size: Size) -> Result<u128, Size> {
         assert_ne!(target_size.bytes(), 0, "you should never look at the bits of a ZST");
-        if target_size.bytes() == u64::from(self.size) {
+        if target_size.bytes() == u64::from(self.size.get()) {
             self.check_data();
             Ok(self.data)
         } else {
@@ -234,8 +232,112 @@ impl ScalarInt {
     }
 
     #[inline]
-    pub fn try_to_machine_usize(&self, tcx: TyCtxt<'tcx>) -> Result<u64, Size> {
+    pub fn try_to_machine_usize<'tcx>(&self, tcx: TyCtxt<'tcx>) -> Result<u64, Size> {
         Ok(self.to_bits(tcx.data_layout.pointer_size)? as u64)
+    }
+
+    /// Tries to convert the `ScalarInt` to an unsigned integer of the given size.
+    /// Fails if the size of the `ScalarInt` is unequal to `size` and returns the
+    /// `ScalarInt`s size in that case.
+    #[inline]
+    pub fn try_to_uint(self, size: Size) -> Result<u128, Size> {
+        self.to_bits(size)
+    }
+
+    // Tries to convert the `ScalarInt` to `bool`. Fails if the `size` of the `ScalarInt`
+    // in not equal to `Size { raw: 1 }` or if the value is not 0 or 1 and returns the `size`
+    // value of the `ScalarInt` in that case.
+    #[inline]
+    pub fn try_to_bool(self) -> Result<bool, Size> {
+        match self.try_to_u8()? {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(self.size()),
+        }
+    }
+
+    // Tries to convert the `ScalarInt` to `u8`. Fails if the `size` of the `ScalarInt`
+    // in not equal to `Size { raw: 1 }` and returns the `size` value of the `ScalarInt` in
+    // that case.
+    #[inline]
+    pub fn try_to_u8(self) -> Result<u8, Size> {
+        self.to_bits(Size::from_bits(8)).map(|v| u8::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u16`. Fails if the size of the `ScalarInt`
+    /// in not equal to `Size { raw: 2 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u16(self) -> Result<u16, Size> {
+        self.to_bits(Size::from_bits(16)).map(|v| u16::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u32`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 4 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u32(self) -> Result<u32, Size> {
+        self.to_bits(Size::from_bits(32)).map(|v| u32::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u64`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 8 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u64(self) -> Result<u64, Size> {
+        self.to_bits(Size::from_bits(64)).map(|v| u64::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to `u128`. Fails if the `size` of the `ScalarInt`
+    /// in not equal to `Size { raw: 16 }` and returns the `size` value of the `ScalarInt` in
+    /// that case.
+    #[inline]
+    pub fn try_to_u128(self) -> Result<u128, Size> {
+        self.to_bits(Size::from_bits(128))
+    }
+
+    /// Tries to convert the `ScalarInt` to a signed integer of the given size.
+    /// Fails if the size of the `ScalarInt` is unequal to `size` and returns the
+    /// `ScalarInt`s size in that case.
+    #[inline]
+    pub fn try_to_int(self, size: Size) -> Result<i128, Size> {
+        let b = self.to_bits(size)?;
+        Ok(size.sign_extend(b) as i128)
+    }
+
+    /// Tries to convert the `ScalarInt` to i8.
+    /// Fails if the size of the `ScalarInt` is unequal to `Size { raw: 1 }`
+    /// and returns the `ScalarInt`s size in that case.
+    pub fn try_to_i8(self) -> Result<i8, Size> {
+        self.try_to_int(Size::from_bits(8)).map(|v| i8::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to i16.
+    /// Fails if the size of the `ScalarInt` is unequal to `Size { raw: 2 }`
+    /// and returns the `ScalarInt`s size in that case.
+    pub fn try_to_i16(self) -> Result<i16, Size> {
+        self.try_to_int(Size::from_bits(16)).map(|v| i16::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to i32.
+    /// Fails if the size of the `ScalarInt` is unequal to `Size { raw: 4 }`
+    /// and returns the `ScalarInt`s size in that case.
+    pub fn try_to_i32(self) -> Result<i32, Size> {
+        self.try_to_int(Size::from_bits(32)).map(|v| i32::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to i64.
+    /// Fails if the size of the `ScalarInt` is unequal to `Size { raw: 8 }`
+    /// and returns the `ScalarInt`s size in that case.
+    pub fn try_to_i64(self) -> Result<i64, Size> {
+        self.try_to_int(Size::from_bits(64)).map(|v| i64::try_from(v).unwrap())
+    }
+
+    /// Tries to convert the `ScalarInt` to i128.
+    /// Fails if the size of the `ScalarInt` is unequal to `Size { raw: 16 }`
+    /// and returns the `ScalarInt`s size in that case.
+    pub fn try_to_i128(self) -> Result<i128, Size> {
+        self.try_to_int(Size::from_bits(128)).map(|v| i128::try_from(v).unwrap())
     }
 }
 
@@ -247,7 +349,7 @@ macro_rules! from {
                 fn from(u: $ty) -> Self {
                     Self {
                         data: u128::from(u),
-                        size: std::mem::size_of::<$ty>() as u8,
+                        size: NonZeroU8::new(std::mem::size_of::<$ty>() as u8).unwrap(),
                     }
                 }
             }
@@ -290,16 +392,26 @@ impl TryFrom<ScalarInt> for bool {
 impl From<char> for ScalarInt {
     #[inline]
     fn from(c: char) -> Self {
-        Self { data: c as u128, size: std::mem::size_of::<char>() as u8 }
+        Self { data: c as u128, size: NonZeroU8::new(std::mem::size_of::<char>() as u8).unwrap() }
     }
 }
 
+/// Error returned when a conversion from ScalarInt to char fails.
+#[derive(Debug)]
+pub struct CharTryFromScalarInt;
+
 impl TryFrom<ScalarInt> for char {
-    type Error = Size;
+    type Error = CharTryFromScalarInt;
+
     #[inline]
-    fn try_from(int: ScalarInt) -> Result<Self, Size> {
-        int.to_bits(Size::from_bytes(std::mem::size_of::<char>()))
-            .map(|u| char::from_u32(u.try_into().unwrap()).unwrap())
+    fn try_from(int: ScalarInt) -> Result<Self, Self::Error> {
+        let Ok(bits) = int.to_bits(Size::from_bytes(std::mem::size_of::<char>())) else  {
+            return Err(CharTryFromScalarInt);
+        };
+        match char::from_u32(bits.try_into().unwrap()) {
+            Some(c) => Ok(c),
+            None => Err(CharTryFromScalarInt),
+        }
     }
 }
 
@@ -307,7 +419,7 @@ impl From<Single> for ScalarInt {
     #[inline]
     fn from(f: Single) -> Self {
         // We trust apfloat to give us properly truncated data.
-        Self { data: f.to_bits(), size: 4 }
+        Self { data: f.to_bits(), size: NonZeroU8::new((Single::BITS / 8) as u8).unwrap() }
     }
 }
 
@@ -323,7 +435,7 @@ impl From<Double> for ScalarInt {
     #[inline]
     fn from(f: Double) -> Self {
         // We trust apfloat to give us properly truncated data.
-        Self { data: f.to_bits(), size: 8 }
+        Self { data: f.to_bits(), size: NonZeroU8::new((Double::BITS / 8) as u8).unwrap() }
     }
 }
 
@@ -337,19 +449,18 @@ impl TryFrom<ScalarInt> for Double {
 
 impl fmt::Debug for ScalarInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        if self.size == 0 {
-            self.check_data();
-            write!(f, "<ZST>")
-        } else {
-            // Dispatch to LowerHex below.
-            write!(f, "0x{:x}", self)
-        }
+        // Dispatch to LowerHex below.
+        write!(f, "0x{:x}", self)
     }
 }
 
 impl fmt::LowerHex for ScalarInt {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.check_data();
+        if f.alternate() {
+            // Like regular ints, alternate flag adds leading `0x`.
+            write!(f, "0x")?;
+        }
         // Format as hex number wide enough to fit any value of the given `size`.
         // So data=20, size=1 will be "0x14", but with size=4 it'll be "0x00000014".
         // Using a block `{self.data}` here to force a copy instead of using `self.data`
@@ -357,7 +468,7 @@ impl fmt::LowerHex for ScalarInt {
         // would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
         // is UB.
-        write!(f, "{:01$x}", { self.data }, self.size as usize * 2)
+        write!(f, "{:01$x}", { self.data }, self.size.get() as usize * 2)
     }
 }
 
@@ -371,6 +482,13 @@ impl fmt::UpperHex for ScalarInt {
         // would thus borrow `self.data`. Since `Self`
         // is a packed struct, that would create a possibly unaligned reference, which
         // is UB.
-        write!(f, "{:01$X}", { self.data }, self.size as usize * 2)
+        write!(f, "{:01$X}", { self.data }, self.size.get() as usize * 2)
+    }
+}
+
+impl fmt::Display for ScalarInt {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.check_data();
+        write!(f, "{}", { self.data })
     }
 }

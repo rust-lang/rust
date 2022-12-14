@@ -1,4 +1,4 @@
-error[E0507]: cannot move out of `s.0` which is behind a shared reference
+error[E0507]: cannot move out of `s` which is behind a shared reference
   --> $DIR/simple.rs:38:17
    |
 LL |     let X(_t) = *s;
@@ -7,7 +7,7 @@ LL |     let X(_t) = *s;
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:42:30
    |
 LL |     if let Either::One(_t) = *r { }
@@ -16,7 +16,7 @@ LL |     if let Either::One(_t) = *r { }
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:46:33
    |
 LL |     while let Either::One(_t) = *r { }
@@ -25,7 +25,7 @@ LL |     while let Either::One(_t) = *r { }
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `Two` which is behind a shared reference
   --> $DIR/simple.rs:50:11
    |
 LL |     match *r {
@@ -37,7 +37,7 @@ LL |         Either::One(_t)
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:57:11
    |
 LL |     match *r {
@@ -49,7 +49,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `sm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `sm` which is behind a mutable reference
   --> $DIR/simple.rs:66:17
    |
 LL |     let X(_t) = *sm;
@@ -58,7 +58,7 @@ LL |     let X(_t) = *sm;
    |           data moved here
    |           move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:70:30
    |
 LL |     if let Either::One(_t) = *rm { }
@@ -67,7 +67,7 @@ LL |     if let Either::One(_t) = *rm { }
    |                        data moved here
    |                        move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:74:33
    |
 LL |     while let Either::One(_t) = *rm { }
@@ -76,7 +76,7 @@ LL |     while let Either::One(_t) = *rm { }
    |                           data moved here
    |                           move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `Two` which is behind a mutable reference
   --> $DIR/simple.rs:78:11
    |
 LL |     match *rm {
@@ -88,7 +88,7 @@ LL |         Either::One(_t)
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:85:11
    |
 LL |     match *rm {
@@ -100,7 +100,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:93:11
    |
 LL |     match *rm {
@@ -226,7 +226,7 @@ LL |         Either::One(_t) => (),
    |                     data moved here
    |                     move occurs because `_t` has type `X`, which does not implement the `Copy` trait
 
-error[E0507]: cannot move out of `s.0` which is behind a shared reference
+error[E0507]: cannot move out of `s` which is behind a shared reference
   --> $DIR/simple.rs:168:18
    |
 LL |     let &X(_t) = s;
@@ -236,7 +236,7 @@ LL |     let &X(_t) = s;
    |         |  move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `X(_t)`
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:172:31
    |
 LL |     if let &Either::One(_t) = r { }
@@ -246,7 +246,7 @@ LL |     if let &Either::One(_t) = r { }
    |            |            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |            help: consider removing the `&`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:176:34
    |
 LL |     while let &Either::One(_t) = r { }
@@ -256,7 +256,7 @@ LL |     while let &Either::One(_t) = r { }
    |               |            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |               help: consider removing the `&`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `Two` which is behind a shared reference
   --> $DIR/simple.rs:180:11
    |
 LL |     match r {
@@ -276,7 +276,7 @@ LL +
 LL ~         | &Either::Two(_t) => (),
    |
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:188:11
    |
 LL |     match r {
@@ -289,7 +289,7 @@ LL |         &Either::One(_t) => (),
    |         |            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `r.0` which is behind a shared reference
+error[E0507]: cannot move out of `r` as enum variant `One` which is behind a shared reference
   --> $DIR/simple.rs:195:11
    |
 LL |     match r {
@@ -302,7 +302,7 @@ LL |         &Either::One(_t) => (),
    |         |            move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |         help: consider removing the `&`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `sm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `sm` which is behind a mutable reference
   --> $DIR/simple.rs:207:22
    |
 LL |     let &mut X(_t) = sm;
@@ -312,7 +312,7 @@ LL |     let &mut X(_t) = sm;
    |         |      move occurs because `_t` has type `Y`, which does not implement the `Copy` trait
    |         help: consider removing the `&mut`: `X(_t)`
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:211:35
    |
 LL |     if let &mut Either::One(_t) = rm { }
@@ -322,7 +322,7 @@ LL |     if let &mut Either::One(_t) = rm { }
    |            |                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |            help: consider removing the `&mut`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:215:38
    |
 LL |     while let &mut Either::One(_t) = rm { }
@@ -332,7 +332,7 @@ LL |     while let &mut Either::One(_t) = rm { }
    |               |                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |               help: consider removing the `&mut`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `Two` which is behind a mutable reference
   --> $DIR/simple.rs:219:11
    |
 LL |     match rm {
@@ -354,7 +354,7 @@ help: consider removing the `&mut`
 LL |         Either::Two(_t) => (),
    |         ~~~~~~~~~~~~~~~
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:228:11
    |
 LL |     match rm {
@@ -367,7 +367,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |         help: consider removing the `&mut`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:235:11
    |
 LL |     match rm {
@@ -380,7 +380,7 @@ LL |         &mut Either::One(_t) => (),
    |         |                move occurs because `_t` has type `X`, which does not implement the `Copy` trait
    |         help: consider removing the `&mut`: `Either::One(_t)`
 
-error[E0507]: cannot move out of `rm.0` which is behind a mutable reference
+error[E0507]: cannot move out of `rm` as enum variant `One` which is behind a mutable reference
   --> $DIR/simple.rs:242:11
    |
 LL |     match rm {

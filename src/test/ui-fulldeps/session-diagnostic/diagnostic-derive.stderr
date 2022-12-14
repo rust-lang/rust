@@ -1,0 +1,671 @@
+error: unsupported type attribute for diagnostic derive enum
+  --> $DIR/diagnostic-derive.rs:39:1
+   |
+LL | #[diag(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:42:5
+   |
+LL |     Foo,
+   |     ^^^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:44:5
+   |
+LL |     Bar,
+   |     ^^^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag = ...]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:50:1
+   |
+LL | #[diag = "E0123"]
+   | ^^^^^^^^^^^^^^^^^
+
+error: `#[nonsense(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:55:1
+   |
+LL | #[nonsense(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:55:1
+   |
+LL | / #[nonsense(compiletest_example, code = "E0123")]
+LL | |
+LL | |
+LL | |
+LL | | struct InvalidStructAttr {}
+   | |___________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag("...")]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:62:8
+   |
+LL | #[diag("E0123")]
+   |        ^^^^^^^
+   |
+   = help: a diagnostic slug is required as the first argument
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:62:1
+   |
+LL | / #[diag("E0123")]
+LL | |
+LL | |
+LL | | struct InvalidLitNestedAttr {}
+   | |______________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag(nonsense(...))]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:73:8
+   |
+LL | #[diag(nonsense("foo"), code = "E0123", slug = "foo")]
+   |        ^^^^^^^^^^^^^^^
+   |
+   = help: a diagnostic slug is required as the first argument
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:73:1
+   |
+LL | / #[diag(nonsense("foo"), code = "E0123", slug = "foo")]
+LL | |
+LL | |
+LL | | struct InvalidNestedStructAttr1 {}
+   | |__________________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag(nonsense = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:79:8
+   |
+LL | #[diag(nonsense = "...", code = "E0123", slug = "foo")]
+   |        ^^^^^^^^^^^^^^^^
+   |
+   = help: only `code` is a valid nested attributes following the slug
+
+error: `#[diag(slug = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:79:42
+   |
+LL | #[diag(nonsense = "...", code = "E0123", slug = "foo")]
+   |                                          ^^^^^^^^^^^^
+   |
+   = help: only `code` is a valid nested attributes following the slug
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:79:1
+   |
+LL | / #[diag(nonsense = "...", code = "E0123", slug = "foo")]
+LL | |
+LL | |
+LL | |
+LL | | struct InvalidNestedStructAttr2 {}
+   | |__________________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag(nonsense = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:86:8
+   |
+LL | #[diag(nonsense = 4, code = "E0123", slug = "foo")]
+   |        ^^^^^^^^^^^^
+
+error: `#[diag(slug = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:86:38
+   |
+LL | #[diag(nonsense = 4, code = "E0123", slug = "foo")]
+   |                                      ^^^^^^^^^^^^
+   |
+   = help: only `code` is a valid nested attributes following the slug
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:86:1
+   |
+LL | / #[diag(nonsense = 4, code = "E0123", slug = "foo")]
+LL | |
+LL | |
+LL | |
+LL | | struct InvalidNestedStructAttr3 {}
+   | |__________________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[diag(slug = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:93:45
+   |
+LL | #[diag(compiletest_example, code = "E0123", slug = "foo")]
+   |                                             ^^^^^^^^^^^^
+   |
+   = help: only `code` is a valid nested attributes following the slug
+
+error: `#[suggestion = ...]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:100:5
+   |
+LL |     #[suggestion = "bar"]
+   |     ^^^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:107:8
+   |
+LL | #[diag(compiletest_example, code = "E0456")]
+   |        ^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:106:8
+   |
+LL | #[diag(compiletest_example, code = "E0123")]
+   |        ^^^^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:107:36
+   |
+LL | #[diag(compiletest_example, code = "E0456")]
+   |                                    ^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:106:36
+   |
+LL | #[diag(compiletest_example, code = "E0123")]
+   |                                    ^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:113:52
+   |
+LL | #[diag(compiletest_example, code = "E0456", code = "E0457")]
+   |                                                    ^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:113:36
+   |
+LL | #[diag(compiletest_example, code = "E0456", code = "E0457")]
+   |                                    ^^^^^^^
+
+error: `#[diag(compiletest_example)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:118:29
+   |
+LL | #[diag(compiletest_example, compiletest_example, code = "E0456")]
+   |                             ^^^^^^^^^^^^^^^^^^^
+   |
+   = help: diagnostic slug must be the first argument
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:123:1
+   |
+LL | struct KindNotProvided {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:126:1
+   |
+LL | / #[diag(code = "E0456")]
+LL | |
+LL | | struct SlugNotProvided {}
+   | |_________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: the `#[primary_span]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+  --> $DIR/diagnostic-derive.rs:137:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+
+error: `#[nonsense]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:145:5
+   |
+LL |     #[nonsense]
+   |     ^^^^^^^^^^^
+
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+  --> $DIR/diagnostic-derive.rs:162:5
+   |
+LL |     #[label(label)]
+   |     ^^^^^^^^^^^^^^^
+
+error: `name` doesn't refer to a field on this type
+  --> $DIR/diagnostic-derive.rs:170:37
+   |
+LL |     #[suggestion(suggestion, code = "{name}")]
+   |                                     ^^^^^^^^
+
+error: invalid format string: expected `'}'` but string was terminated
+  --> $DIR/diagnostic-derive.rs:175:10
+   |
+LL | #[derive(Diagnostic)]
+   |          ^^^^^^^^^^ expected `'}'` in format string
+   |
+   = note: if you intended to print `{`, you can escape it using `{{`
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: invalid format string: unmatched `}` found
+  --> $DIR/diagnostic-derive.rs:185:10
+   |
+LL | #[derive(Diagnostic)]
+   |          ^^^^^^^^^^ unmatched `}` in format string
+   |
+   = note: if you intended to print `}`, you can escape it using `}}`
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: the `#[label(...)]` attribute can only be applied to fields of type `Span` or `MultiSpan`
+  --> $DIR/diagnostic-derive.rs:205:5
+   |
+LL |     #[label(label)]
+   |     ^^^^^^^^^^^^^^^
+
+error: suggestion without `code = "..."`
+  --> $DIR/diagnostic-derive.rs:224:5
+   |
+LL |     #[suggestion(suggestion)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion(nonsense = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:232:18
+   |
+LL |     #[suggestion(nonsense = "bar")]
+   |                  ^^^^^^^^^^^^^^^^
+   |
+   = help: only `style`, `code` and `applicability` are valid nested attributes
+
+error: suggestion without `code = "..."`
+  --> $DIR/diagnostic-derive.rs:232:5
+   |
+LL |     #[suggestion(nonsense = "bar")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[suggestion(msg = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:241:18
+   |
+LL |     #[suggestion(msg = "bar")]
+   |                  ^^^^^^^^^^^
+   |
+   = help: only `style`, `code` and `applicability` are valid nested attributes
+
+error: suggestion without `code = "..."`
+  --> $DIR/diagnostic-derive.rs:241:5
+   |
+LL |     #[suggestion(msg = "bar")]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: wrong field type for suggestion
+  --> $DIR/diagnostic-derive.rs:264:5
+   |
+LL | /     #[suggestion(suggestion, code = "This is suggested code")]
+LL | |
+LL | |     suggestion: Applicability,
+   | |_____________________________^
+   |
+   = help: `#[suggestion(...)]` should be applied to fields of type `Span` or `(Span, Applicability)`
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:280:24
+   |
+LL |     suggestion: (Span, Span, Applicability),
+   |                        ^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:280:18
+   |
+LL |     suggestion: (Span, Span, Applicability),
+   |                  ^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:288:33
+   |
+LL |     suggestion: (Applicability, Applicability, Span),
+   |                                 ^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:288:18
+   |
+LL |     suggestion: (Applicability, Applicability, Span),
+   |                  ^^^^^^^^^^^^^
+
+error: `#[label = ...]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:295:5
+   |
+LL |     #[label = "bar"]
+   |     ^^^^^^^^^^^^^^^^
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:446:44
+   |
+LL |     #[suggestion(suggestion, code = "...", applicability = "maybe-incorrect")]
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:448:24
+   |
+LL |     suggestion: (Span, Applicability),
+   |                        ^^^^^^^^^^^^^
+
+error: invalid applicability
+  --> $DIR/diagnostic-derive.rs:454:44
+   |
+LL |     #[suggestion(suggestion, code = "...", applicability = "batman")]
+   |                                            ^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[label(foo)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:517:20
+   |
+LL |     #[label(label, foo)]
+   |                    ^^^
+   |
+   = help: a diagnostic slug must be the first argument to the attribute
+
+error: `#[label(foo = ...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:525:20
+   |
+LL |     #[label(label, foo = "...")]
+   |                    ^^^^^^^^^^^
+
+error: `#[label(foo(...))]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:533:20
+   |
+LL |     #[label(label, foo("..."))]
+   |                    ^^^^^^^^^^
+
+error: `#[primary_span]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:545:5
+   |
+LL |     #[primary_span]
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: the `primary_span` field attribute is not valid for lint diagnostics
+
+error: `#[error(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:565:1
+   |
+LL | #[error(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:565:1
+   |
+LL | / #[error(compiletest_example, code = "E0123")]
+LL | |
+LL | |
+LL | |
+LL | | struct ErrorAttribute {}
+   | |________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[warn_(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:572:1
+   |
+LL | #[warn_(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:572:1
+   |
+LL | / #[warn_(compiletest_example, code = "E0123")]
+LL | |
+LL | |
+LL | |
+LL | | struct WarnAttribute {}
+   | |_______________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[lint(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:579:1
+   |
+LL | #[lint(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:579:1
+   |
+LL | / #[lint(compiletest_example, code = "E0123")]
+LL | |
+LL | |
+LL | |
+LL | | struct LintAttributeOnSessionDiag {}
+   | |____________________________________^
+   |
+   = help: specify the slug as the first argument to the `#[diag(...)]` attribute, such as `#[diag(hir_analysis_example_error)]`
+
+error: `#[lint(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:586:1
+   |
+LL | #[lint(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[lint(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:586:1
+   |
+LL | #[lint(compiletest_example, code = "E0123")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: diagnostic slug not specified
+  --> $DIR/diagnostic-derive.rs:586:1
+   |
+LL | / #[lint(compiletest_example, code = "E0123")]
+LL | |
+LL | |
+LL | |
+LL | |
+LL | | struct LintAttributeOnLintDiag {}
+   | |_________________________________^
+   |
+   = help: specify the slug as the first argument to the attribute, such as `#[diag(compiletest_example)]`
+
+error: specified multiple times
+  --> $DIR/diagnostic-derive.rs:596:44
+   |
+LL |     #[suggestion(suggestion, code = "...", code = ",,,")]
+   |                                            ^^^^^^^^^^^^
+   |
+note: previously specified here
+  --> $DIR/diagnostic-derive.rs:596:30
+   |
+LL |     #[suggestion(suggestion, code = "...", code = ",,,")]
+   |                              ^^^^^^^^^^^^
+
+error: wrong types for suggestion
+  --> $DIR/diagnostic-derive.rs:605:24
+   |
+LL |     suggestion: (Span, usize),
+   |                        ^^^^^
+   |
+   = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
+
+error: wrong types for suggestion
+  --> $DIR/diagnostic-derive.rs:613:17
+   |
+LL |     suggestion: (Span,),
+   |                 ^^^^^^^
+   |
+   = help: `#[suggestion(...)]` on a tuple field must be applied to fields of type `(Span, Applicability)`
+
+error: suggestion without `code = "..."`
+  --> $DIR/diagnostic-derive.rs:620:5
+   |
+LL |     #[suggestion(suggestion)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: `#[multipart_suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:627:1
+   |
+LL | #[multipart_suggestion(suggestion)]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider creating a `Subdiagnostic` instead
+
+error: `#[multipart_suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:630:1
+   |
+LL | #[multipart_suggestion()]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider creating a `Subdiagnostic` instead
+
+error: `#[multipart_suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:634:5
+   |
+LL |     #[multipart_suggestion(suggestion)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider creating a `Subdiagnostic` instead
+
+error: `#[suggestion(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:642:1
+   |
+LL | #[suggestion(suggestion, code = "...")]
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `#[label]` and `#[suggestion]` can only be applied to fields
+
+error: `#[label]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:651:1
+   |
+LL | #[label]
+   | ^^^^^^^^
+   |
+   = help: `#[label]` and `#[suggestion]` can only be applied to fields
+
+error: `#[subdiagnostic(bad)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:685:21
+   |
+LL |     #[subdiagnostic(bad)]
+   |                     ^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic = ...]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:693:5
+   |
+LL |     #[subdiagnostic = "bad"]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:701:5
+   |
+LL |     #[subdiagnostic(bad, bad)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic("...")]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:709:21
+   |
+LL |     #[subdiagnostic("bad")]
+   |                     ^^^^^
+   |
+   = help: `eager` is the only supported nested attribute for `subdiagnostic`
+
+error: `#[subdiagnostic(...)]` is not a valid attribute
+  --> $DIR/diagnostic-derive.rs:717:5
+   |
+LL |     #[subdiagnostic(eager)]
+   |     ^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: eager subdiagnostics are not supported on lints
+
+error: expected at least one string literal for `code(...)`
+  --> $DIR/diagnostic-derive.rs:775:18
+   |
+LL |     #[suggestion(code())]
+   |                  ^^^^^^
+
+error: `code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:783:23
+   |
+LL |     #[suggestion(code(foo))]
+   |                       ^^^
+
+error: `code = "..."`/`code(...)` must contain only string literals
+  --> $DIR/diagnostic-derive.rs:791:18
+   |
+LL |     #[suggestion(code = 3)]
+   |                  ^^^^^^^^
+
+error: cannot find attribute `nonsense` in this scope
+  --> $DIR/diagnostic-derive.rs:55:3
+   |
+LL | #[nonsense(compiletest_example, code = "E0123")]
+   |   ^^^^^^^^
+
+error: cannot find attribute `nonsense` in this scope
+  --> $DIR/diagnostic-derive.rs:145:7
+   |
+LL |     #[nonsense]
+   |       ^^^^^^^^
+
+error: cannot find attribute `error` in this scope
+  --> $DIR/diagnostic-derive.rs:565:3
+   |
+LL | #[error(compiletest_example, code = "E0123")]
+   |   ^^^^^
+
+error: cannot find attribute `warn_` in this scope
+  --> $DIR/diagnostic-derive.rs:572:3
+   |
+LL | #[warn_(compiletest_example, code = "E0123")]
+   |   ^^^^^ help: a built-in attribute with a similar name exists: `warn`
+
+error: cannot find attribute `lint` in this scope
+  --> $DIR/diagnostic-derive.rs:579:3
+   |
+LL | #[lint(compiletest_example, code = "E0123")]
+   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+
+error: cannot find attribute `lint` in this scope
+  --> $DIR/diagnostic-derive.rs:586:3
+   |
+LL | #[lint(compiletest_example, code = "E0123")]
+   |   ^^^^ help: a built-in attribute with a similar name exists: `link`
+
+error: cannot find attribute `multipart_suggestion` in this scope
+  --> $DIR/diagnostic-derive.rs:627:3
+   |
+LL | #[multipart_suggestion(suggestion)]
+   |   ^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `multipart_suggestion` in this scope
+  --> $DIR/diagnostic-derive.rs:630:3
+   |
+LL | #[multipart_suggestion()]
+   |   ^^^^^^^^^^^^^^^^^^^^
+
+error: cannot find attribute `multipart_suggestion` in this scope
+  --> $DIR/diagnostic-derive.rs:634:7
+   |
+LL |     #[multipart_suggestion(suggestion)]
+   |       ^^^^^^^^^^^^^^^^^^^^
+
+error[E0425]: cannot find value `nonsense` in module `rustc_errors::fluent`
+  --> $DIR/diagnostic-derive.rs:68:8
+   |
+LL | #[diag(nonsense, code = "E0123")]
+   |        ^^^^^^^^ not found in `rustc_errors::fluent`
+
+error[E0277]: the trait bound `Hello: IntoDiagnosticArg` is not satisfied
+  --> $DIR/diagnostic-derive.rs:339:10
+   |
+LL | #[derive(Diagnostic)]
+   |          ^^^^^^^^^^ the trait `IntoDiagnosticArg` is not implemented for `Hello`
+   |
+   = help: normalized in stderr
+note: required by a bound in `DiagnosticBuilder::<'a, G>::set_arg`
+  --> $COMPILER_DIR/rustc_errors/src/diagnostic_builder.rs:LL:CC
+   |
+LL |         arg: impl IntoDiagnosticArg,
+   |                   ^^^^^^^^^^^^^^^^^ required by this bound in `DiagnosticBuilder::<'a, G>::set_arg`
+   = note: this error originates in the derive macro `Diagnostic` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 83 previous errors
+
+Some errors have detailed explanations: E0277, E0425.
+For more information about an error, try `rustc --explain E0277`.

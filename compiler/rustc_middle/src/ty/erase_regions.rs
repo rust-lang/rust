@@ -1,5 +1,5 @@
-use crate::mir;
-use crate::ty::fold::{TypeFoldable, TypeFolder};
+use crate::ty::fold::{TypeFoldable, TypeFolder, TypeSuperFoldable};
+use crate::ty::visit::TypeVisitable;
 use crate::ty::{self, Ty, TyCtxt, TypeFlags};
 
 pub(super) fn provide(providers: &mut ty::query::Providers) {
@@ -21,9 +21,7 @@ impl<'tcx> TyCtxt<'tcx> {
         T: TypeFoldable<'tcx>,
     {
         // If there's nothing to erase avoid performing the query at all
-        if !value
-            .has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_POTENTIAL_FREE_REGIONS)
-        {
+        if !value.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND | TypeFlags::HAS_FREE_REGIONS) {
             return value;
         }
         debug!("erase_regions({:?})", value);
@@ -37,7 +35,7 @@ struct RegionEraserVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
 }
 
-impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
+impl<'tcx> TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -50,7 +48,7 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
-        let u = self.tcx.anonymize_late_bound_regions(t);
+        let u = self.tcx.anonymize_bound_vars(t);
         u.super_fold_with(self)
     }
 
@@ -67,9 +65,5 @@ impl TypeFolder<'tcx> for RegionEraserVisitor<'tcx> {
             ty::ReLateBound(..) => r,
             _ => self.tcx.lifetimes.re_erased,
         }
-    }
-
-    fn fold_mir_const(&mut self, c: mir::ConstantKind<'tcx>) -> mir::ConstantKind<'tcx> {
-        c.super_fold_with(self)
     }
 }

@@ -4,15 +4,27 @@ use super::{Command, Output, Stdio};
 use crate::io::ErrorKind;
 use crate::str;
 
-// FIXME(#10380) these tests should not all be ignored on android.
+fn known_command() -> Command {
+    if cfg!(windows) { Command::new("help") } else { Command::new("echo") }
+}
+
+#[cfg(target_os = "android")]
+fn shell_cmd() -> Command {
+    Command::new("/system/bin/sh")
+}
+
+#[cfg(not(target_os = "android"))]
+fn shell_cmd() -> Command {
+    Command::new("/bin/sh")
+}
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn smoke() {
     let p = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 0"]).spawn()
     } else {
-        Command::new("true").spawn()
+        shell_cmd().arg("-c").arg("true").spawn()
     };
     assert!(p.is_ok());
     let mut p = p.unwrap();
@@ -29,12 +41,12 @@ fn smoke_failure() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn exit_reported_right() {
     let p = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn()
     } else {
-        Command::new("false").spawn()
+        shell_cmd().arg("-c").arg("false").spawn()
     };
     assert!(p.is_ok());
     let mut p = p.unwrap();
@@ -44,16 +56,15 @@ fn exit_reported_right() {
 
 #[test]
 #[cfg(unix)]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn signal_reported_right() {
     use crate::os::unix::process::ExitStatusExt;
 
-    let mut p =
-        Command::new("/bin/sh").arg("-c").arg("read a").stdin(Stdio::piped()).spawn().unwrap();
+    let mut p = shell_cmd().arg("-c").arg("read a").stdin(Stdio::piped()).spawn().unwrap();
     p.kill().unwrap();
     match p.wait().unwrap().signal() {
         Some(9) => {}
-        result => panic!("not terminated by signal 9 (instead, {:?})", result),
+        result => panic!("not terminated by signal 9 (instead, {result:?})"),
     }
 }
 
@@ -69,31 +80,31 @@ pub fn run_output(mut cmd: Command) -> String {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn stdout_works() {
     if cfg!(target_os = "windows") {
         let mut cmd = Command::new("cmd");
         cmd.args(&["/C", "echo foobar"]).stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "foobar\r\n");
     } else {
-        let mut cmd = Command::new("echo");
-        cmd.arg("foobar").stdout(Stdio::piped());
+        let mut cmd = shell_cmd();
+        cmd.arg("-c").arg("echo foobar").stdout(Stdio::piped());
         assert_eq!(run_output(cmd), "foobar\n");
     }
 }
 
 #[test]
-#[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
+#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
 fn set_current_dir_works() {
-    let mut cmd = Command::new("/bin/sh");
+    let mut cmd = shell_cmd();
     cmd.arg("-c").arg("pwd").current_dir("/").stdout(Stdio::piped());
     assert_eq!(run_output(cmd), "/\n");
 }
 
 #[test]
-#[cfg_attr(any(windows, target_os = "android", target_os = "vxworks"), ignore)]
+#[cfg_attr(any(windows, target_os = "vxworks"), ignore)]
 fn stdin_works() {
-    let mut p = Command::new("/bin/sh")
+    let mut p = shell_cmd()
         .arg("-c")
         .arg("read line; echo $line")
         .stdin(Stdio::piped())
@@ -109,19 +120,19 @@ fn stdin_works() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_status() {
     let mut status = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).status().unwrap()
     } else {
-        Command::new("false").status().unwrap()
+        shell_cmd().arg("-c").arg("false").status().unwrap()
     };
     assert!(status.code() == Some(1));
 
     status = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 0"]).status().unwrap()
     } else {
-        Command::new("true").status().unwrap()
+        shell_cmd().arg("-c").arg("true").status().unwrap()
     };
     assert!(status.success());
 }
@@ -135,12 +146,12 @@ fn test_process_output_fail_to_start() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_output() {
     let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "echo hello"]).output().unwrap()
     } else {
-        Command::new("echo").arg("hello").output().unwrap()
+        shell_cmd().arg("-c").arg("echo hello").output().unwrap()
     };
     let output_str = str::from_utf8(&stdout).unwrap();
 
@@ -150,7 +161,7 @@ fn test_process_output_output() {
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_process_output_error() {
     let Output { status, stdout, stderr } = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "mkdir ."]).output().unwrap()
@@ -158,41 +169,42 @@ fn test_process_output_error() {
         Command::new("mkdir").arg("./").output().unwrap()
     };
 
-    assert!(status.code() == Some(1));
+    assert!(status.code().is_some());
+    assert!(status.code() != Some(0));
     assert_eq!(stdout, Vec::new());
     assert!(!stderr.is_empty());
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_once() {
     let mut prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
     } else {
-        Command::new("false").spawn().unwrap()
+        shell_cmd().arg("-c").arg("false").spawn().unwrap()
     };
     assert!(prog.wait().unwrap().code() == Some(1));
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_finish_twice() {
     let mut prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "exit 1"]).spawn().unwrap()
     } else {
-        Command::new("false").spawn().unwrap()
+        shell_cmd().arg("-c").arg("false").spawn().unwrap()
     };
     assert!(prog.wait().unwrap().code() == Some(1));
     assert!(prog.wait().unwrap().code() == Some(1));
 }
 
 #[test]
-#[cfg_attr(any(target_os = "vxworks", target_os = "android"), ignore)]
+#[cfg_attr(any(target_os = "vxworks"), ignore)]
 fn test_wait_with_output_once() {
     let prog = if cfg!(target_os = "windows") {
         Command::new("cmd").args(&["/C", "echo hello"]).stdout(Stdio::piped()).spawn().unwrap()
     } else {
-        Command::new("echo").arg("hello").stdout(Stdio::piped()).spawn().unwrap()
+        shell_cmd().arg("-c").arg("echo hello").stdout(Stdio::piped()).spawn().unwrap()
     };
 
     let Output { status, stdout, stderr } = prog.wait_with_output().unwrap();
@@ -240,8 +252,7 @@ fn test_override_env() {
 
     assert!(
         output.contains("RUN_TEST_NEW_ENV=123"),
-        "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}",
-        output
+        "didn't find RUN_TEST_NEW_ENV inside of:\n\n{output}",
     );
 }
 
@@ -253,8 +264,7 @@ fn test_add_to_env() {
 
     assert!(
         output.contains("RUN_TEST_NEW_ENV=123"),
-        "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}",
-        output
+        "didn't find RUN_TEST_NEW_ENV inside of:\n\n{output}"
     );
 }
 
@@ -276,13 +286,11 @@ fn test_capture_env_at_spawn() {
 
     assert!(
         output.contains("RUN_TEST_NEW_ENV1=123"),
-        "didn't find RUN_TEST_NEW_ENV1 inside of:\n\n{}",
-        output
+        "didn't find RUN_TEST_NEW_ENV1 inside of:\n\n{output}"
     );
     assert!(
         output.contains("RUN_TEST_NEW_ENV2=456"),
-        "didn't find RUN_TEST_NEW_ENV2 inside of:\n\n{}",
-        output
+        "didn't find RUN_TEST_NEW_ENV2 inside of:\n\n{output}"
     );
 }
 
@@ -297,7 +305,7 @@ fn test_interior_nul_in_progname_is_error() {
 
 #[test]
 fn test_interior_nul_in_arg_is_error() {
-    match Command::new("echo").arg("has-some-\0\0s-inside").spawn() {
+    match known_command().arg("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -305,7 +313,7 @@ fn test_interior_nul_in_arg_is_error() {
 
 #[test]
 fn test_interior_nul_in_args_is_error() {
-    match Command::new("echo").args(&["has-some-\0\0s-inside"]).spawn() {
+    match known_command().args(&["has-some-\0\0s-inside"]).spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -313,7 +321,7 @@ fn test_interior_nul_in_args_is_error() {
 
 #[test]
 fn test_interior_nul_in_current_dir_is_error() {
-    match Command::new("echo").current_dir("has-some-\0\0s-inside").spawn() {
+    match known_command().current_dir("has-some-\0\0s-inside").spawn() {
         Err(e) => assert_eq!(e.kind(), ErrorKind::InvalidInput),
         Ok(_) => panic!(),
     }
@@ -407,4 +415,44 @@ fn test_command_implements_send_sync() {
 fn env_empty() {
     let p = Command::new("cmd").args(&["/C", "exit 0"]).env_clear().spawn();
     assert!(p.is_ok());
+}
+
+// See issue #91991
+#[test]
+#[cfg(windows)]
+fn run_bat_script() {
+    let tempdir = crate::sys_common::io::test::tmpdir();
+    let script_path = tempdir.join("hello.cmd");
+
+    crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
+    let output = Command::new(&script_path)
+        .arg("fellow Rustaceans")
+        .stdout(crate::process::Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
+}
+
+// See issue #95178
+#[test]
+#[cfg(windows)]
+fn run_canonical_bat_script() {
+    let tempdir = crate::sys_common::io::test::tmpdir();
+    let script_path = tempdir.join("hello.cmd");
+
+    crate::fs::write(&script_path, "@echo Hello, %~1!").unwrap();
+
+    // Try using a canonical path
+    let output = Command::new(&script_path.canonicalize().unwrap())
+        .arg("fellow Rustaceans")
+        .stdout(crate::process::Stdio::piped())
+        .spawn()
+        .unwrap()
+        .wait_with_output()
+        .unwrap();
+    assert!(output.status.success());
+    assert_eq!(String::from_utf8_lossy(&output.stdout).trim(), "Hello, fellow Rustaceans!");
 }

@@ -1,71 +1,54 @@
-error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
+error: lifetime may not live long enough
   --> $DIR/regions-outlives-projection-container.rs:36:13
    |
+LL | fn with_assoc<'a,'b>() {
+   |               -- -- lifetime `'b` defined here
+   |               |
+   |               lifetime `'a` defined here
+...
 LL |     let _x: &'a WithAssoc<TheType<'b>> = loop { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
-note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:28:15
-   |
-LL | fn with_assoc<'a,'b>() {
-   |               ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:28:18
-   |
-LL | fn with_assoc<'a,'b>() {
-   |                  ^^
+   = help: consider adding the following bound: `'b: 'a`
 
-error[E0491]: in type `&'a WithoutAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
+error: lifetime may not live long enough
   --> $DIR/regions-outlives-projection-container.rs:54:13
    |
+LL | fn without_assoc<'a,'b>() {
+   |                  -- -- lifetime `'b` defined here
+   |                  |
+   |                  lifetime `'a` defined here
+...
 LL |     let _x: &'a WithoutAssoc<TheType<'b>> = loop { };
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ type annotation requires that `'b` must outlive `'a`
    |
-note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:50:18
-   |
-LL | fn without_assoc<'a,'b>() {
-   |                  ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:50:21
-   |
-LL | fn without_assoc<'a,'b>() {
-   |                     ^^
+   = help: consider adding the following bound: `'b: 'a`
 
-error[E0491]: in type `&'a WithAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:63:12
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:63:5
    |
+LL | fn call_with_assoc<'a,'b>() {
+   |                    -- -- lifetime `'b` defined here
+   |                    |
+   |                    lifetime `'a` defined here
+...
 LL |     call::<&'a WithAssoc<TheType<'b>>>();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
-note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:58:20
-   |
-LL | fn call_with_assoc<'a,'b>() {
-   |                    ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:58:23
-   |
-LL | fn call_with_assoc<'a,'b>() {
-   |                       ^^
+   = help: consider adding the following bound: `'b: 'a`
 
-error[E0491]: in type `&'a WithoutAssoc<TheType<'b>>`, reference has a longer lifetime than the data it references
-  --> $DIR/regions-outlives-projection-container.rs:70:12
+error: lifetime may not live long enough
+  --> $DIR/regions-outlives-projection-container.rs:70:5
    |
+LL | fn call_without_assoc<'a,'b>() {
+   |                       -- -- lifetime `'b` defined here
+   |                       |
+   |                       lifetime `'a` defined here
+...
 LL |     call::<&'a WithoutAssoc<TheType<'b>>>();
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ requires that `'b` must outlive `'a`
    |
-note: the pointer is valid for the lifetime `'a` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:67:23
-   |
-LL | fn call_without_assoc<'a,'b>() {
-   |                       ^^
-note: but the referenced data is only valid for the lifetime `'b` as defined here
-  --> $DIR/regions-outlives-projection-container.rs:67:26
-   |
-LL | fn call_without_assoc<'a,'b>() {
-   |                          ^^
+   = help: consider adding the following bound: `'b: 'a`
 
 error: aborting due to 4 previous errors
 
-For more information about this error, try `rustc --explain E0491`.

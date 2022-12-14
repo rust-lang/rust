@@ -207,12 +207,12 @@ pub fn parse_number(s: &[u8], negative: bool) -> Option<Number> {
 /// Parse a partial representation of a special, non-finite float.
 fn parse_partial_inf_nan<F: RawFloat>(s: &[u8]) -> Option<(F, usize)> {
     fn parse_inf_rest(s: &[u8]) -> usize {
-        if s.len() >= 8 && s[3..].as_ref().eq_ignore_case(b"inity") { 8 } else { 3 }
+        if s.len() >= 8 && s[3..].as_ref().starts_with_ignore_case(b"inity") { 8 } else { 3 }
     }
     if s.len() >= 3 {
-        if s.eq_ignore_case(b"nan") {
+        if s.starts_with_ignore_case(b"nan") {
             return Some((F::NAN, 3));
-        } else if s.eq_ignore_case(b"inf") {
+        } else if s.starts_with_ignore_case(b"inf") {
             return Some((F::INFINITY, parse_inf_rest(s)));
         }
     }

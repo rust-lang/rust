@@ -1,5 +1,5 @@
 #![crate_name = "foo"]
-#![feature(doc_keyword)]
+#![feature(rustdoc_internals)]
 
 // tests for the html <title> element
 

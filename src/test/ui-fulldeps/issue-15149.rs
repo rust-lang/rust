@@ -5,10 +5,11 @@
 // ignore-cross-compile
 
 use std::env;
+use std::ffi::OsStr;
 use std::fs;
+use std::path::PathBuf;
 use std::process;
 use std::str;
-use std::path::PathBuf;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -18,8 +19,8 @@ fn main() {
         // checking that it ends_with the executable name. This
         // is needed because of Windows, which has a different behavior.
         // See #15149 for more info.
-        return assert!(args[0].ends_with(&format!("mytest{}",
-                                                  env::consts::EXE_SUFFIX)));
+        let my_path = env::current_exe().unwrap();
+        return assert_eq!(my_path.file_stem(), Some(OsStr::new("mytest")));
     }
 
     test();
@@ -28,14 +29,13 @@ fn main() {
 fn test() {
     // If we're the parent, copy our own binary to a new directory.
     let my_path = env::current_exe().unwrap();
-    let my_dir  = my_path.parent().unwrap();
+    let my_dir = my_path.parent().unwrap();
 
     let child_dir = PathBuf::from(env::var_os("RUST_TEST_TMPDIR").unwrap());
     let child_dir = child_dir.join("issue-15140-child");
     fs::create_dir_all(&child_dir).unwrap();
 
-    let child_path = child_dir.join(&format!("mytest{}",
-                                             env::consts::EXE_SUFFIX));
+    let child_path = child_dir.join(&format!("mytest{}", env::consts::EXE_SUFFIX));
     fs::copy(&my_path, &child_path).unwrap();
 
     // Append the new directory to our own PATH.
@@ -45,12 +45,13 @@ fn test() {
         env::join_paths(paths).unwrap()
     };
 
-    let child_output = process::Command::new("mytest").env("PATH", &path)
-                                                      .arg("child")
-                                                      .output().unwrap();
+    let child_output =
+        process::Command::new("mytest").env("PATH", &path).arg("child").output().unwrap();
 
-    assert!(child_output.status.success(),
-            "child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
-            str::from_utf8(&child_output.stdout).unwrap(),
-            str::from_utf8(&child_output.stderr).unwrap());
+    assert!(
+        child_output.status.success(),
+        "child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
+        str::from_utf8(&child_output.stdout).unwrap(),
+        str::from_utf8(&child_output.stderr).unwrap()
+    );
 }

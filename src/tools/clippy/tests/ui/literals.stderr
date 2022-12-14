@@ -135,5 +135,38 @@ error: digits of hex or binary literal not grouped by four
 LL |     let fail25 = 0b01_100_101;
    |                  ^^^^^^^^^^^^ help: consider: `0b0110_0101`
 
-error: aborting due to 18 previous errors
+error: this is a decimal constant
+  --> $DIR/literals.rs:46:13
+   |
+LL |     let _ = 08;
+   |             ^^
+   |
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   |
+LL |     let _ = 8;
+   |             ~
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:47:13
+   |
+LL |     let _ = 09;
+   |             ^^
+   |
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   |
+LL |     let _ = 9;
+   |             ~
+
+error: this is a decimal constant
+  --> $DIR/literals.rs:48:13
+   |
+LL |     let _ = 089;
+   |             ^^^
+   |
+help: if you mean to use a decimal constant, remove the `0` to avoid confusion
+   |
+LL |     let _ = 89;
+   |             ~~
+
+error: aborting due to 21 previous errors
 

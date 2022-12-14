@@ -20,7 +20,7 @@
 //! Since those syscalls have requirements that cannot be fully checked in advance and
 //! gathering additional information about file descriptors would require additional syscalls
 //! anyway it simply attempts to use them one after another (guided by inaccurate hints) to
-//! figure out which one works and and falls back to the generic read-write copy loop if none of them
+//! figure out which one works and falls back to the generic read-write copy loop if none of them
 //! does.
 //! Once a working syscall is found for a pair of file descriptors it will be called in a loop
 //! until the copy operation is completed.
@@ -45,7 +45,6 @@
 //! * complexity
 
 use crate::cmp::min;
-use crate::convert::TryInto;
 use crate::fs::{File, Metadata};
 use crate::io::copy::generic_copy;
 use crate::io::{
@@ -104,7 +103,7 @@ impl FdMeta {
 
     fn potential_sendfile_source(&self) -> bool {
         match self {
-            // procfs erronously shows 0 length on non-empty readable files.
+            // procfs erroneously shows 0 length on non-empty readable files.
             // and if a file is truly empty then a `read` syscall will determine that and skip the write syscall
             // thus there would be benefit from attempting sendfile
             FdMeta::Metadata(meta)
@@ -576,7 +575,7 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                 return match err.raw_os_error() {
                     // when file offset + max_length > u64::MAX
                     Some(EOVERFLOW) => CopyResult::Fallback(written),
-                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) => {
+                    Some(ENOSYS | EXDEV | EINVAL | EPERM | EOPNOTSUPP | EBADF) if written == 0 => {
                         // Try fallback io::copy if either:
                         // - Kernel version is < 4.5 (ENOSYS¹)
                         // - Files are mounted on different fs (EXDEV)
@@ -584,12 +583,14 @@ pub(super) fn copy_regular_files(reader: RawFd, writer: RawFd, max_len: u64) -> 
                         // - copy_file_range file is immutable or syscall is blocked by seccomp¹ (EPERM)
                         // - copy_file_range cannot be used with pipes or device nodes (EINVAL)
                         // - the writer fd was opened with O_APPEND (EBADF²)
+                        // and no bytes were written successfully yet.  (All these errnos should
+                        // not be returned if something was already written, but they happen in
+                        // the wild, see #91152.)
                         //
                         // ¹ these cases should be detected by the initial probe but we handle them here
                         //   anyway in case syscall interception changes during runtime
                         // ² actually invalid file descriptors would cause this too, but in that case
                         //   the fallback code path is expected to encounter the same error again
-                        assert_eq!(written, 0);
                         CopyResult::Fallback(0)
                     }
                     _ => CopyResult::Error(err, written),
@@ -612,6 +613,9 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
     static HAS_SENDFILE: AtomicBool = AtomicBool::new(true);
     static HAS_SPLICE: AtomicBool = AtomicBool::new(true);
 
+    // Android builds use feature level 14, but the libc wrapper for splice is
+    // gated on feature level 21+, so we have to invoke the syscall directly.
+    #[cfg(target_os = "android")]
     syscall! {
         fn splice(
             srcfd: libc::c_int,
@@ -622,6 +626,9 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
             flags: libc::c_int
         ) -> libc::ssize_t
     }
+
+    #[cfg(target_os = "linux")]
+    use libc::splice;
 
     match mode {
         SpliceMode::Sendfile if !HAS_SENDFILE.load(Ordering::Relaxed) => {

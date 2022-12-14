@@ -4,19 +4,19 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
-libc = "0.2"
+libloading = "0.7.1"
 tracing = "0.1"
-rustc-rayon-core = "0.3.1"
-rayon = { version = "0.3.1", package = "rustc-rayon" }
-smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
+rustc-rayon-core = { version = "0.4.0", optional = true }
+rayon = { version = "0.4.0", package = "rustc-rayon", optional = true }
+smallvec = { version = "1.8.1", features = ["union", "may_dangle"] }
 rustc_ast = { path = "../rustc_ast" }
 rustc_attr = { path = "../rustc_attr" }
 rustc_borrowck = { path = "../rustc_borrowck" }
 rustc_builtin_macros = { path = "../rustc_builtin_macros" }
 rustc_expand = { path = "../rustc_expand" }
+rustc_macros = { path = "../rustc_macros" }
 rustc_parse = { path = "../rustc_parse" }
 rustc_session = { path = "../rustc_session" }
 rustc_span = { path = "../rustc_span" }
@@ -37,7 +37,8 @@ rustc_mir_build = { path = "../rustc_mir_build" }
 rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_passes = { path = "../rustc_passes" }
-rustc_typeck = { path = "../rustc_typeck" }
+rustc_hir_analysis = { path = "../rustc_hir_analysis" }
+rustc_hir_typeck = { path = "../rustc_hir_typeck" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
@@ -46,13 +47,10 @@ rustc_query_impl = { path = "../rustc_query_impl" }
 rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
-tempfile = "3.2"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["libloaderapi"] }
 
 [dev-dependencies]
 rustc_target = { path = "../rustc_target" }
 
 [features]
 llvm = ['rustc_codegen_llvm']
+rustc_use_parallel_compiler = ['rayon', 'rustc-rayon-core', 'rustc_query_impl/rustc_use_parallel_compiler', 'rustc_errors/rustc_use_parallel_compiler']

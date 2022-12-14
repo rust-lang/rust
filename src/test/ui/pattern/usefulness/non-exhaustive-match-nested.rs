@@ -12,7 +12,7 @@ fn match_nested_vecs<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -> &'s
 
 fn main() {
     let x = T::A(U::C);
-    match x { //~ ERROR non-exhaustive patterns: `A(C)` not covered
+    match x { //~ ERROR non-exhaustive patterns: `T::A(U::C)` not covered
         T::A(U::D) => { panic!("hello"); }
         T::B => { panic!("goodbye"); }
     }

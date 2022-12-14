@@ -752,7 +752,6 @@ impl<A: Step> Iterator for ops::Range<A> {
     }
 
     #[inline]
-    #[doc(hidden)]
     unsafe fn __iterator_get_unchecked(&mut self, idx: usize) -> Self::Item
     where
         Self: TrustedRandomAccessNoCoerce,
@@ -777,7 +776,7 @@ range_exact_iter_impl! {
     usize u8 u16
     isize i8 i16
 
-    // These are incorect per the reasoning above,
+    // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.0.0.
     // So e.g. `(0..66_000_u32).len()` for example will compile without error or warnings
     // on 16-bit platforms, but continue to give a wrong result.
@@ -805,7 +804,7 @@ range_incl_exact_iter_impl! {
     u8
     i8
 
-    // These are incorect per the reasoning above,
+    // These are incorrect per the reasoning above,
     // but removing them would be a breaking change as they were stabilized in Rust 1.26.0.
     // So e.g. `(0..=u16::MAX).len()` for example will compile without error or warnings
     // on 16-bit platforms, but continue to give a wrong result.
@@ -1151,19 +1150,7 @@ impl<A: Step> Iterator for ops::RangeInclusive<A> {
         self.spec_try_fold(init, f)
     }
 
-    #[inline]
-    fn fold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_fold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { fold -> try_fold }
 
     #[inline]
     fn last(mut self) -> Option<A> {
@@ -1231,19 +1218,7 @@ impl<A: Step> DoubleEndedIterator for ops::RangeInclusive<A> {
         self.spec_try_rfold(init, f)
     }
 
-    #[inline]
-    fn rfold<B, F>(mut self, init: B, f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        #[inline]
-        fn ok<B, T>(mut f: impl FnMut(B, T) -> B) -> impl FnMut(B, T) -> Result<B, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(f)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 }
 
 // Safety: See above implementation for `ops::Range<A>`

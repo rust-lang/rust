@@ -1,0 +1,8 @@
+error: expected one of `!`, `.`, `::`, `;`, `?`, `{`, `}`, or an operator, found `rust`
+  --> $DIR/type-ascription-and-other-error.rs:2:9
+   |
+LL |     not rust;
+   |         ^^^^ expected one of 8 possible tokens
+
+error: aborting due to previous error
+

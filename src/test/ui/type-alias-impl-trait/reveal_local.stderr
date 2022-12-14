@@ -1,0 +1,28 @@
+error[E0391]: cycle detected when computing type of `Foo::{opaque#0}`
+  --> $DIR/reveal_local.rs:5:12
+   |
+LL | type Foo = impl Debug;
+   |            ^^^^^^^^^^
+   |
+note: ...which requires type-checking `not_good`...
+  --> $DIR/reveal_local.rs:13:5
+   |
+LL |     is_send::<Foo>();
+   |     ^^^^^^^^^^^^^^
+   = note: ...which requires evaluating trait selection obligation `Foo: core::marker::Send`...
+   = note: ...which again requires computing type of `Foo::{opaque#0}`, completing the cycle
+note: cycle used when checking item types in top-level module
+  --> $DIR/reveal_local.rs:1:1
+   |
+LL | / #![feature(type_alias_impl_trait)]
+LL | |
+LL | | use std::fmt::Debug;
+LL | |
+...  |
+LL | |
+LL | | fn main() {}
+   | |____________^
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0391`.

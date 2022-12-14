@@ -1,0 +1,25 @@
+error[E0282]: type annotations needed
+  --> $DIR/channel.rs:8:9
+   |
+LL |         channel();
+   |         ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `channel`
+   |
+help: consider specifying the generic argument
+   |
+LL |         channel::<T>();
+   |                +++++
+
+error[E0282]: type annotations needed
+  --> $DIR/channel.rs:13:9
+   |
+LL |         channel();
+   |         ^^^^^^^ cannot infer type of the type parameter `T` declared on the function `channel`
+   |
+help: consider specifying the generic argument
+   |
+LL |         channel::<T>();
+   |                +++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0282`.

@@ -1,13 +1,17 @@
 use crate::base::ModuleData;
+use crate::errors::{
+    ModuleCircular, ModuleFileNotFound, ModuleInBlock, ModuleInBlockName, ModuleMultipleCandidates,
+};
 use rustc_ast::ptr::P;
-use rustc_ast::{token, Attribute, Inline, Item};
-use rustc_errors::{struct_span_err, DiagnosticBuilder};
+use rustc_ast::{token, AttrVec, Attribute, Inline, Item, ModSpans};
+use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_parse::new_parser_from_file;
 use rustc_parse::validate_attr;
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
+use std::iter::once;
 
 use std::path::{self, Path, PathBuf};
 
@@ -26,9 +30,9 @@ pub struct ModulePathSuccess {
     pub dir_ownership: DirOwnership,
 }
 
-crate struct ParsedExternalMod {
+pub(crate) struct ParsedExternalMod {
     pub items: Vec<P<Item>>,
-    pub inner_span: Span,
+    pub spans: ModSpans,
     pub file_path: PathBuf,
     pub dir_path: PathBuf,
     pub dir_ownership: DirOwnership,
@@ -39,16 +43,16 @@ pub enum ModError<'a> {
     ModInBlock(Option<Ident>),
     FileNotFound(Ident, PathBuf, PathBuf),
     MultipleCandidates(Ident, PathBuf, PathBuf),
-    ParserError(DiagnosticBuilder<'a>),
+    ParserError(DiagnosticBuilder<'a, ErrorGuaranteed>),
 }
 
-crate fn parse_external_mod(
+pub(crate) fn parse_external_mod(
     sess: &Session,
     ident: Ident,
     span: Span, // The span to blame on errors.
     module: &ModuleData,
     mut dir_ownership: DirOwnership,
-    attrs: &mut Vec<Attribute>,
+    attrs: &mut AttrVec,
 ) -> ParsedExternalMod {
     // We bail on the first error, but that error does not cause a fatal error... (1)
     let result: Result<_, ModError<'_>> = try {
@@ -63,22 +67,22 @@ crate fn parse_external_mod(
 
         // Actually parse the external file as a module.
         let mut parser = new_parser_from_file(&sess.parse_sess, &mp.file_path, Some(span));
-        let (mut inner_attrs, items, inner_span) =
+        let (inner_attrs, items, inner_span) =
             parser.parse_mod(&token::Eof).map_err(|err| ModError::ParserError(err))?;
-        attrs.append(&mut inner_attrs);
+        attrs.extend(inner_attrs);
         (items, inner_span, mp.file_path)
     };
     // (1) ...instead, we return a dummy module.
-    let (items, inner_span, file_path) =
+    let (items, spans, file_path) =
         result.map_err(|err| err.report(sess, span)).unwrap_or_default();
 
     // Extract the directory path for submodules of the module.
     let dir_path = file_path.parent().unwrap_or(&file_path).to_owned();
 
-    ParsedExternalMod { items, inner_span, file_path, dir_path, dir_ownership }
+    ParsedExternalMod { items, spans, file_path, dir_path, dir_ownership }
 }
 
-crate fn mod_dir_path(
+pub(crate) fn mod_dir_path(
     sess: &Session,
     ident: Ident,
     attrs: &[Attribute],
@@ -103,10 +107,10 @@ crate fn mod_dir_path(
             if let DirOwnership::Owned { relative } = &mut dir_ownership {
                 if let Some(ident) = relative.take() {
                     // Remove the relative offset.
-                    dir_path.push(&*ident.as_str());
+                    dir_path.push(ident.as_str());
                 }
             }
-            dir_path.push(&*ident.as_str());
+            dir_path.push(ident.as_str());
 
             (dir_path, dir_ownership)
         }
@@ -170,33 +174,32 @@ fn mod_file_path_from_attr(
 ) -> Option<PathBuf> {
     // Extract path string from first `#[path = "path_string"]` attribute.
     let first_path = attrs.iter().find(|at| at.has_name(sym::path))?;
-    let path_string = match first_path.value_str() {
-        Some(s) => s.as_str(),
-        None => {
-            // This check is here mainly to catch attempting to use a macro,
-            // such as #[path = concat!(...)]. This isn't currently supported
-            // because otherwise the InvocationCollector would need to defer
-            // loading a module until the #[path] attribute was expanded, and
-            // it doesn't support that (and would likely add a bit of
-            // complexity). Usually bad forms are checked in AstValidator (via
-            // `check_builtin_attribute`), but by the time that runs the macro
-            // is expanded, and it doesn't give an error.
-            validate_attr::emit_fatal_malformed_builtin_attribute(
-                &sess.parse_sess,
-                first_path,
-                sym::path,
-            );
-        }
+    let Some(path_sym) = first_path.value_str() else {
+        // This check is here mainly to catch attempting to use a macro,
+        // such as #[path = concat!(...)]. This isn't currently supported
+        // because otherwise the InvocationCollector would need to defer
+        // loading a module until the #[path] attribute was expanded, and
+        // it doesn't support that (and would likely add a bit of
+        // complexity). Usually bad forms are checked in AstValidator (via
+        // `check_builtin_attribute`), but by the time that runs the macro
+        // is expanded, and it doesn't give an error.
+        validate_attr::emit_fatal_malformed_builtin_attribute(
+            &sess.parse_sess,
+            first_path,
+            sym::path,
+        );
     };
+
+    let path_str = path_sym.as_str();
 
     // On windows, the base path might have the form
     // `\\?\foo\bar` in which case it does not tolerate
     // mixed `/` and `\` separators, so canonicalize
     // `/` to `\`.
     #[cfg(windows)]
-    let path_string = path_string.replace("/", "\\");
+    let path_str = path_str.replace("/", "\\");
 
-    Some(dir_path.join(&*path_string))
+    Some(dir_path.join(path_str))
 }
 
 /// Returns a path to a module.
@@ -219,10 +222,9 @@ pub fn default_submod_path<'a>(
         ""
     };
 
-    let mod_name = ident.name.to_string();
-    let default_path_str = format!("{}{}.rs", relative_prefix, mod_name);
+    let default_path_str = format!("{}{}.rs", relative_prefix, ident.name);
     let secondary_path_str =
-        format!("{}{}{}mod.rs", relative_prefix, mod_name, path::MAIN_SEPARATOR);
+        format!("{}{}{}mod.rs", relative_prefix, ident.name, path::MAIN_SEPARATOR);
     let default_path = dir_path.join(&default_path_str);
     let secondary_path = dir_path.join(&secondary_path_str);
     let default_exists = sess.source_map().file_exists(&default_path);
@@ -243,58 +245,42 @@ pub fn default_submod_path<'a>(
 }
 
 impl ModError<'_> {
-    fn report(self, sess: &Session, span: Span) {
-        let diag = &sess.parse_sess.span_diagnostic;
+    fn report(self, sess: &Session, span: Span) -> ErrorGuaranteed {
         match self {
             ModError::CircularInclusion(file_paths) => {
-                let mut msg = String::from("circular modules: ");
-                for file_path in &file_paths {
-                    msg.push_str(&file_path.display().to_string());
-                    msg.push_str(" -> ");
-                }
-                msg.push_str(&file_paths[0].display().to_string());
-                diag.struct_span_err(span, &msg)
+                let path_to_string = |path: &PathBuf| path.display().to_string();
+
+                let paths = file_paths
+                    .iter()
+                    .map(path_to_string)
+                    .chain(once(path_to_string(&file_paths[0])))
+                    .collect::<Vec<_>>();
+
+                let modules = paths.join(" -> ");
+
+                sess.emit_err(ModuleCircular { span, modules })
             }
-            ModError::ModInBlock(ident) => {
-                let msg = "cannot declare a non-inline module inside a block unless it has a path attribute";
-                let mut err = diag.struct_span_err(span, msg);
-                if let Some(ident) = ident {
-                    let note =
-                        format!("maybe `use` the module `{}` instead of redeclaring it", ident);
-                    err.span_note(span, &note);
-                }
-                err
-            }
-            ModError::FileNotFound(ident, default_path, secondary_path) => {
-                let mut err = struct_span_err!(
-                    diag,
+            ModError::ModInBlock(ident) => sess.emit_err(ModuleInBlock {
+                span,
+                name: ident.map(|name| ModuleInBlockName { span, name }),
+            }),
+            ModError::FileNotFound(name, default_path, secondary_path) => {
+                sess.emit_err(ModuleFileNotFound {
                     span,
-                    E0583,
-                    "file not found for module `{}`",
-                    ident,
-                );
-                err.help(&format!(
-                    "to create the module `{}`, create file \"{}\" or \"{}\"",
-                    ident,
-                    default_path.display(),
-                    secondary_path.display(),
-                ));
-                err
+                    name,
+                    default_path: default_path.display().to_string(),
+                    secondary_path: secondary_path.display().to_string(),
+                })
             }
-            ModError::MultipleCandidates(ident, default_path, secondary_path) => {
-                let mut err = struct_span_err!(
-                    diag,
+            ModError::MultipleCandidates(name, default_path, secondary_path) => {
+                sess.emit_err(ModuleMultipleCandidates {
                     span,
-                    E0761,
-                    "file for module `{}` found at both \"{}\" and \"{}\"",
-                    ident,
-                    default_path.display(),
-                    secondary_path.display(),
-                );
-                err.help("delete or rename one of them to remove the ambiguity");
-                err
+                    name,
+                    default_path: default_path.display().to_string(),
+                    secondary_path: secondary_path.display().to_string(),
+                })
             }
-            ModError::ParserError(err) => err,
-        }.emit()
+            ModError::ParserError(mut err) => err.emit(),
+        }
     }
 }

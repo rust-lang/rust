@@ -1,0 +1,12 @@
+error: abnormal termination: aborted execution: attempted to instantiate uninhabited type `!`
+  --> $DIR/uninit_uninhabited_type.rs:LL:CC
+   |
+LL |     unsafe { std::mem::uninitialized::<!>() };
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ aborted execution: attempted to instantiate uninhabited type `!`
+   |
+   = note: inside `main` at $DIR/uninit_uninhabited_type.rs:LL:CC
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

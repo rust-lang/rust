@@ -1,5 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::is_lint_allowed;
+use clippy_utils::macros::span_is_local;
 use clippy_utils::source::snippet;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
@@ -20,6 +21,7 @@ declare_clippy_lint! {
     /// ### Example
     /// You don't see it, but there may be a zero-width space or soft hyphen
     /// some­where in this text.
+    #[clippy::version = "1.49.0"]
     pub INVISIBLE_CHARACTERS,
     correctness,
     "using an invisible character in a string literal, which is confusing"
@@ -27,7 +29,7 @@ declare_clippy_lint! {
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for non-ASCII characters in string literals.
+    /// Checks for non-ASCII characters in string and char literals.
     ///
     /// ### Why is this bad?
     /// Yeah, we know, the 90's called and wanted their charset
@@ -40,10 +42,12 @@ declare_clippy_lint! {
     /// ```rust
     /// let x = String::from("€");
     /// ```
-    /// Could be written as:
+    ///
+    /// Use instead:
     /// ```rust
     /// let x = String::from("\u{20ac}");
     /// ```
+    #[clippy::version = "pre 1.29.0"]
     pub NON_ASCII_LITERAL,
     restriction,
     "using any literal non-ASCII chars in a string literal instead of using the `\\u` escape"
@@ -62,6 +66,7 @@ declare_clippy_lint! {
     /// ### Example
     /// You may not see it, but "à"" and "à"" aren't the same string. The
     /// former when escaped is actually `"a\u{300}"` while the latter is `"\u{e0}"`.
+    #[clippy::version = "pre 1.29.0"]
     pub UNICODE_NOT_NFC,
     pedantic,
     "using a Unicode literal not in NFC normal form (see [Unicode tr15](http://www.unicode.org/reports/tr15/) for further information)"
@@ -72,7 +77,7 @@ declare_lint_pass!(Unicode => [INVISIBLE_CHARACTERS, NON_ASCII_LITERAL, UNICODE_
 impl LateLintPass<'_> for Unicode {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &'_ Expr<'_>) {
         if let ExprKind::Lit(ref lit) = expr.kind {
-            if let LitKind::Str(_, _) = lit.node {
+            if let LitKind::Str(_, _) | LitKind::Char(_) = lit.node {
                 check_str(cx, lit.span, expr.hir_id);
             }
         }
@@ -94,6 +99,10 @@ fn escape<T: Iterator<Item = char>>(s: T) -> String {
 }
 
 fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
+    if !span_is_local(span) {
+        return;
+    }
+
     let string = snippet(cx, span, "");
     if string.chars().any(|c| ['\u{200B}', '\u{ad}', '\u{2060}'].contains(&c)) {
         span_lint_and_sugg(
@@ -103,12 +112,13 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
             "invisible character detected",
             "consider replacing the string with",
             string
-                .replace("\u{200B}", "\\u{200B}")
-                .replace("\u{ad}", "\\u{AD}")
-                .replace("\u{2060}", "\\u{2060}"),
+                .replace('\u{200B}', "\\u{200B}")
+                .replace('\u{ad}', "\\u{AD}")
+                .replace('\u{2060}', "\\u{2060}"),
             Applicability::MachineApplicable,
         );
     }
+
     if string.chars().any(|c| c as u32 > 0x7F) {
         span_lint_and_sugg(
             cx,
@@ -124,6 +134,7 @@ fn check_str(cx: &LateContext<'_>, span: Span, id: HirId) {
             Applicability::MachineApplicable,
         );
     }
+
     if is_lint_allowed(cx, NON_ASCII_LITERAL, id) && string.chars().zip(string.nfc()).any(|(a, b)| a != b) {
         span_lint_and_sugg(
             cx,

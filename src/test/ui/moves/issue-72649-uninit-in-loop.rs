@@ -25,7 +25,7 @@ fn moved_here_1() {
 fn moved_here_2() {
     let value = NonCopy{};
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used = value;
         //~^ NOTE value moved here
         loop {
@@ -38,7 +38,7 @@ fn moved_here_2() {
 fn moved_loop_1() {
     let value = NonCopy{};
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used = value; //~ ERROR use of moved value: `value`
         //~^ NOTE value moved here, in previous iteration of loop
     }
@@ -49,7 +49,7 @@ fn moved_loop_2() {
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
     let _used = value;
     value = NonCopy{};
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used2 = value; //~ ERROR use of moved value: `value`
         //~^ NOTE value moved here, in previous iteration of loop
     }
@@ -57,17 +57,17 @@ fn moved_loop_2() {
 
 fn uninit_1() {
     loop {
-        let value: NonCopy;
-        let _used = value; //~ ERROR use of possibly-uninitialized variable: `value`
-        //~^ NOTE use of possibly-uninitialized `value`
+        let value: NonCopy; //~ NOTE declared here
+        let _used = value; //~ ERROR binding `value` isn't initialized
+        //~^ NOTE `value` used here but it isn't initialized
     }
 }
 
 fn uninit_2() {
-    let mut value: NonCopy;
+    let mut value: NonCopy; //~ NOTE declared here
     loop {
-        let _used = value; //~ ERROR use of possibly-uninitialized variable: `value`
-        //~^ NOTE use of possibly-uninitialized `value`
+        let _used = value; //~ ERROR binding `value` isn't initialized
+        //~^ NOTE `value` used here but it isn't initialized
     }
 }
 

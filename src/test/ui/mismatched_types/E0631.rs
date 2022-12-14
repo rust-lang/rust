@@ -1,7 +1,7 @@
 #![feature(unboxed_closures)]
 
 fn foo<F: Fn(usize)>(_: F) {}
-fn bar<F: Fn<usize>>(_: F) {}
+fn bar<F: Fn<(usize,)>>(_: F) {}
 fn main() {
     fn f(_: u64) {}
     foo(|_: isize| {}); //~ ERROR type mismatch

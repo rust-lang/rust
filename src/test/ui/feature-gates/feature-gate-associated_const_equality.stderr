@@ -1,0 +1,12 @@
+error[E0658]: associated const equality is incomplete
+  --> $DIR/feature-gate-associated_const_equality.rs:10:28
+   |
+LL | fn foo<A: TraitWAssocConst<A=32>>() {}
+   |                            ^^^^
+   |
+   = note: see issue #92827 <https://github.com/rust-lang/rust/issues/92827> for more information
+   = help: add `#![feature(associated_const_equality)]` to the crate attributes to enable
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0658`.

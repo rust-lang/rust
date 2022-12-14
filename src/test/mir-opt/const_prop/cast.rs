@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // EMIT_MIR cast.main.ConstProp.diff
 
 fn main() {

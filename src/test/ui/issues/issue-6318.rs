@@ -1,8 +1,6 @@
 // run-pass
 // pretty-expanded FIXME #23616
 
-#![feature(box_syntax)]
-
 pub enum Thing {
     A(Box<dyn Foo+'static>)
 }
@@ -16,7 +14,7 @@ pub struct Struct;
 impl Foo for Struct {}
 
 pub fn main() {
-    match Thing::A(box Struct as Box<dyn Foo + 'static>) {
+    match Thing::A(Box::new(Struct) as Box<dyn Foo + 'static>) {
         Thing::A(_a) => 0,
     };
 }

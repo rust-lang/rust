@@ -1,5 +1,6 @@
 //! Tidy check to prevent creation of unnecessary debug artifacts while running tests.
 
+use crate::walk::{filter_dirs, walk};
 use std::path::{Path, PathBuf};
 
 const GRAPHVIZ_POSTFLOW_MSG: &str = "`borrowck_graphviz_postflow` attribute in test";
@@ -7,7 +8,7 @@ const GRAPHVIZ_POSTFLOW_MSG: &str = "`borrowck_graphviz_postflow` attribute in t
 pub fn check(path: &Path, bad: &mut bool) {
     let test_dir: PathBuf = path.join("test");
 
-    super::walk(&test_dir, &mut super::filter_dirs, &mut |entry, contents| {
+    walk(&test_dir, &mut filter_dirs, &mut |entry, contents| {
         let filename = entry.path();
         let is_rust = filename.extension().map_or(false, |ext| ext == "rs");
         if !is_rust {

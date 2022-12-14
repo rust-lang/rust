@@ -1,4 +1,4 @@
-use super::{BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
+use super::{BorrowedBuf, BufWriter, ErrorKind, Read, Result, Write, DEFAULT_BUF_SIZE};
 use crate::mem::MaybeUninit;
 
 /// Copies the entire contents of a reader into a writer.
@@ -39,6 +39,16 @@ use crate::mem::MaybeUninit;
 ///     Ok(())
 /// }
 /// ```
+///
+/// # Platform-specific behavior
+///
+/// On Linux (including Android), this function uses `copy_file_range(2)`,
+/// `sendfile(2)` or `splice(2)` syscalls to move data directly between file
+/// descriptors if possible.
+///
+/// Note that platform-specific behavior [may change in the future][changes].
+///
+/// [changes]: crate::io#platform-specific-behavior
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn copy<R: ?Sized, W: ?Sized>(reader: &mut R, writer: &mut W) -> Result<u64>
 where
@@ -82,45 +92,44 @@ impl<I: Write> BufferedCopySpec for BufWriter<I> {
             return stack_buffer_copy(reader, writer);
         }
 
-        // FIXME: #42788
-        //
-        //   - This creates a (mut) reference to a slice of
-        //     _uninitialized_ integers, which is **undefined behavior**
-        //
-        //   - Only the standard library gets to soundly "ignore" this,
-        //     based on its privileged knowledge of unstable rustc
-        //     internals;
-        unsafe {
-            let spare_cap = writer.buffer_mut().spare_capacity_mut();
-            reader.initializer().initialize(MaybeUninit::slice_assume_init_mut(spare_cap));
-        }
-
         let mut len = 0;
+        let mut init = 0;
 
         loop {
             let buf = writer.buffer_mut();
-            let spare_cap = buf.spare_capacity_mut();
+            let mut read_buf: BorrowedBuf<'_> = buf.spare_capacity_mut().into();
 
-            if spare_cap.len() >= DEFAULT_BUF_SIZE {
-                match reader.read(unsafe { MaybeUninit::slice_assume_init_mut(spare_cap) }) {
-                    Ok(0) => return Ok(len), // EOF reached
-                    Ok(bytes_read) => {
-                        assert!(bytes_read <= spare_cap.len());
-                        // SAFETY: The initializer contract guarantees that either it or `read`
-                        // will have initialized these bytes. And we just checked that the number
-                        // of bytes is within the buffer capacity.
-                        unsafe { buf.set_len(buf.len() + bytes_read) };
-                        len += bytes_read as u64;
-                        // Read again if the buffer still has enough capacity, as BufWriter itself would do
-                        // This will occur if the reader returns short reads
-                        continue;
-                    }
-                    Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
-                    Err(e) => return Err(e),
-                }
+            unsafe {
+                // SAFETY: init is either 0 or the init_len from the previous iteration.
+                read_buf.set_init(init);
             }
 
-            writer.flush_buf()?;
+            if read_buf.capacity() >= DEFAULT_BUF_SIZE {
+                let mut cursor = read_buf.unfilled();
+                match reader.read_buf(cursor.reborrow()) {
+                    Ok(()) => {
+                        let bytes_read = cursor.written();
+
+                        if bytes_read == 0 {
+                            return Ok(len);
+                        }
+
+                        init = read_buf.init_len() - bytes_read;
+                        len += bytes_read as u64;
+
+                        // SAFETY: BorrowedBuf guarantees all of its filled bytes are init
+                        unsafe { buf.set_len(buf.len() + bytes_read) };
+
+                        // Read again if the buffer still has enough capacity, as BufWriter itself would do
+                        // This will occur if the reader returns short reads
+                    }
+                    Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+                    Err(e) => return Err(e),
+                }
+            } else {
+                writer.flush_buf()?;
+                init = 0;
+            }
         }
     }
 }
@@ -129,28 +138,26 @@ fn stack_buffer_copy<R: Read + ?Sized, W: Write + ?Sized>(
     reader: &mut R,
     writer: &mut W,
 ) -> Result<u64> {
-    let mut buf = MaybeUninit::<[u8; DEFAULT_BUF_SIZE]>::uninit();
-    // FIXME: #42788
-    //
-    //   - This creates a (mut) reference to a slice of
-    //     _uninitialized_ integers, which is **undefined behavior**
-    //
-    //   - Only the standard library gets to soundly "ignore" this,
-    //     based on its privileged knowledge of unstable rustc
-    //     internals;
-    unsafe {
-        reader.initializer().initialize(buf.assume_init_mut());
-    }
+    let buf: &mut [_] = &mut [MaybeUninit::uninit(); DEFAULT_BUF_SIZE];
+    let mut buf: BorrowedBuf<'_> = buf.into();
 
-    let mut written = 0;
+    let mut len = 0;
+
     loop {
-        let len = match reader.read(unsafe { buf.assume_init_mut() }) {
-            Ok(0) => return Ok(written),
-            Ok(len) => len,
-            Err(ref e) if e.kind() == ErrorKind::Interrupted => continue,
+        match reader.read_buf(buf.unfilled()) {
+            Ok(()) => {}
+            Err(e) if e.kind() == ErrorKind::Interrupted => continue,
             Err(e) => return Err(e),
         };
-        writer.write_all(unsafe { &buf.assume_init_ref()[..len] })?;
-        written += len as u64;
+
+        if buf.filled().is_empty() {
+            break;
+        }
+
+        len += buf.filled().len() as u64;
+        writer.write_all(buf.filled())?;
+        buf.clear();
     }
+
+    Ok(len)
 }

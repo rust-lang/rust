@@ -51,6 +51,10 @@ unsafe impl<I: TrustedLen + ?Sized> TrustedLen for &mut I {}
 /// in its place, assuming structural constraints of the source allow such an insertion.
 /// In other words this trait indicates that an iterator pipeline can be collected in place.
 ///
+/// The primary use of this trait is in-place iteration. Refer to the [`vec::in_place_collect`]
+/// module documentation for more information.
+///
+/// [`vec::in_place_collect`]: ../../../../alloc/vec/in_place_collect/index.html
 /// [`SourceIter`]: crate::iter::SourceIter
 /// [`next()`]: Iterator::next
 /// [`try_fold()`]: Iterator::try_fold

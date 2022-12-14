@@ -97,7 +97,7 @@ pub fn main() {
     // ever hands f_A off to instances of GaspA, and thus one should
     // be able to prove the invariant that f_A is *only* invoked from
     // from an instance of GaspA (either via the GaspA drop
-    // implementation or the E drop implementaton). Yet the old (bad)
+    // implementation or the E drop implementation). Yet the old (bad)
     // behavior allowed a call to f_A to leak in while we are tearing
     // down a value of type GaspB.
 }

@@ -1,0 +1,45 @@
+error[E0277]: can't drop `UnconstDrop` in const contexts
+  --> $DIR/const-block-const-bound.rs:20:11
+   |
+LL |         f(UnconstDrop);
+   |         - ^^^^^^^^^^^ the trait `~const Destruct` is not implemented for `UnconstDrop`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = note: the trait bound `UnconstDrop: ~const Destruct` is not satisfied
+note: required by a bound in `f`
+  --> $DIR/const-block-const-bound.rs:6:15
+   |
+LL | const fn f<T: ~const Destruct>(x: T) {}
+   |               ^^^^^^^^^^^^^^^ required by this bound in `f`
+help: consider borrowing here
+   |
+LL |         f(&UnconstDrop);
+   |           +
+LL |         f(&mut UnconstDrop);
+   |           ++++
+
+error[E0277]: can't drop `NonDrop` in const contexts
+  --> $DIR/const-block-const-bound.rs:22:11
+   |
+LL |         f(NonDrop);
+   |         - ^^^^^^^ the trait `~const Destruct` is not implemented for `NonDrop`
+   |         |
+   |         required by a bound introduced by this call
+   |
+   = note: the trait bound `NonDrop: ~const Destruct` is not satisfied
+note: required by a bound in `f`
+  --> $DIR/const-block-const-bound.rs:6:15
+   |
+LL | const fn f<T: ~const Destruct>(x: T) {}
+   |               ^^^^^^^^^^^^^^^ required by this bound in `f`
+help: consider borrowing here
+   |
+LL |         f(&NonDrop);
+   |           +
+LL |         f(&mut NonDrop);
+   |           ++++
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0277`.

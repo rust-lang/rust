@@ -193,6 +193,12 @@ fn line() {
 }
 
 #[test]
+fn matches() {
+    let _ = matches!(1, x if x > 0);
+    let _ = matches!(1, x if x > 0,);
+}
+
+#[test]
 fn module_path() {
     let _ = module_path!();
 }

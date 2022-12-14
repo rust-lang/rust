@@ -186,6 +186,70 @@ pub fn test16() {
     }
 }
 
+// Issue #9001: `continue` in struct expression fields
+pub fn test17() {
+    struct Foo {
+        f: (),
+    }
+
+    let mut n = 0;
+    let _ = loop {
+        break Foo {
+            f: if n < 5 {
+                n += 1;
+                continue;
+            },
+        };
+    };
+}
+
+// Issue #9356: `continue` in else branch of let..else
+pub fn test18() {
+    let x = Some(0);
+    let y = 0;
+    // might loop
+    let _ = loop {
+        let Some(x) = x else {
+            if y > 0 {
+                continue;
+            } else {
+                return;
+            }
+        };
+
+        break x;
+    };
+    // never loops
+    let _ = loop {
+        let Some(x) = x else {
+            return;
+        };
+
+        break x;
+    };
+}
+
+// Issue #9831: unconditional break to internal labeled block
+pub fn test19() {
+    fn thing(iter: impl Iterator) {
+        for _ in iter {
+            'b: {
+                break 'b;
+            }
+        }
+    }
+}
+
+pub fn test20() {
+    'a: loop {
+        'b: {
+            break 'b 'c: {
+                break 'a;
+            };
+        }
+    }
+}
+
 fn main() {
     test1();
     test2();

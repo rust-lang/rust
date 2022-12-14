@@ -12,7 +12,6 @@ fn test51<'a>() {
 }
 fn test52<'a>() {
     assert_send::<&'a (dyn Dummy + Sync)>();
-    //~^ ERROR does not fulfill the required lifetime
 }
 
 // ...unless they are properly bounded

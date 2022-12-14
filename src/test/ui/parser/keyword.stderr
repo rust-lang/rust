@@ -4,10 +4,10 @@ error: expected identifier, found keyword `break`
 LL | pub mod break {
    |         ^^^^^ expected identifier, found keyword
    |
-help: you can escape reserved keywords to use them as identifiers
+help: escape `break` to use it as an identifier
    |
 LL | pub mod r#break {
-   |         ~~~~~~~
+   |         ++
 
 error: aborting due to previous error
 

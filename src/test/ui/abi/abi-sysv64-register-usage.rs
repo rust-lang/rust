@@ -5,22 +5,31 @@
 // ignore-android
 // ignore-arm
 // ignore-aarch64
-
-#![feature(llvm_asm)]
-#![allow(deprecated)] // llvm_asm!
+// needs-asm-support
 
 #[cfg(target_arch = "x86_64")]
-pub extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,
-                                         rcx: i64, r8 : i64, r9 : i64,
-                                         xmm0: f32, xmm1: f32, xmm2: f32,
-                                         xmm3: f32, xmm4: f32, xmm5: f32,
-                                         xmm6: f32, xmm7: f32) -> i64 {
+pub extern "sysv64" fn all_the_registers(
+    rdi: i64,
+    rsi: i64,
+    rdx: i64,
+    rcx: i64,
+    r8: i64,
+    r9: i64,
+    xmm0: f32,
+    xmm1: f32,
+    xmm2: f32,
+    xmm3: f32,
+    xmm4: f32,
+    xmm5: f32,
+    xmm6: f32,
+    xmm7: f32,
+) -> i64 {
     assert_eq!(rdi, 1);
     assert_eq!(rsi, 2);
     assert_eq!(rdx, 3);
     assert_eq!(rcx, 4);
-    assert_eq!(r8,  5);
-    assert_eq!(r9,  6);
+    assert_eq!(r8, 5);
+    assert_eq!(r9, 6);
     assert_eq!(xmm0, 1.0f32);
     assert_eq!(xmm1, 2.0f32);
     assert_eq!(xmm2, 4.0f32);
@@ -54,37 +63,37 @@ pub extern "sysv64" fn large_struct_by_val(mut foo: LargeStruct) -> LargeStruct 
 
 #[cfg(target_arch = "x86_64")]
 pub fn main() {
+    use std::arch::asm;
+
     let result: i64;
     unsafe {
-        llvm_asm!("mov rdi, 1;
-                   mov rsi, 2;
-                   mov rdx, 3;
-                   mov rcx, 4;
-                   mov r8,  5;
-                   mov r9,  6;
-                   mov eax, 0x3F800000;
-                   movd xmm0, eax;
-                   mov eax, 0x40000000;
-                   movd xmm1, eax;
-                   mov eax, 0x40800000;
-                   movd xmm2, eax;
-                   mov eax, 0x41000000;
-                   movd xmm3, eax;
-                   mov eax, 0x41800000;
-                   movd xmm4, eax;
-                   mov eax, 0x42000000;
-                   movd xmm5, eax;
-                   mov eax, 0x42800000;
-                   movd xmm6, eax;
-                   mov eax, 0x43000000;
-                   movd xmm7, eax;
-                   call r10
-                   "
-                 : "={rax}"(result)
-                 : "{r10}"(all_the_registers as usize)
-                 : "rdi", "rsi", "rdx", "rcx", "r8", "r9", "r11", "cc", "memory"
-                 : "intel", "alignstack"
-        )
+        asm!("mov rdi, 1",
+             "mov rsi, 2",
+             "mov rdx, 3",
+             "mov rcx, 4",
+             "mov r8,  5",
+             "mov r9,  6",
+             "mov eax, 0x3F800000",
+             "movd xmm0, eax",
+             "mov eax, 0x40000000",
+             "movd xmm1, eax",
+             "mov eax, 0x40800000",
+             "movd xmm2, eax",
+             "mov eax, 0x41000000",
+             "movd xmm3, eax",
+             "mov eax, 0x41800000",
+             "movd xmm4, eax",
+             "mov eax, 0x42000000",
+             "movd xmm5, eax",
+             "mov eax, 0x42800000",
+             "movd xmm6, eax",
+             "mov eax, 0x43000000",
+             "movd xmm7, eax",
+             "call {0}",
+             sym all_the_registers,
+             out("rax") result,
+             clobber_abi("sysv64"),
+        );
     }
     assert_eq!(result, 42);
 

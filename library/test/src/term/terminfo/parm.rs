@@ -268,7 +268,7 @@ pub(crate) fn expand(
                     },
                     'e' => state = SeekIfEnd(0),
                     ';' => (),
-                    _ => return Err(format!("unrecognized format option {}", cur)),
+                    _ => return Err(format!("unrecognized format option {cur}")),
                 }
             }
             PushParam => {

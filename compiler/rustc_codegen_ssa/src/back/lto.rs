@@ -42,7 +42,7 @@ pub struct ThinShared<B: WriteBackendMethods> {
 
 pub enum LtoModuleCodegen<B: WriteBackendMethods> {
     Fat {
-        module: Option<ModuleCodegen<B::Module>>,
+        module: ModuleCodegen<B::Module>,
         _serialized_bitcode: Vec<SerializedModule<B::ModuleBuffer>>,
     },
 
@@ -64,19 +64,15 @@ impl<B: WriteBackendMethods> LtoModuleCodegen<B> {
     /// It's intended that the module returned is immediately code generated and
     /// dropped, and then this LTO module is dropped.
     pub unsafe fn optimize(
-        &mut self,
+        self,
         cgcx: &CodegenContext<B>,
     ) -> Result<ModuleCodegen<B::Module>, FatalError> {
-        match *self {
-            LtoModuleCodegen::Fat { ref mut module, .. } => {
-                let module = module.take().unwrap();
-                {
-                    let config = cgcx.config(module.kind);
-                    B::run_lto_pass_manager(cgcx, &module, config, false)?;
-                }
+        match self {
+            LtoModuleCodegen::Fat { mut module, .. } => {
+                B::optimize_fat(cgcx, &mut module)?;
                 Ok(module)
             }
-            LtoModuleCodegen::Thin(ref mut thin) => B::optimize_thin(cgcx, thin),
+            LtoModuleCodegen::Thin(thin) => B::optimize_thin(cgcx, thin),
         }
     }
 

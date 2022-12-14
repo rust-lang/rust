@@ -4,22 +4,18 @@ warning: the feature `specialization` is incomplete and may not be safe to use a
 LL | #![feature(specialization)]
    |            ^^^^^^^^^^^^^^
    |
-   = note: `#[warn(incomplete_features)]` on by default
    = note: see issue #31844 <https://github.com/rust-lang/rust/issues/31844> for more information
    = help: consider using `min_specialization` instead, which is more stable and complete
+   = note: `#[warn(incomplete_features)]` on by default
 
 error[E0119]: conflicting implementations of trait `IntoPyDictPointer` for type `()`
   --> $DIR/issue-52050.rs:28:1
    |
-LL | / impl<I> IntoPyDictPointer for I
-LL | | where
-LL | |     I: Iterator,
-LL | | {
-LL | | }
-   | |_- first implementation here
-LL | 
-LL |   impl IntoPyDictPointer for ()
-   |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
+LL | impl<I> IntoPyDictPointer for I
+   | ------------------------------- first implementation here
+...
+LL | impl IntoPyDictPointer for ()
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ conflicting implementation for `()`
    |
    = note: upstream crates may add a new impl of trait `std::iter::Iterator` for type `()` in future versions
 

@@ -2,7 +2,7 @@ use crate::methods::SelfKind;
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::is_copy;
 use rustc_lint::LateContext;
-use rustc_middle::ty::TyS;
+use rustc_middle::ty::Ty;
 use rustc_span::source_map::Span;
 use std::fmt;
 
@@ -14,7 +14,7 @@ const CONVENTIONS: [(&[Convention], &[SelfKind]); 9] = [
     (&[Convention::StartsWith("as_")], &[SelfKind::Ref, SelfKind::RefMut]),
     (&[Convention::StartsWith("from_")], &[SelfKind::No]),
     (&[Convention::StartsWith("into_")], &[SelfKind::Value]),
-    (&[Convention::StartsWith("is_")], &[SelfKind::Ref, SelfKind::No]),
+    (&[Convention::StartsWith("is_")], &[SelfKind::RefMut, SelfKind::Ref, SelfKind::No]),
     (&[Convention::Eq("to_mut")], &[SelfKind::RefMut]),
     (&[Convention::StartsWith("to_"), Convention::EndsWith("_mut")], &[SelfKind::RefMut]),
 
@@ -41,7 +41,7 @@ impl Convention {
     fn check<'tcx>(
         &self,
         cx: &LateContext<'tcx>,
-        self_ty: &'tcx TyS<'tcx>,
+        self_ty: Ty<'tcx>,
         other: &str,
         implements_trait: bool,
         is_trait_item: bool,
@@ -61,20 +61,20 @@ impl Convention {
 impl fmt::Display for Convention {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match *self {
-            Self::Eq(this) => format!("`{}`", this).fmt(f),
-            Self::StartsWith(this) => format!("`{}*`", this).fmt(f),
-            Self::EndsWith(this) => format!("`*{}`", this).fmt(f),
-            Self::NotEndsWith(this) => format!("`~{}`", this).fmt(f),
+            Self::Eq(this) => format!("`{this}`").fmt(f),
+            Self::StartsWith(this) => format!("`{this}*`").fmt(f),
+            Self::EndsWith(this) => format!("`*{this}`").fmt(f),
+            Self::NotEndsWith(this) => format!("`~{this}`").fmt(f),
             Self::IsSelfTypeCopy(is_true) => {
                 format!("`self` type is{} `Copy`", if is_true { "" } else { " not" }).fmt(f)
             },
             Self::ImplementsTrait(is_true) => {
                 let (negation, s_suffix) = if is_true { ("", "s") } else { (" does not", "") };
-                format!("method{} implement{} a trait", negation, s_suffix).fmt(f)
+                format!("method{negation} implement{s_suffix} a trait").fmt(f)
             },
             Self::IsTraitItem(is_true) => {
                 let suffix = if is_true { " is" } else { " is not" };
-                format!("method{} a trait item", suffix).fmt(f)
+                format!("method{suffix} a trait item").fmt(f)
             },
         }
     }
@@ -84,8 +84,8 @@ impl fmt::Display for Convention {
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
     item_name: &str,
-    self_ty: &'tcx TyS<'tcx>,
-    first_arg_ty: &'tcx TyS<'tcx>,
+    self_ty: Ty<'tcx>,
+    first_arg_ty: Ty<'tcx>,
     first_arg_span: Span,
     implements_trait: bool,
     is_trait_item: bool,
@@ -138,8 +138,7 @@ pub(super) fn check<'tcx>(
                 WRONG_SELF_CONVENTION,
                 first_arg_span,
                 &format!(
-                    "{} usually take {}",
-                    suggestion,
+                    "{suggestion} usually take {}",
                     &self_kinds
                         .iter()
                         .map(|k| k.description())

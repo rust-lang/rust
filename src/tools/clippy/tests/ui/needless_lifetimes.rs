@@ -1,5 +1,12 @@
 #![warn(clippy::needless_lifetimes)]
-#![allow(dead_code, clippy::needless_pass_by_value, clippy::unnecessary_wraps, dyn_drop)]
+#![allow(
+    dead_code,
+    clippy::boxed_local,
+    clippy::needless_pass_by_value,
+    clippy::unnecessary_wraps,
+    dyn_drop,
+    clippy::get_first
+)]
 
 fn distinct_lifetimes<'a, 'b>(_x: &'a u8, _y: &'b u8, _z: u8) {}
 
@@ -22,9 +29,18 @@ fn multiple_in_and_out_1<'a>(x: &'a u8, _y: &'a u8) -> &'a u8 {
     x
 }
 
-// No error; multiple input refs.
-fn multiple_in_and_out_2<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
+// Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+//   fn multiple_in_and_out_2a<'a>(x: &'a u8, _y: &u8) -> &'a u8
+//                                                ^^^
+fn multiple_in_and_out_2a<'a, 'b>(x: &'a u8, _y: &'b u8) -> &'a u8 {
     x
+}
+
+// Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+//   fn multiple_in_and_out_2b<'b>(_x: &u8, y: &'b u8) -> &'b u8
+//                                     ^^^
+fn multiple_in_and_out_2b<'a, 'b>(_x: &'a u8, y: &'b u8) -> &'b u8 {
+    y
 }
 
 // No error; multiple input refs
@@ -37,9 +53,18 @@ fn in_static_and_out<'a>(x: &'a u8, _y: &'static u8) -> &'a u8 {
     x
 }
 
-// No error.
-fn deep_reference_1<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
+// Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+//   fn deep_reference_1a<'a>(x: &'a u8, _y: &u8) -> Result<&'a u8, ()>
+//                                           ^^^
+fn deep_reference_1a<'a, 'b>(x: &'a u8, _y: &'b u8) -> Result<&'a u8, ()> {
     Ok(x)
+}
+
+// Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+//   fn deep_reference_1b<'b>(_x: &u8, y: &'b u8) -> Result<&'b u8, ()>
+//                                ^^^
+fn deep_reference_1b<'a, 'b>(_x: &'a u8, y: &'b u8) -> Result<&'b u8, ()> {
+    Ok(y)
 }
 
 // No error; two input refs.
@@ -122,9 +147,18 @@ impl X {
         &self.x
     }
 
-    // No error; multiple input refs.
-    fn self_and_in_out<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
+    // Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+    //   fn self_and_in_out_1<'s>(&'s self, _x: &u8) -> &'s u8
+    //                                          ^^^
+    fn self_and_in_out_1<'s, 't>(&'s self, _x: &'t u8) -> &'s u8 {
         &self.x
+    }
+
+    // Error; multiple input refs, but the output lifetime is not elided, i.e., the following is valid:
+    //   fn self_and_in_out_2<'t>(&self, x: &'t u8) -> &'t u8
+    //                            ^^^^^
+    fn self_and_in_out_2<'s, 't>(&'s self, x: &'t u8) -> &'t u8 {
+        x
     }
 
     fn distinct_self_and_in<'s, 't>(&'s self, _x: &'t u8) {}
@@ -160,8 +194,19 @@ fn struct_with_lt3<'a>(_foo: &Foo<'a>) -> &'a str {
     unimplemented!()
 }
 
-// No warning; two input lifetimes.
-fn struct_with_lt4<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
+// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
+// valid:
+//   fn struct_with_lt4a<'a>(_foo: &'a Foo<'_>) -> &'a str
+//                                         ^^
+fn struct_with_lt4a<'a, 'b>(_foo: &'a Foo<'b>) -> &'a str {
+    unimplemented!()
+}
+
+// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
+// valid:
+//   fn struct_with_lt4b<'b>(_foo: &Foo<'b>) -> &'b str
+//                                 ^^^^
+fn struct_with_lt4b<'a, 'b>(_foo: &'a Foo<'b>) -> &'b str {
     unimplemented!()
 }
 
@@ -196,8 +241,19 @@ fn alias_with_lt3<'a>(_foo: &FooAlias<'a>) -> &'a str {
     unimplemented!()
 }
 
-// No warning; two input lifetimes.
-fn alias_with_lt4<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
+// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
+// valid:
+//   fn alias_with_lt4a<'a>(_foo: &'a FooAlias<'_>) -> &'a str
+//                                             ^^
+fn alias_with_lt4a<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'a str {
+    unimplemented!()
+}
+
+// Warning; two input lifetimes, but the output lifetime is not elided, i.e., the following is
+// valid:
+//   fn alias_with_lt4b<'b>(_foo: &FooAlias<'b>) -> &'b str
+//                                ^^^^^^^^^
+fn alias_with_lt4b<'a, 'b>(_foo: &'a FooAlias<'b>) -> &'b str {
     unimplemented!()
 }
 
@@ -262,7 +318,7 @@ mod issue4291 {
 
 mod issue2944 {
     trait Foo {}
-    struct Bar {}
+    struct Bar;
     struct Baz<'a> {
         bar: &'a Bar,
     }
@@ -366,6 +422,76 @@ mod issue6159 {
         F: FnOnce(&'a T::Target) -> R,
     {
         f(x.deref())
+    }
+}
+
+mod issue7296 {
+    use std::rc::Rc;
+    use std::sync::Arc;
+
+    struct Foo;
+    impl Foo {
+        fn implicit<'a>(&'a self) -> &'a () {
+            &()
+        }
+        fn implicit_mut<'a>(&'a mut self) -> &'a () {
+            &()
+        }
+
+        fn explicit<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+        fn explicit_mut<'a>(self: &'a mut Rc<Self>) -> &'a () {
+            &()
+        }
+
+        fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+            &()
+        }
+    }
+
+    trait Bar {
+        fn implicit<'a>(&'a self) -> &'a ();
+        fn implicit_provided<'a>(&'a self) -> &'a () {
+            &()
+        }
+
+        fn explicit<'a>(self: &'a Arc<Self>) -> &'a ();
+        fn explicit_provided<'a>(self: &'a Arc<Self>) -> &'a () {
+            &()
+        }
+
+        fn lifetime_elsewhere<'a>(self: Box<Self>, here: &'a ()) -> &'a ();
+        fn lifetime_elsewhere_provided<'a>(self: Box<Self>, here: &'a ()) -> &'a () {
+            &()
+        }
+    }
+}
+
+mod pr_9743_false_negative_fix {
+    #![allow(unused)]
+
+    fn foo<'a>(x: &'a u8, y: &'_ u8) {}
+
+    fn bar<'a>(x: &'a u8, y: &'_ u8, z: &'_ u8) {}
+}
+
+mod pr_9743_output_lifetime_checks {
+    #![allow(unused)]
+
+    // lint: only one input
+    fn one_input<'a>(x: &'a u8) -> &'a u8 {
+        unimplemented!()
+    }
+
+    // lint: multiple inputs, output would not be elided
+    fn multiple_inputs_output_not_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'b u8 {
+        unimplemented!()
+    }
+
+    // don't lint: multiple inputs, output would be elided (which would create an ambiguity)
+    fn multiple_inputs_output_would_be_elided<'a, 'b>(x: &'a u8, y: &'b u8, z: &'b u8) -> &'a u8 {
+        unimplemented!()
     }
 }
 

@@ -1,19 +1,20 @@
-use crate::mem;
-use crate::slice;
-
 pub fn hashmap_random_keys() -> (u64, u64) {
-    let mut v = (0, 0);
-    unsafe {
-        let view = slice::from_raw_parts_mut(&mut v as *mut _ as *mut u8, mem::size_of_val(&v));
-        imp::fill_bytes(view);
-    }
-    v
+    const KEY_LEN: usize = core::mem::size_of::<u64>();
+
+    let mut v = [0u8; KEY_LEN * 2];
+    imp::fill_bytes(&mut v);
+
+    let key1 = v[0..KEY_LEN].try_into().unwrap();
+    let key2 = v[KEY_LEN..].try_into().unwrap();
+
+    (u64::from_ne_bytes(key1), u64::from_ne_bytes(key2))
 }
 
 #[cfg(all(
     unix,
     not(target_os = "macos"),
     not(target_os = "ios"),
+    not(target_os = "watchos"),
     not(target_os = "openbsd"),
     not(target_os = "freebsd"),
     not(target_os = "netbsd"),
@@ -30,6 +31,9 @@ mod imp {
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
+        use crate::sync::atomic::{AtomicBool, Ordering};
+        use crate::sys::os::errno;
+
         // A weak symbol allows interposition, e.g. for perf measurements that want to
         // disable randomness for consistency. Otherwise, we'll try a raw syscall.
         // (`getrandom` was added in glibc 2.25, musl 1.1.20, android API level 28)
@@ -41,20 +45,42 @@ mod imp {
             ) -> libc::ssize_t
         }
 
+        // This provides the best quality random numbers available at the given moment
+        // without ever blocking, and is preferable to falling back to /dev/urandom.
+        static GRND_INSECURE_AVAILABLE: AtomicBool = AtomicBool::new(true);
+        if GRND_INSECURE_AVAILABLE.load(Ordering::Relaxed) {
+            let ret = unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_INSECURE) };
+            if ret == -1 && errno() as libc::c_int == libc::EINVAL {
+                GRND_INSECURE_AVAILABLE.store(false, Ordering::Relaxed);
+            } else {
+                return ret;
+            }
+        }
+
         unsafe { getrandom(buf.as_mut_ptr().cast(), buf.len(), libc::GRND_NONBLOCK) }
     }
 
-    #[cfg(target_os = "espidf")]
+    #[cfg(any(target_os = "espidf", target_os = "horizon"))]
     fn getrandom(buf: &mut [u8]) -> libc::ssize_t {
         unsafe { libc::getrandom(buf.as_mut_ptr().cast(), buf.len(), 0) }
     }
 
-    #[cfg(not(any(target_os = "linux", target_os = "android", target_os = "espidf")))]
+    #[cfg(not(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "espidf",
+        target_os = "horizon"
+    )))]
     fn getrandom_fill_bytes(_buf: &mut [u8]) -> bool {
         false
     }
 
-    #[cfg(any(target_os = "linux", target_os = "android", target_os = "espidf"))]
+    #[cfg(any(
+        target_os = "linux",
+        target_os = "android",
+        target_os = "espidf",
+        target_os = "horizon"
+    ))]
     fn getrandom_fill_bytes(v: &mut [u8]) -> bool {
         use crate::sync::atomic::{AtomicBool, Ordering};
         use crate::sys::os::errno;
@@ -82,7 +108,7 @@ mod imp {
                 } else if err == libc::EAGAIN {
                     return false;
                 } else {
-                    panic!("unexpected getrandom error: {}", err);
+                    panic!("unexpected getrandom error: {err}");
                 }
             } else {
                 read += result as usize;
@@ -170,7 +196,7 @@ mod imp {
 // once per thread in `hashmap_random_keys`. Therefore `SecRandomCopyBytes` is
 // only used on iOS where direct access to `/dev/urandom` is blocked by the
 // sandbox.
-#[cfg(target_os = "ios")]
+#[cfg(any(target_os = "ios", target_os = "watchos"))]
 mod imp {
     use crate::io;
     use crate::ptr;

@@ -1,6 +1,8 @@
 // only-x86_64
 
-#![feature(asm, repr_simd, never_type)]
+#![feature(repr_simd, never_type)]
+
+use std::arch::{asm, global_asm};
 
 #[repr(simd)]
 struct SimdNonCopy(f32, f32, f32, f32);
@@ -11,10 +13,8 @@ fn main() {
 
         let x: u64;
         asm!("{}", in(reg) x);
-        //~^ ERROR use of possibly-uninitialized variable: `x`
         let mut y: u64;
         asm!("{}", inout(reg) y);
-        //~^ ERROR use of possibly-uninitialized variable: `y`
         let _ = y;
 
         // Outputs require mutable places
@@ -22,9 +22,7 @@ fn main() {
         let v: Vec<u64> = vec![0, 1, 2];
         asm!("{}", in(reg) v[0]);
         asm!("{}", out(reg) v[0]);
-        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
         asm!("{}", inout(reg) v[0]);
-        //~^ ERROR cannot borrow `v` as mutable, as it is not declared as mutable
 
         // Sym operands must point to a function or static
 
@@ -33,9 +31,9 @@ fn main() {
         asm!("{}", sym S);
         asm!("{}", sym main);
         asm!("{}", sym C);
-        //~^ ERROR asm `sym` operand must point to a fn or static
+        //~^ ERROR invalid `sym` operand
         asm!("{}", sym x);
-        //~^ ERROR asm `sym` operand must point to a fn or static
+        //~^ ERROR invalid `sym` operand
 
         // Register operands must be Copy
 
@@ -78,3 +76,12 @@ fn main() {
         asm!("{}", in(reg) u);
     }
 }
+
+// Sym operands must point to a function or static
+
+const C: i32 = 0;
+static S: i32 = 0;
+global_asm!("{}", sym S);
+global_asm!("{}", sym main);
+global_asm!("{}", sym C);
+//~^ ERROR invalid `sym` operand

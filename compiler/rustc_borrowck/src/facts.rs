@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use crate::location::{LocationIndex, LocationTable};
 use crate::BorrowIndex;
 use polonius_engine::AllFacts as PoloniusFacts;
@@ -25,7 +27,7 @@ impl polonius_engine::FactTypes for RustcFacts {
 
 pub type AllFacts = PoloniusFacts<RustcFacts>;
 
-crate trait AllFactsExt {
+pub(crate) trait AllFactsExt {
     /// Returns `true` if there is a need to gather `AllFacts` given the
     /// current `-Z` flags.
     fn enabled(tcx: TyCtxt<'_>) -> bool;
@@ -40,7 +42,7 @@ crate trait AllFactsExt {
 impl AllFactsExt for AllFacts {
     /// Return
     fn enabled(tcx: TyCtxt<'_>) -> bool {
-        tcx.sess.opts.debugging_opts.nll_facts || tcx.sess.opts.debugging_opts.polonius
+        tcx.sess.opts.unstable_opts.nll_facts || tcx.sess.opts.unstable_opts.polonius
     }
 
     fn write_to_dir(

@@ -22,8 +22,9 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::MemberConstraint;
+use crate::mir::ConstraintCategory;
 use crate::ty::subst::GenericArg;
-use crate::ty::{self, BoundVar, List, Region, TyCtxt};
+use crate::ty::{self, BoundVar, List, Region, Ty, TyCtxt};
 use rustc_index::vec::IndexVec;
 use rustc_macros::HashStable;
 use smallvec::SmallVec;
@@ -34,7 +35,7 @@ use std::ops::Index;
 /// variables have been rewritten to "canonical vars". These are
 /// numbered starting from 0 in order of first appearance.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct Canonical<'tcx, V> {
     pub max_universe: ty::UniverseIndex,
     pub variables: CanonicalVarInfos<'tcx>,
@@ -42,6 +43,15 @@ pub struct Canonical<'tcx, V> {
 }
 
 pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
+
+impl<'tcx> ty::TypeFoldable<'tcx> for CanonicalVarInfos<'tcx> {
+    fn try_fold_with<F: ty::FallibleTypeFolder<'tcx>>(
+        self,
+        folder: &mut F,
+    ) -> Result<Self, F::Error> {
+        ty::util::fold_list(self, folder, |tcx, v| tcx.intern_canonical_var_infos(v))
+    }
+}
 
 /// A set of values corresponding to the canonical variables from some
 /// `Canonical`. You can give these values to
@@ -53,7 +63,7 @@ pub type CanonicalVarInfos<'tcx> = &'tcx List<CanonicalVarInfo<'tcx>>;
 /// variables. You will need to supply it later to instantiate the
 /// canonicalized query response.
 #[derive(Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable)]
-#[derive(HashStable, TypeFoldable, Lift)]
+#[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct CanonicalVarValues<'tcx> {
     pub var_values: IndexVec<BoundVar, GenericArg<'tcx>>,
 }
@@ -64,9 +74,9 @@ pub struct CanonicalVarValues<'tcx> {
 /// result.
 #[derive(Clone, Debug)]
 pub struct OriginalQueryValues<'tcx> {
-    /// Map from the universes that appear in the query to the
-    /// universes in the caller context. For the time being, we only
-    /// ever put ROOT values into the query, so this map is very
+    /// Map from the universes that appear in the query to the universes in the
+    /// caller context. For all queries except `evaluate_goal` (used by Chalk),
+    /// we only ever put ROOT values into the query, so this map is very
     /// simple.
     pub universe_map: SmallVec<[ty::UniverseIndex; 4]>,
 
@@ -75,7 +85,7 @@ pub struct OriginalQueryValues<'tcx> {
     pub var_values: SmallVec<[GenericArg<'tcx>; 8]>,
 }
 
-impl Default for OriginalQueryValues<'tcx> {
+impl<'tcx> Default for OriginalQueryValues<'tcx> {
     fn default() -> Self {
         let mut universe_map = SmallVec::default();
         universe_map.push(ty::UniverseIndex::ROOT);
@@ -89,6 +99,7 @@ impl Default for OriginalQueryValues<'tcx> {
 /// a copy of the canonical value in some other inference context,
 /// with fresh inference variables replacing the canonical values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub struct CanonicalVarInfo<'tcx> {
     pub kind: CanonicalVarKind<'tcx>,
 }
@@ -104,8 +115,8 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
             CanonicalVarKind::PlaceholderTy(_) => false,
             CanonicalVarKind::Region(_) => true,
             CanonicalVarKind::PlaceholderRegion(..) => false,
-            CanonicalVarKind::Const(_) => true,
-            CanonicalVarKind::PlaceholderConst(_) => false,
+            CanonicalVarKind::Const(..) => true,
+            CanonicalVarKind::PlaceholderConst(_, _) => false,
         }
     }
 }
@@ -114,6 +125,7 @@ impl<'tcx> CanonicalVarInfo<'tcx> {
 /// in the type-theory sense of the term -- i.e., a "meta" type system
 /// that analyzes type-like values.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, TyDecodable, TyEncodable, HashStable)]
+#[derive(TypeFoldable, TypeVisitable)]
 pub enum CanonicalVarKind<'tcx> {
     /// Some kind of type inference variable.
     Ty(CanonicalTyVarKind),
@@ -130,10 +142,10 @@ pub enum CanonicalVarKind<'tcx> {
     PlaceholderRegion(ty::PlaceholderRegion),
 
     /// Some kind of const inference variable.
-    Const(ty::UniverseIndex),
+    Const(ty::UniverseIndex, Ty<'tcx>),
 
     /// A "placeholder" that represents "any const".
-    PlaceholderConst(ty::PlaceholderConst<'tcx>),
+    PlaceholderConst(ty::PlaceholderConst<'tcx>, Ty<'tcx>),
 }
 
 impl<'tcx> CanonicalVarKind<'tcx> {
@@ -147,8 +159,8 @@ impl<'tcx> CanonicalVarKind<'tcx> {
             CanonicalVarKind::PlaceholderTy(placeholder) => placeholder.universe,
             CanonicalVarKind::Region(ui) => ui,
             CanonicalVarKind::PlaceholderRegion(placeholder) => placeholder.universe,
-            CanonicalVarKind::Const(ui) => ui,
-            CanonicalVarKind::PlaceholderConst(placeholder) => placeholder.universe,
+            CanonicalVarKind::Const(ui, _) => ui,
+            CanonicalVarKind::PlaceholderConst(placeholder, _) => placeholder.universe,
         }
     }
 }
@@ -173,15 +185,21 @@ pub enum CanonicalTyVarKind {
 /// After we execute a query with a canonicalized key, we get back a
 /// `Canonical<QueryResponse<..>>`. You can use
 /// `instantiate_query_result` to access the data in this result.
-#[derive(Clone, Debug, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct QueryResponse<'tcx, R> {
     pub var_values: CanonicalVarValues<'tcx>,
     pub region_constraints: QueryRegionConstraints<'tcx>,
     pub certainty: Certainty,
+    /// List of opaque types which we tried to compare to another type.
+    /// Inside the query we don't know yet whether the opaque type actually
+    /// should get its hidden type inferred. So we bubble the opaque type
+    /// and the type it was compared against upwards and let the query caller
+    /// handle it.
+    pub opaque_types: Vec<(Ty<'tcx>, Ty<'tcx>)>,
     pub value: R,
 }
 
-#[derive(Clone, Debug, Default, HashStable, TypeFoldable, Lift)]
+#[derive(Clone, Debug, Default, HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct QueryRegionConstraints<'tcx> {
     pub outlives: Vec<QueryOutlivesConstraint<'tcx>>,
     pub member_constraints: Vec<MemberConstraint<'tcx>>,
@@ -214,7 +232,7 @@ pub enum Certainty {
     /// distinguish the two (e.g., due to our preference for where
     /// clauses over impls).
     ///
-    /// After some unifiations and things have been done, it makes
+    /// After some unification and things have been done, it makes
     /// sense to try and prove again -- of course, at that point, the
     /// canonical form will be different, making this a distinct
     /// query.
@@ -243,6 +261,14 @@ impl<'tcx, R> Canonical<'tcx, QueryResponse<'tcx, R>> {
 
     pub fn is_ambiguous(&self) -> bool {
         !self.is_proven()
+    }
+}
+
+impl<'tcx, R> Canonical<'tcx, ty::ParamEnvAnd<'tcx, R>> {
+    #[inline]
+    pub fn without_const(mut self) -> Self {
+        self.value = self.value.without_const();
+        self
     }
 }
 
@@ -276,20 +302,15 @@ impl<'tcx, V> Canonical<'tcx, V> {
     }
 }
 
-pub type QueryOutlivesConstraint<'tcx> =
-    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>;
+pub type QueryOutlivesConstraint<'tcx> = (
+    ty::Binder<'tcx, ty::OutlivesPredicate<GenericArg<'tcx>, Region<'tcx>>>,
+    ConstraintCategory<'tcx>,
+);
 
-TrivialTypeFoldableAndLiftImpls! {
+TrivialTypeTraversalAndLiftImpls! {
     for <'tcx> {
         crate::infer::canonical::Certainty,
-        crate::infer::canonical::CanonicalVarInfo<'tcx>,
-        crate::infer::canonical::CanonicalVarKind<'tcx>,
-    }
-}
-
-TrivialTypeFoldableImpls! {
-    for <'tcx> {
-        crate::infer::canonical::CanonicalVarInfos<'tcx>,
+        crate::infer::canonical::CanonicalTyVarKind,
     }
 }
 
@@ -315,15 +336,17 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                         tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()
                     }
                     GenericArgKind::Lifetime(..) => {
-                        let br =
-                            ty::BoundRegion { var: ty::BoundVar::from_u32(i), kind: ty::BrAnon(i) };
+                        let br = ty::BoundRegion {
+                            var: ty::BoundVar::from_u32(i),
+                            kind: ty::BrAnon(i, None),
+                        };
                         tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
                     }
                     GenericArgKind::Const(ct) => tcx
-                        .mk_const(ty::Const {
-                            ty: ct.ty,
-                            val: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
-                        })
+                        .mk_const(
+                            ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
+                            ct.ty(),
+                        )
                         .into(),
                 })
                 .collect(),

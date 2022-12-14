@@ -1,4 +1,4 @@
-error: enum is never used: `E`
+error: enum `E` is never used
   --> $DIR/empty-unused-enum.rs:3:6
    |
 LL | enum E {}

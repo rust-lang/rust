@@ -1,0 +1,19 @@
+SOURCE_FILE
+  CONST
+    CONST_KW "const"
+    WHITESPACE " "
+    UNDERSCORE "_"
+    COLON ":"
+    WHITESPACE " "
+    PATH_TYPE
+      PATH
+        PATH_SEGMENT
+          NAME_REF
+            IDENT "u32"
+    WHITESPACE " "
+    EQ "="
+    WHITESPACE " "
+    LITERAL
+      INT_NUMBER "0"
+    SEMICOLON ";"
+  WHITESPACE "\n"

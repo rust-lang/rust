@@ -1,5 +1,5 @@
 // run-pass
-#![feature(arbitrary_enum_discriminant, const_raw_ptr_deref, test)]
+#![feature(test)]
 
 extern crate test;
 
@@ -22,14 +22,6 @@ impl Enum {
     }
 }
 
-#[allow(dead_code)]
-#[repr(u8)]
-enum FieldlessEnum {
-    Unit = 3,
-    Tuple() = 2,
-    Struct {} = 1,
-}
-
 fn main() {
     const UNIT: Enum = Enum::Unit;
     const TUPLE: Enum = Enum::Tuple(5);
@@ -48,9 +40,4 @@ fn main() {
     assert_eq!(3, UNIT_TAG);
     assert_eq!(2, TUPLE_TAG);
     assert_eq!(1, STRUCT_TAG);
-
-    // Ensure `as` conversions are correct
-    assert_eq!(3, FieldlessEnum::Unit as u8);
-    assert_eq!(2, FieldlessEnum::Tuple() as u8);
-    assert_eq!(1, FieldlessEnum::Struct{} as u8);
 }

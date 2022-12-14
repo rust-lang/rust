@@ -1,5 +1,3 @@
-// compile-flags: -Z borrowck=mir
-
 #![allow(dead_code)]
 
 fn bar<'a, 'b>() -> fn(&'a u32, &'b u32) -> &'a u32 {

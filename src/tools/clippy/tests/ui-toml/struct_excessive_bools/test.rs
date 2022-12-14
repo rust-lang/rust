@@ -4,6 +4,6 @@ struct S {
     a: bool,
 }
 
-struct Foo {}
+struct Foo;
 
 fn main() {}

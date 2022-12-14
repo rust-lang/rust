@@ -80,16 +80,16 @@ fn main() {
     match_no_arms!(NonEmptyStruct2(true)); //~ ERROR type `NonEmptyStruct2` is non-empty
     match_no_arms!((NonEmptyUnion1 { foo: () })); //~ ERROR type `NonEmptyUnion1` is non-empty
     match_no_arms!((NonEmptyUnion2 { foo: () })); //~ ERROR type `NonEmptyUnion2` is non-empty
-    match_no_arms!(NonEmptyEnum1::Foo(true)); //~ ERROR `Foo(_)` not covered
-    match_no_arms!(NonEmptyEnum2::Foo(true)); //~ ERROR `Foo(_)` and `Bar` not covered
-    match_no_arms!(NonEmptyEnum5::V1); //~ ERROR `V1`, `V2`, `V3` and 2 more not covered
+    match_no_arms!(NonEmptyEnum1::Foo(true)); //~ ERROR `NonEmptyEnum1::Foo(_)` not covered
+    match_no_arms!(NonEmptyEnum2::Foo(true)); //~ ERROR `NonEmptyEnum2::Foo(_)` and `NonEmptyEnum2::Bar` not covered
+    match_no_arms!(NonEmptyEnum5::V1); //~ ERROR `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
 
     match_guarded_arm!(0u8); //~ ERROR `_` not covered
     match_guarded_arm!(NonEmptyStruct1); //~ ERROR `NonEmptyStruct1` not covered
     match_guarded_arm!(NonEmptyStruct2(true)); //~ ERROR `NonEmptyStruct2(_)` not covered
     match_guarded_arm!((NonEmptyUnion1 { foo: () })); //~ ERROR `NonEmptyUnion1 { .. }` not covered
     match_guarded_arm!((NonEmptyUnion2 { foo: () })); //~ ERROR `NonEmptyUnion2 { .. }` not covered
-    match_guarded_arm!(NonEmptyEnum1::Foo(true)); //~ ERROR `Foo(_)` not covered
-    match_guarded_arm!(NonEmptyEnum2::Foo(true)); //~ ERROR `Foo(_)` and `Bar` not covered
-    match_guarded_arm!(NonEmptyEnum5::V1); //~ ERROR `V1`, `V2`, `V3` and 2 more not covered
+    match_guarded_arm!(NonEmptyEnum1::Foo(true)); //~ ERROR `NonEmptyEnum1::Foo(_)` not covered
+    match_guarded_arm!(NonEmptyEnum2::Foo(true)); //~ ERROR `NonEmptyEnum2::Foo(_)` and `NonEmptyEnum2::Bar` not covered
+    match_guarded_arm!(NonEmptyEnum5::V1); //~ ERROR `NonEmptyEnum5::V1`, `NonEmptyEnum5::V2`, `NonEmptyEnum5::V3` and 2 more not covered
 }

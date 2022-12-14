@@ -5,4 +5,4 @@ enum foo {
     baz,
 }
 
-fn main() { }
+fn main() {}

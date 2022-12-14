@@ -106,13 +106,13 @@
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::svh::Svh;
 use rustc_data_structures::{base_n, flock};
-use rustc_errors::ErrorReported;
+use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 
 use std::fs as std_fs;
-use std::io;
-use std::mem;
+use std::io::{self, ErrorKind};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -133,24 +133,26 @@ const QUERY_CACHE_FILENAME: &str = "query-cache.bin";
 // case-sensitive (as opposed to base64, for example).
 const INT_ENCODE_BASE: usize = base_n::CASE_INSENSITIVE;
 
+/// Returns the path to a session's dependency graph.
 pub fn dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, DEP_GRAPH_FILENAME)
 }
+/// Returns the path to a session's staging dependency graph.
+///
+/// On the difference between dep-graph and staging dep-graph,
+/// see `build_dep_graph`.
 pub fn staging_dep_graph_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, STAGING_DEP_GRAPH_FILENAME)
 }
-pub fn dep_graph_path_from(incr_comp_session_dir: &Path) -> PathBuf {
-    in_incr_comp_dir(incr_comp_session_dir, DEP_GRAPH_FILENAME)
-}
-
 pub fn work_products_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, WORK_PRODUCTS_FILENAME)
 }
-
+/// Returns the path to a session's query cache.
 pub fn query_cache_path(sess: &Session) -> PathBuf {
     in_incr_comp_dir_sess(sess, QUERY_CACHE_FILENAME)
 }
 
+/// Locks a given session directory.
 pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     let crate_dir = session_dir.parent().unwrap();
 
@@ -169,28 +171,40 @@ pub fn lock_file_path(session_dir: &Path) -> PathBuf {
     crate_dir.join(&directory_name[0..dash_indices[2]]).with_extension(&LOCK_FILE_EXT[1..])
 }
 
+/// Returns the path for a given filename within the incremental compilation directory
+/// in the current session.
 pub fn in_incr_comp_dir_sess(sess: &Session, file_name: &str) -> PathBuf {
     in_incr_comp_dir(&sess.incr_comp_session_dir(), file_name)
 }
 
+/// Returns the path for a given filename within the incremental compilation directory,
+/// not necessarily from the current session.
+///
+/// To ensure the file is part of the current session, use [`in_incr_comp_dir_sess`].
 pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBuf {
     incr_comp_session_dir.join(file_name)
 }
 
-/// Allocates the private session directory. The boolean in the Ok() result
-/// indicates whether we should try loading a dep graph from the successfully
-/// initialized directory, or not.
-/// The post-condition of this fn is that we have a valid incremental
-/// compilation session directory, if the result is `Ok`. A valid session
+/// Allocates the private session directory.
+///
+/// If the result of this function is `Ok`, we have a valid incremental
+/// compilation session directory. A valid session
 /// directory is one that contains a locked lock file. It may or may not contain
 /// a dep-graph and work products from a previous session.
-/// If the call fails, the fn may leave behind an invalid session directory.
+///
+/// This always attempts to load a dep-graph from the directory.
+/// If loading fails for some reason, we fallback to a disabled `DepGraph`.
+/// See [`rustc_interface::queries::dep_graph`].
+///
+/// If this function returns an error, it may leave behind an invalid session directory.
 /// The garbage collection will take care of it.
+///
+/// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
 pub fn prepare_session_directory(
     sess: &Session,
-    crate_name: &str,
+    crate_name: Symbol,
     stable_crate_id: StableCrateId,
-) -> Result<(), ErrorReported> {
+) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
         return Ok(());
     }
@@ -211,12 +225,12 @@ pub fn prepare_session_directory(
     let crate_dir = match crate_dir.canonicalize() {
         Ok(v) => v,
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "incremental compilation: error canonicalizing path `{}`: {}",
                 crate_dir.display(),
                 err
             ));
-            return Err(ErrorReported);
+            return Err(reported);
         }
     };
 
@@ -290,7 +304,7 @@ pub fn prepare_session_directory(
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
-            mem::drop(directory_lock);
+            drop(directory_lock);
         }
     }
 }
@@ -308,7 +322,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
 
-    if sess.has_errors_or_delayed_span_bugs() {
+    if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
         // If there have been any errors during compilation, we don't want to
         // publish this session directory. Rather, we'll just delete it.
 
@@ -357,7 +371,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
     let new_path = incr_comp_session_dir.parent().unwrap().join(new_sub_dir_name);
     debug!("finalize_session_directory() - new path: {}", new_path.display());
 
-    match std_fs::rename(&*incr_comp_session_dir, &new_path) {
+    match rename_path_with_retry(&*incr_comp_session_dir, &new_path, 3) {
         Ok(_) => {
             debug!("finalize_session_directory() - directory renamed successfully");
 
@@ -407,9 +421,8 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
         return Err(());
     };
 
-    let source_dir_iterator = match source_dir.read_dir() {
-        Ok(it) => it,
-        Err(_) => return Err(()),
+    let Ok(source_dir_iterator) = source_dir.read_dir() else {
+        return Err(());
     };
 
     let mut files_linked = 0;
@@ -434,7 +447,7 @@ fn copy_files(sess: &Session, target_dir: &Path, source_dir: &Path) -> Result<bo
         }
     }
 
-    if sess.opts.debugging_opts.incremental_info {
+    if sess.opts.unstable_opts.incremental_info {
         eprintln!(
             "[incremental] session directory: \
                   {} files hard-linked",
@@ -469,21 +482,21 @@ fn generate_session_dir_path(crate_dir: &Path) -> PathBuf {
     directory_path
 }
 
-fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorReported> {
+fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorGuaranteed> {
     match std_fs::create_dir_all(path) {
         Ok(()) => {
             debug!("{} directory created successfully", dir_tag);
             Ok(())
         }
         Err(err) => {
-            sess.err(&format!(
+            let reported = sess.err(&format!(
                 "Could not create incremental compilation {} \
                                directory `{}`: {}",
                 dir_tag,
                 path.display(),
                 err
             ));
-            Err(ErrorReported)
+            Err(reported)
         }
     }
 }
@@ -492,7 +505,7 @@ fn create_dir(sess: &Session, path: &Path, dir_tag: &str) -> Result<(), ErrorRep
 fn lock_directory(
     sess: &Session,
     session_dir: &Path,
-) -> Result<(flock::Lock, PathBuf), ErrorReported> {
+) -> Result<(flock::Lock, PathBuf), ErrorGuaranteed> {
     let lock_file_path = lock_file_path(session_dir);
     debug!("lock_directory() - lock_file: {}", lock_file_path.display());
 
@@ -532,8 +545,7 @@ fn lock_directory(
                     );
                 }
             }
-            err.emit();
-            Err(ErrorReported)
+            Err(err.emit())
         }
     }
 }
@@ -645,7 +657,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
@@ -664,6 +676,7 @@ fn is_old_enough_to_be_collected(timestamp: SystemTime) -> bool {
     timestamp < SystemTime::now() - Duration::from_secs(10)
 }
 
+/// Runs garbage collection for the current session.
 pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     debug!("garbage_collect_session_directories() - begin");
 
@@ -685,12 +698,9 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     let mut lock_files = FxHashSet::default();
 
     for dir_entry in crate_directory.read_dir()? {
-        let dir_entry = match dir_entry {
-            Ok(dir_entry) => dir_entry,
-            _ => {
-                // Ignore any errors
-                continue;
-            }
+        let Ok(dir_entry) = dir_entry else {
+            // Ignore any errors
+            continue;
         };
 
         let entry_name = dir_entry.file_name();
@@ -725,16 +735,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     // be some kind of leftover
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
         if directory_name.is_none() {
-            let timestamp = match extract_timestamp_from_session_dir(lock_file_name) {
-                Ok(timestamp) => timestamp,
-                Err(()) => {
-                    debug!(
-                        "found lock-file with malformed timestamp: {}",
-                        crate_directory.join(&lock_file_name).display()
-                    );
-                    // Ignore it
-                    continue;
-                }
+            let Ok(timestamp) = extract_timestamp_from_session_dir(lock_file_name) else {
+                debug!(
+                    "found lock-file with malformed timestamp: {}",
+                    crate_directory.join(&lock_file_name).display()
+                );
+                // Ignore it
+                continue;
             };
 
             let lock_file_path = crate_directory.join(&**lock_file_name);
@@ -783,16 +790,13 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
     for (lock_file_name, directory_name) in &lock_file_to_session_dir {
         debug!("garbage_collect_session_directories() - inspecting: {}", directory_name);
 
-        let timestamp = match extract_timestamp_from_session_dir(directory_name) {
-            Ok(timestamp) => timestamp,
-            Err(()) => {
-                debug!(
-                    "found session-dir with malformed timestamp: {}",
-                    crate_directory.join(directory_name).display()
-                );
-                // Ignore it
-                continue;
-            }
+        let Ok(timestamp) = extract_timestamp_from_session_dir(directory_name) else {
+            debug!(
+                "found session-dir with malformed timestamp: {}",
+                crate_directory.join(directory_name).display()
+            );
+            // Ignore it
+            continue;
         };
 
         if is_finalized(directory_name) {
@@ -859,7 +863,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
                     // Let's make it explicit that the file lock is released at this point,
                     // or rather, that we held on to it until here
-                    mem::drop(lock);
+                    drop(lock);
                 }
                 Err(_) => {
                     debug!(
@@ -893,7 +897,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
         // Let's make it explicit that the file lock is released at this point,
         // or rather, that we held on to it until here
-        mem::drop(lock);
+        drop(lock);
     }
 
     Ok(())
@@ -955,5 +959,26 @@ fn safe_remove_file(p: &Path) -> io::Result<()> {
     match std_fs::remove_file(canonicalized) {
         Err(err) if err.kind() == io::ErrorKind::NotFound => Ok(()),
         result => result,
+    }
+}
+
+// On Windows the compiler would sometimes fail to rename the session directory because
+// the OS thought something was still being accessed in it. So we retry a few times to give
+// the OS time to catch up.
+// See https://github.com/rust-lang/rust/issues/86929.
+fn rename_path_with_retry(from: &Path, to: &Path, mut retries_left: usize) -> std::io::Result<()> {
+    loop {
+        match std_fs::rename(from, to) {
+            Ok(()) => return Ok(()),
+            Err(e) => {
+                if retries_left > 0 && e.kind() == ErrorKind::PermissionDenied {
+                    // Try again after a short waiting period.
+                    std::thread::sleep(Duration::from_millis(50));
+                    retries_left -= 1;
+                } else {
+                    return Err(e);
+                }
+            }
+        }
     }
 }

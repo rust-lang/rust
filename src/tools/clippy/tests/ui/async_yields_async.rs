@@ -1,5 +1,5 @@
 // run-rustfix
-
+#![feature(lint_reasons)]
 #![feature(async_closure)]
 #![warn(clippy::async_yields_async)]
 
@@ -64,4 +64,15 @@ fn main() {
     };
     let _n = async || custom_future_type_ctor();
     let _o = async || f();
+}
+
+#[rustfmt::skip]
+#[allow(dead_code)]
+fn check_expect_suppression() {
+    #[expect(clippy::async_yields_async)]
+    let _j = async || {
+        async {
+            3
+        }
+    };
 }

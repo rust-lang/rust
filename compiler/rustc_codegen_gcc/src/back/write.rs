@@ -1,4 +1,4 @@
-use std::fs;
+use std::{env, fs};
 
 use gccjit::OutputKind;
 use rustc_codegen_ssa::{CompiledModule, ModuleCodegen};
@@ -11,7 +11,7 @@ use rustc_target::spec::SplitDebuginfo;
 use crate::{GccCodegenBackend, GccContext};
 
 pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_handler: &Handler, module: ModuleCodegen<GccContext>, config: &ModuleConfig) -> Result<CompiledModule, FatalError> {
-    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &module.name[..]);
+    let _timer = cgcx.prof.generic_activity_with_arg("LLVM_module_codegen", &*module.name);
     {
         let context = &module.module_llvm.context;
 
@@ -32,7 +32,7 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
         if config.emit_asm {
             let _timer = cgcx
                 .prof
-                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &module.name[..]);
+                .generic_activity_with_arg("LLVM_module_codegen_emit_asm", &*module.name);
             let path = cgcx.output_filenames.temp_path(OutputType::Assembly, module_name);
             context.compile_to_file(OutputKind::Assembler, path.to_str().expect("path to str"));
         }
@@ -41,18 +41,23 @@ pub(crate) unsafe fn codegen(cgcx: &CodegenContext<GccCodegenBackend>, _diag_han
             EmitObj::ObjectCode(_) => {
                 let _timer = cgcx
                     .prof
-                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &module.name[..]);
-                match &*module.name {
-                    "std_example.7rcbfp3g-cgu.15" => {
-                        println!("Dumping reproducer {}", module.name);
-                        let _ = fs::create_dir("/tmp/reproducers");
-                        // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
-                        // transmuting an rvalue to an lvalue.
-                        // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
-                        context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
-                        println!("Dumped reproducer {}", module.name);
-                    },
-                    _ => (),
+                    .generic_activity_with_arg("LLVM_module_codegen_emit_obj", &*module.name);
+                if env::var("CG_GCCJIT_DUMP_MODULE_NAMES").as_deref() == Ok("1") {
+                    println!("Module {}", module.name);
+                }
+                if env::var("CG_GCCJIT_DUMP_ALL_MODULES").as_deref() == Ok("1") || env::var("CG_GCCJIT_DUMP_MODULE").as_deref() == Ok(&module.name) {
+                    println!("Dumping reproducer {}", module.name);
+                    let _ = fs::create_dir("/tmp/reproducers");
+                    // FIXME(antoyo): segfault in dump_reproducer_to_file() might be caused by
+                    // transmuting an rvalue to an lvalue.
+                    // Segfault is actually in gcc::jit::reproducer::get_identifier_as_lvalue
+                    context.dump_reproducer_to_file(&format!("/tmp/reproducers/{}.c", module.name));
+                    println!("Dumped reproducer {}", module.name);
+                }
+                if env::var("CG_GCCJIT_DUMP_TO_FILE").as_deref() == Ok("1") {
+                    let _ = fs::create_dir("/tmp/gccjit_dumps");
+                    let path = &format!("/tmp/gccjit_dumps/{}.c", module.name);
+                    context.dump_to_file(path, true);
                 }
                 context.compile_to_file(OutputKind::ObjectFile, obj_out.to_str().expect("path to str"));
             }

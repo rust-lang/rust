@@ -70,25 +70,25 @@ error: attribute must be of form: `attributes(foo, bar)`
 LL | #[proc_macro_derive(d12, attributes)]
    |                          ^^^^^^^^^^
 
-error: not a meta item
+error: attribute must be a meta item, not a literal
   --> $DIR/attribute.rs:55:37
    |
 LL | #[proc_macro_derive(d13, attributes("a"))]
    |                                     ^^^
 
-error: must only be one word
+error: attribute must only be a single word
   --> $DIR/attribute.rs:59:37
    |
 LL | #[proc_macro_derive(d14, attributes(a = ""))]
    |                                     ^^^^^^
 
-error: must only be one word
+error: attribute must only be a single word
   --> $DIR/attribute.rs:63:37
    |
 LL | #[proc_macro_derive(d15, attributes(m::a))]
    |                                     ^^^^
 
-error: must only be one word
+error: attribute must only be a single word
   --> $DIR/attribute.rs:67:37
    |
 LL | #[proc_macro_derive(d16, attributes(a(b)))]

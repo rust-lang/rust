@@ -28,6 +28,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let x: Option<&u32> = Some(&0u32);
     /// ```
+    #[clippy::version = "1.49.0"]
     pub REF_OPTION_REF,
     pedantic,
     "use `Option<&T>` instead of `&Option<&T>`"
@@ -42,8 +43,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
             if mut_ty.mutbl == Mutability::Not;
             if let TyKind::Path(ref qpath) = &mut_ty.ty.kind;
             let last = last_path_segment(qpath);
-            if let Some(res) = last.res;
-            if let Some(def_id) = res.opt_def_id();
+            if let Some(def_id) = last.res.opt_def_id();
 
             if cx.tcx.is_diagnostic_item(sym::Option, def_id);
             if let Some(params) = last_path_segment(qpath).args ;
@@ -52,7 +52,8 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                 GenericArg::Type(inner_ty) => Some(inner_ty),
                 _ => None,
             });
-            if let TyKind::Rptr(_, _) = inner_ty.kind;
+            if let TyKind::Rptr(_, ref inner_mut_ty) = inner_ty.kind;
+            if inner_mut_ty.mutbl == Mutability::Not;
 
             then {
                 span_lint_and_sugg(

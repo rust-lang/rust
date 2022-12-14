@@ -21,13 +21,11 @@ declare_lint_pass!(Pass => [TEST_LINT, PLEASE_LINT]);
 
 impl<'tcx> LateLintPass<'tcx> for Pass {
     fn check_item(&mut self, cx: &LateContext, it: &rustc_hir::Item) {
-        match &*it.ident.as_str() {
-            "lintme" => cx.lint(TEST_LINT, |lint| {
-                lint.build("item is named 'lintme'").set_span(it.span).emit()
-            }),
-            "pleaselintme" => cx.lint(PLEASE_LINT, |lint| {
-                lint.build("item is named 'pleaselintme'").set_span(it.span).emit()
-            }),
+        match it.ident.as_str() {
+            "lintme" => cx.lint(TEST_LINT, "item is named 'lintme'", |lint| lint.set_span(it.span)),
+            "pleaselintme" => {
+                cx.lint(PLEASE_LINT, "item is named 'pleaselintme'", |lint| lint.set_span(it.span))
+            }
             _ => {}
         }
     }
@@ -36,7 +34,7 @@ impl<'tcx> LateLintPass<'tcx> for Pass {
 #[no_mangle]
 fn __rustc_plugin_registrar(reg: &mut Registry) {
     reg.lint_store.register_lints(&[&TEST_LINT, &PLEASE_LINT]);
-    reg.lint_store.register_late_pass(|| Box::new(Pass));
+    reg.lint_store.register_late_pass(|_| Box::new(Pass));
     reg.lint_store.register_group(
         true,
         "lint_me",

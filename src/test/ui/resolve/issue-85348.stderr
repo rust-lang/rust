@@ -17,7 +17,12 @@ error[E0282]: type annotations needed
   --> $DIR/issue-85348.rs:6:13
    |
 LL |         let mut N;
-   |             ^^^^^ consider giving `N` a type
+   |             ^^^^^
+   |
+help: consider giving `N` an explicit type
+   |
+LL |         let mut N: _;
+   |                  +++
 
 error: aborting due to 3 previous errors
 

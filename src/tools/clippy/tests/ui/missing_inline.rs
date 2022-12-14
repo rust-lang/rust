@@ -7,8 +7,8 @@
 type Typedef = String;
 pub type PubTypedef = String;
 
-struct Foo {} // ok
-pub struct PubFoo {} // ok
+struct Foo; // ok
+pub struct PubFoo; // ok
 enum FooE {} // ok
 pub enum PubFooE {} // ok
 
@@ -63,4 +63,4 @@ impl PubFoo {
 
 // do not lint this since users cannot control the external code
 #[derive(Debug)]
-pub struct S {}
+pub struct S;

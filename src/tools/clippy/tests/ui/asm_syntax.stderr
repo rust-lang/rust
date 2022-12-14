@@ -1,14 +1,14 @@
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:9:9
+  --> $DIR/asm_syntax.rs:8:9
    |
 LL |         asm!("");
    |         ^^^^^^^^
    |
-   = note: `-D clippy::inline-asm-x86-intel-syntax` implied by `-D warnings`
    = help: use AT&T x86 assembly syntax
+   = note: `-D clippy::inline-asm-x86-intel-syntax` implied by `-D warnings`
 
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:10:9
+  --> $DIR/asm_syntax.rs:9:9
    |
 LL |         asm!("", options());
    |         ^^^^^^^^^^^^^^^^^^^
@@ -16,7 +16,7 @@ LL |         asm!("", options());
    = help: use AT&T x86 assembly syntax
 
 error: Intel x86 assembly syntax used
-  --> $DIR/asm_syntax.rs:11:9
+  --> $DIR/asm_syntax.rs:10:9
    |
 LL |         asm!("", options(nostack));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -29,8 +29,8 @@ error: AT&T x86 assembly syntax used
 LL |         asm!("", options(att_syntax));
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: `-D clippy::inline-asm-x86-att-syntax` implied by `-D warnings`
    = help: use Intel x86 assembly syntax
+   = note: `-D clippy::inline-asm-x86-att-syntax` implied by `-D warnings`
 
 error: AT&T x86 assembly syntax used
   --> $DIR/asm_syntax.rs:24:9

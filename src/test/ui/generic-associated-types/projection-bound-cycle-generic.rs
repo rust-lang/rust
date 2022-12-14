@@ -1,8 +1,6 @@
 // Like `projection-bound-cycle.rs` but this avoids using
 // `feature(trivial_bounds)`.
 
-#![feature(generic_associated_types)]
-
 trait Print {
     fn print();
 }
@@ -22,7 +20,8 @@ impl<T> Foo for Number<T> {
     // }
     // ```
     // which it is :)
-    type Item where [T]: Sized = [T];
+    type Item = [T] where [T]: Sized;
+    //~^ ERROR overflow evaluating the requirement `<Number<T> as Foo>::Item == _`
 }
 
 struct OnlySized<T> where T: Sized { f: T }
@@ -42,7 +41,6 @@ impl<T> Bar for T where T: Foo {
     // can use the bound on `Foo::Item` for this, but that requires
     // `wf(<T as Foo>::Item)`, which is an invalid cycle.
     type Assoc = OnlySized<<T as Foo>::Item>;
-    //~^ ERROR overflow evaluating the requirement `<T as Foo>::Item: Sized`
 }
 
 fn foo<T: Print>() {
