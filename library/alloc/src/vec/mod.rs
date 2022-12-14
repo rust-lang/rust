@@ -408,6 +408,10 @@ pub struct Vec<
     len: usize,
 }
 
+/// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
+#[unstable(feature = "global_co_alloc_def", issue = "none")]
+pub const DEFAULT_COOP_PREFERRED: bool = true;
+
 #[unstable(feature = "global_co_alloc_covec", issue = "none")]
 pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
     Vec<T, A, true>;
@@ -416,10 +420,6 @@ pub type CoVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: All
 #[unstable(feature = "global_co_alloc_plvec", issue = "none")]
 pub type PlVec<T, #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global> =
     Vec<T, A, false>;
-
-/// Default `Vec`, `DefVec`, `DecVeque`, `DefDecVeq` "cooperation" (`COOP_PREFERRED`) generic parameter.
-#[unstable(feature = "global_co_alloc_def", issue = "none")]
-pub const DEFAULT_COOP_PREFERRED: bool = true;
 
 /// "Default" Vec. Either "cooperative" or not - as specified by `DEFAULT_COOP_PREFERRED`. The
 /// difference to `Vec` (used without specifying `COOP_PREFERRED`): `DefVec` indicates that the
