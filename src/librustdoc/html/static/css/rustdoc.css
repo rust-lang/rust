@@ -585,8 +585,8 @@ ul.block, .block li {
 	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
-.docblock > :not(pre) > code,
-.docblock-short > code {
+.docblock :not(pre) > code,
+.docblock-short code {
 	white-space: pre-wrap;
 }
 
@@ -902,10 +902,11 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	top: 100%;
 	right: 0;
 	z-index: 2;
-	display: block;
 	margin-top: 7px;
 	border-radius: 3px;
 	border: 1px solid var(--border-color);
+	background-color: var(--main-background-color);
+	color: var(--main-color);
 	--popover-arrow-offset: 11px;
 }
 
@@ -916,14 +917,10 @@ so that we can apply CSS-filters to change the arrow color in themes */
 	right: var(--popover-arrow-offset);
 	border: solid var(--border-color);
 	border-width: 1px 1px 0 0;
+	background-color: var(--main-background-color);
 	padding: 4px;
 	transform: rotate(-45deg);
 	top: -5px;
-}
-
-.popover, .popover::before {
-	background-color: var(--main-background-color);
-	color: var(--main-color);
 }
 
 /* use larger max-width for help popover, but not for help.html */
@@ -1872,6 +1869,7 @@ in storage.js
 }
 
 .variants > .docblock,
+.implementors-toggle > .docblock,
 .impl-items > .rustdoc-toggle[open]:not(:last-child),
 .methods > .rustdoc-toggle[open]:not(:last-child),
 .implementors-toggle[open]:not(:last-child) {
