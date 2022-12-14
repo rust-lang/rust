@@ -3334,7 +3334,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
 
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
-                        if ty != *prev_ty {
+                        if self.can_eq(param_env, ty, *prev_ty).is_err() {
                             if type_diffs.iter().any(|diff| {
                                 let Sorts(expected_found) = diff else { return false; };
                                 self.can_eq(param_env, expected_found.found, ty).is_ok()
