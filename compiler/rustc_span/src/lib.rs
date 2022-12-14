@@ -1381,7 +1381,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     4 => {
                         raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
                         for diff in diff_iter {
-                            raw_diffs.extend_from_slice(&(diff.0 as u32).to_le_bytes());
+                            raw_diffs.extend_from_slice(&(diff.0).to_le_bytes());
                         }
                     }
                     _ => unreachable!(),
