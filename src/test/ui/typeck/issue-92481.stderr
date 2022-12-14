@@ -32,11 +32,9 @@ error[E0559]: variant `Result<_, _>::Ok` has no field named `d`
    |
 LL |         d..||_=m
    |         ^ field does not exist
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     -- `Result<_, _>::Ok` defined here
+   = note: `Result<_, _>::Ok` defined here
    |
 help: `Result<_, _>::Ok` is a tuple variant, use the appropriate syntax
    |
