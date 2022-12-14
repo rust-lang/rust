@@ -438,7 +438,11 @@ impl SourceMap {
         }
     }
 
-    fn span_to_string(&self, sp: Span, filename_display_pref: FileNameDisplayPreference) -> String {
+    pub fn span_to_string(
+        &self,
+        sp: Span,
+        filename_display_pref: FileNameDisplayPreference,
+    ) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
@@ -446,12 +450,15 @@ impl SourceMap {
         let lo = self.lookup_char_pos(sp.lo());
         let hi = self.lookup_char_pos(sp.hi());
         format!(
-            "{}:{}:{}: {}:{}",
+            "{}:{}:{}{}",
             lo.file.name.display(filename_display_pref),
             lo.line,
             lo.col.to_usize() + 1,
-            hi.line,
-            hi.col.to_usize() + 1,
+            if let FileNameDisplayPreference::Short = filename_display_pref {
+                String::new()
+            } else {
+                format!(": {}:{}", hi.line, hi.col.to_usize() + 1)
+            }
         )
     }
 
