@@ -5,6 +5,9 @@ LL |     T: FnMut(&'a ()),
    |        ^^^^^^^^^^^^^
    |
    = note: cannot satisfy `T: FnMut<(&'a (),)>`
+   = help: the following types implement trait `FnMut<Args>`:
+             &F
+             &mut F
 
 error: aborting due to previous error
 

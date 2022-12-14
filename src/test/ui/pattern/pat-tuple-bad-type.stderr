@@ -9,8 +9,8 @@ LL |         (..) => {}
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: _;
-   |          +++
+LL |     let x: /* Type */;
+   |          ++++++++++++
 
 error[E0308]: mismatched types
   --> $DIR/pat-tuple-bad-type.rs:10:9

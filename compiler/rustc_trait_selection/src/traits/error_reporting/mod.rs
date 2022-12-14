@@ -42,7 +42,7 @@ use rustc_middle::ty::{
 };
 use rustc_session::Limit;
 use rustc_span::def_id::LOCAL_CRATE;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::sym;
 use rustc_span::{ExpnKind, Span, DUMMY_SP};
 use std::fmt;
 use std::iter;
@@ -980,6 +980,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 trait_ref,
                                 obligation.cause.body_id,
                                 &mut err,
+                                true,
                             ) {
                                 // This is *almost* equivalent to
                                 // `obligation.cause.code().peel_derives()`, but it gives us the
@@ -1015,6 +1016,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                         trait_ref,
                                         obligation.cause.body_id,
                                         &mut err,
+                                        true,
                                     );
                                 }
                             }
@@ -1434,6 +1436,7 @@ trait InferCtxtPrivExt<'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
         err: &mut Diagnostic,
+        other: bool,
     ) -> bool;
 
     /// Gets the parent trait chain start
@@ -1888,7 +1891,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_ref: ty::PolyTraitRef<'tcx>,
         body_id: hir::HirId,
         err: &mut Diagnostic,
+        other: bool,
     ) -> bool {
+        let other = if other { "other " } else { "" };
         let report = |mut candidates: Vec<TraitRef<'tcx>>, err: &mut Diagnostic| {
             candidates.sort();
             candidates.dedup();
@@ -1939,7 +1944,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             candidates.dedup();
             let end = if candidates.len() <= 9 { candidates.len() } else { 8 };
             err.help(&format!(
-                "the following other types implement trait `{}`:{}{}",
+                "the following {other}types implement trait `{}`:{}{}",
                 trait_ref.print_only_trait_path(),
                 candidates[..end].join(""),
                 if len > 9 { format!("\nand {} others", len - 8) } else { String::new() }
@@ -2180,7 +2185,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             trait_ref.skip_binder().substs.types().any(|t| !t.is_ty_infer());
                         // It doesn't make sense to talk about applicable impls if there are more
                         // than a handful of them.
-                        if impls.len() > 1 && impls.len() < 5 && has_non_region_infer {
+                        if impls.len() > 1 && impls.len() < 10 && has_non_region_infer {
                             self.annotate_source_of_ambiguity(&mut err, &impls, predicate);
                         } else {
                             if self.tainted_by_errors().is_some() {
@@ -2188,6 +2193,18 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 return;
                             }
                             err.note(&format!("cannot satisfy `{}`", predicate));
+                            let impl_candidates = self.find_similar_impl_candidates(
+                                predicate.to_opt_poly_trait_pred().unwrap(),
+                            );
+                            if impl_candidates.len() < 10 {
+                                self.report_similar_impl_candidates(
+                                    impl_candidates,
+                                    trait_ref,
+                                    body_id.map(|id| id.hir_id).unwrap_or(obligation.cause.body_id),
+                                    &mut err,
+                                    false,
+                                );
+                            }
                         }
                     }
                     _ => {
@@ -2199,60 +2216,10 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
                 }
 
-                if let ObligationCauseCode::ItemObligation(def_id) | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code() {
-                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
-                } else if let Ok(snippet) = &self.tcx.sess.source_map().span_to_snippet(span)
-                    && let ObligationCauseCode::BindingObligation(def_id, _) | ObligationCauseCode::ExprBindingObligation(def_id, ..)
-                        = *obligation.cause.code()
+                if let ObligationCauseCode::ItemObligation(def_id)
+                | ObligationCauseCode::ExprItemObligation(def_id, ..) = *obligation.cause.code()
                 {
-                    let generics = self.tcx.generics_of(def_id);
-                    if generics.params.iter().any(|p| p.name != kw::SelfUpper)
-                        && !snippet.ends_with('>')
-                        && !generics.has_impl_trait()
-                        && !self.tcx.is_fn_trait(def_id)
-                    {
-                        // FIXME: To avoid spurious suggestions in functions where type arguments
-                        // where already supplied, we check the snippet to make sure it doesn't
-                        // end with a turbofish. Ideally we would have access to a `PathSegment`
-                        // instead. Otherwise we would produce the following output:
-                        //
-                        // error[E0283]: type annotations needed
-                        //   --> $DIR/issue-54954.rs:3:24
-                        //    |
-                        // LL | const ARR_LEN: usize = Tt::const_val::<[i8; 123]>();
-                        //    |                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
-                        //    |                        |
-                        //    |                        cannot infer type
-                        //    |                        help: consider specifying the type argument
-                        //    |                        in the function call:
-                        //    |                        `Tt::const_val::<[i8; 123]>::<T>`
-                        // ...
-                        // LL |     const fn const_val<T: Sized>() -> usize {
-                        //    |                        - required by this bound in `Tt::const_val`
-                        //    |
-                        //    = note: cannot satisfy `_: Tt`
-
-                        // Clear any more general suggestions in favor of our specific one
-                        err.clear_suggestions();
-
-                        err.span_suggestion_verbose(
-                            span.shrink_to_hi(),
-                            &format!(
-                                "consider specifying the type argument{} in the function call",
-                                pluralize!(generics.params.len()),
-                            ),
-                            format!(
-                                "::<{}>",
-                                generics
-                                    .params
-                                    .iter()
-                                    .map(|p| p.name.to_string())
-                                    .collect::<Vec<String>>()
-                                    .join(", ")
-                            ),
-                            Applicability::HasPlaceholders,
-                        );
-                    }
+                    self.suggest_fully_qualified_path(&mut err, def_id, span, trait_ref.def_id());
                 }
 
                 if let (Some(body_id), Some(ty::subst::GenericArgKind::Type(_))) =
