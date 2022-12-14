@@ -1853,7 +1853,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_derive(err, &preds);
     }
 
-    fn suggest_derive(
+    pub fn suggest_derive(
         &self,
         err: &mut Diagnostic,
         unsatisfied_predicates: &[(
