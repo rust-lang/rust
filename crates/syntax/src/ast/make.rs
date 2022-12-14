@@ -734,8 +734,8 @@ pub fn type_bound_list(
 }
 
 pub fn type_param(name: ast::Name, bounds: Option<ast::TypeBoundList>) -> ast::TypeParam {
-    let bound = bounds.map_or_else(String::new, |it| format!(": {it}"));
-    ast_from_text(&format!("fn f<{name}{bound}>() {{ }}"))
+    let bounds = bounds.map_or_else(String::new, |it| format!(": {it}"));
+    ast_from_text(&format!("fn f<{name}{bounds}>() {{ }}"))
 }
 
 pub fn lifetime_param(lifetime: ast::Lifetime) -> ast::LifetimeParam {

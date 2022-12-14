@@ -1,7 +1,9 @@
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode, HasName};
 
-use crate::{utils::generate_trait_impl_text, AssistContext, AssistId, AssistKind, Assists};
+use crate::{
+    utils::generate_trait_impl_text_intransitive, AssistContext, AssistId, AssistKind, Assists,
+};
 
 // Assist: generate_from_impl_for_enum
 //
@@ -70,7 +72,7 @@ pub(crate) fn generate_from_impl_for_enum(
     }}"#
                 )
             };
-            let from_impl = generate_trait_impl_text(&enum_, &from_trait, &impl_code);
+            let from_impl = generate_trait_impl_text_intransitive(&enum_, &from_trait, &impl_code);
             edit.insert(start_offset, from_impl);
         },
     )

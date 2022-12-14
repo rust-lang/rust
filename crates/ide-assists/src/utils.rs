@@ -5,7 +5,6 @@ use std::ops;
 pub(crate) use gen_trait_fn_body::gen_trait_fn_body;
 use hir::{db::HirDatabase, HirDisplay, Semantics};
 use ide_db::{famous_defs::FamousDefs, path_transform::PathTransform, RootDatabase, SnippetCap};
-use itertools::Itertools;
 use stdx::format_to;
 use syntax::{
     ast::{
@@ -435,52 +434,67 @@ pub(crate) fn find_impl_block_end(impl_def: ast::Impl, buf: &mut String) -> Opti
     Some(end)
 }
 
-// Generates the surrounding `impl Type { <code> }` including type and lifetime
-// parameters
+/// Generates the surrounding `impl Type { <code> }` including type and lifetime
+/// parameters.
 pub(crate) fn generate_impl_text(adt: &ast::Adt, code: &str) -> String {
-    generate_impl_text_inner(adt, None, code)
+    generate_impl_text_inner(adt, None, true, code)
 }
 
-// Generates the surrounding `impl <trait> for Type { <code> }` including type
-// and lifetime parameters
+/// Generates the surrounding `impl <trait> for Type { <code> }` including type
+/// and lifetime parameters, with `<trait>` appended to `impl`'s generic parameters' bounds.
+///
+/// This is useful for traits like `PartialEq`, since `impl<T> PartialEq for U<T>` often requires `T: PartialEq`.
 pub(crate) fn generate_trait_impl_text(adt: &ast::Adt, trait_text: &str, code: &str) -> String {
-    generate_impl_text_inner(adt, Some(trait_text), code)
+    generate_impl_text_inner(adt, Some(trait_text), true, code)
 }
 
-fn generate_impl_text_inner(adt: &ast::Adt, trait_text: Option<&str>, code: &str) -> String {
+/// Generates the surrounding `impl <trait> for Type { <code> }` including type
+/// and lifetime parameters, with `impl`'s generic parameters' bounds kept as-is.
+///
+/// This is useful for traits like `From<T>`, since `impl<T> From<T> for U<T>` doesn't require `T: From<T>`.
+pub(crate) fn generate_trait_impl_text_intransitive(
+    adt: &ast::Adt,
+    trait_text: &str,
+    code: &str,
+) -> String {
+    generate_impl_text_inner(adt, Some(trait_text), false, code)
+}
+
+fn generate_impl_text_inner(
+    adt: &ast::Adt,
+    trait_text: Option<&str>,
+    trait_is_transitive: bool,
+    code: &str,
+) -> String {
     // Ensure lifetime params are before type & const params
     let generic_params = adt.generic_param_list().map(|generic_params| {
         let lifetime_params =
             generic_params.lifetime_params().map(ast::GenericParam::LifetimeParam);
-        let ty_or_const_params = generic_params.type_or_const_params().filter_map(|param| {
+        let ty_or_const_params = generic_params.type_or_const_params().map(|param| {
             match param {
                 ast::TypeOrConstParam::Type(param) => {
                     let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
                     param.remove_default();
-                    let mut bounds = param
-                        .type_bound_list()
-                        .map_or_else(Vec::new, |it| it.bounds().collect_vec());
-                    // `{ty_param}: {trait_text}`
+                    let mut bounds =
+                        param.type_bound_list().map_or_else(Vec::new, |it| it.bounds().collect());
                     if let Some(trait_) = trait_text {
-                        // Defense against the following cases:
-                        // - The trait is undetermined, e.g. `$0`.
-                        // - The trait is a `From`, e.g. `From<T>`.
-                        if !trait_.starts_with('$')
-                            && !matches!(trait_.split_once('<'), Some((left, _right)) if left.trim() == "From")
-                        {
+                        // Add the current trait to `bounds` if the trait is transitive,
+                        // meaning `impl<T> Trait for U<T>` requires `T: Trait`.
+                        if trait_is_transitive {
                             bounds.push(make::type_bound(trait_));
                         }
                     };
+                    // `{ty_param}: {bounds}`
                     let param =
                         make::type_param(param.name().unwrap(), make::type_bound_list(bounds));
-                    Some(ast::GenericParam::TypeParam(param))
+                    ast::GenericParam::TypeParam(param)
                 }
                 ast::TypeOrConstParam::Const(param) => {
                     let param = param.clone_for_update();
                     // remove defaults since they can't be specified in impls
                     param.remove_default();
-                    Some(ast::GenericParam::ConstParam(param))
+                    ast::GenericParam::ConstParam(param)
                 }
             }
         });
