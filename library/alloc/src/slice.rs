@@ -466,10 +466,13 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[inline]
     #[unstable(feature = "allocator_api", issue = "32838")]
-    pub fn to_vec_in<A: Allocator>(&self, alloc: A) -> Vec<T, A>
+    pub fn to_vec_in<A: Allocator, const COOP_PREFERRED: bool>(
+        &self,
+        alloc: A,
+    ) -> Vec<T, A, COOP_PREFERRED>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::to_vec(self, alloc)
@@ -492,9 +495,11 @@ impl<T> [T] {
     #[rustc_allow_incoherent_impl]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
-    pub fn into_vec<A: Allocator>(self: Box<Self, A>) -> Vec<T, A>
+    pub fn into_vec<A: Allocator, const COOP_PREFERRED: bool>(
+        self: Box<Self, A>,
+    ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots::<A>()]:,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
     {
         // N.B., see the `hack` module in this file for more details.
         hack::into_vec(self)
@@ -739,6 +744,7 @@ pub trait Join<Separator> {
     fn join(slice: &Self, sep: Separator) -> Self::Output;
 }
 
+// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
@@ -754,6 +760,7 @@ impl<T: Clone, V: Borrow<[T]>> Concat<T> for [V] {
     }
 }
 
+// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
@@ -777,10 +784,11 @@ impl<T: Clone, V: Borrow<[T]>> Join<&T> for [V] {
     }
 }
 
+// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 #[unstable(feature = "slice_concat_ext", issue = "27747")]
 impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
-    type Output = Vec<T>;
+    type Output = Vec<T, Global>;
 
     fn join(slice: &Self, sep: &[T]) -> Vec<T> {
         let mut iter = slice.iter();
