@@ -426,7 +426,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // `deduce_expectations_from_expected_type` introduces
         // late-bound lifetimes defined elsewhere, which we now
         // anonymize away, so as not to confuse the user.
-        let bound_sig = self.tcx.anonymize_late_bound_regions(bound_sig);
+        let bound_sig = self.tcx.anonymize_bound_vars(bound_sig);
 
         let closure_sigs = self.closure_sigs(expr_def_id, body, bound_sig);
 
