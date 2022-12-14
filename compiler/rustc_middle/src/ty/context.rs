@@ -2570,16 +2570,28 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> Ty<'tcx> {
-        let substs = substs.into_iter().map(Into::into);
-        let n = self.generics_of(def_id).count();
-        debug_assert_eq!(
-            (n, Some(n)),
-            substs.size_hint(),
-            "wrong number of generic parameters for {def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
-            substs.collect::<Vec<_>>(),
-        );
-        let substs = self.mk_substs(substs);
+        let substs = self.check_substs(def_id, substs);
         self.mk_ty(FnDef(def_id, substs))
+    }
+
+    #[inline(always)]
+    fn check_substs(
+        self,
+        def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> SubstsRef<'tcx> {
+        let substs = substs.into_iter().map(Into::into);
+        #[cfg(debug_assertions)]
+        {
+            let n = self.generics_of(def_id).count();
+            assert_eq!(
+                (n, Some(n)),
+                substs.size_hint(),
+                "wrong number of generic parameters for {def_id:?}: {:?}",
+                substs.collect::<Vec<_>>(),
+            );
+        }
+        self.mk_substs(substs)
     }
 
     #[inline]
@@ -2862,15 +2874,7 @@ impl<'tcx> TyCtxt<'tcx> {
         trait_def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::TraitRef<'tcx> {
-        let substs = substs.into_iter().map(Into::into);
-        let n = self.generics_of(trait_def_id).count();
-        debug_assert_eq!(
-            (n, Some(n)),
-            substs.size_hint(),
-            "wrong number of generic parameters for {trait_def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
-            substs.collect::<Vec<_>>(),
-        );
-        let substs = self.mk_substs(substs);
+        let substs = self.check_substs(trait_def_id, substs);
         ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
     }
 
@@ -2879,15 +2883,7 @@ impl<'tcx> TyCtxt<'tcx> {
         def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::AliasTy<'tcx> {
-        let substs = substs.into_iter().map(Into::into);
-        let n = self.generics_of(def_id).count();
-        debug_assert_eq!(
-            (n, Some(n)),
-            substs.size_hint(),
-            "wrong number of generic parameters for {def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
-            substs.collect::<Vec<_>>(),
-        );
-        let substs = self.mk_substs(substs);
+        let substs = self.check_substs(def_id, substs);
         ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
