@@ -1,9 +1,11 @@
 use rustc_span::Symbol;
 use rustc_target::spec::abi::Abi;
 
+use crate::machine::SIGRTMAX;
 use crate::*;
 use shims::foreign_items::EmulateByNameResult;
 use shims::unix::fs::EvalContextExt as _;
+use shims::unix::linux::fd::EvalContextExt as _;
 use shims::unix::linux::sync::futex;
 use shims::unix::sync::EvalContextExt as _;
 use shims::unix::thread::EvalContextExt as _;
@@ -41,6 +43,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
                 let result = this.sync_file_range(fd, offset, nbytes, flags)?;
                 this.write_scalar(result, dest)?;
+            }
+            "epoll_create1" => {
+                let [flag] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.epoll_create1(flag)?;
+                this.write_scalar(result, dest)?;
+            }
+            "epoll_ctl" => {
+                let [epfd, op, fd, event] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.epoll_ctl(epfd, op, fd, event)?;
+                this.write_scalar(result, dest)?;
+            }
+            "eventfd" => {
+                let [val, flag] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+                let result = this.eventfd(val, flag)?;
+                this.write_scalar(result, dest)?;
+            }
+            "socketpair" => {
+                let [domain, type_, protocol, sv] =
+                    this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                let result = this.socketpair(domain, type_, protocol, sv)?;
+                this.write_scalar(result, dest)?;
+            }
+            "__libc_current_sigrtmax" => {
+                let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
+
+                this.write_scalar(Scalar::from_i32(SIGRTMAX), dest)?;
             }
 
             // Threading
