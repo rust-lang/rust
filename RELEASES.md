@@ -16,7 +16,7 @@ Language
 - [Change constant evaluation errors from a deny-by-default lint to a hard error](https://github.com/rust-lang/rust/pull/102091/)
 - [Trigger `must_use` on `impl Trait` for supertraits](https://github.com/rust-lang/rust/pull/102287/)
   This makes `impl ExactSizeIterator` respect the existing `#[must_use]` annotation on `Iterator`.
-- [Allow `..X` and `..=X` in patterns](https://github.com/rust-lang/rust/pull/102275/)
+- [Allow `..=X` in patterns](https://github.com/rust-lang/rust/pull/102275/)
 - [Uplift `clippy::for_loops_over_fallibles` lint into rustc](https://github.com/rust-lang/rust/pull/99696/)
 - [Stabilize `sym` operands in inline assembly](https://github.com/rust-lang/rust/pull/103168/)
 - [Update to Unicode 15](https://github.com/rust-lang/rust/pull/101912/)
