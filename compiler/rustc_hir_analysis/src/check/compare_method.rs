@@ -373,6 +373,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
             tcx.fn_sig(impl_m.def_id),
         ),
     );
+    impl_sig.error_reported()?;
     let impl_return_ty = impl_sig.output();
 
     // Normalize the trait signature with liberated bound vars, passing it through
@@ -387,6 +388,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
         )
         .fold_with(&mut collector);
     let trait_sig = ocx.normalize(&norm_cause, param_env, unnormalized_trait_sig);
+    trait_sig.error_reported()?;
     let trait_return_ty = trait_sig.output();
 
     let wf_tys = FxIndexSet::from_iter(
