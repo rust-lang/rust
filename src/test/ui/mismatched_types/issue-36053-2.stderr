@@ -17,7 +17,7 @@ error[E0599]: the method `count` exists for struct `Filter<Fuse<std::iter::Once<
   --> $DIR/issue-36053-2.rs:7:55
    |
 LL |     once::<&str>("str").fuse().filter(|a: &str| true).count();
-   |                                       ---------       ^^^^^ method cannot be called on `Filter<Fuse<std::iter::Once<&str>>, [closure@$DIR/issue-36053-2.rs:7:39: 7:48]>` due to unsatisfied trait bounds
+   |                                       ---------       ^^^^^ method cannot be called due to unsatisfied trait bounds
    |                                       |
    |                                       doesn't satisfy `<_ as FnOnce<(&&str,)>>::Output = bool`
    |                                       doesn't satisfy `_: FnMut<(&&str,)>`

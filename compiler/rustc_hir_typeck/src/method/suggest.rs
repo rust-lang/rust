@@ -895,7 +895,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
+                        let ty_str = if ty_str.len() > 50 {
+                            String::new()
+                        } else {
+                            format!("on `{ty_str}` ")
+                        };
+                        err.span_label(span, format!(
+                            "{item_kind} cannot be called {ty_str}due to unsatisfied trait bounds"
+                        ));
                     }
                 };
 
