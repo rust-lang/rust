@@ -44,6 +44,35 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     }
 }
 
+/// Finds the remote for rust-lang/rust.
+/// For example for these remotes it will return `upstream`.
+/// ```text
+/// origin  https://github.com/Nilstrieb/rust.git (fetch)
+/// origin  https://github.com/Nilstrieb/rust.git (push)
+/// upstream        https://github.com/rust-lang/rust (fetch)
+/// upstream        https://github.com/rust-lang/rust (push)
+/// ```
+fn get_rust_lang_rust_remote() -> Result<String, String> {
+    let mut git = Command::new("git");
+    git.args(["config", "--local", "--get-regex", "remote\\..*\\.url"]);
+
+    let output = git.output().map_err(|err| format!("{err:?}"))?;
+    if !output.status.success() {
+        return Err("failed to execute git config command".to_owned());
+    }
+
+    let stdout = String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?;
+
+    let rust_lang_remote = stdout
+        .lines()
+        .find(|remote| remote.contains("rust-lang"))
+        .ok_or_else(|| "rust-lang/rust remote not found".to_owned())?;
+
+    let remote_name =
+        rust_lang_remote.split('.').nth(1).ok_or_else(|| "remote name not found".to_owned())?;
+    Ok(remote_name.into())
+}
+
 #[derive(serde::Deserialize)]
 struct RustfmtConfig {
     ignore: Vec<String>,
@@ -109,6 +138,23 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
+            }
+            if !check && paths.is_empty() {
+                let remote = t!(get_rust_lang_rust_remote());
+                let base = output(
+                    build
+                        .config
+                        .git()
+                        .arg("merge-base")
+                        .arg("HEAD")
+                        .arg(format!("{remote}/master")),
+                );
+                let files =
+                    output(build.config.git().arg("diff").arg("--name-only").arg(base.trim()));
+                for file in files.lines() {
+                    println!("formatting modified file {file}");
+                    ignore_fmt.add(&format!("/{file}")).expect(file);
+                }
             }
         } else {
             println!("Not in git tree. Skipping git-aware format checks");
