@@ -379,6 +379,10 @@ impl Token {
         }
     }
 
+    pub fn is_range_seperator(&self) -> bool {
+        [DotDot, DotDotDot, DotDotEq].contains(&self.kind)
+    }
+
     pub fn is_op(&self) -> bool {
         match self.kind {
             Eq | Lt | Le | EqEq | Ne | Ge | Gt | AndAnd | OrOr | Not | Tilde | BinOp(_)
