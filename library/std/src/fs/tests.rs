@@ -1592,6 +1592,6 @@ fn test_read_dir_infinite_loop() {
     // Skip the test if we can't open the directory in the first place
     let Ok(dir) = fs::read_dir(path) else { return };
 
-    // Iterate through the directory
-    for _ in dir {}
+    // Check for duplicate errors
+    assert!(dir.filter(|e| e.is_err()).take(2).count() < 2);
 }
