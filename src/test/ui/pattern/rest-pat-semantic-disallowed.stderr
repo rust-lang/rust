@@ -193,8 +193,8 @@ LL |     let x @ ..;
    |
 help: consider giving this pattern a type
    |
-LL |     let x @ ..: _;
-   |               +++
+LL |     let x @ ..: /* Type */;
+   |               ++++++++++++
 
 error: aborting due to 23 previous errors
 

@@ -1221,3 +1221,11 @@ pub(crate) struct UnexpectedIfWithIf(
     #[suggestion(applicability = "machine-applicable", code = " ", style = "verbose")]
     pub Span,
 );
+
+#[derive(Diagnostic)]
+#[diag(parse_maybe_fn_typo_with_impl)]
+pub(crate) struct FnTypoWithImpl {
+    #[primary_span]
+    #[suggestion(applicability = "maybe-incorrect", code = "impl", style = "verbose")]
+    pub fn_span: Span,
+}

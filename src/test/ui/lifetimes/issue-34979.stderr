@@ -5,6 +5,7 @@ LL |     &'a (): Foo,
    |             ^^^
    |
    = note: cannot satisfy `&'a (): Foo`
+   = help: the trait `Foo` is implemented for `&'a T`
 
 error: aborting due to previous error
 

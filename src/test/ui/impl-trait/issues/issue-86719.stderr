@@ -20,8 +20,8 @@ LL |         |_| true
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |         |_: _| true
-   |           +++
+LL |         |_: /* Type */| true
+   |           ++++++++++++
 
 error: aborting due to 3 previous errors
 

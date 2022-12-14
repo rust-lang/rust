@@ -6,8 +6,8 @@ LL |     let [_, _] = a.into();
    |
 help: consider giving this pattern a type
    |
-LL |     let [_, _]: _ = a.into();
-   |               +++
+LL |     let [_, _]: /* Type */ = a.into();
+   |               ++++++++++++
 
 error: aborting due to previous error
 

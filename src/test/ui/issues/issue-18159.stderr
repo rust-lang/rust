@@ -6,8 +6,8 @@ LL |     let x;
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: _;
-   |          +++
+LL |     let x: /* Type */;
+   |          ++++++++++++
 
 error: aborting due to previous error
 
