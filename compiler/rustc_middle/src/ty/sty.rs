@@ -1164,7 +1164,7 @@ pub struct AliasTy<'tcx> {
     pub def_id: DefId,
 
     /// This field exists to prevent the creation of `ProjectionTy` without using
-    /// [TyCtxt::mk_projection_ty].
+    /// [TyCtxt::mk_alias_ty].
     pub(super) _use_mk_alias_ty_instead: (),
 }
 
