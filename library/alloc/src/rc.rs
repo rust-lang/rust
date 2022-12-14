@@ -247,6 +247,7 @@ use crate::boxed::Box;
 #[cfg(test)]
 use std::boxed::Box;
 
+use crate::alloc;
 use core::any::Any;
 use core::borrow;
 use core::cell::Cell;
@@ -1987,7 +1988,10 @@ impl<T: ?Sized> From<Box<T>> for Rc<T> {
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "shared_from_slice", since = "1.21.0")]
-impl<T> From<Vec<T>> for Rc<[T]> {
+impl<T, const COOP_PREFERRED: bool> From<Vec<T, Global, COOP_PREFERRED>> for Rc<[T]>
+where
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     /// Allocate a reference-counted slice and move `v`'s items into it.
     ///
     /// # Example
@@ -1999,7 +2003,10 @@ impl<T> From<Vec<T>> for Rc<[T]> {
     /// assert_eq!(vec![1, 2, 3], *shared);
     /// ```
     #[inline]
-    fn from(mut v: Vec<T>) -> Rc<[T]> {
+    fn from(mut v: Vec<T, Global, COOP_PREFERRED>) -> Rc<[T]>
+    where
+        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    {
         unsafe {
             let rc = Rc::copy_from_slice(&v);
             // Allow the Vec to free its memory, but not destroy its contents
@@ -2120,6 +2127,7 @@ trait ToRcSlice<T>: Iterator<Item = T> + Sized {
     fn to_rc_slice(self) -> Rc<[T]>;
 }
 
+// COOP_NOT_POSSIBLE
 #[cfg(not(no_global_oom_handling))]
 impl<T, I: Iterator<Item = T>> ToRcSlice<T> for I {
     default fn to_rc_slice(self) -> Rc<[T]> {

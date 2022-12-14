@@ -69,7 +69,7 @@ pub(crate) struct RawVec<
 
 impl<T, const COOP_PREFERRED: bool> RawVec<T, Global, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// HACK(Centril): This exists because stable `const fn` can only call stable `const fn`, so
     /// they cannot call `Self::new()`.
@@ -530,20 +530,6 @@ where
             } else {
                 unsafe { self.alloc.deallocate(ptr, layout) }
             }
-        }
-    }
-}
-
-// @FIXME Custom
-unsafe impl<#[may_dangle] T, const COOP_PREFERRED: bool> Drop for RawVec<T, Global, COOP_PREFERRED>
-where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
-{
-    /// Frees the memory owned by the `RawVec` *without* trying to drop its contents.
-    fn drop(&mut self) {
-        // @TOFIXMEDO
-        if let Some((ptr, layout)) = self.current_memory() {
-            unsafe { self.alloc.deallocate(ptr, layout) }
         }
     }
 }

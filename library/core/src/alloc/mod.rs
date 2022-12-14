@@ -104,6 +104,19 @@ pub const fn co_alloc_metadata_num_slots_with_preference<A: Allocator>(
     if A::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
 }
 
+#[unstable(feature = "global_co_alloc", issue = "none")]
+/// Param `coop_preferred` - if false, then this returns `0`, regardless of
+/// whether allocator `A` is cooperative.
+pub const fn co_alloc_metadata_num_slots_with_preference_global(_coop_preferred: bool) -> usize {
+    if true {
+        panic!("FIXME");
+    }
+    // @FIXME Move these functions to :alloc instead.
+    // Then:
+    0
+    //if Global::IS_CO_ALLOCATOR && coop_preferred { 1 } else { 0 }
+}
+
 /// An implementation of `Allocator` can allocate, grow, shrink, and deallocate arbitrary blocks of
 /// data described via [`Layout`][].
 ///
