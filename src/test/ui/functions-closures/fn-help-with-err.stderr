@@ -17,11 +17,11 @@ note: `Bar` defines an item `bar`, perhaps you need to implement it
 LL | trait Bar {
    | ^^^^^^^^^
 
-error[E0599]: no method named `bar` found for struct `Arc<[closure@$DIR/fn-help-with-err.rs:22:36: 22:38]>` in the current scope
+error[E0599]: no method named `bar` found for struct `Arc<[closure@fn-help-with-err.rs:22:36]>` in the current scope
   --> $DIR/fn-help-with-err.rs:23:10
    |
 LL |     arc2.bar();
-   |          ^^^ method not found in `Arc<[closure@$DIR/fn-help-with-err.rs:22:36: 22:38]>`
+   |          ^^^ method not found in `Arc<[closure@fn-help-with-err.rs:22:36]>`
    |
    = help: items from traits can only be used if the trait is implemented and in scope
 note: `Bar` defines an item `bar`, perhaps you need to implement it

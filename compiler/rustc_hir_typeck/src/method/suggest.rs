@@ -25,7 +25,7 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
-use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
 use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let tcx = self.tcx;
 
                 let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-                let ty_str = self.ty_to_string(rcvr_ty);
+                let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
                 let is_method = mode == Mode::MethodCall;
                 let item_kind = if is_method {
                     "method"
@@ -565,7 +565,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let term = pred.skip_binder().term;
 
                                 let obligation = format!("{} = {}", projection_ty, term);
-                                let quiet = format!("{} = {}", quiet_projection_ty, term);
+                                let quiet = with_forced_trimmed_paths!(format!(
+                                    "{} = {}",
+                                    quiet_projection_ty, term
+                                ));
 
                                 bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                                 Some((obligation, projection_ty.self_ty()))
@@ -575,7 +578,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
                                 let obligation = format!("{}: {}", self_ty, path);
-                                let quiet = format!("_: {}", path);
+                                let quiet = with_forced_trimmed_paths!(format!("_: {}", path));
                                 bound_span_label(self_ty, &obligation, &quiet);
                                 Some((obligation, self_ty))
                             }
@@ -798,7 +801,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 (None, None)
                             };
                         let primary_message = primary_message.unwrap_or_else(|| format!(
-                            "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
+                            "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, \
+                             but its trait bounds were not satisfied"
                         ));
                         err.set_primary_message(&primary_message);
                         if let Some(label) = label {
@@ -895,7 +899,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
+                        err.span_label(
+                            span,
+                            format!(
+                                "{item_kind} cannot be called on `{ty_str}` due to unsatisfied \
+                                 trait bounds",
+                            ),
+                        );
                     }
                 };
 
