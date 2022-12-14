@@ -90,10 +90,7 @@ jobs:
         sudo apt-get install -y gcc-s390x-linux-gnu qemu-user
 
     - name: Prepare dependencies
-      run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
-        ./y.rs prepare
+      run: ./y.rs prepare
 
     - name: Build without unstable features
       env:
@@ -183,8 +180,6 @@ jobs:
 
     - name: Prepare dependencies
       run: |
-        git config --global user.email "user@example.com"
-        git config --global user.name "User"
         git config --global core.autocrlf false
         rustc y.rs -o y.exe -g
         ./y.exe prepare

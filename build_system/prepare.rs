@@ -180,7 +180,16 @@ fn init_git_repo(repo_dir: &Path) {
     spawn_and_wait(git_add_cmd);
 
     let mut git_commit_cmd = Command::new("git");
-    git_commit_cmd.arg("commit").arg("-m").arg("Initial commit").arg("-q").current_dir(repo_dir);
+    git_commit_cmd
+        .arg("-c")
+        .arg("user.name=Dummy")
+        .arg("-c")
+        .arg("user.email=dummy@example.com")
+        .arg("commit")
+        .arg("-m")
+        .arg("Initial commit")
+        .arg("-q")
+        .current_dir(repo_dir);
     spawn_and_wait(git_commit_cmd);
 }
 
@@ -216,7 +225,15 @@ fn apply_patches(dirs: &Dirs, crate_name: &str, target_dir: &Path) {
             patch.file_name().unwrap()
         );
         let mut apply_patch_cmd = Command::new("git");
-        apply_patch_cmd.arg("am").arg(patch).arg("-q").current_dir(target_dir);
+        apply_patch_cmd
+            .arg("-c")
+            .arg("user.name=Dummy")
+            .arg("-c")
+            .arg("user.email=dummy@example.com")
+            .arg("am")
+            .arg(patch)
+            .arg("-q")
+            .current_dir(target_dir);
         spawn_and_wait(apply_patch_cmd);
     }
 }
