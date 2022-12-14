@@ -9,6 +9,9 @@ The rustc compiler contains support for following sanitizers:
   forward-edge control flow protection.
 * [Hardware-assisted AddressSanitizer][clang-hwasan]  a tool similar to
   AddressSanitizer but based on partial hardware assistance.
+* [KernelControlFlowIntegrity][clang-kcfi] LLVM Kernel Control Flow Integrity
+  (KCFI) provides forward-edge control flow protection for operating systems
+  kernels.
 * [LeakSanitizer][clang-lsan] a run-time memory leak detector.
 * [MemorySanitizer][clang-msan] a detector of uninitialized reads.
 * [ThreadSanitizer][clang-tsan] a fast data race detector.
@@ -16,9 +19,9 @@ The rustc compiler contains support for following sanitizers:
 ## How to use the sanitizers?
 
 To enable a sanitizer compile with `-Z sanitizer=...` option, where value is one
-of `address`, `cfi`, `hwaddress`, `leak`, `memory` or `thread`. For more details
-on how to use sanitizers please refer to the sanitizer flag in [the unstable
-book](https://doc.rust-lang.org/unstable-book/).
+of `address`, `cfi`, `hwaddress`, `kcfi`, `leak`, `memory` or `thread`. For more
+details on how to use sanitizers please refer to the sanitizer flag in [the
+unstable book](https://doc.rust-lang.org/unstable-book/).
 
 ## How are sanitizers implemented in rustc?
 
@@ -109,6 +112,7 @@ To enable a sanitizer on a new target which is already supported by LLVM:
 * [AddressSanitizer in Clang][clang-asan]
 * [ControlFlowIntegrity in Clang][clang-cfi]
 * [Hardware-assisted AddressSanitizer][clang-hwasan]
+* [KernelControlFlowIntegrity in Clang][clang-kcfi]
 * [LeakSanitizer in Clang][clang-lsan]
 * [MemorySanitizer in Clang][clang-msan]
 * [ThreadSanitizer in Clang][clang-tsan]
@@ -116,6 +120,7 @@ To enable a sanitizer on a new target which is already supported by LLVM:
 [clang-asan]: https://clang.llvm.org/docs/AddressSanitizer.html
 [clang-cfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html
 [clang-hwasan]: https://clang.llvm.org/docs/HardwareAssistedAddressSanitizerDesign.html
+[clang-kcfi]: https://clang.llvm.org/docs/ControlFlowIntegrity.html#fsanitize-kcfi
 [clang-lsan]: https://clang.llvm.org/docs/LeakSanitizer.html
 [clang-msan]: https://clang.llvm.org/docs/MemorySanitizer.html
 [clang-tsan]: https://clang.llvm.org/docs/ThreadSanitizer.html
