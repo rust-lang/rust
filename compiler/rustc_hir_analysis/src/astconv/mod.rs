@@ -2598,6 +2598,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
         path: &hir::Path<'_>,
+        hir_id: hir::HirId,
         permit_variants: bool,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
@@ -2661,11 +2662,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 });
 
-                let def_id = def_id.expect_local();
-                let item_def_id = tcx.hir().ty_param_owner(def_id);
-                let generics = tcx.generics_of(item_def_id);
-                let index = generics.param_def_id_to_index[&def_id.to_def_id()];
-                tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
+                match tcx.named_bound_var(hir_id) {
+                    Some(rbv::ResolvedArg::LateBound(debruijn, index, _)) => {
+                        let name =
+                            tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
+                        let br = ty::BoundTy {
+                            var: ty::BoundVar::from_u32(index),
+                            kind: ty::BoundTyKind::Param(def_id, name),
+                        };
+                        tcx.mk_ty(ty::Bound(debruijn, br))
+                    }
+                    Some(rbv::ResolvedArg::EarlyBound(_)) => {
+                        let def_id = def_id.expect_local();
+                        let item_def_id = tcx.hir().ty_param_owner(def_id);
+                        let generics = tcx.generics_of(item_def_id);
+                        let index = generics.param_def_id_to_index[&def_id.to_def_id()];
+                        tcx.mk_ty_param(index, tcx.hir().ty_param_name(def_id))
+                    }
+                    arg => bug!("unexpected bound var resolution for {hir_id:?}: {arg:?}"),
+                }
             }
             Res::SelfTyParam { .. } => {
                 // `Self` in trait or type alias.
@@ -2888,7 +2903,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::TyKind::Path(hir::QPath::Resolved(maybe_qself, path)) => {
                 debug!(?maybe_qself, ?path);
                 let opt_self_ty = maybe_qself.as_ref().map(|qself| self.ast_ty_to_ty(qself));
-                self.res_to_ty(opt_self_ty, path, false)
+                self.res_to_ty(opt_self_ty, path, ast_ty.hir_id, false)
             }
             &hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);

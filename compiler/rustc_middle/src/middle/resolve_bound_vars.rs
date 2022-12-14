@@ -10,8 +10,8 @@ use rustc_macros::HashStable;
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable, Debug, HashStable)]
 pub enum ResolvedArg {
     StaticLifetime,
-    EarlyBound(/* lifetime decl */ DefId),
-    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* lifetime decl */ DefId),
+    EarlyBound(/* decl */ DefId),
+    LateBound(ty::DebruijnIndex, /* late-bound index */ u32, /* decl */ DefId),
     Free(DefId, /* lifetime decl */ DefId),
 }
 
