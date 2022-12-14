@@ -154,6 +154,11 @@ pub mod huge_amount_of_consts {
 /// Very long code text `hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`.
 pub mod long_code_block {}
 
+/// Very long code text [`hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`][lnk].
+///
+/// [lnk]: crate::long_code_block_link
+pub mod long_code_block_link {}
+
 #[macro_export]
 macro_rules! repro {
     () => {};
