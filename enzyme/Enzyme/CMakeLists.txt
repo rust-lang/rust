@@ -212,6 +212,7 @@ if (${Clang_FOUND})
 	LINK_COMPONENTS
 	LLVM
     )
+target_compile_definitions(ClangEnzyme-${LLVM_VERSION_MAJOR} PUBLIC ENZYME_RUNPASS)
 endif()
         add_llvm_library( LLDEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymePassLoader.cpp
@@ -221,6 +222,7 @@ endif()
 	LINK_COMPONENTS
 	LLVM
     )
+target_compile_definitions(LLDEnzyme-${LLVM_VERSION_MAJOR} PUBLIC ENZYME_RUNPASS)
 else()
     add_llvm_library( LLVMEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC}
@@ -240,6 +242,7 @@ if (${Clang_FOUND})
         PLUGIN_TOOL
         opt
     )
+target_compile_definitions(ClangEnzyme-${LLVM_VERSION_MAJOR} PUBLIC ENZYME_RUNPASS)
 endif()
     add_llvm_library( LLDEnzyme-${LLVM_VERSION_MAJOR}
         ${ENZYME_SRC} Clang/EnzymePassLoader.cpp
@@ -249,6 +252,7 @@ endif()
         PLUGIN_TOOL
         opt
     )
+target_compile_definitions(LLDEnzyme-${LLVM_VERSION_MAJOR} PUBLIC ENZYME_RUNPASS)
 endif()
 endif()
 

@@ -1291,9 +1291,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 // phi->getParent();
                 if (prevIteration.count(PB)) {
                   assert(0 && "tri block prev iteration unhandled");
-                } else if ((inst->mayReadFromMemory() &&
-                            !DT.dominates(inst->getParent(),
-                                          phi->getParent())) ||
+                } else if (!DT.dominates(inst->getParent(), phi->getParent()) ||
                            (!EnzymeSpeculatePHIs &&
                             (isa<CallInst>(inst) || isa<LoadInst>(inst))))
                   vals.push_back(getOpFull(B, inst, nextScope));
@@ -1318,6 +1316,9 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
             BasicBlock *bsplit = BasicBlock::Create(
                 val->getContext(), oldB->getName() + "_phisplt", newFunc);
             bsplit->moveAfter(oldB);
+            if (inReverseBlocks)
+              reverseBlocks[fwd].push_back(bsplit);
+            reverseBlockToPrimal[bsplit] = fwd;
             BuilderM.CreateCondBr(
                 cond1,
                 (done[std::make_pair(block, bi1->getSuccessor(0))].size() == 1)
@@ -1487,8 +1488,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                   assert(___res->getType() == inst->getType() && "lu");
               }
               vals.push_back(___res);
-            } else if ((inst->mayReadFromMemory() &&
-                        !DT.dominates(inst->getParent(), phi->getParent())) ||
+            } else if (!DT.dominates(inst->getParent(), phi->getParent()) ||
                        (!EnzymeSpeculatePHIs &&
                         (isa<CallInst>(inst) || isa<LoadInst>(inst))))
               vals.push_back(getOpFull(B, inst, nextScope));
@@ -1518,17 +1518,22 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                                        ConstantInt::get(prevIdx->getType(), 0));
 
         if (blocks[0]->size() == 1 && blocks[1]->size() == 1) {
-          eraseBlocks(blocks, bret);
-          Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
-                                               phi->getName() + "_unwrap");
-          if (permitCache) {
-            unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
-                toret;
-          }
-          if (auto instRet = dyn_cast<Instruction>(toret)) {
-            unwrappedLoads[instRet] = val;
-          }
-          return toret;
+          if (auto B1 = dyn_cast<BranchInst>(blocks[0]->getTerminator()))
+            if (auto B2 = dyn_cast<BranchInst>(blocks[1]->getTerminator()))
+              if (B1->isUnconditional() && B2->isUnconditional() &&
+                  B1->getSuccessor(0) == bret && B2->getSuccessor(0) == bret) {
+                eraseBlocks(blocks, bret);
+                Value *toret = BuilderM.CreateSelect(
+                    cond, vals[0], vals[1], phi->getName() + "_unwrap");
+                if (permitCache) {
+                  unwrap_cache[BuilderM.GetInsertBlock()][idx.first]
+                              [idx.second] = toret;
+                }
+                if (auto instRet = dyn_cast<Instruction>(toret)) {
+                  unwrappedLoads[instRet] = val;
+                }
+                return toret;
+              }
         }
 
         bret->moveAfter(last);
@@ -1662,8 +1667,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           // 3) the value comes from a previous iteration.
           BasicBlock *nextScope = PB;
           // if (inst->getParent() == nextScope) nextScope = phi->getParent();
-          if ((inst->mayReadFromMemory() &&
-               !DT.dominates(inst->getParent(), phi->getParent())) ||
+          if (!DT.dominates(inst->getParent(), phi->getParent()) ||
               (!EnzymeSpeculatePHIs &&
                (isa<CallInst>(inst) || isa<LoadInst>(inst))))
             vals.push_back(getOpFull(B, inst, nextScope));
@@ -1686,17 +1690,22 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
       // were made in the two blocks
       if (isa<BranchInst>(equivalentTerminator) && blocks[0]->size() == 1 &&
           blocks[1]->size() == 1) {
-        eraseBlocks(blocks, bret);
-        Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
-                                             phi->getName() + "_unwrap");
-        if (permitCache) {
-          unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
-              toret;
-        }
-        if (auto instRet = dyn_cast<Instruction>(toret)) {
-          unwrappedLoads[instRet] = val;
-        }
-        return toret;
+        if (auto B1 = dyn_cast<BranchInst>(blocks[0]->getTerminator()))
+          if (auto B2 = dyn_cast<BranchInst>(blocks[1]->getTerminator()))
+            if (B1->isUnconditional() && B2->isUnconditional() &&
+                B1->getSuccessor(0) == bret && B2->getSuccessor(0) == bret) {
+              eraseBlocks(blocks, bret);
+              Value *toret = BuilderM.CreateSelect(cond, vals[0], vals[1],
+                                                   phi->getName() + "_unwrap");
+              if (permitCache) {
+                unwrap_cache[BuilderM.GetInsertBlock()][idx.first][idx.second] =
+                    toret;
+              }
+              if (auto instRet = dyn_cast<Instruction>(toret)) {
+                unwrappedLoads[instRet] = val;
+              }
+              return toret;
+            }
       }
 
       if (BuilderM.GetInsertPoint() != oldB->end()) {
@@ -3248,6 +3257,7 @@ bool GradientUtils::legalRecompute(const Value *val,
     auto n = getFuncNameFromCall(const_cast<CallInst *>(ci));
     auto called = ci->getCalledFunction();
     Intrinsic::ID ID = Intrinsic::not_intrinsic;
+
     if (ci->hasFnAttr("enzyme_shouldrecompute") ||
         (called && called->hasFnAttribute("enzyme_shouldrecompute")) ||
         isMemFreeLibMFunction(n, &ID) || n == "lgamma_r" || n == "lgammaf_r" ||
