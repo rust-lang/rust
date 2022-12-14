@@ -13,7 +13,9 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -1276,17 +1278,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
             // Check that we're in fact trying to clone into the expected type
             && self.can_coerce(*pointee_ty, expected_ty)
+            && let predicate = ty::Binder::dummy(ty::TraitRef {
+                def_id: clone_trait_did,
+                substs: self.tcx.mk_substs([expected_ty.into()].iter()),
+            })
+                .without_const()
+                .to_predicate(self.tcx)
             // And the expected type doesn't implement `Clone`
             && !self.predicate_must_hold_considering_regions(&traits::Obligation {
                 cause: traits::ObligationCause::dummy(),
                 param_env: self.param_env,
                 recursion_depth: 0,
-                predicate: ty::Binder::dummy(ty::TraitRef {
-                    def_id: clone_trait_did,
-                    substs: self.tcx.mk_substs([expected_ty.into()].iter()),
-                })
-                .without_const()
-                .to_predicate(self.tcx),
+                predicate,
             })
         {
             diag.span_note(
@@ -1295,6 +1298,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
+            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            if let ty::Param(param) = expected_ty.kind()
+                && let Some(generics) = self.tcx.hir().get_generics(owner)
+            {
+                suggest_constraining_type_params(
+                    self.tcx,
+                    generics,
+                    diag,
+                    vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                );
+            } else {
+                self.suggest_derive(diag, &[(predicate, None, None)]);
+            }
         }
     }
 
