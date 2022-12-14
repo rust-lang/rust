@@ -83,7 +83,7 @@ macro_rules! maybe_whole_expr {
 pub(super) enum LhsExpr {
     NotYetParsed,
     AttributesParsed(AttrWrapper),
-    AlreadyParsed(P<Expr>),
+    AlreadyParsed(P<Expr>, bool), // (expr, starts_statement)
 }
 
 impl From<Option<AttrWrapper>> for LhsExpr {
@@ -101,7 +101,7 @@ impl From<P<Expr>> for LhsExpr {
     ///
     /// This conversion does not allocate.
     fn from(expr: P<Expr>) -> Self {
-        LhsExpr::AlreadyParsed(expr)
+        LhsExpr::AlreadyParsed(expr, false)
     }
 }
 
@@ -173,7 +173,9 @@ impl<'a> Parser<'a> {
         min_prec: usize,
         lhs: LhsExpr,
     ) -> PResult<'a, P<Expr>> {
-        let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
+        let mut starts_stmt = false;
+        let mut lhs = if let LhsExpr::AlreadyParsed(expr, starts_statement) = lhs {
+            starts_stmt = starts_statement;
             expr
         } else {
             let attrs = match lhs {
@@ -292,7 +294,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
+                lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
                 continue;
             }
 
@@ -590,14 +592,15 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Plus)
                 if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
             {
-                let prev_is_semi = this.prev_token == token::Semi;
+                let starts_stmt = this.prev_token == token::Semi
+                    || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
                 // Eat both `+`s.
                 this.bump();
                 this.bump();
 
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
-                this.recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+                this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
