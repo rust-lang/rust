@@ -67,10 +67,6 @@ fn prepare_sysroot(dirs: &Dirs) {
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
-    let mut git_init_cmd = Command::new("git");
-    git_init_cmd.arg("init").arg("-q").current_dir(sysroot_src.to_path(dirs));
-    spawn_and_wait(git_init_cmd);
-
     init_git_repo(&sysroot_src.to_path(dirs));
 
     apply_patches(dirs, "sysroot", &sysroot_src.to_path(dirs));
