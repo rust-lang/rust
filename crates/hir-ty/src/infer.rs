@@ -535,6 +535,9 @@ impl<'a> InferenceContext<'a> {
         for (_, subst) in result.method_resolutions.values_mut() {
             *subst = table.resolve_completely(subst.clone());
         }
+        for (_, subst) in result.assoc_resolutions.values_mut() {
+            *subst = table.resolve_completely(subst.clone());
+        }
         for adjustment in result.expr_adjustments.values_mut().flatten() {
             adjustment.target = table.resolve_completely(adjustment.target.clone());
         }
