@@ -638,6 +638,7 @@ define_config! {
         dist_stage: Option<u32> = "dist-stage",
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
     }
 }
