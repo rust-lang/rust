@@ -1,0 +1,25 @@
+error[E0308]: mismatched types
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
+   |
+LL | fn wat<T>(t: &T) -> T {
+   |        -            - expected `T` because of return type
+   |        |
+   |        this type parameter
+LL |     t.clone()
+   |     ^^^^^^^^^ expected type parameter `T`, found `&T`
+   |
+   = note: expected type parameter `T`
+                   found reference `&T`
+note: `T` does not implement `Clone`, so `&T` was cloned instead
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:3:5
+   |
+LL |     t.clone()
+   |     ^
+help: consider restricting type parameter `T`
+   |
+LL | fn wat<T: Clone>(t: &T) -> T {
+   |         +++++++
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
