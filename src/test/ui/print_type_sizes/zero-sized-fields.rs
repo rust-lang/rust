@@ -1,11 +1,9 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 // ignore-pass
 
 // At one point, zero-sized fields such as those in this file were causing
 // incorrect output from `-Z print-type-sizes`.
-
-#![feature(start)]
 
 struct S1 {
     x: u32,
@@ -28,8 +26,7 @@ struct S5<TagW, TagZ> {
     tagz: TagZ,
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn test() {
     let _s1: S1 = S1 { x: 0, y: 0, tag: () };
 
     let _s5: S5<(), Empty> = S5 {
@@ -43,5 +40,4 @@ fn start(_: isize, _: *const *const u8) -> isize {
         z: 4,
         tagz: Empty {},
     };
-    0
 }
