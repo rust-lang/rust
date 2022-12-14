@@ -157,13 +157,6 @@ trap datecheck EXIT
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --set rust.parallel-compiler
-  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
-  rm -f config.toml
-  rm -rf build
-fi
-
 $SRC/configure $RUST_CONFIGURE_ARGS
 
 retry make prepare
@@ -191,6 +184,13 @@ else
   }
 
   do_make "$RUST_CHECK_TARGET"
+fi
+
+if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
+  rm -f config.toml
+  rm -rf build
+  $SRC/configure --set rust.parallel-compiler
+  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
 fi
 
 sccache --show-stats || true
