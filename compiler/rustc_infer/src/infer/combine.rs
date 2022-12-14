@@ -675,7 +675,7 @@ impl<'tcx> TypeRelation<'tcx> for Generalizer<'_, 'tcx> {
                 // relatable.
                 Ok(t)
             }
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                 let s = self.relate(substs, substs)?;
                 Ok(if s == substs { t } else { self.infcx.tcx.mk_opaque(def_id, s) })
             }

@@ -64,6 +64,7 @@ use std::ops::ControlFlow;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
+pub use rustc_type_ir::AliasKind::*;
 pub use rustc_type_ir::DynKind::*;
 pub use rustc_type_ir::InferTy::*;
 pub use rustc_type_ir::RegionKind::*;
@@ -93,14 +94,13 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
     EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
     InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts,
-    VarianceDiagInfo,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
 
@@ -1010,7 +1010,7 @@ impl<'tcx> TermKind<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ProjectionPredicate<'tcx> {
-    pub projection_ty: ProjectionTy<'tcx>,
+    pub projection_ty: AliasTy<'tcx>,
     pub term: Term<'tcx>,
 }
 
@@ -1046,7 +1046,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().projection_ty.item_def_id
+        self.skip_binder().projection_ty.def_id
     }
 }
 

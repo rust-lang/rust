@@ -111,11 +111,13 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
         #[instrument(level = "trace", skip(self), ret)]
         fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
             match t.kind() {
-                ty::Opaque(def_id, substs) => self.visit_opaque(*def_id, substs),
-                ty::Projection(proj)
-                    if self.tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                ty::Alias(_, ty::AliasTy { def_id, substs })
+                    if matches!(
+                        self.tcx.def_kind(*def_id),
+                        DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
+                    ) =>
                 {
-                    self.visit_opaque(proj.item_def_id, proj.substs)
+                    self.visit_opaque(*def_id, substs)
                 }
                 _ => t.super_visit_with(self),
             }
@@ -167,7 +169,7 @@ fn variance_of_opaque(tcx: TyCtxt<'_>, item_def_id: LocalDefId) -> &[ty::Varianc
                 }
             }
             ty::PredicateKind::Clause(ty::Clause::Projection(ty::ProjectionPredicate {
-                projection_ty: ty::ProjectionTy { substs, item_def_id: _ },
+                projection_ty: ty::AliasTy { substs, def_id: _ },
                 term,
             })) => {
                 for subst in &substs[1..] {

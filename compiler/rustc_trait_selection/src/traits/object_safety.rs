@@ -589,7 +589,7 @@ fn object_ty_for_trait<'tcx>(
             let pred = obligation.predicate.to_opt_poly_projection_pred()?;
             Some(pred.map_bound(|p| {
                 ty::ExistentialPredicate::Projection(ty::ExistentialProjection {
-                    item_def_id: p.projection_ty.item_def_id,
+                    def_id: p.projection_ty.def_id,
                     substs: p.projection_ty.substs,
                     term: p.term,
                 })
@@ -794,13 +794,13 @@ fn contains_illegal_self_type_reference<'tcx, T: TypeVisitable<'tcx>>(
                         ControlFlow::CONTINUE
                     }
                 }
-                ty::Projection(ref data)
-                    if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
+                ty::Alias(ty::Projection, ref data)
+                    if self.tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder =>
                 {
                     // We'll deny these later in their own pass
                     ControlFlow::CONTINUE
                 }
-                ty::Projection(ref data) => {
+                ty::Alias(ty::Projection, ref data) => {
                     // This is a projected type `<Foo as SomeTrait>::X`.
 
                     // Compute supertraits of current trait lazily.
@@ -861,10 +861,10 @@ pub fn contains_illegal_impl_trait_in_trait<'tcx>(
     // FIXME(RPITIT): Perhaps we should use a visitor here?
     ty.skip_binder().walk().find_map(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Projection(proj) = ty.kind()
-            && tcx.def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+            && let ty::Alias(ty::Projection, proj) = ty.kind()
+            && tcx.def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
         {
-            Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.item_def_id)))
+            Some(MethodViolationCode::ReferencesImplTraitInTrait(tcx.def_span(proj.def_id)))
         } else {
             None
         }

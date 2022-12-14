@@ -601,8 +601,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Param(..)
-            | ty::Opaque(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }

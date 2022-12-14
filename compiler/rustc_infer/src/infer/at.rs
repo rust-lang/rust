@@ -411,7 +411,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
+impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     fn to_trace(
         tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -419,8 +419,8 @@ impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        let a_ty = tcx.mk_projection(a.item_def_id, a.substs);
-        let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
+        let a_ty = tcx.mk_projection(a.def_id, a.substs);
+        let b_ty = tcx.mk_projection(b.def_id, b.substs);
         TypeTrace {
             cause: cause.clone(),
             values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),

@@ -538,11 +538,10 @@ impl<'a, 'tcx> LinkCollector<'a, 'tcx> {
             ty::Adt(ty::AdtDef(Interned(&ty::AdtDefData { did, .. }, _)), _) | ty::Foreign(did) => {
                 Res::from_def_id(self.cx.tcx, did)
             }
-            ty::Projection(_)
+            ty::Alias(..)
             | ty::Closure(..)
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
-            | ty::Opaque(..)
             | ty::Dynamic(..)
             | ty::Param(_)
             | ty::Bound(..)

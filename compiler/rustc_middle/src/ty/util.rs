@@ -259,7 +259,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
                 ty::Tuple(_) => break,
 
-                ty::Projection(_) | ty::Opaque(..) => {
+                ty::Alias(..) => {
                     let normalized = normalize(ty);
                     if ty == normalized {
                         return ty;
@@ -332,8 +332,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         break;
                     }
                 }
-                (ty::Projection(_) | ty::Opaque(..), _)
-                | (_, ty::Projection(_) | ty::Opaque(..)) => {
+                (ty::Alias(..), _) | (_, ty::Alias(..)) => {
                     // If either side is a projection, attempt to
                     // progress via normalization. (Should be safe to
                     // apply to both sides as normalization is
@@ -826,7 +825,7 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Opaque(def_id, substs) = *t.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) = *t.kind() {
             self.expand_opaque_ty(def_id, substs).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)
@@ -938,10 +937,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
             | ty::Infer(_)
-            | ty::Opaque(..)
+            | ty::Alias(..)
             | ty::Param(_)
-            | ty::Placeholder(_)
-            | ty::Projection(_) => false,
+            | ty::Placeholder(_) => false,
         }
     }
 
@@ -978,10 +976,9 @@ impl<'tcx> Ty<'tcx> {
             | ty::Generator(..)
             | ty::GeneratorWitness(_)
             | ty::Infer(_)
-            | ty::Opaque(..)
+            | ty::Alias(..)
             | ty::Param(_)
-            | ty::Placeholder(_)
-            | ty::Projection(_) => false,
+            | ty::Placeholder(_) => false,
         }
     }
 
@@ -1101,12 +1098,9 @@ impl<'tcx> Ty<'tcx> {
             //
             // FIXME(ecstaticmorse): Maybe we should `bug` here? This should probably only be
             // called for known, fully-monomorphized types.
-            ty::Projection(_)
-            | ty::Opaque(..)
-            | ty::Param(_)
-            | ty::Bound(..)
-            | ty::Placeholder(_)
-            | ty::Infer(_) => false,
+            ty::Alias(..) | ty::Param(_) | ty::Bound(..) | ty::Placeholder(_) | ty::Infer(_) => {
+                false
+            }
 
             ty::Foreign(_) | ty::GeneratorWitness(..) | ty::Error(_) => false,
         }
@@ -1237,11 +1231,10 @@ pub fn needs_drop_components<'tcx>(
 
         // These require checking for `Copy` bounds or `Adt` destructors.
         ty::Adt(..)
-        | ty::Projection(..)
+        | ty::Alias(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
-        | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..) => Ok(smallvec![ty]),
@@ -1265,13 +1258,12 @@ pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
         | ty::Never
         | ty::Foreign(_) => true,
 
-        ty::Opaque(..)
+        ty::Alias(..)
         | ty::Dynamic(..)
         | ty::Error(_)
         | ty::Bound(..)
         | ty::Param(_)
         | ty::Placeholder(_)
-        | ty::Projection(_)
         | ty::Infer(_) => false,
 
         // Not trivial because they have components, and instead of looking inside,

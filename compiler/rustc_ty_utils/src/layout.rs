@@ -444,7 +444,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Projection(_) | ty::Opaque(..) => {
+        ty::Alias(..) => {
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
             return Err(LayoutError::Unknown(ty));

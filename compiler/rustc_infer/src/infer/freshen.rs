@@ -205,12 +205,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Closure(..)
-            | ty::GeneratorWitness(..)
-            | ty::Opaque(..) => t.super_fold_with(self),
+            | ty::GeneratorWitness(..) => t.super_fold_with(self),
 
             ty::Placeholder(..) | ty::Bound(..) => bug!("unexpected type {:?}", t),
         }

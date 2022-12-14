@@ -486,12 +486,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             _ if self.same_type_modulo_infer(last_expr_ty, expected_ty) => {
                 StatementAsExpression::CorrectType
             }
-            (ty::Opaque(last_def_id, _), ty::Opaque(exp_def_id, _))
-                if last_def_id == exp_def_id =>
-            {
-                StatementAsExpression::CorrectType
-            }
-            (ty::Opaque(last_def_id, last_bounds), ty::Opaque(exp_def_id, exp_bounds)) => {
+            (
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: _ }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: _ }),
+            ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
+            (
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: last_bounds }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: exp_bounds }),
+            ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",
                     last_def_id, last_bounds, exp_def_id, exp_bounds

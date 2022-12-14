@@ -52,7 +52,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
             // ty which is a fully resolved projection.
             // For the code example above, this would mean converting Self::Assoc<3>
-            // into a ty::Projection(<Self as Foo>::Assoc<3>)
+            // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
             let item_hir_id = tcx
                 .hir()
                 .parent_iter(hir_id)
@@ -68,8 +68,8 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // the def_id that this query was called with. We filter to only type and const args here
             // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
-            if let ty::Projection(projection) = ty.kind() {
-                let generics = tcx.generics_of(projection.item_def_id);
+            if let ty::Alias(ty::Projection, projection) = ty.kind() {
+                let generics = tcx.generics_of(projection.def_id);
 
                 let arg_index = segment
                     .args
@@ -666,7 +666,7 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
-    let mut locator = ConstraintLocator { def_id: def_id, tcx, found: None, typeck_types: vec![] };
+    let mut locator = ConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);
 
@@ -803,7 +803,7 @@ fn find_opaque_ty_constraints_for_rpit(
     if let Some(concrete) = concrete {
         let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
-        let mut locator = ConstraintChecker { def_id: def_id, tcx, found: concrete };
+        let mut locator = ConstraintChecker { def_id, tcx, found: concrete };
 
         match tcx.hir().get(scope) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),

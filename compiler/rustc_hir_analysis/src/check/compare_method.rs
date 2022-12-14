@@ -571,10 +571,10 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Projection(proj) = ty.kind()
-            && self.tcx().def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+        if let ty::Alias(ty::Projection, proj) = ty.kind()
+            && self.tcx().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
         {
-            if let Some((ty, _)) = self.types.get(&proj.item_def_id) {
+            if let Some((ty, _)) = self.types.get(&proj.def_id) {
                 return *ty;
             }
             //FIXME(RPITIT): Deny nested RPITIT in substs too
@@ -586,9 +586,9 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 span: self.span,
                 kind: TypeVariableOriginKind::MiscVariable,
             });
-            self.types.insert(proj.item_def_id, (infer_ty, proj.substs));
+            self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.item_def_id).subst_iter_copied(self.tcx(), proj.substs) {
+            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.tcx(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -601,7 +601,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                     ObligationCause::new(
                         self.span,
                         self.body_id,
-                        ObligationCauseCode::BindingObligation(proj.item_def_id, pred_span),
+                        ObligationCauseCode::BindingObligation(proj.def_id, pred_span),
                     ),
                     self.param_env,
                     pred,
@@ -1734,8 +1734,8 @@ pub fn check_type_bounds<'tcx>(
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
         match impl_ty_value.kind() {
-            ty::Projection(proj)
-                if proj.item_def_id == trait_ty.def_id && proj.substs == rebased_substs =>
+            ty::Alias(ty::Projection, proj)
+                if proj.def_id == trait_ty.def_id && proj.substs == rebased_substs =>
             {
                 // Don't include this predicate if the projected type is
                 // exactly the same as the projection. This can occur in
@@ -1746,8 +1746,8 @@ pub fn check_type_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy {
-                            item_def_id: trait_ty.def_id,
+                        projection_ty: ty::AliasTy {
+                            def_id: trait_ty.def_id,
                             substs: rebased_substs,
                         },
                         term: impl_ty_value.into(),

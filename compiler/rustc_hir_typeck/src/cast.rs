@@ -38,7 +38,6 @@ use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::cast::{CastKind, CastTy};
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Ty, TypeAndMut, TypeVisitable, VariantDef};
 use rustc_session::lint;
 use rustc_session::Session;
@@ -75,10 +74,8 @@ enum PointerKind<'tcx> {
     VTable(Option<DefId>),
     /// Slice
     Length,
-    /// The unsize info of this projection
-    OfProjection(ty::ProjectionTy<'tcx>),
-    /// The unsize info of this opaque ty
-    OfOpaque(DefId, SubstsRef<'tcx>),
+    /// The unsize info of this projection or opaque type
+    OfAlias(ty::AliasTy<'tcx>),
     /// The unsize info of this parameter
     OfParam(ty::ParamTy),
 }
@@ -118,8 +115,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // Pointers to foreign types are thin, despite being unsized
             ty::Foreign(..) => Some(PointerKind::Thin),
             // We should really try to normalize here.
-            ty::Projection(pi) => Some(PointerKind::OfProjection(pi)),
-            ty::Opaque(def_id, substs) => Some(PointerKind::OfOpaque(def_id, substs)),
+            ty::Alias(_, pi) => Some(PointerKind::OfAlias(pi)),
             ty::Param(p) => Some(PointerKind::OfParam(p)),
             // Insufficient type information.
             ty::Placeholder(..) | ty::Bound(..) | ty::Infer(_) => None,
@@ -976,11 +972,9 @@ impl<'a, 'tcx> CastCheck<'tcx> {
             Some(PointerKind::Thin) => Ok(CastKind::AddrPtrCast),
             Some(PointerKind::VTable(_)) => Err(CastError::IntToFatCast(Some("a vtable"))),
             Some(PointerKind::Length) => Err(CastError::IntToFatCast(Some("a length"))),
-            Some(
-                PointerKind::OfProjection(_)
-                | PointerKind::OfOpaque(_, _)
-                | PointerKind::OfParam(_),
-            ) => Err(CastError::IntToFatCast(None)),
+            Some(PointerKind::OfAlias(_) | PointerKind::OfParam(_)) => {
+                Err(CastError::IntToFatCast(None))
+            }
         }
     }
 

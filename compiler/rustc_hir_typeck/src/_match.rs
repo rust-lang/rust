@@ -212,7 +212,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.can_coerce(arm_ty, ret_ty)
                     && prior_arm.map_or(true, |(_, ty, _)| self.can_coerce(ty, ret_ty))
                     // The match arms need to unify for the case of `impl Trait`.
-                    && !matches!(ret_ty.kind(), ty::Opaque(..))
+                    && !matches!(ret_ty.kind(), ty::Alias(ty::Opaque, ..))
             }
             _ => false,
         };
@@ -518,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let substs = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Opaque(def_id, substs) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) = *ty.kind()
                         && def_id == rpit_def_id
                     {
                         Some(substs)

@@ -371,7 +371,7 @@ fn suggest_restriction<'tcx>(
     msg: &str,
     err: &mut Diagnostic,
     fn_sig: Option<&hir::FnSig<'_>>,
-    projection: Option<&ty::ProjectionTy<'_>>,
+    projection: Option<&ty::AliasTy<'_>>,
     trait_pred: ty::PolyTraitPredicate<'tcx>,
     // When we are dealing with a trait, `super_traits` will be `Some`:
     // Given `trait T: A + B + C {}`
@@ -497,7 +497,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let self_ty = trait_pred.skip_binder().self_ty();
         let (param_ty, projection) = match self_ty.kind() {
             ty::Param(_) => (true, None),
-            ty::Projection(projection) => (false, Some(projection)),
+            ty::Alias(ty::Projection, projection) => (false, Some(projection)),
             _ => (false, None),
         };
 
@@ -857,10 +857,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
                 ))
             }
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                 self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                     // args tuple will always be substs[1]
                     && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
                     {
@@ -877,7 +877,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Dynamic(data, _, ty::Dyn) => {
                 data.iter().find_map(|pred| {
                     if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                    && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
                     // for existential projection, substs are shifted over by 1
                     && let ty::Tuple(args) = proj.substs.type_at(0).kind()
                     {
@@ -894,7 +894,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ty::Param(_) => {
                 obligation.param_env.caller_bounds().iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                    && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                    && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                     && proj.projection_ty.self_ty() == found
                     // args tuple will always be substs[1]
                     && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -2641,7 +2641,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 Some(ident) => err.span_note(ident.span, &msg),
                                 None => err.note(&msg),
                             },
-                            ty::Opaque(def_id, _) => {
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
                                 // Avoid printing the future from `core::future::identity_future`, it's not helpful
                                 if tcx.parent(*def_id) == identity_future {
                                     break 'print;
@@ -3218,7 +3218,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
             for diff in &type_diffs {
                 let Sorts(expected_found) = diff else { continue; };
-                let ty::Projection(proj) = expected_found.expected.kind() else { continue; };
+                let ty::Alias(ty::Projection, proj) = expected_found.expected.kind() else { continue; };
 
                 let origin =
                     TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
@@ -3245,7 +3245,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // This corresponds to `<ExprTy as Iterator>::Item = _`.
                 let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
                     ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy { substs, item_def_id: proj.item_def_id },
+                        projection_ty: ty::AliasTy { substs, def_id: proj.def_id },
                         term: ty_var.into(),
                     }),
                 ));
@@ -3260,7 +3260,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if ocx.select_where_possible().is_empty() {
                     // `ty_var` now holds the type that `Item` is for `ExprTy`.
                     let ty_var = self.resolve_vars_if_possible(ty_var);
-                    assocs_in_this_method.push(Some((span, (proj.item_def_id, ty_var))));
+                    assocs_in_this_method.push(Some((span, (proj.def_id, ty_var))));
                 } else {
                     // `<ExprTy as Iterator>` didn't select, so likely we've
                     // reached the end of the iterator chain, like the originating

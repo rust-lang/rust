@@ -693,7 +693,7 @@ impl<'tcx> ExistentialPredicate<'tcx> {
         match (*self, *other) {
             (Trait(_), Trait(_)) => Ordering::Equal,
             (Projection(ref a), Projection(ref b)) => {
-                tcx.def_path_hash(a.item_def_id).cmp(&tcx.def_path_hash(b.item_def_id))
+                tcx.def_path_hash(a.def_id).cmp(&tcx.def_path_hash(b.def_id))
             }
             (AutoTrait(ref a), AutoTrait(ref b)) => {
                 tcx.def_path_hash(*a).cmp(&tcx.def_path_hash(*b))
@@ -1139,28 +1139,41 @@ impl<'tcx, T: IntoIterator> Binder<'tcx, T> {
     }
 }
 
-/// Represents the projection of an associated type. In explicit UFCS
-/// form this would be written `<T as Trait<..>>::N`.
+/// Represents the projection of an associated type.
+///
+/// For a projection, this would be `<Ty as Trait<...>>::N`.
+///
+/// For an opaque type, there is no explicit syntax.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
-pub struct ProjectionTy<'tcx> {
-    /// The parameters of the associated item.
+pub struct AliasTy<'tcx> {
+    /// The parameters of the associated or opaque item.
+    ///
+    /// For a projection, these are the substitutions for the trait and the
+    /// GAT substitutions, if there are any.
+    ///
+    /// For RPIT the substitutions are for the generics of the function,
+    /// while for TAIT it is used for the generic parameters of the alias.
     pub substs: SubstsRef<'tcx>,
 
-    /// The `DefId` of the `TraitItem` for the associated type `N`.
+    /// The `DefId` of the `TraitItem` for the associated type `N` if this is a projection,
+    /// or the `OpaqueType` item if this is an opaque.
     ///
-    /// Note that this is not the `DefId` of the `TraitRef` containing this
-    /// associated type, which is in `tcx.associated_item(item_def_id).container`,
-    /// aka. `tcx.parent(item_def_id).unwrap()`.
-    pub item_def_id: DefId,
+    /// During codegen, `tcx.type_of(def_id)` can be used to get the type of the
+    /// underlying type if the type is an opaque.
+    ///
+    /// Note that if this is an associated type, this is not the `DefId` of the
+    /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
+    /// aka. `tcx.parent(def_id)`.
+    pub def_id: DefId,
 }
 
-impl<'tcx> ProjectionTy<'tcx> {
+impl<'tcx> AliasTy<'tcx> {
     pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
-        match tcx.def_kind(self.item_def_id) {
-            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.item_def_id),
+        match tcx.def_kind(self.def_id) {
+            DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
             DefKind::ImplTraitPlaceholder => {
-                tcx.parent(tcx.impl_trait_in_trait_parent(self.item_def_id))
+                tcx.parent(tcx.impl_trait_in_trait_parent(self.def_id))
             }
             kind => bug!("unexpected DefKind in ProjectionTy: {kind:?}"),
         }
@@ -1173,11 +1186,14 @@ impl<'tcx> ProjectionTy<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
-        let def_id = tcx.parent(self.item_def_id);
-        assert_eq!(tcx.def_kind(def_id), DefKind::Trait);
-        let trait_generics = tcx.generics_of(def_id);
+        debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
+        let trait_def_id = self.trait_def_id(tcx);
+        let trait_generics = tcx.generics_of(trait_def_id);
         (
-            ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, trait_generics) },
+            ty::TraitRef {
+                def_id: trait_def_id,
+                substs: self.substs.truncate_to(tcx, trait_generics),
+            },
             &self.substs[trait_generics.count()..],
         )
     }
@@ -1405,7 +1421,7 @@ impl From<BoundVar> for BoundTy {
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExistentialProjection<'tcx> {
-    pub item_def_id: DefId,
+    pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
     pub term: Term<'tcx>,
 }
@@ -1418,7 +1434,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
     /// then this function would return an `exists T. T: Iterator` existential trait
     /// reference.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::ExistentialTraitRef<'tcx> {
-        let def_id = tcx.parent(self.item_def_id);
+        let def_id = tcx.parent(self.def_id);
         let subst_count = tcx.generics_of(def_id).count() - 1;
         let substs = tcx.intern_substs(&self.substs[..subst_count]);
         ty::ExistentialTraitRef { def_id, substs }
@@ -1433,8 +1449,8 @@ impl<'tcx> ExistentialProjection<'tcx> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::ProjectionTy {
-                item_def_id: self.item_def_id,
+            projection_ty: ty::AliasTy {
+                def_id: self.def_id,
                 substs: tcx.mk_substs_trait(self_ty, self.substs),
             },
             term: self.term,
@@ -1449,7 +1465,7 @@ impl<'tcx> ExistentialProjection<'tcx> {
         projection_predicate.projection_ty.substs.type_at(0);
 
         Self {
-            item_def_id: projection_predicate.projection_ty.item_def_id,
+            def_id: projection_predicate.projection_ty.def_id,
             substs: tcx.intern_substs(&projection_predicate.projection_ty.substs[1..]),
             term: projection_predicate.term,
         }
@@ -1466,7 +1482,7 @@ impl<'tcx> PolyExistentialProjection<'tcx> {
     }
 
     pub fn item_def_id(&self) -> DefId {
-        self.skip_binder().item_def_id
+        self.skip_binder().def_id
     }
 }
 
@@ -1973,7 +1989,7 @@ impl<'tcx> Ty<'tcx> {
 
     #[inline]
     pub fn is_impl_trait(self) -> bool {
-        matches!(self.kind(), Opaque(..))
+        matches!(self.kind(), Alias(ty::Opaque, ..))
     }
 
     #[inline]
@@ -2040,7 +2056,7 @@ impl<'tcx> Ty<'tcx> {
             ty::Adt(adt, _) if adt.is_enum() => adt.repr().discr_type().to_ty(tcx),
             ty::Generator(_, substs, _) => substs.as_generator().discr_ty(tcx),
 
-            ty::Param(_) | ty::Projection(_) | ty::Opaque(..) | ty::Infer(ty::TyVar(_)) => {
+            ty::Param(_) | ty::Alias(..) | ty::Infer(ty::TyVar(_)) => {
                 let assoc_items = tcx.associated_item_def_ids(
                     tcx.require_lang_item(hir::LangItem::DiscriminantKind, None),
                 );
@@ -2120,7 +2136,7 @@ impl<'tcx> Ty<'tcx> {
 
             // type parameters only have unit metadata if they're sized, so return true
             // to make sure we double check this during confirmation
-            ty::Param(_) |  ty::Projection(_) | ty::Opaque(..) => (tcx.types.unit, true),
+            ty::Param(_) |  ty::Alias(..) => (tcx.types.unit, true),
 
             ty::Infer(ty::TyVar(_))
             | ty::Bound(..)
@@ -2196,7 +2212,7 @@ impl<'tcx> Ty<'tcx> {
 
             ty::Adt(def, _substs) => def.sized_constraint(tcx).0.is_empty(),
 
-            ty::Projection(_) | ty::Param(_) | ty::Opaque(..) => false,
+            ty::Alias(..) | ty::Param(_) => false,
 
             ty::Infer(ty::TyVar(_)) => false,
 
@@ -2252,9 +2268,12 @@ impl<'tcx> Ty<'tcx> {
             ty::Generator(..) | ty::GeneratorWitness(..) => false,
 
             // Might be, but not "trivial" so just giving the safe answer.
-            ty::Adt(..) | ty::Closure(..) | ty::Opaque(..) => false,
+            ty::Adt(..) | ty::Closure(..) => false,
 
-            ty::Projection(..) | ty::Param(..) | ty::Infer(..) | ty::Error(..) => false,
+            // Needs normalization or revealing to determine, so no is the safe answer.
+            ty::Alias(..) => false,
+
+            ty::Param(..) | ty::Infer(..) | ty::Error(..) => false,
 
             ty::Bound(..) | ty::Placeholder(..) => {
                 bug!("`is_trivially_pure_clone_copy` applied to unexpected type: {:?}", self);

@@ -241,7 +241,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                 };
 
                 let kind = match parent_ty.ty.kind() {
-                    &ty::Opaque(def_id, substs) => {
+                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
                         self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
                     }
                     kind => kind,
@@ -652,7 +652,7 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, "`SetDiscriminant`is not allowed until deaggregation");
                 }
                 let pty = place.ty(&self.body.local_decls, self.tcx).ty.kind();
-                if !matches!(pty, ty::Adt(..) | ty::Generator(..) | ty::Opaque(..)) {
+                if !matches!(pty, ty::Adt(..) | ty::Generator(..) | ty::Alias(ty::Opaque, ..)) {
                     self.fail(
                         location,
                         format!(

@@ -16,12 +16,12 @@ impl<'tcx> InferCtxt<'tcx> {
     pub fn infer_projection(
         &self,
         param_env: ty::ParamEnv<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
         cause: ObligationCause<'tcx>,
         recursion_depth: usize,
         obligations: &mut Vec<PredicateObligation<'tcx>>,
     ) -> Ty<'tcx> {
-        let def_id = projection_ty.item_def_id;
+        let def_id = projection_ty.def_id;
         let ty_var = self.next_ty_var(TypeVariableOrigin {
             kind: TypeVariableOriginKind::NormalizeProjectionType,
             span: self.tcx.def_span(def_id),

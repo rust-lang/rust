@@ -112,7 +112,7 @@ impl<'tcx> Ty<'tcx> {
                 InhabitedPredicate::True
             }
             Never => InhabitedPredicate::False,
-            Param(_) | Projection(_) => InhabitedPredicate::GenericType(self),
+            Param(_) | Alias(ty::Projection, _) => InhabitedPredicate::GenericType(self),
             Tuple(tys) if tys.is_empty() => InhabitedPredicate::True,
             // use a query for more complex cases
             Adt(..) | Array(..) | Tuple(_) => tcx.inhabited_predicate_type(self),

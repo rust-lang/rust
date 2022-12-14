@@ -205,7 +205,9 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Opaque(def_id, substs) if !substs.has_escaping_bound_vars() => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs })
+                if !substs.has_escaping_bound_vars() =>
+            {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
                 match self.param_env.reveal() {
                     Reveal::UserFacing => ty.try_super_fold_with(self),
@@ -242,7 +244,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::Projection(data) if !data.has_escaping_bound_vars() => {
+            ty::Alias(ty::Projection, data) if !data.has_escaping_bound_vars() => {
                 // This branch is just an optimization: when we don't have escaping bound vars,
                 // we don't need to replace them with placeholders (see branch below).
 
@@ -291,7 +293,7 @@ impl<'cx, 'tcx> FallibleTypeFolder<'tcx> for QueryNormalizer<'cx, 'tcx> {
                 }
             }
 
-            ty::Projection(data) => {
+            ty::Alias(ty::Projection, data) => {
                 // See note in `rustc_trait_selection::traits::project`
 
                 let tcx = self.infcx.tcx;

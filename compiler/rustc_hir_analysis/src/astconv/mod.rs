@@ -1146,10 +1146,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!(?substs_trait_ref_and_assoc_item);
 
-            ty::ProjectionTy {
-                item_def_id: assoc_item.def_id,
-                substs: substs_trait_ref_and_assoc_item,
-            }
+            ty::AliasTy { def_id: assoc_item.def_id, substs: substs_trait_ref_and_assoc_item }
         });
 
         if !speculative {
@@ -1195,7 +1192,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
-                let assoc_item_def_id = projection_ty.skip_binder().item_def_id;
+                let assoc_item_def_id = projection_ty.skip_binder().def_id;
                 let def_kind = tcx.def_kind(assoc_item_def_id);
                 match (def_kind, term.unpack()) {
                     (hir::def::DefKind::AssocTy, ty::TermKind::Ty(_))
@@ -1244,7 +1241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_ty(ty::Projection(projection_ty.skip_binder()));
+                let param_ty = tcx.mk_ty(ty::Alias(ty::Projection, projection_ty.skip_binder()));
                 self.add_bounds(param_ty, ast_bounds.iter(), bounds, candidate.bound_vars());
             }
         }

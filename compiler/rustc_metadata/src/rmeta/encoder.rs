@@ -1111,8 +1111,8 @@ fn should_encode_trait_impl_trait_tys<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) ->
     // associated types.
     tcx.fn_sig(trait_item_def_id).skip_binder().output().walk().any(|arg| {
         if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Projection(data) = ty.kind()
-            && tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+            && let ty::Alias(ty::Projection, data) = ty.kind()
+            && tcx.def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
         {
             true
         } else {

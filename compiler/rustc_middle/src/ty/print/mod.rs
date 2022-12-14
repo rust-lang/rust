@@ -275,10 +275,9 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Uint(_)
         | ty::Str
         | ty::FnPtr(_)
-        | ty::Projection(_)
+        | ty::Alias(..)
         | ty::Placeholder(..)
         | ty::Param(_)
-        | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Bound(..)
         | ty::Error(_)

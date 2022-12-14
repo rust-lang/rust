@@ -716,7 +716,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()
-                    && let ty::Opaque(def_id, _) = *ty.kind()
+                    && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = *ty.kind()
                     && let Some(def_id) = def_id.as_local()
                     && self.opaque_type_origin(def_id, DUMMY_SP).is_some() {
                     return None;

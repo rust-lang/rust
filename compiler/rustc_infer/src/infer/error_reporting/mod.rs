@@ -339,11 +339,13 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, substs) = match *ty.kind() {
-            ty::Opaque(def_id, substs) => (def_id, substs),
-            ty::Projection(data)
-                if self.tcx.def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder =>
+            ty::Alias(_, ty::AliasTy { def_id, substs })
+                if matches!(
+                    self.tcx.def_kind(def_id),
+                    DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
+                ) =>
             {
-                (data.item_def_id, data.substs)
+                (def_id, substs)
             }
             _ => return None,
         };
@@ -357,7 +359,7 @@ impl<'tcx> InferCtxt<'tcx> {
                     .kind()
                     .map_bound(|kind| match kind {
                         ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate))
-                            if projection_predicate.projection_ty.item_def_id == item_def_id =>
+                            if projection_predicate.projection_ty.def_id == item_def_id =>
                         {
                             projection_predicate.term.ty()
                         }
@@ -1730,7 +1732,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     let extra = expected == found;
                     let sort_string = |ty: Ty<'tcx>, path: Option<PathBuf>| {
                         let mut s = match (extra, ty.kind()) {
-                            (true, ty::Opaque(def_id, _)) => {
+                            (true, ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. })) => {
                                 let sm = self.tcx.sess.source_map();
                                 let pos = sm.lookup_char_pos(self.tcx.def_span(*def_id).lo());
                                 format!(
@@ -1740,12 +1742,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                     pos.col.to_usize() + 1,
                                 )
                             }
-                            (true, ty::Projection(proj))
-                                if self.tcx.def_kind(proj.item_def_id)
+                            (true, ty::Alias(ty::Projection, proj))
+                                if self.tcx.def_kind(proj.def_id)
                                     == DefKind::ImplTraitPlaceholder =>
                             {
                                 let sm = self.tcx.sess.source_map();
-                                let pos = sm.lookup_char_pos(self.tcx.def_span(proj.item_def_id).lo());
+                                let pos = sm.lookup_char_pos(self.tcx.def_span(proj.def_id).lo());
                                 format!(
                                     " (trait associated opaque type at <{}:{}:{}>)",
                                     sm.filename_for_diagnostics(&pos.file.name),
@@ -2383,7 +2385,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         // fn get_later<G, T>(g: G, dest: &mut T) -> impl FnOnce() + '_
                         // suggest:
                         // fn get_later<'a, G: 'a, T>(g: G, dest: &mut T) -> impl FnOnce() + '_ + 'a
-                        ty::Closure(_, _substs) | ty::Opaque(_, _substs) if return_impl_trait => {
+                        ty::Closure(..) | ty::Alias(ty::Opaque, ..) if return_impl_trait => {
                             new_binding_suggestion(&mut err, type_param_span);
                         }
                         _ => {
@@ -2765,7 +2767,9 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Opaque(def_id, _) => Some((Self::Opaque, def_id)),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
+                Some((Self::Opaque, def_id))
+            }
             ty::Generator(def_id, ..) => {
                 Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
             }

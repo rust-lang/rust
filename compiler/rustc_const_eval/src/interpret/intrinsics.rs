@@ -82,11 +82,9 @@ pub(crate) fn eval_nullary_intrinsic<'tcx>(
             ty::Adt(ref adt, _) => {
                 ConstValue::from_machine_usize(adt.variants().len() as u64, &tcx)
             }
-            ty::Projection(_)
-            | ty::Opaque(_, _)
-            | ty::Param(_)
-            | ty::Placeholder(_)
-            | ty::Infer(_) => throw_inval!(TooGeneric),
+            ty::Alias(..) | ty::Param(_) | ty::Placeholder(_) | ty::Infer(_) => {
+                throw_inval!(TooGeneric)
+            }
             ty::Bound(_, _) => bug!("bound ty during ctfe"),
             ty::Bool
             | ty::Char

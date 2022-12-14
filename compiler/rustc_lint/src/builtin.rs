@@ -3016,8 +3016,8 @@ impl ClashingExternDeclarations {
                         | (Closure(..), Closure(..))
                         | (Generator(..), Generator(..))
                         | (GeneratorWitness(..), GeneratorWitness(..))
-                        | (Projection(..), Projection(..))
-                        | (Opaque(..), Opaque(..)) => false,
+                        | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
+                        | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
 
                         // These definitely should have been caught above.
                         (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
