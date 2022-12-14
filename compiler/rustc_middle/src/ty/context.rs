@@ -2577,17 +2577,17 @@ impl<'tcx> TyCtxt<'tcx> {
     #[inline(always)]
     fn check_substs(
         self,
-        def_id: DefId,
+        _def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> SubstsRef<'tcx> {
         let substs = substs.into_iter().map(Into::into);
         #[cfg(debug_assertions)]
         {
-            let n = self.generics_of(def_id).count();
+            let n = self.generics_of(_def_id).count();
             assert_eq!(
                 (n, Some(n)),
                 substs.size_hint(),
-                "wrong number of generic parameters for {def_id:?}: {:?}",
+                "wrong number of generic parameters for {_def_id:?}: {:?}",
                 substs.collect::<Vec<_>>(),
             );
         }
