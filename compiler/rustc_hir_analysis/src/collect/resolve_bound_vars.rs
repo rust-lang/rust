@@ -35,14 +35,14 @@ trait RegionExt {
 
 impl RegionExt for ResolvedArg {
     fn early(param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
-        debug!("Region::early: def_id={:?}", param.def_id);
+        debug!("ResolvedArg::early: def_id={:?}", param.def_id);
         (param.def_id, ResolvedArg::EarlyBound(param.def_id.to_def_id()))
     }
 
     fn late(idx: u32, param: &GenericParam<'_>) -> (LocalDefId, ResolvedArg) {
         let depth = ty::INNERMOST;
         debug!(
-            "Region::late: idx={:?}, param={:?} depth={:?} def_id={:?}",
+            "ResolvedArg::late: idx={:?}, param={:?} depth={:?} def_id={:?}",
             idx, param, depth, param.def_id,
         );
         (param.def_id, ResolvedArg::LateBound(depth, idx, param.def_id.to_def_id()))
@@ -278,13 +278,25 @@ fn resolve_bound_vars(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveBou
     rl
 }
 
-fn late_region_as_bound_region(tcx: TyCtxt<'_>, region: &ResolvedArg) -> ty::BoundVariableKind {
-    match region {
+fn late_arg_as_bound_arg<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    arg: &ResolvedArg,
+    param: &GenericParam<'tcx>,
+) -> ty::BoundVariableKind {
+    match arg {
         ResolvedArg::LateBound(_, _, def_id) => {
             let name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
-            ty::BoundVariableKind::Region(ty::BrNamed(*def_id, name))
+            match param.kind {
+                GenericParamKind::Lifetime { .. } => {
+                    ty::BoundVariableKind::Region(ty::BrNamed(*def_id, name))
+                }
+                GenericParamKind::Type { .. } => {
+                    ty::BoundVariableKind::Ty(ty::BoundTyKind::Param(*def_id, name))
+                }
+                GenericParamKind::Const { .. } => ty::BoundVariableKind::Const,
+            }
         }
-        _ => bug!("{:?} is not a late argument", region),
+        _ => bug!("{:?} is not a late argument", arg),
     }
 }
 
@@ -391,11 +403,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                 bound_generic_params
                     .iter()
-                    .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
                         let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                        let r = late_region_as_bound_region(self.tcx, &pair.1);
+                        let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
                         (pair, r)
                     })
                     .unzip();
@@ -481,7 +492,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 }
             }
             hir::ItemKind::OpaqueTy(hir::OpaqueTy {
-                origin: hir::OpaqueTyOrigin::FnReturn(_) | hir::OpaqueTyOrigin::AsyncFn(_),
+                origin: hir::OpaqueTyOrigin::FnReturn(parent) | hir::OpaqueTyOrigin::AsyncFn(parent),
                 generics,
                 ..
             }) => {
@@ -490,26 +501,24 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 let mut bound_vars = FxIndexMap::default();
                 debug!(?generics.params);
                 for param in generics.params {
-                    match param.kind {
-                        GenericParamKind::Lifetime { .. } => {
-                            let (def_id, reg) = ResolvedArg::early(&param);
-                            bound_vars.insert(def_id, reg);
-                        }
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {}
-                    }
+                    let (def_id, reg) = ResolvedArg::early(&param);
+                    bound_vars.insert(def_id, reg);
                 }
 
-                let scope = Scope::Binder {
-                    hir_id: item.hir_id(),
-                    bound_vars,
-                    s: self.scope,
-                    scope_type: BinderScopeType::Normal,
-                    where_bound_origin: None,
-                };
+                let scope = Scope::Root { opt_parent_item: Some(parent) };
                 self.with(scope, |this| {
-                    let scope = Scope::TraitRefBoundary { s: this.scope };
-                    this.with(scope, |this| intravisit::walk_item(this, item))
-                });
+                    let scope = Scope::Binder {
+                        hir_id: item.hir_id(),
+                        bound_vars,
+                        s: this.scope,
+                        scope_type: BinderScopeType::Normal,
+                        where_bound_origin: None,
+                    };
+                    this.with(scope, |this| {
+                        let scope = Scope::TraitRefBoundary { s: this.scope };
+                        this.with(scope, |this| intravisit::walk_item(this, item))
+                    });
+                })
             }
             hir::ItemKind::TyAlias(_, generics)
             | hir::ItemKind::Enum(_, generics)
@@ -519,14 +528,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             | hir::ItemKind::TraitAlias(generics, ..)
             | hir::ItemKind::Impl(&hir::Impl { generics, .. }) => {
                 // These kinds of items have only early-bound lifetime parameters.
-                let bound_vars = generics
-                    .params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => Some(ResolvedArg::early(param)),
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
-                    })
-                    .collect();
+                let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
                 self.record_late_bound_vars(item.hir_id(), vec![]);
                 let scope = Scope::Binder {
                     hir_id: item.hir_id(),
@@ -568,11 +570,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                 let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) = c
                     .generic_params
                     .iter()
-                    .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
                     .enumerate()
                     .map(|(late_bound_idx, param)| {
                         let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                        let r = late_region_as_bound_region(self.tcx, &pair.1);
+                        let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
                         (pair, r)
                     })
                     .unzip();
@@ -725,14 +726,7 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }
             Type(bounds, ty) => {
                 let generics = &trait_item.generics;
-                let bound_vars = generics
-                    .params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => Some(ResolvedArg::early(param)),
-                        GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
-                    })
-                    .collect();
+                let bound_vars = generics.params.iter().map(ResolvedArg::early).collect();
                 self.record_late_bound_vars(trait_item.hir_id(), vec![]);
                 let scope = Scope::Binder {
                     hir_id: trait_item.hir_id(),
@@ -771,14 +765,8 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
             }),
             Type(ty) => {
                 let generics = &impl_item.generics;
-                let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = generics
-                    .params
-                    .iter()
-                    .filter_map(|param| match param.kind {
-                        GenericParamKind::Lifetime { .. } => Some(ResolvedArg::early(param)),
-                        GenericParamKind::Const { .. } | GenericParamKind::Type { .. } => None,
-                    })
-                    .collect();
+                let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> =
+                    generics.params.iter().map(ResolvedArg::early).collect();
                 self.record_late_bound_vars(impl_item.hir_id(), vec![]);
                 let scope = Scope::Binder {
                     hir_id: impl_item.hir_id(),
@@ -819,12 +807,15 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
         }
     }
 
-    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, hir_id: hir::HirId) {
         for (i, segment) in path.segments.iter().enumerate() {
             let depth = path.segments.len() - i - 1;
             if let Some(args) = segment.args {
                 self.visit_segment_args(path.res, depth, args);
             }
+        }
+        if let Res::Def(DefKind::TyParam | DefKind::ConstParam, param_def_id) = path.res {
+            self.resolve_type_ref(param_def_id.expect_local(), hir_id);
         }
     }
 
@@ -874,24 +865,17 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
                         origin,
                         ..
                     }) => {
-                        let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> =
+
+                        let (bound_vars, binders): (FxIndexMap<LocalDefId, ResolvedArg>, Vec<_>) =
                             bound_generic_params
-                                .iter()
-                                .filter(|param| {
-                                    matches!(param.kind, GenericParamKind::Lifetime { .. })
-                                })
-                                .enumerate()
-                                .map(|(late_bound_idx, param)| {
-                                        ResolvedArg::late(late_bound_idx as u32, param)
-                                })
-                                .collect();
-                        let binders: Vec<_> =
-                            bound_vars
-                                .iter()
-                                .map(|(_, region)| {
-                                     late_region_as_bound_region(this.tcx, region)
-                                })
-                                .collect();
+                            .iter()
+                            .enumerate()
+                            .map(|(late_bound_idx, param)| {
+                                let pair = ResolvedArg::late(late_bound_idx as u32, param);
+                                let r = late_arg_as_bound_arg(this.tcx, &pair.1, param);
+                                (pair, r)
+                            })
+                            .unzip();
                         this.record_late_bound_vars(hir_id, binders.clone());
                         // Even if there are no lifetimes defined here, we still wrap it in a binder
                         // scope. If there happens to be a nested poly trait ref (an error), that
@@ -989,14 +973,10 @@ impl<'a, 'tcx> Visitor<'tcx> for BoundVarContext<'a, 'tcx> {
 
         let initial_bound_vars = binders.len() as u32;
         let mut bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = FxIndexMap::default();
-        let binders_iter = trait_ref
-            .bound_generic_params
-            .iter()
-            .filter(|param| matches!(param.kind, GenericParamKind::Lifetime { .. }))
-            .enumerate()
-            .map(|(late_bound_idx, param)| {
+        let binders_iter =
+            trait_ref.bound_generic_params.iter().enumerate().map(|(late_bound_idx, param)| {
                 let pair = ResolvedArg::late(initial_bound_vars + late_bound_idx as u32, param);
-                let r = late_region_as_bound_region(self.tcx, &pair.1);
+                let r = late_arg_as_bound_arg(self.tcx, &pair.1, param);
                 bound_vars.insert(pair.0, pair.1);
                 r
             });
@@ -1121,17 +1101,19 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         let bound_vars: FxIndexMap<LocalDefId, ResolvedArg> = generics
             .params
             .iter()
-            .filter_map(|param| match param.kind {
+            .map(|param| match param.kind {
                 GenericParamKind::Lifetime { .. } => {
                     if self.tcx.is_late_bound(param.hir_id) {
                         let late_bound_idx = named_late_bound_vars;
                         named_late_bound_vars += 1;
-                        Some(ResolvedArg::late(late_bound_idx, param))
+                        ResolvedArg::late(late_bound_idx, param)
                     } else {
-                        Some(ResolvedArg::early(param))
+                        ResolvedArg::early(param)
                     }
                 }
-                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => None,
+                GenericParamKind::Type { .. } | GenericParamKind::Const { .. } => {
+                    ResolvedArg::early(param)
+                }
             })
             .collect();
 
@@ -1145,7 +1127,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
             .enumerate()
             .map(|(late_bound_idx, param)| {
                 let pair = ResolvedArg::late(late_bound_idx as u32, param);
-                late_region_as_bound_region(self.tcx, &pair.1)
+                late_arg_as_bound_arg(self.tcx, &pair.1, param)
             })
             .collect();
         self.record_late_bound_vars(hir_id, binders);
@@ -1182,7 +1164,7 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
                 Scope::Root { opt_parent_item } => {
                     if let Some(parent_item) = opt_parent_item
                         && let parent_generics = self.tcx.generics_of(parent_item)
-                        && parent_generics.param_def_id_to_index.contains_key(&region_def_id.to_def_id())
+                        && parent_generics.param_def_id_to_index(self.tcx, region_def_id.to_def_id()).is_some()
                     {
                         break Some(ResolvedArg::EarlyBound(region_def_id.to_def_id()));
                     }
@@ -1331,6 +1313,61 @@ impl<'a, 'tcx> BoundVarContext<'a, 'tcx> {
         self.tcx.sess.delay_span_bug(
             lifetime_ref.ident.span,
             &format!("Could not resolve {:?} in scope {:#?}", lifetime_ref, self.scope,),
+        );
+    }
+
+    fn resolve_type_ref(&mut self, param_def_id: LocalDefId, hir_id: hir::HirId) {
+        // Walk up the scope chain, tracking the number of fn scopes
+        // that we pass through, until we find a lifetime with the
+        // given name or we run out of scopes.
+        // search.
+        let mut late_depth = 0;
+        let mut scope = self.scope;
+        let result = loop {
+            match *scope {
+                Scope::Body { s, .. } => {
+                    scope = s;
+                }
+
+                Scope::Root { opt_parent_item } => {
+                    if let Some(parent_item) = opt_parent_item
+                        && let parent_generics = self.tcx.generics_of(parent_item)
+                        && parent_generics.param_def_id_to_index(self.tcx, param_def_id.to_def_id()).is_some()
+                    {
+                        break Some(ResolvedArg::EarlyBound(param_def_id.to_def_id()));
+                    }
+                    break None;
+                }
+
+                Scope::Binder { ref bound_vars, scope_type, s, .. } => {
+                    if let Some(&def) = bound_vars.get(&param_def_id) {
+                        break Some(def.shifted(late_depth));
+                    }
+                    match scope_type {
+                        BinderScopeType::Normal => late_depth += 1,
+                        BinderScopeType::Concatenating => {}
+                    }
+                    scope = s;
+                }
+
+                Scope::Elision { s, .. }
+                | Scope::ObjectLifetimeDefault { s, .. }
+                | Scope::Supertrait { s, .. }
+                | Scope::TraitRefBoundary { s, .. } => {
+                    scope = s;
+                }
+            }
+        };
+
+        if let Some(def) = result {
+            self.map.defs.insert(hir_id, def);
+            return;
+        }
+
+        span_bug!(
+            self.tcx.hir().span(hir_id),
+            "could not resolve {param_def_id:?}, scopes: {:#?}",
+            self.scope
         );
     }
 

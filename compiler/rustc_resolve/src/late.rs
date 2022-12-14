@@ -2505,7 +2505,13 @@ impl<'a: 'ast, 'b, 'ast, 'tcx> LateResolutionVisitor<'a, 'b, 'ast, 'tcx> {
 
             let res = match kind {
                 ItemRibKind(..) | AssocItemRibKind => Res::Def(def_kind, def_id.to_def_id()),
-                NormalRibKind => Res::Err, /* FIXME(non_lifetime_binder): Resolve this to "late" */
+                NormalRibKind => {
+                    if self.r.session.features_untracked().non_lifetime_binders {
+                        Res::Def(def_kind, def_id.to_def_id())
+                    } else {
+                        Res::Err
+                    }
+                }
                 _ => span_bug!(param.ident.span, "Unexpected rib kind {:?}", kind),
             };
             self.r.record_partial_res(param.id, PartialRes::new(res));
