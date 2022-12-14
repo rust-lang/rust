@@ -38,7 +38,7 @@ recursively walk the contents of the `foo`, you then invoke the
 `super_foo` method. (NB. You never want to override `super_foo`.)
 
 A very simple example of a visitor can be found in [`LocalUseCounter`].
-By implementing `visit_local` method, this visitor counts how many tims each local is used.
+By implementing `visit_local` method, this visitor counts how many times each local is used.
 
 [`LocalUseCounter`]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_mir_transform/simplify_try/struct.LocalUseCounter.html
 
