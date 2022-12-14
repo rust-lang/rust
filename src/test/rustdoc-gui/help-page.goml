@@ -27,7 +27,6 @@ define-function: (
             "color": |color|,
             "background-color": |background|,
             "box-shadow": |box_shadow| + " 0px -1px 0px 0px inset",
-            "cursor": "default",
         }, ALL)),
     ],
 )
