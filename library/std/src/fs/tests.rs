@@ -1572,16 +1572,18 @@ fn test_eq_direntry_metadata() {
 #[test]
 #[cfg(target_os = "linux")]
 fn test_read_dir_infinite_loop() {
+    use crate::io::ErrorKind;
     use crate::process::Command;
-    use crate::thread::sleep;
-    use crate::time::Duration;
 
-    // Create a child process
-    let Ok(child) = Command::new("echo").spawn() else { return };
+    // Create a zombie child process
+    let Ok(mut child) = Command::new("echo").spawn() else { return };
 
-    // Wait for it to (probably) become a zombie.  We can't use wait() because
-    // that will reap the process.
-    sleep(Duration::from_millis(10));
+    // Make sure the process is (un)dead
+    match child.kill() {
+        // InvalidInput means the child already exited
+        Err(e) if e.kind() != ErrorKind::InvalidInput => return,
+        _ => {}
+    }
 
     // open() on this path will succeed, but readdir() will fail
     let id = child.id();
