@@ -20,6 +20,24 @@ help: consider restricting type parameter `T`
 LL | fn wat<T: Clone>(t: &T) -> T {
    |         +++++++
 
-error: aborting due to previous error
+error[E0308]: mismatched types
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:9:5
+   |
+LL | fn wut(t: &Foo) -> Foo {
+   |                    --- expected `Foo` because of return type
+LL |     t.clone()
+   |     ^^^^^^^^^ expected struct `Foo`, found `&Foo`
+   |
+note: `Foo` does not implement `Clone`, so `&Foo` was cloned instead
+  --> $DIR/clone-on-unconstrained-borrowed-type-param.rs:9:5
+   |
+LL |     t.clone()
+   |     ^
+help: consider annotating `Foo` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
+
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0308`.
