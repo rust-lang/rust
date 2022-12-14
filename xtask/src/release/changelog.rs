@@ -65,6 +65,7 @@ pub(crate) fn get_changelog(
         "\
 = Changelog #{}
 :sectanchors:
+:experimental:
 :page-layout: post
 
 Commit: commit:{}[] +
