@@ -14,6 +14,8 @@ macro_rules! intrinsic_args {
 
 mod cpuid;
 mod llvm;
+mod llvm_aarch64;
+mod llvm_x86;
 mod simd;
 
 pub(crate) use cpuid::codegen_cpuid_call;
@@ -195,8 +197,7 @@ fn bool_to_zero_or_max_uint<'tcx>(
         ty => ty,
     };
 
-    let val = fx.bcx.ins().bint(int_ty, val);
-    let mut res = fx.bcx.ins().ineg(val);
+    let mut res = fx.bcx.ins().bmask(int_ty, val);
 
     if ty.is_float() {
         res = fx.bcx.ins().bitcast(ty, res);
@@ -632,85 +633,15 @@ fn codegen_regular_intrinsic_call<'tcx>(
             ret.write_cvalue(fx, res);
         }
         sym::bswap => {
-            // FIXME(CraneStation/cranelift#794) add bswap instruction to cranelift
-            fn swap(bcx: &mut FunctionBuilder<'_>, v: Value) -> Value {
-                match bcx.func.dfg.value_type(v) {
-                    types::I8 => v,
-
-                    // https://code.woboq.org/gcc/include/bits/byteswap.h.html
-                    types::I16 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 8);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00);
-
-                        let tmp2 = bcx.ins().ushr_imm(v, 8);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF);
-
-                        bcx.ins().bor(n1, n2)
-                    }
-                    types::I32 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 24);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000);
-
-                        let tmp2 = bcx.ins().ishl_imm(v, 8);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000);
-
-                        let tmp3 = bcx.ins().ushr_imm(v, 8);
-                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00);
-
-                        let tmp4 = bcx.ins().ushr_imm(v, 24);
-                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF);
-
-                        let or_tmp1 = bcx.ins().bor(n1, n2);
-                        let or_tmp2 = bcx.ins().bor(n3, n4);
-                        bcx.ins().bor(or_tmp1, or_tmp2)
-                    }
-                    types::I64 => {
-                        let tmp1 = bcx.ins().ishl_imm(v, 56);
-                        let n1 = bcx.ins().band_imm(tmp1, 0xFF00_0000_0000_0000u64 as i64);
-
-                        let tmp2 = bcx.ins().ishl_imm(v, 40);
-                        let n2 = bcx.ins().band_imm(tmp2, 0x00FF_0000_0000_0000u64 as i64);
-
-                        let tmp3 = bcx.ins().ishl_imm(v, 24);
-                        let n3 = bcx.ins().band_imm(tmp3, 0x0000_FF00_0000_0000u64 as i64);
-
-                        let tmp4 = bcx.ins().ishl_imm(v, 8);
-                        let n4 = bcx.ins().band_imm(tmp4, 0x0000_00FF_0000_0000u64 as i64);
-
-                        let tmp5 = bcx.ins().ushr_imm(v, 8);
-                        let n5 = bcx.ins().band_imm(tmp5, 0x0000_0000_FF00_0000u64 as i64);
-
-                        let tmp6 = bcx.ins().ushr_imm(v, 24);
-                        let n6 = bcx.ins().band_imm(tmp6, 0x0000_0000_00FF_0000u64 as i64);
-
-                        let tmp7 = bcx.ins().ushr_imm(v, 40);
-                        let n7 = bcx.ins().band_imm(tmp7, 0x0000_0000_0000_FF00u64 as i64);
-
-                        let tmp8 = bcx.ins().ushr_imm(v, 56);
-                        let n8 = bcx.ins().band_imm(tmp8, 0x0000_0000_0000_00FFu64 as i64);
-
-                        let or_tmp1 = bcx.ins().bor(n1, n2);
-                        let or_tmp2 = bcx.ins().bor(n3, n4);
-                        let or_tmp3 = bcx.ins().bor(n5, n6);
-                        let or_tmp4 = bcx.ins().bor(n7, n8);
-
-                        let or_tmp5 = bcx.ins().bor(or_tmp1, or_tmp2);
-                        let or_tmp6 = bcx.ins().bor(or_tmp3, or_tmp4);
-                        bcx.ins().bor(or_tmp5, or_tmp6)
-                    }
-                    types::I128 => {
-                        let (lo, hi) = bcx.ins().isplit(v);
-                        let lo = swap(bcx, lo);
-                        let hi = swap(bcx, hi);
-                        bcx.ins().iconcat(hi, lo)
-                    }
-                    ty => unreachable!("bswap {}", ty),
-                }
-            }
             intrinsic_args!(fx, args => (arg); intrinsic);
             let val = arg.load_scalar(fx);
 
-            let res = CValue::by_val(swap(&mut fx.bcx, val), arg.layout());
+            let res = if fx.bcx.func.dfg.value_type(val) == types::I8 {
+                val
+            } else {
+                fx.bcx.ins().bswap(val)
+            };
+            let res = CValue::by_val(res, arg.layout());
             ret.write_cvalue(fx, res);
         }
         sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {
@@ -936,8 +867,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
             let old = fx.bcx.ins().atomic_cas(MemFlags::trusted(), ptr, test_old, new);
             let is_eq = fx.bcx.ins().icmp(IntCC::Equal, old, test_old);
 
-            let ret_val =
-                CValue::by_val_pair(old, fx.bcx.ins().bint(types::I8, is_eq), ret.layout());
+            let ret_val = CValue::by_val_pair(old, is_eq, ret.layout());
             ret.write_cvalue(fx, ret_val)
         }
 
@@ -1259,8 +1189,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 flags.set_notrap();
                 let lhs_val = fx.bcx.ins().load(clty, flags, lhs_ref, 0);
                 let rhs_val = fx.bcx.ins().load(clty, flags, rhs_ref, 0);
-                let eq = fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val);
-                fx.bcx.ins().bint(types::I8, eq)
+                fx.bcx.ins().icmp(IntCC::Equal, lhs_val, rhs_val)
             } else {
                 // Just call `memcmp` (like slices do in core) when the
                 // size is too large or it's not a power-of-two.
@@ -1270,8 +1199,7 @@ fn codegen_regular_intrinsic_call<'tcx>(
                 let returns = vec![AbiParam::new(types::I32)];
                 let args = &[lhs_ref, rhs_ref, bytes_val];
                 let cmp = fx.lib_call("memcmp", params, returns, args)[0];
-                let eq = fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0);
-                fx.bcx.ins().bint(types::I8, eq)
+                fx.bcx.ins().icmp_imm(IntCC::Equal, cmp, 0)
             };
             ret.write_cvalue(fx, CValue::by_val(is_eq_value, ret.layout()));
         }
