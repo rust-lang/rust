@@ -696,7 +696,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         // It only make sense when suggesting dereferences for arguments
-        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code()
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, call_hir_id, .. } = obligation.cause.code()
             else { return false; };
         let Some(typeck_results) = &self.typeck_results
             else { return false; };
@@ -775,12 +775,33 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         real_trait_pred_and_base_ty,
                     );
                     if self.predicate_may_hold(&obligation) {
-                        err.span_suggestion_verbose(
-                            span.shrink_to_lo(),
-                            "consider dereferencing here",
-                            "*",
-                            Applicability::MachineApplicable,
+                        let call_node = self.tcx.hir().get(*call_hir_id);
+                        let msg = "consider dereferencing here";
+                        let is_receiver = matches!(
+                            call_node,
+                            Node::Expr(hir::Expr {
+                                kind: hir::ExprKind::MethodCall(_, receiver_expr, ..),
+                                ..
+                            })
+                            if receiver_expr.hir_id == *arg_hir_id
                         );
+                        if is_receiver {
+                            err.multipart_suggestion_verbose(
+                                msg,
+                                vec![
+                                    (span.shrink_to_lo(), "(*".to_string()),
+                                    (span.shrink_to_hi(), ")".to_string()),
+                                ],
+                                Applicability::MachineApplicable,
+                            )
+                        } else {
+                            err.span_suggestion_verbose(
+                                span.shrink_to_lo(),
+                                msg,
+                                '*',
+                                Applicability::MachineApplicable,
+                            )
+                        };
                         return true;
                     }
                 }
@@ -2854,6 +2875,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 arg_hir_id,
                 call_hir_id,
                 ref parent_code,
+                ..
             } => {
                 self.function_argument_obligation(
                     arg_hir_id,
