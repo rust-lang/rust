@@ -1,4 +1,4 @@
-error[E0271]: expected `std::vec::IntoIter<i32>` to be an iterator that yields `u32`, but it yields `i32`
+error[E0271]: expected `IntoIter<i32>` to be an iterator that yields `u32`, but it yields `i32`
   --> $DIR/assoc-type-in-superbad.rs:12:16
    |
 LL |     type Key = u32;
