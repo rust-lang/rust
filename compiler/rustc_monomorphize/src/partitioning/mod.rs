@@ -97,7 +97,7 @@ mod merging;
 
 use std::cmp;
 use std::fs::{self, File};
-use std::io::Write;
+use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -497,7 +497,8 @@ fn dump_mono_items_stats<'tcx>(
 
     let filename = format!("{}.mono_items.md", crate_name.unwrap_or("unknown-crate"));
     let output_path = output_directory.join(&filename);
-    let mut file = File::create(output_path)?;
+    let file = File::create(output_path)?;
+    let mut file = BufWriter::new(file);
 
     // Gather instantiated mono items grouped by def_id
     let mut items_per_def_id: FxHashMap<_, Vec<_>> = Default::default();
