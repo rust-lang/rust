@@ -10,7 +10,7 @@ document.
 
 ## Rust 1.66
 
-Current stable, released 2022-11-03
+Current stable, released 2022-12-15
 
 [b52fb523...4f142aa1](https://github.com/rust-lang/rust-clippy/compare/b52fb523...4f142aa1)
 
@@ -110,8 +110,8 @@ Current stable, released 2022-11-03
   [#9636](https://github.com/rust-lang/rust-clippy/pull/9636)
 * [`uninit_vec`]: No longer lints `Vec::set_len(0)`
   [#9519](https://github.com/rust-lang/rust-clippy/pull/9519)
-* [`arithmetic_side_effects`]: Now ignores references
-  [9507](https://github.com/rust-lang/rust-clippy/pull/9507)
+* [`arithmetic_side_effects`]: Now ignores references to integer types
+  [#9507](https://github.com/rust-lang/rust-clippy/pull/9507)
 * [`large_stack_arrays`]: No longer lints inside static items
   [#9466](https://github.com/rust-lang/rust-clippy/pull/9466)
 * [`ref_option_ref`]: No longer lints if the inner reference is mutable
@@ -171,6 +171,7 @@ Current stable, released 2022-11-03
 * [`needless_pass_by_value`]: No longer ICEs on unsized `dyn Fn` arguments
   [#9531](https://github.com/rust-lang/rust-clippy/pull/9531)
 * `*_interior_mutable_const` lints: no longer ICE on const unions containing `!Freeze` types
+  [#9539](https://github.com/rust-lang/rust-clippy/pull/9539)
 
 ### Others
 
