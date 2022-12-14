@@ -1,0 +1,8 @@
+// run-rustfix
+fn wat<T: Clone>(t: &T) -> T {
+    t.clone() //~ ERROR E0308
+}
+
+fn main() {
+    wat(&42);
+}

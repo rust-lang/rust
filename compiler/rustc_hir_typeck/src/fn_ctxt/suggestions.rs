@@ -13,7 +13,9 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -1295,6 +1297,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
+            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            if let ty::Param(param) = expected_ty.kind()
+                && let Some(generics) = self.tcx.hir().get_generics(owner)
+            {
+                suggest_constraining_type_params(
+                    self.tcx,
+                    generics,
+                    diag,
+                    vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                );
+            }
         }
     }
 
