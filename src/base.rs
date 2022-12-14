@@ -59,7 +59,7 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Declare function
     let symbol_name = tcx.symbol_name(instance).name.to_string();
-    let sig = get_function_sig(tcx, module.isa().triple(), instance);
+    let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
     let func_id = module.declare_function(&symbol_name, Linkage::Local, &sig).unwrap();
 
     // Make the FunctionBuilder

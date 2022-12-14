@@ -56,13 +56,13 @@ pub(crate) fn conv_to_call_conv(c: Conv, default_call_conv: CallConv) -> CallCon
 
 pub(crate) fn get_function_sig<'tcx>(
     tcx: TyCtxt<'tcx>,
-    triple: &target_lexicon::Triple,
+    default_call_conv: CallConv,
     inst: Instance<'tcx>,
 ) -> Signature {
     assert!(!inst.substs.needs_infer());
     clif_sig_from_fn_abi(
         tcx,
-        CallConv::triple_default(triple),
+        default_call_conv,
         &RevealAllLayoutCx(tcx).fn_abi_of_instance(inst, ty::List::empty()),
     )
 }
@@ -74,7 +74,7 @@ pub(crate) fn import_function<'tcx>(
     inst: Instance<'tcx>,
 ) -> FuncId {
     let name = tcx.symbol_name(inst).name;
-    let sig = get_function_sig(tcx, module.isa().triple(), inst);
+    let sig = get_function_sig(tcx, module.target_config().default_call_conv, inst);
     match module.declare_function(name, Linkage::Import, &sig) {
         Ok(func_id) => func_id,
         Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
