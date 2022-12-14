@@ -8,8 +8,13 @@ use xshell::{cmd, Shell};
 impl flags::PublishReleaseNotes {
     pub(crate) fn run(self, sh: &Shell) -> Result<()> {
         let asciidoc = sh.read_file(&self.changelog)?;
-        let markdown = notes::convert_asciidoc_to_markdown(std::io::Cursor::new(&asciidoc))?;
-        let tag_name = extract_tag_name(&self.changelog)?;
+        let mut markdown = notes::convert_asciidoc_to_markdown(std::io::Cursor::new(&asciidoc))?;
+        let file_name = check_file_name(self.changelog)?;
+        let tag_name = &file_name[0..10];
+        let original_changelog_url = create_original_changelog_url(&file_name);
+        let additional_paragraph =
+            format!("\nSee also [original changelog]({original_changelog_url}).");
+        markdown.push_str(&additional_paragraph);
         if self.dry_run {
             println!("{}", markdown);
         } else {
@@ -19,7 +24,7 @@ impl flags::PublishReleaseNotes {
     }
 }
 
-fn extract_tag_name<P: AsRef<std::path::Path>>(path: P) -> Result<String> {
+fn check_file_name<P: AsRef<std::path::Path>>(path: P) -> Result<String> {
     let file_name = path
         .as_ref()
         .file_name()
@@ -39,10 +44,21 @@ fn extract_tag_name<P: AsRef<std::path::Path>>(path: P) -> Result<String> {
         && chars.next().unwrap().is_ascii_digit()
         && chars.next().unwrap().is_ascii_digit()
     {
-        Ok(file_name[0..10].to_owned())
+        Ok(file_name.to_string())
     } else {
-        bail!("extraction of date from the file name failed")
+        bail!("unexpected file name format; no date information prefixed")
     }
+}
+
+fn create_original_changelog_url(file_name: &str) -> String {
+    let year = &file_name[0..4];
+    let month = &file_name[5..7];
+    let day = &file_name[8..10];
+    let mut stem = &file_name[11..];
+    if let Some(stripped) = stem.strip_suffix(".adoc") {
+        stem = stripped;
+    }
+    format!("https://rust-analyzer.github.io/thisweek/{year}/{month}/{day}/{stem}.html")
 }
 
 fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()> {
@@ -77,4 +93,17 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
     .read()?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn original_changelog_url_creation() {
+        let input = "2019-07-24-changelog-0.adoc";
+        let actual = create_original_changelog_url(&input);
+        let expected = "https://rust-analyzer.github.io/thisweek/2019/07/24/changelog-0.html";
+        assert_eq!(actual, expected);
+    }
 }
