@@ -116,7 +116,7 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         copy.pointer("/completion/addCallParenthesis"),
     ) {
         (Some(Value::Bool(true)), Some(Value::Bool(true))) => json!("fill_arguments"),
-        (Some(Value::Bool(true)), _) => json!("add_parentheses"),
+        (_, Some(Value::Bool(true))) => json!("add_parentheses"),
         (Some(Value::Bool(false)), Some(Value::Bool(false))) => json!("none"),
         (_, _) => return,
     };
