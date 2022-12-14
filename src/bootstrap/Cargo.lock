@@ -36,6 +36,7 @@ dependencies = [
 name = "bootstrap"
 version = "0.0.0"
 dependencies = [
+ "build_helper",
  "cc",
  "cmake",
  "fd-lock",
@@ -69,6 +70,10 @@ dependencies = [
  "memchr",
  "regex-automata",
 ]
+
+[[package]]
+name = "build_helper"
+version = "0.1.0"
 
 [[package]]
 name = "cc"
