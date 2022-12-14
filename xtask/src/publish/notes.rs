@@ -74,8 +74,9 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     fn process_document_title(&mut self) -> anyhow::Result<()> {
         if let Some(Ok(line)) = self.iter.next() {
             if let Some((level, title)) = get_title(&line) {
+                let title = process_inline_macros(title)?;
                 if level == 1 {
-                    self.write_title(level, title);
+                    self.write_title(level, &title);
                     return Ok(());
                 }
             }
@@ -90,6 +91,7 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
 
             if get_list_item(&line).is_some() {
                 let line = self.iter.next().unwrap()?;
+                let line = process_inline_macros(&line)?;
                 let (marker, item) = get_list_item(&line).unwrap();
                 nesting.set_current(marker);
                 self.write_list_item(item, &nesting);
@@ -258,6 +260,7 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
             self.write_indent(level);
             let line = self.iter.next().unwrap()?;
             let line = line.trim_start();
+            let line = process_inline_macros(&line)?;
             if line.ends_with('+') {
                 let line = &line[..(line.len() - 1)];
                 self.output.push_str(line);
@@ -585,7 +588,7 @@ Release: release:2022-01-01[]
 
 == New Features
 
-* pr:1111[] foo bar baz
+* **BREAKING** pr:1111[] shortcut kbd:[ctrl+r]
 - hyphen-prefixed list item
 * nested list item
 ** `foo` -> `foofoo`
@@ -645,9 +648,11 @@ paragraph
 == Another Section
 
 * foo bar baz
-* foo bar baz
+* list item with an inline image
+  image:https://example.com/animation.gif[]
 
 The highlight of the month is probably pr:1111[].
+See https://example.com/manual[online manual] for more information.
 
 [source,bash]
 ----
@@ -668,12 +673,12 @@ This is a plain listing.
 
 Hello!
 
-Commit: commit:0123456789abcdef0123456789abcdef01234567[] \\
-Release: release:2022-01-01[]
+Commit: [`0123456`](https://github.com/rust-analyzer/rust-analyzer/commit/0123456789abcdef0123456789abcdef01234567) \\
+Release: [`2022-01-01`](https://github.com/rust-analyzer/rust-analyzer/releases/2022-01-01)
 
 ## New Features
 
-- pr:1111[] foo bar baz
+- **BREAKING** [`#1111`](https://github.com/rust-analyzer/rust-analyzer/pull/1111) shortcut <kbd>ctrl</kbd>+<kbd>r</kbd>
   - hyphen-prefixed list item
 - nested list item
   - `foo` -> `foofoo`
@@ -728,9 +733,11 @@ Release: release:2022-01-01[]
 ## Another Section
 
 - foo bar baz
-- foo bar baz
+- list item with an inline image
+  ![](https://example.com/animation.gif)
 
-The highlight of the month is probably pr:1111[].
+The highlight of the month is probably [`#1111`](https://github.com/rust-analyzer/rust-analyzer/pull/1111).
+See [online manual](https://example.com/manual) for more information.
 
 ```bash
 rustup update nightly
