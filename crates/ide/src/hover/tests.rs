@@ -4080,6 +4080,37 @@ const FOO$0: f64 = 1.0f64;
 }
 
 #[test]
+fn hover_const_eval_in_generic_trait() {
+    // Doesn't compile, but we shouldn't crash.
+    check(
+        r#"
+trait Trait<T> {
+    const FOO: bool = false;
+}
+struct S<T>(T);
+impl<T> Trait<T> for S<T> {
+    const FOO: bool = true;
+}
+
+fn test() {
+    S::FOO$0;
+}
+"#,
+        expect![[r#"
+            *FOO*
+
+            ```rust
+            test
+            ```
+
+            ```rust
+            const FOO: bool = true
+            ```
+        "#]],
+    );
+}
+
+#[test]
 fn hover_const_pat() {
     check(
         r#"
