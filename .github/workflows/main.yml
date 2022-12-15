@@ -177,10 +177,10 @@ jobs:
       env:
         TARGET_TRIPLE: ${{ matrix.env.TARGET_TRIPLE }}
       # This is the config rust-lang/rust uses for builds
-      run: ./y.rs build --no-unstable-features
+      run: ./y.exe build --no-unstable-features
 
     - name: Build
-      run: ./y.rs build --sysroot none
+      run: ./y.exe build --sysroot none
 
     - name: Test
       run: |
