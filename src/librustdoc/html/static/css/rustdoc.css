@@ -1114,8 +1114,7 @@ pre.rust .doccomment {
 	top: 5px;
 }
 
-.example-wrap .tooltip::after {
-	display: none;
+.example-wrap .tooltip:hover::after {
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
@@ -1130,33 +1129,28 @@ pre.rust .doccomment {
 	color: var(--tooltip-color);
 }
 
-.example-wrap .tooltip::before {
+.example-wrap .tooltip:hover::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	display: none;
 	z-index: 1;
 	border: 5px solid transparent;
 	border-right-color: var(--tooltip-background-color);
 }
 
-.example-wrap.ignore .tooltip::after {
+.example-wrap.ignore .tooltip:hover::after {
 	content: "This example is not tested";
 }
-.example-wrap.compile_fail .tooltip::after {
+.example-wrap.compile_fail .tooltip:hover::after {
 	content: "This example deliberately fails to compile";
 }
-.example-wrap.should_panic .tooltip::after {
+.example-wrap.should_panic .tooltip:hover::after {
 	content: "This example panics";
 }
-.example-wrap.edition .tooltip::after {
+.example-wrap.edition .tooltip:hover::after {
 	content: "This code runs with edition " attr(data-edition);
-}
-
-.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
-	display: inline;
 }
 
 .example-wrap.compile_fail .tooltip,
