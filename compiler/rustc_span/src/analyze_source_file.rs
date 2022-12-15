@@ -175,7 +175,7 @@ cfg_if::cfg_if! {
             // There might still be a tail left to analyze
             let tail_start = chunk_count * CHUNK_SIZE + intra_chunk_offset;
             if tail_start < src.len() {
-                analyze_source_file_generic(&src[tail_start as usize ..],
+                analyze_source_file_generic(&src[tail_start ..],
                                         src.len() - tail_start,
                                         output_offset + BytePos::from_usize(tail_start),
                                         lines,
@@ -219,7 +219,7 @@ fn analyze_source_file_generic(
     while i < scan_len {
         let byte = unsafe {
             // We verified that i < scan_len <= src.len()
-            *src_bytes.get_unchecked(i as usize)
+            *src_bytes.get_unchecked(i)
         };
 
         // How much to advance in order to get to the next UTF-8 char in the

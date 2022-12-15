@@ -5,12 +5,7 @@ pub fn target() -> Target {
     base.max_atomic_width = Some(64);
     base.add_pre_link_args(
         LinkerFlavor::Unix(Cc::No),
-        &[
-            "-b64".into(),
-            "-bpT:0x100000000".into(),
-            "-bpD:0x110000000".into(),
-            "-bcdtors:all:0:s".into(),
-        ],
+        &["-b64", "-bpT:0x100000000", "-bpD:0x110000000", "-bcdtors:all:0:s"],
     );
 
     Target {
