@@ -2,7 +2,7 @@ use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::get_wrapper_file_name;
+use super::rustc_info::{get_file_name, get_wrapper_file_name};
 use super::utils::{
     hyperfine_command, is_ci, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
 };
@@ -318,13 +318,20 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
 
             eprintln!("[BENCH RUN] ebobby/simple-raytracer");
             fs::copy(
-                target_dir.join("debug").join("main"),
-                RelPath::BUILD.to_path(&runner.dirs).join("raytracer_cg_clif"),
+                target_dir.join("debug").join(get_file_name("main", "bin")),
+                RelPath::BUILD
+                    .to_path(&runner.dirs)
+                    .join(get_file_name("raytracer_cg_clif", "bin")),
             )
             .unwrap();
 
-            let mut bench_run =
-                hyperfine_command(0, run_runs, None, "./raytracer_cg_llvm", "./raytracer_cg_clif");
+            let mut bench_run = hyperfine_command(
+                0,
+                run_runs,
+                None,
+                Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
+                Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
+            );
             bench_run.current_dir(RelPath::BUILD.to_path(&runner.dirs));
             spawn_and_wait(bench_run);
         } else {
