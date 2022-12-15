@@ -1,5 +1,5 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::DefIndex;
 use rustc_index::vec::{Idx, IndexVec};
 
 use crate::middle::exported_symbols::ExportedSymbol;
@@ -67,7 +67,7 @@ trivially_parameterized_over_tcx! {
     ty::TraitDef,
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
-    ty::fast_reject::SimplifiedTypeGen<DefId>,
+    ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
     rustc_attr::ConstStability,
