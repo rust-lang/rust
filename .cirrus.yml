@@ -15,9 +15,4 @@ task:
     - ./y.rs prepare
   test_script:
     - . $HOME/.cargo/env
-    - # Enable backtraces for easier debugging
-    - export RUST_BACKTRACE=1
-    - # Reduce amount of benchmark runs as they are slow
-    - export COMPILE_RUNS=2
-    - export RUN_RUNS=2
     - ./y.rs test

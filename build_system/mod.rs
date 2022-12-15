@@ -64,12 +64,18 @@ pub(crate) enum SysrootKind {
 }
 
 pub fn main() {
+    if env::var("RUST_BACKTRACE").is_err() {
+        env::set_var("RUST_BACKTRACE", "1");
+    }
     env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
     if is_ci() {
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         env::set_var("CARGO_BUILD_INCREMENTAL", "false");
+
+        // Enable the Cranelift verifier
+        env::set_var("CG_CLIF_ENABLE_VERIFIER", "1");
     }
 
     let mut args = env::args().skip(1);
