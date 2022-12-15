@@ -1626,7 +1626,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let trait_obj = if has_dyn { &snippet[4..] } else { &snippet };
         if only_never_return {
             // No return paths, probably using `panic!()` or similar.
-            // Suggest `-> T`, `-> impl Trait`, and if `Trait` is object safe, `-> Box<dyn Trait>`.
+            // Suggest `-> impl Trait`, and if `Trait` is object safe, `-> Box<dyn Trait>`.
             suggest_trait_object_return_type_alternatives(
                 err,
                 ret_ty.span,
@@ -2548,6 +2548,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::SizedArgumentType(sp) => {
                 if let Some(span) = sp {
+                    if let ty::PredicateKind::Clause(clause) = predicate.kind().skip_binder()
+                        && let ty::Clause::Trait(trait_pred) = clause
+                        && let ty::Dynamic(..) = trait_pred.self_ty().kind()
+                    {
+                        let span = if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span)
+                            && snippet.starts_with("dyn ")
+                        {
+                            let pos = snippet.len() - snippet[3..].trim_start().len();
+                            span.with_hi(span.lo() + BytePos(pos as u32))
+                        } else {
+                            span.shrink_to_lo()
+                        };
+                        err.span_suggestion_verbose(
+                            span,
+                            "you can use `impl Trait` as the argument type",
+                            "impl ".to_string(),
+                            Applicability::MaybeIncorrect,
+                        );
+                    }
                     err.span_suggestion_verbose(
                         span.shrink_to_lo(),
                         "function arguments must have a statically known size, borrowed types \
@@ -3610,13 +3629,6 @@ fn suggest_trait_object_return_type_alternatives(
     trait_obj: &str,
     is_object_safe: bool,
 ) {
-    err.span_suggestion(
-        ret_ty,
-        "use some type `T` that is `T: Sized` as the return type if all return paths have the \
-            same type",
-        "T",
-        Applicability::MaybeIncorrect,
-    );
     err.span_suggestion(
         ret_ty,
         &format!(
