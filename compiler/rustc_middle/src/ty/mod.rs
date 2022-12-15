@@ -83,10 +83,8 @@ pub use self::consts::{
     Const, ConstInt, ConstKind, ConstS, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
-    tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GeneratorDiagnosticData,
-    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyCtxtFeed, TypeckResults,
-    UserType, UserTypeAnnotationIndex,
+    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
+    TyCtxtFeed,
 };
 pub use self::instance::{Instance, InstanceDef, ShortInstance};
 pub use self::list::List;
@@ -103,6 +101,11 @@ pub use self::sty::{
     Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
+pub use self::typeck_results::{
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
+    UserTypeAnnotationIndex,
+};
 
 pub mod _match;
 pub mod abstract_const;
@@ -143,6 +146,7 @@ mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
 mod sty;
+mod typeck_results;
 
 // Data types
 
