@@ -42,7 +42,6 @@ enum SelfSemantic {
 /// What is the context that prevents using `~const`?
 enum DisallowTildeConstContext<'a> {
     TraitObject,
-    ImplTrait,
     Fn(FnKind<'a>),
 }
 
@@ -187,11 +186,7 @@ impl<'a> AstValidator<'a> {
 
     fn with_impl_trait(&mut self, outer: Option<Span>, f: impl FnOnce(&mut Self)) {
         let old = mem::replace(&mut self.outer_impl_trait, outer);
-        if outer.is_some() {
-            self.with_banned_tilde_const(DisallowTildeConstContext::ImplTrait, f);
-        } else {
-            f(self);
-        }
+        f(self);
         self.outer_impl_trait = old;
     }
 
@@ -1384,7 +1379,6 @@ impl<'a> Visitor<'a> for AstValidator<'a> {
                     let mut err = self.err_handler().struct_span_err(bound.span(), "`~const` is not allowed here");
                     match reason {
                         DisallowTildeConstContext::TraitObject => err.note("trait objects cannot have `~const` trait bounds"),
-                        DisallowTildeConstContext::ImplTrait => err.note("`impl Trait`s cannot have `~const` trait bounds"),
                         DisallowTildeConstContext::Fn(FnKind::Closure(..)) => err.note("closures cannot have `~const` trait bounds"),
                         DisallowTildeConstContext::Fn(FnKind::Fn(_, ident, ..)) => err.span_note(ident.span, "this function is not `const`, so it cannot have `~const` trait bounds"),
                     };
