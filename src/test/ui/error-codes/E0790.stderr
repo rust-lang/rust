@@ -37,8 +37,8 @@ LL |     inner::MyTrait::my_fn();
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     inner::<MyStruct as MyTrait>::my_fn();
-   |            ++++++++++++        +
+LL |     <MyStruct as inner::MyTrait>::my_fn();
+   |     ++++++++++++               +
 
 error[E0790]: cannot refer to the associated constant on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:30:13
@@ -51,8 +51,8 @@ LL |     let _ = inner::MyTrait::MY_ASSOC_CONST;
    |
 help: use the fully-qualified path to the only available implementation
    |
-LL |     let _ = inner::<MyStruct as MyTrait>::MY_ASSOC_CONST;
-   |                    ++++++++++++        +
+LL |     let _ = <MyStruct as inner::MyTrait>::MY_ASSOC_CONST;
+   |             ++++++++++++               +
 
 error[E0790]: cannot call associated function on trait without specifying the corresponding `impl` type
   --> $DIR/E0790.rs:50:5
