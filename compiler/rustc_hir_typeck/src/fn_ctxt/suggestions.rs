@@ -13,7 +13,9 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, Ty};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -1276,15 +1278,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
             // Check that we're in fact trying to clone into the expected type
             && self.can_coerce(*pointee_ty, expected_ty)
+            && let trait_ref = ty::Binder::dummy(self.tcx.mk_trait_ref(clone_trait_did, [expected_ty]))
             // And the expected type doesn't implement `Clone`
             && !self.predicate_must_hold_considering_regions(&traits::Obligation::new(
                 self.tcx,
                 traits::ObligationCause::dummy(),
                 self.param_env,
-                ty::Binder::dummy(self.tcx.mk_trait_ref(
-                    clone_trait_did,
-                    [expected_ty],
-                )),
+                trait_ref,
             ))
         {
             diag.span_note(
@@ -1293,6 +1293,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
+            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            if let ty::Param(param) = expected_ty.kind()
+                && let Some(generics) = self.tcx.hir().get_generics(owner)
+            {
+                suggest_constraining_type_params(
+                    self.tcx,
+                    generics,
+                    diag,
+                    vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                );
+            } else {
+                self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
+            }
         }
     }
 

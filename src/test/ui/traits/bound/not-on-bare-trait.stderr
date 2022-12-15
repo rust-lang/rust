@@ -20,6 +20,10 @@ LL | fn foo(_x: Foo + Send) {
    |
    = help: the trait `Sized` is not implemented for `(dyn Foo + Send + 'static)`
    = help: unsized fn params are gated as an unstable feature
+help: you can use `impl Trait` as the argument type
+   |
+LL | fn foo(_x: impl Foo + Send) {
+   |            ++++
 help: function arguments must have a statically known size, borrowed types always have a known size
    |
 LL | fn foo(_x: &Foo + Send) {

@@ -1,15 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::DefIndex;
 use rustc_index::vec::{Idx, IndexVec};
 
-use crate::middle::exported_symbols::ExportedSymbol;
-use crate::mir::Body;
-use crate::ty::{
-    self, Clause, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
-};
+use crate::ty;
 
 pub trait ParameterizedOverTcx: 'static {
-    #[allow(unused_lifetimes)]
     type Value<'tcx>;
 }
 
@@ -67,7 +62,7 @@ trivially_parameterized_over_tcx! {
     ty::TraitDef,
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
-    ty::fast_reject::SimplifiedTypeGen<DefId>,
+    ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,
     rustc_ast::DelimArgs,
     rustc_attr::ConstStability,
@@ -100,29 +95,28 @@ trivially_parameterized_over_tcx! {
     rustc_type_ir::Variance,
 }
 
-// HACK(compiler-errors): This macro rule can only take an ident,
-// not a path, due to parsing ambiguity reasons. That means we gotta
-// import all of these types above.
+// HACK(compiler-errors): This macro rule can only take a fake path,
+// not a real, due to parsing ambiguity reasons.
 #[macro_export]
 macro_rules! parameterized_over_tcx {
-    ($($ident:ident),+ $(,)?) => {
+    ($($($fake_path:ident)::+),+ $(,)?) => {
         $(
-            impl $crate::ty::ParameterizedOverTcx for $ident<'static> {
-                type Value<'tcx> = $ident<'tcx>;
+            impl $crate::ty::ParameterizedOverTcx for $($fake_path)::+<'static> {
+                type Value<'tcx> = $($fake_path)::+<'tcx>;
             }
         )*
     }
 }
 
 parameterized_over_tcx! {
-    Ty,
-    FnSig,
-    GenericPredicates,
-    TraitRef,
-    Const,
-    Predicate,
-    Clause,
-    GeneratorDiagnosticData,
-    Body,
-    ExportedSymbol,
+    crate::middle::exported_symbols::ExportedSymbol,
+    crate::mir::Body,
+    ty::Ty,
+    ty::FnSig,
+    ty::GenericPredicates,
+    ty::TraitRef,
+    ty::Const,
+    ty::Predicate,
+    ty::Clause,
+    ty::GeneratorDiagnosticData,
 }

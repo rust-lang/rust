@@ -95,6 +95,11 @@
 mod default;
 mod merging;
 
+use std::cmp;
+use std::fs::{self, File};
+use std::io::{BufWriter, Write};
+use std::path::{Path, PathBuf};
+
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
 use rustc_hir::def_id::DefIdSet;
@@ -104,11 +109,12 @@ use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
+use rustc_session::config::SwitchWithOptPath;
 use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
 use crate::collector::{self, MonoItemCollectionMode};
-use crate::errors::{SymbolAlreadyDefined, UnknownPartitionStrategy};
+use crate::errors::{CouldntDumpMonoStats, SymbolAlreadyDefined, UnknownPartitionStrategy};
 
 pub struct PartitioningCx<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -411,6 +417,15 @@ fn collect_and_partition_mono_items<'tcx>(
         })
         .collect();
 
+    // Output monomorphization stats per def_id
+    if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
+        if let Err(err) =
+            dump_mono_items_stats(tcx, &codegen_units, path, tcx.sess.opts.crate_name.as_deref())
+        {
+            tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
+        }
+    }
+
     if tcx.sess.opts.unstable_opts.print_mono_items.is_some() {
         let mut item_to_cgus: FxHashMap<_, Vec<_>> = Default::default();
 
@@ -463,6 +478,67 @@ fn collect_and_partition_mono_items<'tcx>(
     }
 
     (tcx.arena.alloc(mono_items), codegen_units)
+}
+
+/// Outputs stats about instantation counts and estimated size, per `MonoItem`'s
+/// def, to a file in the given output directory.
+fn dump_mono_items_stats<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    codegen_units: &[CodegenUnit<'tcx>],
+    output_directory: &Option<PathBuf>,
+    crate_name: Option<&str>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let output_directory = if let Some(ref directory) = output_directory {
+        fs::create_dir_all(directory)?;
+        directory
+    } else {
+        Path::new(".")
+    };
+
+    let filename = format!("{}.mono_items.md", crate_name.unwrap_or("unknown-crate"));
+    let output_path = output_directory.join(&filename);
+    let file = File::create(output_path)?;
+    let mut file = BufWriter::new(file);
+
+    // Gather instantiated mono items grouped by def_id
+    let mut items_per_def_id: FxHashMap<_, Vec<_>> = Default::default();
+    for cgu in codegen_units {
+        for (&mono_item, _) in cgu.items() {
+            // Avoid variable-sized compiler-generated shims
+            if mono_item.is_user_defined() {
+                items_per_def_id.entry(mono_item.def_id()).or_default().push(mono_item);
+            }
+        }
+    }
+
+    // Output stats sorted by total instantiated size, from heaviest to lightest
+    let mut stats: Vec<_> = items_per_def_id
+        .into_iter()
+        .map(|(def_id, items)| {
+            let instantiation_count = items.len();
+            let size_estimate = items[0].size_estimate(tcx);
+            let total_estimate = instantiation_count * size_estimate;
+            (def_id, instantiation_count, size_estimate, total_estimate)
+        })
+        .collect();
+    stats.sort_unstable_by_key(|(_, _, _, total_estimate)| cmp::Reverse(*total_estimate));
+
+    if !stats.is_empty() {
+        writeln!(
+            file,
+            "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
+        )?;
+        writeln!(file, "| --- | ---: | ---: | ---: |")?;
+        for (def_id, instantiation_count, size_estimate, total_estimate) in stats {
+            let item = with_no_trimmed_paths!(tcx.def_path_str(def_id));
+            writeln!(
+                file,
+                "| {item} | {instantiation_count} | {size_estimate} | {total_estimate} |"
+            )?;
+        }
+    }
+
+    Ok(())
 }
 
 fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {

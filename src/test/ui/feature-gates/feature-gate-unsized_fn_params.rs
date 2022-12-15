@@ -1,5 +1,5 @@
+#![allow(unused, bare_trait_objects)]
 #[repr(align(256))]
-#[allow(dead_code)]
 struct A {
     v: u8,
 }
@@ -14,13 +14,17 @@ impl Foo for A {
     }
 }
 
-fn foo(x: dyn Foo) {
-    //~^ ERROR [E0277]
+fn foo(x: dyn Foo) { //~ ERROR [E0277]
     x.foo()
 }
 
+fn bar(x: Foo) { //~ ERROR [E0277]
+    x.foo()
+}
+
+fn qux(_: [()]) {} //~ ERROR [E0277]
+
 fn main() {
     let x: Box<dyn Foo> = Box::new(A { v: 22 });
-    foo(*x);
-    //~^ ERROR [E0277]
+    foo(*x); //~ ERROR [E0277]
 }
