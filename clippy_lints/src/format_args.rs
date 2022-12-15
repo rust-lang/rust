@@ -123,7 +123,7 @@ declare_clippy_lint! {
     ///
     /// If a format string contains a numbered argument that cannot be inlined
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub UNINLINED_FORMAT_ARGS,
     style,
     "using non-inlined variables in `format!` calls"
