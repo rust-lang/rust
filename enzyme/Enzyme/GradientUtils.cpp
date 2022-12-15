@@ -7524,6 +7524,7 @@ llvm::CallInst *freeKnownAllocation(llvm::IRBuilder<> &builder,
     }
     auto tocall = getDeallocatorFnFromCall(orig);
     auto freecall = builder.CreateCall(tocall, vals);
+    freecall->setDebugLoc(debuglocation);
     return freecall;
   }
 
