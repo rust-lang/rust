@@ -122,7 +122,7 @@ jobs:
 
     - name: Upload prebuilt cg_clif
       if: matrix.env.TARGET_TRIPLE != 'x86_64-pc-windows-gnu'
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: cg_clif-${{ matrix.env.TARGET_TRIPLE }}
         path: cg_clif.tar.xz
