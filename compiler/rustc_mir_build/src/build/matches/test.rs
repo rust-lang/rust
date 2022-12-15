@@ -380,7 +380,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         );
     }
 
-    /// Compare two `&T` values using `<T as std::compare::PartialEq>::eq`
+    /// Compare two values using `<T as std::compare::PartialEq>::eq`.
+    /// If the values are already references, just call it directly, otherwise
+    /// take a reference to the values first and then call it.
     fn non_scalar_compare(
         &mut self,
         block: BasicBlock,
@@ -441,12 +443,36 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             }
         }
 
-        let ty::Ref(_, deref_ty, _) = *ty.kind() else {
-            bug!("non_scalar_compare called on non-reference type: {}", ty);
-        };
+        match *ty.kind() {
+            ty::Ref(_, deref_ty, _) => ty = deref_ty,
+            _ => {
+                // non_scalar_compare called on non-reference type
+                let temp = self.temp(ty, source_info.span);
+                self.cfg.push_assign(block, source_info, temp, Rvalue::Use(expect));
+                let ref_ty = self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, ty);
+                let ref_temp = self.temp(ref_ty, source_info.span);
+
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_temp,
+                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, temp),
+                );
+                expect = Operand::Move(ref_temp);
+
+                let ref_temp = self.temp(ref_ty, source_info.span);
+                self.cfg.push_assign(
+                    block,
+                    source_info,
+                    ref_temp,
+                    Rvalue::Ref(self.tcx.lifetimes.re_erased, BorrowKind::Shared, val),
+                );
+                val = ref_temp;
+            }
+        }
 
         let eq_def_id = self.tcx.require_lang_item(LangItem::PartialEq, Some(source_info.span));
-        let method = trait_method(self.tcx, eq_def_id, sym::eq, [deref_ty, deref_ty]);
+        let method = trait_method(self.tcx, eq_def_id, sym::eq, [ty, ty]);
 
         let bool_ty = self.tcx.types.bool;
         let eq_result = self.temp(bool_ty, source_info.span);
