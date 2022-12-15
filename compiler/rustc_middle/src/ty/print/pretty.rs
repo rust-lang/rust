@@ -16,6 +16,7 @@ use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
@@ -818,11 +819,16 @@ pub trait PrettyPrinter<'tcx>:
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().def_span(did);
+                            let preference = if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+                                FileNameDisplayPreference::Short
+                            } else {
+                                FileNameDisplayPreference::Remapped
+                            };
                             p!(write(
                                 "@{}",
                                 // This may end up in stderr diagnostics but it may also be emitted
                                 // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_embeddable_string(span)
+                                self.tcx().sess.source_map().span_to_string(span, preference)
                             ));
                         }
                     } else {

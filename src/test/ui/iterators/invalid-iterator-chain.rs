@@ -1,3 +1,11 @@
+use std::collections::hash_set::Iter;
+use std::collections::HashSet;
+
+fn iter_to_vec<'b, X>(i: Iter<'b, X>) -> Vec<X> {
+    let i = i.map(|x| x.clone());
+    i.collect() //~ ERROR E0277
+}
+
 fn main() {
     let scores = vec![(0, 0)]
         .iter()
@@ -38,4 +46,8 @@ fn main() {
     });
     let f = e.filter(|_| false);
     let g: Vec<i32> = f.collect(); //~ ERROR E0277
+
+    let mut s = HashSet::new();
+    s.insert(1u8);
+    println!("{:?}", iter_to_vec(s.iter()));
 }

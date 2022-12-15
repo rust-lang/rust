@@ -352,6 +352,14 @@ pub trait TypeErrCtxtExt<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         err: &mut Diagnostic,
     );
+    fn probe_assoc_types_at_expr(
+        &self,
+        type_diffs: &[TypeError<'tcx>],
+        span: Span,
+        prev_ty: Ty<'tcx>,
+        body_id: hir::HirId,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>>;
 }
 
 fn predicate_constraint(generics: &hir::Generics<'_>, pred: ty::Predicate<'_>) -> (Span, String) {
@@ -3152,23 +3160,37 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
                 && let Some(pred) = predicates.predicates.get(*idx)
-                && let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
+            {
+                if let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
                     _ => Err(()),
                 })
-            {
-                let mut c = CollectAllMismatches {
-                    infcx: self.infcx,
-                    param_env,
-                    errors: vec![],
-                };
-                if let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
-                    _ => Err(()),
-                }) {
+                    && let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
+                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
+                        _ => Err(()),
+                    })
+                {
+                    let mut c = CollectAllMismatches {
+                        infcx: self.infcx,
+                        param_env,
+                        errors: vec![],
+                    };
                     if let Ok(_) = c.relate(trait_pred, trait_predicate) {
                         type_diffs = c.errors;
                     }
+                } else if let ty::PredicateKind::Clause(
+                    ty::Clause::Projection(proj)
+                ) = pred.kind().skip_binder()
+                    && let ty::PredicateKind::Clause(
+                        ty::Clause::Projection(projection)
+                    ) = predicate.kind().skip_binder()
+                {
+                    type_diffs = vec![
+                        Sorts(ty::error::ExpectedFound {
+                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, proj.projection_ty)),
+                            found: projection.term.ty().unwrap(),
+                        }),
+                    ];
                 }
             }
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -3221,10 +3243,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let tcx = self.tcx;
 
+        let mut print_root_expr = true;
         let mut assocs = vec![];
-        // We still want to point at the different methods even if there hasn't
-        // been a change of assoc type.
-        let mut call_spans = vec![];
         let mut expr = expr;
         let mut prev_ty = self.resolve_vars_if_possible(
             typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
@@ -3234,63 +3254,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
             //               ^^^^^^ ^^^^^^^^^^^
             expr = rcvr_expr;
-            let mut assocs_in_this_method = Vec::with_capacity(type_diffs.len());
-            call_spans.push(span);
-
-            let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
-            for diff in &type_diffs {
-                let Sorts(expected_found) = diff else { continue; };
-                let ty::Alias(ty::Projection, proj) = expected_found.expected.kind() else { continue; };
-
-                let origin =
-                    TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
-                let trait_def_id = proj.trait_def_id(self.tcx);
-                // Make `Self` be equivalent to the type of the call chain
-                // expression we're looking at now, so that we can tell what
-                // for example `Iterator::Item` is at this point in the chain.
-                let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
-                    match param.kind {
-                        ty::GenericParamDefKind::Type { .. } => {
-                            if param.index == 0 {
-                                return prev_ty.into();
-                            }
-                        }
-                        ty::GenericParamDefKind::Lifetime
-                        | ty::GenericParamDefKind::Const { .. } => {}
-                    }
-                    self.var_for_def(span, param)
-                });
-                // This will hold the resolved type of the associated type, if the
-                // current expression implements the trait that associated type is
-                // in. For example, this would be what `Iterator::Item` is here.
-                let ty_var = self.infcx.next_ty_var(origin);
-                // This corresponds to `<ExprTy as Iterator>::Item = _`.
-                let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
-                    ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: tcx.mk_alias_ty(proj.def_id, substs),
-                        term: ty_var.into(),
-                    }),
-                ));
-                // Add `<ExprTy as Iterator>::Item = _` obligation.
-                ocx.register_obligation(Obligation::misc(
-                    self.tcx,
-                    span,
-                    expr.hir_id,
-                    param_env,
-                    projection,
-                ));
-                if ocx.select_where_possible().is_empty() {
-                    // `ty_var` now holds the type that `Item` is for `ExprTy`.
-                    let ty_var = self.resolve_vars_if_possible(ty_var);
-                    assocs_in_this_method.push(Some((span, (proj.def_id, ty_var))));
-                } else {
-                    // `<ExprTy as Iterator>` didn't select, so likely we've
-                    // reached the end of the iterator chain, like the originating
-                    // `Vec<_>`.
-                    // Keep the space consistent for later zipping.
-                    assocs_in_this_method.push(None);
-                }
-            }
+            let assocs_in_this_method =
+                self.probe_assoc_types_at_expr(&type_diffs, span, prev_ty, expr.hir_id, param_env);
             assocs.push(assocs_in_this_method);
             prev_ty = self.resolve_vars_if_possible(
                 typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error()),
@@ -3300,17 +3265,32 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
                 && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
                 && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
-                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
-                && let Some(binding_expr) = local.init
+                && let Some(parent) = self.tcx.hir().find(parent_hir_id)
             {
-                // We've reached the root of the method call chain and it is a
-                // binding. Get the binding creation and try to continue the chain.
-                expr = binding_expr;
+                // We've reached the root of the method call chain...
+                if let hir::Node::Local(local) = parent
+                    && let Some(binding_expr) = local.init
+                {
+                    // ...and it is a binding. Get the binding creation and continue the chain.
+                    expr = binding_expr;
+                }
+                if let hir::Node::Param(param) = parent {
+                    // ...and it is a an fn argument.
+                    let prev_ty = self.resolve_vars_if_possible(
+                        typeck_results.node_type_opt(param.hir_id).unwrap_or(tcx.ty_error()),
+                    );
+                    let assocs_in_this_method = self.probe_assoc_types_at_expr(&type_diffs, param.ty_span, prev_ty, param.hir_id, param_env);
+                    if assocs_in_this_method.iter().any(|a| a.is_some()) {
+                        assocs.push(assocs_in_this_method);
+                        print_root_expr = false;
+                    }
+                    break;
+                }
             }
         }
         // We want the type before deref coercions, otherwise we talk about `&[_]`
         // instead of `Vec<_>`.
-        if let Some(ty) = typeck_results.expr_ty_opt(expr) {
+        if let Some(ty) = typeck_results.expr_ty_opt(expr) && print_root_expr {
             let ty = with_forced_trimmed_paths!(self.ty_to_string(ty));
             // Point at the root expression
             // vec![1, 2, 3].iter().map(mapper).sum<i32>()
@@ -3324,7 +3304,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let Some(prev_assoc_in_method) = assocs.peek() else {
                 for entry in assocs_in_method {
                     let Some((span, (assoc, ty))) = entry else { continue; };
-                    if type_diffs.iter().any(|diff| {
+                    if primary_spans.is_empty() || type_diffs.iter().any(|diff| {
                         let Sorts(expected_found) = diff else { return false; };
                         self.can_eq(param_env, expected_found.found, ty).is_ok()
                     }) {
@@ -3353,7 +3333,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let ty_str = with_forced_trimmed_paths!(self.ty_to_string(ty));
 
                         let assoc = with_forced_trimmed_paths!(self.tcx.def_path_str(assoc));
-                        if ty != *prev_ty {
+                        if self.can_eq(param_env, ty, *prev_ty).is_err() {
                             if type_diffs.iter().any(|diff| {
                                 let Sorts(expected_found) = diff else { return false; };
                                 self.can_eq(param_env, expected_found.found, ty).is_ok()
@@ -3380,13 +3360,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
         }
-        for span in call_spans {
-            if span_labels.iter().find(|(s, _)| *s == span).is_none() {
-                // Ensure we are showing the entire chain, even if the assoc types
-                // haven't changed.
-                span_labels.push((span, String::new()));
-            }
-        }
         if !primary_spans.is_empty() {
             let mut multi_span: MultiSpan = primary_spans.into();
             for (span, label) in span_labels {
@@ -3394,12 +3367,69 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             err.span_note(
                 multi_span,
-                format!(
-                    "the method call chain might not have had the expected \
-                                     associated types",
-                ),
+                format!("the method call chain might not have had the expected associated types"),
             );
         }
+    }
+
+    fn probe_assoc_types_at_expr(
+        &self,
+        type_diffs: &[TypeError<'tcx>],
+        span: Span,
+        prev_ty: Ty<'tcx>,
+        body_id: hir::HirId,
+        param_env: ty::ParamEnv<'tcx>,
+    ) -> Vec<Option<(Span, (DefId, Ty<'tcx>))>> {
+        let ocx = ObligationCtxt::new_in_snapshot(self.infcx);
+        let mut assocs_in_this_method = Vec::with_capacity(type_diffs.len());
+        for diff in type_diffs {
+            let Sorts(expected_found) = diff else { continue; };
+            let ty::Alias(ty::Projection, proj) = expected_found.expected.kind() else { continue; };
+
+            let origin = TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+            let trait_def_id = proj.trait_def_id(self.tcx);
+            // Make `Self` be equivalent to the type of the call chain
+            // expression we're looking at now, so that we can tell what
+            // for example `Iterator::Item` is at this point in the chain.
+            let substs = InternalSubsts::for_item(self.tcx, trait_def_id, |param, _| {
+                match param.kind {
+                    ty::GenericParamDefKind::Type { .. } => {
+                        if param.index == 0 {
+                            return prev_ty.into();
+                        }
+                    }
+                    ty::GenericParamDefKind::Lifetime | ty::GenericParamDefKind::Const { .. } => {}
+                }
+                self.var_for_def(span, param)
+            });
+            // This will hold the resolved type of the associated type, if the
+            // current expression implements the trait that associated type is
+            // in. For example, this would be what `Iterator::Item` is here.
+            let ty_var = self.infcx.next_ty_var(origin);
+            // This corresponds to `<ExprTy as Iterator>::Item = _`.
+            let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Projection(
+                ty::ProjectionPredicate {
+                    projection_ty: self.tcx.mk_alias_ty(proj.def_id, substs),
+                    term: ty_var.into(),
+                },
+            )));
+            // Add `<ExprTy as Iterator>::Item = _` obligation.
+            ocx.register_obligation(Obligation::misc(
+                self.tcx, span, body_id, param_env, projection,
+            ));
+            if ocx.select_where_possible().is_empty() {
+                // `ty_var` now holds the type that `Item` is for `ExprTy`.
+                let ty_var = self.resolve_vars_if_possible(ty_var);
+                assocs_in_this_method.push(Some((span, (proj.def_id, ty_var))));
+            } else {
+                // `<ExprTy as Iterator>` didn't select, so likely we've
+                // reached the end of the iterator chain, like the originating
+                // `Vec<_>`.
+                // Keep the space consistent for later zipping.
+                assocs_in_this_method.push(None);
+            }
+        }
+        assocs_in_this_method
     }
 }
 
