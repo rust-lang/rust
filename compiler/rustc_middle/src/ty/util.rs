@@ -825,7 +825,7 @@ impl<'tcx> TypeFolder<'tcx> for OpaqueTypeExpander<'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) = *t.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *t.kind() {
             self.expand_opaque_ty(def_id, substs).unwrap_or(t)
         } else if t.has_opaque_types() {
             t.super_fold_with(self)

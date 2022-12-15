@@ -648,7 +648,7 @@ impl<'tcx> WfPredicates<'tcx> {
                     // types appearing in the fn signature
                 }
 
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                     // All of the requirements on type parameters
                     // have already been checked for `impl Trait` in
                     // return position. We do need to check type-alias-impl-trait though.

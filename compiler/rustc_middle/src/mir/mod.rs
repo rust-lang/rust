@@ -1847,7 +1847,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        substs: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
         let ty = tcx.mk_fn_def(def_id, substs);

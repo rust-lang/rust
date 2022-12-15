@@ -518,7 +518,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 let substs = sig.output().walk().find_map(|arg| {
                     if let ty::GenericArgKind::Type(ty) = arg.unpack()
-                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) = *ty.kind()
+                        && let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind()
                         && def_id == rpit_def_id
                     {
                         Some(substs)
@@ -542,15 +542,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
                                 assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
                                 ty::PredicateKind::Clause(ty::Clause::Trait(
-                                    trait_pred.with_self_type(self.tcx, ty),
+                                    trait_pred.with_self_ty(self.tcx, ty),
                                 ))
                             }
                             ty::PredicateKind::Clause(ty::Clause::Projection(mut proj_pred)) => {
                                 assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
-                                proj_pred.projection_ty.substs = self.tcx.mk_substs_trait(
-                                    ty,
-                                    proj_pred.projection_ty.substs.iter().skip(1),
-                                );
+                                proj_pred = proj_pred.with_self_ty(self.tcx, ty);
                                 ty::PredicateKind::Clause(ty::Clause::Projection(proj_pred))
                             }
                             _ => continue,

@@ -781,8 +781,8 @@ impl<'tcx> TraitPredicate<'tcx> {
         }
     }
 
-    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_type(tcx, self_ty), ..self }
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
     }
 
     pub fn def_id(self) -> DefId {
@@ -1047,6 +1047,18 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
         self.skip_binder().projection_ty.def_id
+    }
+}
+
+impl<'tcx> ProjectionPredicate<'tcx> {
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self {
+            projection_ty: tcx.mk_alias_ty(
+                self.projection_ty.def_id,
+                [self_ty.into()].into_iter().chain(self.projection_ty.substs.iter().skip(1)),
+            ),
+            ..self
+        }
     }
 }
 

@@ -1746,10 +1746,7 @@ pub fn check_type_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: ty::AliasTy {
-                            def_id: trait_ty.def_id,
-                            substs: rebased_substs,
-                        },
+                        projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_substs),
                         term: impl_ty_value.into(),
                     },
                     bound_vars,

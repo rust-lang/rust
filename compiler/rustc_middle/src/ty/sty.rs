@@ -816,14 +816,13 @@ impl<'tcx> List<ty::PolyExistentialPredicate<'tcx>> {
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: SubstsRef<'tcx>,
+    /// This field exists to prevent the creation of `TraitRef` without
+    /// calling [TyCtxt::mk_trait_ref].
+    pub(super) _use_mk_trait_ref_instead: (),
 }
 
 impl<'tcx> TraitRef<'tcx> {
-    pub fn new(def_id: DefId, substs: SubstsRef<'tcx>) -> TraitRef<'tcx> {
-        TraitRef { def_id, substs }
-    }
-
-    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
         tcx.mk_trait_ref(
             self.def_id,
             [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)),
@@ -833,10 +832,7 @@ impl<'tcx> TraitRef<'tcx> {
     /// Returns a `TraitRef` of the form `P0: Foo<P1..Pn>` where `Pi`
     /// are the parameters defined on trait.
     pub fn identity(tcx: TyCtxt<'tcx>, def_id: DefId) -> Binder<'tcx, TraitRef<'tcx>> {
-        ty::Binder::dummy(TraitRef {
-            def_id,
-            substs: InternalSubsts::identity_for_item(tcx, def_id),
-        })
+        ty::Binder::dummy(tcx.mk_trait_ref(def_id, InternalSubsts::identity_for_item(tcx, def_id)))
     }
 
     #[inline]
@@ -850,7 +846,7 @@ impl<'tcx> TraitRef<'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> ty::TraitRef<'tcx> {
         let defs = tcx.generics_of(trait_id);
-        ty::TraitRef { def_id: trait_id, substs: tcx.intern_substs(&substs[..defs.params.len()]) }
+        tcx.mk_trait_ref(trait_id, tcx.intern_substs(&substs[..defs.params.len()]))
     }
 }
 
@@ -1166,6 +1162,10 @@ pub struct AliasTy<'tcx> {
     /// `TraitRef` containing this associated type, which is in `tcx.associated_item(def_id).container`,
     /// aka. `tcx.parent(def_id)`.
     pub def_id: DefId,
+
+    /// This field exists to prevent the creation of `ProjectionTy` without using
+    /// [TyCtxt::mk_alias_ty].
+    pub(super) _use_mk_alias_ty_instead: (),
 }
 
 impl<'tcx> AliasTy<'tcx> {
@@ -1190,10 +1190,7 @@ impl<'tcx> AliasTy<'tcx> {
         let trait_def_id = self.trait_def_id(tcx);
         let trait_generics = tcx.generics_of(trait_def_id);
         (
-            ty::TraitRef {
-                def_id: trait_def_id,
-                substs: self.substs.truncate_to(tcx, trait_generics),
-            },
+            tcx.mk_trait_ref(trait_def_id, self.substs.truncate_to(tcx, trait_generics)),
             &self.substs[trait_generics.count()..],
         )
     }
@@ -1207,7 +1204,7 @@ impl<'tcx> AliasTy<'tcx> {
     /// as well.
     pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
         let def_id = self.trait_def_id(tcx);
-        ty::TraitRef { def_id, substs: self.substs.truncate_to(tcx, tcx.generics_of(def_id)) }
+        tcx.mk_trait_ref(def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
     }
 
     pub fn self_ty(&self) -> Ty<'tcx> {
@@ -1449,10 +1446,8 @@ impl<'tcx> ExistentialProjection<'tcx> {
         debug_assert!(!self_ty.has_escaping_bound_vars());
 
         ty::ProjectionPredicate {
-            projection_ty: ty::AliasTy {
-                def_id: self.def_id,
-                substs: tcx.mk_substs_trait(self_ty, self.substs),
-            },
+            projection_ty: tcx
+                .mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs)),
             term: self.term,
         }
     }

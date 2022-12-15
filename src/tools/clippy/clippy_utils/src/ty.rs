@@ -79,7 +79,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                 return true;
             }
 
-            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = *inner_ty.kind() {
+            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     match predicate.kind().skip_binder() {
                         // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
@@ -250,7 +250,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
@@ -631,7 +631,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
@@ -1039,10 +1039,10 @@ pub fn make_projection<'tcx>(
             }
         }
 
-        Some(AliasTy {
+        Some(tcx.mk_alias_ty(
+            assoc_item.def_id,
             substs,
-            def_id: assoc_item.def_id,
-        })
+        ))
     }
     helper(
         tcx,

@@ -487,12 +487,12 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 StatementAsExpression::CorrectType
             }
             (
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: _ }),
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: _ }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, .. }),
             ) if last_def_id == exp_def_id => StatementAsExpression::CorrectType,
             (
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: last_bounds }),
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: exp_bounds }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: last_def_id, substs: last_bounds, .. }),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: exp_def_id, substs: exp_bounds, .. }),
             ) => {
                 debug!(
                     "both opaque, likely future {:?} {:?} {:?} {:?}",

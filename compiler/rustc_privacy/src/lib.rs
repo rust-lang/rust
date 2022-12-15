@@ -110,26 +110,25 @@ where
     V: DefIdVisitor<'tcx> + ?Sized,
 {
     fn visit_trait(&mut self, trait_ref: TraitRef<'tcx>) -> ControlFlow<V::BreakTy> {
-        let TraitRef { def_id, substs } = trait_ref;
+        let TraitRef { def_id, substs, .. } = trait_ref;
         self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref.print_only_trait_path())?;
         if self.def_id_visitor.shallow() { ControlFlow::CONTINUE } else { substs.visit_with(self) }
     }
 
     fn visit_projection_ty(&mut self, projection: ty::AliasTy<'tcx>) -> ControlFlow<V::BreakTy> {
         let tcx = self.def_id_visitor.tcx();
-        let (trait_ref, assoc_substs) = if tcx.def_kind(projection.def_id)
-            != DefKind::ImplTraitPlaceholder
-        {
-            projection.trait_ref_and_own_substs(tcx)
-        } else {
-            // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
-            let def_id = tcx.impl_trait_in_trait_parent(projection.def_id);
-            let trait_generics = tcx.generics_of(def_id);
-            (
-                ty::TraitRef { def_id, substs: projection.substs.truncate_to(tcx, trait_generics) },
-                &projection.substs[trait_generics.count()..],
-            )
-        };
+        let (trait_ref, assoc_substs) =
+            if tcx.def_kind(projection.def_id) != DefKind::ImplTraitPlaceholder {
+                projection.trait_ref_and_own_substs(tcx)
+            } else {
+                // HACK(RPITIT): Remove this when RPITITs are lowered to regular assoc tys
+                let def_id = tcx.impl_trait_in_trait_parent(projection.def_id);
+                let trait_generics = tcx.generics_of(def_id);
+                (
+                    tcx.mk_trait_ref(def_id, projection.substs.truncate_to(tcx, trait_generics)),
+                    &projection.substs[trait_generics.count()..],
+                )
+            };
         self.visit_trait(trait_ref)?;
         if self.def_id_visitor.shallow() {
             ControlFlow::CONTINUE
@@ -235,7 +234,7 @@ where
                     self.def_id_visitor.visit_def_id(def_id, "trait", &trait_ref)?;
                 }
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                 // Skip repeated `Opaque`s to avoid infinite recursion.
                 if self.visited_opaque_tys.insert(def_id) {
                     // The intent is to treat `impl Trait1 + Trait2` identically to

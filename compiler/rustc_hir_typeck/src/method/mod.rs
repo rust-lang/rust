@@ -285,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(span, param)
         });
 
-        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
@@ -326,7 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(span, param)
         });
 
-        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);

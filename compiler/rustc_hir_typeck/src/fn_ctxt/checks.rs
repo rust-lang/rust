@@ -2124,7 +2124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id: new_def_id, substs: _ })
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: new_def_id, .. })
                 | ty::Closure(new_def_id, _)
                 | ty::FnDef(new_def_id, _) => {
                     def_id = new_def_id;
@@ -2132,19 +2132,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Look for a user-provided impl of a `Fn` trait, and point to it.
                     let new_def_id = self.probe(|_| {
-                        let trait_ref = ty::TraitRef::new(
+                        let trait_ref = self.tcx.mk_trait_ref(
                             call_kind.to_def_id(self.tcx),
-                            self.tcx.mk_substs(
-                                [
-                                    ty::GenericArg::from(callee_ty),
-                                    self.next_ty_var(TypeVariableOrigin {
-                                        kind: TypeVariableOriginKind::MiscVariable,
-                                        span: rustc_span::DUMMY_SP,
-                                    })
-                                    .into(),
-                                ]
-                                .into_iter(),
-                            ),
+                            [
+                                callee_ty,
+                                self.next_ty_var(TypeVariableOrigin {
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    span: rustc_span::DUMMY_SP,
+                                }),
+                            ],
                         );
                         let obligation = traits::Obligation::new(
                             self.tcx,

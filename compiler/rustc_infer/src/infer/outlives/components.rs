@@ -130,7 +130,7 @@ fn compute_components<'tcx>(
             // outlives any other lifetime, which is unsound.
             // See https://github.com/rust-lang/rust/issues/84305 for
             // more details.
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 out.push(Component::Opaque(def_id, substs));
             },
 

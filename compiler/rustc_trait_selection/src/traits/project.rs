@@ -496,7 +496,7 @@ impl<'a, 'b, 'tcx> TypeFolder<'tcx> for AssocTypeNormalizer<'a, 'b, 'tcx> {
             // This is really important. While we *can* handle this, this has
             // severe performance implications for large opaque types with
             // late-bound regions. See `issue-88862` benchmark.
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs })
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. })
                 if !substs.has_escaping_bound_vars() =>
             {
                 // Only normalize `impl Trait` outside of type inference, usually in codegen.
@@ -1309,8 +1309,7 @@ fn assemble_candidate_for_impl_trait_in_trait<'cx, 'tcx>(
         let trait_substs =
             obligation.predicate.substs.truncate_to(tcx, tcx.generics_of(trait_def_id));
         // FIXME(named-returns): Binders
-        let trait_predicate =
-            ty::Binder::dummy(ty::TraitRef { def_id: trait_def_id, substs: trait_substs });
+        let trait_predicate = ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, trait_substs));
 
         let _ = selcx.infcx.commit_if_ok(|_| {
             match selcx.select(&obligation.with(tcx, trait_predicate)) {
@@ -1867,10 +1866,7 @@ fn confirm_generator_candidate<'cx, 'tcx>(
         };
 
         ty::ProjectionPredicate {
-            projection_ty: ty::AliasTy {
-                substs: trait_ref.substs,
-                def_id: obligation.predicate.def_id,
-            },
+            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
             term: ty.into(),
         }
     });
@@ -1909,10 +1905,7 @@ fn confirm_future_candidate<'cx, 'tcx>(
         debug_assert_eq!(tcx.associated_item(obligation.predicate.def_id).name, sym::Output);
 
         ty::ProjectionPredicate {
-            projection_ty: ty::AliasTy {
-                substs: trait_ref.substs,
-                def_id: obligation.predicate.def_id,
-            },
+            projection_ty: tcx.mk_alias_ty(obligation.predicate.def_id, trait_ref.substs),
             term: return_ty.into(),
         }
     });
@@ -1965,10 +1958,8 @@ fn confirm_builtin_candidate<'cx, 'tcx>(
         bug!("unexpected builtin trait with associated type: {:?}", obligation.predicate);
     };
 
-    let predicate = ty::ProjectionPredicate {
-        projection_ty: ty::AliasTy { substs, def_id: item_def_id },
-        term,
-    };
+    let predicate =
+        ty::ProjectionPredicate { projection_ty: tcx.mk_alias_ty(item_def_id, substs), term };
 
     confirm_param_env_candidate(selcx, obligation, ty::Binder::dummy(predicate), false)
         .with_addl_obligations(obligations)
@@ -2037,7 +2028,7 @@ fn confirm_callable_candidate<'cx, 'tcx>(
         flag,
     )
     .map_bound(|(trait_ref, ret_type)| ty::ProjectionPredicate {
-        projection_ty: ty::AliasTy { substs: trait_ref.substs, def_id: fn_once_output_def_id },
+        projection_ty: tcx.mk_alias_ty(fn_once_output_def_id, trait_ref.substs),
         term: ret_type.into(),
     });
 

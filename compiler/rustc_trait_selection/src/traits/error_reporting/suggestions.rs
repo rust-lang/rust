@@ -878,7 +878,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     fn_sig.inputs().map_bound(|inputs| &inputs[1..]),
                 ))
             }
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs }) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                     if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
                     && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
@@ -2662,7 +2662,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 Some(ident) => err.span_note(ident.span, &msg),
                                 None => err.note(&msg),
                             },
-                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
                                 // Avoid printing the future from `core::future::identity_future`, it's not helpful
                                 if tcx.parent(*def_id) == identity_future {
                                     break 'print;
@@ -2975,7 +2975,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     self.tcx.mk_projection(
                         item_def_id,
                         // Future::Output has no substs
-                        self.tcx.mk_substs_trait(trait_pred.self_ty(), []),
+                        [trait_pred.self_ty()],
                     )
                 });
                 let InferOk { value: projection_ty, .. } =
@@ -3265,9 +3265,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // in. For example, this would be what `Iterator::Item` is here.
                 let ty_var = self.infcx.next_ty_var(origin);
                 // This corresponds to `<ExprTy as Iterator>::Item = _`.
-                let trait_ref = ty::Binder::dummy(ty::PredicateKind::Clause(
+                let projection = ty::Binder::dummy(ty::PredicateKind::Clause(
                     ty::Clause::Projection(ty::ProjectionPredicate {
-                        projection_ty: ty::AliasTy { substs, def_id: proj.def_id },
+                        projection_ty: tcx.mk_alias_ty(proj.def_id, substs),
                         term: ty_var.into(),
                     }),
                 ));
@@ -3277,7 +3277,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     span,
                     expr.hir_id,
                     param_env,
-                    trait_ref,
+                    projection,
                 ));
                 if ocx.select_where_possible().is_empty() {
                     // `ty_var` now holds the type that `Item` is for `ExprTy`.

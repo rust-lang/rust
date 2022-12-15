@@ -339,7 +339,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
 impl<'tcx> InferCtxt<'tcx> {
     pub fn get_impl_future_output_ty(&self, ty: Ty<'tcx>) -> Option<Ty<'tcx>> {
         let (def_id, substs) = match *ty.kind() {
-            ty::Alias(_, ty::AliasTy { def_id, substs })
+            ty::Alias(_, ty::AliasTy { def_id, substs, .. })
                 if matches!(
                     self.tcx.def_kind(def_id),
                     DefKind::OpaqueTy | DefKind::ImplTraitPlaceholder
@@ -2767,9 +2767,7 @@ impl TyCategory {
     pub fn from_ty(tcx: TyCtxt<'_>, ty: Ty<'_>) -> Option<(Self, DefId)> {
         match *ty.kind() {
             ty::Closure(def_id, _) => Some((Self::Closure, def_id)),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) => {
-                Some((Self::Opaque, def_id))
-            }
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => Some((Self::Opaque, def_id)),
             ty::Generator(def_id, ..) => {
                 Some((Self::Generator(tcx.generator_kind(def_id).unwrap()), def_id))
             }

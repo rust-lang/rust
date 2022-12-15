@@ -18,7 +18,7 @@ use crate::thir::Thir;
 use crate::traits;
 use crate::ty::query::{self, TyCtxtAt};
 use crate::ty::{
-    self, AdtDef, AdtDefData, AdtKind, AliasTy, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
+    self, AdtDef, AdtDefData, AdtKind, Binder, BindingMode, BoundVar, CanonicalPolyFnSig,
     ClosureSizeProfileData, Const, ConstS, DefIdTree, FloatTy, FloatVar, FloatVid,
     GenericParamDefKind, InferTy, IntTy, IntVar, IntVid, List, ParamConst, ParamTy,
     PolyExistentialPredicate, PolyFnSig, Predicate, PredicateKind, Region, RegionKind, ReprOptions,
@@ -2321,7 +2321,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     /// Given a `ty`, return whether it's an `impl Future<...>`.
     pub fn ty_is_opaque_future(self, ty: Ty<'_>) -> bool {
-        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs: _ }) = ty.kind() else { return false };
+        let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind() else { return false };
         let future_trait = self.require_lang_item(LangItem::Future, None);
 
         self.explicit_item_bounds(def_id).iter().any(|(predicate, _)| {
@@ -2565,13 +2565,33 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_fn_def(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        debug_assert_eq!(
-            self.generics_of(def_id).count(),
-            substs.len(),
-            "wrong number of generic parameters for {def_id:?}: {substs:?}",
-        );
+    pub fn mk_fn_def(
+        self,
+        def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        let substs = self.check_substs(def_id, substs);
         self.mk_ty(FnDef(def_id, substs))
+    }
+
+    #[inline(always)]
+    fn check_substs(
+        self,
+        _def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> SubstsRef<'tcx> {
+        let substs = substs.into_iter().map(Into::into);
+        #[cfg(debug_assertions)]
+        {
+            let n = self.generics_of(_def_id).count();
+            assert_eq!(
+                (n, Some(n)),
+                substs.size_hint(),
+                "wrong number of generic parameters for {_def_id:?}: {:?}",
+                substs.collect::<Vec<_>>(),
+            );
+        }
+        self.mk_substs(substs)
     }
 
     #[inline]
@@ -2590,13 +2610,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     #[inline]
-    pub fn mk_projection(self, item_def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        debug_assert_eq!(
-            self.generics_of(item_def_id).count(),
-            substs.len(),
-            "wrong number of generic parameters for {item_def_id:?}: {substs:?}",
-        );
-        self.mk_ty(Alias(ty::Projection, AliasTy { def_id: item_def_id, substs }))
+    pub fn mk_projection(
+        self,
+        item_def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> Ty<'tcx> {
+        self.mk_ty(Alias(ty::Projection, self.mk_alias_ty(item_def_id, substs)))
     }
 
     #[inline]
@@ -2666,7 +2685,7 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mk_opaque(self, def_id: DefId, substs: SubstsRef<'tcx>) -> Ty<'tcx> {
-        self.mk_ty(Alias(ty::Opaque, ty::AliasTy { def_id, substs }))
+        self.mk_ty(Alias(ty::Opaque, self.mk_alias_ty(def_id, substs)))
     }
 
     pub fn mk_place_field(self, place: Place<'tcx>, f: Field, ty: Ty<'tcx>) -> Place<'tcx> {
@@ -2855,16 +2874,17 @@ impl<'tcx> TyCtxt<'tcx> {
         trait_def_id: DefId,
         substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
     ) -> ty::TraitRef<'tcx> {
-        let substs = substs.into_iter().map(Into::into);
-        let n = self.generics_of(trait_def_id).count();
-        debug_assert_eq!(
-            (n, Some(n)),
-            substs.size_hint(),
-            "wrong number of generic parameters for {trait_def_id:?}: {:?} \nDid you accidentally include the self-type in the params list?",
-            substs.collect::<Vec<_>>(),
-        );
-        let substs = self.mk_substs(substs);
-        ty::TraitRef::new(trait_def_id, substs)
+        let substs = self.check_substs(trait_def_id, substs);
+        ty::TraitRef { def_id: trait_def_id, substs, _use_mk_trait_ref_instead: () }
+    }
+
+    pub fn mk_alias_ty(
+        self,
+        def_id: DefId,
+        substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
+    ) -> ty::AliasTy<'tcx> {
+        let substs = self.check_substs(def_id, substs);
+        ty::AliasTy { def_id, substs, _use_mk_alias_ty_instead: () }
     }
 
     pub fn mk_bound_variable_kinds<
