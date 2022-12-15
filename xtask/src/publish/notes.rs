@@ -5,9 +5,9 @@ use std::{
     iter::Peekable,
 };
 
-const LISTING_DELIMITER: &'static str = "----";
-const IMAGE_BLOCK_PREFIX: &'static str = "image::";
-const VIDEO_BLOCK_PREFIX: &'static str = "video::";
+const LISTING_DELIMITER: &str = "----";
+const IMAGE_BLOCK_PREFIX: &str = "image::";
+const VIDEO_BLOCK_PREFIX: &str = "video::";
 
 struct Converter<'a, 'b, R: BufRead> {
     iter: &'a mut Peekable<Lines<R>>,
@@ -89,7 +89,7 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
         while let Some(line) = self.iter.peek() {
             let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
 
-            if get_list_item(&line).is_some() {
+            if get_list_item(line).is_some() {
                 let line = self.iter.next().unwrap()?;
                 let line = process_inline_macros(&line)?;
                 let (marker, item) = get_list_item(&line).unwrap();
@@ -253,17 +253,16 @@ impl<'a, 'b, R: BufRead> Converter<'a, 'b, R> {
     {
         while let Some(line) = self.iter.peek() {
             let line = line.as_deref().map_err(|e| anyhow!("{e}"))?;
-            if predicate(&line) {
+            if predicate(line) {
                 break;
             }
 
             self.write_indent(level);
             let line = self.iter.next().unwrap()?;
             let line = line.trim_start();
-            let line = process_inline_macros(&line)?;
-            if line.ends_with('+') {
-                let line = &line[..(line.len() - 1)];
-                self.output.push_str(line);
+            let line = process_inline_macros(line)?;
+            if let Some(stripped) = line.strip_suffix('+') {
+                self.output.push_str(stripped);
                 self.output.push('\\');
             } else {
                 self.output.push_str(&line);
@@ -339,8 +338,8 @@ fn get_title(line: &str) -> Option<(usize, &str)> {
 }
 
 fn get_list_item(line: &str) -> Option<(ListMarker, &str)> {
-    const HYPHYEN_MARKER: &'static str = "- ";
-    if let Some(text) = line.strip_prefix(HYPHYEN_MARKER) {
+    const HYPHEN_MARKER: &str = "- ";
+    if let Some(text) = line.strip_prefix(HYPHEN_MARKER) {
         Some((ListMarker::Hyphen, text))
     } else if let Some((count, text)) = strip_prefix_symbol(line, '*') {
         Some((ListMarker::Asterisk(count), text))

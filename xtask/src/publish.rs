@@ -16,9 +16,9 @@ impl flags::PublishReleaseNotes {
             format!("\nSee also [original changelog]({original_changelog_url}).");
         markdown.push_str(&additional_paragraph);
         if self.dry_run {
-            println!("{}", markdown);
+            println!("{markdown}");
         } else {
-            update_release(sh, &tag_name, &markdown)?;
+            update_release(sh, tag_name, &markdown)?;
         }
         Ok(())
     }
@@ -67,7 +67,7 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
         Err(_) => bail!("Please obtain a personal access token from https://github.com/settings/tokens and set the `GITHUB_TOKEN` environment variable."),
     };
     let accept = "Accept: application/vnd.github+json";
-    let authorization = format!("Authorization: Bearer {}", token);
+    let authorization = format!("Authorization: Bearer {token}");
     let api_version = "X-GitHub-Api-Version: 2022-11-28";
     let release_url = "https://api.github.com/repos/rust-lang/rust-analyzer/releases";
 
@@ -80,10 +80,10 @@ fn update_release(sh: &Shell, tag_name: &str, release_notes: &str) -> Result<()>
 
     let mut patch = String::new();
     write_json::object(&mut patch)
-        .string("tag_name", &tag_name)
+        .string("tag_name", tag_name)
         .string("target_commitish", "master")
-        .string("name", &tag_name)
-        .string("body", &release_notes)
+        .string("name", tag_name)
+        .string("body", release_notes)
         .bool("draft", false)
         .bool("prerelease", false);
     let _ = cmd!(
@@ -102,7 +102,7 @@ mod tests {
     #[test]
     fn original_changelog_url_creation() {
         let input = "2019-07-24-changelog-0.adoc";
-        let actual = create_original_changelog_url(&input);
+        let actual = create_original_changelog_url(input);
         let expected = "https://rust-analyzer.github.io/thisweek/2019/07/24/changelog-0.html";
         assert_eq!(actual, expected);
     }
