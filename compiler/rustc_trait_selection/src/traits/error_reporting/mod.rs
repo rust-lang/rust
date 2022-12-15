@@ -1636,17 +1636,30 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     infer::LateBoundRegionConversionTime::HigherRankedType,
                     bound_predicate.rebind(data),
                 );
-                let normalized_ty = ocx.normalize(
-                    &obligation.cause,
-                    obligation.param_env,
-                    self.tcx.mk_projection(data.projection_ty.def_id, data.projection_ty.substs),
-                );
+                let unnormalized_term = match data.term.unpack() {
+                    ty::TermKind::Ty(_) => self
+                        .tcx
+                        .mk_projection(data.projection_ty.def_id, data.projection_ty.substs)
+                        .into(),
+                    ty::TermKind::Const(ct) => self
+                        .tcx
+                        .mk_const(
+                            ty::UnevaluatedConst {
+                                def: ty::WithOptConstParam::unknown(data.projection_ty.def_id),
+                                substs: data.projection_ty.substs,
+                            },
+                            ct.ty(),
+                        )
+                        .into(),
+                };
+                let normalized_term =
+                    ocx.normalize(&obligation.cause, obligation.param_env, unnormalized_term);
 
                 debug!(?obligation.cause, ?obligation.param_env);
 
-                debug!(?normalized_ty, data.ty = ?data.term);
+                debug!(?normalized_term, data.ty = ?data.term);
 
-                let is_normalized_ty_expected = !matches!(
+                let is_normalized_term_expected = !matches!(
                     obligation.cause.code().peel_derives(),
                     ObligationCauseCode::ItemObligation(_)
                         | ObligationCauseCode::BindingObligation(_, _)
@@ -1655,7 +1668,6 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         | ObligationCauseCode::ObjectCastObligation(..)
                         | ObligationCauseCode::OpaqueType
                 );
-                let expected_ty = data.term.ty().unwrap_or_else(|| self.tcx.ty_error());
 
                 // constrain inference variables a bit more to nested obligations from normalize so
                 // we can have more helpful errors.
@@ -1664,11 +1676,11 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 if let Err(new_err) = ocx.eq_exp(
                     &obligation.cause,
                     obligation.param_env,
-                    is_normalized_ty_expected,
-                    normalized_ty,
-                    expected_ty,
+                    is_normalized_term_expected,
+                    normalized_term,
+                    data.term,
                 ) {
-                    (Some((data, is_normalized_ty_expected, normalized_ty, expected_ty)), new_err)
+                    (Some((data, is_normalized_term_expected, normalized_term, data.term)), new_err)
                 } else {
                     (None, error.err)
                 }
@@ -1677,12 +1689,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             };
 
             let msg = values
-                .and_then(|(predicate, _, normalized_ty, expected_ty)| {
-                    self.maybe_detailed_projection_msg(
-                        predicate,
-                        normalized_ty.into(),
-                        expected_ty.into(),
-                    )
+                .and_then(|(predicate, _, normalized_term, expected_term)| {
+                    self.maybe_detailed_projection_msg(predicate, normalized_term, expected_term)
                 })
                 .unwrap_or_else(|| format!("type mismatch resolving `{}`", predicate));
             let mut diag = struct_span_err!(self.tcx.sess, obligation.cause.span, E0271, "{msg}");
