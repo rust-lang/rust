@@ -52,6 +52,24 @@ using namespace llvm;
 #if LLVM_VERSION_MAJOR >= 14
 #define addAttribute addAttributeAtIndex
 #endif
+
+//! Returns whether changed.
+bool preserveLinkage(bool Begin, Function &F) {
+  if (Begin && !F.hasFnAttribute("prev_fixup")) {
+    F.addFnAttr("prev_fixup");
+    if (F.hasFnAttribute(Attribute::AlwaysInline))
+      F.addFnAttr("prev_always_inline");
+    if (F.hasFnAttribute(Attribute::NoInline))
+      F.addFnAttr("prev_no_inline");
+    F.addFnAttr("prev_linkage", std::to_string(F.getLinkage()));
+    F.setLinkage(Function::LinkageTypes::ExternalLinkage);
+    F.addFnAttr(Attribute::NoInline);
+    F.removeFnAttr(Attribute::AlwaysInline);
+    return true;
+  }
+  return false;
+}
+
 bool preserveNVVM(bool Begin, Function &F) {
   bool changed = false;
   std::map<std::string, std::pair<std::string, std::string>> Implements;
@@ -129,18 +147,7 @@ bool preserveNVVM(bool Begin, Function &F) {
           break;
         }
         if (V == &F) {
-          changed = true;
-          if (Begin && !F.hasFnAttribute("prev_fixup")) {
-            F.addFnAttr("prev_fixup");
-            if (F.hasFnAttribute(Attribute::AlwaysInline))
-              F.addFnAttr("prev_always_inline");
-            if (F.hasFnAttribute(Attribute::NoInline))
-              F.addFnAttr("prev_no_inline");
-            F.addFnAttr("prev_linkage", std::to_string(F.getLinkage()));
-            F.setLinkage(Function::LinkageTypes::ExternalLinkage);
-            F.addFnAttr(Attribute::NoInline);
-            F.removeFnAttr(Attribute::AlwaysInline);
-          }
+          changed |= preserveLinkage(Begin, F);
           break;
         }
       }
@@ -334,6 +341,7 @@ bool preserveNVVM(bool Begin, Function &F) {
               "enzyme_deallocator_fn",
               llvm::MDTuple::get(F->getContext(),
                                  {llvm::ValueAsMetadata::get(F)}));
+          changed |= preserveLinkage(Begin, *F);
         } else {
           llvm::errs() << "Free fn of __enzyme_allocation_like must be a "
                           "function"

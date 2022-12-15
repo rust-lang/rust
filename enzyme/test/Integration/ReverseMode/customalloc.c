@@ -27,7 +27,7 @@ void* myallocator(void* buffer, int size, int* off) {
     return &cur[prev];
 }
 
-void* myfree(int* off, void* tofree) {
+static void* myfree(int* off, void* tofree) {
     printf("freeing %p and %d\n", tofree, *off);
 }
 
