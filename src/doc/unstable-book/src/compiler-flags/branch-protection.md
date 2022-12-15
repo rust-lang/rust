@@ -15,4 +15,4 @@ For example, `-Z branch-protection=bti,pac-ret,leaf` is valid, but
 
 Rust's standard library does not ship with BTI or pointer authentication enabled by default.
 In Cargo projects the standard library can be recompiled with pointer authentication using the nightly
-[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature.
+[build-std](../../cargo/reference/unstable.html#build-std) feature.
