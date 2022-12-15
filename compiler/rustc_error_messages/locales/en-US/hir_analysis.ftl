@@ -20,6 +20,10 @@ hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     .where_label = this `where` clause might not match the one in the trait
     .bounds_label = this bound might be missing in the impl
 
+hir_analysis_async_trait_impl_should_be_async =
+    method `{$method_name}` should be async because the method from the trait is async
+    .trait_item_label = required because the trait method is async
+
 hir_analysis_drop_impl_on_wrong_item =
     the `Drop` trait may only be implemented for local structs, enums, and unions
     .label = must be a struct, enum, or union in the current crate
