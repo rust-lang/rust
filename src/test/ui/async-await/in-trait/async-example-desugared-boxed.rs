@@ -1,4 +1,3 @@
-// check-pass
 // edition: 2021
 
 #![feature(async_fn_in_trait)]
@@ -13,11 +12,9 @@ trait MyTrait {
 }
 
 impl MyTrait for i32 {
-    // This will break once a PR that implements #102745 is merged
     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>> {
-        Box::pin(async {
-            *self
-        })
+        //~^ ERROR method `foo` should be async
+        Box::pin(async { *self })
     }
 }
 
