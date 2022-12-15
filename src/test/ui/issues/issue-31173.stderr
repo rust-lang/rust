@@ -13,7 +13,7 @@ error[E0599]: the method `collect` exists for struct `Cloned<TakeWhile<&mut std:
   --> $DIR/issue-31173.rs:12:10
    |
 LL |         .collect();
-   |          ^^^^^^^ method cannot be called on `Cloned<TakeWhile<&mut std::vec::IntoIter<u8>, [closure@$DIR/issue-31173.rs:7:21: 7:25]>>` due to unsatisfied trait bounds
+   |          ^^^^^^^ method cannot be called due to unsatisfied trait bounds
   --> $SRC_DIR/core/src/iter/adapters/take_while.rs:LL:COL
    |
    = note: doesn't satisfy `<_ as Iterator>::Item = &_`
