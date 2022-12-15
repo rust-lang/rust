@@ -13,10 +13,10 @@ build = "build.rs"
 List rustc_tools_util as regular AND build dependency.
 ````toml
 [dependencies]
-rustc_tools_util = "0.2.1"
+rustc_tools_util = "0.3.0"
 
 [build-dependencies]
-rustc_tools_util = "0.2.1"
+rustc_tools_util = "0.3.0"
 ````
 
 In `build.rs`, generate the data in your `main()`
@@ -43,6 +43,9 @@ This gives the following output in clippy:
 
 This project is part of the rust-lang/rust-clippy repository. The source code
 can be found under `./rustc_tools_util/`.
+
+The changelog for `rustc_tools_util` is available under:
+[`rustc_tools_util/CHANGELOG.md`](https://github.com/rust-lang/rust-clippy/blob/master/rustc_tools_util/CHANGELOG.md)
 
 ## License
 
