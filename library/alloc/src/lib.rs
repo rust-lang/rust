@@ -153,7 +153,7 @@
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_trait_v2)]
-#![cfg_attr(not(bootstrap), feature(tuple_trait))]
+#![feature(tuple_trait)]
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]

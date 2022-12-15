@@ -24,8 +24,6 @@
 
 use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
-#[cfg(bootstrap)]
-use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
@@ -333,7 +331,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// assert_eq!(Ordering::Greater, result);
 /// ```
 #[derive(Clone, Copy, Eq, Debug, Hash)]
-#[cfg_attr(not(bootstrap), derive_const(PartialOrd, Ord, PartialEq))]
+#[derive_const(PartialOrd, Ord, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -877,40 +875,6 @@ pub trait Ord: Eq + PartialOrd<Self> {
 #[allow_internal_unstable(core_intrinsics)]
 pub macro Ord($item:item) {
     /* compiler built-in */
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(bootstrap)]
-impl StructuralPartialEq for Ordering {}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-#[cfg(bootstrap)]
-impl const PartialEq for Ordering {
-    #[inline]
-    fn eq(&self, other: &Self) -> bool {
-        (*self as i32).eq(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-#[cfg(bootstrap)]
-impl const Ord for Ordering {
-    #[inline]
-    fn cmp(&self, other: &Ordering) -> Ordering {
-        (*self as i32).cmp(&(*other as i32))
-    }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
-#[cfg(bootstrap)]
-impl const PartialOrd for Ordering {
-    #[inline]
-    fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
-        (*self as i32).partial_cmp(&(*other as i32))
-    }
 }
 
 /// Trait for types that form a [partial order](https://en.wikipedia.org/wiki/Partial_order).

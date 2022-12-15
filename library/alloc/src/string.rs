@@ -363,7 +363,7 @@ use crate::vec::Vec;
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg_attr(all(not(bootstrap), not(test)), lang = "String")]
+#[cfg_attr(not(test), lang = "String")]
 pub struct String {
     vec: Vec<u8>,
 }

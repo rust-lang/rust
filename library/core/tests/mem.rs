@@ -77,7 +77,6 @@ fn align_of_val_basic() {
 }
 
 #[test]
-#[cfg(not(bootstrap))] // stage 0 doesn't have the fix yet, so the test fails
 fn align_of_val_raw_packed() {
     #[repr(C, packed)]
     struct B {

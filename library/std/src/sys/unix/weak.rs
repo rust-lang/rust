@@ -29,7 +29,7 @@ use crate::ptr;
 use crate::sync::atomic::{self, AtomicPtr, Ordering};
 
 // We can use true weak linkage on ELF targets.
-#[cfg(all(not(any(target_os = "macos", target_os = "ios")), not(bootstrap)))]
+#[cfg(not(any(target_os = "macos", target_os = "ios")))]
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
@@ -43,30 +43,14 @@ pub(crate) macro weak {
     )
 }
 
-#[cfg(all(not(any(target_os = "macos", target_os = "ios")), bootstrap))]
-pub(crate) macro weak {
-    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
-        let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
-            extern "C" {
-                #[linkage = "extern_weak"]
-                static $name: *const libc::c_void;
-            }
-            #[allow(unused_unsafe)]
-            ExternWeak::new(unsafe { $name })
-        };
-    )
-}
-
 // On non-ELF targets, use the dlsym approximation of weak linkage.
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(crate) use self::dlsym as weak;
 
-#[cfg(not(bootstrap))]
 pub(crate) struct ExternWeak<F: Copy> {
     weak_ptr: Option<F>,
 }
 
-#[cfg(not(bootstrap))]
 impl<F: Copy> ExternWeak<F> {
     #[inline]
     pub(crate) fn new(weak_ptr: Option<F>) -> Self {
@@ -76,34 +60,6 @@ impl<F: Copy> ExternWeak<F> {
     #[inline]
     pub(crate) fn get(&self) -> Option<F> {
         self.weak_ptr
-    }
-}
-
-#[cfg(bootstrap)]
-pub(crate) struct ExternWeak<F> {
-    weak_ptr: *const libc::c_void,
-    _marker: PhantomData<F>,
-}
-
-#[cfg(bootstrap)]
-impl<F> ExternWeak<F> {
-    #[inline]
-    pub(crate) fn new(weak_ptr: *const libc::c_void) -> Self {
-        ExternWeak { weak_ptr, _marker: PhantomData }
-    }
-}
-
-#[cfg(bootstrap)]
-impl<F> ExternWeak<F> {
-    #[inline]
-    pub(crate) fn get(&self) -> Option<F> {
-        unsafe {
-            if self.weak_ptr.is_null() {
-                None
-            } else {
-                Some(mem::transmute_copy::<*const libc::c_void, F>(&self.weak_ptr))
-            }
-        }
     }
 }
 
