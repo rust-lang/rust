@@ -41,6 +41,9 @@ jobs:
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
 
+        # Enable extra checks
+        export CG_CLIF_ENABLE_VERIFIER=1
+
         ./scripts/test_bootstrap.sh
   rustc_test_suite:
     runs-on: ubuntu-latest
@@ -78,5 +81,8 @@ jobs:
       run: |
         # Enable backtraces for easier debugging
         export RUST_BACKTRACE=1
+
+        # Enable extra checks
+        export CG_CLIF_ENABLE_VERIFIER=1
 
         ./scripts/test_rustc_tests.sh
