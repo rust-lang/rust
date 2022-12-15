@@ -500,7 +500,7 @@ fn unsafety_check_result<'tcx>(
     // `mir_built` force this.
     let body = &tcx.mir_built(def).borrow();
 
-    if body.should_skip() {
+    if body.is_custom_mir() {
         return tcx.arena.alloc(UnsafetyCheckResult {
             violations: Vec::new(),
             used_unsafe_blocks: FxHashSet::default(),
