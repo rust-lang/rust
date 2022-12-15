@@ -132,14 +132,11 @@ use std::collections::hash_map::{Entry, OccupiedEntry};
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
+use rustc_middle::mir::visit::{MutVisitor, PlaceContext, Visitor};
 use rustc_middle::mir::{dump_mir, PassWhere};
 use rustc_middle::mir::{
     traversal, BasicBlock, Body, InlineAsmOperand, Local, LocalKind, Location, Operand, Place,
     Rvalue, Statement, StatementKind, TerminatorKind,
-};
-use rustc_middle::mir::{
-    visit::{MutVisitor, PlaceContext, Visitor},
-    ProjectionElem,
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
@@ -359,40 +356,45 @@ struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
 // through these methods, and not directly.
 impl<'alloc> Candidates<'alloc> {
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
-    fn vec_remove_debug(
+    fn vec_filter_candidates(
         src: Local,
         v: &mut Vec<Local>,
-        mut f: impl FnMut(Local) -> bool,
+        mut f: impl FnMut(Local) -> CandidateFilter,
         at: Location,
     ) {
         v.retain(|dest| {
             let remove = f(*dest);
-            if remove {
+            if remove == CandidateFilter::Remove {
                 trace!("eliminating {:?} => {:?} due to conflict at {:?}", src, dest, at);
             }
-            !remove
+            remove == CandidateFilter::Keep
         });
     }
 
-    /// `vec_remove_debug` but for an `Entry`
-    fn entry_remove(
+    /// `vec_filter_candidates` but for an `Entry`
+    fn entry_filter_candidates(
         mut entry: OccupiedEntry<'_, Local, Vec<Local>>,
         p: Local,
-        f: impl FnMut(Local) -> bool,
+        f: impl FnMut(Local) -> CandidateFilter,
         at: Location,
     ) {
         let candidates = entry.get_mut();
-        Self::vec_remove_debug(p, candidates, f, at);
+        Self::vec_filter_candidates(p, candidates, f, at);
         if candidates.len() == 0 {
             entry.remove();
         }
     }
 
-    /// Removes all candidates `(p, q)` or `(q, p)` where `p` is the indicated local and `f(q)` is true.
-    fn remove_candidates_if(&mut self, p: Local, mut f: impl FnMut(Local) -> bool, at: Location) {
+    /// For all candidates `(p, q)` or `(q, p)` removes the candidate if `f(q)` says to do so
+    fn filter_candidates_by(
+        &mut self,
+        p: Local,
+        mut f: impl FnMut(Local) -> CandidateFilter,
+        at: Location,
+    ) {
         // Cover the cases where `p` appears as a `src`
         if let Entry::Occupied(entry) = self.c.entry(p) {
-            Self::entry_remove(entry, p, &mut f, at);
+            Self::entry_filter_candidates(entry, p, &mut f, at);
         }
         // And the cases where `p` appears as a `dest`
         let Some(srcs) = self.reverse.get_mut(&p) else {
@@ -401,16 +403,29 @@ impl<'alloc> Candidates<'alloc> {
         // We use `retain` here to remove the elements from the reverse set if we've removed the
         // matching candidate in the forward set.
         srcs.retain(|src| {
-            if !f(*src) {
+            if f(*src) == CandidateFilter::Keep {
                 return true;
             }
             let Entry::Occupied(entry) = self.c.entry(*src) else {
                 return false;
             };
-            Self::entry_remove(entry, *src, |dest| dest == p, at);
+            Self::entry_filter_candidates(
+                entry,
+                *src,
+                |dest| {
+                    if dest == p { CandidateFilter::Remove } else { CandidateFilter::Keep }
+                },
+                at,
+            );
             false
         });
     }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+enum CandidateFilter {
+    Keep,
+    Remove,
 }
 
 impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
@@ -460,7 +475,7 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
             for (i, statement) in data.statements.iter().enumerate().rev() {
                 self.at = Location { block, statement_index: i };
                 self.live.seek_after_primary_effect(self.at);
-                self.get_statement_write_info(&statement.kind);
+                self.write_info.for_statement(&statement.kind, self.body);
                 self.apply_conflicts();
             }
         }
@@ -469,64 +484,35 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
     fn apply_conflicts(&mut self) {
         let writes = &self.write_info.writes;
         for p in writes {
-            self.candidates.remove_candidates_if(
+            let other_skip = self.write_info.skip_pair.and_then(|(a, b)| {
+                if a == *p {
+                    Some(b)
+                } else if b == *p {
+                    Some(a)
+                } else {
+                    None
+                }
+            });
+            self.candidates.filter_candidates_by(
                 *p,
-                // It is possible that a local may be live for less than the
-                // duration of a statement This happens in the case of function
-                // calls or inline asm. Because of this, we also mark locals as
-                // conflicting when both of them are written to in the same
-                // statement.
-                |q| self.live.contains(q) || writes.contains(&q),
+                |q| {
+                    if Some(q) == other_skip {
+                        return CandidateFilter::Keep;
+                    }
+                    // It is possible that a local may be live for less than the
+                    // duration of a statement This happens in the case of function
+                    // calls or inline asm. Because of this, we also mark locals as
+                    // conflicting when both of them are written to in the same
+                    // statement.
+                    if self.live.contains(q) || writes.contains(&q) {
+                        CandidateFilter::Remove
+                    } else {
+                        CandidateFilter::Keep
+                    }
+                },
                 self.at,
             );
         }
-    }
-
-    /// Gets the write info for the `statement`.
-    fn get_statement_write_info(&mut self, statement: &StatementKind<'tcx>) {
-        self.write_info.writes.clear();
-        match statement {
-            StatementKind::Assign(box (lhs, rhs)) => match rhs {
-                Rvalue::Use(op) => {
-                    if !lhs.is_indirect() {
-                        self.get_assign_use_write_info(*lhs, op);
-                        return;
-                    }
-                }
-                _ => (),
-            },
-            _ => (),
-        }
-
-        self.write_info.for_statement(statement);
-    }
-
-    fn get_assign_use_write_info(&mut self, lhs: Place<'tcx>, rhs: &Operand<'tcx>) {
-        // We register the writes for the operand unconditionally
-        self.write_info.add_operand(rhs);
-        // However, we cannot do the same thing for the `lhs` as that would always block the
-        // optimization. Instead, we consider removing candidates manually.
-        let Some(rhs) = rhs.place() else {
-            self.write_info.add_place(lhs);
-            return;
-        };
-        // Find out which candidate pair we should skip, if any
-        let Some((src, dest)) = places_to_candidate_pair(lhs, rhs, self.body) else {
-            self.write_info.add_place(lhs);
-            return;
-        };
-        self.candidates.remove_candidates_if(
-            lhs.local,
-            |other| {
-                // Check if this is the candidate pair that should not be removed
-                if (lhs.local == src && other == dest) || (lhs.local == dest && other == src) {
-                    return false;
-                }
-                // Otherwise, do the "standard" thing
-                self.live.contains(other)
-            },
-            self.at,
-        )
     }
 }
 
@@ -534,15 +520,23 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
 #[derive(Default, Debug)]
 struct WriteInfo {
     writes: Vec<Local>,
+    /// If this pair of locals is a candidate pair, completely skip processing it during this
+    /// statement. All other candidates are unaffected.
+    skip_pair: Option<(Local, Local)>,
 }
 
 impl WriteInfo {
-    fn for_statement<'tcx>(&mut self, statement: &StatementKind<'tcx>) {
+    fn for_statement<'tcx>(&mut self, statement: &StatementKind<'tcx>, body: &Body<'tcx>) {
+        self.reset();
         match statement {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.add_place(*lhs);
                 match rhs {
-                    Rvalue::Use(op) | Rvalue::Repeat(op, _) => {
+                    Rvalue::Use(op) => {
+                        self.add_operand(op);
+                        self.consider_skipping_for_assign_use(*lhs, op, body);
+                    }
+                    Rvalue::Repeat(op, _) => {
                         self.add_operand(op);
                     }
                     Rvalue::Cast(_, op, _)
@@ -586,8 +580,22 @@ impl WriteInfo {
         }
     }
 
+    fn consider_skipping_for_assign_use<'tcx>(
+        &mut self,
+        lhs: Place<'tcx>,
+        rhs: &Operand<'tcx>,
+        body: &Body<'tcx>,
+    ) {
+        let Some(rhs) = rhs.place() else {
+            return
+        };
+        if let Some(pair) = places_to_candidate_pair(lhs, rhs, body) {
+            self.skip_pair = Some(pair);
+        }
+    }
+
     fn for_terminator<'tcx>(&mut self, terminator: &TerminatorKind<'tcx>) {
-        self.writes.clear();
+        self.reset();
         match terminator {
             TerminatorKind::SwitchInt { discr: op, .. }
             | TerminatorKind::Assert { cond: op, .. } => {
@@ -657,14 +665,15 @@ impl WriteInfo {
             Operand::Copy(_) | Operand::Constant(_) => (),
         }
     }
+
+    fn reset(&mut self) {
+        self.writes.clear();
+        self.skip_pair = None;
+    }
 }
 
 /////////////////////////////////////////////////////
 // Candidate accumulation
-
-fn is_constant<'tcx>(place: Place<'tcx>) -> bool {
-    place.projection.iter().all(|p| !matches!(p, ProjectionElem::Deref | ProjectionElem::Index(_)))
-}
 
 /// If the pair of places is being considered for merging, returns the candidate which would be
 /// merged in order to accomplish this.
@@ -741,10 +750,6 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
             Rvalue::Use(Operand::Copy(rhs) | Operand::Move(rhs)),
         )) = &statement.kind
         {
-            if !is_constant(*lhs) || !is_constant(*rhs) {
-                return;
-            }
-
             let Some((src, dest)) = places_to_candidate_pair(*lhs, *rhs, self.body) else {
                 return;
             };
