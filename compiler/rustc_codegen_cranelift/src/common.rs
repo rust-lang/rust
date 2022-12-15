@@ -162,8 +162,17 @@ pub(crate) fn codegen_icmp_imm(
             }
         }
     } else {
-        let rhs = i64::try_from(rhs).expect("codegen_icmp_imm rhs out of range for <128bit int");
+        let rhs = rhs as i64; // Truncates on purpose in case rhs is actually an unsigned value
         fx.bcx.ins().icmp_imm(intcc, lhs, rhs)
+    }
+}
+
+pub(crate) fn type_zero_value(bcx: &mut FunctionBuilder<'_>, ty: Type) -> Value {
+    if ty == types::I128 {
+        let zero = bcx.ins().iconst(types::I64, 0);
+        bcx.ins().iconcat(zero, zero)
+    } else {
+        bcx.ins().iconst(ty, 0)
     }
 }
 

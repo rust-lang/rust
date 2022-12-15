@@ -49,7 +49,6 @@ fn codegen_compare_bin_op<'tcx>(
 ) -> CValue<'tcx> {
     let intcc = crate::num::bin_op_to_intcc(bin_op, signed).unwrap();
     let val = fx.bcx.ins().icmp(intcc, lhs, rhs);
-    let val = fx.bcx.ins().bint(types::I8, val);
     CValue::by_val(val, fx.layout_of(fx.tcx.types.bool))
 }
 
@@ -290,8 +289,6 @@ pub(crate) fn codegen_checked_int_binop<'tcx>(
         _ => bug!("binop {:?} on checked int/uint lhs: {:?} rhs: {:?}", bin_op, in_lhs, in_rhs),
     };
 
-    let has_overflow = fx.bcx.ins().bint(types::I8, has_overflow);
-
     let out_layout = fx.layout_of(fx.tcx.mk_tup([in_lhs.layout().ty, fx.tcx.types.bool].iter()));
     CValue::by_val_pair(res, has_overflow, out_layout)
 }
@@ -368,7 +365,6 @@ pub(crate) fn codegen_float_binop<'tcx>(
                 _ => unreachable!(),
             };
             let val = fx.bcx.ins().fcmp(fltcc, lhs, rhs);
-            let val = fx.bcx.ins().bint(types::I8, val);
             return CValue::by_val(val, fx.layout_of(fx.tcx.types.bool));
         }
         _ => unreachable!("{:?}({:?}, {:?})", bin_op, in_lhs, in_rhs),
@@ -440,7 +436,7 @@ pub(crate) fn codegen_ptr_binop<'tcx>(
             _ => panic!("bin_op {:?} on ptr", bin_op),
         };
 
-        CValue::by_val(fx.bcx.ins().bint(types::I8, res), fx.layout_of(fx.tcx.types.bool))
+        CValue::by_val(res, fx.layout_of(fx.tcx.types.bool))
     }
 }
 

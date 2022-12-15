@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]/* This line is ignored by bash
 # This block is ignored by rustc
 pushd $(dirname "$0")/../
-RUSTC="$(pwd)/build/rustc-clif"
+RUSTC="$(pwd)/dist/rustc-clif"
 popd
 PROFILE=$1 OUTPUT=$2 exec $RUSTC -Zunstable-options -Cllvm-args=mode=jit -Cprefer-dynamic $0
 #*/

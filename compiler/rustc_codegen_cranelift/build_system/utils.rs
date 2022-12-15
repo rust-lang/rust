@@ -1,35 +1,138 @@
 use std::env;
 use std::fs;
 use std::io::Write;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
-pub(crate) fn cargo_command(
-    cargo: impl AsRef<Path>,
-    subcommand: &str,
-    triple: Option<&str>,
-    source_dir: &Path,
-) -> Command {
-    let mut cmd = Command::new(cargo.as_ref());
-    cmd.arg(subcommand)
-        .arg("--manifest-path")
-        .arg(source_dir.join("Cargo.toml"))
-        .arg("--target-dir")
-        .arg(source_dir.join("target"));
+use super::path::{Dirs, RelPath};
+use super::rustc_info::{get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path};
 
-    if let Some(triple) = triple {
-        cmd.arg("--target").arg(triple);
-    }
-
-    cmd
+pub(crate) struct Compiler {
+    pub(crate) cargo: PathBuf,
+    pub(crate) rustc: PathBuf,
+    pub(crate) rustdoc: PathBuf,
+    pub(crate) rustflags: String,
+    pub(crate) rustdocflags: String,
+    pub(crate) triple: String,
+    pub(crate) runner: Vec<String>,
 }
 
+impl Compiler {
+    pub(crate) fn host() -> Compiler {
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: get_rustc_path(),
+            rustdoc: get_rustdoc_path(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple: get_host_triple(),
+            runner: vec![],
+        }
+    }
+
+    pub(crate) fn with_triple(triple: String) -> Compiler {
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: get_rustc_path(),
+            rustdoc: get_rustdoc_path(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple,
+            runner: vec![],
+        }
+    }
+}
+
+pub(crate) struct CargoProject {
+    source: &'static RelPath,
+    target: &'static str,
+}
+
+impl CargoProject {
+    pub(crate) const fn new(path: &'static RelPath, target: &'static str) -> CargoProject {
+        CargoProject { source: path, target }
+    }
+
+    pub(crate) fn source_dir(&self, dirs: &Dirs) -> PathBuf {
+        self.source.to_path(dirs)
+    }
+
+    pub(crate) fn manifest_path(&self, dirs: &Dirs) -> PathBuf {
+        self.source_dir(dirs).join("Cargo.toml")
+    }
+
+    pub(crate) fn target_dir(&self, dirs: &Dirs) -> PathBuf {
+        RelPath::BUILD.join(self.target).to_path(dirs)
+    }
+
+    fn base_cmd(&self, command: &str, cargo: &Path, dirs: &Dirs) -> Command {
+        let mut cmd = Command::new(cargo);
+
+        cmd.arg(command)
+            .arg("--manifest-path")
+            .arg(self.manifest_path(dirs))
+            .arg("--target-dir")
+            .arg(self.target_dir(dirs));
+
+        cmd
+    }
+
+    fn build_cmd(&self, command: &str, compiler: &Compiler, dirs: &Dirs) -> Command {
+        let mut cmd = self.base_cmd(command, &compiler.cargo, dirs);
+
+        cmd.arg("--target").arg(&compiler.triple);
+
+        cmd.env("RUSTC", &compiler.rustc);
+        cmd.env("RUSTDOC", &compiler.rustdoc);
+        cmd.env("RUSTFLAGS", &compiler.rustflags);
+        cmd.env("RUSTDOCFLAGS", &compiler.rustdocflags);
+        if !compiler.runner.is_empty() {
+            cmd.env(
+                format!("CARGO_TARGET_{}_RUNNER", compiler.triple.to_uppercase().replace('-', "_")),
+                compiler.runner.join(" "),
+            );
+        }
+
+        cmd
+    }
+
+    #[must_use]
+    pub(crate) fn fetch(&self, cargo: impl AsRef<Path>, dirs: &Dirs) -> Command {
+        let mut cmd = Command::new(cargo.as_ref());
+
+        cmd.arg("fetch").arg("--manifest-path").arg(self.manifest_path(dirs));
+
+        cmd
+    }
+
+    #[must_use]
+    pub(crate) fn clean(&self, cargo: &Path, dirs: &Dirs) -> Command {
+        self.base_cmd("clean", cargo, dirs)
+    }
+
+    #[must_use]
+    pub(crate) fn build(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("build", compiler, dirs)
+    }
+
+    #[must_use]
+    pub(crate) fn test(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("test", compiler, dirs)
+    }
+
+    #[must_use]
+    pub(crate) fn run(&self, compiler: &Compiler, dirs: &Dirs) -> Command {
+        self.build_cmd("run", compiler, dirs)
+    }
+}
+
+#[must_use]
 pub(crate) fn hyperfine_command(
     warmup: u64,
     runs: u64,
-    prepare: Option<Command>,
-    a: Command,
-    b: Command,
+    prepare: Option<&str>,
+    a: &str,
+    b: &str,
 ) -> Command {
     let mut bench = Command::new("hyperfine");
 
@@ -42,10 +145,10 @@ pub(crate) fn hyperfine_command(
     }
 
     if let Some(prepare) = prepare {
-        bench.arg("--prepare").arg(format!("{:?}", prepare));
+        bench.arg("--prepare").arg(prepare);
     }
 
-    bench.arg(format!("{:?}", a)).arg(format!("{:?}", b));
+    bench.arg(a).arg(b);
 
     bench
 }
