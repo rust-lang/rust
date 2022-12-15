@@ -206,6 +206,7 @@ impl<'tcx> SymbolMangler<'tcx> {
     where
         T: TypeVisitable<'tcx>,
     {
+        // FIXME(non-lifetime-binders): What to do here?
         let regions = if value.has_late_bound_regions() {
             self.tcx.collect_referenced_late_bound_regions(value)
         } else {

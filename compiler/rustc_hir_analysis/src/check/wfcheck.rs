@@ -1912,7 +1912,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             }
             let pred = obligation.predicate;
             // Match the existing behavior.
-            if pred.is_global() && !pred.has_late_bound_regions() {
+            if pred.is_global() && !pred.has_late_bound_vars() {
                 let pred = self.normalize(span, None, pred);
                 let hir_node = tcx.hir().find(self.body_id);
 
