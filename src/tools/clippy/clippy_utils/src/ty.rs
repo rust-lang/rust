@@ -69,50 +69,66 @@ pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
 /// This method also recurses into opaque type predicates, so call it with `impl Trait<U>` and `U`
 /// will also return `true`.
 pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, needle: Ty<'tcx>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => {
-            if inner_ty == needle {
-                return true;
-            }
+    fn contains_ty_adt_constructor_opaque_inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        needle: Ty<'tcx>,
+        seen: &mut FxHashSet<DefId>,
+    ) -> bool {
+        ty.walk().any(|inner| match inner.unpack() {
+            GenericArgKind::Type(inner_ty) => {
+                if inner_ty == needle {
+                    return true;
+                }
 
-            if inner_ty.ty_adt_def() == needle.ty_adt_def() {
-                return true;
-            }
+                if inner_ty.ty_adt_def() == needle.ty_adt_def() {
+                    return true;
+                }
 
-            if let ty::Opaque(def_id, _) = *inner_ty.kind() {
-                for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    match predicate.kind().skip_binder() {
-                        // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
-                        // and check substituions to find `U`.
-                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
-                            if trait_predicate
-                                .trait_ref
-                                .substs
-                                .types()
-                                .skip(1) // Skip the implicit `Self` generic parameter
-                                .any(|ty| contains_ty_adt_constructor_opaque(cx, ty, needle))
-                            {
-                                return true;
-                            }
-                        },
-                        // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
-                        // so we check the term for `U`.
-                        ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
-                            if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
-                                if contains_ty_adt_constructor_opaque(cx, ty, needle) {
+                if let ty::Opaque(def_id, _) = *inner_ty.kind() {
+                    if !seen.insert(def_id) {
+                        return false;
+                    }
+
+                    for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
+                        match predicate.kind().skip_binder() {
+                            // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
+                            // and check substituions to find `U`.
+                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                                if trait_predicate
+                                    .trait_ref
+                                    .substs
+                                    .types()
+                                    .skip(1) // Skip the implicit `Self` generic parameter
+                                    .any(|ty| contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen))
+                                {
                                     return true;
                                 }
-                            };
-                        },
-                        _ => (),
+                            },
+                            // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
+                            // so we check the term for `U`.
+                            ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
+                                    if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
+                                        return true;
+                                    }
+                                };
+                            },
+                            _ => (),
+                        }
                     }
                 }
-            }
 
-            false
-        },
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-    })
+                false
+            },
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        })
+    }
+
+    // A hash set to ensure that the same opaque type (`impl Trait` in RPIT or TAIT) is not
+    // visited twice.
+    let mut seen = FxHashSet::default();
+    contains_ty_adt_constructor_opaque_inner(cx, ty, needle, &mut seen)
 }
 
 /// Resolves `<T as Iterator>::Item` for `T`
