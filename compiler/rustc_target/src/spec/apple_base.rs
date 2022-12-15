@@ -81,7 +81,7 @@ fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
         _ => os.into(),
     };
 
-    let platform_version: StaticCow<str> = match os.as_ref() {
+    let platform_version: StaticCow<str> = match os {
         "ios" => ios_lld_platform_version(),
         "tvos" => tvos_lld_platform_version(),
         "watchos" => watchos_lld_platform_version(),

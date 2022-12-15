@@ -126,13 +126,13 @@ impl<K: Ord, V> SortedMap<K, V> {
     /// Iterate over the keys, sorted
     #[inline]
     pub fn keys(&self) -> impl Iterator<Item = &K> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().map(|&(ref k, _)| k)
+        self.data.iter().map(|(k, _)| k)
     }
 
     /// Iterate over values, sorted by key
     #[inline]
     pub fn values(&self) -> impl Iterator<Item = &V> + ExactSizeIterator + DoubleEndedIterator {
-        self.data.iter().map(|&(_, ref v)| v)
+        self.data.iter().map(|(_, v)| v)
     }
 
     #[inline]
@@ -222,7 +222,7 @@ impl<K: Ord, V> SortedMap<K, V> {
         K: Borrow<Q>,
         Q: Ord + ?Sized,
     {
-        self.data.binary_search_by(|&(ref x, _)| x.borrow().cmp(key))
+        self.data.binary_search_by(|(x, _)| x.borrow().cmp(key))
     }
 
     #[inline]
@@ -300,7 +300,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
     fn from_iter<T: IntoIterator<Item = (K, V)>>(iter: T) -> Self {
         let mut data: Vec<(K, V)> = iter.into_iter().collect();
 
-        data.sort_unstable_by(|&(ref k1, _), &(ref k2, _)| k1.cmp(k2));
+        data.sort_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
         data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| k1.cmp(k2) == Ordering::Equal);
 
         SortedMap { data }

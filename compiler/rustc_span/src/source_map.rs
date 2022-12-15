@@ -948,7 +948,7 @@ impl SourceMap {
     /// Otherwise, the span reached to limit is returned.
     pub fn span_look_ahead(&self, span: Span, expect: Option<&str>, limit: Option<usize>) -> Span {
         let mut sp = span;
-        for _ in 0..limit.unwrap_or(100 as usize) {
+        for _ in 0..limit.unwrap_or(100_usize) {
             sp = self.next_point(sp);
             if let Ok(ref snippet) = self.span_to_snippet(sp) {
                 if expect.map_or(false, |es| snippet == es) {
