@@ -83,7 +83,7 @@ function toggleSidebar() {
 
 function createSidebarToggle() {
     const sidebarToggle = document.createElement("div");
-    sidebarToggle.id = "sidebar-toggle";
+    sidebarToggle.id = "src-sidebar-toggle";
 
     const inner = document.createElement("button");
 
