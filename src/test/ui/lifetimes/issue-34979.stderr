@@ -4,8 +4,16 @@ error[E0283]: type annotations needed: cannot satisfy `&'a (): Foo`
 LL |     &'a (): Foo,
    |             ^^^
    |
-   = note: cannot satisfy `&'a (): Foo`
-   = help: the trait `Foo` is implemented for `&'a T`
+note: multiple `impl`s or `where` clauses satisfying `&'a (): Foo` found
+  --> $DIR/issue-34979.rs:2:1
+   |
+LL | impl<'a, T> Foo for &'a T {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     &'a (): Foo,
+   |             ^^^
+LL |     &'static (): Foo;
+   |                  ^^^
 
 error: aborting due to previous error
 
