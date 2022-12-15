@@ -2466,18 +2466,12 @@ pub enum ModKind {
     Unloaded,
 }
 
-#[derive(Copy, Clone, Encodable, Decodable, Debug)]
+#[derive(Copy, Clone, Encodable, Decodable, Debug, Default)]
 pub struct ModSpans {
     /// `inner_span` covers the body of the module; for a file module, its the whole file.
     /// For an inline module, its the span inside the `{ ... }`, not including the curly braces.
     pub inner_span: Span,
     pub inject_use_span: Span,
-}
-
-impl Default for ModSpans {
-    fn default() -> ModSpans {
-        ModSpans { inner_span: Default::default(), inject_use_span: Default::default() }
-    }
 }
 
 /// Foreign module declaration.

@@ -324,7 +324,7 @@ impl CodeSuggestion {
                         // Account for the difference between the width of the current code and the
                         // snippet being suggested, so that the *later* suggestions are correctly
                         // aligned on the screen.
-                        acc += len as isize - (cur_hi.col.0 - cur_lo.col.0) as isize;
+                        acc += len - (cur_hi.col.0 - cur_lo.col.0) as isize;
                     }
                     prev_hi = cur_hi;
                     prev_line = sf.get_line(prev_hi.line - 1);

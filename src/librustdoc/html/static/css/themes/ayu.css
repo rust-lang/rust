@@ -150,8 +150,6 @@ pre, .rustdoc.source .example-wrap {
 	color: #c5c5c5;
 }
 
-.content .item-info::before { color: #ccc; }
-
 .sidebar h2 a,
 .sidebar h3 a {
 	color: white;

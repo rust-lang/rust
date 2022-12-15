@@ -3,8 +3,8 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, ExistentialPredicate, InferConst,
-    InferTy, Opaque, PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
+    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque,
+    PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -466,17 +466,6 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
                     // Okay
                 } else {
                     return ControlFlow::Break(());
-                }
-            }
-
-            Dynamic(dty, _, _) => {
-                for pred in *dty {
-                    match pred.skip_binder() {
-                        ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {
-                            // Okay
-                        }
-                        _ => return ControlFlow::Break(()),
-                    }
                 }
             }
 
