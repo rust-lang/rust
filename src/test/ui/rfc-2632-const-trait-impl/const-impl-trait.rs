@@ -1,5 +1,11 @@
 // check-pass
-#![feature(associated_type_bounds, const_trait_impl, const_cmp)]
+#![allow(incomplete_features)]
+#![feature(
+    associated_type_bounds,
+    const_trait_impl,
+    const_cmp,
+    return_position_impl_trait_in_trait,
+)]
 
 use std::marker::Destruct;
 
@@ -7,8 +13,21 @@ const fn cmp(a: &impl ~const PartialEq) -> bool {
     a == a
 }
 
-const fn wrap(x: impl ~const PartialEq + ~const Destruct) -> impl ~const PartialEq + ~const Destruct {
+const fn wrap(x: impl ~const PartialEq + ~const Destruct)
+    -> impl ~const PartialEq + ~const Destruct
+{
     x
+}
+
+#[const_trait]
+trait Foo {
+    fn huh() -> impl ~const PartialEq + ~const Destruct + Copy;
+}
+
+impl const Foo for () {
+    fn huh() -> impl ~const PartialEq + ~const Destruct + Copy {
+        123
+    }
 }
 
 const _: () = {
@@ -16,6 +35,8 @@ const _: () = {
     assert!(cmp(&()));
     assert!(wrap(123) == wrap(123));
     assert!(wrap(123) != wrap(456));
+    let x = <() as Foo>::huh();
+    assert!(x == x);
 };
 
 #[const_trait]
