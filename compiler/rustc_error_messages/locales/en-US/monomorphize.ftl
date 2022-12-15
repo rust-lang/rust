@@ -21,3 +21,6 @@ monomorphize_large_assignments =
     moving {$size} bytes
     .label = value moved from here
     .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
+
+monomorphize_couldnt_dump_mono_stats =
+    unexpected error occurred while dumping monomorphization stats: {$error}
