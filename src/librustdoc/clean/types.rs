@@ -1870,7 +1870,7 @@ impl PrimitiveType {
     }
 
     pub(crate) fn simplified_types() -> &'static SimplifiedTypes {
-        use ty::fast_reject::SimplifiedTypeGen::*;
+        use ty::fast_reject::SimplifiedType::*;
         use ty::{FloatTy, IntTy, UintTy};
         use PrimitiveType::*;
         static CELL: OnceCell<SimplifiedTypes> = OnceCell::new();

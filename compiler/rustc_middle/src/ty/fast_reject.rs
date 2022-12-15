@@ -6,28 +6,18 @@ use std::fmt::Debug;
 use std::hash::Hash;
 use std::iter;
 
-use self::SimplifiedTypeGen::*;
+use self::SimplifiedType::*;
 
-pub type SimplifiedType = SimplifiedTypeGen<DefId>;
-
-/// See `simplify_type`
-///
-/// Note that we keep this type generic over the type of identifier it uses
-/// because we sometimes need to use SimplifiedTypeGen values as stable sorting
-/// keys (in which case we use a DefPathHash as id-type) but in the general case
-/// the non-stable but fast to construct DefId-version is the better choice.
+/// See `simplify_type`.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
-pub enum SimplifiedTypeGen<D>
-where
-    D: Copy + Debug + Eq,
-{
+pub enum SimplifiedType {
     BoolSimplifiedType,
     CharSimplifiedType,
     IntSimplifiedType(ty::IntTy),
     UintSimplifiedType(ty::UintTy),
     FloatSimplifiedType(ty::FloatTy),
-    AdtSimplifiedType(D),
-    ForeignSimplifiedType(D),
+    AdtSimplifiedType(DefId),
+    ForeignSimplifiedType(DefId),
     StrSimplifiedType,
     ArraySimplifiedType,
     SliceSimplifiedType,
@@ -38,9 +28,9 @@ where
     /// A trait object, all of whose components are markers
     /// (e.g., `dyn Send + Sync`).
     MarkerTraitObjectSimplifiedType,
-    TraitSimplifiedType(D),
-    ClosureSimplifiedType(D),
-    GeneratorSimplifiedType(D),
+    TraitSimplifiedType(DefId),
+    ClosureSimplifiedType(DefId),
+    GeneratorSimplifiedType(DefId),
     GeneratorWitnessSimplifiedType(usize),
     FunctionSimplifiedType(usize),
     PlaceholderSimplifiedType,
@@ -142,8 +132,8 @@ pub fn simplify_type<'tcx>(
     }
 }
 
-impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
-    pub fn def(self) -> Option<D> {
+impl SimplifiedType {
+    pub fn def(self) -> Option<DefId> {
         match self {
             AdtSimplifiedType(d)
             | ForeignSimplifiedType(d)

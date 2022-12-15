@@ -325,7 +325,7 @@ pub(crate) fn build_impls(
     // * https://github.com/rust-lang/rust/pull/99917 — where the feature got used
     // * https://github.com/rust-lang/rust/issues/53487 — overall tracking issue for Error
     if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-        use rustc_middle::ty::fast_reject::SimplifiedTypeGen::*;
+        use rustc_middle::ty::fast_reject::SimplifiedType::*;
         let type_ =
             if tcx.is_trait(did) { TraitSimplifiedType(did) } else { AdtSimplifiedType(did) };
         for &did in tcx.incoherent_impls(type_) {
