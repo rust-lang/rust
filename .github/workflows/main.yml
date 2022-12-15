@@ -183,13 +183,7 @@ jobs:
       run: ./y.exe build --sysroot none
 
     - name: Test
-      run: |
-        # WIP Disable some tests
-
-        # This fails with a different output than expected
-        (Get-Content config.txt) -replace '(test.regex-shootout-regex-dna)', '# $1' |  Out-File config.txt
-
-        ./y.exe test
+      run: ./y.exe test
 
     - name: Package prebuilt cg_clif
       # don't use compression as xzip isn't supported by tar on windows and bzip2 hangs
