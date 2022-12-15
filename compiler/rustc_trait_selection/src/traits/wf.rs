@@ -451,19 +451,21 @@ impl<'tcx> WfPredicates<'tcx> {
                 GenericArgKind::Const(ct) => {
                     match ct.kind() {
                         ty::ConstKind::Unevaluated(uv) => {
-                            let obligations = self.nominal_obligations(uv.def.did, uv.substs);
-                            self.out.extend(obligations);
+                            if !ct.has_escaping_bound_vars() {
+                                let obligations = self.nominal_obligations(uv.def.did, uv.substs);
+                                self.out.extend(obligations);
 
-                            let predicate =
-                                ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
-                            let cause = self.cause(traits::WellFormed(None));
-                            self.out.push(traits::Obligation::with_depth(
-                                self.tcx(),
-                                cause,
-                                self.recursion_depth,
-                                self.param_env,
-                                predicate,
-                            ));
+                                let predicate =
+                                    ty::Binder::dummy(ty::PredicateKind::ConstEvaluatable(ct));
+                                let cause = self.cause(traits::WellFormed(None));
+                                self.out.push(traits::Obligation::with_depth(
+                                    self.tcx(),
+                                    cause,
+                                    self.recursion_depth,
+                                    self.param_env,
+                                    predicate,
+                                ));
+                            }
                         }
                         ty::ConstKind::Infer(_) => {
                             let cause = self.cause(traits::WellFormed(None));
