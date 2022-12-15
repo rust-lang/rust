@@ -1,3 +1,4 @@
+use crate::const_eval::CheckAlignment;
 use std::borrow::Cow;
 
 use either::{Left, Right};
@@ -76,7 +77,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    ecx.machine.check_alignment = false; // interning doesn't need to respect alignment
+    ecx.machine.check_alignment = CheckAlignment::No; // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
     // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
@@ -102,11 +103,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(
-            tcx.const_eval_limit(),
-            can_access_statics,
-            /*check_alignment:*/ false,
-        ),
+        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics, CheckAlignment::No),
     )
 }
 
@@ -311,7 +308,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
             /*can_access_statics:*/ is_static,
-            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+            if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
+                CheckAlignment::Error
+            } else {
+                CheckAlignment::FutureIncompat
+            },
         ),
     );
 

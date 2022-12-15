@@ -28,15 +28,4 @@ const UNALIGNED_PTR: () = unsafe {
     //[with_flag]~| invalid value
 };
 
-const UNALIGNED_READ: () = {
-    INNER; //[with_flag]~ constant
-    // There is an error here but its span is in the standard library so we cannot match it...
-    // so we have this in a *nested* const, such that the *outer* const fails to use it.
-    const INNER: () = unsafe {
-        let x = &[0u8; 4];
-        let ptr = x.as_ptr().cast::<u32>();
-        ptr.read();
-    };
-};
-
 fn main() {}
