@@ -387,11 +387,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         make_target_blocks: impl FnOnce(&mut Self) -> Vec<BasicBlock>,
         source_info: SourceInfo,
         value: ConstantKind<'tcx>,
-        place: Place<'tcx>,
+        mut val: Place<'tcx>,
         mut ty: Ty<'tcx>,
     ) {
         let mut expect = self.literal_operand(source_info.span, value);
-        let mut val = Operand::Copy(place);
 
         // If we're using `b"..."` as a pattern, we need to insert an
         // unsizing coercion, as the byte string has the type `&[u8; N]`.
@@ -421,9 +420,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                         block,
                         source_info,
                         temp,
-                        Rvalue::Cast(CastKind::Pointer(PointerCast::Unsize), val, ty),
+                        Rvalue::Cast(
+                            CastKind::Pointer(PointerCast::Unsize),
+                            Operand::Copy(val),
+                            ty,
+                        ),
                     );
-                    val = Operand::Move(temp);
+                    val = temp;
                 }
                 if opt_ref_test_ty.is_some() {
                     let slice = self.temp(ty, source_info.span);
@@ -463,7 +466,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                     literal: method,
                 })),
-                args: vec![val, expect],
+                args: vec![Operand::Copy(val), expect],
                 destination: eq_result,
                 target: Some(eq_block),
                 unwind: UnwindAction::Continue,
