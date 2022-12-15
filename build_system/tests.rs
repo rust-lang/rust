@@ -548,7 +548,8 @@ impl TestRunner {
         let host_compiler = Compiler::clif_with_triple(&dirs, host_triple);
 
         let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
-        target_compiler.rustflags = rustflags;
+        target_compiler.rustflags = rustflags.clone();
+        target_compiler.rustdocflags = rustflags;
         target_compiler.runner = runner;
 
         Self { is_native, jit_supported, dirs, host_compiler, target_compiler }
