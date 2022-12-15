@@ -4,7 +4,7 @@ use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
 use super::rustc_info::get_wrapper_file_name;
 use super::utils::{
-    hyperfine_command, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
+    hyperfine_command, is_ci, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
 };
 use super::SysrootKind;
 use std::env;
@@ -281,7 +281,10 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
         }
     }),
     TestCase::new("bench.simple-raytracer", &|runner| {
-        let run_runs = env::var("RUN_RUNS").unwrap_or("10".to_string()).parse().unwrap();
+        let run_runs = env::var("RUN_RUNS")
+            .unwrap_or(if is_ci() { "2" } else { "10" }.to_string())
+            .parse()
+            .unwrap();
 
         if runner.is_native {
             eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
