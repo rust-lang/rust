@@ -48,16 +48,16 @@ pub fn as_constant_inner<'tcx>(
     let Expr { ty, temp_lifetime: _, span, ref kind } = *expr;
     match *kind {
         ExprKind::Literal { lit, neg } => {
-            let literal =
-                match lit_to_mir_constant(tcx, LitToConstInput { lit: &lit.node, ty, neg }) {
-                    Ok(c) => c,
-                    Err(LitToConstError::Reported(guar)) => {
-                        ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
-                    }
-                    Err(LitToConstError::TypeError) => {
-                        bug!("encountered type error in `lit_to_mir_constant")
-                    }
-                };
+            let literal = match tcx.lit_to_mir_constant(LitToConstInput { lit: &lit.node, ty, neg })
+            {
+                Ok(c) => c,
+                Err(LitToConstError::Reported(guar)) => {
+                    ConstantKind::Ty(tcx.const_error_with_guaranteed(ty, guar))
+                }
+                Err(LitToConstError::TypeError) => {
+                    bug!("encountered type error in `lit_to_mir_constant")
+                }
+            };
 
             Constant { span, user_ty: None, literal }
         }
