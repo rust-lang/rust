@@ -85,11 +85,10 @@ rustc_queries! {
         desc { |tcx| "getting HIR owner of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 
-    /// Gives access to the HIR ID for the given `LocalDefId` owner `key`.
+    /// Gives access to the HIR ID for the given `LocalDefId` owner `key` if any.
     ///
-    /// This can be conveniently accessed by methods on `tcx.hir()`.
-    /// Avoid calling this query directly.
-    query local_def_id_to_hir_id(key: LocalDefId) -> hir::HirId {
+    /// Definitions that were generated with no HIR, would be feeded to return `None`.
+    query opt_local_def_id_to_hir_id(key: LocalDefId) -> Option<hir::HirId>{
         desc { |tcx| "getting HIR ID of `{}`", tcx.def_path_str(key.to_def_id()) }
     }
 

@@ -2359,6 +2359,10 @@ impl<'tcx> TyCtxt<'tcx> {
             })
         )
     }
+
+    pub fn local_def_id_to_hir_id(self, local_def_id: LocalDefId) -> HirId {
+        self.opt_local_def_id_to_hir_id(local_def_id).unwrap()
+    }
 }
 
 impl<'tcx> TyCtxtAt<'tcx> {
