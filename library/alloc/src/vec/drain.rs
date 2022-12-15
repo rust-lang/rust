@@ -25,7 +25,7 @@ pub struct Drain<
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator + 'a = Global,
     const COOP_PREFERRED: bool = { alloc::SHORT_TERM_VEC_PREFERS_COOP },
 > where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     /// Index of tail to preserve
     pub(super) tail_start: usize,
@@ -40,7 +40,7 @@ pub struct Drain<
 impl<T: fmt::Debug, A: Allocator, const COOP_PREFERRED: bool> fmt::Debug
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain").field(&self.iter.as_slice()).finish()
@@ -49,7 +49,7 @@ where
 
 impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drain<'a, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     /// Returns the remaining items of this iterator as a slice.
     ///
@@ -151,7 +151,7 @@ where
 #[stable(feature = "vec_drain_as_slice", since = "1.46.0")]
 impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> AsRef<[T]> for Drain<'a, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn as_ref(&self) -> &[T] {
         self.as_slice()
@@ -162,21 +162,21 @@ where
 unsafe impl<T: Sync, A: Sync + Allocator, const COOP_PREFERRED: bool> Sync
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<T: Send, A: Send + Allocator, const COOP_PREFERRED: bool> Send
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     type Item = T;
 
@@ -194,7 +194,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> DoubleEndedIterator
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -205,7 +205,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Drop for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn drop(&mut self) {
         /// Moves back the un-`Drain`ed elements to restore the original `Vec`.
@@ -213,12 +213,12 @@ where
             &'r mut Drain<'a, T, A, COOP_PREFERRED>,
         )
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:;
+            [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:;
 
         impl<'r, 'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop
             for DropGuard<'r, 'a, T, A, COOP_PREFERRED>
         where
-            [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+            [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
         {
             fn drop(&mut self) {
                 if self.0.tail_len > 0 {
@@ -286,7 +286,7 @@ where
 impl<T, A: Allocator, const COOP_PREFERRED: bool> ExactSizeIterator
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
@@ -297,12 +297,12 @@ where
 unsafe impl<T, A: Allocator, const COOP_PREFERRED: bool> TrustedLen
     for Drain<'_, T, A, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
 {
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, A, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:
+    [(); alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:
 {
 }
