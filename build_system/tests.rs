@@ -2,7 +2,7 @@ use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::{get_cargo_path, get_wrapper_file_name};
+use super::rustc_info::get_wrapper_file_name;
 use super::utils::{
     hyperfine_command, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
 };
@@ -507,11 +507,6 @@ impl TestRunner {
         let jit_supported =
             target_triple.contains("x86_64") && is_native && !host_triple.contains("windows");
 
-        let rustc_clif =
-            RelPath::DIST.to_path(&dirs).join(get_wrapper_file_name("rustc-clif", "bin"));
-        let rustdoc_clif =
-            RelPath::DIST.to_path(&dirs).join(get_wrapper_file_name("rustdoc-clif", "bin"));
-
         let mut rustflags = env::var("RUSTFLAGS").ok().unwrap_or("".to_string());
         let mut runner = vec![];
 
@@ -550,25 +545,11 @@ impl TestRunner {
             rustflags = format!("{} -Clink-arg=-undefined -Clink-arg=dynamic_lookup", rustflags);
         }
 
-        let host_compiler = Compiler {
-            cargo: get_cargo_path(),
-            rustc: rustc_clif.clone(),
-            rustdoc: rustdoc_clif.clone(),
-            rustflags: String::new(),
-            rustdocflags: String::new(),
-            triple: host_triple,
-            runner: vec![],
-        };
+        let host_compiler = Compiler::clif_with_triple(&dirs, host_triple);
 
-        let target_compiler = Compiler {
-            cargo: get_cargo_path(),
-            rustc: rustc_clif,
-            rustdoc: rustdoc_clif,
-            rustflags: rustflags.clone(),
-            rustdocflags: rustflags,
-            triple: target_triple,
-            runner,
-        };
+        let mut target_compiler = Compiler::clif_with_triple(&dirs, target_triple);
+        target_compiler.rustflags = rustflags;
+        target_compiler.runner = runner;
 
         Self { is_native, jit_supported, dirs, host_compiler, target_compiler }
     }

@@ -5,7 +5,9 @@ use std::path::{Path, PathBuf};
 use std::process::{self, Command, Stdio};
 
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path};
+use super::rustc_info::{
+    get_cargo_path, get_host_triple, get_rustc_path, get_rustdoc_path, get_wrapper_file_name,
+};
 
 pub(crate) struct Compiler {
     pub(crate) cargo: PathBuf,
@@ -35,6 +37,23 @@ impl Compiler {
             cargo: get_cargo_path(),
             rustc: get_rustc_path(),
             rustdoc: get_rustdoc_path(),
+            rustflags: String::new(),
+            rustdocflags: String::new(),
+            triple,
+            runner: vec![],
+        }
+    }
+
+    pub(crate) fn clif_with_triple(dirs: &Dirs, triple: String) -> Compiler {
+        let rustc_clif =
+            RelPath::DIST.to_path(&dirs).join(get_wrapper_file_name("rustc-clif", "bin"));
+        let rustdoc_clif =
+            RelPath::DIST.to_path(&dirs).join(get_wrapper_file_name("rustdoc-clif", "bin"));
+
+        Compiler {
+            cargo: get_cargo_path(),
+            rustc: rustc_clif.clone(),
+            rustdoc: rustdoc_clif.clone(),
             rustflags: String::new(),
             rustdocflags: String::new(),
             triple,
