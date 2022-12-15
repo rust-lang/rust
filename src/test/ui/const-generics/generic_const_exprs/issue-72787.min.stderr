@@ -40,8 +40,17 @@ error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8>: True
 LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^
    |
-   = note: cannot satisfy `IsLessOrEqual<I, 8>: True`
-   = help: the trait `True` is implemented for `IsLessOrEqual<LHS, RHS>`
+note: multiple `impl`s or `where` clauses satisfying `IsLessOrEqual<I, 8>: True` found
+  --> $DIR/issue-72787.rs:10:1
+   |
+LL | impl<const LHS: u32, const RHS: u32> True for IsLessOrEqual<LHS, RHS> where
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     IsLessOrEqual<I, 8>: True,
+   |                          ^^^^
+...
+LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
+   |                                          ^^^^
 
 error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8>: True`
   --> $DIR/issue-72787.rs:21:26
@@ -49,8 +58,17 @@ error[E0283]: type annotations needed: cannot satisfy `IsLessOrEqual<I, 8>: True
 LL |     IsLessOrEqual<I, 8>: True,
    |                          ^^^^
    |
-   = note: cannot satisfy `IsLessOrEqual<I, 8>: True`
-   = help: the trait `True` is implemented for `IsLessOrEqual<LHS, RHS>`
+note: multiple `impl`s or `where` clauses satisfying `IsLessOrEqual<I, 8>: True` found
+  --> $DIR/issue-72787.rs:10:1
+   |
+LL | impl<const LHS: u32, const RHS: u32> True for IsLessOrEqual<LHS, RHS> where
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+...
+LL |     IsLessOrEqual<I, 8>: True,
+   |                          ^^^^
+...
+LL |     IsLessOrEqual<{ 8 - I }, { 8 - J }>: True,
+   |                                          ^^^^
 
 error: aborting due to 6 previous errors
 
