@@ -153,36 +153,6 @@ impl<D: Copy + Debug + Eq> SimplifiedTypeGen<D> {
             _ => None,
         }
     }
-
-    pub fn map_def<U, F>(self, map: F) -> SimplifiedTypeGen<U>
-    where
-        F: Fn(D) -> U,
-        U: Copy + Debug + Eq,
-    {
-        match self {
-            BoolSimplifiedType => BoolSimplifiedType,
-            CharSimplifiedType => CharSimplifiedType,
-            IntSimplifiedType(t) => IntSimplifiedType(t),
-            UintSimplifiedType(t) => UintSimplifiedType(t),
-            FloatSimplifiedType(t) => FloatSimplifiedType(t),
-            AdtSimplifiedType(d) => AdtSimplifiedType(map(d)),
-            ForeignSimplifiedType(d) => ForeignSimplifiedType(map(d)),
-            StrSimplifiedType => StrSimplifiedType,
-            ArraySimplifiedType => ArraySimplifiedType,
-            SliceSimplifiedType => SliceSimplifiedType,
-            RefSimplifiedType(m) => RefSimplifiedType(m),
-            PtrSimplifiedType(m) => PtrSimplifiedType(m),
-            NeverSimplifiedType => NeverSimplifiedType,
-            MarkerTraitObjectSimplifiedType => MarkerTraitObjectSimplifiedType,
-            TupleSimplifiedType(n) => TupleSimplifiedType(n),
-            TraitSimplifiedType(d) => TraitSimplifiedType(map(d)),
-            ClosureSimplifiedType(d) => ClosureSimplifiedType(map(d)),
-            GeneratorSimplifiedType(d) => GeneratorSimplifiedType(map(d)),
-            GeneratorWitnessSimplifiedType(n) => GeneratorWitnessSimplifiedType(n),
-            FunctionSimplifiedType(n) => FunctionSimplifiedType(n),
-            PlaceholderSimplifiedType => PlaceholderSimplifiedType,
-        }
-    }
 }
 
 /// Given generic arguments from an obligation and an impl,
