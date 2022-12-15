@@ -1,6 +1,6 @@
 [package]
 name = "rustc_tools_util"
-version = "0.2.1"
+version = "0.3.0"
 description = "small helper to generate version information for git packages"
 repository = "https://github.com/rust-lang/rust-clippy"
 readme = "README.md"
