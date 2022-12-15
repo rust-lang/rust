@@ -45,7 +45,6 @@
 
 use crate::alloc::Global;
 
-use crate::alloc;
 use crate::vec::PlVec;
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
@@ -372,7 +371,7 @@ use crate::vec::DEFAULT_COOP_PREFERRED;
 #[cfg_attr(not(test), lang = "String")]
 pub struct String<const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     vec: Vec<u8, Global, COOP_PREFERRED>,
 }
@@ -440,7 +439,7 @@ pub struct FromUtf16Error(());
 
 impl<const COOP_PREFERRED: bool> String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Creates a new empty `String`.
     ///
@@ -521,7 +520,7 @@ where
     #[cfg(test)]
     pub fn from_str(_: &str) -> String<COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         panic!("not available with cfg(test)");
     }
@@ -886,7 +885,7 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8, Global, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         self.vec
     }
@@ -1636,7 +1635,7 @@ where
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8, Global, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         &mut self.vec
     }
@@ -1713,7 +1712,7 @@ where
     #[must_use = "use `.truncate()` if you don't need the other half"]
     pub fn split_off(&mut self, at: usize) -> String<COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         assert!(self.is_char_boundary(at));
         let other = self.vec.split_off(at);
@@ -1953,7 +1952,7 @@ impl FromUtf8Error {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes<const COOP_PREFERRED: bool>(self) -> Vec<u8, Global, COOP_PREFERRED>
     where
-        [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+        [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
     {
         self.bytes
     }
@@ -2022,7 +2021,7 @@ impl Error for FromUtf16Error {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> Clone for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn clone(&self) -> Self {
         String { vec: self.vec.clone() }
@@ -2037,7 +2036,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> FromIterator<char> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = char>>(iter: I) -> String<COOP_PREFERRED> {
         let mut buf = String::new();
@@ -2050,7 +2049,7 @@ where
 #[stable(feature = "string_from_iter_by_ref", since = "1.17.0")]
 impl<'a, const COOP_PREFERRED: bool> FromIterator<&'a char> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = &'a char>>(iter: I) -> String<COOP_PREFERRED> {
         let mut buf = String::new();
@@ -2063,7 +2062,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, const COOP_PREFERRED: bool> FromIterator<&'a str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = &'a str>>(iter: I) -> String<COOP_PREFERRED> {
         let mut buf = String::new();
@@ -2076,7 +2075,7 @@ where
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl<const COOP_PREFERRED: bool> FromIterator<String<COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = String<COOP_PREFERRED>>>(
         iter: I,
@@ -2100,7 +2099,7 @@ where
 #[stable(feature = "box_str2", since = "1.45.0")]
 impl<const COOP_PREFERRED: bool> FromIterator<Box<str>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = Box<str>>>(iter: I) -> String<COOP_PREFERRED> {
         let mut buf = String::new();
@@ -2113,7 +2112,7 @@ where
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a, const COOP_PREFERRED: bool> FromIterator<Cow<'a, str>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = Cow<'a, str>>>(iter: I) -> String<COOP_PREFERRED> {
         let mut iterator = iter.into_iter();
@@ -2136,7 +2135,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> Extend<char> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn extend<I: IntoIterator<Item = char>>(&mut self, iter: I) {
         let iterator = iter.into_iter();
@@ -2160,7 +2159,7 @@ where
 #[stable(feature = "extend_ref", since = "1.2.0")]
 impl<'a, const COOP_PREFERRED: bool> Extend<&'a char> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn extend<I: IntoIterator<Item = &'a char>>(&mut self, iter: I) {
         self.extend(iter.into_iter().cloned());
@@ -2181,7 +2180,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, const COOP_PREFERRED: bool> Extend<&'a str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn extend<I: IntoIterator<Item = &'a str>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(s));
@@ -2205,7 +2204,7 @@ impl Extend<Box<str>> for String {
 #[stable(feature = "extend_string", since = "1.4.0")]
 impl<const COOP_PREFERRED: bool> Extend<String> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn extend<I: IntoIterator<Item = String>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
@@ -2221,7 +2220,7 @@ where
 #[stable(feature = "herd_cows", since = "1.19.0")]
 impl<'a, const COOP_PREFERRED: bool> Extend<Cow<'a, str>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn extend<I: IntoIterator<Item = Cow<'a, str>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
@@ -2247,7 +2246,7 @@ where
 )]
 impl<'a, 'b, const COOP_PREFERRED: bool> Pattern<'a> for &'b String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Searcher = <&'b str as Pattern<'a>>::Searcher;
 
@@ -2284,7 +2283,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> PartialEq for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn eq(&self, other: &String<COOP_PREFERRED>) -> bool {
@@ -2340,7 +2339,7 @@ impl_eq! { Cow<'a, str>, String }
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<const COOP_PREFERRED: bool> const Default for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Creates an empty `String`.
     #[inline]
@@ -2352,7 +2351,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> fmt::Display for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2363,7 +2362,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> fmt::Debug for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -2374,7 +2373,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> hash::Hash for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {
@@ -2423,7 +2422,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> Add<&str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = String<COOP_PREFERRED>;
 
@@ -2441,7 +2440,7 @@ where
 #[stable(feature = "stringaddassign", since = "1.12.0")]
 impl<const COOP_PREFERRED: bool> AddAssign<&str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn add_assign(&mut self, other: &str) {
@@ -2452,7 +2451,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::Range<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2464,7 +2463,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::RangeTo<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2476,7 +2475,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::RangeFrom<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2488,7 +2487,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::RangeFull> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2500,7 +2499,7 @@ where
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::RangeInclusive<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2512,7 +2511,7 @@ where
 #[stable(feature = "inclusive_range", since = "1.26.0")]
 impl<const COOP_PREFERRED: bool> ops::Index<ops::RangeToInclusive<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Output = str;
 
@@ -2525,7 +2524,7 @@ where
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::Range<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, index: ops::Range<usize>) -> &mut str {
@@ -2535,7 +2534,7 @@ where
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::RangeTo<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeTo<usize>) -> &mut str {
@@ -2545,7 +2544,7 @@ where
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::RangeFrom<usize>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeFrom<usize>) -> &mut str {
@@ -2555,7 +2554,7 @@ where
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::RangeFull> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, _index: ops::RangeFull) -> &mut str {
@@ -2566,7 +2565,7 @@ where
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::RangeInclusive<usize>>
     for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeInclusive<usize>) -> &mut str {
@@ -2577,7 +2576,7 @@ where
 impl<const COOP_PREFERRED: bool> ops::IndexMut<ops::RangeToInclusive<usize>>
     for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn index_mut(&mut self, index: ops::RangeToInclusive<usize>) -> &mut str {
@@ -2588,7 +2587,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> ops::Deref for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Target = str;
 
@@ -2601,7 +2600,7 @@ where
 #[stable(feature = "derefmut_for_string", since = "1.3.0")]
 impl<const COOP_PREFERRED: bool> ops::DerefMut for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn deref_mut(&mut self) -> &mut str {
@@ -2621,7 +2620,7 @@ pub type ParseError = core::convert::Infallible;
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> FromStr for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Err = core::convert::Infallible;
     #[inline]
@@ -2642,7 +2641,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ToString<const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts the given value to a `String`.
     ///
@@ -2671,7 +2670,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized, const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for T
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     // A common guideline is to not inline generic functions. However,
     // removing `#[inline]` from this method causes non-negligible regressions.
@@ -2710,7 +2709,7 @@ impl ToString for bool {
 #[stable(feature = "u8_to_string_specialization", since = "1.54.0")]
 impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for u8
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn to_string(&self) -> String<COOP_PREFERRED> {
@@ -2733,7 +2732,7 @@ where
 #[stable(feature = "i8_to_string_specialization", since = "1.54.0")]
 impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for i8
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn to_string(&self) -> String<COOP_PREFERRED> {
@@ -2759,7 +2758,7 @@ where
 #[stable(feature = "str_to_string_specialization", since = "1.9.0")]
 impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for str
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn to_string(&self) -> String<COOP_PREFERRED> {
@@ -2771,7 +2770,7 @@ where
 #[stable(feature = "cow_str_to_string_specialization", since = "1.17.0")]
 impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for Cow<'_, str>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn to_string(&self) -> String<COOP_PREFERRED> {
@@ -2791,7 +2790,7 @@ impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for String<COOP_PREFER
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> AsRef<str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn as_ref(&self) -> &str {
@@ -2802,7 +2801,7 @@ where
 #[stable(feature = "string_as_mut", since = "1.43.0")]
 impl<const COOP_PREFERRED: bool> AsMut<str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn as_mut(&mut self) -> &mut str {
@@ -2813,7 +2812,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> AsRef<[u8]> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn as_ref(&self) -> &[u8] {
@@ -2825,7 +2824,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> From<&str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a `&str` into a [`String`].
     ///
@@ -2840,7 +2839,7 @@ where
 #[stable(feature = "from_mut_str_for_string", since = "1.44.0")]
 impl<const COOP_PREFERRED: bool> From<&mut str> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a `&mut str` into a [`String`].
     ///
@@ -2855,7 +2854,7 @@ where
 #[stable(feature = "from_ref_string", since = "1.35.0")]
 impl<const COOP_PREFERRED: bool> From<&String<COOP_PREFERRED>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a `&String` into a [`String`].
     ///
@@ -2893,7 +2892,7 @@ impl From<Box<str>> for String {
 #[stable(feature = "box_from_str", since = "1.20.0")]
 impl<const COOP_PREFERRED: bool> From<String<COOP_PREFERRED>> for Box<str>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts the given [`String`] to a boxed `str` slice that is owned.
     ///
@@ -2917,7 +2916,7 @@ where
 #[stable(feature = "string_from_cow_str", since = "1.14.0")]
 impl<'a, const COOP_PREFERRED: bool> From<Cow<'a, str>> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a clone-on-write string to an owned
     /// instance of [`String`].
@@ -2965,7 +2964,7 @@ impl<'a> From<&'a str> for Cow<'a, str> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, const COOP_PREFERRED: bool> From<String<COOP_PREFERRED>> for Cow<'a, str>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a [`String`] into an [`Owned`] variant.
     /// No heap allocation is performed, and the string
@@ -2991,7 +2990,7 @@ where
 #[stable(feature = "cow_from_string_ref", since = "1.28.0")]
 impl<'a, const COOP_PREFERRED: bool> From<&'a String<COOP_PREFERRED>> for Cow<'a, str>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts a [`String`] reference into a [`Borrowed`] variant.
     /// No heap allocation is performed, and the string
@@ -3032,7 +3031,7 @@ impl<'a, 'b> FromIterator<&'b str> for Cow<'a, str> {
 #[stable(feature = "cow_str_from_iter", since = "1.12.0")]
 impl<'a, const COOP_PREFERRED: bool> FromIterator<String<COOP_PREFERRED>> for Cow<'a, str>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn from_iter<I: IntoIterator<Item = String<COOP_PREFERRED>>>(it: I) -> Cow<'a, str> {
         Cow::Owned(FromIterator::from_iter(it))
@@ -3042,7 +3041,7 @@ where
 #[stable(feature = "from_string_for_vec_u8", since = "1.14.0")]
 impl<const COOP_PREFERRED: bool> From<String<COOP_PREFERRED>> for Vec<u8, Global, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Converts the given [`String`] to a vector [`Vec`] that holds values of type [`u8`].
     ///
@@ -3067,7 +3066,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<const COOP_PREFERRED: bool> fmt::Write for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
@@ -3091,7 +3090,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 pub struct Drain<'a, const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Will be used as &'a mut String in the destructor
     string: *mut String<COOP_PREFERRED>,
@@ -3106,7 +3105,7 @@ where
 #[stable(feature = "collection_debug", since = "1.17.0")]
 impl<const COOP_PREFERRED: bool> fmt::Debug for Drain<'_, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_tuple("Drain").field(&self.as_str()).finish()
@@ -3115,7 +3114,7 @@ where
 
 #[stable(feature = "drain", since = "1.6.0")]
 unsafe impl<const COOP_PREFERRED: bool> Sync for Drain<'_, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:
 {
 }
 #[stable(feature = "drain", since = "1.6.0")]
@@ -3124,7 +3123,7 @@ unsafe impl<const COOP_PREFERRED: bool> Send for Drain<'_, COOP_PREFERRED> {}
 #[stable(feature = "drain", since = "1.6.0")]
 impl<const COOP_PREFERRED: bool> Drop for Drain<'_, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn drop(&mut self) {
         unsafe {
@@ -3140,7 +3139,7 @@ where
 
 impl<'a, const COOP_PREFERRED: bool> Drain<'a, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Returns the remaining (sub)string of this iterator as a slice.
     ///
@@ -3163,7 +3162,7 @@ where
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a, const COOP_PREFERRED: bool> AsRef<str> for Drain<'a, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn as_ref(&self) -> &str {
         self.as_str()
@@ -3173,7 +3172,7 @@ where
 #[stable(feature = "string_drain_as_str", since = "1.55.0")]
 impl<'a, const COOP_PREFERRED: bool> AsRef<[u8]> for Drain<'a, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     fn as_ref(&self) -> &[u8] {
         self.as_str().as_bytes()
@@ -3183,7 +3182,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 impl<const COOP_PREFERRED: bool> Iterator for Drain<'_, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     type Item = char;
 
@@ -3205,7 +3204,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 impl<const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -3215,7 +3214,7 @@ where
 
 #[stable(feature = "fused", since = "1.26.0")]
 impl<const COOP_PREFERRED: bool> FusedIterator for Drain<'_, COOP_PREFERRED> where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:
 {
 }
 
@@ -3223,7 +3222,7 @@ impl<const COOP_PREFERRED: bool> FusedIterator for Drain<'_, COOP_PREFERRED> whe
 #[stable(feature = "from_char_for_string", since = "1.46.0")]
 impl<const COOP_PREFERRED: bool> From<char> for String<COOP_PREFERRED>
 where
-    [(); alloc::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
     /// Allocates an owned [`String`] from a single character.
     ///

@@ -400,6 +400,7 @@ mod spec_extend;
 pub struct Vec<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    //@FIXME: #[unstable(feature ="global_co_alloc_vec", issue="none")]
     const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED,
 > where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
