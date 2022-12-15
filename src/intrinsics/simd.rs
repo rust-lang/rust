@@ -770,7 +770,37 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             });
         }
 
-        // simd_arith_offset
+        sym::simd_expose_addr | sym::simd_from_exposed_addr | sym::simd_cast_ptr => {
+            intrinsic_args!(fx, args => (arg); intrinsic);
+            ret.write_cvalue_transmute(fx, arg);
+        }
+
+        sym::simd_arith_offset => {
+            intrinsic_args!(fx, args => (ptr, offset); intrinsic);
+
+            let (lane_count, ptr_lane_ty) = ptr.layout().ty.simd_size_and_type(fx.tcx);
+            let pointee_ty = ptr_lane_ty.builtin_deref(true).unwrap().ty;
+            let pointee_size = fx.layout_of(pointee_ty).size.bytes();
+            let (ret_lane_count, ret_lane_ty) = ret.layout().ty.simd_size_and_type(fx.tcx);
+            let ret_lane_layout = fx.layout_of(ret_lane_ty);
+            assert_eq!(lane_count, ret_lane_count);
+
+            for lane_idx in 0..lane_count {
+                let ptr_lane = ptr.value_lane(fx, lane_idx).load_scalar(fx);
+                let offset_lane = offset.value_lane(fx, lane_idx).load_scalar(fx);
+
+                let ptr_diff = if pointee_size != 1 {
+                    fx.bcx.ins().imul_imm(offset_lane, pointee_size as i64)
+                } else {
+                    offset_lane
+                };
+                let res_lane = fx.bcx.ins().iadd(ptr_lane, ptr_diff);
+                let res_lane = CValue::by_val(res_lane, ret_lane_layout);
+
+                ret.place_lane(fx, lane_idx).write_cvalue(fx, res_lane);
+            }
+        }
+
         // simd_scatter
         // simd_gather
         _ => {

@@ -24,8 +24,8 @@ index e8e8f68..7173c24 100644
      /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
      ///
 @@ -473,6 +474,7 @@ where
-             // Cleared ☢️ *mut T Zone
-         }
+         // Safety: The caller is responsible for upholding all invariants
+         unsafe { intrinsics::simd_scatter(self, dest, enable.to_int()) }
      }
 +    */
  }
