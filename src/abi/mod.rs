@@ -161,6 +161,12 @@ fn make_local_place<'tcx>(
     layout: TyAndLayout<'tcx>,
     is_ssa: bool,
 ) -> CPlace<'tcx> {
+    if layout.is_unsized() {
+        fx.tcx.sess.span_fatal(
+            fx.mir.local_decls[local].source_info.span,
+            "unsized locals are not yet supported",
+        );
+    }
     let place = if is_ssa {
         if let rustc_target::abi::Abi::ScalarPair(_, _) = layout.abi {
             CPlace::new_var_pair(fx, local, layout)
