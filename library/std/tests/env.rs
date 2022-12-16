@@ -1,12 +1,12 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
 
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::distributions::{Alphanumeric, DistString};
+use rand::thread_rng;
 
 fn make_rand_name() -> OsString {
-    let rng = thread_rng();
-    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10).collect::<String>());
+    let mut rng = thread_rng();
+    let n = format!("TEST{}", Alphanumeric.sample_string(&mut rng, 10));
     let n = OsString::from(n);
     assert!(var_os(&n).is_none());
     n

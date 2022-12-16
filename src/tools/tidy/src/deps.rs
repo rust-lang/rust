@@ -191,7 +191,6 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "rand",
     "rand_chacha",
     "rand_core",
-    "rand_hc",
     "rand_xorshift",
     "rand_xoshiro",
     "redox_syscall",
