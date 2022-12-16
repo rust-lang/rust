@@ -48,6 +48,8 @@ declare_features! (
 
     /// Allows `#[target_feature(...)]` on aarch64 platforms
     (accepted, aarch64_target_feature, "1.61.0", Some(44839), None),
+    /// Allows using the `efiapi` ABI.
+    (accepted, abi_efiapi, "CURRENT_RUSTC_VERSION", Some(65815), None),
     /// Allows the sysV64 ABI to be specified on all platforms
     /// instead of just the platforms on which it is the C ABI.
     (accepted, abi_sysv64, "1.24.0", Some(36167), None),

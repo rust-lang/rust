@@ -14,7 +14,7 @@
 // compile-flags: -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(no_core, lang_items, abi_efiapi)]
+#![feature(no_core, lang_items)]
 #![no_core]
 
 #[lang="sized"]
