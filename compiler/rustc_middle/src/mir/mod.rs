@@ -1488,7 +1488,7 @@ impl<'tcx> StatementKind<'tcx> {
 ///////////////////////////////////////////////////////////////////////////
 // Places
 
-impl<V, T> ProjectionElem<V, T> {
+impl<V, T, U> ProjectionElem<V, T, U> {
     /// Returns `true` if the target of this projection may refer to a different region of memory
     /// than the base.
     fn is_indirect(&self) -> bool {
@@ -1517,7 +1517,7 @@ impl<V, T> ProjectionElem<V, T> {
 
 /// Alias for projections as they appear in `UserTypeProjection`, where we
 /// need neither the `V` parameter for `Index` nor the `T` for `Field`.
-pub type ProjectionKind = ProjectionElem<(), ()>;
+pub type ProjectionKind = ProjectionElem<(), (), ()>;
 
 rustc_index::newtype_index! {
     /// A [newtype'd][wrapper] index type in the MIR [control-flow graph][CFG]
