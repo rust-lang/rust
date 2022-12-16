@@ -774,6 +774,14 @@ rustc_queries! {
         separate_provide_extern
     }
 
+    /// Given an impl trait in trait `opaque_ty_def_id`, create and return the corresponding
+    /// associated item.
+    query associated_item_for_impl_trait_in_trait(opaque_ty_def_id: LocalDefId) -> LocalDefId {
+        desc { |tcx| "creates the associated item corresponding to the opaque type `{}`", tcx.def_path_str(opaque_ty_def_id.to_def_id()) }
+        cache_on_disk_if { true }
+        separate_provide_extern
+    }
+
     /// Given an `impl_id`, return the trait it implements.
     /// Return `None` if this is an inherent impl.
     query impl_trait_ref(impl_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'tcx>>> {

@@ -1,5 +1,6 @@
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::definitions::DefPathData;
 use rustc_hir::intravisit::{self, Visitor};
@@ -11,6 +12,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
         associated_item_def_ids,
         associated_items,
         associated_items_for_impl_trait_in_trait,
+        associated_item_for_impl_trait_in_trait,
         impl_item_implementor_ids,
         ..*providers
     };
@@ -135,14 +137,24 @@ fn associated_items_for_impl_trait_in_trait(tcx: TyCtxt<'_>, fn_def_id: DefId) -
     if let Some(output) = tcx.hir().get_fn_output(fn_def_id.expect_local()) {
         visitor.visit_fn_ret_ty(output);
 
-        let trait_def_id = tcx.parent(fn_def_id).expect_local();
-
-        tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|_opaque_ty_def_id| {
-            let trait_assoc_ty =
-                tcx.at(output.span()).create_def(trait_def_id, DefPathData::ImplTraitAssocTy);
-            trait_assoc_ty.def_id().to_def_id()
+        tcx.arena.alloc_from_iter(visitor.rpits.iter().map(|opaque_ty_def_id| {
+            tcx.associated_item_for_impl_trait_in_trait(opaque_ty_def_id).to_def_id()
         }))
     } else {
         &[]
     }
+}
+
+fn associated_item_for_impl_trait_in_trait(
+    tcx: TyCtxt<'_>,
+    opaque_ty_def_id: LocalDefId,
+) -> LocalDefId {
+    let fn_def_id = tcx.impl_trait_in_trait_parent(opaque_ty_def_id.to_def_id());
+    let trait_def_id = tcx.parent(fn_def_id);
+    assert_eq!(tcx.def_kind(trait_def_id), DefKind::Trait);
+
+    let span = tcx.def_span(opaque_ty_def_id);
+    let trait_assoc_ty =
+        tcx.at(span).create_def(trait_def_id.expect_local(), DefPathData::ImplTraitAssocTy);
+    trait_assoc_ty.def_id()
 }
