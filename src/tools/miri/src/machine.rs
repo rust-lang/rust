@@ -9,6 +9,7 @@ use rand::rngs::StdRng;
 use rand::SeedableRng;
 
 use rustc_ast::ast::Mutability;
+use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 #[allow(unused)]
 use rustc_data_structures::static_assert_size;
@@ -22,9 +23,8 @@ use rustc_middle::{
 };
 use rustc_span::def_id::{CrateNum, DefId};
 use rustc_span::Symbol;
-use rustc_target::abi::{Size, Align};
+use rustc_target::abi::{Align, Size};
 use rustc_target::spec::abi::Abi;
-use rustc_const_eval::const_eval::CheckAlignment;
 
 use crate::{
     concurrency::{data_race, weak_memory},
