@@ -28,12 +28,12 @@ fn python() -> &'static str {
 
     for dir in env::split_paths(&val) {
         // `python` should always take precedence over python2 / python3 if it exists
-        if dir.join(PYTHON).with_extension(EXE_EXTENSION).exists() {
+        if dir.join(PYTHON).with_extension(EXE_EXTENSION).try_exists().is_ok() {
             return PYTHON;
         }
 
-        python2 |= dir.join(PYTHON2).with_extension(EXE_EXTENSION).exists();
-        python3 |= dir.join(PYTHON3).with_extension(EXE_EXTENSION).exists();
+        python2 |= dir.join(PYTHON2).with_extension(EXE_EXTENSION).try_exists().is_ok();
+        python3 |= dir.join(PYTHON3).with_extension(EXE_EXTENSION).try_exists().is_ok();
     }
 
     // try 3 before 2
