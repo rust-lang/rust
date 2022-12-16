@@ -203,17 +203,6 @@ pub fn parse_asm_args<'a>(
         // Validate the order of named, positional & explicit register operands and
         // clobber_abi/options. We do this at the end once we have the full span
         // of the argument available.
-        if !args.options_spans.is_empty() {
-            diag.struct_span_err(span, "arguments are not allowed after options")
-                .span_labels(args.options_spans.clone(), "previous options")
-                .span_label(span, "argument")
-                .emit();
-        } else if let Some((_, abi_span)) = args.clobber_abis.last() {
-            diag.struct_span_err(span, "arguments are not allowed after clobber_abi")
-                .span_label(*abi_span, "clobber_abi")
-                .span_label(span, "argument")
-                .emit();
-        }
         if explicit_reg {
             if name.is_some() {
                 diag.struct_span_err(span, "explicit register arguments cannot have names").emit();
@@ -226,17 +215,6 @@ pub fn parse_asm_args<'a>(
                     .span_label(span, "duplicate argument")
                     .emit();
                 continue;
-            }
-            if !args.reg_args.is_empty() {
-                let mut err = diag.struct_span_err(
-                    span,
-                    "named arguments cannot follow explicit register arguments",
-                );
-                err.span_label(span, "named argument");
-                for pos in &args.reg_args {
-                    err.span_label(args.operands[*pos].1, "explicit register argument");
-                }
-                err.emit();
             }
             args.named_args.insert(name, slot);
         } else {
@@ -478,15 +456,6 @@ fn parse_clobber_abi<'a>(p: &mut Parser<'a>, args: &mut AsmArgs) -> PResult<'a, 
 
     let full_span = span_start.to(p.prev_token.span);
 
-    if !args.options_spans.is_empty() {
-        let mut err = p
-            .sess
-            .span_diagnostic
-            .struct_span_err(full_span, "clobber_abi is not allowed after options");
-        err.span_labels(args.options_spans.clone(), "options");
-        return Err(err);
-    }
-
     match &new_abis[..] {
         // should have errored above during parsing
         [] => unreachable!(),
@@ -698,6 +667,10 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
                                     err.span_note(
                                         args.operands[idx].1,
                                         "explicit register arguments cannot be used in the asm template",
+                                    );
+                                    err.span_help(
+                                        args.operands[idx].1,
+                                        "use the register name directly in the assembly code",
                                     );
                                 }
                                 err.emit();

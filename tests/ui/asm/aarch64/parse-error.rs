@@ -37,8 +37,7 @@ fn main() {
         asm!("", options(nomem, foo));
         //~^ ERROR expected one of
         asm!("{}", options(), const foo);
-        //~^ ERROR arguments are not allowed after options
-        //~^^ ERROR attempt to use a non-constant value in a constant
+        //~^ ERROR attempt to use a non-constant value in a constant
         asm!("", clobber_abi(foo));
         //~^ ERROR expected string literal
         asm!("", clobber_abi("C" foo));
@@ -46,12 +45,10 @@ fn main() {
         asm!("", clobber_abi("C", foo));
         //~^ ERROR expected string literal
         asm!("{}", clobber_abi("C"), const foo);
-        //~^ ERROR arguments are not allowed after clobber_abi
-        //~^^ ERROR attempt to use a non-constant value in a constant
+        //~^ ERROR attempt to use a non-constant value in a constant
         asm!("", options(), clobber_abi("C"));
-        //~^ ERROR clobber_abi is not allowed after options
         asm!("{}", options(), clobber_abi("C"), const foo);
-        //~^ ERROR clobber_abi is not allowed after options
+        //~^ ERROR attempt to use a non-constant value in a constant
         asm!("{a}", a = const foo, a = const bar);
         //~^ ERROR duplicate argument named `a`
         //~^^ ERROR argument never used
@@ -60,11 +57,9 @@ fn main() {
         asm!("", a = in("x0") foo);
         //~^ ERROR explicit register arguments cannot have names
         asm!("{a}", in("x0") foo, a = const bar);
-        //~^ ERROR named arguments cannot follow explicit register arguments
-        //~^^ ERROR attempt to use a non-constant value in a constant
+        //~^ ERROR attempt to use a non-constant value in a constant
         asm!("{a}", in("x0") foo, a = const bar);
-        //~^ ERROR named arguments cannot follow explicit register arguments
-        //~^^ ERROR attempt to use a non-constant value in a constant
+        //~^ ERROR attempt to use a non-constant value in a constant
         asm!("{1}", in("x0") foo, const bar);
         //~^ ERROR positional arguments cannot follow named arguments or explicit register arguments
         //~^^ ERROR attempt to use a non-constant value in a constant
@@ -106,7 +101,6 @@ global_asm!("", options(nomem FOO));
 global_asm!("", options(nomem, FOO));
 //~^ ERROR expected one of
 global_asm!("{}", options(), const FOO);
-//~^ ERROR arguments are not allowed after options
 global_asm!("", clobber_abi(FOO));
 //~^ ERROR expected string literal
 global_asm!("", clobber_abi("C" FOO));
@@ -114,12 +108,11 @@ global_asm!("", clobber_abi("C" FOO));
 global_asm!("", clobber_abi("C", FOO));
 //~^ ERROR expected string literal
 global_asm!("{}", clobber_abi("C"), const FOO);
-//~^ ERROR arguments are not allowed after clobber_abi
-//~^^ ERROR `clobber_abi` cannot be used with `global_asm!`
+//~^ ERROR `clobber_abi` cannot be used with `global_asm!`
 global_asm!("", options(), clobber_abi("C"));
-//~^ ERROR clobber_abi is not allowed after options
+//~^ ERROR `clobber_abi` cannot be used with `global_asm!`
 global_asm!("{}", options(), clobber_abi("C"), const FOO);
-//~^ ERROR clobber_abi is not allowed after options
+//~^ ERROR `clobber_abi` cannot be used with `global_asm!`
 global_asm!("{a}", a = const FOO, a = const BAR);
 //~^ ERROR duplicate argument named `a`
 //~^^ ERROR argument never used
