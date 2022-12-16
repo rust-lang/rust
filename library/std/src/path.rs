@@ -1748,6 +1748,14 @@ impl ops::Deref for PathBuf {
     }
 }
 
+#[stable(feature = "path_buf_deref_mut", since = "CURRENT_RUSTC_VERSION")]
+impl ops::DerefMut for PathBuf {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Path {
+        Path::from_inner_mut(&mut self.inner)
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Borrow<Path> for PathBuf {
     #[inline]
@@ -1998,6 +2006,12 @@ impl Path {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new<S: AsRef<OsStr> + ?Sized>(s: &S) -> &Path {
         unsafe { &*(s.as_ref() as *const OsStr as *const Path) }
+    }
+
+    fn from_inner_mut(inner: &mut OsStr) -> &mut Path {
+        // SAFETY: Path is just a wrapper around OsStr,
+        // therefore converting &mut OsStr to &mut Path is safe.
+        unsafe { &mut *(inner as *mut OsStr as *mut Path) }
     }
 
     /// Yields the underlying [`OsStr`] slice.
