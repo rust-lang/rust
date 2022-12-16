@@ -68,7 +68,7 @@ fn codegen_fn_attrs(tcx: TyCtxt<'_>, did: DefId) -> CodegenFnAttrs {
     // report a delayed bug, just in case `check_attr` isn't doing its job.
     let validate_fn_only_attr = |attr_sp| -> bool {
         let def_kind = tcx.def_kind(did);
-        if let DefKind::Fn | DefKind::AssocFn = def_kind {
+        if let DefKind::Fn | DefKind::AssocFn | DefKind::Variant | DefKind::Ctor(..) = def_kind {
             true
         } else {
             tcx.sess.delay_span_bug(attr_sp, "this attribute can only be applied to functions");
