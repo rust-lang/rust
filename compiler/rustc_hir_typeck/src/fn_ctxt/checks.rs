@@ -1169,7 +1169,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         match lit.node {
             ast::LitKind::Str(..) => tcx.mk_static_str(),
-            ast::LitKind::ByteStr(ref v) => {
+            ast::LitKind::ByteStr(ref v, _) => {
                 tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.u8, v.len() as u64))
             }
             ast::LitKind::Byte(_) => tcx.types.u8,
@@ -2124,7 +2124,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                 }
-                ty::Opaque(new_def_id, _)
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id: new_def_id, .. })
                 | ty::Closure(new_def_id, _)
                 | ty::FnDef(new_def_id, _) => {
                     def_id = new_def_id;
@@ -2132,19 +2132,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => {
                     // Look for a user-provided impl of a `Fn` trait, and point to it.
                     let new_def_id = self.probe(|_| {
-                        let trait_ref = ty::TraitRef::new(
+                        let trait_ref = self.tcx.mk_trait_ref(
                             call_kind.to_def_id(self.tcx),
-                            self.tcx.mk_substs(
-                                [
-                                    ty::GenericArg::from(callee_ty),
-                                    self.next_ty_var(TypeVariableOrigin {
-                                        kind: TypeVariableOriginKind::MiscVariable,
-                                        span: rustc_span::DUMMY_SP,
-                                    })
-                                    .into(),
-                                ]
-                                .into_iter(),
-                            ),
+                            [
+                                callee_ty,
+                                self.next_ty_var(TypeVariableOrigin {
+                                    kind: TypeVariableOriginKind::MiscVariable,
+                                    span: rustc_span::DUMMY_SP,
+                                }),
+                            ],
                         );
                         let obligation = traits::Obligation::new(
                             self.tcx,
@@ -2217,7 +2213,7 @@ fn find_param_in_ty<'tcx>(ty: Ty<'tcx>, param_to_point_at: ty::GenericArg<'tcx>)
         if arg == param_to_point_at {
             return true;
         } else if let ty::GenericArgKind::Type(ty) = arg.unpack()
-            && let ty::Projection(..) = ty.kind()
+            && let ty::Alias(ty::Projection, ..) = ty.kind()
         {
             // This logic may seem a bit strange, but typically when
             // we have a projection type in a function signature, the

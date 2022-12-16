@@ -6,6 +6,7 @@ use std::cell::Cell;
 use either::Right;
 
 use rustc_ast::Mutability;
+use rustc_const_eval::const_eval::CheckAlignment;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_hir::def::DefKind;
 use rustc_index::bit_set::BitSet;
@@ -22,7 +23,7 @@ use rustc_middle::ty::layout::{LayoutError, LayoutOf, LayoutOfHelpers, TyAndLayo
 use rustc_middle::ty::InternalSubsts;
 use rustc_middle::ty::{self, ConstKind, Instance, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_span::{def_id::DefId, Span};
-use rustc_target::abi::{self, HasDataLayout, Size, TargetDataLayout};
+use rustc_target::abi::{self, Align, HasDataLayout, Size, TargetDataLayout};
 use rustc_target::spec::abi::Abi as CallAbi;
 use rustc_trait_selection::traits;
 
@@ -186,15 +187,26 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for ConstPropMachine<'mir, 'tcx>
     type MemoryKind = !;
 
     #[inline(always)]
-    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(_ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         // We do not check for alignment to avoid having to carry an `Align`
         // in `ConstValue::ByRef`.
-        false
+        CheckAlignment::No
     }
 
     #[inline(always)]
     fn enforce_validity(_ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         false // for now, we don't enforce validity
+    }
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        _has: Align,
+        _required: Align,
+        _check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()> {
+        span_bug!(
+            ecx.cur_span(),
+            "`alignment_check_failed` called when no alignment check requested"
+        )
     }
 
     fn load_mir(

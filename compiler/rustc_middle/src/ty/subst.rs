@@ -252,7 +252,7 @@ impl<'tcx, D: TyDecoder<I = TyCtxt<'tcx>>> Decodable<D> for GenericArg<'tcx> {
     }
 }
 
-/// A substitution mapping generic parameters to new values.
+/// List of generic arguments that are gonna be used to substitute generic parameters.
 pub type InternalSubsts<'tcx> = List<GenericArg<'tcx>>;
 
 pub type SubstsRef<'tcx> = &'tcx InternalSubsts<'tcx>;

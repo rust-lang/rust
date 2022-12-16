@@ -372,45 +372,20 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                 }
             }
             (Meta::Path(_), "subdiagnostic") => {
-                return Ok(quote! { #diag.subdiagnostic(#binding); });
+                if FieldInnerTy::from_type(&info.binding.ast().ty).will_iterate() {
+                    let DiagnosticDeriveKind::Diagnostic { handler } = &self.parent.kind else {
+                        // No eager translation for lints.
+                        return Ok(quote! { #diag.subdiagnostic(#binding); });
+                    };
+                    return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
+                } else {
+                    return Ok(quote! { #diag.subdiagnostic(#binding); });
+                }
             }
-            (Meta::NameValue(_), "subdiagnostic") => {
+            (Meta::List(_), "subdiagnostic") => {
                 throw_invalid_attr!(attr, &meta, |diag| {
-                    diag.help("`eager` is the only supported nested attribute for `subdiagnostic`")
+                    diag.help("`subdiagnostic` does not support nested attributes")
                 })
-            }
-            (Meta::List(MetaList { ref nested, .. }), "subdiagnostic") => {
-                if nested.len() != 1 {
-                    throw_invalid_attr!(attr, &meta, |diag| {
-                        diag.help(
-                            "`eager` is the only supported nested attribute for `subdiagnostic`",
-                        )
-                    })
-                }
-
-                let handler = match &self.parent.kind {
-                    DiagnosticDeriveKind::Diagnostic { handler } => handler,
-                    DiagnosticDeriveKind::LintDiagnostic => {
-                        throw_invalid_attr!(attr, &meta, |diag| {
-                            diag.help("eager subdiagnostics are not supported on lints")
-                        })
-                    }
-                };
-
-                let nested_attr = nested.first().expect("pop failed for single element list");
-                match nested_attr {
-                    NestedMeta::Meta(meta @ Meta::Path(_))
-                        if meta.path().segments.last().unwrap().ident.to_string().as_str()
-                            == "eager" =>
-                    {
-                        return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
-                    }
-                    _ => {
-                        throw_invalid_nested_attr!(attr, nested_attr, |diag| {
-                            diag.help("`eager` is the only supported nested attribute for `subdiagnostic`")
-                        })
-                    }
-                }
             }
             _ => (),
         }

@@ -70,10 +70,6 @@ error[E0746]: return type cannot have an unboxed trait object
 LL | fn bak() -> dyn Trait { unimplemented!() }
    |             ^^^^^^^^^ doesn't have a size known at compile-time
    |
-help: use some type `T` that is `T: Sized` as the return type if all return paths have the same type
-   |
-LL | fn bak() -> T { unimplemented!() }
-   |             ~
 help: use `impl Trait` as the return type if all return paths have the same type but you want to expose only the trait in the signature
    |
 LL | fn bak() -> impl Trait { unimplemented!() }

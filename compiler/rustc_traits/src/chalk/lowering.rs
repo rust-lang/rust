@@ -66,15 +66,6 @@ impl<'tcx> LowerInto<'tcx, SubstsRef<'tcx>> for &chalk_ir::Substitution<RustInte
     }
 }
 
-impl<'tcx> LowerInto<'tcx, chalk_ir::AliasTy<RustInterner<'tcx>>> for ty::ProjectionTy<'tcx> {
-    fn lower_into(self, interner: RustInterner<'tcx>) -> chalk_ir::AliasTy<RustInterner<'tcx>> {
-        chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-            associated_ty_id: chalk_ir::AssocTypeId(self.item_def_id),
-            substitution: self.substs.lower_into(interner),
-        })
-    }
-}
-
 impl<'tcx> LowerInto<'tcx, chalk_ir::InEnvironment<chalk_ir::Goal<RustInterner<'tcx>>>>
     for ChalkEnvironmentAndGoal<'tcx>
 {
@@ -255,7 +246,10 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::AliasEq<RustInterner<'tcx>>>
         // FIXME(associated_const_equality): teach chalk about terms for alias eq.
         chalk_ir::AliasEq {
             ty: self.term.ty().unwrap().lower_into(interner),
-            alias: self.projection_ty.lower_into(interner),
+            alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
+                substitution: self.projection_ty.substs.lower_into(interner),
+            }),
         }
     }
 }
@@ -353,8 +347,13 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Ty<RustInterner<'tcx>>> for Ty<'tcx> {
             ty::Tuple(types) => {
                 chalk_ir::TyKind::Tuple(types.len(), types.as_substs().lower_into(interner))
             }
-            ty::Projection(proj) => chalk_ir::TyKind::Alias(proj.lower_into(interner)),
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Projection, ty::AliasTy { def_id, substs, .. }) => {
+                chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
+                    associated_ty_id: chalk_ir::AssocTypeId(def_id),
+                    substitution: substs.lower_into(interner),
+                }))
+            }
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 chalk_ir::TyKind::Alias(chalk_ir::AliasTy::Opaque(chalk_ir::OpaqueTy {
                     opaque_ty_id: chalk_ir::OpaqueTyId(def_id),
                     substitution: substs.lower_into(interner),
@@ -442,13 +441,14 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 mutbl.lower_into(interner),
             ),
             TyKind::Str => ty::Str,
-            TyKind::OpaqueType(opaque_ty, substitution) => {
-                ty::Opaque(opaque_ty.0, substitution.lower_into(interner))
-            }
-            TyKind::AssociatedType(assoc_ty, substitution) => ty::Projection(ty::ProjectionTy {
-                substs: substitution.lower_into(interner),
-                item_def_id: assoc_ty.0,
-            }),
+            TyKind::OpaqueType(opaque_ty, substitution) => ty::Alias(
+                ty::Opaque,
+                interner.tcx.mk_alias_ty(opaque_ty.0, substitution.lower_into(interner)),
+            ),
+            TyKind::AssociatedType(assoc_ty, substitution) => ty::Alias(
+                ty::Projection,
+                interner.tcx.mk_alias_ty(assoc_ty.0, substitution.lower_into(interner)),
+            ),
             TyKind::Foreign(def_id) => ty::Foreign(def_id.0),
             TyKind::Error => return interner.tcx.ty_error(),
             TyKind::Placeholder(placeholder) => ty::Placeholder(ty::Placeholder {
@@ -456,13 +456,20 @@ impl<'tcx> LowerInto<'tcx, Ty<'tcx>> for &chalk_ir::Ty<RustInterner<'tcx>> {
                 name: ty::BoundVar::from_usize(placeholder.idx),
             }),
             TyKind::Alias(alias_ty) => match alias_ty {
-                chalk_ir::AliasTy::Projection(projection) => ty::Projection(ty::ProjectionTy {
-                    item_def_id: projection.associated_ty_id.0,
-                    substs: projection.substitution.lower_into(interner),
-                }),
-                chalk_ir::AliasTy::Opaque(opaque) => {
-                    ty::Opaque(opaque.opaque_ty_id.0, opaque.substitution.lower_into(interner))
-                }
+                chalk_ir::AliasTy::Projection(projection) => ty::Alias(
+                    ty::Projection,
+                    interner.tcx.mk_alias_ty(
+                        projection.associated_ty_id.0,
+                        projection.substitution.lower_into(interner),
+                    ),
+                ),
+                chalk_ir::AliasTy::Opaque(opaque) => ty::Alias(
+                    ty::Opaque,
+                    interner.tcx.mk_alias_ty(
+                        opaque.opaque_ty_id.0,
+                        opaque.substitution.lower_into(interner),
+                    ),
+                ),
             },
             TyKind::Function(_quantified_ty) => unimplemented!(),
             TyKind::BoundVar(_bound) => ty::Bound(
@@ -688,7 +695,7 @@ impl<'tcx> LowerInto<'tcx, chalk_ir::Binders<chalk_ir::QuantifiedWhereClauses<Ru
                     binders.clone(),
                     chalk_ir::WhereClause::AliasEq(chalk_ir::AliasEq {
                         alias: chalk_ir::AliasTy::Projection(chalk_ir::ProjectionTy {
-                            associated_ty_id: chalk_ir::AssocTypeId(predicate.item_def_id),
+                            associated_ty_id: chalk_ir::AssocTypeId(predicate.def_id),
                             substitution: interner
                                 .tcx
                                 .mk_substs_trait(self_ty, predicate.substs)
@@ -844,7 +851,7 @@ impl<'tcx> LowerInto<'tcx, chalk_solve::rust_ir::AliasEqBound<RustInterner<'tcx>
         let (trait_ref, own_substs) = self.projection_ty.trait_ref_and_own_substs(interner.tcx);
         chalk_solve::rust_ir::AliasEqBound {
             trait_bound: trait_ref.lower_into(interner),
-            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.item_def_id),
+            associated_ty_id: chalk_ir::AssocTypeId(self.projection_ty.def_id),
             parameters: own_substs.iter().map(|arg| arg.lower_into(interner)).collect(),
             value: self.term.ty().unwrap().lower_into(interner),
         }

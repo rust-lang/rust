@@ -2,8 +2,10 @@ error[E0631]: type mismatch in closure arguments
   --> $DIR/multiple-fn-bounds.rs:10:5
    |
 LL |     foo(move |x| v);
-   |     ^^^ -------- found signature defined here
-   |     |
+   |     ^^^ --------
+   |     |   |     |
+   |     |   |     help: do not borrow the argument: `char`
+   |     |   found signature defined here
    |     expected due to this
    |
    = note: expected closure signature `fn(char) -> _`

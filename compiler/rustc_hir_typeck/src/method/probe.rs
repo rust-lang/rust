@@ -38,9 +38,9 @@ use rustc_trait_selection::traits::query::method_autoderef::{
 use rustc_trait_selection::traits::query::CanonicalTyGoal;
 use rustc_trait_selection::traits::NormalizeExt;
 use rustc_trait_selection::traits::{self, ObligationCause};
+use std::cell::RefCell;
 use std::cmp::max;
 use std::iter;
-use std::mem;
 use std::ops::Deref;
 
 use smallvec::{smallvec, SmallVec};
@@ -62,28 +62,29 @@ struct ProbeContext<'a, 'tcx> {
 
     /// This is the OriginalQueryValues for the steps queries
     /// that are answered in steps.
-    orig_steps_var_values: OriginalQueryValues<'tcx>,
+    orig_steps_var_values: &'a OriginalQueryValues<'tcx>,
     steps: &'tcx [CandidateStep<'tcx>],
 
     inherent_candidates: Vec<Candidate<'tcx>>,
     extension_candidates: Vec<Candidate<'tcx>>,
     impl_dups: FxHashSet<DefId>,
 
-    /// Collects near misses when the candidate functions are missing a `self` keyword and is only
-    /// used for error reporting
-    static_candidates: Vec<CandidateSource>,
-
     /// When probing for names, include names that are close to the
-    /// requested name (by Levensthein distance)
+    /// requested name (by Levenshtein distance)
     allow_similar_names: bool,
 
     /// Some(candidate) if there is a private candidate
     private_candidate: Option<(DefKind, DefId)>,
 
+    /// Collects near misses when the candidate functions are missing a `self` keyword and is only
+    /// used for error reporting
+    static_candidates: RefCell<Vec<CandidateSource>>,
+
     /// Collects near misses when trait bounds for type parameters are unsatisfied and is only used
     /// for error reporting
-    unsatisfied_predicates:
+    unsatisfied_predicates: RefCell<
         Vec<(ty::Predicate<'tcx>, Option<ty::Predicate<'tcx>>, Option<ObligationCause<'tcx>>)>,
+    >,
 
     scope_expr_id: hir::HirId,
 }
@@ -334,7 +335,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         op: OP,
     ) -> Result<R, MethodError<'tcx>>
     where
-        OP: FnOnce(ProbeContext<'a, 'tcx>) -> Result<R, MethodError<'tcx>>,
+        OP: FnOnce(ProbeContext<'_, 'tcx>) -> Result<R, MethodError<'tcx>>,
     {
         let mut orig_values = OriginalQueryValues::default();
         let param_env_and_self_ty = self.canonicalize_query(
@@ -445,7 +446,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 mode,
                 method_name,
                 return_type,
-                orig_values,
+                &orig_values,
                 steps.steps,
                 scope_expr_id,
             );
@@ -539,7 +540,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         mode: Mode,
         method_name: Option<Ident>,
         return_type: Option<Ty<'tcx>>,
-        orig_steps_var_values: OriginalQueryValues<'tcx>,
+        orig_steps_var_values: &'a OriginalQueryValues<'tcx>,
         steps: &'tcx [CandidateStep<'tcx>],
         scope_expr_id: hir::HirId,
     ) -> ProbeContext<'a, 'tcx> {
@@ -554,10 +555,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             impl_dups: FxHashSet::default(),
             orig_steps_var_values,
             steps,
-            static_candidates: Vec::new(),
             allow_similar_names: false,
             private_candidate: None,
-            unsatisfied_predicates: Vec::new(),
+            static_candidates: RefCell::new(Vec::new()),
+            unsatisfied_predicates: RefCell::new(Vec::new()),
             scope_expr_id,
         }
     }
@@ -566,8 +567,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         self.inherent_candidates.clear();
         self.extension_candidates.clear();
         self.impl_dups.clear();
-        self.static_candidates.clear();
         self.private_candidate = None;
+        self.static_candidates.borrow_mut().clear();
+        self.unsatisfied_predicates.borrow_mut().clear();
     }
 
     ///////////////////////////////////////////////////////////////////////////
@@ -918,7 +920,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     ) {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={:?})", trait_def_id);
         let trait_substs = self.fresh_item_substs(trait_def_id);
-        let trait_ref = ty::TraitRef::new(trait_def_id, trait_substs);
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, trait_substs);
 
         if self.tcx.is_trait_alias(trait_def_id) {
             // For trait aliases, assume all supertraits are relevant.
@@ -1003,9 +1005,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
         debug!("pick: actual search failed, assemble diagnostics");
 
-        let static_candidates = mem::take(&mut self.static_candidates);
+        let static_candidates = std::mem::take(self.static_candidates.get_mut());
         let private_candidate = self.private_candidate.take();
-        let unsatisfied_predicates = mem::take(&mut self.unsatisfied_predicates);
+        let unsatisfied_predicates = std::mem::take(self.unsatisfied_predicates.get_mut());
 
         // things failed, so lets look at all traits, for diagnostic purposes now:
         self.reset();
@@ -1050,7 +1052,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }))
     }
 
-    fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
+    fn pick_core(&self) -> Option<PickResult<'tcx>> {
         let pick = self.pick_all_method(Some(&mut vec![]));
 
         // In this case unstable picking is done by `pick_method`.
@@ -1065,11 +1067,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn pick_all_method(
-        &mut self,
+        &self,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
-        let steps = self.steps.clone();
-        steps
+        self.steps
             .iter()
             .filter(|step| {
                 debug!("pick_all_method: step={:?}", step);
@@ -1123,7 +1124,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// to transparently pass `&mut` pointers, in particular, without consuming
     /// them for their entire lifetime.
     fn pick_by_value_method(
-        &mut self,
+        &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
@@ -1151,7 +1152,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     }
 
     fn pick_autorefd_method(
-        &mut self,
+        &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         mutbl: hir::Mutability,
@@ -1177,7 +1178,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
     /// special case for this is because going from `*mut T` to `*const T` with autoderefs and
     /// autorefs would require dereferencing the pointer, which is not safe.
     fn pick_const_ptr_method(
-        &mut self,
+        &self,
         step: &CandidateStep<'tcx>,
         self_ty: Ty<'tcx>,
         unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
@@ -1202,7 +1203,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         })
     }
 
-    fn pick_method_with_unstable(&mut self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
+    fn pick_method_with_unstable(&self, self_ty: Ty<'tcx>) -> Option<PickResult<'tcx>> {
         debug!("pick_method_with_unstable(self_ty={})", self.ty_to_string(self_ty));
 
         let mut possibly_unsatisfied_predicates = Vec::new();
@@ -1213,7 +1214,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             debug!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
-                candidates.iter(),
+                candidates,
                 &mut possibly_unsatisfied_predicates,
                 Some(&mut vec![]),
             );
@@ -1222,21 +1223,27 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             }
         }
 
-        debug!("searching unstable candidates");
-        let res = self.consider_candidates(
-            self_ty,
-            self.inherent_candidates.iter().chain(&self.extension_candidates),
-            &mut possibly_unsatisfied_predicates,
-            None,
-        );
-        if res.is_none() {
-            self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
+        for (kind, candidates) in
+            &[("inherent", &self.inherent_candidates), ("extension", &self.extension_candidates)]
+        {
+            debug!("searching unstable {kind} candidates");
+            let res = self.consider_candidates(
+                self_ty,
+                candidates,
+                &mut possibly_unsatisfied_predicates,
+                None,
+            );
+            if res.is_some() {
+                return res;
+            }
         }
-        res
+
+        self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
+        None
     }
 
     fn pick_method(
-        &mut self,
+        &self,
         self_ty: Ty<'tcx>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
     ) -> Option<PickResult<'tcx>> {
@@ -1254,7 +1261,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             debug!("searching {} candidates", kind);
             let res = self.consider_candidates(
                 self_ty,
-                candidates.iter(),
+                candidates,
                 &mut possibly_unsatisfied_predicates,
                 unstable_candidates.as_deref_mut(),
             );
@@ -1266,28 +1273,24 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // `pick_method` may be called twice for the same self_ty if no stable methods
         // match. Only extend once.
         if unstable_candidates.is_some() {
-            self.unsatisfied_predicates.extend(possibly_unsatisfied_predicates);
+            self.unsatisfied_predicates.borrow_mut().extend(possibly_unsatisfied_predicates);
         }
         None
     }
 
-    fn consider_candidates<'b, ProbesIter>(
+    fn consider_candidates(
         &self,
         self_ty: Ty<'tcx>,
-        probes: ProbesIter,
+        candidates: &[Candidate<'tcx>],
         possibly_unsatisfied_predicates: &mut Vec<(
             ty::Predicate<'tcx>,
             Option<ty::Predicate<'tcx>>,
             Option<ObligationCause<'tcx>>,
         )>,
         mut unstable_candidates: Option<&mut Vec<(Candidate<'tcx>, Symbol)>>,
-    ) -> Option<PickResult<'tcx>>
-    where
-        ProbesIter: Iterator<Item = &'b Candidate<'tcx>> + Clone,
-        'tcx: 'b,
-    {
-        let mut applicable_candidates: Vec<_> = probes
-            .clone()
+    ) -> Option<PickResult<'tcx>> {
+        let mut applicable_candidates: Vec<_> = candidates
+            .iter()
             .map(|probe| {
                 (probe, self.consider_probe(self_ty, probe, possibly_unsatisfied_predicates))
             })
@@ -1305,11 +1308,11 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if let Some(uc) = &mut unstable_candidates {
-            applicable_candidates.retain(|&(p, _)| {
+            applicable_candidates.retain(|&(candidate, _)| {
                 if let stability::EvalResult::Deny { feature, .. } =
-                    self.tcx.eval_stability(p.item.def_id, None, self.span, None)
+                    self.tcx.eval_stability(candidate.item.def_id, None, self.span, None)
                 {
-                    uc.push((p.clone(), feature));
+                    uc.push((candidate.clone(), feature));
                     return false;
                 }
                 true
@@ -1317,7 +1320,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         }
 
         if applicable_candidates.len() > 1 {
-            let sources = probes.map(|p| self.candidate_source(p, self_ty)).collect();
+            let sources = candidates.iter().map(|p| self.candidate_source(p, self_ty)).collect();
             return Some(Err(MethodError::Ambiguity(sources)));
         }
 
@@ -1701,7 +1704,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 self.mode,
                 self.method_name,
                 self.return_type,
-                self.orig_steps_var_values.clone(),
+                &self.orig_steps_var_values,
                 steps,
                 self.scope_expr_id,
             );
@@ -1763,8 +1766,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
         // -- but this could be overcome.
     }
 
-    fn record_static_candidate(&mut self, source: CandidateSource) {
-        self.static_candidates.push(source);
+    fn record_static_candidate(&self, source: CandidateSource) {
+        self.static_candidates.borrow_mut().push(source);
     }
 
     #[instrument(level = "debug", skip(self))]

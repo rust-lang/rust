@@ -10,12 +10,13 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, DefKind, Namespace};
 use rustc_hir::def_id::{DefId, DefIdSet, CRATE_DEF_ID, LOCAL_CRATE};
-use rustc_hir::definitions::{DefPathData, DefPathDataName, DisambiguatedDefPathData};
+use rustc_hir::definitions::{DefKey, DefPathData, DefPathDataName, DisambiguatedDefPathData};
 use rustc_hir::LangItem;
 use rustc_session::config::TrimmedDefPaths;
 use rustc_session::cstore::{ExternCrate, ExternCrateSource};
 use rustc_session::Limit;
 use rustc_span::symbol::{kw, Ident, Symbol};
+use rustc_span::FileNameDisplayPreference;
 use rustc_target::abi::Size;
 use rustc_target::spec::abi::Abi;
 use smallvec::SmallVec;
@@ -23,7 +24,6 @@ use smallvec::SmallVec;
 use std::cell::Cell;
 use std::char;
 use std::collections::BTreeMap;
-use std::convert::TryFrom;
 use std::fmt::{self, Write as _};
 use std::iter;
 use std::ops::{ControlFlow, Deref, DerefMut};
@@ -63,6 +63,7 @@ thread_local! {
     static FORCE_IMPL_FILENAME_LINE: Cell<bool> = const { Cell::new(false) };
     static SHOULD_PREFIX_WITH_CRATE: Cell<bool> = const { Cell::new(false) };
     static NO_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
+    static FORCE_TRIMMED_PATH: Cell<bool> = const { Cell::new(false) };
     static NO_QUERIES: Cell<bool> = const { Cell::new(false) };
     static NO_VISIBLE_PATH: Cell<bool> = const { Cell::new(false) };
 }
@@ -116,6 +117,7 @@ define_helper!(
     /// of various rustc types, for example `std::vec::Vec` would be trimmed to `Vec`,
     /// if no other `Vec` is found.
     fn with_no_trimmed_paths(NoTrimmedGuard, NO_TRIMMED_PATH);
+    fn with_forced_trimmed_paths(ForceTrimmedGuard, FORCE_TRIMMED_PATH);
     /// Prevent selection of visible paths. `Display` impl of DefId will prefer
     /// visible (public) reexports of types as paths.
     fn with_no_visible_paths(NoVisibleGuard, NO_VISIBLE_PATH);
@@ -295,11 +297,89 @@ pub trait PrettyPrinter<'tcx>:
         self.try_print_visible_def_path_recur(def_id, &mut callers)
     }
 
+    // Given a `DefId`, produce a short name. For types and traits, it prints *only* its name,
+    // For associated items on traits it prints out the trait's name and the associated item's name.
+    // For enum variants, if they have an unique name, then we only print the name, otherwise we
+    // print the enum name and the variant name. Otherwise, we do not print anything and let the
+    // caller use the `print_def_path` fallback.
+    fn force_print_trimmed_def_path(
+        mut self,
+        def_id: DefId,
+    ) -> Result<(Self::Path, bool), Self::Error> {
+        let key = self.tcx().def_key(def_id);
+        let visible_parent_map = self.tcx().visible_parent_map(());
+        let kind = self.tcx().def_kind(def_id);
+
+        let get_local_name = |this: &Self, name, def_id, key: DefKey| {
+            if let Some(visible_parent) = visible_parent_map.get(&def_id)
+                && let actual_parent = this.tcx().opt_parent(def_id)
+                && let DefPathData::TypeNs(_) = key.disambiguated_data.data
+                && Some(*visible_parent) != actual_parent
+            {
+                this
+                    .tcx()
+                    .module_children(visible_parent)
+                    .iter()
+                    .filter(|child| child.res.opt_def_id() == Some(def_id))
+                    .find(|child| child.vis.is_public() && child.ident.name != kw::Underscore)
+                    .map(|child| child.ident.name)
+                    .unwrap_or(name)
+            } else {
+                name
+            }
+        };
+        if let DefKind::Variant = kind
+            && let Some(symbol) = self.tcx().trimmed_def_paths(()).get(&def_id)
+        {
+            // If `Assoc` is unique, we don't want to talk about `Trait::Assoc`.
+            self.write_str(get_local_name(&self, *symbol, def_id, key).as_str())?;
+            return Ok((self, true));
+        }
+        if let Some(symbol) = key.get_opt_name() {
+            if let DefKind::AssocConst | DefKind::AssocFn | DefKind::AssocTy = kind
+                && let Some(parent) = self.tcx().opt_parent(def_id)
+                && let parent_key = self.tcx().def_key(parent)
+                && let Some(symbol) = parent_key.get_opt_name()
+            {
+                // Trait
+                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str("::")?;
+            } else if let DefKind::Variant = kind
+                && let Some(parent) = self.tcx().opt_parent(def_id)
+                && let parent_key = self.tcx().def_key(parent)
+                && let Some(symbol) = parent_key.get_opt_name()
+            {
+                // Enum
+
+                // For associated items and variants, we want the "full" path, namely, include
+                // the parent type in the path. For example, `Iterator::Item`.
+                self.write_str(get_local_name(&self, symbol, parent, parent_key).as_str())?;
+                self.write_str("::")?;
+            } else if let DefKind::Struct | DefKind::Union | DefKind::Enum | DefKind::Trait
+                | DefKind::TyAlias | DefKind::Fn | DefKind::Const | DefKind::Static(_) = kind
+            {
+            } else {
+                // If not covered above, like for example items out of `impl` blocks, fallback.
+                return Ok((self, false));
+            }
+            self.write_str(get_local_name(&self, symbol, def_id, key).as_str())?;
+            return Ok((self, true));
+        }
+        Ok((self, false))
+    }
+
     /// Try to see if this path can be trimmed to a unique symbol name.
     fn try_print_trimmed_def_path(
         mut self,
         def_id: DefId,
     ) -> Result<(Self::Path, bool), Self::Error> {
+        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            let (s, trimmed) = self.force_print_trimmed_def_path(def_id)?;
+            if trimmed {
+                return Ok((s, true));
+            }
+            self = s;
+        }
         if !self.tcx().sess.opts.unstable_opts.trim_diagnostic_paths
             || matches!(self.tcx().sess.opts.trimmed_def_paths, TrimmedDefPaths::Never)
             || NO_TRIMMED_PATH.with(|flag| flag.get())
@@ -639,17 +719,17 @@ pub trait PrettyPrinter<'tcx>:
             ty::Foreign(def_id) => {
                 p!(print_def_path(def_id, &[]));
             }
-            ty::Projection(ref data) => {
+            ty::Alias(ty::Projection, ref data) => {
                 if !(self.should_print_verbose() || NO_QUERIES.with(|q| q.get()))
-                    && self.tcx().def_kind(data.item_def_id) == DefKind::ImplTraitPlaceholder
+                    && self.tcx().def_kind(data.def_id) == DefKind::ImplTraitPlaceholder
                 {
-                    return self.pretty_print_opaque_impl_type(data.item_def_id, data.substs);
+                    return self.pretty_print_opaque_impl_type(data.def_id, data.substs);
                 } else {
                     p!(print(data))
                 }
             }
             ty::Placeholder(placeholder) => p!(write("Placeholder({:?})", placeholder)),
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 // FIXME(eddyb) print this with `print_def_path`.
                 // We use verbose printing in 'NO_QUERIES' mode, to
                 // avoid needing to call `predicates_of`. This should
@@ -664,7 +744,9 @@ pub trait PrettyPrinter<'tcx>:
                 let parent = self.tcx().parent(def_id);
                 match self.tcx().def_kind(parent) {
                     DefKind::TyAlias | DefKind::AssocTy => {
-                        if let ty::Opaque(d, _) = *self.tcx().type_of(parent).kind() {
+                        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id: d, .. }) =
+                            *self.tcx().type_of(parent).kind()
+                        {
                             if d == def_id {
                                 // If the type alias directly starts with the `impl` of the
                                 // opaque type we're printing, then skip the `::{opaque#1}`.
@@ -737,11 +819,16 @@ pub trait PrettyPrinter<'tcx>:
                             p!("@", print_def_path(did.to_def_id(), substs));
                         } else {
                             let span = self.tcx().def_span(did);
+                            let preference = if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+                                FileNameDisplayPreference::Short
+                            } else {
+                                FileNameDisplayPreference::Remapped
+                            };
                             p!(write(
                                 "@{}",
                                 // This may end up in stderr diagnostics but it may also be emitted
                                 // into MIR. Hence we use the remapped path if available
-                                self.tcx().sess.source_map().span_to_embeddable_string(span)
+                                self.tcx().sess.source_map().span_to_string(span, preference)
                             ));
                         }
                     } else {
@@ -940,8 +1027,8 @@ pub trait PrettyPrinter<'tcx>:
                         // Skip printing `<[generator@] as Generator<_>>::Return` from async blocks,
                         // unless we can find out what generator return type it comes from.
                         let term = if let Some(ty) = term.skip_binder().ty()
-                            && let ty::Projection(proj) = ty.kind()
-                            && let Some(assoc) = tcx.opt_associated_item(proj.item_def_id)
+                            && let ty::Alias(ty::Projection, proj) = ty.kind()
+                            && let Some(assoc) = tcx.opt_associated_item(proj.def_id)
                             && assoc.trait_container(tcx) == tcx.lang_items().gen_trait()
                             && assoc.name == rustc_span::sym::Return
                         {
@@ -2574,7 +2661,7 @@ define_print_and_forward_display! {
     }
 
     ty::ExistentialProjection<'tcx> {
-        let name = cx.tcx().associated_item(self.item_def_id).name;
+        let name = cx.tcx().associated_item(self.def_id).name;
         p!(write("{} = ", name), print(self.term))
     }
 
@@ -2661,8 +2748,8 @@ define_print_and_forward_display! {
       }
     }
 
-    ty::ProjectionTy<'tcx> {
-        p!(print_def_path(self.item_def_id, self.substs));
+    ty::AliasTy<'tcx> {
+        p!(print_def_path(self.def_id, self.substs));
     }
 
     ty::ClosureKind {

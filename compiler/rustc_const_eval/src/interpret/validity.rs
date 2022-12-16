@@ -4,7 +4,6 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
-use std::convert::TryFrom;
 use std::fmt::{Display, Write};
 use std::num::NonZeroUsize;
 
@@ -602,8 +601,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Param(..)
-            | ty::Opaque(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }

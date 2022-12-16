@@ -260,7 +260,9 @@ impl Rewrite for ast::NestedMetaItem {
     fn rewrite(&self, context: &RewriteContext<'_>, shape: Shape) -> Option<String> {
         match self {
             ast::NestedMetaItem::MetaItem(ref meta_item) => meta_item.rewrite(context, shape),
-            ast::NestedMetaItem::Lit(ref l) => rewrite_literal(context, l.token_lit, l.span, shape),
+            ast::NestedMetaItem::Lit(ref l) => {
+                rewrite_literal(context, l.as_token_lit(), l.span, shape)
+            }
         }
     }
 }
@@ -308,18 +310,18 @@ impl Rewrite for ast::MetaItem {
                     }),
                 )?
             }
-            ast::MetaItemKind::NameValue(ref literal) => {
+            ast::MetaItemKind::NameValue(ref lit) => {
                 let path = rewrite_path(context, PathContext::Type, &None, &self.path, shape)?;
                 // 3 = ` = `
                 let lit_shape = shape.shrink_left(path.len() + 3)?;
-                // `rewrite_literal` returns `None` when `literal` exceeds max
+                // `rewrite_literal` returns `None` when `lit` exceeds max
                 // width. Since a literal is basically unformattable unless it
                 // is a string literal (and only if `format_strings` is set),
                 // we might be better off ignoring the fact that the attribute
                 // is longer than the max width and continue on formatting.
                 // See #2479 for example.
-                let value = rewrite_literal(context, literal.token_lit, literal.span, lit_shape)
-                    .unwrap_or_else(|| context.snippet(literal.span).to_owned());
+                let value = rewrite_literal(context, lit.as_token_lit(), lit.span, lit_shape)
+                    .unwrap_or_else(|| context.snippet(lit.span).to_owned());
                 format!("{} = {}", path, value)
             }
         })

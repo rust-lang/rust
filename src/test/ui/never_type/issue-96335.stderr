@@ -26,9 +26,6 @@ LL |     0.....{loop{}1};
             found struct `RangeTo<{integer}>`
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/range.rs:LL:COL
-   |
-LL |     pub const fn new(start: Idx, end: Idx) -> Self {
-   |                  ^^^
 
 error: aborting due to 2 previous errors
 

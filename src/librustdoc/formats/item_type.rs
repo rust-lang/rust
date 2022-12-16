@@ -177,6 +177,9 @@ impl ItemType {
             ItemType::TraitAlias => "traitalias",
         }
     }
+    pub(crate) fn is_method(&self) -> bool {
+        matches!(*self, ItemType::Method | ItemType::TyMethod)
+    }
 }
 
 impl fmt::Display for ItemType {

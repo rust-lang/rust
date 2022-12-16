@@ -6,14 +6,10 @@ LL |   struct R {
 ...
 LL |       let _j = i.clone();
    |                  ^^^^^ method cannot be called on `Box<R>` due to unsatisfied trait bounds
-   |
+  --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
   ::: $SRC_DIR/alloc/src/boxed.rs:LL:COL
    |
-LL | / pub struct Box<
-LL | |     T: ?Sized,
-LL | |     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
-LL | | >(Unique<T>, A);
-   | |_- doesn't satisfy `Box<R>: Clone`
+   = note: doesn't satisfy `Box<R>: Clone`
    |
    = note: the following trait bounds were not satisfied:
            `R: Clone`

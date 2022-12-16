@@ -309,3 +309,48 @@ fn test_find_testable_code_line() {
     t("```rust\n```\n```rust\n```", &[1, 3]);
     t("```rust\n```\n ```rust\n```", &[1, 3]);
 }
+
+#[test]
+fn test_ascii_with_prepending_hashtag() {
+    fn t(input: &str, expect: &str) {
+        let mut map = IdMap::new();
+        let output = Markdown {
+            content: input,
+            links: &[],
+            ids: &mut map,
+            error_codes: ErrorCodes::Yes,
+            edition: DEFAULT_EDITION,
+            playground: &None,
+            heading_offset: HeadingOffset::H2,
+        }
+        .into_string();
+        assert_eq!(output, expect, "original: {}", input);
+    }
+
+    t(
+        r#"```ascii
+#..#.####.#....#.....##..
+#..#.#....#....#....#..#.
+####.###..#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.####.####.####..##..
+```"#,
+        "<div class=\"example-wrap\"><pre class=\"language-ascii\"><code>\
+#..#.####.#....#.....##..
+#..#.#....#....#....#..#.
+####.###..#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.#....#....#....#..#.
+#..#.####.####.####..##..
+</code></pre></div>",
+    );
+    t(
+        r#"```markdown
+# hello
+```"#,
+        "<div class=\"example-wrap\"><pre class=\"language-markdown\"><code>\
+# hello
+</code></pre></div>",
+    );
+}

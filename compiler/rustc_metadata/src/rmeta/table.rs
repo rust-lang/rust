@@ -7,7 +7,6 @@ use rustc_middle::ty::ParameterizedOverTcx;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
-use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 

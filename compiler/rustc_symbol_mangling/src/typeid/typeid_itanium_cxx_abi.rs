@@ -240,7 +240,7 @@ fn encode_predicate<'tcx>(
             s.push_str(&encode_substs(tcx, trait_ref.substs, dict, options));
         }
         ty::ExistentialPredicate::Projection(projection) => {
-            let name = encode_ty_name(tcx, projection.item_def_id);
+            let name = encode_ty_name(tcx, projection.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_substs(tcx, projection.substs, dict, options));
             match projection.term.unpack() {
@@ -646,10 +646,9 @@ fn encode_ty<'tcx>(
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
@@ -799,10 +798,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }

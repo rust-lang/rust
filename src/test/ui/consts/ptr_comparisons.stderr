@@ -1,14 +1,10 @@
 error[E0080]: evaluation of constant value failed
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
    |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ out-of-bounds pointer arithmetic: alloc3 has size $WORD, so pointer to $TWO_WORDS bytes starting at offset 0 is out-of-bounds
+   = note: out-of-bounds pointer arithmetic: alloc3 has size $WORD, so pointer to $TWO_WORDS bytes starting at offset 0 is out-of-bounds
    |
 note: inside `ptr::const_ptr::<impl *const usize>::offset`
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { intrinsics::offset(self, count) }
-   |                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 note: inside `_`
   --> $DIR/ptr_comparisons.rs:50:34
    |

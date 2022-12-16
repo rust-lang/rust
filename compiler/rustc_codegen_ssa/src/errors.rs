@@ -548,3 +548,10 @@ pub struct ArchiveBuildFailure {
 pub struct UnknownArchiveKind<'a> {
     pub kind: &'a str,
 }
+
+#[derive(Diagnostic)]
+#[diag(codegen_ssa_expected_used_symbol)]
+pub struct ExpectedUsedSymbol {
+    #[primary_span]
+    pub span: Span,
+}

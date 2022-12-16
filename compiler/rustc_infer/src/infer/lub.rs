@@ -103,6 +103,11 @@ impl<'tcx> TypeRelation<'tcx> for Lub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // LUB of a binder and itself is just itself
+        if a == b {
+            return Ok(a);
+        }
+
         debug!("binders(a={:?}, b={:?})", a, b);
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
             // When higher-ranked types are involved, computing the LUB is

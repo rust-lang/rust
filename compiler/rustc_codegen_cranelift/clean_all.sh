@@ -2,7 +2,7 @@
 set -e
 
 rm -rf build_sysroot/{sysroot_src/,target/,compiler-builtins/,rustc_version}
-rm -rf target/ build/ perf.data{,.old} y.bin
+rm -rf target/ build/ dist/ perf.data{,.old} y.bin
 rm -rf download/
 
 # Kept for now in case someone updates their checkout of cg_clif before running clean_all.sh

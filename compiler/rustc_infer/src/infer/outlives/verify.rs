@@ -178,7 +178,7 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
             ),
             Component::Projection(projection_ty) => self.projection_opaque_bounds(
                 GenericKind::Projection(projection_ty),
-                projection_ty.item_def_id,
+                projection_ty.def_id,
                 projection_ty.substs,
                 visited,
             ),

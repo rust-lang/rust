@@ -1,9 +1,10 @@
 use rustc_hir::def::DefKind;
-use rustc_hir::LangItem;
+use rustc_hir::{LangItem, CRATE_HIR_ID};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::PointerArithmetic;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::lint::builtin::INVALID_ALIGNMENT;
 use std::borrow::Borrow;
 use std::hash::Hash;
 use std::ops::ControlFlow;
@@ -47,14 +48,34 @@ pub struct CompileTimeInterpreter<'mir, 'tcx> {
     pub(super) can_access_statics: bool,
 
     /// Whether to check alignment during evaluation.
-    pub(super) check_alignment: bool,
+    pub(super) check_alignment: CheckAlignment,
+}
+
+#[derive(Copy, Clone)]
+pub enum CheckAlignment {
+    /// Ignore alignment when following relocations.
+    /// This is mainly used in interning.
+    No,
+    /// Hard error when dereferencing a misaligned pointer.
+    Error,
+    /// Emit a future incompat lint when dereferencing a misaligned pointer.
+    FutureIncompat,
+}
+
+impl CheckAlignment {
+    pub fn should_check(&self) -> bool {
+        match self {
+            CheckAlignment::No => false,
+            CheckAlignment::Error | CheckAlignment::FutureIncompat => true,
+        }
+    }
 }
 
 impl<'mir, 'tcx> CompileTimeInterpreter<'mir, 'tcx> {
     pub(crate) fn new(
         const_eval_limit: Limit,
         can_access_statics: bool,
-        check_alignment: bool,
+        check_alignment: CheckAlignment,
     ) -> Self {
         CompileTimeInterpreter {
             steps_remaining: const_eval_limit.0,
@@ -309,13 +330,43 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
     const PANIC_ON_ALLOC_FAIL: bool = false; // will be raised as a proper error
 
     #[inline(always)]
-    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
+    fn enforce_alignment(ecx: &InterpCx<'mir, 'tcx, Self>) -> CheckAlignment {
         ecx.machine.check_alignment
     }
 
     #[inline(always)]
     fn enforce_validity(ecx: &InterpCx<'mir, 'tcx, Self>) -> bool {
         ecx.tcx.sess.opts.unstable_opts.extra_const_ub_checks
+    }
+
+    fn alignment_check_failed(
+        ecx: &InterpCx<'mir, 'tcx, Self>,
+        has: Align,
+        required: Align,
+        check: CheckAlignment,
+    ) -> InterpResult<'tcx, ()> {
+        let err = err_ub!(AlignmentCheckFailed { has, required }).into();
+        match check {
+            CheckAlignment::Error => Err(err),
+            CheckAlignment::No => span_bug!(
+                ecx.cur_span(),
+                "`alignment_check_failed` called when no alignment check requested"
+            ),
+            CheckAlignment::FutureIncompat => {
+                let err = ConstEvalErr::new(ecx, err, None);
+                ecx.tcx.struct_span_lint_hir(
+                    INVALID_ALIGNMENT,
+                    ecx.stack().iter().find_map(|frame| frame.lint_root()).unwrap_or(CRATE_HIR_ID),
+                    err.span,
+                    err.error.to_string(),
+                    |db| {
+                        err.decorate(db, |_| {});
+                        db
+                    },
+                );
+                Ok(())
+            }
+        }
     }
 
     fn load_mir(

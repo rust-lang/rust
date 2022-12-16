@@ -653,7 +653,10 @@ pub mod guard {
 ))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    use libc::{mmap, mprotect};
+    #[cfg(not(target_os = "linux"))]
+    use libc::{mmap as mmap64, mprotect};
+    #[cfg(target_os = "linux")]
+    use libc::{mmap64, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
     use crate::io;
@@ -803,7 +806,7 @@ pub mod guard {
             // read/write permissions and only then mprotect() it to
             // no permissions at all. See issue #50313.
             let stackptr = get_stack_start_aligned()?;
-            let result = mmap(
+            let result = mmap64(
                 stackptr,
                 page_size,
                 PROT_READ | PROT_WRITE,

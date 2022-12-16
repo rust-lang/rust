@@ -293,7 +293,7 @@ fn build_union(cx: &mut DocContext<'_>, did: DefId) -> clean::Union {
 
 fn build_type_alias(cx: &mut DocContext<'_>, did: DefId) -> Box<clean::Typedef> {
     let predicates = cx.tcx.explicit_predicates_of(did);
-    let type_ = clean_middle_ty(cx.tcx.type_of(did), cx, Some(did));
+    let type_ = clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did)), cx, Some(did));
 
     Box::new(clean::Typedef {
         type_,
@@ -325,7 +325,7 @@ pub(crate) fn build_impls(
     // * https://github.com/rust-lang/rust/pull/99917 — where the feature got used
     // * https://github.com/rust-lang/rust/issues/53487 — overall tracking issue for Error
     if tcx.has_attr(did, sym::rustc_has_incoherent_inherent_impls) {
-        use rustc_middle::ty::fast_reject::SimplifiedTypeGen::*;
+        use rustc_middle::ty::fast_reject::SimplifiedType::*;
         let type_ =
             if tcx.is_trait(did) { TraitSimplifiedType(did) } else { AdtSimplifiedType(did) };
         for &did in tcx.incoherent_impls(type_) {
@@ -405,7 +405,7 @@ pub(crate) fn build_impl(
 
     let for_ = match &impl_item {
         Some(impl_) => clean_ty(impl_.self_ty, cx),
-        None => clean_middle_ty(tcx.type_of(did), cx, Some(did)),
+        None => clean_middle_ty(ty::Binder::dummy(tcx.type_of(did)), cx, Some(did)),
     };
 
     // Only inline impl if the implementing type is
@@ -496,7 +496,8 @@ pub(crate) fn build_impl(
         ),
     };
     let polarity = tcx.impl_polarity(did);
-    let trait_ = associated_trait.map(|t| clean_trait_ref_with_bindings(cx, t, ThinVec::new()));
+    let trait_ = associated_trait
+        .map(|t| clean_trait_ref_with_bindings(cx, ty::Binder::dummy(t), ThinVec::new()));
     if trait_.as_ref().map(|t| t.def_id()) == tcx.lang_items().deref_trait() {
         super::build_deref_target_impls(cx, &trait_items, ret);
     }
@@ -640,14 +641,14 @@ pub(crate) fn print_inlined_const(tcx: TyCtxt<'_>, did: DefId) -> String {
 
 fn build_const(cx: &mut DocContext<'_>, def_id: DefId) -> clean::Constant {
     clean::Constant {
-        type_: clean_middle_ty(cx.tcx.type_of(def_id), cx, Some(def_id)),
+        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(def_id)), cx, Some(def_id)),
         kind: clean::ConstantKind::Extern { def_id },
     }
 }
 
 fn build_static(cx: &mut DocContext<'_>, did: DefId, mutable: bool) -> clean::Static {
     clean::Static {
-        type_: clean_middle_ty(cx.tcx.type_of(did), cx, Some(did)),
+        type_: clean_middle_ty(ty::Binder::dummy(cx.tcx.type_of(did)), cx, Some(did)),
         mutability: if mutable { Mutability::Mut } else { Mutability::Not },
         expr: None,
     }

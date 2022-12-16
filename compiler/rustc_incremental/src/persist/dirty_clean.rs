@@ -30,8 +30,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::iter::FromIterator;
-use std::vec::Vec;
 
 const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
 const EXCEPT: Symbol = sym::except;

@@ -16,7 +16,6 @@ use rustc_target::abi::{Abi, Size, WrappingRange};
 use rustc_target::abi::{Integer, TagEncoding, Variants};
 use rustc_target::spec::abi::Abi as SpecAbi;
 
-use std::cmp;
 use std::iter;
 use std::ops::ControlFlow;
 
@@ -531,7 +530,7 @@ impl<'tcx> LateLintPass<'tcx> for TypeLimits {
             _ => {}
         };
 
-        fn is_valid<T: cmp::PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
+        fn is_valid<T: PartialOrd>(binop: hir::BinOp, v: T, min: T, max: T) -> bool {
             match binop.node {
                 hir::BinOpKind::Lt => v > min && v <= max,
                 hir::BinOpKind::Le => v >= min && v < max,
@@ -1140,18 +1139,20 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
             // While opaque types are checked for earlier, if a projection in a struct field
             // normalizes to an opaque type, then it will reach this branch.
-            ty::Opaque(..) => {
+            ty::Alias(ty::Opaque, ..) => {
                 FfiUnsafe { ty, reason: fluent::lint_improper_ctypes_opaque, help: None }
             }
 
             // `extern "C" fn` functions can have type parameters, which may or may not be FFI-safe,
             //  so they are currently ignored for the purposes of this lint.
-            ty::Param(..) | ty::Projection(..) if matches!(self.mode, CItemKind::Definition) => {
+            ty::Param(..) | ty::Alias(ty::Projection, ..)
+                if matches!(self.mode, CItemKind::Definition) =>
+            {
                 FfiSafe
             }
 
             ty::Param(..)
-            | ty::Projection(..)
+            | ty::Alias(ty::Projection, ..)
             | ty::Infer(..)
             | ty::Bound(..)
             | ty::Error(_)
@@ -1206,7 +1207,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                     return ControlFlow::CONTINUE;
                 }
 
-                if let ty::Opaque(..) = ty.kind() {
+                if let ty::Alias(ty::Opaque, ..) = ty.kind() {
                     ControlFlow::Break(ty)
                 } else {
                     ty.super_visit_with(self)

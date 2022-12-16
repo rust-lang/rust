@@ -52,7 +52,11 @@ impl<'tcx> MirPass<'tcx> for RemoveZsts {
 fn maybe_zst(ty: Ty<'_>) -> bool {
     match ty.kind() {
         // maybe ZST (could be more precise)
-        ty::Adt(..) | ty::Array(..) | ty::Closure(..) | ty::Tuple(..) | ty::Opaque(..) => true,
+        ty::Adt(..)
+        | ty::Array(..)
+        | ty::Closure(..)
+        | ty::Tuple(..)
+        | ty::Alias(ty::Opaque, ..) => true,
         // definitely ZST
         ty::FnDef(..) | ty::Never => true,
         // unreachable or can't be ZST

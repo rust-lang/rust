@@ -90,7 +90,7 @@ pub(crate) fn insert_outlives_predicate<'tcx>(
                         // ```
                         //
                         // Here we want to add an explicit `where <T as Iterator>::Item: 'a`.
-                        let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.item_def_id, proj_ty.substs);
+                        let ty: Ty<'tcx> = tcx.mk_projection(proj_ty.def_id, proj_ty.substs);
                         required_predicates
                             .entry(ty::OutlivesPredicate(ty.into(), outlived_region))
                             .or_insert(span);

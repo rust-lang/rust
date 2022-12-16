@@ -192,3 +192,5 @@ codegen_ssa_archive_build_failure =
 
 codegen_ssa_unknown_archive_kind =
     Don't know how to build archive of type: {$kind}
+
+codegen_ssa_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`

@@ -15,11 +15,10 @@ pub use crate::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
+use std::cmp;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
-use std::{clone::Clone, cmp};
-use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
@@ -439,7 +438,11 @@ impl SourceMap {
         }
     }
 
-    fn span_to_string(&self, sp: Span, filename_display_pref: FileNameDisplayPreference) -> String {
+    pub fn span_to_string(
+        &self,
+        sp: Span,
+        filename_display_pref: FileNameDisplayPreference,
+    ) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
@@ -447,12 +450,15 @@ impl SourceMap {
         let lo = self.lookup_char_pos(sp.lo());
         let hi = self.lookup_char_pos(sp.hi());
         format!(
-            "{}:{}:{}: {}:{}",
+            "{}:{}:{}{}",
             lo.file.name.display(filename_display_pref),
             lo.line,
             lo.col.to_usize() + 1,
-            hi.line,
-            hi.col.to_usize() + 1,
+            if let FileNameDisplayPreference::Short = filename_display_pref {
+                String::new()
+            } else {
+                format!(": {}:{}", hi.line, hi.col.to_usize() + 1)
+            }
         )
     }
 
@@ -942,7 +948,7 @@ impl SourceMap {
     /// Otherwise, the span reached to limit is returned.
     pub fn span_look_ahead(&self, span: Span, expect: Option<&str>, limit: Option<usize>) -> Span {
         let mut sp = span;
-        for _ in 0..limit.unwrap_or(100 as usize) {
+        for _ in 0..limit.unwrap_or(100_usize) {
             sp = self.next_point(sp);
             if let Ok(ref snippet) = self.span_to_snippet(sp) {
                 if expect.map_or(false, |es| snippet == es) {
@@ -1151,7 +1157,7 @@ impl FilePathMapping {
             // NOTE: We are iterating over the mapping entries from last to first
             //       because entries specified later on the command line should
             //       take precedence.
-            for &(ref from, ref to) in mapping.iter().rev() {
+            for (from, to) in mapping.iter().rev() {
                 debug!("Trying to apply {from:?} => {to:?}");
 
                 if let Ok(rest) = path.strip_prefix(from) {

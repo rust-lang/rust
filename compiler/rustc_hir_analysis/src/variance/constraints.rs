@@ -249,12 +249,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(current, def.did(), substs, variance);
             }
 
-            ty::Projection(ref data) => {
+            ty::Alias(_, ref data) => {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
-            }
-
-            ty::Opaque(_, substs) => {
-                self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
             ty::Dynamic(data, r, _) => {

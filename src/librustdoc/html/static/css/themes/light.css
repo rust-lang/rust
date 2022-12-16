@@ -80,12 +80,7 @@
 	--source-sidebar-background-selected: #fff;
 	--source-sidebar-background-hover: #e0e0e0;
 	--table-alt-row-background-color: #F5F5F5;
-}
-
-.content .item-info::before { color: #ccc; }
-
-body.source .example-wrap pre.rust a {
-	background: #eee;
+	--codeblock-link-background: #eee;
 }
 
 #titles > button:not(.selected) {

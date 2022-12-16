@@ -25,7 +25,7 @@ use rustc_middle::infer::unify_key::{ConstVariableOrigin, ConstVariableOriginKin
 use rustc_middle::traits::util::supertraits;
 use rustc_middle::ty::fast_reject::DeepRejectCtxt;
 use rustc_middle::ty::fast_reject::{simplify_type, TreatParams};
-use rustc_middle::ty::print::with_crate_prefix;
+use rustc_middle::ty::print::{with_crate_prefix, with_forced_trimmed_paths};
 use rustc_middle::ty::{self, DefIdTree, GenericArgKind, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{IsSuggestable, ToPolyTraitRef};
 use rustc_span::symbol::{kw, sym, Ident};
@@ -270,7 +270,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let tcx = self.tcx;
 
                 let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-                let ty_str = self.ty_to_string(rcvr_ty);
+                let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
                 let is_method = mode == Mode::MethodCall;
                 let item_kind = if is_method {
                     "method"
@@ -557,15 +557,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                         .chain(projection_ty.substs.iter().skip(1)),
                                 );
 
-                                let quiet_projection_ty = ty::ProjectionTy {
-                                    substs: substs_with_infer_self,
-                                    item_def_id: projection_ty.item_def_id,
-                                };
+                                let quiet_projection_ty =
+                                    tcx.mk_alias_ty(projection_ty.def_id, substs_with_infer_self);
 
                                 let term = pred.skip_binder().term;
 
                                 let obligation = format!("{} = {}", projection_ty, term);
-                                let quiet = format!("{} = {}", quiet_projection_ty, term);
+                                let quiet = with_forced_trimmed_paths!(format!(
+                                    "{} = {}",
+                                    quiet_projection_ty, term
+                                ));
 
                                 bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                                 Some((obligation, projection_ty.self_ty()))
@@ -575,7 +576,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 let self_ty = p.self_ty();
                                 let path = p.print_only_trait_path();
                                 let obligation = format!("{}: {}", self_ty, path);
-                                let quiet = format!("_: {}", path);
+                                let quiet = with_forced_trimmed_paths!(format!("_: {}", path));
                                 bound_span_label(self_ty, &obligation, &quiet);
                                 Some((obligation, self_ty))
                             }
@@ -798,7 +799,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                 (None, None)
                             };
                         let primary_message = primary_message.unwrap_or_else(|| format!(
-                            "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
+                            "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, \
+                             but its trait bounds were not satisfied"
                         ));
                         err.set_primary_message(&primary_message);
                         if let Some(label) = label {
@@ -895,7 +897,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             }
                         }
                     } else {
-                        err.span_label(span, format!("{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"));
+                        let ty_str = if ty_str.len() > 50 {
+                            String::new()
+                        } else {
+                            format!("on `{ty_str}` ")
+                        };
+                        err.span_label(span, format!(
+                            "{item_kind} cannot be called {ty_str}due to unsatisfied trait bounds"
+                        ));
                     }
                 };
 
@@ -1843,7 +1852,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.suggest_derive(err, &preds);
     }
 
-    fn suggest_derive(
+    pub fn suggest_derive(
         &self,
         err: &mut Diagnostic,
         unsatisfied_predicates: &[(
@@ -1853,7 +1862,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )],
     ) {
         let mut derives = Vec::<(String, Span, Symbol)>::new();
-        let mut traits = Vec::<Span>::new();
+        let mut traits = Vec::new();
         for (pred, _, _) in unsatisfied_predicates {
             let ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) = pred.kind().skip_binder() else { continue };
             let adt = match trait_pred.self_ty().ty_adt_def() {
@@ -1892,10 +1901,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                     derives.push((self_name, self_span, diagnostic_name));
                 } else {
-                    traits.push(self.tcx.def_span(trait_pred.def_id()));
+                    traits.push(trait_pred.def_id());
                 }
             } else {
-                traits.push(self.tcx.def_span(trait_pred.def_id()));
+                traits.push(trait_pred.def_id());
             }
         }
         traits.sort();
@@ -1918,10 +1927,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let len = traits.len();
         if len > 0 {
-            let span: MultiSpan = traits.into();
+            let span =
+                MultiSpan::from_spans(traits.iter().map(|&did| self.tcx.def_span(did)).collect());
+            let mut names = format!("`{}`", self.tcx.def_path_str(traits[0]));
+            for (i, &did) in traits.iter().enumerate().skip(1) {
+                if len > 2 {
+                    names.push_str(", ");
+                }
+                if i == len - 1 {
+                    names.push_str(" and ");
+                }
+                names.push('`');
+                names.push_str(&self.tcx.def_path_str(did));
+                names.push('`');
+            }
             err.span_note(
                 span,
-                &format!("the following trait{} must be implemented", pluralize!(len),),
+                &format!("the trait{} {} must be implemented", pluralize!(len), names),
             );
         }
 
@@ -1969,7 +1991,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         | ty::Float(_)
                         | ty::Adt(_, _)
                         | ty::Str
-                        | ty::Projection(_)
+                        | ty::Alias(ty::Projection, _)
                         | ty::Param(_) => format!("{deref_ty}"),
                         // we need to test something like  <&[_]>::len or <(&[u32])>::len
                         // and Vec::function();
@@ -2269,7 +2291,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             t.def_id() == info.def_id
                         }
                         ty::PredicateKind::Clause(ty::Clause::Projection(p)) => {
-                            p.projection_ty.item_def_id == info.def_id
+                            p.projection_ty.def_id == info.def_id
                         }
                         _ => false,
                     }

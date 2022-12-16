@@ -114,7 +114,7 @@ impl Lit {
                 if let NtExpr(expr) | NtLiteral(expr) = &**nt
                 && let ast::ExprKind::Lit(token_lit) = expr.kind =>
             {
-                Some(token_lit.clone())
+                Some(token_lit)
             }
             _ => None,
         }

@@ -1244,7 +1244,7 @@ fn is_mixed_projection_predicate<'tcx>(
         let mut projection_ty = projection_predicate.projection_ty;
         loop {
             match projection_ty.self_ty().kind() {
-                ty::Projection(inner_projection_ty) => {
+                ty::Alias(ty::Projection, inner_projection_ty) => {
                     projection_ty = *inner_projection_ty;
                 }
                 ty::Param(param_ty) => {
@@ -1330,7 +1330,7 @@ fn replace_types<'tcx>(
                     && let Some(term_ty) = projection_predicate.term.ty()
                     && let ty::Param(term_param_ty) = term_ty.kind()
                 {
-                    let item_def_id = projection_predicate.projection_ty.item_def_id;
+                    let item_def_id = projection_predicate.projection_ty.def_id;
                     let assoc_item = cx.tcx.associated_item(item_def_id);
                     let projection = cx.tcx
                         .mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(new_ty, []));
@@ -1390,8 +1390,8 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
                 continue;
             },
             ty::Param(_) => TyPosition::new_deref_stable_for_result(precedence, ty),
-            ty::Projection(_) if ty.has_non_region_param() => TyPosition::new_deref_stable_for_result(precedence, ty),
-            ty::Infer(_) | ty::Error(_) | ty::Bound(..) | ty::Opaque(..) | ty::Placeholder(_) | ty::Dynamic(..) => {
+            ty::Alias(ty::Projection, _) if ty.has_non_region_param() => TyPosition::new_deref_stable_for_result(precedence, ty),
+            ty::Infer(_) | ty::Error(_) | ty::Bound(..) | ty::Alias(ty::Opaque, ..) | ty::Placeholder(_) | ty::Dynamic(..) => {
                 Position::ReborrowStable(precedence).into()
             },
             ty::Adt(..) if ty.has_placeholders() || ty.has_opaque_types() => {
@@ -1417,7 +1417,7 @@ fn ty_auto_deref_stability<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, precedenc
             | ty::Closure(..)
             | ty::Never
             | ty::Tuple(_)
-            | ty::Projection(_) => {
+            | ty::Alias(ty::Projection, _) => {
                 Position::DerefStable(precedence, ty.is_sized(cx.tcx, cx.param_env.without_caller_bounds())).into()
             },
         };

@@ -216,8 +216,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         match *ty.kind() {
             // Print all nominal types as paths (unlike `pretty_print_type`).
             ty::FnDef(def_id, substs)
-            | ty::Opaque(def_id, substs)
-            | ty::Projection(ty::ProjectionTy { item_def_id: def_id, substs })
+            | ty::Alias(_, ty::AliasTy { def_id, substs, .. })
             | ty::Closure(def_id, substs)
             | ty::Generator(def_id, substs, _) => self.print_def_path(def_id, substs),
 
@@ -287,11 +286,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolPrinter<'tcx> {
         // Similar to `pretty_path_qualified`, but for the other
         // types that are printed as paths (see `print_type` above).
         match self_ty.kind() {
-            ty::FnDef(..)
-            | ty::Opaque(..)
-            | ty::Projection(_)
-            | ty::Closure(..)
-            | ty::Generator(..)
+            ty::FnDef(..) | ty::Alias(..) | ty::Closure(..) | ty::Generator(..)
                 if trait_ref.is_none() =>
             {
                 self.print_type(self_ty)

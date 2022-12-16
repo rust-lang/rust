@@ -106,7 +106,7 @@ pub trait TypeRelation<'tcx>: Sized {
         T: Relate<'tcx>;
 }
 
-pub trait Relate<'tcx>: TypeFoldable<'tcx> + Copy {
+pub trait Relate<'tcx>: TypeFoldable<'tcx> + PartialEq + Copy {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
         a: Self,
@@ -270,21 +270,17 @@ impl<'tcx> Relate<'tcx> for abi::Abi {
     }
 }
 
-impl<'tcx> Relate<'tcx> for ty::ProjectionTy<'tcx> {
+impl<'tcx> Relate<'tcx> for ty::AliasTy<'tcx> {
     fn relate<R: TypeRelation<'tcx>>(
         relation: &mut R,
-        a: ty::ProjectionTy<'tcx>,
-        b: ty::ProjectionTy<'tcx>,
-    ) -> RelateResult<'tcx, ty::ProjectionTy<'tcx>> {
-        if a.item_def_id != b.item_def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(
-                relation,
-                a.item_def_id,
-                b.item_def_id,
-            )))
+        a: ty::AliasTy<'tcx>,
+        b: ty::AliasTy<'tcx>,
+    ) -> RelateResult<'tcx, ty::AliasTy<'tcx>> {
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relation.relate(a.substs, b.substs)?;
-            Ok(ty::ProjectionTy { item_def_id: a.item_def_id, substs: &substs })
+            Ok(relation.tcx().mk_alias_ty(a.def_id, substs))
         }
     }
 }
@@ -295,12 +291,8 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
         a: ty::ExistentialProjection<'tcx>,
         b: ty::ExistentialProjection<'tcx>,
     ) -> RelateResult<'tcx, ty::ExistentialProjection<'tcx>> {
-        if a.item_def_id != b.item_def_id {
-            Err(TypeError::ProjectionMismatched(expected_found(
-                relation,
-                a.item_def_id,
-                b.item_def_id,
-            )))
+        if a.def_id != b.def_id {
+            Err(TypeError::ProjectionMismatched(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let term = relation.relate_with_variance(
                 ty::Invariant,
@@ -314,7 +306,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialProjection<'tcx> {
                 a.substs,
                 b.substs,
             )?;
-            Ok(ty::ExistentialProjection { item_def_id: a.item_def_id, substs, term })
+            Ok(ty::ExistentialProjection { def_id: a.def_id, substs, term })
         }
     }
 }
@@ -330,7 +322,7 @@ impl<'tcx> Relate<'tcx> for ty::TraitRef<'tcx> {
             Err(TypeError::Traits(expected_found(relation, a.def_id, b.def_id)))
         } else {
             let substs = relate_substs(relation, a.substs, b.substs)?;
-            Ok(ty::TraitRef { def_id: a.def_id, substs })
+            Ok(relation.tcx().mk_trait_ref(a.def_id, substs))
         }
     }
 }
@@ -351,7 +343,7 @@ impl<'tcx> Relate<'tcx> for ty::ExistentialTraitRef<'tcx> {
     }
 }
 
-#[derive(Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
+#[derive(PartialEq, Copy, Debug, Clone, TypeFoldable, TypeVisitable)]
 struct GeneratorWitness<'tcx>(&'tcx ty::List<Ty<'tcx>>);
 
 impl<'tcx> Relate<'tcx> for GeneratorWitness<'tcx> {
@@ -559,14 +551,15 @@ pub fn super_relate_tys<'tcx, R: TypeRelation<'tcx>>(
         }
 
         // these two are already handled downstream in case of lazy normalization
-        (&ty::Projection(a_data), &ty::Projection(b_data)) => {
+        (&ty::Alias(ty::Projection, a_data), &ty::Alias(ty::Projection, b_data)) => {
             let projection_ty = relation.relate(a_data, b_data)?;
-            Ok(tcx.mk_projection(projection_ty.item_def_id, projection_ty.substs))
+            Ok(tcx.mk_projection(projection_ty.def_id, projection_ty.substs))
         }
 
-        (&ty::Opaque(a_def_id, a_substs), &ty::Opaque(b_def_id, b_substs))
-            if a_def_id == b_def_id =>
-        {
+        (
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, substs: a_substs, .. }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, substs: b_substs, .. }),
+        ) if a_def_id == b_def_id => {
             if relation.intercrate() {
                 // During coherence, opaque types should be treated as equal to each other, even if their generic params
                 // differ, as they could resolve to the same hidden type, even for different generic params.

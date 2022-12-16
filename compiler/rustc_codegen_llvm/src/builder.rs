@@ -979,15 +979,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn cleanup_landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value) -> &'ll Value {
+    fn cleanup_landing_pad(&mut self, pers_fn: &'ll Value) -> (&'ll Value, &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
         let landing_pad = self.landing_pad(ty, pers_fn, 1 /* FIXME should this be 0? */);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
-        landing_pad
+        (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
     }
 
-    fn resume(&mut self, exn: &'ll Value) {
+    fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
+        let mut exn = self.const_undef(ty);
+        exn = self.insert_value(exn, exn0, 0);
+        exn = self.insert_value(exn, exn1, 1);
         unsafe {
             llvm::LLVMBuildResume(self.llbuilder, exn);
         }

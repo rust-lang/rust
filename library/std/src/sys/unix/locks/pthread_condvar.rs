@@ -2,6 +2,7 @@ use crate::cell::UnsafeCell;
 use crate::ptr;
 use crate::sync::atomic::{AtomicPtr, Ordering::Relaxed};
 use crate::sys::locks::{pthread_mutex, Mutex};
+use crate::sys::time::TIMESPEC_MAX;
 use crate::sys_common::lazy_box::{LazyBox, LazyInit};
 use crate::time::Duration;
 
@@ -10,13 +11,6 @@ struct AllocatedCondvar(UnsafeCell<libc::pthread_cond_t>);
 pub struct Condvar {
     inner: LazyBox<AllocatedCondvar>,
     mutex: AtomicPtr<libc::pthread_mutex_t>,
-}
-
-const TIMESPEC_MAX: libc::timespec =
-    libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
-
-fn saturating_cast_to_time_t(value: u64) -> libc::time_t {
-    if value > <libc::time_t>::MAX as u64 { <libc::time_t>::MAX } else { value as libc::time_t }
 }
 
 #[inline]
@@ -133,26 +127,15 @@ impl Condvar {
         target_os = "horizon"
     )))]
     pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
-        use crate::mem;
+        use crate::sys::time::Timespec;
 
         let mutex = pthread_mutex::raw(mutex);
         self.verify(mutex);
 
-        let mut now: libc::timespec = mem::zeroed();
-        let r = libc::clock_gettime(libc::CLOCK_MONOTONIC, &mut now);
-        assert_eq!(r, 0);
-
-        // Nanosecond calculations can't overflow because both values are below 1e9.
-        let nsec = dur.subsec_nanos() + now.tv_nsec as u32;
-
-        let sec = saturating_cast_to_time_t(dur.as_secs())
-            .checked_add((nsec / 1_000_000_000) as libc::time_t)
-            .and_then(|s| s.checked_add(now.tv_sec));
-        let nsec = nsec % 1_000_000_000;
-
-        let timeout =
-            sec.map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec as _ }).unwrap_or(TIMESPEC_MAX);
-
+        let timeout = Timespec::now(libc::CLOCK_MONOTONIC)
+            .checked_add_duration(&dur)
+            .and_then(|t| t.to_timespec())
+            .unwrap_or(TIMESPEC_MAX);
         let r = libc::pthread_cond_timedwait(raw(self), mutex, &timeout);
         assert!(r == libc::ETIMEDOUT || r == 0);
         r == 0
@@ -169,57 +152,41 @@ impl Condvar {
         target_os = "espidf",
         target_os = "horizon"
     ))]
-    pub unsafe fn wait_timeout(&self, mutex: &Mutex, mut dur: Duration) -> bool {
+    pub unsafe fn wait_timeout(&self, mutex: &Mutex, dur: Duration) -> bool {
+        use crate::sys::time::SystemTime;
         use crate::time::Instant;
 
         let mutex = pthread_mutex::raw(mutex);
         self.verify(mutex);
 
-        // 1000 years
-        let max_dur = Duration::from_secs(1000 * 365 * 86400);
+        // OSX implementation of `pthread_cond_timedwait` is buggy
+        // with super long durations. When duration is greater than
+        // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
+        // in macOS Sierra returns error 316.
+        //
+        // This program demonstrates the issue:
+        // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
+        //
+        // To work around this issue, and possible bugs of other OSes, timeout
+        // is clamped to 1000 years, which is allowable per the API of `wait_timeout`
+        // because of spurious wakeups.
+        let dur = Duration::min(dur, Duration::from_secs(1000 * 365 * 86400));
 
-        if dur > max_dur {
-            // OSX implementation of `pthread_cond_timedwait` is buggy
-            // with super long durations. When duration is greater than
-            // 0x100_0000_0000_0000 seconds, `pthread_cond_timedwait`
-            // in macOS Sierra return error 316.
-            //
-            // This program demonstrates the issue:
-            // https://gist.github.com/stepancheg/198db4623a20aad2ad7cddb8fda4a63c
-            //
-            // To work around this issue, and possible bugs of other OSes, timeout
-            // is clamped to 1000 years, which is allowable per the API of `wait_timeout`
-            // because of spurious wakeups.
+        // pthread_cond_timedwait uses system time, but we want to report timeout
+        // based on stable time.
+        let now = Instant::now();
 
-            dur = max_dur;
-        }
-
-        // First, figure out what time it currently is, in both system and
-        // stable time.  pthread_cond_timedwait uses system time, but we want to
-        // report timeout based on stable time.
-        let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
-        let stable_now = Instant::now();
-        let r = libc::gettimeofday(&mut sys_now, ptr::null_mut());
-        assert_eq!(r, 0, "unexpected error: {:?}", crate::io::Error::last_os_error());
-
-        let nsec = dur.subsec_nanos() as libc::c_long + (sys_now.tv_usec * 1000) as libc::c_long;
-        let extra = (nsec / 1_000_000_000) as libc::time_t;
-        let nsec = nsec % 1_000_000_000;
-        let seconds = saturating_cast_to_time_t(dur.as_secs());
-
-        let timeout = sys_now
-            .tv_sec
-            .checked_add(extra)
-            .and_then(|s| s.checked_add(seconds))
-            .map(|s| libc::timespec { tv_sec: s, tv_nsec: nsec })
+        let timeout = SystemTime::now()
+            .t
+            .checked_add_duration(&dur)
+            .and_then(|t| t.to_timespec())
             .unwrap_or(TIMESPEC_MAX);
 
-        // And wait!
         let r = libc::pthread_cond_timedwait(raw(self), mutex, &timeout);
         debug_assert!(r == libc::ETIMEDOUT || r == 0);
 
         // ETIMEDOUT is not a totally reliable method of determining timeout due
         // to clock shifts, so do the check ourselves
-        stable_now.elapsed() < dur
+        now.elapsed() < dur
     }
 }

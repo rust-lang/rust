@@ -6,11 +6,6 @@ LL |     pub fn run() -> Result<_> {
    |                     |
    |                     expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic argument
    |
 LL |     pub fn run() -> Result<_, E> {
@@ -24,11 +19,6 @@ LL |     pub fn interact(&mut self) -> Result<_> {
    |                                   |
    |                                   expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic argument
    |
 LL |     pub fn interact(&mut self) -> Result<_, E> {

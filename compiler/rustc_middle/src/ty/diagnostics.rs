@@ -3,7 +3,7 @@
 use std::ops::ControlFlow;
 
 use crate::ty::{
-    visit::TypeVisitable, Const, ConstKind, DefIdTree, ExistentialPredicate, InferConst, InferTy,
+    visit::TypeVisitable, AliasTy, Const, ConstKind, DefIdTree, InferConst, InferTy, Opaque,
     PolyTraitPredicate, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor,
 };
 
@@ -457,26 +457,15 @@ impl<'tcx> TypeVisitor<'tcx> for IsSuggestableVisitor<'tcx> {
                 return ControlFlow::Break(());
             }
 
-            Opaque(did, _) => {
-                let parent = self.tcx.parent(*did);
+            Alias(Opaque, AliasTy { def_id, .. }) => {
+                let parent = self.tcx.parent(*def_id);
                 if let hir::def::DefKind::TyAlias | hir::def::DefKind::AssocTy = self.tcx.def_kind(parent)
-                    && let Opaque(parent_did, _) = self.tcx.type_of(parent).kind()
-                    && parent_did == did
+                    && let Alias(Opaque, AliasTy { def_id: parent_opaque_def_id, .. }) = self.tcx.type_of(parent).kind()
+                    && parent_opaque_def_id == def_id
                 {
                     // Okay
                 } else {
                     return ControlFlow::Break(());
-                }
-            }
-
-            Dynamic(dty, _, _) => {
-                for pred in *dty {
-                    match pred.skip_binder() {
-                        ExistentialPredicate::Trait(_) | ExistentialPredicate::Projection(_) => {
-                            // Okay
-                        }
-                        _ => return ControlFlow::Break(()),
-                    }
                 }
             }
 

@@ -487,6 +487,7 @@ fn construct_fn<'tcx>(
         return custom::build_custom_mir(
             tcx,
             fn_def.did.to_def_id(),
+            fn_id,
             thir,
             expr,
             arguments,

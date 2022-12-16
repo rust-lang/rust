@@ -9,7 +9,7 @@ trait MyTrait {
 
 impl MyTrait for i32 {
     fn foo(&self) -> i32 {
-        //~^ ERROR: `i32` is not a future [E0277]
+        //~^ ERROR: method `foo` should be async
         *self
     }
 }

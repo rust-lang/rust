@@ -1,6 +1,5 @@
 use std::borrow::Borrow;
 use std::fmt::Debug;
-use std::iter::FromIterator;
 use std::slice::Iter;
 use std::vec::IntoIter;
 

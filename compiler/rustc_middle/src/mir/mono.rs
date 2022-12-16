@@ -200,6 +200,15 @@ impl<'tcx> MonoItem<'tcx> {
             MonoItem::GlobalAsm(..) => LOCAL_CRATE,
         }
     }
+
+    /// Returns the item's `DefId`
+    pub fn def_id(&self) -> DefId {
+        match *self {
+            MonoItem::Fn(Instance { def, .. }) => def.def_id(),
+            MonoItem::Static(def_id) => def_id,
+            MonoItem::GlobalAsm(item_id) => item_id.owner_id.to_def_id(),
+        }
+    }
 }
 
 impl<'tcx> fmt::Display for MonoItem<'tcx> {

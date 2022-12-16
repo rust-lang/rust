@@ -28,34 +28,6 @@ error[E0080]: evaluation of constant value failed
 LL |     let _x: &u32 = transmute(&[0u8; 4]);
    |                    ^^^^^^^^^^^^^^^^^^^^ constructing invalid value: encountered an unaligned reference (required 4 byte alignment but found 1)
 
-error[E0080]: evaluation of constant value failed
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ accessing memory with alignment 1, but alignment 4 is required
-   |
-note: inside `std::ptr::read::<u32>`
-  --> $SRC_DIR/core/src/ptr/mod.rs:LL:COL
-   |
-LL |         copy_nonoverlapping(src, tmp.as_mut_ptr(), 1);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-note: inside `ptr::const_ptr::<impl *const u32>::read`
-  --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL
-   |
-LL |         unsafe { read(self) }
-   |                  ^^^^^^^^^^
-note: inside `INNER`
-  --> $DIR/detect-extra-ub.rs:38:9
-   |
-LL |         ptr.read();
-   |         ^^^^^^^^^^
-
-note: erroneous constant used
-  --> $DIR/detect-extra-ub.rs:32:5
-   |
-LL |     INNER;
-   |     ^^^^^
-
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

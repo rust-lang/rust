@@ -41,7 +41,6 @@ use rustc_span::{DebuggerVisualizerFile, DebuggerVisualizerType};
 use rustc_target::abi::{Align, Size, VariantIdx};
 
 use std::collections::BTreeSet;
-use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 
 use itertools::Itertools;

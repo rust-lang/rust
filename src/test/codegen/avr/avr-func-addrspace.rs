@@ -9,7 +9,7 @@
 // It also validates that functions can be called through function pointers
 // through traits.
 
-#![feature(no_core, lang_items, unboxed_closures, arbitrary_self_types)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures, arbitrary_self_types)]
 #![crate_type = "lib"]
 #![no_core]
 
@@ -49,6 +49,10 @@ pub trait Fn<Args: Tuple>: FnOnce<Args> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
+extern "rust-intrinsic" {
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
+}
+
 pub static mut STORAGE_FOO: fn(&usize, &mut u32) -> Result<(), ()> = arbitrary_black_box;
 pub static mut STORAGE_BAR: u32 = 12;
 
@@ -86,4 +90,22 @@ pub extern "C" fn test() {
     unsafe {
         STORAGE_FOO(&1, &mut buf);
     }
+}
+
+// Validate that we can codegen transmutes between data ptrs and fn ptrs.
+
+// CHECK: define{{.+}}{{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}} @transmute_data_ptr_to_fn({{\{\}\*|ptr}}{{.*}} %x)
+#[no_mangle]
+pub unsafe fn transmute_data_ptr_to_fn(x: *const ()) -> fn() {
+    // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
+    // as long as it doesn't cause a verifier error by using `bitcast`.
+    transmute(x)
+}
+
+// CHECK: define{{.+}}{{\{\}\*|ptr}} @transmute_fn_ptr_to_data({{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}}{{.*}} %x)
+#[no_mangle]
+pub unsafe fn transmute_fn_ptr_to_data(x: fn()) -> *const () {
+    // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
+    // as long as it doesn't cause a verifier error by using `bitcast`.
+    transmute(x)
 }

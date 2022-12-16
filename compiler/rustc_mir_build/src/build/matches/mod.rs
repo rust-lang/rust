@@ -30,7 +30,6 @@ mod test;
 mod util;
 
 use std::borrow::Borrow;
-use std::convert::TryFrom;
 use std::mem;
 
 impl<'a, 'tcx> Builder<'a, 'tcx> {

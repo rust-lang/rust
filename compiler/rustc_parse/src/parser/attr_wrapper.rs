@@ -8,7 +8,6 @@ use rustc_errors::PResult;
 use rustc_session::parse::ParseSess;
 use rustc_span::{sym, Span, DUMMY_SP};
 
-use std::convert::TryInto;
 use std::ops::Range;
 
 /// A wrapper type to ensure that the parser handles outer attributes correctly.

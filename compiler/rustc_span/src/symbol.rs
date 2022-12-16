@@ -9,7 +9,6 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use std::cmp::{Ord, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -828,6 +827,7 @@ symbols! {
         item_like_imports,
         iter,
         iter_repeat,
+        iterator_collect_fn,
         kcfi,
         keyword,
         kind,
@@ -1711,7 +1711,8 @@ impl fmt::Display for Ident {
     }
 }
 
-/// This is the most general way to print identifiers.
+/// The most general type to print identifiers.
+///
 /// AST pretty-printer is used as a fallback for turning AST structures into token streams for
 /// proc macros. Additionally, proc macros may stringify their input and expect it survive the
 /// stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
@@ -1974,7 +1975,6 @@ pub mod kw {
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
     use super::Symbol;
-    use std::convert::TryInto;
 
     #[doc(inline)]
     pub use super::sym_generated::*;

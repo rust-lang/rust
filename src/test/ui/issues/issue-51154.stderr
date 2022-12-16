@@ -13,9 +13,6 @@ LL |     let _: Box<F> = Box::new(|| ());
    = help: every closure has a distinct type and so could not always match the caller-chosen type of parameter `F`
 note: associated function defined here
   --> $SRC_DIR/alloc/src/boxed.rs:LL:COL
-   |
-LL |     pub fn new(x: T) -> Self {
-   |            ^^^
 
 error: aborting due to previous error
 

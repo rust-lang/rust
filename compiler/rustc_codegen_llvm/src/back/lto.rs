@@ -133,6 +133,10 @@ fn prepare_lto(
         }
     }
 
+    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
+    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
+    // should have default visibility.
+    symbols_below_threshold.push(CString::new("__llvm_profile_counter_bias").unwrap());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
@@ -206,7 +210,7 @@ pub(crate) fn run_thin(
 }
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
-    let name = module.name.clone();
+    let name = module.name;
     let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }

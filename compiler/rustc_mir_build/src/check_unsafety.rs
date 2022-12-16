@@ -132,6 +132,18 @@ impl<'tcx> UnsafetyVisitor<'_, 'tcx> {
     fn unsafe_op_in_unsafe_fn_allowed(&self) -> bool {
         self.tcx.lint_level_at_node(UNSAFE_OP_IN_UNSAFE_FN, self.hir_context).0 == Level::Allow
     }
+
+    /// Handle closures/generators/inline-consts, which is unsafecked with their parent body.
+    fn visit_inner_body(&mut self, def: ty::WithOptConstParam<LocalDefId>) {
+        if let Ok((inner_thir, expr)) = self.tcx.thir_body(def) {
+            let inner_thir = &inner_thir.borrow();
+            let hir_context = self.tcx.hir().local_def_id_to_hir_id(def.did);
+            let mut inner_visitor = UnsafetyVisitor { thir: inner_thir, hir_context, ..*self };
+            inner_visitor.visit_expr(&inner_thir[expr]);
+            // Unsafe blocks can be used in the inner body, make sure to take it into account
+            self.safety_context = inner_visitor.safety_context;
+        }
+    }
 }
 
 // Searches for accesses to layout constrained fields.
@@ -408,16 +420,11 @@ impl<'a, 'tcx> Visitor<'a, 'tcx> for UnsafetyVisitor<'a, 'tcx> {
                 } else {
                     ty::WithOptConstParam::unknown(closure_id)
                 };
-                let (closure_thir, expr) = self.tcx.thir_body(closure_def).unwrap_or_else(|_| {
-                    (self.tcx.alloc_steal_thir(Thir::new()), ExprId::from_u32(0))
-                });
-                let closure_thir = &closure_thir.borrow();
-                let hir_context = self.tcx.hir().local_def_id_to_hir_id(closure_id);
-                let mut closure_visitor =
-                    UnsafetyVisitor { thir: closure_thir, hir_context, ..*self };
-                closure_visitor.visit_expr(&closure_thir[expr]);
-                // Unsafe blocks can be used in closures, make sure to take it into account
-                self.safety_context = closure_visitor.safety_context;
+                self.visit_inner_body(closure_def);
+            }
+            ExprKind::ConstBlock { did, substs: _ } => {
+                let def_id = did.expect_local();
+                self.visit_inner_body(ty::WithOptConstParam::unknown(def_id));
             }
             ExprKind::Field { lhs, .. } => {
                 let lhs = &self.thir[lhs];
@@ -612,11 +619,8 @@ pub fn check_unsafety<'tcx>(tcx: TyCtxt<'tcx>, def: ty::WithOptConstParam<LocalD
         return;
     }
 
-    // Closures are handled by their owner, if it has a body
-    if tcx.is_closure(def.did.to_def_id()) {
-        let hir = tcx.hir();
-        let owner = hir.enclosing_body_owner(hir.local_def_id_to_hir_id(def.did));
-        tcx.ensure().thir_check_unsafety(owner);
+    // Closures and inline consts are handled by their owner, if it has a body
+    if tcx.is_typeck_child(def.did.to_def_id()) {
         return;
     }
 

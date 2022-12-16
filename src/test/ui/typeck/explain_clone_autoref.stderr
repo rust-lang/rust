@@ -12,6 +12,10 @@ note: `NotClone` does not implement `Clone`, so `&NotClone` was cloned instead
    |
 LL |     nc.clone()
    |     ^^
+help: consider annotating `NotClone` with `#[derive(Clone)]`
+   |
+LL | #[derive(Clone)]
+   |
 
 error: aborting due to previous error
 

@@ -36,7 +36,6 @@ use rustc_span::{Span, DUMMY_SP};
 use either::Either;
 
 use std::borrow::Cow;
-use std::convert::TryInto;
 use std::fmt::{self, Debug, Display, Formatter, Write};
 use std::ops::{ControlFlow, Index, IndexMut};
 use std::{iter, mem};
@@ -533,6 +532,11 @@ impl<'tcx> Body<'tcx> {
             return false;
         };
         injection_phase > self.phase
+    }
+
+    #[inline]
+    pub fn is_custom_mir(&self) -> bool {
+        self.injection_phase.is_some()
     }
 }
 
@@ -1848,7 +1852,7 @@ impl<'tcx> Operand<'tcx> {
     pub fn function_handle(
         tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        substs: SubstsRef<'tcx>,
+        substs: impl IntoIterator<Item = GenericArg<'tcx>>,
         span: Span,
     ) -> Self {
         let ty = tcx.mk_fn_def(def_id, substs);

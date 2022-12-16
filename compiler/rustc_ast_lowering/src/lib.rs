@@ -456,8 +456,8 @@ pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
     }
 
     // Drop AST to free memory
-    std::mem::drop(ast_index);
-    sess.time("drop_ast", || std::mem::drop(krate));
+    drop(ast_index);
+    sess.time("drop_ast", || drop(krate));
 
     // Discard hygiene data, which isn't required after lowering to HIR.
     if !sess.opts.unstable_opts.keep_hygiene_data {
@@ -958,7 +958,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     lit
                 } else {
                     MetaItemLit {
-                        token_lit: token::Lit::new(token::LitKind::Err, kw::Empty, None),
+                        symbol: kw::Empty,
+                        suffix: None,
                         kind: LitKind::Err,
                         span: DUMMY_SP,
                     }

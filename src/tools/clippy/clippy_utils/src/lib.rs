@@ -97,7 +97,7 @@ use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::ty as rustc_ty;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, AutoBorrow};
 use rustc_middle::ty::binding::BindingMode;
-use rustc_middle::ty::fast_reject::SimplifiedTypeGen::{
+use rustc_middle::ty::fast_reject::SimplifiedType::{
     ArraySimplifiedType, BoolSimplifiedType, CharSimplifiedType, FloatSimplifiedType, IntSimplifiedType,
     PtrSimplifiedType, SliceSimplifiedType, StrSimplifiedType, UintSimplifiedType,
 };

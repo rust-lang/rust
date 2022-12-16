@@ -1,9 +1,20 @@
 // compile-flags: --diagnostic-width=60
 // normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
-struct Atype<T, K>(T, K);
-struct Btype<T, K>(T, K);
-struct Ctype<T, K>(T, K);
+mod a {
+    // Force the "short path for unique types" machinery to trip up
+    pub struct Atype;
+    pub struct Btype;
+    pub struct Ctype;
+}
+
+mod b {
+    pub struct Atype<T, K>(T, K);
+    pub struct Btype<T, K>(T, K);
+    pub struct Ctype<T, K>(T, K);
+}
+
+use b::*;
 
 fn main() {
     let x: Atype<

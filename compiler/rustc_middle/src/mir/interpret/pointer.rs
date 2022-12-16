@@ -3,7 +3,6 @@ use super::{AllocId, InterpResult};
 use rustc_macros::HashStable;
 use rustc_target::abi::{HasDataLayout, Size};
 
-use std::convert::{TryFrom, TryInto};
 use std::fmt;
 
 ////////////////////////////////////////////////////////////////////////////////

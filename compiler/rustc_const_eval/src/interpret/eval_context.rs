@@ -248,6 +248,15 @@ impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
             Right(span) => span,
         }
     }
+
+    pub fn lint_root(&self) -> Option<hir::HirId> {
+        self.current_source_info().and_then(|source_info| {
+            match &self.body.source_scopes[source_info.scope].local_data {
+                mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
+                mir::ClearCrossCrate::Clear => None,
+            }
+        })
+    }
 }
 
 impl<'tcx> fmt::Display for FrameInfo<'tcx> {
@@ -954,12 +963,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let lint_root = frame.current_source_info().and_then(|source_info| {
-                match &frame.body.source_scopes[source_info.scope].local_data {
-                    mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
-                    mir::ClearCrossCrate::Clear => None,
-                }
-            });
+            let lint_root = frame.lint_root();
             let span = frame.current_span();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });

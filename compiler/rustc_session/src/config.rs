@@ -32,7 +32,7 @@ use std::collections::btree_map::{
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::hash::Hash;
-use std::iter::{self, FromIterator};
+use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
 
@@ -875,16 +875,10 @@ pub struct PacRet {
     pub key: PAuthKey,
 }
 
-#[derive(Clone, Copy, Hash, Debug, PartialEq)]
+#[derive(Clone, Copy, Hash, Debug, PartialEq, Default)]
 pub struct BranchProtection {
     pub bti: bool,
     pub pac_ret: Option<PacRet>,
-}
-
-impl Default for BranchProtection {
-    fn default() -> Self {
-        BranchProtection { bti: false, pac_ret: None }
-    }
 }
 
 pub const fn default_lib_output() -> CrateType {
@@ -1875,7 +1869,7 @@ fn parse_opt_level(
         .into_iter()
         .flat_map(|(i, s)| {
             // NB: This can match a string without `=`.
-            if let Some("opt-level") = s.splitn(2, '=').next() { Some(i) } else { None }
+            if let Some("opt-level") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
     if max_o > max_c {
@@ -1912,7 +1906,7 @@ fn select_debuginfo(
         .into_iter()
         .flat_map(|(i, s)| {
             // NB: This can match a string without `=`.
-            if let Some("debuginfo") = s.splitn(2, '=').next() { Some(i) } else { None }
+            if let Some("debuginfo") = s.split('=').next() { Some(i) } else { None }
         })
         .max();
     if max_g > max_c {

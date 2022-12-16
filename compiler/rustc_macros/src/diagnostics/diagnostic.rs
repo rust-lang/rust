@@ -192,7 +192,7 @@ impl Mismatch {
         let crate_name = std::env::var("CARGO_CRATE_NAME").ok()?;
 
         // If we're not in a "rustc_" crate, bail.
-        let Some(("rustc", slug_prefix)) = crate_name.split_once("_") else { return None };
+        let Some(("rustc", slug_prefix)) = crate_name.split_once('_') else { return None };
 
         let slug_name = slug.segments.first()?.ident.to_string();
         if !slug_name.starts_with(slug_prefix) {

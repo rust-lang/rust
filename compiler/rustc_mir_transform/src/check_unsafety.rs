@@ -1,6 +1,7 @@
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::struct_span_err;
 use rustc_hir as hir;
+use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::hir_id::HirId;
 use rustc_hir::intravisit;
@@ -132,6 +133,28 @@ impl<'tcx> Visitor<'tcx> for UnsafetyChecker<'_, 'tcx> {
             _ => {}
         }
         self.super_rvalue(rvalue, location);
+    }
+
+    fn visit_operand(&mut self, op: &Operand<'tcx>, location: Location) {
+        if let Operand::Constant(constant) = op {
+            let maybe_uneval = match constant.literal {
+                ConstantKind::Val(..) | ConstantKind::Ty(_) => None,
+                ConstantKind::Unevaluated(uv, _) => Some(uv),
+            };
+
+            if let Some(uv) = maybe_uneval {
+                if uv.promoted.is_none() {
+                    let def_id = uv.def.def_id_for_type_of();
+                    if self.tcx.def_kind(def_id) == DefKind::InlineConst {
+                        let local_def_id = def_id.expect_local();
+                        let UnsafetyCheckResult { violations, used_unsafe_blocks, .. } =
+                            self.tcx.unsafety_check_result(local_def_id);
+                        self.register_violations(violations, used_unsafe_blocks.iter().copied());
+                    }
+                }
+            }
+        }
+        self.super_operand(op, location);
     }
 
     fn visit_place(&mut self, place: &Place<'tcx>, context: PlaceContext, _location: Location) {
@@ -410,6 +433,12 @@ impl<'tcx> intravisit::Visitor<'tcx> for UnusedUnsafeVisitor<'_, 'tcx> {
         intravisit::walk_block(self, block);
     }
 
+    fn visit_anon_const(&mut self, c: &'tcx hir::AnonConst) {
+        if matches!(self.tcx.def_kind(c.def_id), DefKind::InlineConst) {
+            self.visit_body(self.tcx.hir().body(c.body))
+        }
+    }
+
     fn visit_fn(
         &mut self,
         fk: intravisit::FnKind<'tcx>,
@@ -471,7 +500,7 @@ fn unsafety_check_result<'tcx>(
     // `mir_built` force this.
     let body = &tcx.mir_built(def).borrow();
 
-    if body.should_skip() {
+    if body.is_custom_mir() {
         return tcx.arena.alloc(UnsafetyCheckResult {
             violations: Vec::new(),
             used_unsafe_blocks: FxHashSet::default(),
@@ -484,7 +513,7 @@ fn unsafety_check_result<'tcx>(
     let mut checker = UnsafetyChecker::new(body, def.did, tcx, param_env);
     checker.visit_body(&body);
 
-    let unused_unsafes = (!tcx.is_closure(def.did.to_def_id()))
+    let unused_unsafes = (!tcx.is_typeck_child(def.did.to_def_id()))
         .then(|| check_unused_unsafe(tcx, def.did, &checker.used_unsafe_blocks));
 
     tcx.arena.alloc(UnsafetyCheckResult {
@@ -516,8 +545,8 @@ fn report_unused_unsafe(tcx: TyCtxt<'_>, kind: UnusedUnsafe, id: HirId) {
 pub fn check_unsafety(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     debug!("check_unsafety({:?})", def_id);
 
-    // closures are handled by their parent fn.
-    if tcx.is_closure(def_id.to_def_id()) {
+    // closures and inline consts are handled by their parent fn.
+    if tcx.is_typeck_child(def_id.to_def_id()) {
         return;
     }
 
