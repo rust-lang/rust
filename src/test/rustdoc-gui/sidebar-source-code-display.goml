@@ -2,18 +2,18 @@
 javascript: false
 goto: "file://" + |DOC_PATH| + "/src/test_docs/lib.rs.html"
 // Since the javascript is disabled, there shouldn't be a toggle.
-assert-false: "#sidebar-toggle"
+assert-false: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"display": "none"})
 
 // Let's retry with javascript enabled.
 javascript: true
 reload:
-wait-for: "#sidebar-toggle"
-assert-css: ("#sidebar-toggle", {"visibility": "visible"})
-assert-css: (".sidebar > *:not(#sidebar-toggle)", {"visibility": "hidden"})
+wait-for: "#src-sidebar-toggle"
+assert-css: ("#src-sidebar-toggle", {"visibility": "visible"})
+assert-css: (".sidebar > *:not(#src-sidebar-toggle)", {"visibility": "hidden"})
 // Let's expand the sidebar now.
-click: "#sidebar-toggle"
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
+click: "#src-sidebar-toggle"
+wait-for-css: ("#src-sidebar-toggle", {"visibility": "visible"})
 
 // We now check that opening the sidebar and clicking a link will leave it open.
 // The behavior here on desktop is different than the behavior on mobile,
@@ -38,25 +38,25 @@ define-function: (
     [
         ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
         ("reload"),
-        ("wait-for-css", ("#sidebar-toggle", {"visibility": "visible"})),
+        ("wait-for-css", ("#src-sidebar-toggle", {"visibility": "visible"})),
         ("assert-css", (
             "#source-sidebar details[open] > .files a.selected",
             {"color": |color_hover|, "background-color": |background|},
         )),
 
         // Without hover or focus.
-        ("assert-css", ("#sidebar-toggle > button", {"background-color": |background_toggle|})),
+        ("assert-css", ("#src-sidebar-toggle > button", {"background-color": |background_toggle|})),
         // With focus.
-        ("focus", "#sidebar-toggle > button"),
+        ("focus", "#src-sidebar-toggle > button"),
         ("assert-css", (
-            "#sidebar-toggle > button:focus",
+            "#src-sidebar-toggle > button:focus",
             {"background-color": |background_toggle_hover|},
         )),
         ("focus", ".search-input"),
         // With hover.
-        ("move-cursor-to", "#sidebar-toggle > button"),
+        ("move-cursor-to", "#src-sidebar-toggle > button"),
         ("assert-css", (
-            "#sidebar-toggle > button:hover",
+            "#src-sidebar-toggle > button:hover",
             {"background-color": |background_toggle_hover|},
         )),
 
@@ -151,16 +151,16 @@ call-function: ("check-colors", {
 size: (500, 700)
 reload:
 // Waiting for the sidebar to be displayed...
-wait-for-css: ("#sidebar-toggle", {"visibility": "visible"})
+wait-for-css: ("#src-sidebar-toggle", {"visibility": "visible"})
 
 // We now check it takes the full size of the display.
 assert-property: ("body", {"clientWidth": "500", "clientHeight": "700"})
 assert-property: (".sidebar", {"clientWidth": "500", "clientHeight": "700"})
 
 // We now check the display of the toggle once the sidebar is expanded.
-assert-property: ("#sidebar-toggle", {"clientWidth": "500", "clientHeight": "39"})
+assert-property: ("#src-sidebar-toggle", {"clientWidth": "500", "clientHeight": "39"})
 assert-css: (
-    "#sidebar-toggle",
+    "#src-sidebar-toggle",
     {
         "border-top-width": "0px",
         "border-right-width": "0px",
@@ -170,28 +170,28 @@ assert-css: (
 )
 
 // We now check that the scroll position is kept when opening the sidebar.
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
 assert-window-property: {"pageYOffset": "2542"}
 // Expanding the sidebar...
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "500px"})
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: (".sidebar", {"width": "0px"})
 // The "scrollTop" property should be the same.
 assert-window-property: {"pageYOffset": "2542"}
 
 // We now check that the scroll position is restored if the window is resized.
 size: (500, 700)
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-window-property: {"pageYOffset": "0"}
 size: (900, 900)
 assert-window-property: {"pageYOffset": "2542"}
 size: (500, 700)
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
 
 // We now check that opening the sidebar and clicking a link will close it.
@@ -199,7 +199,7 @@ wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
 // but common sense dictates that if you have a list of files that fills the entire screen, and
 // you click one of them, you probably want to actually see the file's contents, and not just
 // make it the current selection.
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}
 click: ".sidebar a.selected"
@@ -210,6 +210,6 @@ assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
 size: (1000, 1000)
 wait-for-css: ("#source-sidebar", {"visibility": "hidden"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "false"}
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 wait-for-css: ("#source-sidebar", {"visibility": "visible"})
 assert-local-storage: {"rustdoc-source-sidebar-show": "true"}

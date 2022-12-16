@@ -21,4 +21,4 @@ assert-css: (".sidebar-menu-toggle", {"cursor": "pointer"})
 
 // the sidebar toggle button on the source code pages
 goto: "file://" + |DOC_PATH| + "/src/lib2/lib.rs.html"
-assert-css: ("#sidebar-toggle > button", {"cursor": "pointer"})
+assert-css: ("#src-sidebar-toggle > button", {"cursor": "pointer"})

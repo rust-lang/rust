@@ -97,7 +97,7 @@ assert-document-property: ({"URL": "/lib.rs.html"}, ENDS_WITH)
 // Checking the source code sidebar.
 
 // First we "open" it.
-click: "#sidebar-toggle"
+click: "#src-sidebar-toggle"
 assert: ".source-sidebar-expanded"
 
 // We check that the first entry of the sidebar is collapsed
