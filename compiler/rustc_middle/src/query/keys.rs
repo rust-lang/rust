@@ -15,6 +15,14 @@ use rustc_span::{Span, DUMMY_SP};
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
 pub trait Key: Sized {
+    // N.B. Most of the keys down below have `type CacheSelector = DefaultCacheSelector<Self>;`,
+    //      it would be reasonable to use associated type defaults, to remove the duplication...
+    //
+    //      ...But r-a doesn't support them yet and using a default here causes r-a to not infer
+    //      return types of queries which is very annoying. Thus, until r-a support associated
+    //      type defaults, plese restrain from using them here <3
+    //
+    //      r-a issue: <https://github.com/rust-lang/rust-analyzer/issues/13693>
     type CacheSelector;
 
     /// Given an instance of this key, what crate is it referring to?
