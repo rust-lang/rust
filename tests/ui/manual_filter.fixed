@@ -139,6 +139,20 @@ fn main() {
     } else {
         None
     };
+
+    let allowed_integers = vec![3, 4, 5, 6];
+    // Don't lint, since there's a side effect in the else branch
+    match Some(21) {
+        Some(x) => {
+            if allowed_integers.contains(&x) {
+                Some(x)
+            } else {
+                println!("Invalid integer: {x:?}");
+                None
+            }
+        },
+        None => None,
+    };
 }
 
 fn maybe_some() -> Option<u32> {
