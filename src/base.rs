@@ -29,9 +29,8 @@ pub(crate) fn codegen_and_compile_fn<'tcx>(
     module: &mut dyn Module,
     instance: Instance<'tcx>,
 ) {
-    let _inst_guard = crate::PrintOnPanic(Some(tcx.sess), || {
-        format!("{:?} {}", instance, tcx.symbol_name(instance).name)
-    });
+    let _inst_guard =
+        crate::PrintOnPanic(|| format!("{:?} {}", instance, tcx.symbol_name(instance).name));
 
     let cached_func = std::mem::replace(&mut cached_context.func, Function::new());
     let codegened_func = codegen_fn(tcx, cx, cached_func, module, instance);
@@ -49,7 +48,7 @@ pub(crate) fn codegen_fn<'tcx>(
     debug_assert!(!instance.substs.needs_infer());
 
     let mir = tcx.instance_mir(instance.def);
-    let _mir_guard = crate::PrintOnPanic(Some(tcx.sess), || {
+    let _mir_guard = crate::PrintOnPanic(|| {
         let mut buf = Vec::new();
         with_no_trimmed_paths!({
             rustc_middle::mir::pretty::write_mir_fn(tcx, mir, &mut |_, _| Ok(()), &mut buf)
@@ -177,7 +176,7 @@ pub(crate) fn compile_fn(
             write!(clif, " {}", isa_flag).unwrap();
         }
         writeln!(clif, "\n").unwrap();
-        crate::PrintOnPanic(None, move || {
+        crate::PrintOnPanic(move || {
             let mut clif = clif.clone();
             ::cranelift_codegen::write::decorate_function(
                 &mut &clif_comments_clone,
@@ -498,7 +497,7 @@ fn codegen_stmt<'tcx>(
     #[allow(unused_variables)] cur_block: Block,
     stmt: &Statement<'tcx>,
 ) {
-    let _print_guard = crate::PrintOnPanic(Some(fx.tcx.sess), || format!("stmt {:?}", stmt));
+    let _print_guard = crate::PrintOnPanic(|| format!("stmt {:?}", stmt));
 
     fx.set_debug_loc(stmt.source_info);
 
