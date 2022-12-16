@@ -1,3 +1,5 @@
+#![deny(implied_bounds_entailment)]
+
 use std::cell::RefCell;
 
 pub struct MessageListeners<'a> {
