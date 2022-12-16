@@ -440,22 +440,24 @@ pub(crate) fn inlay_hint(
     Ok(lsp_types::InlayHint {
         position: match inlay_hint.kind {
             // before annotated thing
-            InlayKind::ParameterHint | InlayKind::AdjustmentHint | InlayKind::BindingModeHint => {
-                position(line_index, inlay_hint.range.start())
-            }
+            InlayKind::OpeningParenthesis
+            | InlayKind::ParameterHint
+            | InlayKind::AdjustmentHint
+            | InlayKind::BindingModeHint => position(line_index, inlay_hint.range.start()),
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
-            | InlayKind::AdjustmentHintClosingParenthesis
+            | InlayKind::ClosingParenthesis
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
         padding_left: Some(match inlay_hint.kind {
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
@@ -464,7 +466,8 @@ pub(crate) fn inlay_hint(
             | InlayKind::ParameterHint => false,
         }),
         padding_right: Some(match inlay_hint.kind {
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::OpeningParenthesis
             | InlayKind::ChainingHint
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
@@ -479,7 +482,8 @@ pub(crate) fn inlay_hint(
             InlayKind::ClosureReturnTypeHint | InlayKind::TypeHint | InlayKind::ChainingHint => {
                 Some(lsp_types::InlayHintKind::TYPE)
             }
-            InlayKind::AdjustmentHintClosingParenthesis
+            InlayKind::ClosingParenthesis
+            | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint

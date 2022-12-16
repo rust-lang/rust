@@ -65,10 +65,11 @@ pub enum InlayKind {
     ClosureReturnTypeHint,
     GenericParamListHint,
     AdjustmentHint,
-    AdjustmentHintClosingParenthesis,
     LifetimeHint,
     ParameterHint,
     TypeHint,
+    OpeningParenthesis,
+    ClosingParenthesis,
 }
 
 #[derive(Debug)]
@@ -671,7 +672,7 @@ fn adjustment_hints(
     if needs_parens {
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: InlayKind::AdjustmentHint,
+            kind: InlayKind::OpeningParenthesis,
             label: "(".into(),
             tooltip: None,
         });
@@ -716,7 +717,7 @@ fn adjustment_hints(
     if needs_parens {
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: InlayKind::AdjustmentHintClosingParenthesis,
+            kind: InlayKind::ClosingParenthesis,
             label: ")".into(),
             tooltip: None,
         });
@@ -878,6 +879,20 @@ fn binding_mode_hints(
                 kind: InlayKind::BindingModeHint,
                 label: bm.to_string().into(),
                 tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
+            });
+        }
+        ast::Pat::OrPat(pat) => {
+            acc.push(InlayHint {
+                range: pat.syntax().text_range(),
+                kind: InlayKind::OpeningParenthesis,
+                label: "(".into(),
+                tooltip: None,
+            });
+            acc.push(InlayHint {
+                range: pat.syntax().text_range(),
+                kind: InlayKind::ClosingParenthesis,
+                label: ")".into(),
+                tooltip: None,
             });
         }
         _ => (),
@@ -2951,9 +2966,18 @@ fn __(
         (x,) => ()
     }
     match &(0,) {
-        (x,) => ()
-      //^^^^ &
+        (x,) | (x,) => (),
+      //^^^^^^^^^^^&
        //^ ref
+              //^ ref
+      //^^^^^^^^^^^(
+      //^^^^^^^^^^^)
+        ((x,) | (x,)) => (),
+       //^^^^^^^^^^^&
+        //^ ref
+               //^ ref
+       //^^^^^^^^^^^(
+       //^^^^^^^^^^^)
     }
     match &mut (0,) {
         (x,) => ()
