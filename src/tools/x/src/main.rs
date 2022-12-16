@@ -28,6 +28,9 @@ fn python() -> &'static str {
 
     for dir in env::split_paths(&val) {
         // `python` should always take precedence over python2 / python3 if it exists
+
+        // The checks are `try_exists().is_ok()` because of magic trickery used by Microsoft Store's
+        // Python installation with symlinks.
         if dir.join(PYTHON).with_extension(EXE_EXTENSION).try_exists().is_ok() {
             return PYTHON;
         }
