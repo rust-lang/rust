@@ -850,7 +850,18 @@ fn binding_mode_hints(
         return None;
     }
 
-    let range = pat.syntax().text_range();
+    let outer_paren_pat = pat
+        .syntax()
+        .ancestors()
+        .skip(1)
+        .map_while(ast::Pat::cast)
+        .map_while(|pat| match pat {
+            ast::Pat::ParenPat(pat) => Some(pat),
+            _ => None,
+        })
+        .last();
+    let range =
+        outer_paren_pat.as_ref().map_or_else(|| pat.syntax(), |it| it.syntax()).text_range();
     sema.pattern_adjustments(&pat).iter().for_each(|ty| {
         let reference = ty.is_reference();
         let mut_reference = ty.is_mutable_reference();
@@ -875,13 +886,13 @@ fn binding_mode_hints(
                 hir::BindingMode::Ref(Mutability::Shared) => "ref",
             };
             acc.push(InlayHint {
-                range,
+                range: pat.syntax().text_range(),
                 kind: InlayKind::BindingModeHint,
                 label: bm.to_string().into(),
                 tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
             });
         }
-        ast::Pat::OrPat(pat) => {
+        ast::Pat::OrPat(pat) if outer_paren_pat.is_none() => {
             acc.push(InlayHint {
                 range: pat.syntax().text_range(),
                 kind: InlayKind::OpeningParenthesis,
@@ -2973,11 +2984,9 @@ fn __(
       //^^^^^^^^^^^(
       //^^^^^^^^^^^)
         ((x,) | (x,)) => (),
-       //^^^^^^^^^^^&
+      //^^^^^^^^^^^^^&
         //^ ref
                //^ ref
-       //^^^^^^^^^^^(
-       //^^^^^^^^^^^)
     }
     match &mut (0,) {
         (x,) => ()
