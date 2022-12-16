@@ -37,15 +37,7 @@ rm -r src/test/run-make/test-benches
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
 rm src/test/ui/intrinsics/const-eval-select-x86_64.rs # requires x86_64 vendor intrinsics
 rm src/test/ui/simd/array-type.rs # "Index argument for `simd_insert` is not a constant"
-rm src/test/ui/simd/intrinsic/generic-bitmask-pass.rs # simd_bitmask unimplemented
-rm src/test/ui/simd/intrinsic/generic-as.rs # simd_as unimplemented
-rm src/test/ui/simd/intrinsic/generic-arithmetic-saturating-pass.rs # simd_saturating_add unimplemented
 rm src/test/ui/simd/intrinsic/float-math-pass.rs # simd_fcos unimplemented
-rm src/test/ui/simd/intrinsic/generic-gather-pass.rs # simd_gather unimplemented
-rm src/test/ui/simd/intrinsic/generic-select-pass.rs # simd_select_bitmask unimplemented
-rm src/test/ui/simd/issue-85915-simd-ptrs.rs # simd_gather unimplemented
-rm src/test/ui/simd/issue-89193.rs # simd_gather unimplemented
-rm src/test/ui/simd/simd-bitmask.rs # simd_bitmask unimplemented
 
 # exotic linkages
 rm src/test/ui/issues/issue-33992.rs # unsupported linkages
@@ -102,13 +94,11 @@ rm -r src/test/ui/consts/missing_span_in_backtrace.rs # expects sysroot source t
 # ============
 rm src/test/incremental/spike-neg1.rs # errors out for some reason
 rm src/test/incremental/spike-neg2.rs # same
-rm src/test/ui/issues/issue-74564-if-expr-stack-overflow.rs # gives a stackoverflow before the backend runs
-rm src/test/ui/mir/ssa-analysis-regression-50041.rs # produces ICE
-rm src/test/ui/type-alias-impl-trait/assoc-projection-ice.rs # produces ICE
 
 rm src/test/ui/simd/intrinsic/generic-reduction-pass.rs # simd_reduce_add_unordered doesn't accept an accumulator for integer vectors
 
-rm src/test/ui/runtime/out-of-stack.rs # SIGSEGV instead of SIGABRT for some reason (#1301)
+rm src/test/ui/simd/intrinsic/generic-as.rs # crash when accessing vector type filed (#1318)
+rm src/test/ui/simd/simd-bitmask.rs # crash
 
 # bugs in the test suite
 # ======================
