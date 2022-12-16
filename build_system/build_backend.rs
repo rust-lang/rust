@@ -25,6 +25,8 @@ pub(crate) fn build_backend(
 
         // Disabling incr comp reduces cache size and incr comp doesn't save as much on CI anyway
         cmd.env("CARGO_BUILD_INCREMENTAL", "false");
+
+        cmd.env("CARGO_PROFILE_RELEASE_DEBUG_ASSERTIONS", "true");
     }
 
     if use_unstable_features {
