@@ -69,7 +69,7 @@ where
 /// if any element creation was unsuccessful.
 ///
 /// The return type of this function depends on the return type of the closure.
-/// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+/// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N], E>`.
 /// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
 ///
 /// # Arguments
@@ -522,7 +522,7 @@ impl<T, const N: usize> [T; N] {
     /// return an array the same size as `self` or the first error encountered.
     ///
     /// The return type of this function depends on the return type of the closure.
-    /// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N]; E>`.
+    /// If you return `Result<T, E>` from the closure, you'll get a `Result<[T; N], E>`.
     /// If you return `Option<T>` from the closure, you'll get an `Option<[T; N]>`.
     ///
     /// # Examples

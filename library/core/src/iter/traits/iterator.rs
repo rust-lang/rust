@@ -2734,7 +2734,7 @@ pub trait Iterator {
     /// the first true result or the first error.
     ///
     /// The return type of this method depends on the return type of the closure.
-    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>; E>`.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>, E>`.
     /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
     ///
     /// # Examples

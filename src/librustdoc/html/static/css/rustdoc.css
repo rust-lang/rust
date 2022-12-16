@@ -396,15 +396,15 @@ img {
 	overflow-y: hidden;
 }
 
-.source .sidebar, #sidebar-toggle, #source-sidebar {
+.source .sidebar, #src-sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
-#sidebar-toggle > button:hover, #sidebar-toggle > button:focus {
+#src-sidebar-toggle > button:hover, #src-sidebar-toggle > button:focus {
 	background-color: var(--sidebar-background-color-hover);
 }
 
-.source .sidebar > *:not(#sidebar-toggle) {
+.source .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: hidden;
 }
 
@@ -413,7 +413,7 @@ img {
 	flex-basis: 300px;
 }
 
-.source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
+.source-sidebar-expanded .source .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: visible;
 }
 
@@ -1118,8 +1118,7 @@ pre.rust .doccomment {
 	top: 5px;
 }
 
-.example-wrap .tooltip::after {
-	display: none;
+.example-wrap .tooltip:hover::after {
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
@@ -1134,33 +1133,28 @@ pre.rust .doccomment {
 	color: var(--tooltip-color);
 }
 
-.example-wrap .tooltip::before {
+.example-wrap .tooltip:hover::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	display: none;
 	z-index: 1;
 	border: 5px solid transparent;
 	border-right-color: var(--tooltip-background-color);
 }
 
-.example-wrap.ignore .tooltip::after {
+.example-wrap.ignore .tooltip:hover::after {
 	content: "This example is not tested";
 }
-.example-wrap.compile_fail .tooltip::after {
+.example-wrap.compile_fail .tooltip:hover::after {
 	content: "This example deliberately fails to compile";
 }
-.example-wrap.should_panic .tooltip::after {
+.example-wrap.should_panic .tooltip:hover::after {
 	content: "This example panics";
 }
-.example-wrap.edition .tooltip::after {
+.example-wrap.edition .tooltip:hover::after {
 	content: "This code runs with edition " attr(data-edition);
-}
-
-.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
-	display: inline;
 }
 
 .example-wrap.compile_fail .tooltip,
@@ -1295,7 +1289,7 @@ a.test-arrow:hover {
 	font-size: 1rem;
 }
 
-#sidebar-toggle {
+#src-sidebar-toggle {
 	position: sticky;
 	top: 0;
 	left: 0;
@@ -1324,7 +1318,7 @@ a.test-arrow:hover {
 #source-sidebar div.files > a.selected {
 	background-color: var(--source-sidebar-background-selected);
 }
-#sidebar-toggle > button {
+#src-sidebar-toggle > button {
 	font-size: inherit;
 	font-weight: bold;
 	background: none;
@@ -1726,7 +1720,7 @@ in storage.js
 		left: -11px;
 	}
 
-	#sidebar-toggle {
+	#src-sidebar-toggle {
 		position: fixed;
 		left: 1px;
 		top: 100px;
@@ -1740,7 +1734,7 @@ in storage.js
 		border-left: 0;
 	}
 
-	.source-sidebar-expanded #sidebar-toggle {
+	.source-sidebar-expanded #src-sidebar-toggle {
 		left: unset;
 		top: unset;
 		width: unset;
@@ -1851,10 +1845,10 @@ in storage.js
 		width: 35px;
 	}
 
-	#sidebar-toggle {
+	#src-sidebar-toggle {
 		top: 10px;
 	}
-	.source-sidebar-expanded #sidebar-toggle {
+	.source-sidebar-expanded #src-sidebar-toggle {
 		top: unset;
 	}
 }

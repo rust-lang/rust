@@ -3795,7 +3795,7 @@ impl<T> [T] {
     /// The slice is assumed to be partitioned according to the given predicate.
     /// This means that all elements for which the predicate returns true are at the start of the slice
     /// and all elements for which the predicate returns false are at the end.
-    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// For example, `[7, 15, 3, 5, 4, 12, 6]` is partitioned under the predicate `x % 2 != 0`
     /// (all odd numbers are at the start, all even at the end).
     ///
     /// If this slice is not partitioned, the returned result is unspecified and meaningless,
