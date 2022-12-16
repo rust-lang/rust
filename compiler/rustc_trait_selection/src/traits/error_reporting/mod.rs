@@ -2312,18 +2312,19 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let trait_impls = self.tcx.trait_impls_of(data.trait_ref.def_id);
 
                         if trait_impls.blanket_impls().is_empty()
-                            && let Some((impl_ty, _)) = trait_impls.non_blanket_impls().iter().next()
-                            && let Some(impl_def_id) = impl_ty.def() {
-                            let message = if trait_impls.non_blanket_impls().len() == 1 {
+                            && let Some(impl_def_id) = trait_impls.non_blanket_impls().values().flatten().next()
+                        {
+                            let non_blanket_impl_count = trait_impls.non_blanket_impls().values().flatten().count();
+                            let message = if non_blanket_impl_count == 1 {
                                 "use the fully-qualified path to the only available implementation".to_string()
                             } else {
                                 format!(
                                     "use a fully-qualified path to a specific available implementation ({} found)",
-                                    trait_impls.non_blanket_impls().len()
+                                    non_blanket_impl_count
                                 )
                             };
                             let mut suggestions = vec![(
-                                trait_path_segment.ident.span.shrink_to_lo(),
+                                path.span.shrink_to_lo(),
                                 format!("<{} as ", self.tcx.type_of(impl_def_id))
                             )];
                             if let Some(generic_arg) = trait_path_segment.args {
