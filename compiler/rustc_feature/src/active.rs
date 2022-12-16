@@ -368,8 +368,6 @@ declare_features! (
     (active, debugger_visualizer, "1.62.0", Some(95939), None),
     /// Allows declarative macros 2.0 (`macro`).
     (active, decl_macro, "1.17.0", Some(39412), None),
-    /// Allows rustc to inject a default alloc_error_handler
-    (active, default_alloc_error_handler, "1.48.0", Some(66741), None),
     /// Allows default type parameters to influence type inference.
     (active, default_type_parameter_fallback, "1.3.0", Some(27336), None),
     /// Allows using `#[deprecated_safe]` to deprecate the safeness of a function or trait

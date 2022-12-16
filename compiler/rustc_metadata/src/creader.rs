@@ -1,10 +1,9 @@
 //! Validates all used crates and extern libraries and loads their metadata
 
 use crate::errors::{
-    AllocFuncRequired, ConflictingAllocErrorHandler, ConflictingGlobalAlloc, CrateNotPanicRuntime,
-    GlobalAllocRequired, MissingAllocErrorHandler, NoMultipleAllocErrorHandler,
-    NoMultipleGlobalAlloc, NoPanicStrategy, NoTransitiveNeedsDep, NotProfilerRuntime,
-    ProfilerBuiltinsNeedsCore,
+    ConflictingAllocErrorHandler, ConflictingGlobalAlloc, CrateNotPanicRuntime,
+    GlobalAllocRequired, NoMultipleAllocErrorHandler, NoMultipleGlobalAlloc, NoPanicStrategy,
+    NoTransitiveNeedsDep, NotProfilerRuntime, ProfilerBuiltinsNeedsCore,
 };
 use crate::locator::{CrateError, CrateLocator, CratePaths};
 use crate::rmeta::{CrateDep, CrateMetadata, CrateNumMap, CrateRoot, MetadataBlob};
@@ -895,10 +894,6 @@ impl<'a> CrateLoader<'a> {
         } else {
             // The alloc crate provides a default allocation error handler if
             // one isn't specified.
-            if !self.sess.features_untracked().default_alloc_error_handler {
-                self.sess.emit_err(AllocFuncRequired);
-                self.sess.emit_note(MissingAllocErrorHandler);
-            }
             self.cstore.alloc_error_handler_kind = Some(AllocatorKind::Default);
         }
     }

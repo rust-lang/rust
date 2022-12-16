@@ -1,6 +1,0 @@
-error: `#[alloc_error_handler]` function required, but not found
-
-note: use `#![feature(default_alloc_error_handler)]` for a default error handler
-
-error: aborting due to previous error
-
