@@ -420,8 +420,8 @@ flow using an indirect branch/call to a function with different return and
 parameter types than the return type expected and arguments intended/passed in
 the call/branch site, the execution is also terminated (see Fig. 9).
 
-[rust-book-ch19-05]: https://doc.rust-lang.org/book/ch19-05-advanced-functions-and-closures.html
-[rust-book]: https://doc.rust-lang.org/book/title-page.html
+[rust-book-ch19-05]: ../../book/ch19-05-advanced-functions-and-closures.html
+[rust-book]: ../../book/title-page.html
 
 # HWAddressSanitizer
 
@@ -691,7 +691,7 @@ It is strongly recommended to combine sanitizers with recompiled and
 instrumented standard library, for example using [cargo `-Zbuild-std`
 functionality][build-std].
 
-[build-std]: https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std
+[build-std]: ../../cargo/reference/unstable.html#build-std
 
 # Build scripts and procedural macros
 

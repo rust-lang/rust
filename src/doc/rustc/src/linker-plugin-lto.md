@@ -112,7 +112,7 @@ targeting Windows-like targets
 This is fixed if you explicitly set the target, for example
 `cargo build --target x86_64-pc-windows-msvc`
 Without an explicit --target the flags will be passed to all compiler invocations (including build
-scripts and proc macros), see [cargo docs on rustflags](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags)
+scripts and proc macros), see [cargo docs on rustflags](../cargo/reference/config.html#buildrustflags)
 
 If you have dependencies using the `cc` crate, you will need to set these
 environment variables:
