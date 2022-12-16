@@ -150,6 +150,7 @@ function createCommands(): Record<string, CommandFactory> {
         moveItemUp: { enabled: commands.moveItemUp },
         moveItemDown: { enabled: commands.moveItemDown },
         cancelFlycheck: { enabled: commands.cancelFlycheck },
+        runFlycheck: { enabled: commands.runFlycheck },
         ssr: { enabled: commands.ssr },
         serverVersion: { enabled: commands.serverVersion },
         // Internal commands which are invoked by the server.

@@ -246,6 +246,11 @@
                 "command": "rust-analyzer.cancelFlycheck",
                 "title": "Cancel running flychecks",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.runFlycheck",
+                "title": "Run flycheck",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [
