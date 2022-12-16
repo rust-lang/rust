@@ -24,6 +24,7 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
     _substs: SubstsRef<'tcx>,
     args: &[mir::Operand<'tcx>],
     ret: CPlace<'tcx>,
+    target: BasicBlock,
     span: Span,
 ) {
     match intrinsic {
@@ -277,16 +278,15 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
             } else {
                 fx.tcx.sess.span_warn(span, "Index argument for `simd_extract` is not a constant");
                 let trap_block = fx.bcx.create_block();
-                let dummy_block = fx.bcx.create_block();
                 let true_ = fx.bcx.ins().iconst(types::I8, 1);
                 fx.bcx.ins().brnz(true_, trap_block, &[]);
-                fx.bcx.ins().jump(dummy_block, &[]);
+                let ret_block = fx.get_block(target);
+                fx.bcx.ins().jump(ret_block, &[]);
                 fx.bcx.switch_to_block(trap_block);
                 crate::trap::trap_unimplemented(
                     fx,
                     "Index argument for `simd_extract` is not a constant",
                 );
-                fx.bcx.switch_to_block(dummy_block);
                 return;
             };
 
@@ -876,7 +876,11 @@ pub(super) fn codegen_simd_intrinsic_call<'tcx>(
         }
 
         _ => {
-            fx.tcx.sess.span_fatal(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            fx.tcx.sess.span_err(span, &format!("Unknown SIMD intrinsic {}", intrinsic));
+            // Prevent verifier error
+            fx.bcx.ins().trap(TrapCode::UnreachableCodeReached);
         }
     }
+    let ret_block = fx.get_block(target);
+    fx.bcx.ins().jump(ret_block, &[]);
 }

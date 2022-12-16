@@ -240,10 +240,9 @@ pub(crate) fn codegen_intrinsic_call<'tcx>(
             substs,
             args,
             destination,
+            target,
             source_info.span,
         );
-        let ret_block = fx.get_block(target);
-        fx.bcx.ins().jump(ret_block, &[]);
     } else if codegen_float_intrinsic_call(fx, intrinsic, args, destination) {
         let ret_block = fx.get_block(target);
         fx.bcx.ins().jump(ret_block, &[]);
