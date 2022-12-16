@@ -138,6 +138,19 @@ impl Request for CancelFlycheck {
     const METHOD: &'static str = "rust-analyzer/cancelFlycheck";
 }
 
+pub enum RunFlycheck {}
+
+impl Notification for RunFlycheck {
+    type Params = RunFlycheckParams;
+    const METHOD: &'static str = "rust-analyzer/runFlycheck";
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct RunFlycheckParams {
+    pub text_document: Option<TextDocumentIdentifier>,
+}
+
 pub enum MatchingBrace {}
 
 impl Request for MatchingBrace {

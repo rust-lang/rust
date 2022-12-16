@@ -81,6 +81,10 @@ export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, Te
 
 export const cancelFlycheck = new lc.RequestType0<void, void>("rust-analyzer/cancelFlycheck");
 
+export const runFlycheck = new lc.NotificationType<{
+    textDocument: lc.TextDocumentIdentifier | null;
+}>("rust-analyzer/runFlycheck");
+
 // Experimental extensions
 
 export interface SsrParams {

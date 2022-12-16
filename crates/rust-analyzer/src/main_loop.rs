@@ -703,6 +703,88 @@ impl GlobalState {
 
     /// Handles an incoming notification.
     fn on_notification(&mut self, not: Notification) -> Result<()> {
+        // FIXME: Move these implementations out into a module similar to on_request
+        fn run_flycheck(this: &mut GlobalState, vfs_path: VfsPath) -> bool {
+            let file_id = this.vfs.read().0.file_id(&vfs_path);
+            if let Some(file_id) = file_id {
+                let world = this.snapshot();
+                let mut updated = false;
+                let task = move || -> std::result::Result<(), ide::Cancelled> {
+                    // Trigger flychecks for all workspaces that depend on the saved file
+                    // Crates containing or depending on the saved file
+                    let crate_ids: Vec<_> = world
+                        .analysis
+                        .crates_for(file_id)?
+                        .into_iter()
+                        .flat_map(|id| world.analysis.transitive_rev_deps(id))
+                        .flatten()
+                        .sorted()
+                        .unique()
+                        .collect();
+
+                    let crate_root_paths: Vec<_> = crate_ids
+                        .iter()
+                        .filter_map(|&crate_id| {
+                            world
+                                .analysis
+                                .crate_root(crate_id)
+                                .map(|file_id| {
+                                    world
+                                        .file_id_to_file_path(file_id)
+                                        .as_path()
+                                        .map(ToOwned::to_owned)
+                                })
+                                .transpose()
+                        })
+                        .collect::<ide::Cancellable<_>>()?;
+                    let crate_root_paths: Vec<_> =
+                        crate_root_paths.iter().map(Deref::deref).collect();
+
+                    // Find all workspaces that have at least one target containing the saved file
+                    let workspace_ids =
+                        world.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
+                            project_model::ProjectWorkspace::Cargo { cargo, .. } => {
+                                cargo.packages().any(|pkg| {
+                                    cargo[pkg].targets.iter().any(|&it| {
+                                        crate_root_paths.contains(&cargo[it].root.as_path())
+                                    })
+                                })
+                            }
+                            project_model::ProjectWorkspace::Json { project, .. } => project
+                                .crates()
+                                .any(|(c, _)| crate_ids.iter().any(|&crate_id| crate_id == c)),
+                            project_model::ProjectWorkspace::DetachedFiles { .. } => false,
+                        });
+
+                    // Find and trigger corresponding flychecks
+                    for flycheck in world.flycheck.iter() {
+                        for (id, _) in workspace_ids.clone() {
+                            if id == flycheck.id() {
+                                updated = true;
+                                flycheck.restart();
+                                continue;
+                            }
+                        }
+                    }
+                    // No specific flycheck was triggered, so let's trigger all of them.
+                    if !updated {
+                        for flycheck in world.flycheck.iter() {
+                            flycheck.restart();
+                        }
+                    }
+                    Ok(())
+                };
+                this.task_pool.handle.spawn_with_sender(move |_| {
+                    if let Err(e) = std::panic::catch_unwind(task) {
+                        tracing::error!("flycheck task panicked: {e:?}")
+                    }
+                });
+                true
+            } else {
+                false
+            }
+        }
+
         NotificationDispatcher { not: Some(not), global_state: self }
             .on::<lsp_types::notification::Cancel>(|this, params| {
                 let id: lsp_server::RequestId = match params.id {
@@ -782,6 +864,20 @@ impl GlobalState {
                 }
                 Ok(())
             })?
+            .on::<lsp_ext::RunFlycheck>(|this, params| {
+                if let Some(text_document) = params.text_document {
+                    if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
+                        if run_flycheck(this, vfs_path) {
+                            return Ok(());
+                        }
+                    }
+                }
+                // No specific flycheck was triggered, so let's trigger all of them.
+                for flycheck in this.flycheck.iter() {
+                    flycheck.restart();
+                }
+                Ok(())
+            })?
             .on::<lsp_types::notification::DidSaveTextDocument>(|this, params| {
                 if let Ok(vfs_path) = from_proto::vfs_path(&params.text_document.uri) {
                     // Re-fetch workspaces if a workspace related file has changed
@@ -792,82 +888,7 @@ impl GlobalState {
                         }
                     }
 
-                    let file_id = this.vfs.read().0.file_id(&vfs_path);
-                    if let Some(file_id) = file_id {
-                        let world = this.snapshot();
-                        let mut updated = false;
-                        let task = move || -> std::result::Result<(), ide::Cancelled> {
-                            // Trigger flychecks for all workspaces that depend on the saved file
-                            // Crates containing or depending on the saved file
-                            let crate_ids: Vec<_> = world
-                                .analysis
-                                .crates_for(file_id)?
-                                .into_iter()
-                                .flat_map(|id| world.analysis.transitive_rev_deps(id))
-                                .flatten()
-                                .sorted()
-                                .unique()
-                                .collect();
-
-                            let crate_root_paths: Vec<_> = crate_ids
-                                .iter()
-                                .filter_map(|&crate_id| {
-                                    world
-                                        .analysis
-                                        .crate_root(crate_id)
-                                        .map(|file_id| {
-                                            world
-                                                .file_id_to_file_path(file_id)
-                                                .as_path()
-                                                .map(ToOwned::to_owned)
-                                        })
-                                        .transpose()
-                                })
-                                .collect::<ide::Cancellable<_>>()?;
-                            let crate_root_paths: Vec<_> =
-                                crate_root_paths.iter().map(Deref::deref).collect();
-
-                            // Find all workspaces that have at least one target containing the saved file
-                            let workspace_ids =
-                                world.workspaces.iter().enumerate().filter(|(_, ws)| match ws {
-                                    project_model::ProjectWorkspace::Cargo { cargo, .. } => {
-                                        cargo.packages().any(|pkg| {
-                                            cargo[pkg].targets.iter().any(|&it| {
-                                                crate_root_paths.contains(&cargo[it].root.as_path())
-                                            })
-                                        })
-                                    }
-                                    project_model::ProjectWorkspace::Json { project, .. } => {
-                                        project.crates().any(|(c, _)| {
-                                            crate_ids.iter().any(|&crate_id| crate_id == c)
-                                        })
-                                    }
-                                    project_model::ProjectWorkspace::DetachedFiles { .. } => false,
-                                });
-
-                            // Find and trigger corresponding flychecks
-                            for flycheck in world.flycheck.iter() {
-                                for (id, _) in workspace_ids.clone() {
-                                    if id == flycheck.id() {
-                                        updated = true;
-                                        flycheck.restart();
-                                        continue;
-                                    }
-                                }
-                            }
-                            // No specific flycheck was triggered, so let's trigger all of them.
-                            if !updated {
-                                for flycheck in world.flycheck.iter() {
-                                    flycheck.restart();
-                                }
-                            }
-                            Ok(())
-                        };
-                        this.task_pool.handle.spawn_with_sender(move |_| {
-                            if let Err(e) = std::panic::catch_unwind(task) {
-                                tracing::error!("DidSaveTextDocument flycheck task panicked: {e:?}")
-                            }
-                        });
+                    if run_flycheck(this, vfs_path) {
                         return Ok(());
                     }
                 }
