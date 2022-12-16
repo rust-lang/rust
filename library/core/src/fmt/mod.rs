@@ -405,7 +405,7 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
     ///    valid index of `args`.
-    /// 3. Every [`Count::Param`] within `fmt` must contain a valid index of
+    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
     #[doc(hidden)]
     #[inline]
