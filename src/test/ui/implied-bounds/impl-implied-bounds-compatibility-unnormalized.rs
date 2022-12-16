@@ -1,3 +1,5 @@
+#![deny(implied_bounds_entailment)]
+
 trait Project {
     type Ty;
 }

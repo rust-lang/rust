@@ -3270,6 +3270,7 @@ declare_lint_pass! {
         FFI_UNWIND_CALLS,
         REPR_TRANSPARENT_EXTERNAL_PRIVATE_FIELDS,
         NAMED_ARGUMENTS_USED_POSITIONALLY,
+        IMPLIED_BOUNDS_ENTAILMENT,
     ]
 }
 
@@ -3986,15 +3987,15 @@ declare_lint! {
     /// ### Explanation
     ///
     /// Neither the trait method, which provides no implied bounds about `'s`, nor the impl,
-    /// which can't name `'s`, requires the main function to prove that 's: 'static, but the
-    /// impl method is able to assume that 's: 'static within its own body.
+    /// requires the main function to prove that 's: 'static, but the impl method is allowed
+    /// to assume that `'s: 'static` within its own body.
     ///
     /// This can be used to implement an unsound API if used incorrectly.
     pub IMPLIED_BOUNDS_ENTAILMENT,
-    Deny,
+    Warn,
     "impl method assumes more implied bounds than its corresponding trait method",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #105572 <https://github.com/rust-lang/rust/issues/105572>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
+        reason: FutureIncompatibilityReason::FutureReleaseError,
     };
 }
