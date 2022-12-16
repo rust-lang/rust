@@ -17,7 +17,7 @@ pub use valtree::*;
 /// Use this rather than `ConstData, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Const<'tcx>(pub Interned<'tcx, ConstData<'tcx>>);
+pub struct Const<'tcx>(pub(super) Interned<'tcx, ConstData<'tcx>>);
 
 impl<'tcx> fmt::Debug for Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
