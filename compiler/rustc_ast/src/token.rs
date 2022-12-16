@@ -379,7 +379,7 @@ impl Token {
         }
     }
 
-    pub fn is_range_seperator(&self) -> bool {
+    pub fn is_range_separator(&self) -> bool {
         [DotDot, DotDotDot, DotDotEq].contains(&self.kind)
     }
 

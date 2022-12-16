@@ -180,7 +180,7 @@ impl<'a> Parser<'a> {
                 LhsExpr::AttributesParsed(attrs) => Some(attrs),
                 _ => None,
             };
-            if self.token.is_range_seperator() {
+            if self.token.is_range_separator() {
                 return self.parse_prefix_range_expr(attrs);
             } else {
                 self.parse_prefix_expr(attrs)?
@@ -512,7 +512,7 @@ impl<'a> Parser<'a> {
         }
 
         debug_assert!(
-            self.token.is_range_seperator(),
+            self.token.is_range_separator(),
             "parse_prefix_range_expr: token {:?} is not DotDot/DotDotEq",
             self.token
         );
@@ -896,7 +896,7 @@ impl<'a> Parser<'a> {
         let has_lifetime = self.token.is_lifetime() && self.look_ahead(1, |t| t != &token::Colon);
         let lifetime = has_lifetime.then(|| self.expect_lifetime()); // For recovery, see below.
         let (borrow_kind, mutbl) = self.parse_borrow_modifiers(lo);
-        let expr = if self.token.is_range_seperator() {
+        let expr = if self.token.is_range_separator() {
             self.parse_prefix_range_expr(None)
         } else {
             self.parse_prefix_expr(None)
