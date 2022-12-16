@@ -637,7 +637,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                             You need to enable Javascript be able to update your settings.\
                         </section>\
                      </noscript>\
-                     <link rel=\"stylesheet\" type=\"text/css\" \
+                     <link rel=\"stylesheet\" \
                          href=\"{static_root_path}{settings_css}\">\
                      <script defer src=\"{static_root_path}{settings_js}\"></script>",
                     static_root_path = page.get_static_root_path(),

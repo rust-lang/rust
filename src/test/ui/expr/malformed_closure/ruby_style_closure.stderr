@@ -14,7 +14,7 @@ LL |       let p = Some(45).and_then({
 LL | |
 LL | |         |x| println!("doubling {}", x);
 LL | |         Some(x * 2)
-   | |         ----------- this tail expression is of type `std::option::Option<_>`
+   | |         ----------- this tail expression is of type `Option<_>`
 LL | |
 LL | |     });
    | |_____^ expected an `FnOnce<({integer},)>` closure, found `Option<_>`
@@ -22,9 +22,6 @@ LL | |     });
    = help: the trait `FnOnce<({integer},)>` is not implemented for `Option<_>`
 note: required by a bound in `Option::<T>::and_then`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |         F: ~const FnOnce(T) -> Option<U>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `Option::<T>::and_then`
 
 error: aborting due to 2 previous errors
 

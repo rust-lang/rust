@@ -13,7 +13,9 @@ use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
-use rustc_middle::ty::{self, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty};
+use rustc_middle::ty::{
+    self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::symbol::sym;
 use rustc_span::Span;
@@ -174,10 +176,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let fn_sig = substs.as_closure().sig();
                     Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
                 }
-                ty::Opaque(def_id, substs) => {
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                     self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
                         {
@@ -194,7 +196,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 ty::Dynamic(data, _, ty::Dyn) => {
                     data.iter().find_map(|pred| {
                         if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                        && Some(proj.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
                         // for existential projection, substs are shifted over by 1
                         && let ty::Tuple(args) = proj.substs.type_at(0).kind()
                         {
@@ -212,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
                     self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
                         if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.item_def_id) == self.tcx.lang_items().fn_once_output()
+                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
                         && proj.projection_ty.self_ty() == found
                         // args tuple will always be substs[1]
                         && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
@@ -1276,18 +1278,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && !results.expr_adjustments(callee_expr).iter().any(|adj| matches!(adj.kind, ty::adjustment::Adjust::Deref(..)))
             // Check that we're in fact trying to clone into the expected type
             && self.can_coerce(*pointee_ty, expected_ty)
+            && let trait_ref = ty::Binder::dummy(self.tcx.mk_trait_ref(clone_trait_did, [expected_ty]))
             // And the expected type doesn't implement `Clone`
-            && !self.predicate_must_hold_considering_regions(&traits::Obligation {
-                cause: traits::ObligationCause::dummy(),
-                param_env: self.param_env,
-                recursion_depth: 0,
-                predicate: ty::Binder::dummy(ty::TraitRef {
-                    def_id: clone_trait_did,
-                    substs: self.tcx.mk_substs([expected_ty.into()].iter()),
-                })
-                .without_const()
-                .to_predicate(self.tcx),
-            })
+            && !self.predicate_must_hold_considering_regions(&traits::Obligation::new(
+                self.tcx,
+                traits::ObligationCause::dummy(),
+                self.param_env,
+                trait_ref,
+            ))
         {
             diag.span_note(
                 callee_expr.span,
@@ -1295,6 +1293,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     "`{expected_ty}` does not implement `Clone`, so `{found_ty}` was cloned instead"
                 ),
             );
+            let owner = self.tcx.hir().enclosing_body_owner(expr.hir_id);
+            if let ty::Param(param) = expected_ty.kind()
+                && let Some(generics) = self.tcx.hir().get_generics(owner)
+            {
+                suggest_constraining_type_params(
+                    self.tcx,
+                    generics,
+                    diag,
+                    vec![(param.name.as_str(), "Clone", Some(clone_trait_did))].into_iter(),
+                );
+            } else {
+                self.suggest_derive(diag, &[(trait_ref.to_predicate(self.tcx), None, None)]);
+            }
         }
     }
 

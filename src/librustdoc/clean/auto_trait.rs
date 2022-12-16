@@ -44,7 +44,7 @@ where
         discard_positive_impl: bool,
     ) -> Option<Item> {
         let tcx = self.cx.tcx;
-        let trait_ref = tcx.mk_trait_ref(trait_def_id, [ty]);
+        let trait_ref = ty::Binder::dummy(tcx.mk_trait_ref(trait_def_id, [ty]));
         if !self.cx.generated_synthetics.insert((ty, trait_def_id)) {
             debug!("get_auto_trait_impl_for({:?}): already generated, aborting", trait_ref);
             return None;
@@ -124,7 +124,7 @@ where
                 unsafety: hir::Unsafety::Normal,
                 generics: new_generics,
                 trait_: Some(clean_trait_ref_with_bindings(self.cx, trait_ref, ThinVec::new())),
-                for_: clean_middle_ty(ty, self.cx, None),
+                for_: clean_middle_ty(ty::Binder::dummy(ty), self.cx, None),
                 items: Vec::new(),
                 polarity,
                 kind: ImplKind::Auto,

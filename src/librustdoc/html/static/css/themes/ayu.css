@@ -88,6 +88,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--source-sidebar-background-selected: #14191f;
 	--source-sidebar-background-hover: #14191f;
 	--table-alt-row-background-color: #191f26;
+	--codeblock-link-background: #333;
 }
 
 h1, h2, h3, h4 {
@@ -150,14 +151,9 @@ pre, .rustdoc.source .example-wrap {
 	color: #c5c5c5;
 }
 
-.content .item-info::before { color: #ccc; }
-
 .sidebar h2 a,
 .sidebar h3 a {
 	color: white;
-}
-body.source .example-wrap pre.rust a {
-	background: #333;
 }
 
 .result-name .primitive > i, .result-name .keyword > i {

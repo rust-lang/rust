@@ -11,9 +11,6 @@ LL |         .filter(|c| "aeiou".contains(c))
    = note: required for `&char` to implement `Pattern<'_>`
 note: required by a bound in `core::str::<impl str>::contains`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
-   |
-LL |     pub fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-   |                            ^^^^^^^^^^^ required by this bound in `core::str::<impl str>::contains`
 help: consider dereferencing here
    |
 LL |         .filter(|c| "aeiou".contains(*c))

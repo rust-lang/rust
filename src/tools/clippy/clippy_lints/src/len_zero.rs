@@ -493,7 +493,7 @@ fn has_is_empty(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
                 .filter_by_name_unhygienic(is_empty)
                 .any(|item| is_is_empty(cx, item))
         }),
-        ty::Projection(ref proj) => has_is_empty_impl(cx, proj.item_def_id),
+        ty::Alias(ty::Projection, ref proj) => has_is_empty_impl(cx, proj.def_id),
         ty::Adt(id, _) => has_is_empty_impl(cx, id.did()),
         ty::Array(..) | ty::Slice(..) | ty::Str => true,
         _ => false,

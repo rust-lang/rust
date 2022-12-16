@@ -77,3 +77,9 @@ pub struct SymbolAlreadyDefined {
     pub span: Option<Span>,
     pub symbol: String,
 }
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_couldnt_dump_mono_stats)]
+pub struct CouldntDumpMonoStats {
+    pub error: String,
+}

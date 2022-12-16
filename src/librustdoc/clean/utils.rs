@@ -78,12 +78,16 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
 pub(crate) fn substs_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    substs: &[ty::subst::GenericArg<'tcx>],
+    substs: ty::Binder<'tcx, &[ty::subst::GenericArg<'tcx>]>,
     mut skip_first: bool,
 ) -> Vec<GenericArg> {
     let mut ret_val =
-        Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
-    ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
+        Vec::with_capacity(substs.skip_binder().len().saturating_sub(if skip_first {
+            1
+        } else {
+            0
+        }));
+    ret_val.extend(substs.iter().filter_map(|kind| match kind.skip_binder().unpack() {
         GenericArgKind::Lifetime(lt) => {
             Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
@@ -91,8 +95,12 @@ pub(crate) fn substs_to_args<'tcx>(
             skip_first = false;
             None
         }
-        GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(ty, cx, None))),
-        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx)))),
+        GenericArgKind::Type(ty) => {
+            Some(GenericArg::Type(clean_middle_ty(kind.rebind(ty), cx, None)))
+        }
+        GenericArgKind::Const(ct) => {
+            Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
+        }
     }));
     ret_val
 }
@@ -102,15 +110,20 @@ fn external_generic_args<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, substs, has_self);
+    let args = substs_to_args(cx, substs.map_bound(|substs| &substs[..]), has_self);
 
     if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
+        let ty = substs
+            .iter()
+            .nth(if has_self { 1 } else { 0 })
+            .unwrap()
+            .map_bound(|arg| arg.expect_ty());
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
-            match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
+            match ty.skip_binder().kind() {
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
         let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
@@ -130,7 +143,7 @@ pub(super) fn external_path<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);

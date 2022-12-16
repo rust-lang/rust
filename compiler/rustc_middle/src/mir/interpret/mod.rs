@@ -95,7 +95,6 @@ mod pointer;
 mod queries;
 mod value;
 
-use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};

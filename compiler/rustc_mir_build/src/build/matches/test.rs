@@ -838,8 +838,6 @@ fn trait_method<'tcx>(
     method_name: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> ConstantKind<'tcx> {
-    let substs = tcx.mk_substs(substs.into_iter().map(Into::into));
-
     // The unhygienic comparison here is acceptable because this is only
     // used on known traits.
     let item = tcx

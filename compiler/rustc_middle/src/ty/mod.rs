@@ -64,6 +64,7 @@ use std::ops::ControlFlow;
 use std::{fmt, str};
 
 pub use crate::ty::diagnostics::*;
+pub use rustc_type_ir::AliasKind::*;
 pub use rustc_type_ir::DynKind::*;
 pub use rustc_type_ir::InferTy::*;
 pub use rustc_type_ir::RegionKind::*;
@@ -82,10 +83,8 @@ pub use self::consts::{
     Const, ConstInt, ConstKind, ConstS, Expr, InferConst, ScalarInt, UnevaluatedConst, ValTree,
 };
 pub use self::context::{
-    tls, CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
-    CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GeneratorDiagnosticData,
-    GeneratorInteriorTypeCause, GlobalCtxt, Lift, OnDiskCache, TyCtxt, TyCtxtFeed, TypeckResults,
-    UserType, UserTypeAnnotationIndex,
+    tls, CtxtInterners, DeducedParamAttrs, FreeRegionInfo, GlobalCtxt, Lift, OnDiskCache, TyCtxt,
+    TyCtxtFeed,
 };
 pub use self::instance::{Instance, InstanceDef, ShortInstance};
 pub use self::list::List;
@@ -93,16 +92,20 @@ pub use self::parameterized::ParameterizedOverTcx;
 pub use self::rvalue_scopes::RvalueScopes;
 pub use self::sty::BoundRegionKind::*;
 pub use self::sty::{
-    Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
+    AliasTy, Article, Binder, BoundRegion, BoundRegionKind, BoundTy, BoundTyKind, BoundVar,
     BoundVariableKind, CanonicalPolyFnSig, ClosureSubsts, ClosureSubstsParts, ConstVid,
     EarlyBoundRegion, ExistentialPredicate, ExistentialProjection, ExistentialTraitRef, FnSig,
     FreeRegion, GenSig, GeneratorSubsts, GeneratorSubstsParts, InlineConstSubsts,
     InlineConstSubstsParts, ParamConst, ParamTy, PolyExistentialPredicate,
     PolyExistentialProjection, PolyExistentialTraitRef, PolyFnSig, PolyGenSig, PolyTraitRef,
-    ProjectionTy, Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts,
-    VarianceDiagInfo,
+    Region, RegionKind, RegionVid, TraitRef, TyKind, TypeAndMut, UpvarSubsts, VarianceDiagInfo,
 };
 pub use self::trait_def::TraitDef;
+pub use self::typeck_results::{
+    CanonicalUserType, CanonicalUserTypeAnnotation, CanonicalUserTypeAnnotations,
+    GeneratorDiagnosticData, GeneratorInteriorTypeCause, TypeckResults, UserType,
+    UserTypeAnnotationIndex,
+};
 
 pub mod _match;
 pub mod abstract_const;
@@ -143,6 +146,7 @@ mod parameterized;
 mod rvalue_scopes;
 mod structural_impls;
 mod sty;
+mod typeck_results;
 
 // Data types
 
@@ -235,7 +239,7 @@ pub struct ImplHeader<'tcx> {
     pub predicates: Vec<Predicate<'tcx>>,
 }
 
-#[derive(Copy, Clone, Debug, TypeFoldable, TypeVisitable)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, TypeFoldable, TypeVisitable)]
 pub enum ImplSubject<'tcx> {
     Trait(TraitRef<'tcx>),
     Inherent(Ty<'tcx>),
@@ -781,8 +785,8 @@ impl<'tcx> TraitPredicate<'tcx> {
         }
     }
 
-    pub fn with_self_type(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
-        Self { trait_ref: self.trait_ref.with_self_type(tcx, self_ty), ..self }
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self { trait_ref: self.trait_ref.with_self_ty(tcx, self_ty), ..self }
     }
 
     pub fn def_id(self) -> DefId {
@@ -1010,7 +1014,7 @@ impl<'tcx> TermKind<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
 pub struct ProjectionPredicate<'tcx> {
-    pub projection_ty: ProjectionTy<'tcx>,
+    pub projection_ty: AliasTy<'tcx>,
     pub term: Term<'tcx>,
 }
 
@@ -1046,7 +1050,19 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
     /// associated type, which is in `tcx.associated_item(projection_def_id()).container`.
     pub fn projection_def_id(&self) -> DefId {
         // Ok to skip binder since trait `DefId` does not care about regions.
-        self.skip_binder().projection_ty.item_def_id
+        self.skip_binder().projection_ty.def_id
+    }
+}
+
+impl<'tcx> ProjectionPredicate<'tcx> {
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        Self {
+            projection_ty: tcx.mk_alias_ty(
+                self.projection_ty.def_id,
+                [self_ty.into()].into_iter().chain(self.projection_ty.substs.iter().skip(1)),
+            ),
+            ..self
+        }
     }
 }
 

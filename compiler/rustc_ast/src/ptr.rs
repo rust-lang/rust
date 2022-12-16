@@ -22,7 +22,6 @@
 //!   Moreover, a switch to, e.g., `P<'a, T>` would be easy and mostly automated.
 
 use std::fmt::{self, Debug, Display};
-use std::iter::FromIterator;
 use std::ops::{Deref, DerefMut};
 use std::{slice, vec};
 

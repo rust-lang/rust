@@ -322,7 +322,13 @@ extern "C" LLVMAttributeRef LLVMRustCreateUWTableAttr(LLVMContextRef C, bool Asy
 }
 
 extern "C" LLVMAttributeRef LLVMRustCreateAllocSizeAttr(LLVMContextRef C, uint32_t ElementSizeArg) {
-  return wrap(Attribute::getWithAllocSizeArgs(*unwrap(C), ElementSizeArg, None));
+  return wrap(Attribute::getWithAllocSizeArgs(*unwrap(C), ElementSizeArg,
+#if LLVM_VERSION_LT(16, 0)
+                                              None
+#else
+                                              std::nullopt
+#endif
+                                              ));
 }
 
 #if LLVM_VERSION_GE(15, 0)
@@ -717,7 +723,11 @@ static std::optional<DIFile::ChecksumKind> fromRust(LLVMRustChecksumKind Kind) {
 #endif
   switch (Kind) {
   case LLVMRustChecksumKind::None:
+#if LLVM_VERSION_LT(16, 0)
     return None;
+#else
+    return std::nullopt;
+#endif
   case LLVMRustChecksumKind::MD5:
     return DIFile::ChecksumKind::CSK_MD5;
   case LLVMRustChecksumKind::SHA1:

@@ -490,7 +490,7 @@ fn locals_live_across_suspend_points<'tcx>(
 
     // Calculate when MIR locals have live storage. This gives us an upper bound of their
     // lifetimes.
-    let mut storage_live = MaybeStorageLive::new(always_live_locals.clone())
+    let mut storage_live = MaybeStorageLive::new(std::borrow::Cow::Borrowed(always_live_locals))
         .into_engine(tcx, body_ref)
         .iterate_to_fixpoint()
         .into_results_cursor(body_ref);

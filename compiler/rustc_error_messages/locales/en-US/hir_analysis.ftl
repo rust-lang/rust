@@ -20,6 +20,10 @@ hir_analysis_lifetimes_or_bounds_mismatch_on_trait =
     .where_label = this `where` clause might not match the one in the trait
     .bounds_label = this bound might be missing in the impl
 
+hir_analysis_async_trait_impl_should_be_async =
+    method `{$method_name}` should be async because the method from the trait is async
+    .trait_item_label = required because the trait method is async
+
 hir_analysis_drop_impl_on_wrong_item =
     the `Drop` trait may only be implemented for local structs, enums, and unions
     .label = must be a struct, enum, or union in the current crate
@@ -100,8 +104,6 @@ hir_analysis_unused_extern_crate =
 hir_analysis_extern_crate_not_idiomatic =
     `extern crate` is not idiomatic in the new edition
     .suggestion = convert it to a `{$msg_code}`
-
-hir_analysis_expected_used_symbol = expected `used`, `used(compiler)` or `used(linker)`
 
 hir_analysis_const_impl_for_non_const_trait =
     const `impl` for trait `{$trait_name}` which is not marked with `#[const_trait]`

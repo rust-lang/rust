@@ -9,7 +9,6 @@ use rustc_data_structures::sharded::Sharded;
 use rustc_data_structures::sync::Lock;
 use rustc_data_structures::sync::WorkerLocal;
 use rustc_index::vec::{Idx, IndexVec};
-use std::default::Default;
 use std::fmt::Debug;
 use std::hash::Hash;
 use std::marker::PhantomData;

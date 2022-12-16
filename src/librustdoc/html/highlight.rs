@@ -21,15 +21,15 @@ use rustc_span::{BytePos, Span, DUMMY_SP};
 use super::format::{self, Buffer};
 
 /// This type is needed in case we want to render links on items to allow to go to their definition.
-pub(crate) struct HrefContext<'a, 'b, 'c> {
-    pub(crate) context: &'a Context<'b>,
+pub(crate) struct HrefContext<'a, 'tcx> {
+    pub(crate) context: &'a Context<'tcx>,
     /// This span contains the current file we're going through.
     pub(crate) file_span: Span,
     /// This field is used to know "how far" from the top of the directory we are to link to either
     /// documentation pages or other source pages.
-    pub(crate) root_path: &'c str,
+    pub(crate) root_path: &'a str,
     /// This field is used to calculate precise local URLs.
-    pub(crate) current_href: &'c str,
+    pub(crate) current_href: String,
 }
 
 /// Decorations are represented as a map from CSS class to vector of character ranges.
@@ -70,7 +70,7 @@ pub(crate) fn render_source_with_highlighting(
     src: &str,
     out: &mut Buffer,
     line_numbers: Buffer,
-    href_context: HrefContext<'_, '_, '_>,
+    href_context: HrefContext<'_, '_>,
     decoration_info: DecorationInfo,
     extra: Option<&str>,
 ) {
@@ -137,7 +137,7 @@ fn can_merge(class1: Option<Class>, class2: Option<Class>, text: &str) -> bool {
 
 /// This type is used as a conveniency to prevent having to pass all its fields as arguments into
 /// the various functions (which became its methods).
-struct TokenHandler<'a, 'b, 'c, 'd, 'e> {
+struct TokenHandler<'a, 'tcx> {
     out: &'a mut Buffer,
     /// It contains the closing tag and the associated `Class`.
     closing_tags: Vec<(&'static str, Class)>,
@@ -149,11 +149,11 @@ struct TokenHandler<'a, 'b, 'c, 'd, 'e> {
     current_class: Option<Class>,
     /// We need to keep the `Class` for each element because it could contain a `Span` which is
     /// used to generate links.
-    pending_elems: Vec<(&'b str, Option<Class>)>,
-    href_context: Option<HrefContext<'c, 'd, 'e>>,
+    pending_elems: Vec<(&'a str, Option<Class>)>,
+    href_context: Option<HrefContext<'a, 'tcx>>,
 }
 
-impl<'a, 'b, 'c, 'd, 'e> TokenHandler<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'tcx> TokenHandler<'a, 'tcx> {
     fn handle_exit_span(&mut self) {
         // We can't get the last `closing_tags` element using `pop()` because `closing_tags` is
         // being used in `write_pending_elems`.
@@ -205,7 +205,7 @@ impl<'a, 'b, 'c, 'd, 'e> TokenHandler<'a, 'b, 'c, 'd, 'e> {
     }
 }
 
-impl<'a, 'b, 'c, 'd, 'e> Drop for TokenHandler<'a, 'b, 'c, 'd, 'e> {
+impl<'a, 'tcx> Drop for TokenHandler<'a, 'tcx> {
     /// When leaving, we need to flush all pending data to not have missing content.
     fn drop(&mut self) {
         if self.pending_exit_span.is_some() {
@@ -230,7 +230,7 @@ impl<'a, 'b, 'c, 'd, 'e> Drop for TokenHandler<'a, 'b, 'c, 'd, 'e> {
 fn write_code(
     out: &mut Buffer,
     src: &str,
-    href_context: Option<HrefContext<'_, '_, '_>>,
+    href_context: Option<HrefContext<'_, '_>>,
     decoration_info: Option<DecorationInfo>,
 ) {
     // This replace allows to fix how the code source with DOS backline characters is displayed.
@@ -514,18 +514,18 @@ impl Decorations {
 
 /// Processes program tokens, classifying strings of text by highlighting
 /// category (`Class`).
-struct Classifier<'a> {
-    tokens: PeekIter<'a>,
+struct Classifier<'src> {
+    tokens: PeekIter<'src>,
     in_attribute: bool,
     in_macro: bool,
     in_macro_nonterminal: bool,
     byte_pos: u32,
     file_span: Span,
-    src: &'a str,
+    src: &'src str,
     decorations: Option<Decorations>,
 }
 
-impl<'a> Classifier<'a> {
+impl<'src> Classifier<'src> {
     /// Takes as argument the source code to HTML-ify, the rust edition to use and the source code
     /// file span which will be used later on by the `span_correspondance_map`.
     fn new(src: &str, file_span: Span, decoration_info: Option<DecorationInfo>) -> Classifier<'_> {
@@ -603,7 +603,7 @@ impl<'a> Classifier<'a> {
     ///
     /// It returns the token's kind, the token as a string and its byte position in the source
     /// string.
-    fn next(&mut self) -> Option<(TokenKind, &'a str, u32)> {
+    fn next(&mut self) -> Option<(TokenKind, &'src str, u32)> {
         if let Some((kind, text)) = self.tokens.next() {
             let before = self.byte_pos;
             self.byte_pos += text.len() as u32;
@@ -618,7 +618,7 @@ impl<'a> Classifier<'a> {
     /// The general structure for this method is to iterate over each token,
     /// possibly giving it an HTML span with a class specifying what flavor of
     /// token is used.
-    fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'a>)) {
+    fn highlight(mut self, sink: &mut dyn FnMut(Highlight<'src>)) {
         loop {
             if let Some(decs) = self.decorations.as_mut() {
                 let byte_pos = self.byte_pos;
@@ -666,8 +666,8 @@ impl<'a> Classifier<'a> {
     fn advance(
         &mut self,
         token: TokenKind,
-        text: &'a str,
-        sink: &mut dyn FnMut(Highlight<'a>),
+        text: &'src str,
+        sink: &mut dyn FnMut(Highlight<'src>),
         before: u32,
     ) {
         let lookahead = self.peek();
@@ -881,7 +881,7 @@ impl<'a> Classifier<'a> {
 fn enter_span(
     out: &mut Buffer,
     klass: Class,
-    href_context: &Option<HrefContext<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_>>,
 ) -> &'static str {
     string_without_closing_tag(out, "", Some(klass), href_context, true).expect(
         "internal error: enter_span was called with Some(klass) but did not return a \
@@ -914,7 +914,7 @@ fn string<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    href_context: &Option<HrefContext<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_>>,
     open_tag: bool,
 ) {
     if let Some(closing_tag) = string_without_closing_tag(out, text, klass, href_context, open_tag)
@@ -936,7 +936,7 @@ fn string_without_closing_tag<T: Display>(
     out: &mut Buffer,
     text: T,
     klass: Option<Class>,
-    href_context: &Option<HrefContext<'_, '_, '_>>,
+    href_context: &Option<HrefContext<'_, '_>>,
     open_tag: bool,
 ) -> Option<&'static str> {
     let Some(klass) = klass
@@ -985,7 +985,7 @@ fn string_without_closing_tag<T: Display>(
                 // https://github.com/rust-lang/rust/blob/60f1a2fc4b535ead9c85ce085fdce49b1b097531/src/librustdoc/html/render/context.rs#L315-L338
                 match href {
                     LinkFromSrc::Local(span) => {
-                        context.href_from_span_relative(*span, href_context.current_href)
+                        context.href_from_span_relative(*span, &href_context.current_href)
                     }
                     LinkFromSrc::External(def_id) => {
                         format::href_with_root_path(*def_id, context, Some(href_context.root_path))

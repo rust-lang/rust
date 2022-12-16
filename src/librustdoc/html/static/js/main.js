@@ -184,7 +184,6 @@ function browserSupportsHistoryApi() {
 function loadCss(cssUrl) {
     const link = document.createElement("link");
     link.href = cssUrl;
-    link.type = "text/css";
     link.rel = "stylesheet";
     document.getElementsByTagName("head")[0].appendChild(link);
 }

@@ -1,10 +1,8 @@
 error[E0277]: the trait bound `for<'a> &'a mut (): Foo<&'a mut ()>` is not satisfied
-  --> $DIR/issue-101020.rs:31:5
+  --> $DIR/issue-101020.rs:31:22
    |
 LL |     (&mut EmptyIter).consume(());
-   |     ^^^^^^^^^^^^^^^^ ------- required by a bound introduced by this call
-   |     |
-   |     the trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
+   |                      ^^^^^^^ the trait `for<'a> Foo<&'a mut ()>` is not implemented for `&'a mut ()`
    |
 note: required for `&'a mut ()` to implement `for<'a> FuncInput<'a, &'a mut ()>`
   --> $DIR/issue-101020.rs:27:20

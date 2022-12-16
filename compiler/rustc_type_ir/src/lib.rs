@@ -42,7 +42,7 @@ pub trait Interner {
     type ListBinderExistentialPredicate: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BinderListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ProjectionTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type AliasTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;

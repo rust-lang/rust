@@ -931,10 +931,13 @@ fn visit_fn_use<'tcx>(
 ) {
     if let ty::FnDef(def_id, substs) = *ty.kind() {
         let instance = if is_direct_call {
-            ty::Instance::resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs).unwrap().unwrap()
+            ty::Instance::expect_resolve(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
         } else {
-            ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
-                .unwrap()
+            match ty::Instance::resolve_for_fn_ptr(tcx, ty::ParamEnv::reveal_all(), def_id, substs)
+            {
+                Some(instance) => instance,
+                _ => bug!("failed to resolve instance for {ty}"),
+            }
         };
         visit_instance_use(tcx, instance, is_direct_call, source, output);
     }
@@ -1369,9 +1372,8 @@ fn create_mono_items_for_default_impls<'tcx>(
                                 trait_ref.substs[param.index as usize]
                             }
                         });
-                    let instance = ty::Instance::resolve(tcx, param_env, method.def_id, substs)
-                        .unwrap()
-                        .unwrap();
+                    let instance =
+                        ty::Instance::expect_resolve(tcx, param_env, method.def_id, substs);
 
                     let mono_item = create_fn_mono_item(tcx, instance, DUMMY_SP);
                     if mono_item.node.is_instantiable(tcx) && should_codegen_locally(tcx, &instance)

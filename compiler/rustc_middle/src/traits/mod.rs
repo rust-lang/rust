@@ -250,7 +250,7 @@ pub enum ObligationCauseCode<'tcx> {
     TupleElem,
 
     /// This is the trait reference from the given projection.
-    ProjectionWf(ty::ProjectionTy<'tcx>),
+    ProjectionWf(ty::AliasTy<'tcx>),
 
     /// Must satisfy all of the where-clause predicates of the
     /// given item.

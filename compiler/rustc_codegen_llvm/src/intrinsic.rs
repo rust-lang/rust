@@ -424,7 +424,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         typeid: &'ll Value,
     ) -> Self::Value {
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
-        self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid])
+        let type_checked_load =
+            self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid]);
+        self.extract_value(type_checked_load, 0)
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {

@@ -276,7 +276,7 @@ pub(crate) fn print_src(
     let mut line_numbers = Buffer::empty_from(buf);
     let extra;
     line_numbers.write_str("<pre class=\"src-line-numbers\">");
-    let current_href = &context
+    let current_href = context
         .href_from_span(clean::Span::new(file_span), false)
         .expect("only local crates should have sources emitted");
     match source_context {

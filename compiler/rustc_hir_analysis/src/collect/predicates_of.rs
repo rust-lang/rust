@@ -75,7 +75,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
 
     const NO_GENERICS: &hir::Generics<'_> = hir::Generics::empty();
 
-    // We use an `IndexSet` to preserves order of insertion.
+    // We use an `IndexSet` to preserve order of insertion.
     // Preserving the order of insertion is important here so as not to break UI tests.
     let mut predicates: FxIndexSet<(ty::Predicate<'_>, Span)> = FxIndexSet::default();
 
@@ -97,11 +97,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
             | ItemKind::Struct(_, ref generics)
             | ItemKind::Union(_, ref generics) => *generics,
 
-            ItemKind::Trait(_, _, ref generics, ..) => {
-                is_trait = Some(ty::TraitRef::identity(tcx, def_id));
-                *generics
-            }
-            ItemKind::TraitAlias(ref generics, _) => {
+            ItemKind::Trait(_, _, ref generics, ..) | ItemKind::TraitAlias(ref generics, _) => {
                 is_trait = Some(ty::TraitRef::identity(tcx, def_id));
                 *generics
             }
@@ -406,14 +402,15 @@ pub(super) fn explicit_predicates_of<'tcx>(
             // For a predicate from a where clause to become a bound on an
             // associated type:
             // * It must use the identity substs of the item.
-            //     * Since any generic parameters on the item are not in scope,
-            //       this means that the item is not a GAT, and its identity
-            //       substs are the same as the trait's.
+            //   * We're in the scope of the trait, so we can't name any
+            //     parameters of the GAT. That means that all we need to
+            //     check are that the substs of the projection are the
+            //     identity substs of the trait.
             // * It must be an associated type for this trait (*not* a
             //   supertrait).
-            if let ty::Projection(projection) = ty.kind() {
+            if let ty::Alias(ty::Projection, projection) = ty.kind() {
                 projection.substs == trait_identity_substs
-                    && tcx.associated_item(projection.item_def_id).container_id(tcx) == def_id
+                    && tcx.associated_item(projection.def_id).container_id(tcx) == def_id
             } else {
                 false
             }

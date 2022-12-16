@@ -504,7 +504,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Opaque(def_id, _) = *output_ty.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id)
         };
 

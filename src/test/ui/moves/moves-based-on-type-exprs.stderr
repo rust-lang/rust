@@ -160,11 +160,8 @@ LL |     let _y = x.into_iter().next().unwrap();
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `x`
+note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     let _y = x.clone().into_iter().next().unwrap();
@@ -180,11 +177,8 @@ LL |     let _y = [x.into_iter().next().unwrap(); 1];
 LL |     touch(&x);
    |           ^^ value borrowed here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `x`
+note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider cloning the value if the performance cost is acceptable
    |
 LL |     let _y = [x.clone().into_iter().next().unwrap(); 1];

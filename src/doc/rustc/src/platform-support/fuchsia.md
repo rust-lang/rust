@@ -90,7 +90,7 @@ rustup target add aarch64-fuchsia
 After installing our Fuchsia targets, we can now compile a Rust binary that targets
 Fuchsia.
 
-To create our Rust project, we can issue a standard `cargo` command as follows:
+To create our Rust project, we can use [`cargo`][cargo] as follows:
 
 **From base working directory**
 ```sh
@@ -867,7 +867,7 @@ ${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
 [Fuchsia]: https://fuchsia.dev/
 [source tree]: https://fuchsia.dev/fuchsia-src/get-started/learn/build
 [rustup]: https://rustup.rs/
-[cargo]: https://doc.rust-lang.org/cargo/
+[cargo]: ../../cargo/index.html
 [Fuchsia SDK]: https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core
 [overview of CML]: https://fuchsia.dev/fuchsia-src/concepts/components/v2/component_manifests
 [reference for the file format]: https://fuchsia.dev/reference/cml

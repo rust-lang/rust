@@ -83,7 +83,7 @@ macro_rules! maybe_whole_expr {
 pub(super) enum LhsExpr {
     NotYetParsed,
     AttributesParsed(AttrWrapper),
-    AlreadyParsed(P<Expr>),
+    AlreadyParsed(P<Expr>, bool), // (expr, starts_statement)
 }
 
 impl From<Option<AttrWrapper>> for LhsExpr {
@@ -101,7 +101,7 @@ impl From<P<Expr>> for LhsExpr {
     ///
     /// This conversion does not allocate.
     fn from(expr: P<Expr>) -> Self {
-        LhsExpr::AlreadyParsed(expr)
+        LhsExpr::AlreadyParsed(expr, false)
     }
 }
 
@@ -173,7 +173,9 @@ impl<'a> Parser<'a> {
         min_prec: usize,
         lhs: LhsExpr,
     ) -> PResult<'a, P<Expr>> {
-        let mut lhs = if let LhsExpr::AlreadyParsed(expr) = lhs {
+        let mut starts_stmt = false;
+        let mut lhs = if let LhsExpr::AlreadyParsed(expr, starts_statement) = lhs {
+            starts_stmt = starts_statement;
             expr
         } else {
             let attrs = match lhs {
@@ -292,7 +294,7 @@ impl<'a> Parser<'a> {
                 let op_span = self.prev_token.span.to(self.token.span);
                 // Eat the second `+`
                 self.bump();
-                lhs = self.recover_from_postfix_increment(lhs, op_span)?;
+                lhs = self.recover_from_postfix_increment(lhs, op_span, starts_stmt)?;
                 continue;
             }
 
@@ -590,14 +592,15 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Plus)
                 if this.look_ahead(1, |t| *t == token::BinOp(token::Plus)) =>
             {
-                let prev_is_semi = this.prev_token == token::Semi;
+                let starts_stmt = this.prev_token == token::Semi
+                    || this.prev_token == token::CloseDelim(Delimiter::Brace);
                 let pre_span = this.token.span.to(this.look_ahead(1, |t| t.span));
                 // Eat both `+`s.
                 this.bump();
                 this.bump();
 
                 let operand_expr = this.parse_dot_or_call_expr(Default::default())?;
-                this.recover_from_prefix_increment(operand_expr, pre_span, prev_is_semi)
+                this.recover_from_prefix_increment(operand_expr, pre_span, starts_stmt)
             }
             token::Ident(..) if this.token.is_keyword(kw::Box) => {
                 make_it!(this, attrs, |this, _| this.parse_box_expr(lo))
@@ -1534,15 +1537,16 @@ impl<'a> Parser<'a> {
             && (matches!(self.token.kind, token::CloseDelim(_) | token::Comma)
                 || self.token.is_op())
         {
-            let lit = self.recover_unclosed_char(label_.ident, |self_| {
-                self_.sess.create_err(UnexpectedTokenAfterLabel {
-                    span: self_.token.span,
-                    remove_label: None,
-                    enclose_in_block: None,
-                })
-            });
+            let (lit, _) =
+                self.recover_unclosed_char(label_.ident, Parser::mk_token_lit_char, |self_| {
+                    self_.sess.create_err(UnexpectedTokenAfterLabel {
+                        span: self_.token.span,
+                        remove_label: None,
+                        enclose_in_block: None,
+                    })
+                });
             consume_colon = false;
-            Ok(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
+            Ok(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else if !ate_colon
             && (self.check_noexpect(&TokenKind::Comma) || self.check_noexpect(&TokenKind::Gt))
         {
@@ -1617,12 +1621,13 @@ impl<'a> Parser<'a> {
         Ok(expr)
     }
 
-    /// Emit an error when a char is parsed as a lifetime because of a missing quote
-    pub(super) fn recover_unclosed_char(
+    /// Emit an error when a char is parsed as a lifetime because of a missing quote.
+    pub(super) fn recover_unclosed_char<L>(
         &self,
         lifetime: Ident,
+        mk_lit_char: impl FnOnce(Symbol, Span) -> L,
         err: impl FnOnce(&Self) -> DiagnosticBuilder<'a, ErrorGuaranteed>,
-    ) -> ast::MetaItemLit {
+    ) -> L {
         if let Some(mut diag) =
             self.sess.span_diagnostic.steal_diagnostic(lifetime.span, StashKey::LifetimeIsChar)
         {
@@ -1644,11 +1649,7 @@ impl<'a> Parser<'a> {
                 .emit();
         }
         let name = lifetime.without_first_quote().name;
-        ast::MetaItemLit {
-            token_lit: token::Lit::new(token::LitKind::Char, name, None),
-            kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
-            span: lifetime.span,
-        }
+        mk_lit_char(name, lifetime.span)
     }
 
     /// Recover on the syntax `do catch { ... }` suggesting `try { ... }` instead.
@@ -1764,8 +1765,8 @@ impl<'a> Parser<'a> {
             Some(lit) => match lit.kind {
                 ast::LitKind::Str(symbol_unescaped, style) => Ok(ast::StrLit {
                     style,
-                    symbol: lit.token_lit.symbol,
-                    suffix: lit.token_lit.suffix,
+                    symbol: lit.symbol,
+                    suffix: lit.suffix,
                     span: lit.span,
                     symbol_unescaped,
                 }),
@@ -1775,7 +1776,23 @@ impl<'a> Parser<'a> {
         }
     }
 
-    fn handle_missing_lit(&mut self) -> PResult<'a, MetaItemLit> {
+    pub(crate) fn mk_token_lit_char(name: Symbol, span: Span) -> (token::Lit, Span) {
+        (token::Lit { symbol: name, suffix: None, kind: token::Char }, span)
+    }
+
+    fn mk_meta_item_lit_char(name: Symbol, span: Span) -> MetaItemLit {
+        ast::MetaItemLit {
+            symbol: name,
+            suffix: None,
+            kind: ast::LitKind::Char(name.as_str().chars().next().unwrap_or('_')),
+            span,
+        }
+    }
+
+    fn handle_missing_lit<L>(
+        &mut self,
+        mk_lit_char: impl FnOnce(Symbol, Span) -> L,
+    ) -> PResult<'a, L> {
         if let token::Interpolated(inner) = &self.token.kind {
             let expr = match inner.as_ref() {
                 token::NtExpr(expr) => Some(expr),
@@ -1799,7 +1816,7 @@ impl<'a> Parser<'a> {
         // On an error path, eagerly consider a lifetime to be an unclosed character lit
         if self.token.is_lifetime() {
             let lt = self.expect_lifetime();
-            Ok(self.recover_unclosed_char(lt.ident, err))
+            Ok(self.recover_unclosed_char(lt.ident, mk_lit_char, err))
         } else {
             Err(err(self))
         }
@@ -1808,11 +1825,13 @@ impl<'a> Parser<'a> {
     pub(super) fn parse_token_lit(&mut self) -> PResult<'a, (token::Lit, Span)> {
         self.parse_opt_token_lit()
             .ok_or(())
-            .or_else(|()| self.handle_missing_lit().map(|lit| (lit.token_lit, lit.span)))
+            .or_else(|()| self.handle_missing_lit(Parser::mk_token_lit_char))
     }
 
     pub(super) fn parse_meta_item_lit(&mut self) -> PResult<'a, MetaItemLit> {
-        self.parse_opt_meta_item_lit().ok_or(()).or_else(|()| self.handle_missing_lit())
+        self.parse_opt_meta_item_lit()
+            .ok_or(())
+            .or_else(|()| self.handle_missing_lit(Parser::mk_meta_item_lit_char))
     }
 
     fn recover_after_dot(&mut self) -> Option<Token> {

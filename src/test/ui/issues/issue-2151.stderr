@@ -8,8 +8,8 @@ LL |     x.clone();
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: _ = panic!();
-   |          +++
+LL |     let x: /* Type */ = panic!();
+   |          ++++++++++++
 
 error: aborting due to previous error
 

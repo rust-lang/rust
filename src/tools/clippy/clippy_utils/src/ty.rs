@@ -17,7 +17,7 @@ use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
     self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
-    ProjectionTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    AliasTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
     VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
@@ -79,7 +79,7 @@ pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'
                 return true;
             }
 
-            if let ty::Opaque(def_id, _) = *inner_ty.kind() {
+            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
                 for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
                     match predicate.kind().skip_binder() {
                         // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
@@ -250,7 +250,7 @@ pub fn is_must_use_ty<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
             is_must_use_ty(cx, *ty)
         },
         ty::Tuple(substs) => substs.iter().any(|ty| is_must_use_ty(cx, ty)),
-        ty::Opaque(def_id, _) => {
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
             for (predicate, _) in cx.tcx.explicit_item_bounds(*def_id) {
                 if let ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() {
                     if cx.tcx.has_attr(trait_predicate.trait_ref.def_id, sym::must_use) {
@@ -631,7 +631,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Opaque(id, _) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(id), cx.tcx.opt_parent(id)),
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
@@ -650,7 +650,7 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
                 _ => None,
             }
         },
-        ty::Projection(proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
+        ty::Alias(ty::Projection, proj) => match cx.tcx.try_normalize_erasing_regions(cx.param_env, ty) {
             Ok(normalized_ty) if normalized_ty != ty => ty_sig(cx, normalized_ty),
             _ => sig_for_projection(cx, proj).or_else(|| sig_from_bounds(cx, ty, cx.param_env.caller_bounds(), None)),
         },
@@ -685,7 +685,7 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             PredicateKind::Clause(ty::Clause::Projection(p))
-                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output()
+                if Some(p.projection_ty.def_id) == lang_items.fn_once_output()
                     && p.projection_ty.self_ty() == ty =>
             {
                 if output.is_some() {
@@ -701,14 +701,14 @@ fn sig_from_bounds<'tcx>(
     inputs.map(|ty| ExprFnSig::Trait(ty, output, predicates_id))
 }
 
-fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
+fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: AliasTy<'tcx>) -> Option<ExprFnSig<'tcx>> {
     let mut inputs = None;
     let mut output = None;
     let lang_items = cx.tcx.lang_items();
 
     for (pred, _) in cx
         .tcx
-        .bound_explicit_item_bounds(ty.item_def_id)
+        .bound_explicit_item_bounds(ty.def_id)
         .subst_iter_copied(cx.tcx, ty.substs)
     {
         match pred.kind().skip_binder() {
@@ -726,7 +726,7 @@ fn sig_for_projection<'tcx>(cx: &LateContext<'tcx>, ty: ProjectionTy<'tcx>) -> O
                 inputs = Some(i);
             },
             PredicateKind::Clause(ty::Clause::Projection(p))
-                if Some(p.projection_ty.item_def_id) == lang_items.fn_once_output() =>
+                if Some(p.projection_ty.def_id) == lang_items.fn_once_output() =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -980,13 +980,13 @@ pub fn make_projection<'tcx>(
     container_id: DefId,
     assoc_ty: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
-) -> Option<ProjectionTy<'tcx>> {
+) -> Option<AliasTy<'tcx>> {
     fn helper<'tcx>(
         tcx: TyCtxt<'tcx>,
         container_id: DefId,
         assoc_ty: Symbol,
         substs: SubstsRef<'tcx>,
-    ) -> Option<ProjectionTy<'tcx>> {
+    ) -> Option<AliasTy<'tcx>> {
         let Some(assoc_item) = tcx
             .associated_items(container_id)
             .find_by_name_and_kind(tcx, Ident::with_dummy_span(assoc_ty), AssocKind::Type, container_id)
@@ -1039,10 +1039,10 @@ pub fn make_projection<'tcx>(
             }
         }
 
-        Some(ProjectionTy {
+        Some(tcx.mk_alias_ty(
+            assoc_item.def_id,
             substs,
-            item_def_id: assoc_item.def_id,
-        })
+        ))
     }
     helper(
         tcx,
@@ -1065,7 +1065,7 @@ pub fn make_normalized_projection<'tcx>(
     assoc_ty: Symbol,
     substs: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> Option<Ty<'tcx>> {
-    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: ProjectionTy<'tcx>) -> Option<Ty<'tcx>> {
+    fn helper<'tcx>(tcx: TyCtxt<'tcx>, param_env: ParamEnv<'tcx>, ty: AliasTy<'tcx>) -> Option<Ty<'tcx>> {
         #[cfg(debug_assertions)]
         if let Some((i, subst)) = ty
             .substs
@@ -1081,7 +1081,7 @@ pub fn make_normalized_projection<'tcx>(
             );
             return None;
         }
-        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.item_def_id, ty.substs)) {
+        match tcx.try_normalize_erasing_regions(param_env, tcx.mk_projection(ty.def_id, ty.substs)) {
             Ok(ty) => Some(ty),
             Err(e) => {
                 debug_assert!(false, "failed to normalize type `{ty}`: {e:#?}");

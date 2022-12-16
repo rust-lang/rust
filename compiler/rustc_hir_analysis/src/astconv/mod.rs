@@ -680,7 +680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
 
         let poly_trait_ref =
-            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
+            ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
         bounds.trait_bounds.push((poly_trait_ref, span, constness));
@@ -813,7 +813,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         if let Some(b) = trait_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
-        ty::TraitRef::new(trait_def_id, substs)
+        self.tcx().mk_trait_ref(trait_def_id, substs)
     }
 
     #[instrument(level = "debug", skip(self, span))]
@@ -1146,10 +1146,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!(?substs_trait_ref_and_assoc_item);
 
-            ty::ProjectionTy {
-                item_def_id: assoc_item.def_id,
-                substs: substs_trait_ref_and_assoc_item,
-            }
+            self.tcx().mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
         });
 
         if !speculative {
@@ -1195,7 +1192,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
-                let assoc_item_def_id = projection_ty.skip_binder().item_def_id;
+                let assoc_item_def_id = projection_ty.skip_binder().def_id;
                 let def_kind = tcx.def_kind(assoc_item_def_id);
                 match (def_kind, term.unpack()) {
                     (hir::def::DefKind::AssocTy, ty::TermKind::Ty(_))
@@ -1244,7 +1241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_ty(ty::Projection(projection_ty.skip_binder()));
+                let param_ty = tcx.mk_ty(ty::Alias(ty::Projection, projection_ty.skip_binder()));
                 self.add_bounds(param_ty, ast_bounds.iter(), bounds, candidate.bound_vars());
             }
         }

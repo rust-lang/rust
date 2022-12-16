@@ -34,7 +34,6 @@ pub use crate::cursor::Cursor;
 use self::LiteralKind::*;
 use self::TokenKind::*;
 use crate::cursor::EOF_CHAR;
-use std::convert::TryFrom;
 
 /// Parsed token.
 /// It doesn't contain information about data that has been parsed,

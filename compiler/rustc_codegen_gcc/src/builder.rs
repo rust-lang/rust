@@ -1119,18 +1119,18 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         // TODO(antoyo)
     }
 
-    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
-        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
-        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
-        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
-        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
-            .to_rvalue()
+    fn cleanup_landing_pad(&mut self, _pers_fn: RValue<'gcc>) -> (RValue<'gcc>, RValue<'gcc>) {
+        (
+            self.current_func().new_local(None, self.u8_type.make_pointer(), "landing_pad0")
+                .to_rvalue(),
+            self.current_func().new_local(None, self.i32_type, "landing_pad1").to_rvalue(),
+        )
         // TODO(antoyo): Properly implement unwinding.
         // the above is just to make the compilation work as it seems
         // rustc_codegen_ssa now calls the unwinding builder methods even on panic=abort.
     }
 
-    fn resume(&mut self, _exn: RValue<'gcc>) {
+    fn resume(&mut self, _exn0: RValue<'gcc>, _exn1: RValue<'gcc>) {
         // TODO(bjorn3): Properly implement unwinding.
         self.unreachable();
     }

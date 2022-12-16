@@ -259,8 +259,7 @@ impl<'tcx> Elaborator<'tcx> {
                             Component::Projection(projection) => {
                                 // We might end up here if we have `Foo<<Bar as Baz>::Assoc>: 'a`.
                                 // With this, we can deduce that `<Bar as Baz>::Assoc: 'a`.
-                                let ty =
-                                    tcx.mk_projection(projection.item_def_id, projection.substs);
+                                let ty = tcx.mk_projection(projection.def_id, projection.substs);
                                 Some(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
                                     ty::OutlivesPredicate(ty, r_min),
                                 )))

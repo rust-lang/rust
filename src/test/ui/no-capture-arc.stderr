@@ -13,11 +13,6 @@ LL |     assert_eq!((*arc_v)[2], 3);
    |                ^^^^^^^^ value borrowed here after move
    |
    = note: borrow occurs due to deref coercion to `Vec<i32>`
-note: deref defined here
-  --> $SRC_DIR/alloc/src/sync.rs:LL:COL
-   |
-LL |     type Target = T;
-   |     ^^^^^^^^^^^
 
 error: aborting due to previous error
 

@@ -155,8 +155,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let placeholder_self_ty = placeholder_trait_predicate.self_ty();
         let placeholder_trait_predicate = ty::Binder::dummy(placeholder_trait_predicate);
         let (def_id, substs) = match *placeholder_self_ty.kind() {
-            ty::Projection(proj) => (proj.item_def_id, proj.substs),
-            ty::Opaque(def_id, substs) => (def_id, substs),
+            ty::Alias(_, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
             _ => bug!("projection candidate for unexpected type: {:?}", placeholder_self_ty),
         };
 
@@ -184,7 +183,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 .map_err(|_| Unimplemented)
         })?);
 
-        if let ty::Projection(..) = placeholder_self_ty.kind() {
+        if let ty::Alias(ty::Projection, ..) = placeholder_self_ty.kind() {
             let predicates = tcx.predicates_of(def_id).instantiate_own(tcx, substs).predicates;
             debug!(?predicates, "projection predicates");
             for predicate in predicates {
@@ -1279,7 +1278,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 // If we have a projection type, make sure to normalize it so we replace it
                 // with a fresh infer variable
-                ty::Projection(..) => {
+                ty::Alias(ty::Projection, ..) => {
                     let predicate = normalize_with_depth_to(
                         self,
                         obligation.param_env,

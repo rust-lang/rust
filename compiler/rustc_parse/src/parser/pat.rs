@@ -411,16 +411,20 @@ impl<'a> Parser<'a> {
         {
             // Recover a `'a` as a `'a'` literal
             let lt = self.expect_lifetime();
-            let lit = self.recover_unclosed_char(lt.ident, |self_| {
-                let expected = expected.unwrap_or("pattern");
-                let msg =
-                    format!("expected {}, found {}", expected, super::token_descr(&self_.token));
+            let (lit, _) =
+                self.recover_unclosed_char(lt.ident, Parser::mk_token_lit_char, |self_| {
+                    let expected = expected.unwrap_or("pattern");
+                    let msg = format!(
+                        "expected {}, found {}",
+                        expected,
+                        super::token_descr(&self_.token)
+                    );
 
-                let mut err = self_.struct_span_err(self_.token.span, &msg);
-                err.span_label(self_.token.span, format!("expected {}", expected));
-                err
-            });
-            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit.token_lit)))
+                    let mut err = self_.struct_span_err(self_.token.span, &msg);
+                    err.span_label(self_.token.span, format!("expected {}", expected));
+                    err
+                });
+            PatKind::Lit(self.mk_expr(lo, ExprKind::Lit(lit)))
         } else {
             // Try to parse everything else as literal with optional minus
             match self.parse_literal_maybe_minus() {

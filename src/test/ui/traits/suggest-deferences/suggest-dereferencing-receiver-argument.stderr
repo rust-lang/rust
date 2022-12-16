@@ -1,0 +1,15 @@
+error[E0277]: the trait bound `TargetStruct: From<&{integer}>` is not satisfied
+  --> $DIR/suggest-dereferencing-receiver-argument.rs:13:30
+   |
+LL |     let _b: TargetStruct = a.into();
+   |                              ^^^^ the trait `From<&{integer}>` is not implemented for `TargetStruct`
+   |
+   = note: required for `&{integer}` to implement `Into<TargetStruct>`
+help: consider dereferencing here
+   |
+LL |     let _b: TargetStruct = (*a).into();
+   |                            ++ +
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0277`.

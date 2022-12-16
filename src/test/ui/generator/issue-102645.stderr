@@ -6,9 +6,6 @@ LL |     Pin::new(&mut b).resume();
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/generator.rs:LL:COL
-   |
-LL |     fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
-   |        ^^^^^^
 help: provide the argument
    |
 LL |     Pin::new(&mut b).resume(());

@@ -19,6 +19,12 @@ pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
 };
 
 pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    // We need to check if there are errors before running this pass because it would crash when
+    // we try to get auto and blanket implementations.
+    if cx.tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+        return krate;
+    }
+
     let synth_impls = cx.sess().time("collect_synthetic_impls", || {
         let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
         synth.visit_crate(&krate);

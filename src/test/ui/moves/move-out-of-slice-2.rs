@@ -1,5 +1,6 @@
 #![feature(unsized_locals)]
 //~^ WARN the feature `unsized_locals` is incomplete
+#![allow(unused)]
 
 struct A;
 #[derive(Clone, Copy)]

@@ -169,7 +169,7 @@ pub struct Verify<'tcx> {
 #[derive(Copy, Clone, PartialEq, Eq, Hash, TypeFoldable, TypeVisitable)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::AliasTy<'tcx>),
     Opaque(DefId, SubstsRef<'tcx>),
 }
 
@@ -773,7 +773,7 @@ impl<'tcx> GenericKind<'tcx> {
     pub fn to_ty(&self, tcx: TyCtxt<'tcx>) -> Ty<'tcx> {
         match *self {
             GenericKind::Param(ref p) => p.to_ty(tcx),
-            GenericKind::Projection(ref p) => tcx.mk_projection(p.item_def_id, p.substs),
+            GenericKind::Projection(ref p) => tcx.mk_projection(p.def_id, p.substs),
             GenericKind::Opaque(def_id, substs) => tcx.mk_opaque(def_id, substs),
         }
     }

@@ -4,6 +4,7 @@
 
 use std::mem;
 
+// normalize-stderr-test "╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$2╼"
 // normalize-stderr-test "offset \d+" -> "offset N"
 // normalize-stderr-test "alloc\d+" -> "allocN"
 // normalize-stderr-test "size \d+" -> "size N"

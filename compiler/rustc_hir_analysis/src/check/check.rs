@@ -570,7 +570,7 @@ fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
                             assoc_item,
                             assoc_item,
                             default.span,
-                            ty::TraitRef { def_id: it.owner_id.to_def_id(), substs: trait_substs },
+                            tcx.mk_trait_ref(it.owner_id.to_def_id(), trait_substs),
                         );
                     }
                     _ => {}
@@ -1440,7 +1440,7 @@ fn opaque_type_cycle_error(tcx: TyCtxt<'_>, def_id: LocalDefId, span: Span) -> E
                 impl<'tcx> ty::visit::TypeVisitor<'tcx> for OpaqueTypeCollector {
                     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
                         match *t.kind() {
-                            ty::Opaque(def, _) => {
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id: def, .. }) => {
                                 self.0.push(def);
                                 ControlFlow::CONTINUE
                             }

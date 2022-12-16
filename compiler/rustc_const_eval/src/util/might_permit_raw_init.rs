@@ -3,7 +3,7 @@ use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::Limit;
 use rustc_target::abi::{Abi, FieldsShape, InitKind, Scalar, Variants};
 
-use crate::const_eval::CompileTimeInterpreter;
+use crate::const_eval::{CheckAlignment, CompileTimeInterpreter};
 use crate::interpret::{InterpCx, MemoryKind, OpTy};
 
 /// Determines if this type permits "raw" initialization by just transmuting some memory into an
@@ -41,7 +41,7 @@ fn might_permit_raw_init_strict<'tcx>(
     let machine = CompileTimeInterpreter::new(
         Limit::new(0),
         /*can_access_statics:*/ false,
-        /*check_alignment:*/ true,
+        CheckAlignment::Error,
     );
 
     let mut cx = InterpCx::new(tcx, rustc_span::DUMMY_SP, ParamEnv::reveal_all(), machine);

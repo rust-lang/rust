@@ -59,7 +59,7 @@ note: required by a bound in `bfnr`
    |
 LL |     fn bfnr<U, V: Baz<U>, W: Fn()>(y: T) {
    |                              ^^^^ required by this bound in `bfnr`
-help: consider specifying the type arguments in the function call
+help: consider specifying the generic arguments
    |
 LL |     bfnr::<U, V, W>(x);
    |         +++++++++++

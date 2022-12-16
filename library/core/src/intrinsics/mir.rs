@@ -21,15 +21,14 @@
 //! #[custom_mir(dialect = "built")]
 //! pub fn simple(x: i32) -> i32 {
 //!     mir!(
-//!         let temp1: i32;
-//!         let temp2: _;
+//!         let temp2: i32;
 //!
 //!         {
-//!             temp1 = x;
-//!             Goto(exit)
+//!             let temp1 = x;
+//!             Goto(my_second_block)
 //!         }
 //!
-//!         exit = {
+//!         my_second_block = {
 //!             temp2 = Move(temp1);
 //!             RET = temp2;
 //!             Return()
@@ -38,22 +37,168 @@
 //! }
 //! ```
 //!
-//! Hopefully most of this is fairly self-explanatory. Expanding on some notable details:
+//! The `custom_mir` attribute tells the compiler to treat the function as being custom MIR. This
+//! attribute only works on functions - there is no way to insert custom MIR into the middle of
+//! another function. The `dialect` and `phase` parameters indicate which [version of MIR][dialect
+//! docs] you are inserting here. Generally you'll want to use `#![custom_mir(dialect = "built")]`
+//! if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
+//! "runtime", phase = "optimized")] if you don't.
 //!
-//!  - The `custom_mir` attribute tells the compiler to treat the function as being custom MIR. This
-//!    attribute only works on functions - there is no way to insert custom MIR into the middle of
-//!    another function.
-//!  - The `dialect` and `phase` parameters indicate which version of MIR you are inserting here.
-//!    This will normally be the phase that corresponds to the thing you are trying to test. The
-//!    phase can be omitted for dialects that have just one.
-//!  - You should define your function signature like you normally would. Externally, this function
-//!    can be called like any other function.
-//!  - Type inference works - you don't have to spell out the type of all of your locals.
+//! [dialect docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html
 //!
-//! For now, all statements and terminators are parsed from nested invocations of the special
-//! functions provided in this module. We additionally want to (but do not yet) support more
-//! "normal" Rust syntax in places where it makes sense. Also, most kinds of instructions are not
-//! supported yet.
+//! The input to the [`mir!`] macro is:
+//!
+//!  - A possibly empty list of local declarations. Locals can also be declared inline on
+//!    assignments via `let`. Type inference generally works. Shadowing does not.
+//!  - A list of basic blocks. The first of these is the start block and is where execution begins.
+//!    All blocks other than the start block need to be given a name, so that they can be referred
+//!    to later.
+//!     - Each block is a list of semicolon terminated statements, followed by a terminator. The
+//!       syntax for the various statements and terminators is designed to be as similar as possible
+//!       to the syntax for analogous concepts in native Rust. See below for a list.
+//!
+//! # Examples
+//!
+//! ```rust
+//! #![feature(core_intrinsics, custom_mir)]
+//!
+//! extern crate core;
+//! use core::intrinsics::mir::*;
+//!
+//! #[custom_mir(dialect = "built")]
+//! pub fn choose_load(a: &i32, b: &i32, c: bool) -> i32 {
+//!     mir!(
+//!         {
+//!             match c {
+//!                 true => t,
+//!                 _ => f,
+//!             }
+//!         }
+//!
+//!         t = {
+//!             let temp = a;
+//!             Goto(load_and_exit)
+//!         }
+//!
+//!         f = {
+//!             temp = b;
+//!             Goto(load_and_exit)
+//!         }
+//!
+//!         load_and_exit = {
+//!             RET = *temp;
+//!             Return()
+//!         }
+//!     )
+//! }
+//!
+//! #[custom_mir(dialect = "built")]
+//! fn unwrap_unchecked<T>(opt: Option<T>) -> T {
+//!     mir!({
+//!         RET = Move(Field(Variant(opt, 1), 0));
+//!         Return()
+//!     })
+//! }
+//! ```
+//!
+//! We can also set off compilation failures that happen in sufficiently late stages of the
+//! compiler:
+//!
+//! ```rust,compile_fail
+//! #![feature(core_intrinsics, custom_mir)]
+//!
+//! extern crate core;
+//! use core::intrinsics::mir::*;
+//!
+//! #[custom_mir(dialect = "built")]
+//! fn borrow_error(should_init: bool) -> i32 {
+//!     mir!(
+//!         let temp: i32;
+//!
+//!         {
+//!             match should_init {
+//!                 true => init,
+//!                 _ => use_temp,
+//!             }
+//!         }
+//!
+//!         init = {
+//!             temp = 0;
+//!             Goto(use_temp)
+//!         }
+//!
+//!         use_temp = {
+//!             RET = temp;
+//!             Return()
+//!         }
+//!     )
+//! }
+//! ```
+//!
+//! ```text
+//! error[E0381]: used binding is possibly-uninitialized
+//!   --> test.rs:24:13
+//!    |
+//! 8  | /     mir!(
+//! 9  | |         let temp: i32;
+//! 10 | |
+//! 11 | |         {
+//! ...  |
+//! 19 | |             temp = 0;
+//!    | |             -------- binding initialized here in some conditions
+//! ...  |
+//! 24 | |             RET = temp;
+//!    | |             ^^^^^^^^^^ value used here but it is possibly-uninitialized
+//! 25 | |             Return()
+//! 26 | |         }
+//! 27 | |     )
+//!    | |_____- binding declared here but left uninitialized
+//!
+//! error: aborting due to previous error
+//!
+//! For more information about this error, try `rustc --explain E0381`.
+//! ```
+//!
+//! # Syntax
+//!
+//! The lists below are an exhaustive description of how various MIR constructs can be created.
+//! Anything missing from the list should be assumed to not be supported, PRs welcome.
+//!
+//! #### Locals
+//!
+//!  - The `_0` return local can always be accessed via `RET`.
+//!  - Arguments can be accessed via their regular name.
+//!  - All other locals need to be declared with `let` somewhere and then can be accessed by name.
+//!
+//! #### Places
+//!  - Locals implicit convert to places.
+//!  - Field accesses, derefs, and indexing work normally.
+//!  - Fields in variants can be accessed via the [`Variant`] and [`Field`] associated functions,
+//!    see their documentation for details.
+//!
+//! #### Operands
+//!  - Places implicitly convert to `Copy` operands.
+//!  - `Move` operands can be created via [`Move`].
+//!  - Const blocks, literals, named constants, and const params all just work.
+//!  - [`Static`] and [`StaticMut`] can be used to create `&T` and `*mut T`s to statics. These are
+//!    constants in MIR and the only way to access statics.
+//!
+//! #### Statements
+//!  - Assign statements work via normal Rust assignment.
+//!  - [`Retag`] statements have an associated function.
+//!
+//! #### Rvalues
+//!
+//!  - Operands implicitly convert to `Use` rvalues.
+//!  - `&`, `&mut`, `addr_of!`, and `addr_of_mut!` all work to create their associated rvalue.
+//!  - [`Discriminant`] has an associated function.
+//!
+//! #### Terminators
+//!
+//!  - [`Goto`] and [`Return`] have associated functions.
+//!  - `match some_int_operand` becomes a `SwitchInt`. Each arm should be `literal => basic_block`
+//!     - The exception is the last arm, which must be `_ => basic_block` and corresponds to the
+//!       otherwise branch.
 //!
 
 #![unstable(
@@ -69,9 +214,10 @@
 pub struct BasicBlock;
 
 macro_rules! define {
-    ($name:literal, $($sig:tt)*) => {
+    ($name:literal, $( #[ $meta:meta ] )* fn $($sig:tt)*) => {
         #[rustc_diagnostic_item = $name]
-        pub $($sig)* { panic!() }
+        $( #[ $meta ] )*
+        pub fn $($sig)* { panic!() }
     }
 }
 
@@ -82,8 +228,73 @@ define!("mir_retag_raw", fn RetagRaw<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);
+define!(
+    "mir_discriminant",
+    /// Gets the discriminant of a place.
+    fn Discriminant<T>(place: T) -> <T as ::core::marker::DiscriminantKind>::Discriminant
+);
+define!("mir_set_discriminant", fn SetDiscriminant<T>(place: T, index: u32));
+define!(
+    "mir_field",
+    /// Access the field with the given index of some place.
+    ///
+    /// This only makes sense to use in conjunction with [`Variant`]. If the type you are looking to
+    /// access the field of does not have variants, you can use normal field projection syntax.
+    ///
+    /// There is no proper way to do a place projection to a variant in Rust, and so these two
+    /// functions are a workaround. You can access a field of a variant via `Field(Variant(place,
+    /// var_idx), field_idx)`, where `var_idx` and `field_idx` are appropriate literals. Some
+    /// caveats:
+    ///
+    ///  - The return type of `Variant` is always `()`. Don't worry about that, the correct MIR will
+    ///    still be generated.
+    ///  - In some situations, the return type of `Field` cannot be inferred. You may need to
+    ///    annotate it on the function in these cases.
+    ///  - Since `Field` is a function call which is not a place expression, using this on the left
+    ///    hand side of an expression is rejected by the compiler. [`place!`] is a macro provided to
+    ///    work around that issue. Wrap the left hand side of an assignment in the macro to convince
+    ///    the compiler that it's ok.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// #![feature(custom_mir, core_intrinsics)]
+    ///
+    /// extern crate core;
+    /// use core::intrinsics::mir::*;
+    ///
+    /// #[custom_mir(dialect = "built")]
+    /// fn unwrap_deref(opt: Option<&i32>) -> i32 {
+    ///     mir!({
+    ///         RET = *Field::<&i32>(Variant(opt, 1), 0);
+    ///         Return()
+    ///     })
+    /// }
+    ///
+    /// #[custom_mir(dialect = "built")]
+    /// fn set(opt: &mut Option<i32>) {
+    ///     mir!({
+    ///         place!(Field(Variant(*opt, 1), 0)) = 5;
+    ///         Return()
+    ///     })
+    /// }
+    /// ```
+    fn Field<F>(place: (), field: u32) -> F
+);
+define!(
+    "mir_variant",
+    /// Adds a variant projection with the given index to the place.
+    ///
+    /// See [`Field`] for documentation.
+    fn Variant<T>(place: T, index: u32) -> ()
+);
+define!(
+    "mir_make_place",
+    #[doc(hidden)]
+    fn __internal_make_place<T>(place: T) -> *mut T
+);
 
-/// Convenience macro for generating custom MIR.
+/// Macro for generating custom MIR.
 ///
 /// See the module documentation for syntax details. This macro is not magic - it only transforms
 /// your MIR into something that is easier to parse in the compiler.
@@ -137,6 +348,13 @@ pub macro mir {
             }
         }
     }}
+}
+
+/// Helper macro that allows you to treat a value expression like a place expression.
+///
+/// See the documentation on [`Variant`] for why this is necessary and how to use it.
+pub macro place($e:expr) {
+    (*::core::intrinsics::mir::__internal_make_place($e))
 }
 
 /// Helper macro that extracts the `let` declarations out of a bunch of statements.

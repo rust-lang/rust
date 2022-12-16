@@ -130,12 +130,16 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
                 Ok(self.tcx().ty_error_with_guaranteed(e))
             }
 
-            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+            (
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if a_def_id == b_def_id => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
                 Ok(a)
             }
-            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
-                if self.fields.define_opaque_types && did.is_local() =>
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+                if self.fields.define_opaque_types && def_id.is_local() =>
             {
                 self.fields.obligations.extend(
                     infcx
@@ -213,6 +217,11 @@ impl<'tcx> TypeRelation<'tcx> for Sub<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // A binder is always a subtype of itself if it's structually equal to itself
+        if a == b {
+            return Ok(a);
+        }
+
         self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
         Ok(a)
     }

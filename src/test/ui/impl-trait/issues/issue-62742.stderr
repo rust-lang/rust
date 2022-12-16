@@ -25,7 +25,7 @@ LL | pub struct SafeImpl<T: ?Sized, A: Raw<T>>(PhantomData<(A, T)>);
    |
    = note: the following trait bounds were not satisfied:
            `RawImpl<()>: Raw<()>`
-note: the following trait must be implemented
+note: the trait `Raw` must be implemented
   --> $DIR/issue-62742.rs:12:1
    |
 LL | pub trait Raw<T: ?Sized> {

@@ -45,7 +45,7 @@
 use std::cell::Cell;
 use std::cmp::{self, max, min, Ordering};
 use std::fmt;
-use std::iter::{once, IntoIterator};
+use std::iter::once;
 use std::ops::RangeInclusive;
 
 use smallvec::{smallvec, SmallVec};

@@ -113,7 +113,6 @@ use rustc_span::Symbol;
 
 use std::fs as std_fs;
 use std::io::{self, ErrorKind};
-use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -305,7 +304,7 @@ pub fn prepare_session_directory(
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
-            mem::drop(directory_lock);
+            drop(directory_lock);
         }
     }
 }
@@ -864,7 +863,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
                     // Let's make it explicit that the file lock is released at this point,
                     // or rather, that we held on to it until here
-                    mem::drop(lock);
+                    drop(lock);
                 }
                 Err(_) => {
                     debug!(
@@ -898,7 +897,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
         // Let's make it explicit that the file lock is released at this point,
         // or rather, that we held on to it until here
-        mem::drop(lock);
+        drop(lock);
     }
 
     Ok(())

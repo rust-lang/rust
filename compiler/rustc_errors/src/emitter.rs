@@ -1308,7 +1308,7 @@ impl EmitterWriter {
         //                see how it *looks* with
         //                very *weird* formats
         //                see?
-        for &(ref text, ref style) in msg.iter() {
+        for (text, style) in msg.iter() {
             let text = self.translate_message(text, args);
             let lines = text.split('\n').collect::<Vec<_>>();
             if lines.len() > 1 {
@@ -1370,7 +1370,7 @@ impl EmitterWriter {
                 buffer.append(0, ": ", header_style);
                 label_width += 2;
             }
-            for &(ref text, _) in msg.iter() {
+            for (text, _) in msg.iter() {
                 let text = self.translate_message(text, args);
                 // Account for newlines to align output to its label.
                 for (line, text) in normalize_whitespace(&text).lines().enumerate() {
@@ -1408,49 +1408,58 @@ impl EmitterWriter {
             if !sm.ensure_source_file_source_present(annotated_file.file.clone()) {
                 if !self.short_message {
                     // We'll just print an unannotated message.
-                    for (annotation_id, line) in annotated_file.lines.into_iter().enumerate() {
+                    for (annotation_id, line) in annotated_file.lines.iter().enumerate() {
                         let mut annotations = line.annotations.clone();
                         annotations.sort_by_key(|a| Reverse(a.start_col));
                         let mut line_idx = buffer.num_lines();
-                        buffer.append(
-                            line_idx,
-                            &format!(
-                                "{}:{}:{}",
-                                sm.filename_for_diagnostics(&annotated_file.file.name),
-                                sm.doctest_offset_line(&annotated_file.file.name, line.line_index),
-                                annotations[0].start_col + 1,
-                            ),
-                            Style::LineAndColumn,
-                        );
-                        if annotation_id == 0 {
-                            buffer.prepend(line_idx, "--> ", Style::LineNumber);
+
+                        let labels: Vec<_> = annotations
+                            .iter()
+                            .filter_map(|a| Some((a.label.as_ref()?, a.is_primary)))
+                            .filter(|(l, _)| !l.is_empty())
+                            .collect();
+
+                        if annotation_id == 0 || !labels.is_empty() {
+                            buffer.append(
+                                line_idx,
+                                &format!(
+                                    "{}:{}:{}",
+                                    sm.filename_for_diagnostics(&annotated_file.file.name),
+                                    sm.doctest_offset_line(
+                                        &annotated_file.file.name,
+                                        line.line_index
+                                    ),
+                                    annotations[0].start_col + 1,
+                                ),
+                                Style::LineAndColumn,
+                            );
+                            if annotation_id == 0 {
+                                buffer.prepend(line_idx, "--> ", Style::LineNumber);
+                            } else {
+                                buffer.prepend(line_idx, "::: ", Style::LineNumber);
+                            }
                             for _ in 0..max_line_num_len {
                                 buffer.prepend(line_idx, " ", Style::NoStyle);
                             }
                             line_idx += 1;
-                        };
-                        for (i, annotation) in annotations.into_iter().enumerate() {
-                            if let Some(label) = &annotation.label {
-                                let style = if annotation.is_primary {
-                                    Style::LabelPrimary
-                                } else {
-                                    Style::LabelSecondary
-                                };
-                                if annotation_id == 0 {
-                                    buffer.prepend(line_idx, " |", Style::LineNumber);
-                                    for _ in 0..max_line_num_len {
-                                        buffer.prepend(line_idx, " ", Style::NoStyle);
-                                    }
-                                    line_idx += 1;
-                                    buffer.append(line_idx + i, " = note: ", style);
-                                    for _ in 0..max_line_num_len {
-                                        buffer.prepend(line_idx, " ", Style::NoStyle);
-                                    }
-                                } else {
-                                    buffer.append(line_idx + i, ": ", style);
-                                }
-                                buffer.append(line_idx + i, label, style);
+                        }
+                        for (label, is_primary) in labels.into_iter() {
+                            let style = if is_primary {
+                                Style::LabelPrimary
+                            } else {
+                                Style::LabelSecondary
+                            };
+                            buffer.prepend(line_idx, " |", Style::LineNumber);
+                            for _ in 0..max_line_num_len {
+                                buffer.prepend(line_idx, " ", Style::NoStyle);
                             }
+                            line_idx += 1;
+                            buffer.append(line_idx, " = note: ", style);
+                            for _ in 0..max_line_num_len {
+                                buffer.prepend(line_idx, " ", Style::NoStyle);
+                            }
+                            buffer.append(line_idx, label, style);
+                            line_idx += 1;
                         }
                     }
                 }
@@ -2304,7 +2313,7 @@ impl FileWithAnnotatedLines {
         }
 
         // Find overlapping multiline annotations, put them at different depths
-        multiline_annotations.sort_by_key(|&(_, ref ml)| (ml.line_start, usize::MAX - ml.line_end));
+        multiline_annotations.sort_by_key(|(_, ml)| (ml.line_start, usize::MAX - ml.line_end));
         for (_, ann) in multiline_annotations.clone() {
             for (_, a) in multiline_annotations.iter_mut() {
                 // Move all other multiline annotations overlapping with this one

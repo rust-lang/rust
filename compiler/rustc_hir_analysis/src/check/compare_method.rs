@@ -67,6 +67,10 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
+    if let Err(_) = compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
+        return;
+    }
+
     if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
     {
         return;
@@ -323,6 +327,34 @@ fn compare_predicate_entailment<'tcx>(
     Ok(())
 }
 
+fn compare_asyncness<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    impl_m: &ty::AssocItem,
+    impl_m_span: Span,
+    trait_m: &ty::AssocItem,
+    trait_item_span: Option<Span>,
+) -> Result<(), ErrorGuaranteed> {
+    if tcx.asyncness(trait_m.def_id) == hir::IsAsync::Async {
+        match tcx.fn_sig(impl_m.def_id).skip_binder().output().kind() {
+            ty::Alias(ty::Opaque, ..) => {
+                // allow both `async fn foo()` and `fn foo() -> impl Future`
+            }
+            ty::Error(rustc_errors::ErrorGuaranteed { .. }) => {
+                // We don't know if it's ok, but at least it's already an error.
+            }
+            _ => {
+                return Err(tcx.sess.emit_err(crate::errors::AsyncTraitImplShouldBeAsync {
+                    span: impl_m_span,
+                    method_name: trait_m.name,
+                    trait_item_span,
+                }));
+            }
+        };
+    }
+
+    Ok(())
+}
+
 #[instrument(skip(tcx), level = "debug", ret)]
 pub fn collect_trait_impl_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -571,10 +603,10 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Projection(proj) = ty.kind()
-            && self.tcx().def_kind(proj.item_def_id) == DefKind::ImplTraitPlaceholder
+        if let ty::Alias(ty::Projection, proj) = ty.kind()
+            && self.tcx().def_kind(proj.def_id) == DefKind::ImplTraitPlaceholder
         {
-            if let Some((ty, _)) = self.types.get(&proj.item_def_id) {
+            if let Some((ty, _)) = self.types.get(&proj.def_id) {
                 return *ty;
             }
             //FIXME(RPITIT): Deny nested RPITIT in substs too
@@ -586,9 +618,9 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 span: self.span,
                 kind: TypeVariableOriginKind::MiscVariable,
             });
-            self.types.insert(proj.item_def_id, (infer_ty, proj.substs));
+            self.types.insert(proj.def_id, (infer_ty, proj.substs));
             // Recurse into bounds
-            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.item_def_id).subst_iter_copied(self.tcx(), proj.substs) {
+            for (pred, pred_span) in self.tcx().bound_explicit_item_bounds(proj.def_id).subst_iter_copied(self.tcx(), proj.substs) {
                 let pred = pred.fold_with(self);
                 let pred = self.ocx.normalize(
                     &ObligationCause::misc(self.span, self.body_id),
@@ -601,7 +633,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                     ObligationCause::new(
                         self.span,
                         self.body_id,
-                        ObligationCauseCode::BindingObligation(proj.item_def_id, pred_span),
+                        ObligationCauseCode::BindingObligation(proj.def_id, pred_span),
                     ),
                     self.param_env,
                     pred,
@@ -1734,8 +1766,8 @@ pub fn check_type_bounds<'tcx>(
     let normalize_param_env = {
         let mut predicates = param_env.caller_bounds().iter().collect::<Vec<_>>();
         match impl_ty_value.kind() {
-            ty::Projection(proj)
-                if proj.item_def_id == trait_ty.def_id && proj.substs == rebased_substs =>
+            ty::Alias(ty::Projection, proj)
+                if proj.def_id == trait_ty.def_id && proj.substs == rebased_substs =>
             {
                 // Don't include this predicate if the projected type is
                 // exactly the same as the projection. This can occur in
@@ -1746,10 +1778,7 @@ pub fn check_type_bounds<'tcx>(
             _ => predicates.push(
                 ty::Binder::bind_with_vars(
                     ty::ProjectionPredicate {
-                        projection_ty: ty::ProjectionTy {
-                            item_def_id: trait_ty.def_id,
-                            substs: rebased_substs,
-                        },
+                        projection_ty: tcx.mk_alias_ty(trait_ty.def_id, rebased_substs),
                         term: impl_ty_value.into(),
                     },
                     bound_vars,

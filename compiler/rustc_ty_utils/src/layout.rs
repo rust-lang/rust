@@ -444,7 +444,7 @@ fn layout_of_uncached<'tcx>(
         }
 
         // Types with no meaningful known layout.
-        ty::Projection(_) | ty::Opaque(..) => {
+        ty::Alias(..) => {
             // NOTE(eddyb) `layout_of` query should've normalized these away,
             // if that was possible, so there's no reason to try again here.
             return Err(LayoutError::Unknown(ty));
@@ -919,7 +919,7 @@ fn variant_info_for_generator<'tcx>(
     def_id: DefId,
     substs: ty::SubstsRef<'tcx>,
 ) -> (Vec<VariantInfo>, Option<Size>) {
-    let Variants::Multiple { tag, ref tag_encoding, .. } = layout.variants else {
+    let Variants::Multiple { tag, ref tag_encoding, tag_field, .. } = layout.variants else {
         return (vec![], None);
     };
 
@@ -975,12 +975,28 @@ fn variant_info_for_generator<'tcx>(
             if variant_size == Size::ZERO {
                 variant_size = upvars_size;
             }
-            // We need to add the discriminant size back into min_size, since it is subtracted
-            // later during printing.
-            variant_size += match tag_encoding {
-                TagEncoding::Direct => tag.size(cx),
-                _ => Size::ZERO,
-            };
+
+            // This `if` deserves some explanation.
+            //
+            // The layout code has a choice of where to place the discriminant of this generator.
+            // If the discriminant of the generator is placed early in the layout (before the
+            // variant's own fields), then it'll implicitly be counted towards the size of the
+            // variant, since we use the maximum offset to calculate size.
+            //    (side-note: I know this is a bit problematic given upvars placement, etc).
+            //
+            // This is important, since the layout printing code always subtracts this discriminant
+            // size from the variant size if the struct is "enum"-like, so failing to account for it
+            // will either lead to numerical underflow, or an underreported variant size...
+            //
+            // However, if the discriminant is placed past the end of the variant, then we need
+            // to factor in the size of the discriminant manually. This really should be refactored
+            // better, but this "works" for now.
+            if layout.fields.offset(tag_field) >= variant_size {
+                variant_size += match tag_encoding {
+                    TagEncoding::Direct => tag.size(cx),
+                    _ => Size::ZERO,
+                };
+            }
 
             VariantInfo {
                 name: Some(Symbol::intern(&ty::GeneratorSubsts::variant_name(variant_idx))),

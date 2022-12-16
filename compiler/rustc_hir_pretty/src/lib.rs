@@ -1245,7 +1245,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.word(lit.node.to_token_lit().to_string())
+        self.word(lit.node.to_string())
     }
 
     fn print_inline_asm(&mut self, asm: &hir::InlineAsm<'_>) {
@@ -1757,7 +1757,6 @@ impl<'a> State<'a> {
                 self.print_qpath(qpath, true);
                 self.popen();
                 if let Some(ddpos) = ddpos.as_opt_usize() {
-                    let ddpos = ddpos as usize;
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
                     if ddpos != 0 {
                         self.word_space(",");

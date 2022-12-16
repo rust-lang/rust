@@ -9,9 +9,6 @@ LL | |     });
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     fn fold<B, F>(mut self, init: B, mut f: F) -> B
-   |        ^^^^
 help: provide the argument
    |
 LL ~     needlesArr.iter().fold(|x, y| {

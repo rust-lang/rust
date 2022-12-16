@@ -192,8 +192,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         self.tcx.check_stability(pick.item.def_id, Some(call_expr.hir_id), span, None);
 
-        let result =
-            self.confirm_method(span, self_expr, call_expr, self_ty, pick.clone(), segment);
+        let result = self.confirm_method(span, self_expr, call_expr, self_ty, &pick, segment);
         debug!("result = {:?}", result);
 
         if let Some(span) = result.illegal_sized_bound {
@@ -210,7 +209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ProbeScope::TraitsInScope,
                 ) {
                     Ok(ref new_pick) if pick.differs_from(new_pick) => {
-                        needs_mut = true;
+                        needs_mut = new_pick.self_ty.ref_mutability() != self_ty.ref_mutability();
                     }
                     _ => {}
                 }
@@ -286,7 +285,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(span, param)
         });
 
-        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);
@@ -327,7 +326,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.var_for_def(span, param)
         });
 
-        let trait_ref = ty::TraitRef::new(trait_def_id, substs);
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, substs);
 
         // Construct an obligation
         let poly_trait_ref = ty::Binder::dummy(trait_ref);

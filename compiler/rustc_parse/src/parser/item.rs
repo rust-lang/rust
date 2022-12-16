@@ -22,7 +22,6 @@ use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
-use std::convert::TryFrom;
 use std::mem;
 use thin_vec::ThinVec;
 use tracing::debug;
@@ -708,9 +707,9 @@ impl<'a> Parser<'a> {
             }
             match parse_item(self) {
                 Ok(None) => {
-                    let is_unnecessary_semicolon = !items.is_empty()
+                    let mut is_unnecessary_semicolon = !items.is_empty()
                         // When the close delim is `)` in a case like the following, `token.kind` is expected to be `token::CloseDelim(Delimiter::Parenthesis)`,
-                        // but the actual `token.kind` is `token::CloseDelim(Delimiter::Bracket)`.
+                        // but the actual `token.kind` is `token::CloseDelim(Delimiter::Brace)`.
                         // This is because the `token.kind` of the close delim is treated as the same as
                         // that of the open delim in `TokenTreesReader::parse_token_tree`, even if the delimiters of them are different.
                         // Therefore, `token.kind` should not be compared here.
@@ -729,7 +728,13 @@ impl<'a> Parser<'a> {
                             .span_to_snippet(self.prev_token.span)
                             .map_or(false, |snippet| snippet == "}")
                         && self.token.kind == token::Semi;
-                    let semicolon_span = self.token.span;
+                    let mut semicolon_span = self.token.span;
+                    if !is_unnecessary_semicolon {
+                        // #105369, Detect spurious `;` before assoc fn body
+                        is_unnecessary_semicolon = self.token == token::OpenDelim(Delimiter::Brace)
+                            && self.prev_token.kind == token::Semi;
+                        semicolon_span = self.prev_token.span;
+                    }
                     // We have to bail or we'll potentially never make progress.
                     let non_item_span = self.token.span;
                     let is_let = self.token.is_keyword(kw::Let);

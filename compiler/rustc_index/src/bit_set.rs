@@ -209,7 +209,7 @@ impl<T: Idx> BitSet<T> {
             self.words[start_word_index] |= !(start_mask - 1);
             // And all trailing bits (i.e. from 0..=end) in the end word,
             // including the end.
-            self.words[end_word_index] |= end_mask | end_mask - 1;
+            self.words[end_word_index] |= end_mask | (end_mask - 1);
         } else {
             self.words[start_word_index] |= end_mask | (end_mask - start_mask);
         }
