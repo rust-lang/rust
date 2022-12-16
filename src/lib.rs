@@ -113,11 +113,11 @@ mod prelude {
     pub(crate) use crate::value_and_place::{CPlace, CPlaceInner, CValue};
 }
 
-struct PrintOnPanic<F: Fn() -> String>(F);
-impl<F: Fn() -> String> Drop for PrintOnPanic<F> {
+struct PrintOnPanic<'a, F: Fn() -> String>(Option<&'a Session>, F);
+impl<'a, F: Fn() -> String> Drop for PrintOnPanic<'a, F> {
     fn drop(&mut self) {
-        if ::std::thread::panicking() {
-            println!("{}", (self.0)());
+        if ::std::thread::panicking() && self.0.map_or(true, |sess| sess.has_errors().is_none()) {
+            println!("{}", (self.1)());
         }
     }
 }
