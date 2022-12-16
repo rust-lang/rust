@@ -20,7 +20,7 @@ define-function: (
             {"border-left": "2px solid rgba(255, 0, 0, 0.5)"},
         )),
 
-        ("move-cursor-to", ".docblock .example-wrap.compile_fail"),
+        ("move-cursor-to", ".docblock .example-wrap.compile_fail .tooltip"),
 
         ("assert-css", (
             ".docblock .example-wrap.compile_fail .tooltip",
@@ -60,7 +60,7 @@ define-function: (
             {"border-left": "2px solid rgba(255, 0, 0, 0.5)"},
         )),
 
-        ("move-cursor-to", ".docblock .example-wrap.should_panic"),
+        ("move-cursor-to", ".docblock .example-wrap.should_panic .tooltip"),
 
         ("assert-css", (
             ".docblock .example-wrap.should_panic .tooltip",
@@ -100,7 +100,7 @@ define-function: (
             {"border-left": "2px solid rgba(255, 142, 0, 0.6)"},
         )),
 
-        ("move-cursor-to", ".docblock .example-wrap.ignore"),
+        ("move-cursor-to", ".docblock .example-wrap.ignore .tooltip"),
 
         ("assert-css", (
             ".docblock .example-wrap.ignore .tooltip",
