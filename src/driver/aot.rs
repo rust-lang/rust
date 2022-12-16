@@ -108,6 +108,8 @@ impl OngoingCodegen {
 
         self.concurrency_limiter.finished();
 
+        sess.abort_if_errors();
+
         (
             CodegenResults {
                 modules,
@@ -410,8 +412,6 @@ pub(crate) fn run_aot(
             })
             .collect::<Vec<_>>()
     });
-
-    tcx.sess.abort_if_errors();
 
     let mut allocator_module = make_module(tcx.sess, &backend_config, "allocator_shim".to_string());
     let mut allocator_unwind_context = UnwindContext::new(allocator_module.isa(), true);
