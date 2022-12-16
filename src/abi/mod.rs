@@ -49,9 +49,11 @@ pub(crate) fn conv_to_call_conv(sess: &Session, c: Conv, default_call_conv: Call
         Conv::X86Intr => sess.fatal("x86-interrupt call conv not yet implemented"),
 
         Conv::ArmAapcs => sess.fatal("aapcs call conv not yet implemented"),
+        Conv::CCmseNonSecureCall => {
+            sess.fatal("C-cmse-nonsecure-call call conv is not yet implemented");
+        }
 
-        Conv::CCmseNonSecureCall
-        | Conv::Msp430Intr
+        Conv::Msp430Intr
         | Conv::PtxKernel
         | Conv::AmdGpuKernel
         | Conv::AvrInterrupt
