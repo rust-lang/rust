@@ -1812,10 +1812,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             && self.tcx.is_fn_trait(trait_pred.def_id())
         {
             let expected_self =
-                self.tcx.anonymize_late_bound_regions(pred.kind().rebind(trait_pred.self_ty()));
+                self.tcx.anonymize_bound_vars(pred.kind().rebind(trait_pred.self_ty()));
             let expected_substs = self
                 .tcx
-                .anonymize_late_bound_regions(pred.kind().rebind(trait_pred.trait_ref.substs));
+                .anonymize_bound_vars(pred.kind().rebind(trait_pred.trait_ref.substs));
 
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose substs don't match.
@@ -1828,12 +1828,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // Make sure that the self type matches
                             // (i.e. constraining this closure)
                             && expected_self
-                                == self.tcx.anonymize_late_bound_regions(
+                                == self.tcx.anonymize_bound_vars(
                                     pred.kind().rebind(trait_pred.self_ty()),
                                 )
                             // But the substs don't match (i.e. incompatible args)
                             && expected_substs
-                                != self.tcx.anonymize_late_bound_regions(
+                                != self.tcx.anonymize_bound_vars(
                                     pred.kind().rebind(trait_pred.trait_ref.substs),
                                 ) =>
                     {

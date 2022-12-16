@@ -489,7 +489,7 @@ impl<'tcx> AstConv<'tcx> for ItemCtxt<'tcx> {
                         format!(
                             "{}::",
                             // Erase named lt, we want `<A as B<'_>::C`, not `<A as B<'a>::C`.
-                            self.tcx.anonymize_late_bound_regions(poly_trait_ref).skip_binder(),
+                            self.tcx.anonymize_bound_vars(poly_trait_ref).skip_binder(),
                         ),
                         Applicability::MaybeIncorrect,
                     );
