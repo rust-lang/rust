@@ -1448,4 +1448,46 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => false,
         }
     }
+
+    pub fn check_for_range_as_method_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+        // FIXME: We should do analysis to see if we can synthesize an expresion that produces
+        // this type for always accurate suggestions, or at least marking the suggestion as
+        // machine applicable.
+        expected_ty: Ty<'tcx>,
+    ) {
+        if !hir::is_range_literal(expr) {
+            return;
+        }
+        let hir::ExprKind::Struct(
+            hir::QPath::LangItem(LangItem::Range, ..),
+            [start, end],
+            _,
+        ) = expr.kind else { return; };
+        let mut expr = end.expr;
+        while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
+            // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
+            // `src/test/ui/methods/issues/issue-90315.stderr`.
+            expr = rcvr;
+        }
+        let hir::ExprKind::Call(..) = expr.kind else { return; };
+        let ty::Adt(adt, _) = checked_ty.kind() else { return; };
+        if self.tcx.lang_items().range_struct() != Some(adt.did()) {
+            return;
+        }
+        if let ty::Adt(adt, _) = expected_ty.kind()
+            && self.tcx.lang_items().range_struct() == Some(adt.did())
+        {
+            return;
+        }
+        err.span_suggestion_verbose(
+            start.expr.span.between(end.expr.span),
+            "you might have meant to write a method call instead of a range",
+            ".".to_string(),
+            Applicability::MaybeIncorrect,
+        );
+    }
 }

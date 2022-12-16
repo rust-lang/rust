@@ -1,0 +1,45 @@
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/method-access-to-range-literal-typo.rs:14:22
+   |
+LL |         self.option..foo().map(|x| x)
+   |                      ^^^ not found in this scope
+   |
+help: you might have meant to write a method call instead of a range
+   |
+LL |         self.option.foo().map(|x| x)
+   |                    ~
+
+error[E0308]: mismatched types
+  --> $DIR/method-access-to-range-literal-typo.rs:10:9
+   |
+LL |     fn method(&self) -> Option<Vec<u8>> {
+   |                         --------------- expected `Option<Vec<u8>>` because of return type
+LL |         self.option..as_ref().map(|x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found struct `Range`
+   |
+   = note: expected enum `Option<_>`
+            found struct `std::ops::Range<Option<_>>`
+help: you might have meant to write a method call instead of a range
+   |
+LL |         self.option.as_ref().map(|x| x)
+   |                    ~
+
+error[E0308]: mismatched types
+  --> $DIR/method-access-to-range-literal-typo.rs:14:9
+   |
+LL |     fn method2(&self) -> Option<Vec<u8>> {
+   |                          --------------- expected `Option<Vec<u8>>` because of return type
+LL |         self.option..foo().map(|x| x)
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected enum `Option`, found struct `Range`
+   |
+   = note: expected enum `Option<_>`
+            found struct `std::ops::Range<Option<_>>`
+help: you might have meant to write a method call instead of a range
+   |
+LL |         self.option.foo().map(|x| x)
+   |                    ~
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0308, E0425.
+For more information about an error, try `rustc --explain E0308`.
