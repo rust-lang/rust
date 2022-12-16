@@ -97,8 +97,8 @@ impl<'a, 'tcx, V: CodegenObject> PlaceRef<'tcx, V> {
                 self.llval
             } else {
                 let byte_ptr = bx.pointercast(self.llval, bx.cx().type_i8p());
-                // FIXME(eddyb) when can this not be `inbounds`? ZSTs?
-                // (but since `offset` is larger than `0`, that would mean the
+                // This is always `inbounds`. For example, ZSTs cannot arise
+                // because `offset` is larger than `0`, which means the
                 // allocation the place points into has at least one byte, so
                 // any possible offset in the layout *should* be in-bounds)
                 bx.inbounds_gep(bx.cx().type_i8(), byte_ptr, &[bx.const_usize(offset.bytes())])
