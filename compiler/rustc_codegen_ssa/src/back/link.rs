@@ -253,7 +253,7 @@ pub fn each_linked_rlib(
     };
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked | &Linkage::IncludedFromDylib) => continue,
+            Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
         }
