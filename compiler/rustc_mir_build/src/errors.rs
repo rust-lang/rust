@@ -588,7 +588,7 @@ pub struct MultipleMutBorrows {
     pub span: Span,
     #[label]
     pub binding_span: Span,
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub occurences: Vec<MultipleMutBorrowOccurence>,
     pub name: Ident,
 }
