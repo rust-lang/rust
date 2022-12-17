@@ -39,8 +39,14 @@ static STATIC_VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing
 
 static STATIC_VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
 
+static mut STATIC_MUT_SLICE: &'static mut [u32] = &mut [0];
+
 fn main() {
     let false_positive: &'static str = "test";
+
+    unsafe {
+        STATIC_MUT_SLICE[0] = 0;
+    }
 }
 
 trait Bar {

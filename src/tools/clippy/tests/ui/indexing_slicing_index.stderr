@@ -1,13 +1,32 @@
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:9:20
+   |
+LL | const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+   |                    ^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:10:24
+   |
+LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
+   |                        ^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+
 error[E0080]: evaluation of `main::{constant#3}` failed
   --> $DIR/indexing_slicing_index.rs:31:14
    |
-LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |              ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
 note: erroneous constant used
   --> $DIR/indexing_slicing_index.rs:31:5
    |
-LL |     const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
 error: indexing may panic
@@ -17,7 +36,24 @@ LL |     x[index];
    |     ^^^^^^^^
    |
    = help: consider using `.get(n)` or `.get_mut(n)` instead
-   = note: `-D clippy::indexing-slicing` implied by `-D warnings`
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:30:14
+   |
+LL |     const { &ARR[idx()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+   |              ^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
+
+error: indexing may panic
+  --> $DIR/indexing_slicing_index.rs:31:14
+   |
+LL |     const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+   |              ^^^^^^^^^^^
+   |
+   = help: consider using `.get(n)` or `.get_mut(n)` instead
+   = note: the suggestion might not be applicable in constant blocks
 
 error: indexing may panic
   --> $DIR/indexing_slicing_index.rs:38:5
@@ -65,6 +101,6 @@ error[E0080]: evaluation of constant value failed
 LL | const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
    |                        ^^^^^^^^^^^ index out of bounds: the length is 2 but the index is 4
 
-error: aborting due to 8 previous errors
+error: aborting due to 12 previous errors
 
 For more information about this error, try `rustc --explain E0080`.

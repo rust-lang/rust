@@ -82,13 +82,6 @@ jobs:
       with:
         github_token: "${{ secrets.github_token }}"
 
-    - name: Install dependencies (Linux-i686)
-      run: |
-        sudo dpkg --add-architecture i386
-        sudo apt-get update
-        sudo apt-get install gcc-multilib libssl-dev:i386 libgit2-dev:i386
-      if: matrix.host == 'i686-unknown-linux-gnu'
-
     - name: Checkout
       uses: actions/checkout@v3.0.2
 

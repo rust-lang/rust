@@ -66,6 +66,11 @@ fn main() {
     if a.is_empty() {
         panic!("with expansion {}", one!())
     }
+    if a.is_empty() {
+        let _ = 0;
+    } else if a.len() == 1 {
+        panic!("panic6");
+    }
 }
 
 fn issue7730(a: u8) {

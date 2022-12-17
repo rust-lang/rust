@@ -13,7 +13,7 @@ LL |     t.seek(SeekFrom::Start(0));
    |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
 
 error: used `seek` to go to the start of the stream
-  --> $DIR/seek_to_start_instead_of_rewind.rs:128:7
+  --> $DIR/seek_to_start_instead_of_rewind.rs:134:7
    |
 LL |     f.seek(SeekFrom::Start(0));
    |       ^^^^^^^^^^^^^^^^^^^^^^^^ help: replace with: `rewind()`
