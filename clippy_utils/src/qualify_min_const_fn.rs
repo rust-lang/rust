@@ -301,10 +301,7 @@ fn check_terminator<'tcx>(
             check_operand(tcx, value, span, body)
         },
 
-        TerminatorKind::SwitchInt {
-            discr,
-            targets: _,
-        } => check_operand(tcx, discr, span, body),
+        TerminatorKind::SwitchInt { discr, targets: _ } => check_operand(tcx, discr, span, body),
 
         TerminatorKind::Abort => Err((span, "abort is not stable in const fn".into())),
         TerminatorKind::GeneratorDrop | TerminatorKind::Yield { .. } => {

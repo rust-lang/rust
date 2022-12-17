@@ -1,5 +1,6 @@
 // run-rustfix
 
+#![feature(type_alias_impl_trait)]
 #![warn(clippy::from_over_into)]
 #![allow(unused)]
 
@@ -79,6 +80,12 @@ fn msrv_1_41() {
             FromOverInto(val)
         }
     }
+}
+
+type Opaque = impl Sized;
+struct IntoOpaque;
+impl Into<Opaque> for IntoOpaque {
+    fn into(self) -> Opaque {}
 }
 
 fn main() {}

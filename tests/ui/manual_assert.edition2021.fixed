@@ -50,6 +50,11 @@ fn main() {
     assert!(!(b.is_empty() || a.is_empty()), "panic4");
     assert!(!(a.is_empty() || !b.is_empty()), "panic5");
     assert!(!a.is_empty(), "with expansion {}", one!());
+    if a.is_empty() {
+        let _ = 0;
+    } else if a.len() == 1 {
+        panic!("panic6");
+    }
 }
 
 fn issue7730(a: u8) {

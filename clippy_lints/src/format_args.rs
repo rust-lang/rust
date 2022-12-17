@@ -2,7 +2,8 @@ use clippy_utils::diagnostics::{span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::is_diag_trait_item;
 use clippy_utils::macros::FormatParamKind::{Implicit, Named, NamedInline, Numbered, Starred};
 use clippy_utils::macros::{
-    is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam, FormatParamUsage,
+    is_assert_macro, is_format_macro, is_panic, root_macro_call, Count, FormatArg, FormatArgsExpn, FormatParam,
+    FormatParamUsage,
 };
 use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
@@ -122,7 +123,7 @@ declare_clippy_lint! {
     ///
     /// If a format string contains a numbered argument that cannot be inlined
     /// nothing will be suggested, e.g. `println!("{0}={1}", var, 1+2)`.
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub UNINLINED_FORMAT_ARGS,
     style,
     "using non-inlined variables in `format!` calls"
@@ -290,8 +291,9 @@ fn check_uninlined_args(
     if args.format_string.span.from_expansion() {
         return;
     }
-    if call_site.edition() < Edition2021 && is_panic(cx, def_id) {
-        // panic! before 2021 edition considers a single string argument as non-format
+    if call_site.edition() < Edition2021 && (is_panic(cx, def_id) || is_assert_macro(cx, def_id)) {
+        // panic!, assert!, and debug_assert! before 2021 edition considers a single string argument as
+        // non-format
         return;
     }
 
@@ -360,12 +362,7 @@ fn outermost_expn_data(expn_data: ExpnData) -> ExpnData {
     }
 }
 
-fn check_format_in_format_args(
-    cx: &LateContext<'_>,
-    call_site: Span,
-    name: Symbol,
-    arg: &Expr<'_>,
-) {
+fn check_format_in_format_args(cx: &LateContext<'_>, call_site: Span, name: Symbol, arg: &Expr<'_>) {
     let expn_data = arg.span.ctxt().outer_expn_data();
     if expn_data.call_site.from_expansion() {
         return;
@@ -438,7 +435,10 @@ fn check_to_string_in_format_args(cx: &LateContext<'_>, name: Symbol, value: &Ex
 
 /// Returns true if `hir_id` is referred to by multiple format params
 fn is_aliased(args: &FormatArgsExpn<'_>, hir_id: HirId) -> bool {
-    args.params().filter(|param| param.value.hir_id == hir_id).at_most_one().is_err()
+    args.params()
+        .filter(|param| param.value.hir_id == hir_id)
+        .at_most_one()
+        .is_err()
 }
 
 fn count_needed_derefs<'tcx, I>(mut ty: Ty<'tcx>, mut iter: I) -> (usize, Ty<'tcx>)
@@ -448,7 +448,11 @@ where
     let mut n_total = 0;
     let mut n_needed = 0;
     loop {
-        if let Some(Adjustment { kind: Adjust::Deref(overloaded_deref), target }) = iter.next() {
+        if let Some(Adjustment {
+            kind: Adjust::Deref(overloaded_deref),
+            target,
+        }) = iter.next()
+        {
             n_total += 1;
             if overloaded_deref.is_some() {
                 n_needed = n_total;

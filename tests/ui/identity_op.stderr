@@ -70,7 +70,7 @@ error: this operation has no effect
   --> $DIR/identity_op.rs:68:5
    |
 LL |     &x >> 0;
-   |     ^^^^^^^ help: consider reducing it to: `&x`
+   |     ^^^^^^^ help: consider reducing it to: `x`
 
 error: this operation has no effect
   --> $DIR/identity_op.rs:69:5
@@ -229,10 +229,16 @@ LL |     1 * 1;
    |     ^^^^^ help: consider reducing it to: `1`
 
 error: this operation has no effect
-  --> $DIR/identity_op.rs:118:5
+  --> $DIR/identity_op.rs:118:18
+   |
+LL |     let _: i32 = &x + 0;
+   |                  ^^^^^^ help: consider reducing it to: `x`
+
+error: this operation has no effect
+  --> $DIR/identity_op.rs:122:5
    |
 LL |     0 + if a { 1 } else { 2 } + if b { 3 } else { 5 }
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider reducing it to: `(if a { 1 } else { 2 })`
 
-error: aborting due to 39 previous errors
+error: aborting due to 40 previous errors
 

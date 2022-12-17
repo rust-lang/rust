@@ -2,7 +2,6 @@
 // warn on lints, that are included in `rust-lang/rust`s bootstrap
 #![warn(rust_2018_idioms, unused_lifetimes)]
 
-use rustc_tools_util::VersionInfo;
 use std::env;
 use std::path::PathBuf;
 use std::process::{self, Command};
