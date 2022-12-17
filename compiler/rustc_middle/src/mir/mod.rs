@@ -2022,8 +2022,9 @@ impl<'tcx> Debug for Rvalue<'tcx> {
                 let kind_str = match borrow_kind {
                     BorrowKind::Shared => "",
                     BorrowKind::Shallow => "shallow ",
-                    BorrowKind::Mut { allow_two_phase_borrow: false } | BorrowKind::Unique => "mut ",
-                    BorrowKind::Mut { allow_two_phase_borrow: true} => "/*2pb*/mut ",
+                    BorrowKind::Unique => "mut ", // FIXME should this say `/*uniq*/mut`?
+                    BorrowKind::Mut { allow_two_phase_borrow: false } => "mut ",
+                    BorrowKind::Mut { allow_two_phase_borrow: true } => "/*2pb*/mut ",
                 };
 
                 // When printing regions, add trailing space if necessary.
