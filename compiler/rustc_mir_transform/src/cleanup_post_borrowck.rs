@@ -19,41 +19,28 @@
 //! [`Nop`]: rustc_middle::mir::StatementKind::Nop
 
 use crate::MirPass;
-use rustc_middle::mir::visit::MutVisitor;
-use rustc_middle::mir::{Body, BorrowKind, Location, Rvalue};
-use rustc_middle::mir::{Statement, StatementKind};
+use rustc_middle::mir::{Body, BorrowKind, Rvalue, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
 pub struct CleanupNonCodegenStatements;
 
-pub struct DeleteNonCodegenStatements<'tcx> {
-    tcx: TyCtxt<'tcx>,
-}
-
 impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
-    fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        let mut delete = DeleteNonCodegenStatements { tcx };
-        delete.visit_body_preserves_cfg(body);
+    fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
+        for basic_block in body.basic_blocks.as_mut_preserves_cfg() {
+            for statement in basic_block.statements.iter_mut() {
+                match statement.kind {
+                    StatementKind::AscribeUserType(..)
+                    | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
+                    | StatementKind::FakeRead(..) => statement.make_nop(),
+                    _ => (),
+                }
+            }
+        }
+
         body.user_type_annotations.raw.clear();
 
         for decl in &mut body.local_decls {
             decl.user_ty = None;
         }
-    }
-}
-
-impl<'tcx> MutVisitor<'tcx> for DeleteNonCodegenStatements<'tcx> {
-    fn tcx(&self) -> TyCtxt<'tcx> {
-        self.tcx
-    }
-
-    fn visit_statement(&mut self, statement: &mut Statement<'tcx>, location: Location) {
-        match statement.kind {
-            StatementKind::AscribeUserType(..)
-            | StatementKind::Assign(box (_, Rvalue::Ref(_, BorrowKind::Shallow, _)))
-            | StatementKind::FakeRead(..) => statement.make_nop(),
-            _ => (),
-        }
-        self.super_statement(statement, location);
     }
 }
