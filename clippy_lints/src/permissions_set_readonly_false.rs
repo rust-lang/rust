@@ -34,15 +34,16 @@ impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
             && match_type(cx, cx.typeck_results().expr_ty(receiver), &paths::PERMISSIONS)
                 && path.ident.name == sym!(set_readonly)
                 && let ExprKind::Lit(lit) = &arg.kind
-                && LitKind::Bool(false) == lit.node {
-                    span_lint_and_note(
-                        cx,
-                        PERMISSIONS_SET_READONLY_FALSE,
-                        expr.span,
-                        "call to `set_readonly` with argument `false`",
-                        None,
-                        "on Unix platforms this results in the file being world writable",
-                    );
+                && LitKind::Bool(false) == lit.node
+        {
+                span_lint_and_note(
+                    cx,
+                    PERMISSIONS_SET_READONLY_FALSE,
+                    expr.span,
+                    "call to `set_readonly` with argument `false`",
+                    None,
+                    "on Unix platforms this results in the file being world writable",
+                );
         }
     }
 }
