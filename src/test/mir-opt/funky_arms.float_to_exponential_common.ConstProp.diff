@@ -82,7 +82,7 @@
           StorageLive(_10);                // scope 3 at $DIR/funky_arms.rs:+13:17: +13:26
           _10 = ((_7 as Some).0: usize);   // scope 3 at $DIR/funky_arms.rs:+13:17: +13:26
           StorageLive(_11);                // scope 3 at $DIR/funky_arms.rs:+15:43: +15:46
-          _11 = &mut (*_1);                // scope 3 at $DIR/funky_arms.rs:+15:43: +15:46
+          _11 = &/*2pb*/mut (*_1);         // scope 3 at $DIR/funky_arms.rs:+15:43: +15:46
           StorageLive(_12);                // scope 3 at $DIR/funky_arms.rs:+15:48: +15:51
           _12 = _2;                        // scope 3 at $DIR/funky_arms.rs:+15:48: +15:51
           StorageLive(_13);                // scope 3 at $DIR/funky_arms.rs:+15:53: +15:57
@@ -115,7 +115,7 @@
   
       bb8: {
           StorageLive(_18);                // scope 2 at $DIR/funky_arms.rs:+17:46: +17:49
-          _18 = &mut (*_1);                // scope 2 at $DIR/funky_arms.rs:+17:46: +17:49
+          _18 = &/*2pb*/mut (*_1);         // scope 2 at $DIR/funky_arms.rs:+17:46: +17:49
           StorageLive(_19);                // scope 2 at $DIR/funky_arms.rs:+17:51: +17:54
           _19 = _2;                        // scope 2 at $DIR/funky_arms.rs:+17:51: +17:54
           StorageLive(_20);                // scope 2 at $DIR/funky_arms.rs:+17:56: +17:60

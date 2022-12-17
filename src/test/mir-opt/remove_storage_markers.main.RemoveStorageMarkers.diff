@@ -53,7 +53,7 @@
 -         StorageLive(_8);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
 -         StorageLive(_9);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           _9 = &mut _4;                    // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
-          _8 = &mut (*_9);                 // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
+          _8 = &/*2pb*/mut (*_9);          // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
           _7 = <std::ops::Range<i32> as Iterator>::next(move _8) -> bb3; // scope 2 at $DIR/remove_storage_markers.rs:+2:14: +2:19
                                            // mir::Constant
                                            // + span: $DIR/remove_storage_markers.rs:10:14: 10:19

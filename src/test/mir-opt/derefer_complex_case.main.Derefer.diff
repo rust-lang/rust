@@ -52,7 +52,7 @@
           StorageLive(_8);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           StorageLive(_9);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           _9 = &mut _4;                    // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
-          _8 = &mut (*_9);                 // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
+          _8 = &/*2pb*/mut (*_9);          // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
           _7 = <std::slice::Iter<'_, i32> as Iterator>::next(move _8) -> bb3; // scope 1 at $DIR/derefer_complex_case.rs:+1:17: +1:26
                                            // mir::Constant
                                            // + span: $DIR/derefer_complex_case.rs:6:17: 6:26

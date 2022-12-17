@@ -24,7 +24,7 @@
           StorageLive(_5);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
           StorageLive(_6);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
           _6 = &mut _2;                    // scope 1 at $DIR/simple.rs:+2:10: +2:18
-          _5 = &mut (*_6);                 // scope 1 at $DIR/simple.rs:+2:10: +2:18
+          _5 = &/*2pb*/mut (*_6);          // scope 1 at $DIR/simple.rs:+2:10: +2:18
 -         _3 = move _4(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:+2:5: +2:19
 +         _3 = move _1(move _5) -> bb1;    // scope 1 at $DIR/simple.rs:+2:5: +2:19
       }

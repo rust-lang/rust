@@ -68,7 +68,7 @@ fn main() -> () {
         StorageLive(_6);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
         StorageLive(_7);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
         _7 = &mut _1;                    // scope 1 at $DIR/retag.rs:+3:29: +3:35
-        _6 = &mut (*_7);                 // scope 1 at $DIR/retag.rs:+3:29: +3:35
+        _6 = &/*2pb*/mut (*_7);          // scope 1 at $DIR/retag.rs:+3:29: +3:35
         _3 = Test::foo(move _4, move _6) -> [return: bb1, unwind: bb8]; // scope 1 at $DIR/retag.rs:+3:17: +3:36
                                          // mir::Constant
                                          // + span: $DIR/retag.rs:33:25: 33:28
