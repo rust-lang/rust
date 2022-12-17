@@ -2003,7 +2003,6 @@ in storage.js
 
 .more-examples-toggle .hide-more {
 	margin-left: 25px;
-	margin-bottom: 5px;
 	cursor: pointer;
 }
 
@@ -2031,16 +2030,12 @@ in storage.js
 	height: 100%;
 }
 
-.more-scraped-examples .scraped-example {
-	margin-bottom: 20px;
-}
-
-.more-scraped-examples .scraped-example:last-child {
-	margin-bottom: 0;
-}
-
-.example-links a {
+.more-scraped-examples .scraped-example, .example-links {
 	margin-top: 20px;
+}
+
+.more-scraped-examples .scraped-example:first-child {
+	margin-top: 5px;
 }
 
 .example-links ul {
