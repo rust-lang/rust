@@ -640,8 +640,11 @@
                 },
                 "rust-analyzer.checkOnSave.target": {
                     "markdownDescription": "Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.\n\nCan be a single target, e.g. `\"x86_64-unknown-linux-gnu\"` or a list of targets, e.g.\n`[\"aarch64-apple-darwin\", \"x86_64-apple-darwin\"]`.\n\nAliased as `\"checkOnSave.targets\"`.",
-                    "default": [],
+                    "default": null,
                     "anyOf": [
+                        {
+                            "type": "null"
+                        },
                         {
                             "type": "string"
                         },
@@ -1491,6 +1494,11 @@
             {
                 "id": "derive",
                 "description": "Style for derives",
+                "superType": "attribute"
+            },
+            {
+                "id": "deriveHelper",
+                "description": "Style for derive helpers",
                 "superType": "attribute"
             },
             {

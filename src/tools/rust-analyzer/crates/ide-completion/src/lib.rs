@@ -164,7 +164,6 @@ pub fn completions(
                 completions::vis::complete_vis_path(&mut completions, ctx, path_ctx, has_in_token);
             }
         }
-        // prevent `(` from triggering unwanted completion noise
         return Some(completions.into());
     }
 

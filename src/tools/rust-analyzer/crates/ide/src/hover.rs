@@ -127,6 +127,7 @@ pub(crate) fn hover(
             original_token.parent().and_then(ast::TokenTree::cast),
             Some(tt) if tt.syntax().ancestors().any(|it| ast::Meta::can_cast(it.kind()))
         );
+
     // prefer descending the same token kind in attribute expansions, in normal macros text
     // equivalency is more important
     let descended = if in_attr {
@@ -135,54 +136,67 @@ pub(crate) fn hover(
         sema.descend_into_macros_with_same_text(original_token.clone())
     };
 
-    // FIXME: Definition should include known lints and the like instead of having this special case here
-    let hovered_lint = descended.iter().find_map(|token| {
-        let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
-        render::try_for_lint(&attr, token)
-    });
-    if let Some(res) = hovered_lint {
-        return Some(RangeInfo::new(original_token.text_range(), res));
-    }
-
+    // try lint hover
     let result = descended
         .iter()
-        .filter_map(|token| {
-            let node = token.parent()?;
-            let class = IdentClass::classify_token(sema, token)?;
-            if let IdentClass::Operator(OperatorClass::Await(_)) = class {
-                // It's better for us to fall back to the keyword hover here,
-                // rendering poll is very confusing
-                return None;
-            }
-            Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
+        .find_map(|token| {
+            // FIXME: Definition should include known lints and the like instead of having this special case here
+            let attr = token.parent_ancestors().find_map(ast::Attr::cast)?;
+            render::try_for_lint(&attr, token)
         })
-        .flatten()
-        .unique_by(|&(def, _)| def)
-        .filter_map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
-        .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
-            acc.actions.extend(actions);
-            acc.markup = Markup::from(format!("{}\n---\n{}", acc.markup, markup));
-            acc
+        // try item definitions
+        .or_else(|| {
+            descended
+                .iter()
+                .filter_map(|token| {
+                    let node = token.parent()?;
+                    let class = IdentClass::classify_token(sema, token)?;
+                    if let IdentClass::Operator(OperatorClass::Await(_)) = class {
+                        // It's better for us to fall back to the keyword hover here,
+                        // rendering poll is very confusing
+                        return None;
+                    }
+                    Some(class.definitions().into_iter().zip(iter::once(node).cycle()))
+                })
+                .flatten()
+                .unique_by(|&(def, _)| def)
+                .filter_map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
+                .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
+                    acc.actions.extend(actions);
+                    acc.markup = Markup::from(format!("{}\n---\n{}", acc.markup, markup));
+                    acc
+                })
+        })
+        // try keywords
+        .or_else(|| descended.iter().find_map(|token| render::keyword(sema, config, token)))
+        // try rest item hover
+        .or_else(|| {
+            descended.iter().find_map(|token| {
+                if token.kind() != DOT2 {
+                    return None;
+                }
+
+                let rest_pat = token.parent().and_then(ast::RestPat::cast)?;
+                let record_pat_field_list =
+                    rest_pat.syntax().parent().and_then(ast::RecordPatFieldList::cast)?;
+
+                let record_pat =
+                    record_pat_field_list.syntax().parent().and_then(ast::RecordPat::cast)?;
+
+                Some(render::struct_rest_pat(sema, config, &record_pat))
+            })
         });
 
-    if result.is_none() {
-        // fallbacks, show keywords or types
-
-        let res = descended.iter().find_map(|token| render::keyword(sema, config, token));
-        if let Some(res) = res {
-            return Some(RangeInfo::new(original_token.text_range(), res));
-        }
-        let res = descended
-            .iter()
-            .find_map(|token| hover_type_fallback(sema, config, token, &original_token));
-        if let Some(_) = res {
-            return res;
-        }
-    }
-    result.map(|mut res: HoverResult| {
-        res.actions = dedupe_or_merge_hover_actions(res.actions);
-        RangeInfo::new(original_token.text_range(), res)
-    })
+    result
+        .map(|mut res: HoverResult| {
+            res.actions = dedupe_or_merge_hover_actions(res.actions);
+            RangeInfo::new(original_token.text_range(), res)
+        })
+        // fallback to type hover if there aren't any other suggestions
+        // this finds its own range instead of using the closest token's range
+        .or_else(|| {
+            descended.iter().find_map(|token| hover_type_fallback(sema, config, token, &token))
+        })
 }
 
 pub(crate) fn hover_for_definition(
@@ -269,6 +283,7 @@ fn hover_type_fallback(
     };
 
     let res = render::type_info(sema, config, &expr_or_pat)?;
+
     let range = sema
         .original_range_opt(&node)
         .map(|frange| frange.range)

@@ -607,6 +607,30 @@ fn attr_in_source_file_end() {
     );
 }
 
+#[test]
+fn invalid_path() {
+    check(
+        r#"
+//- proc_macros: identity
+#[proc_macros:::$0]
+struct Foo;
+"#,
+        expect![[r#""#]],
+    );
+
+    check(
+        r#"
+//- minicore: derive, copy
+mod foo {
+    pub use Copy as Bar;
+}
+#[derive(foo:::::$0)]
+struct Foo;
+"#,
+        expect![""],
+    );
+}
+
 mod cfg {
     use super::*;
 

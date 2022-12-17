@@ -19,7 +19,7 @@ use syntax::{
     ast::{self, AttrKind, NameOrNameRef},
     AstNode,
     SyntaxKind::{self, *},
-    SyntaxToken, TextRange, TextSize,
+    SyntaxToken, TextRange, TextSize, T,
 };
 use text_edit::Indel;
 
@@ -568,6 +568,32 @@ impl<'a> CompletionContext<'a> {
         // always pick the token to the immediate left of the cursor, as that is what we are actually
         // completing on
         let original_token = original_file.syntax().token_at_offset(offset).left_biased()?;
+
+        // try to skip completions on path with invalid colons
+        // this approach works in normal path and inside token tree
+        match original_token.kind() {
+            T![:] => {
+                // return if no prev token before colon
+                let prev_token = original_token.prev_token()?;
+
+                // only has a single colon
+                if prev_token.kind() != T![:] {
+                    return None;
+                }
+
+                // has 3 colon or 2 coloncolon in a row
+                // special casing this as per discussion in https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1031845205
+                // and https://github.com/rust-lang/rust-analyzer/pull/13611#discussion_r1032812751
+                if prev_token
+                    .prev_token()
+                    .map(|t| t.kind() == T![:] || t.kind() == T![::])
+                    .unwrap_or(false)
+                {
+                    return None;
+                }
+            }
+            _ => {}
+        }
 
         let AnalysisResult {
             analysis,

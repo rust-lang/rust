@@ -1,18 +1,22 @@
-use hir::Semantics;
+use hir::{AsAssocItem, Semantics};
 use ide_db::{
     defs::{Definition, NameClass, NameRefClass},
     RootDatabase,
 };
 use syntax::{ast, match_ast, AstNode, SyntaxKind::*, T};
 
-use crate::{FilePosition, NavigationTarget, RangeInfo};
+use crate::{
+    goto_definition::goto_definition, navigation_target::TryToNav, FilePosition, NavigationTarget,
+    RangeInfo,
+};
 
 // Feature: Go to Declaration
 //
 // Navigates to the declaration of an identifier.
 //
-// This is currently the same as `Go to Definition` with the exception of outline modules where it
-// will navigate to the `mod name;` item declaration.
+// This is the same as `Go to Definition` with the following exceptions:
+// - outline modules will navigate to the `mod name;` item declaration
+// - trait assoc items will navigate to the assoc item of the trait declaration opposed to the trait impl
 pub(crate) fn goto_declaration(
     db: &RootDatabase,
     position: FilePosition,
@@ -32,25 +36,37 @@ pub(crate) fn goto_declaration(
                 match parent {
                     ast::NameRef(name_ref) => match NameRefClass::classify(&sema, &name_ref)? {
                         NameRefClass::Definition(it) => Some(it),
-                        _ => None
+                        NameRefClass::FieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
                     },
                     ast::Name(name) => match NameClass::classify(&sema, &name)? {
-                        NameClass::Definition(it) => Some(it),
-                        _ => None
+                        NameClass::Definition(it) | NameClass::ConstReference(it) => Some(it),
+                        NameClass::PatFieldShorthand { field_ref, .. } => return field_ref.try_to_nav(db),
                     },
                     _ => None
                 }
             };
-            match def? {
+            let assoc = match def? {
                 Definition::Module(module) => {
-                    Some(NavigationTarget::from_module_to_decl(db, module))
+                    return Some(NavigationTarget::from_module_to_decl(db, module))
                 }
+                Definition::Const(c) => c.as_assoc_item(db),
+                Definition::TypeAlias(ta) => ta.as_assoc_item(db),
+                Definition::Function(f) => f.as_assoc_item(db),
                 _ => None,
-            }
+            }?;
+
+            let trait_ = assoc.containing_trait_impl(db)?;
+            let name = Some(assoc.name(db)?);
+            let item = trait_.items(db).into_iter().find(|it| it.name(db) == name)?;
+            item.try_to_nav(db)
         })
         .collect();
 
-    Some(RangeInfo::new(range, info))
+    if info.is_empty() {
+        goto_definition(db, position)
+    } else {
+        Some(RangeInfo::new(range, info))
+    }
 }
 
 #[cfg(test)]
@@ -108,5 +124,90 @@ mod foo {
 }
 "#,
         )
+    }
+
+    #[test]
+    fn goto_decl_goto_def_fallback() {
+        check(
+            r#"
+struct Foo;
+    // ^^^
+impl Foo$0 {}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_assoc_item_no_impl_item() {
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {}
+
+fn main() {
+    <()>::C$0;
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_assoc_item() {
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {
+    const C: () = ();
+}
+
+fn main() {
+    <()>::C$0;
+}
+"#,
+        );
+        check(
+            r#"
+trait Trait {
+    const C: () = ();
+       // ^
+}
+impl Trait for () {
+    const C$0: () = ();
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_field_pat_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let Foo { field$0 };
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_decl_constructor_shorthand() {
+        check(
+            r#"
+struct Foo { field: u32 }
+           //^^^^^
+fn main() {
+    let field = 0;
+    Foo { field$0 };
+}
+"#,
+        );
     }
 }
