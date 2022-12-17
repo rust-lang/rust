@@ -80,7 +80,7 @@ export const relatedTests = new lc.RequestType<lc.TextDocumentPositionParams, Te
 );
 
 export const cancelFlycheck = new lc.NotificationType0("rust-analyzer/cancelFlycheck");
-
+export const clearFlycheck = new lc.NotificationType0("rust-analyzer/clearFlycheck");
 export const runFlycheck = new lc.NotificationType<{
     textDocument: lc.TextDocumentIdentifier | null;
 }>("rust-analyzer/runFlycheck");

@@ -861,6 +861,10 @@ impl GlobalState {
                 }
                 Ok(())
             })?
+            .on::<lsp_ext::ClearFlycheck>(|this, ()| {
+                this.diagnostics.clear_check_all();
+                Ok(())
+            })?
             .on::<lsp_ext::RunFlycheck>(|this, params| {
                 if let Some(text_document) = params.text_document {
                     if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {

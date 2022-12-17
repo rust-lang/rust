@@ -792,6 +792,12 @@ export function cancelFlycheck(ctx: CtxInit): Cmd {
     };
 }
 
+export function clearFlycheck(ctx: CtxInit): Cmd {
+    return async () => {
+        await ctx.client.sendNotification(ra.clearFlycheck);
+    };
+}
+
 export function runFlycheck(ctx: CtxInit): Cmd {
     return async () => {
         const editor = ctx.activeRustEditor;
