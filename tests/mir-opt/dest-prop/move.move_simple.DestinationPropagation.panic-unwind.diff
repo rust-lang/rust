@@ -1,0 +1,35 @@
+- // MIR for `move_simple` before DestinationPropagation
++ // MIR for `move_simple` after DestinationPropagation
+  
+  fn move_simple(_1: i32) -> () {
+      debug x => _1;
+      let mut _0: ();
+      let _2: ();
+      let mut _3: i32;
+      let mut _4: i32;
+  
+      bb0: {
+          StorageLive(_2);
+-         StorageLive(_3);
+-         _3 = _1;
+-         StorageLive(_4);
+-         _4 = _1;
+-         _2 = use_both(move _3, move _4) -> [return: bb1, unwind continue];
++         nop;
++         nop;
++         nop;
++         nop;
++         _2 = use_both(_1, _1) -> [return: bb1, unwind continue];
+      }
+  
+      bb1: {
+-         StorageDead(_4);
+-         StorageDead(_3);
++         nop;
++         nop;
+          StorageDead(_2);
+          _0 = const ();
+          return;
+      }
+  }
+  
