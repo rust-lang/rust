@@ -497,7 +497,7 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &remove_false_edges::RemoveFalseEdges,
         &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &cleanup_post_borrowck::CleanupNonCodegenStatements,
+        &cleanup_post_borrowck::CleanupPostBorrowck,
         &simplify::SimplifyCfg::new("early-opt"),
         &deref_separator::Derefer,
     ];

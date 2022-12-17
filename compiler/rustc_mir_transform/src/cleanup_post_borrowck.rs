@@ -22,9 +22,9 @@ use crate::MirPass;
 use rustc_middle::mir::{Body, BorrowKind, Rvalue, StatementKind};
 use rustc_middle::ty::TyCtxt;
 
-pub struct CleanupNonCodegenStatements;
+pub struct CleanupPostBorrowck;
 
-impl<'tcx> MirPass<'tcx> for CleanupNonCodegenStatements {
+impl<'tcx> MirPass<'tcx> for CleanupPostBorrowck {
     fn run_pass(&self, _tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         for basic_block in body.basic_blocks.as_mut_preserves_cfg() {
             for statement in basic_block.statements.iter_mut() {
