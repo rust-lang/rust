@@ -2191,6 +2191,50 @@ macro_rules! impl_pos {
             $(#[$attr])*
             $vis struct $ident($inner_vis $inner_ty);
 
+            impl ::std::cmp::Ord for $ident {
+                #[inline(always)]
+                fn cmp(&self, other: &Self) -> ::std::cmp::Ordering {
+                    self.0.cmp(&other.0)
+                }
+
+                #[inline(always)]
+                fn min(self, other: Self) -> Self {
+                    Self(self.0.min(other.0))
+                }
+
+                #[inline(always)]
+                fn max(self, other: Self) -> Self {
+                    Self(self.0.max(other.0))
+                }
+            }
+
+            impl ::std::cmp::PartialOrd for $ident {
+                #[inline(always)]
+                fn partial_cmp(&self, other: &Self) -> Option<::std::cmp::Ordering> {
+                    self.0.partial_cmp(&other.0)
+                }
+
+                #[inline(always)]
+                fn lt(&self, other: &Self) -> bool {
+                    self.0.lt(&other.0)
+                }
+
+                #[inline(always)]
+                fn le(&self, other: &Self) -> bool {
+                    self.0.le(&other.0)
+                }
+
+                #[inline(always)]
+                fn gt(&self, other: &Self) -> bool {
+                    self.0.gt(&other.0)
+                }
+
+                #[inline(always)]
+                fn ge(&self, other: &Self) -> bool {
+                    self.0.ge(&other.0)
+                }
+            }
+
             impl Pos for $ident {
                 #[inline(always)]
                 fn from_usize(n: usize) -> $ident {
@@ -2238,11 +2282,11 @@ impl_pos! {
     /// A byte offset.
     ///
     /// Keep this small (currently 32-bits), as AST contains a lot of them.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
     pub struct BytePos(pub u32);
 
     /// A byte offset relative to file beginning.
-    #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
     pub struct RelativeBytePos(pub u32);
 
     /// A character offset.
@@ -2250,7 +2294,7 @@ impl_pos! {
     /// Because of multibyte UTF-8 characters, a byte offset
     /// is not equivalent to a character offset. The [`SourceMap`] will convert [`BytePos`]
     /// values to `CharPos` values as necessary.
-    #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+    #[derive(Clone, Copy, PartialEq, Eq, Debug)]
     pub struct CharPos(pub usize);
 }
 
