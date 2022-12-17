@@ -3,7 +3,6 @@ use crate::back::write::to_llvm_code_model;
 use crate::callee::get_fn;
 use crate::coverageinfo;
 use crate::debuginfo;
-use crate::errors::BranchProtectionRequiresAArch64;
 use crate::llvm;
 use crate::llvm_util;
 use crate::type_::Type;
@@ -281,9 +280,7 @@ pub unsafe fn create_module<'ll>(
     }
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
-        if sess.target.arch != "aarch64" {
-            sess.emit_err(BranchProtectionRequiresAArch64);
-        } else {
+        if sess.target.arch == "aarch64" {
             llvm::LLVMRustAddModuleFlag(
                 llmod,
                 llvm::LLVMModFlagBehavior::Error,
@@ -308,6 +305,11 @@ pub unsafe fn create_module<'ll>(
                 llvm::LLVMModFlagBehavior::Error,
                 "sign-return-address-with-bkey\0".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
+            );
+        } else {
+            bug!(
+                "branch-protection used on non-AArch64 target; \
+                  this should be checked in rustc_session."
             );
         }
     }

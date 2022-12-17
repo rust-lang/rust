@@ -116,6 +116,10 @@ pub struct StackProtectorNotSupportedForTarget<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(session_branch_protection_requires_aarch64)]
+pub(crate) struct BranchProtectionRequiresAArch64;
+
+#[derive(Diagnostic)]
 #[diag(session_split_debuginfo_unstable_platform)]
 pub struct SplitDebugInfoUnstablePlatform {
     pub debuginfo: SplitDebuginfo,
