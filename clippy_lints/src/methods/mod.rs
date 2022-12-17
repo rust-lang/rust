@@ -3059,7 +3059,7 @@ declare_clippy_lint! {
     /// let map: HashMap<u32, u32> = HashMap::new();
     /// let values = map.values().collect::<Vec<_>>();
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub ITER_KV_MAP,
     complexity,
     "iterating on map using `iter` when `keys` or `values` would do"
@@ -3672,7 +3672,10 @@ impl Methods {
                     no_effect_replace::check(cx, expr, arg1, arg2);
 
                     // Check for repeated `str::replace` calls to perform `collapsible_str_replace` lint
-                    if name == "replace" && let Some(("replace", ..)) = method_call(recv) {
+                    if self.msrv.meets(msrvs::PATTERN_TRAIT_CHAR_ARRAY)
+                        && name == "replace"
+                        && let Some(("replace", ..)) = method_call(recv)
+                    {
                         collapsible_str_replace::check(cx, expr, arg1, arg2);
                     }
                 },

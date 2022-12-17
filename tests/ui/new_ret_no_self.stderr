@@ -1,5 +1,5 @@
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:49:5
+  --> $DIR/new_ret_no_self.rs:50:5
    |
 LL | /     pub fn new(_: String) -> impl R<Item = u32> {
 LL | |         S3
@@ -9,7 +9,7 @@ LL | |     }
    = note: `-D clippy::new-ret-no-self` implied by `-D warnings`
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:81:5
+  --> $DIR/new_ret_no_self.rs:82:5
    |
 LL | /     pub fn new() -> u32 {
 LL | |         unimplemented!();
@@ -17,7 +17,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:90:5
+  --> $DIR/new_ret_no_self.rs:91:5
    |
 LL | /     pub fn new(_: String) -> u32 {
 LL | |         unimplemented!();
@@ -25,7 +25,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:126:5
+  --> $DIR/new_ret_no_self.rs:127:5
    |
 LL | /     pub fn new() -> (u32, u32) {
 LL | |         unimplemented!();
@@ -33,7 +33,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:153:5
+  --> $DIR/new_ret_no_self.rs:154:5
    |
 LL | /     pub fn new() -> *mut V {
 LL | |         unimplemented!();
@@ -41,7 +41,7 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:171:5
+  --> $DIR/new_ret_no_self.rs:172:5
    |
 LL | /     pub fn new() -> Option<u32> {
 LL | |         unimplemented!();
@@ -49,19 +49,19 @@ LL | |     }
    | |_____^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:224:9
+  --> $DIR/new_ret_no_self.rs:225:9
    |
 LL |         fn new() -> String;
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:236:9
+  --> $DIR/new_ret_no_self.rs:237:9
    |
 LL |         fn new(_: String) -> String;
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:271:9
+  --> $DIR/new_ret_no_self.rs:272:9
    |
 LL | /         fn new() -> (u32, u32) {
 LL | |             unimplemented!();
@@ -69,7 +69,7 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:298:9
+  --> $DIR/new_ret_no_self.rs:299:9
    |
 LL | /         fn new() -> *mut V {
 LL | |             unimplemented!();
@@ -77,7 +77,7 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:368:9
+  --> $DIR/new_ret_no_self.rs:369:9
    |
 LL | /         fn new(t: T) -> impl Into<i32> {
 LL | |             1
@@ -85,12 +85,28 @@ LL | |         }
    | |_________^
 
 error: methods called `new` usually return `Self`
-  --> $DIR/new_ret_no_self.rs:389:9
+  --> $DIR/new_ret_no_self.rs:390:9
    |
 LL | /         fn new(t: T) -> impl Trait2<(), i32> {
 LL | |             unimplemented!()
 LL | |         }
    | |_________^
 
-error: aborting due to 12 previous errors
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self.rs:410:9
+   |
+LL | /         pub fn new() -> impl PartialOrd {
+LL | |             0i32
+LL | |         }
+   | |_________^
+
+error: methods called `new` usually return `Self`
+  --> $DIR/new_ret_no_self.rs:421:9
+   |
+LL | /         pub fn new() -> X {
+LL | |             0i32
+LL | |         }
+   | |_________^
+
+error: aborting due to 14 previous errors
 

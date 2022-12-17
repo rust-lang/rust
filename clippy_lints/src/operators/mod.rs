@@ -90,9 +90,6 @@ declare_clippy_lint! {
     /// use rust_decimal::Decimal;
     /// let _n = Decimal::MAX + Decimal::MAX;
     /// ```
-    ///
-    /// ### Allowed types
-    /// Custom allowed types can be specified through the "arithmetic-side-effects-allowed" filter.
     #[clippy::version = "1.64.0"]
     pub ARITHMETIC_SIDE_EFFECTS,
     restriction,

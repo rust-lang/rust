@@ -1,28 +1,10 @@
 error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:78:13
-   |
-LL |     let _ = String::new() + "";
-   |             ^^^^^^^^^^^^^^^^^^
-   |
-   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
-
-error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:86:27
-   |
-LL |     let inferred_string = string + "";
-   |                           ^^^^^^^^^^^
-
-error: arithmetic operation that can potentially result in unexpected side-effects
-  --> $DIR/arithmetic_side_effects.rs:90:13
-   |
-LL |     let _ = inferred_string + "";
-   |             ^^^^^^^^^^^^^^^^^^^^
-
-error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects.rs:165:5
    |
 LL |     _n += 1;
    |     ^^^^^^^
+   |
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
 
 error: arithmetic operation that can potentially result in unexpected side-effects
   --> $DIR/arithmetic_side_effects.rs:166:5
@@ -348,5 +330,5 @@ error: arithmetic operation that can potentially result in unexpected side-effec
 LL |     _n = -&_n;
    |          ^^^^
 
-error: aborting due to 58 previous errors
+error: aborting due to 55 previous errors
 

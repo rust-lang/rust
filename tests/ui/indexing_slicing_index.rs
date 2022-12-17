@@ -6,7 +6,7 @@
 #![allow(unconditional_panic, clippy::no_effect, clippy::unnecessary_operation)]
 
 const ARR: [i32; 2] = [1, 2];
-const REF: &i32 = &ARR[idx()]; // Ok, should not produce stderr.
+const REF: &i32 = &ARR[idx()]; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
 const REF_ERR: &i32 = &ARR[idx4()]; // Ok, let rustc handle const contexts.
 
 const fn idx() -> usize {
@@ -27,8 +27,8 @@ fn main() {
     x[3]; // Ok, should not produce stderr.
     x[const { idx() }]; // Ok, should not produce stderr.
     x[const { idx4() }]; // Ok, let rustc's `unconditional_panic` lint handle `usize` indexing on arrays.
-    const { &ARR[idx()] }; // Ok, should not produce stderr.
-    const { &ARR[idx4()] }; // Ok, let rustc handle const contexts.
+    const { &ARR[idx()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
+    const { &ARR[idx4()] }; // This should be linted, since `suppress-restriction-lint-in-const` default is false.
 
     let y = &x;
     y[0]; // Ok, referencing shouldn't affect this lint. See the issue 6021
