@@ -94,8 +94,8 @@ LL |     let closure = |x| x;
    |                   ^^^
 help: provide the argument
    |
-LL |     closure(/* value */);
-   |            ~~~~~~~~~~~~~
+LL |     closure(/* x */);
+   |            ~~~~~~~~~
 
 error: aborting due to 6 previous errors
 
