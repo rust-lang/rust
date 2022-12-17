@@ -78,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
             && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
-            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Opaque(..))
+            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
             span_lint_and_then(
                 cx,
@@ -127,7 +127,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &'tcx Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),
