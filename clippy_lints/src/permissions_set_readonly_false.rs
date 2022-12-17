@@ -1,4 +1,4 @@
-use clippy_utils::diagnostics::span_lint_and_note;
+use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::paths;
 use clippy_utils::ty::match_type;
 use rustc_ast::ast::LitKind;
@@ -8,11 +8,11 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for calls to `std::fs::Permissions.set_readonly` with argument `false`
+    /// Checks for calls to `std::fs::Permissions.set_readonly` with argument `false`.
     ///
     /// ### Why is this bad?
-    /// On Unix platforms this results in the file being world writable
-    ///
+    /// On Unix platforms this results in the file being world writable,
+    /// equivalent to `chmod a+w <file>`.
     /// ### Example
     /// ```rust
     /// use std::fs::File;
@@ -32,18 +32,21 @@ impl<'tcx> LateLintPass<'tcx> for PermissionsSetReadonlyFalse {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         if let ExprKind::MethodCall(path, receiver, [arg], _) = &expr.kind
             && match_type(cx, cx.typeck_results().expr_ty(receiver), &paths::PERMISSIONS)
-                && path.ident.name == sym!(set_readonly)
-                && let ExprKind::Lit(lit) = &arg.kind
-                && LitKind::Bool(false) == lit.node
+            && path.ident.name == sym!(set_readonly)
+            && let ExprKind::Lit(lit) = &arg.kind
+            && LitKind::Bool(false) == lit.node
         {
-                span_lint_and_note(
-                    cx,
-                    PERMISSIONS_SET_READONLY_FALSE,
-                    expr.span,
-                    "call to `set_readonly` with argument `false`",
-                    None,
-                    "on Unix platforms this results in the file being world writable",
-                );
+            span_lint_and_then(
+                cx,
+                PERMISSIONS_SET_READONLY_FALSE,
+                expr.span,
+                "call to `set_readonly` with argument `false`",
+                |diag| {
+                    diag.note("on Unix platforms this results in the file being world writable");
+                    diag.help("you can set the desired permissions using `PermissionsExt`. For more information, see\n\
+                        https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html");
+                }
+            );
         }
     }
 }

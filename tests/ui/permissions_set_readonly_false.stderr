@@ -5,6 +5,8 @@ LL |     permissions.set_readonly(false);
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
    = note: on Unix platforms this results in the file being world writable
+   = help: you can set the desired permissions using `PermissionsExt`. For more information, see
+           https://doc.rust-lang.org/std/os/unix/fs/trait.PermissionsExt.html
    = note: `-D clippy::permissions-set-readonly-false` implied by `-D warnings`
 
 error: aborting due to previous error
