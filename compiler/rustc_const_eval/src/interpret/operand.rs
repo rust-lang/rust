@@ -569,8 +569,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 let cid = GlobalId { instance, promoted: None };
-                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
-                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+                self.ctfe_query(span, |tcx| {
+                    tcx.eval_to_valtree(self.param_env.with_const().and(cid))
+                })?
+                .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
             }
             ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
