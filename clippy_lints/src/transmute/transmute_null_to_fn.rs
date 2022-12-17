@@ -9,7 +9,7 @@ use rustc_span::symbol::sym;
 use super::TRANSMUTE_NULL_TO_FN;
 
 const LINT_MSG: &str = "transmuting a known null pointer into a function pointer";
-const NOTE_MSG: &str = "this transmute results in a null function pointer";
+const NOTE_MSG: &str = "this transmute results in undefined behavior";
 const HELP_MSG: &str =
     "try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value";
 

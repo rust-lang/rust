@@ -4203,6 +4203,7 @@ Released 2018-09-13
 [`float_cmp_const`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_cmp_const
 [`float_equality_without_abs`]: https://rust-lang.github.io/rust-clippy/master/index.html#float_equality_without_abs
 [`fn_address_comparisons`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_address_comparisons
+[`fn_null_check`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_null_check
 [`fn_params_excessive_bools`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_params_excessive_bools
 [`fn_to_numeric_cast`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_to_numeric_cast
 [`fn_to_numeric_cast_any`]: https://rust-lang.github.io/rust-clippy/master/index.html#fn_to_numeric_cast_any

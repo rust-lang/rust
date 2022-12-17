@@ -161,6 +161,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::float_literal::LOSSY_FLOAT_LITERAL_INFO,
     crate::floating_point_arithmetic::IMPRECISE_FLOPS_INFO,
     crate::floating_point_arithmetic::SUBOPTIMAL_FLOPS_INFO,
+    crate::fn_null_check::FN_NULL_CHECK_INFO,
     crate::format::USELESS_FORMAT_INFO,
     crate::format_args::FORMAT_IN_FORMAT_ARGS_INFO,
     crate::format_args::TO_STRING_IN_FORMAT_ARGS_INFO,
