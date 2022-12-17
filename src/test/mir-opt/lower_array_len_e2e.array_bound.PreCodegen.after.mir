@@ -5,27 +5,23 @@ fn array_bound(_1: usize, _2: &[u8; N]) -> u8 {
     debug slice => _2;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+0:50: +0:55
     let mut _0: u8;                      // return place in scope 0 at $DIR/lower_array_len_e2e.rs:+0:70: +0:72
     let mut _3: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
-    let mut _4: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:13
-    let mut _5: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
-    let mut _6: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-    let mut _7: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+    let mut _4: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
+    let mut _5: usize;                   // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+    let mut _6: bool;                    // in scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
 
     bb0: {
         StorageLive(_3);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
-        StorageLive(_4);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:13
-        _4 = _1;                         // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:13
-        StorageLive(_5);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
-        _5 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
-        _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
-        StorageDead(_5);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:26: +1:27
+        StorageLive(_4);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
+        _4 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+1:16: +1:27
+        _3 = Lt(_1, move _4);            // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
         StorageDead(_4);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+1:26: +1:27
         switchInt(move _3) -> [0: bb3, otherwise: bb1]; // scope 0 at $DIR/lower_array_len_e2e.rs:+1:8: +1:27
     }
 
     bb1: {
-        _6 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-        _7 = Lt(_1, _6);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
-        assert(move _7, "index out of bounds: the length is {} but the index is {}", move _6, _1) -> bb2; // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        _5 = const N;                    // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        _6 = Lt(_1, _5);                 // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
+        assert(move _6, "index out of bounds: the length is {} but the index is {}", move _5, _1) -> bb2; // scope 0 at $DIR/lower_array_len_e2e.rs:+2:9: +2:21
     }
 
     bb2: {

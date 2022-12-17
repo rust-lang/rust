@@ -208,12 +208,12 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             // This is the set of merges we will apply this round. It is a subset of the candidates.
             let mut merges = FxHashMap::default();
 
-            for (src, candidates) in candidates.c.iter() {
-                if merged_locals.contains(*src) {
+            for (src, candidates) in candidates.c.drain() {
+                if merged_locals.contains(src) {
                     continue;
                 }
                 let Some(dest) =
-                    candidates.iter().find(|dest| !merged_locals.contains(**dest)) else {
+                    candidates.into_iter().find(|(dest, _)| !merged_locals.contains(*dest)) else {
                         continue;
                 };
                 if !tcx.consider_optimizing(|| {
@@ -221,9 +221,10 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 }) {
                     break;
                 }
-                merges.insert(*src, *dest);
-                merged_locals.insert(*src);
-                merged_locals.insert(*dest);
+                merged_locals.insert(src);
+                merged_locals.insert(dest.0);
+                merges.insert(src, dest.clone());
+                merges.insert(dest.0, dest);
             }
             trace!(merging = ?merges);
 
@@ -245,7 +246,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 /// frequently. Everything with a `&'alloc` lifetime points into here.
 #[derive(Default)]
 struct Allocations {
-    candidates: FxHashMap<Local, Vec<Local>>,
+    candidates: FxHashMap<Local, Vec<(Local, Vec<Location>)>>,
     candidates_reverse: FxHashMap<Local, Vec<Local>>,
     write_info: WriteInfo,
     // PERF: Do this for `MaybeLiveLocals` allocations too.
@@ -267,7 +268,11 @@ struct Candidates<'alloc> {
     ///
     /// We will still report that we would like to merge `_1` and `_2` in an attempt to allow us to
     /// remove that assignment.
-    c: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    ///
+    /// Each candidate pair is associated with a `Vec<Location>`. If the candidate pair is accepted,
+    /// all writes to either local at these locations must be removed. The writes will always be
+    /// removable.
+    c: &'alloc mut FxHashMap<Local, Vec<(Local, Vec<Location>)>>,
     /// A reverse index of the `c` set; if the `c` set contains `a => Place { local: b, proj }`,
     /// then this contains `b => a`.
     // PERF: Possibly these should be `SmallVec`s?
@@ -282,7 +287,7 @@ struct Candidates<'alloc> {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxHashMap<Local, Local>,
+    merges: &FxHashMap<Local, (Local, Vec<Location>)>,
     merged_locals: &BitSet<Local>,
 ) {
     let mut merger = Merger { tcx, merges, merged_locals };
@@ -291,8 +296,17 @@ fn apply_merges<'tcx>(
 
 struct Merger<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxHashMap<Local, Local>,
+    merges: &'a FxHashMap<Local, (Local, Vec<Location>)>,
     merged_locals: &'a BitSet<Local>,
+}
+
+impl<'a, 'tcx> Merger<'a, 'tcx> {
+    fn should_remove_write_at(&self, local: Local, location: Location) -> bool {
+        let Some((_, to_remove)) = self.merges.get(&local) else {
+            return false;
+        };
+        to_remove.contains(&location)
+    }
 }
 
 impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
@@ -302,7 +316,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
         if let Some(dest) = self.merges.get(local) {
-            *local = *dest;
+            *local = dest.0;
         }
     }
 
@@ -332,8 +346,25 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
                     _ => {}
                 }
             }
+            StatementKind::Deinit(place) => {
+                if self.should_remove_write_at(place.local, location) {
+                    statement.make_nop();
+                }
+            }
 
             _ => {}
+        }
+    }
+
+    fn visit_operand(&mut self, op: &mut Operand<'tcx>, location: Location) {
+        self.super_operand(op, location);
+        match op {
+            Operand::Move(place) => {
+                if self.should_remove_write_at(place.local, location) {
+                    *op = Operand::Copy(*place);
+                }
+            }
+            _ => (),
         }
     }
 }
@@ -356,30 +387,35 @@ struct FilterInformation<'a, 'body, 'alloc, 'tcx> {
 // through these methods, and not directly.
 impl<'alloc> Candidates<'alloc> {
     /// Just `Vec::retain`, but the condition is inverted and we add debugging output
-    fn vec_filter_candidates(
+    fn vec_modify_candidates(
         src: Local,
-        v: &mut Vec<Local>,
-        mut f: impl FnMut(Local) -> CandidateFilter,
+        v: &mut Vec<(Local, Vec<Location>)>,
+        mut f: impl FnMut(Local) -> CandidateModification,
         at: Location,
     ) {
-        v.retain(|dest| {
-            let remove = f(*dest);
-            if remove == CandidateFilter::Remove {
+        v.retain_mut(|(dest, remove_writes)| match f(*dest) {
+            CandidateModification::Remove => {
                 trace!("eliminating {:?} => {:?} due to conflict at {:?}", src, dest, at);
+                false
             }
-            remove == CandidateFilter::Keep
+            CandidateModification::RemoveWrite => {
+                trace!("marking write for {:?} => {:?} as needing removing at {:?}", src, dest, at);
+                remove_writes.push(at);
+                true
+            }
+            CandidateModification::Keep => true,
         });
     }
 
     /// `vec_filter_candidates` but for an `Entry`
     fn entry_filter_candidates(
-        mut entry: OccupiedEntry<'_, Local, Vec<Local>>,
+        mut entry: OccupiedEntry<'_, Local, Vec<(Local, Vec<Location>)>>,
         p: Local,
-        f: impl FnMut(Local) -> CandidateFilter,
+        f: impl FnMut(Local) -> CandidateModification,
         at: Location,
     ) {
         let candidates = entry.get_mut();
-        Self::vec_filter_candidates(p, candidates, f, at);
+        Self::vec_modify_candidates(p, candidates, f, at);
         if candidates.len() == 0 {
             entry.remove();
         }
@@ -389,7 +425,7 @@ impl<'alloc> Candidates<'alloc> {
     fn filter_candidates_by(
         &mut self,
         p: Local,
-        mut f: impl FnMut(Local) -> CandidateFilter,
+        mut f: impl FnMut(Local) -> CandidateModification,
         at: Location,
     ) {
         // Cover the cases where `p` appears as a `src`
@@ -403,7 +439,8 @@ impl<'alloc> Candidates<'alloc> {
         // We use `retain` here to remove the elements from the reverse set if we've removed the
         // matching candidate in the forward set.
         srcs.retain(|src| {
-            if f(*src) == CandidateFilter::Keep {
+            let modification = f(*src);
+            if modification == CandidateModification::Keep {
                 return true;
             }
             let Entry::Occupied(entry) = self.c.entry(*src) else {
@@ -413,18 +450,20 @@ impl<'alloc> Candidates<'alloc> {
                 entry,
                 *src,
                 |dest| {
-                    if dest == p { CandidateFilter::Remove } else { CandidateFilter::Keep }
+                    if dest == p { modification } else { CandidateModification::Keep }
                 },
                 at,
             );
-            false
+            // Remove the src from the reverse set if we removed the candidate pair
+            modification == CandidateModification::RemoveWrite
         });
     }
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
-enum CandidateFilter {
+enum CandidateModification {
     Keep,
+    RemoveWrite,
     Remove,
 }
 
@@ -483,31 +522,36 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
 
     fn apply_conflicts(&mut self) {
         let writes = &self.write_info.writes;
-        for p in writes {
+        for &(p, is_removable) in writes {
+            let modification = if is_removable {
+                CandidateModification::RemoveWrite
+            } else {
+                CandidateModification::Remove
+            };
             let other_skip = self.write_info.skip_pair.and_then(|(a, b)| {
-                if a == *p {
+                if a == p {
                     Some(b)
-                } else if b == *p {
+                } else if b == p {
                     Some(a)
                 } else {
                     None
                 }
             });
             self.candidates.filter_candidates_by(
-                *p,
+                p,
                 |q| {
                     if Some(q) == other_skip {
-                        return CandidateFilter::Keep;
+                        return CandidateModification::Keep;
                     }
                     // It is possible that a local may be live for less than the
                     // duration of a statement This happens in the case of function
                     // calls or inline asm. Because of this, we also mark locals as
                     // conflicting when both of them are written to in the same
                     // statement.
-                    if self.live.contains(q) || writes.contains(&q) {
-                        CandidateFilter::Remove
+                    if self.live.contains(q) || writes.iter().any(|&(x, _)| x == q) {
+                        modification
                     } else {
-                        CandidateFilter::Keep
+                        CandidateModification::Keep
                     }
                 },
                 self.at,
@@ -519,7 +563,9 @@ impl<'a, 'body, 'alloc, 'tcx> FilterInformation<'a, 'body, 'alloc, 'tcx> {
 /// Describes where a statement/terminator writes to
 #[derive(Default, Debug)]
 struct WriteInfo {
-    writes: Vec<Local>,
+    /// Which locals are written to. The `bool` is true if the write is "removable," ie if it comes
+    /// from a `Operand::Move` or `Deinit`.
+    writes: Vec<(Local, bool)>,
     /// If this pair of locals is a candidate pair, completely skip processing it during this
     /// statement. All other candidates are unaffected.
     skip_pair: Option<(Local, Local)>,
@@ -563,10 +609,11 @@ impl WriteInfo {
                     | Rvalue::CopyForDeref(_) => (),
                 }
             }
+            StatementKind::Deinit(p) => {
+                self.writes.push((p.local, true));
+            }
             // Retags are technically also reads, but reporting them as a write suffices
-            StatementKind::SetDiscriminant { place, .. }
-            | StatementKind::Deinit(place)
-            | StatementKind::Retag(_, place) => {
+            StatementKind::SetDiscriminant { place, .. } | StatementKind::Retag(_, place) => {
                 self.add_place(**place);
             }
             StatementKind::Intrinsic(_)
@@ -652,16 +699,12 @@ impl WriteInfo {
     }
 
     fn add_place<'tcx>(&mut self, place: Place<'tcx>) {
-        self.writes.push(place.local);
+        self.writes.push((place.local, false));
     }
 
     fn add_operand<'tcx>(&mut self, op: &Operand<'tcx>) {
         match op {
-            // FIXME(JakobDegen): In a previous version, the `Move` case was incorrectly treated as
-            // being a read only. This was unsound, however we cannot add a regression test because
-            // it is not possible to set this off with current MIR. Once we have that ability, a
-            // regression test should be added.
-            Operand::Move(p) => self.add_place(*p),
+            Operand::Move(p) => self.writes.push((p.local, true)),
             Operand::Copy(_) | Operand::Constant(_) => (),
         }
     }
@@ -716,7 +759,7 @@ fn places_to_candidate_pair<'tcx>(
 fn find_candidates<'alloc, 'tcx>(
     body: &Body<'tcx>,
     borrowed: &BitSet<Local>,
-    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    candidates: &'alloc mut FxHashMap<Local, Vec<(Local, Vec<Location>)>>,
     candidates_reverse: &'alloc mut FxHashMap<Local, Vec<Local>>,
 ) -> Candidates<'alloc> {
     candidates.clear();
@@ -730,8 +773,8 @@ fn find_candidates<'alloc, 'tcx>(
     }
     // Generate the reverse map
     for (src, cands) in candidates.iter() {
-        for dest in cands.iter().copied() {
-            candidates_reverse.entry(dest).or_default().push(*src);
+        for (dest, _) in cands.iter() {
+            candidates_reverse.entry(*dest).or_default().push(*src);
         }
     }
     Candidates { c: candidates, reverse: candidates_reverse }
@@ -739,7 +782,7 @@ fn find_candidates<'alloc, 'tcx>(
 
 struct FindAssignments<'a, 'alloc, 'tcx> {
     body: &'a Body<'tcx>,
-    candidates: &'alloc mut FxHashMap<Local, Vec<Local>>,
+    candidates: &'alloc mut FxHashMap<Local, Vec<(Local, Vec<Location>)>>,
     borrowed: &'a BitSet<Local>,
 }
 
@@ -766,7 +809,7 @@ impl<'tcx> Visitor<'tcx> for FindAssignments<'_, '_, 'tcx> {
             }
 
             // We may insert duplicates here, but that's fine
-            self.candidates.entry(src).or_default().push(dest);
+            self.candidates.entry(src).or_default().push((dest, Vec::new()));
         }
     }
 }
