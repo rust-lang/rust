@@ -537,6 +537,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::single_char_lifetime_names::SINGLE_CHAR_LIFETIME_NAMES_INFO,
     crate::single_component_path_imports::SINGLE_COMPONENT_PATH_IMPORTS_INFO,
     crate::size_of_in_element_count::SIZE_OF_IN_ELEMENT_COUNT_INFO,
+    crate::size_of_ref::SIZE_OF_REF_INFO,
     crate::slow_vector_initialization::SLOW_VECTOR_INITIALIZATION_INFO,
     crate::std_instead_of_core::ALLOC_INSTEAD_OF_CORE_INFO,
     crate::std_instead_of_core::STD_INSTEAD_OF_ALLOC_INFO,
