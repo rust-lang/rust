@@ -128,7 +128,7 @@ fn main() {
 }
 ```
 
-```bash
+```
 $ rustc +stage1 error.rs
 error[E0277]: cannot add `()` to `{integer}`
  --> error.rs:2:7
@@ -143,7 +143,7 @@ error: aborting due to previous error
 
 Now, where does the error above come from?
 
-```bash
+```
 $ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z treat-err-as-bug
 error[E0277]: the trait bound `{integer}: std::ops::Add<()>` is not satisfied
  --> error.rs:2:7
@@ -190,7 +190,7 @@ Cool, now I have a backtrace for the error!
 `-Z track-diagnostics` can help figure out where errors are emitted. It uses `#[track_caller]`
 for this and prints its location alongside the error:
 
-```bash
+```
 $ RUST_BACKTRACE=1 rustc +stage1 error.rs -Z track-diagnostics
 error[E0277]: cannot add `()` to `{integer}`
  --> src\error.rs:2:7

@@ -287,7 +287,7 @@ There are three main ways to find where a given error is emitted:
   - The _construction_ of the error is far away from where it is _emitted_,
     a problem similar to the one we faced with the `grep` approach.
     In some cases, we buffer multiple errors in order to emit them in order.
-- Invoking `rustc` with the nightly-only flag `-Z track-diagnostics` will print error creation
+- Invoking `rustc` with `-Z track-diagnostics` will print error creation
   locations alongside the error.
 
 The regular development practices apply: judicious use of `debug!()` statements
