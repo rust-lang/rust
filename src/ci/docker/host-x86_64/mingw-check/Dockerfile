@@ -46,7 +46,7 @@ ENV SCRIPT python3 ../x.py --stage 2 test src/tools/expand-yaml-anchors && \
            python3 ../x.py test --stage 2 src/tools/tidy && \
            python3 ../x.py test --stage 0 core alloc std test proc_macro && \
            # Build both public and internal documentation.
-           RUSTDOCFLAGS="--document-private-items" python3 ../x.py doc --stage 0 library/test && \
+           RUSTDOCFLAGS=\"--document-private-items --document-hidden-items\" python3 ../x.py doc --stage 0 library/test && \
            /scripts/validate-toolstate.sh && \
            /scripts/validate-error-codes.sh && \
            reuse lint && \
