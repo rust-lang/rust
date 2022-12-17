@@ -163,6 +163,7 @@ E0311: include_str!("./error_codes/E0311.md"),
 E0312: include_str!("./error_codes/E0312.md"),
 E0316: include_str!("./error_codes/E0316.md"),
 E0317: include_str!("./error_codes/E0317.md"),
+E0320: include_str!("./error_codes/E0320.md"),
 E0321: include_str!("./error_codes/E0321.md"),
 E0322: include_str!("./error_codes/E0322.md"),
 E0323: include_str!("./error_codes/E0323.md"),
@@ -575,7 +576,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
-    E0320, // recursive overflow during dropck
 //  E0372, // coherence not object safe
     E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
            // between structures with the same definition
