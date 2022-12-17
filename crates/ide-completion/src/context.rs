@@ -220,6 +220,8 @@ pub(super) struct PatternContext {
     /// The record pattern this name or ref is a field of
     pub(super) record_pat: Option<ast::RecordPat>,
     pub(super) impl_: Option<ast::Impl>,
+    /// List of missing variants in a match expr
+    pub(super) missing_variants: Vec<hir::Variant>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

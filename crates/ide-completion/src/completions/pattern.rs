@@ -58,6 +58,7 @@ pub(crate) fn complete_pattern(
                 |acc, ctx, variant, path| {
                     acc.add_qualified_variant_pat(ctx, pattern_ctx, variant, path);
                 },
+                Some(pattern_ctx.missing_variants.clone()),
             );
         }
     }

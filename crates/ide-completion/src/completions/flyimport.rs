@@ -5,10 +5,7 @@ use ide_db::imports::{
     insert_use::ImportScope,
 };
 use itertools::Itertools;
-use syntax::{
-    ast::{self},
-    AstNode, SyntaxNode, T,
-};
+use syntax::{ast, AstNode, SyntaxNode, T};
 
 use crate::{
     context::{

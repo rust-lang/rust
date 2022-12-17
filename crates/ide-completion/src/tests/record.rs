@@ -47,6 +47,47 @@ fn foo(s: Struct) {
 }
 
 #[test]
+fn record_pattern_field_enum() {
+    check(
+        r#"
+enum Baz { FOO, BAR }
+
+fn foo(baz: Baz) {
+    match baz {
+        Baz::FOO => (),
+        $0
+    }
+}
+"#,
+        expect![[r#"
+            en Baz
+            bn Baz::BAR Baz::BAR$0
+            kw mut
+            kw ref
+        "#]],
+    );
+
+    check(
+        r#"
+enum Baz { FOO, BAR }
+
+fn foo(baz: Baz) {
+    match baz {
+        FOO => (),
+        $0
+    }
+}
+"#,
+        expect![[r#"
+            en Baz
+            bn Baz::BAR Baz::BAR$0
+            kw mut
+            kw ref
+        "#]],
+    );
+}
+
+#[test]
 fn pattern_enum_variant() {
     check(
         r#"

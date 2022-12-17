@@ -208,6 +208,7 @@ pub(crate) fn complete_expr_path(
                             |acc, ctx, variant, path| {
                                 acc.add_qualified_enum_variant(ctx, path_ctx, variant, path)
                             },
+                            None,
                         );
                     }
                 }

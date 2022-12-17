@@ -38,7 +38,7 @@ pub(crate) fn render_struct_pat(
     let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
-    Some(build_completion(ctx, label, lookup, pat, strukt, false))
+    Some(build_completion(ctx, label, lookup, pat, strukt, true))
 }
 
 pub(crate) fn render_variant_pat(
