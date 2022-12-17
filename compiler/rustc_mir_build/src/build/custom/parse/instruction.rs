@@ -42,6 +42,29 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call("mir_goto", args) => {
                 Ok(TerminatorKind::Goto { target: self.parse_block(args[0])? } )
             },
+            @call("mir_unreachable", _args) => {
+                Ok(TerminatorKind::Unreachable)
+            },
+            @call("mir_drop", args) => {
+                Ok(TerminatorKind::Drop {
+                    place: self.parse_place(args[0])?,
+                    target: self.parse_block(args[1])?,
+                    unwind: None,
+                })
+            },
+            @call("mir_drop_and_replace", args) => {
+                Ok(TerminatorKind::DropAndReplace {
+                    place: self.parse_place(args[0])?,
+                    value: self.parse_operand(args[1])?,
+                    target: self.parse_block(args[2])?,
+                    unwind: None,
+                })
+            },
+            @call("mir_call", args) => {
+                let destination = self.parse_place(args[0])?;
+                let target = self.parse_block(args[1])?;
+                self.parse_call(args[2], destination, target)
+            },
             ExprKind::Match { scrutinee, arms } => {
                 let discr = self.parse_operand(*scrutinee)?;
                 self.parse_match(arms, expr.span).map(|t| TerminatorKind::SwitchInt { discr, targets: t })
@@ -84,6 +107,32 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         }
 
         Ok(SwitchTargets::new(values.into_iter().zip(targets), otherwise))
+    }
+
+    fn parse_call(
+        &self,
+        expr_id: ExprId,
+        destination: Place<'tcx>,
+        target: BasicBlock,
+    ) -> PResult<TerminatorKind<'tcx>> {
+        parse_by_kind!(self, expr_id, _, "function call",
+            ExprKind::Call { fun, args, from_hir_call, fn_span, .. } => {
+                let fun = self.parse_operand(*fun)?;
+                let args = args
+                    .iter()
+                    .map(|arg| self.parse_operand(*arg))
+                    .collect::<PResult<Vec<_>>>()?;
+                Ok(TerminatorKind::Call {
+                    func: fun,
+                    args,
+                    destination,
+                    target: Some(target),
+                    cleanup: None,
+                    from_hir_call: *from_hir_call,
+                    fn_span: *fn_span,
+                })
+            },
+        )
     }
 
     fn parse_rvalue(&self, expr_id: ExprId) -> PResult<Rvalue<'tcx>> {

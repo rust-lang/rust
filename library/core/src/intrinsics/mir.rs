@@ -44,7 +44,8 @@
 //! if you want your MIR to be modified by the full MIR pipeline, or `#![custom_mir(dialect =
 //! "runtime", phase = "optimized")] if you don't.
 //!
-//! [dialect docs]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html
+//! [dialect docs]:
+//!     https://doc.rust-lang.org/nightly/nightly-rustc/rustc_middle/mir/enum.MirPhase.html
 //!
 //! The input to the [`mir!`] macro is:
 //!
@@ -98,6 +99,30 @@
 //!         RET = Move(Field(Variant(opt, 1), 0));
 //!         Return()
 //!     })
+//! }
+//!
+//! #[custom_mir(dialect = "runtime", phase = "optimized")]
+//! fn push_and_pop<T>(v: &mut Vec<T>, value: T) {
+//!     mir!(
+//!         let unused;
+//!         let popped;
+//!
+//!         {
+//!             Call(unused, pop, Vec::push(v, value))
+//!         }
+//!
+//!         pop = {
+//!             Call(popped, drop, Vec::pop(v))
+//!         }
+//!
+//!         drop = {
+//!             Drop(popped, ret)
+//!         }
+//!
+//!         ret = {
+//!             Return()
+//!         }
+//!     )
 //! }
 //! ```
 //!
@@ -195,10 +220,16 @@
 //!
 //! #### Terminators
 //!
-//!  - [`Goto`] and [`Return`] have associated functions.
+//! Custom MIR does not currently support cleanup blocks or non-trivial unwind paths. As such, there
+//! are no resume and abort terminators, and terminators that might unwind do not have any way to
+//! indicate the unwind block.
+//!
+//!  - [`Goto`], [`Return`], [`Unreachable`], [`Drop`](Drop()), and [`DropAndReplace`] have associated functions.
 //!  - `match some_int_operand` becomes a `SwitchInt`. Each arm should be `literal => basic_block`
 //!     - The exception is the last arm, which must be `_ => basic_block` and corresponds to the
 //!       otherwise branch.
+//!  - [`Call`] has an associated function as well. The third argument of this function is a normal
+//!    function call expresion, for example `my_other_function(a, 5)`.
 //!
 
 #![unstable(
@@ -223,6 +254,10 @@ macro_rules! define {
 
 define!("mir_return", fn Return() -> BasicBlock);
 define!("mir_goto", fn Goto(destination: BasicBlock) -> BasicBlock);
+define!("mir_unreachable", fn Unreachable() -> BasicBlock);
+define!("mir_drop", fn Drop<T>(place: T, goto: BasicBlock));
+define!("mir_drop_and_replace", fn DropAndReplace<T>(place: T, value: T, goto: BasicBlock));
+define!("mir_call", fn Call<T>(place: T, goto: BasicBlock, call: T));
 define!("mir_retag", fn Retag<T>(place: T));
 define!("mir_retag_raw", fn RetagRaw<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
