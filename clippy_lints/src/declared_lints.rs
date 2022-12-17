@@ -568,6 +568,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::transmute::TRANSMUTE_INT_TO_BOOL_INFO,
     crate::transmute::TRANSMUTE_INT_TO_CHAR_INFO,
     crate::transmute::TRANSMUTE_INT_TO_FLOAT_INFO,
+    crate::transmute::TRANSMUTE_NULL_TO_FN_INFO,
     crate::transmute::TRANSMUTE_NUM_TO_BYTES_INFO,
     crate::transmute::TRANSMUTE_PTR_TO_PTR_INFO,
     crate::transmute::TRANSMUTE_PTR_TO_REF_INFO,
