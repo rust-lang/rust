@@ -1,5 +1,5 @@
 <!---
-lsp_ext.rs hash: 1cb29d3afa36e743
+lsp_ext.rs hash: 45bd7985265725c5
 
 If you need to change the above hash to make the test pass, please check if you
 need to adjust this doc as well and ping this issue:
@@ -458,6 +458,45 @@ It is similar to the `showMessage`, but is intended for stares rather than point
 Note that this functionality is intended primarily to inform the end user about the state of the server.
 In particular, it's valid for the client to completely ignore this extension.
 Clients are discouraged from but are allowed to use the `health` status to decide if it's worth sending a request to the server.
+
+### Controlling Flycheck
+
+The flycheck/checkOnSave feature can be controlled via notifications sent by the client to the server.
+
+**Method:** `rust-analyzer/runFlycheck`
+
+**Notification:**
+
+```typescript
+interface RunFlycheckParams {
+    /// The text document whose cargo workspace flycheck process should be started.
+    /// If the document is null or does not belong to a cargo workspace all flycheck processes will be started.
+    textDocument: lc.TextDocumentIdentifier | null;
+}
+```
+
+Triggers the flycheck processes.
+
+
+**Method:** `rust-analyzer/clearFlycheck`
+
+**Notification:**
+
+```typescript
+interface ClearFlycheckParams {}
+```
+
+Clears the flycheck diagnostics.
+
+**Method:** `rust-analyzer/cancelFlycheck`
+
+**Notification:**
+
+```typescript
+interface CancelFlycheckParams {}
+```
+
+Cancels all running flycheck processes.
 
 ## Syntax Tree
 

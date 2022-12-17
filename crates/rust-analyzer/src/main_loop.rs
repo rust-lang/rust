@@ -581,10 +581,7 @@ impl GlobalState {
                 // When we're running multiple flychecks, we have to include a disambiguator in
                 // the title, or the editor complains. Note that this is a user-facing string.
                 let title = if self.flycheck.len() == 1 {
-                    match self.config.flycheck() {
-                        Some(config) => format!("{}", config),
-                        None => "cargo check".to_string(),
-                    }
+                    format!("{}", self.config.flycheck())
                 } else {
                     format!("cargo check (#{})", id + 1)
                 };
@@ -593,7 +590,7 @@ impl GlobalState {
                     state,
                     message,
                     None,
-                    Some(format!("rust-analyzer/checkOnSave/{}", id)),
+                    Some(format!("rust-analyzer/flycheck/{}", id)),
                 );
             }
         }
@@ -638,7 +635,6 @@ impl GlobalState {
             .on_sync_mut::<lsp_ext::ReloadWorkspace>(handlers::handle_workspace_reload)
             .on_sync_mut::<lsp_ext::MemoryUsage>(handlers::handle_memory_usage)
             .on_sync_mut::<lsp_ext::ShuffleCrateGraph>(handlers::handle_shuffle_crate_graph)
-            .on_sync_mut::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)
             .on_sync::<lsp_ext::JoinLines>(handlers::handle_join_lines)
             .on_sync::<lsp_ext::OnEnter>(handlers::handle_on_enter)
             .on_sync::<lsp_types::request::SelectionRangeRequest>(handlers::handle_selection_range)
@@ -796,7 +792,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::WorkDoneProgressCancel>(|this, params| {
                 if let lsp_types::NumberOrString::String(s) = &params.token {
-                    if let Some(id) = s.strip_prefix("rust-analyzer/checkOnSave/") {
+                    if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
                         if let Ok(id) = u32::from_str_radix(id, 10) {
                             if let Some(flycheck) = this.flycheck.get(id as usize) {
                                 flycheck.cancel();
@@ -825,6 +821,7 @@ impl GlobalState {
                 }
                 Ok(())
             })?
+            .on::<lsp_ext::CancelFlycheck>(handlers::handle_cancel_flycheck)?
             .on::<lsp_types::notification::DidChangeTextDocument>(|this, params| {
                 if let Ok(path) = from_proto::vfs_path(&params.text_document.uri) {
                     match this.mem_docs.get_mut(&path) {
@@ -864,6 +861,10 @@ impl GlobalState {
                 }
                 Ok(())
             })?
+            .on::<lsp_ext::ClearFlycheck>(|this, ()| {
+                this.diagnostics.clear_check_all();
+                Ok(())
+            })?
             .on::<lsp_ext::RunFlycheck>(|this, params| {
                 if let Some(text_document) = params.text_document {
                     if let Ok(vfs_path) = from_proto::vfs_path(&text_document.uri) {
@@ -888,14 +889,14 @@ impl GlobalState {
                         }
                     }
 
-                    if run_flycheck(this, vfs_path) {
+                    if !this.config.check_on_save() || run_flycheck(this, vfs_path) {
                         return Ok(());
                     }
-                }
-
-                // No specific flycheck was triggered, so let's trigger all of them.
-                for flycheck in this.flycheck.iter() {
-                    flycheck.restart();
+                } else if this.config.check_on_save() {
+                    // No specific flycheck was triggered, so let's trigger all of them.
+                    for flycheck in this.flycheck.iter() {
+                        flycheck.restart();
+                    }
                 }
                 Ok(())
             })?

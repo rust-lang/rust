@@ -251,6 +251,11 @@
                 "command": "rust-analyzer.runFlycheck",
                 "title": "Run flycheck",
                 "category": "rust-analyzer"
+            },
+            {
+                "command": "rust-analyzer.clearFlycheck",
+                "title": "Clear flycheck diagnostics",
+                "category": "rust-analyzer"
             }
         ],
         "keybindings": [

@@ -132,9 +132,8 @@ pub struct ExpandedMacro {
 
 pub enum CancelFlycheck {}
 
-impl Request for CancelFlycheck {
+impl Notification for CancelFlycheck {
     type Params = ();
-    type Result = ();
     const METHOD: &'static str = "rust-analyzer/cancelFlycheck";
 }
 
@@ -143,6 +142,13 @@ pub enum RunFlycheck {}
 impl Notification for RunFlycheck {
     type Params = RunFlycheckParams;
     const METHOD: &'static str = "rust-analyzer/runFlycheck";
+}
+
+pub enum ClearFlycheck {}
+
+impl Notification for ClearFlycheck {
+    type Params = ();
+    const METHOD: &'static str = "rust-analyzer/clearFlycheck";
 }
 
 #[derive(Deserialize, Serialize, Debug)]

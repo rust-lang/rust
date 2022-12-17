@@ -788,7 +788,13 @@ export function openDocs(ctx: CtxInit): Cmd {
 
 export function cancelFlycheck(ctx: CtxInit): Cmd {
     return async () => {
-        await ctx.client.sendRequest(ra.cancelFlycheck);
+        await ctx.client.sendNotification(ra.cancelFlycheck);
+    };
+}
+
+export function clearFlycheck(ctx: CtxInit): Cmd {
+    return async () => {
+        await ctx.client.sendNotification(ra.clearFlycheck);
     };
 }
 
