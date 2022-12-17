@@ -943,6 +943,9 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             });
         } else {
             debug_assert!(self.tcx.is_trait(trait_def_id));
+            if self.tcx.trait_is_auto(trait_def_id) {
+                return;
+            }
             for item in self.impl_or_trait_item(trait_def_id) {
                 // Check whether `trait_def_id` defines a method with suitable name.
                 if !self.has_applicable_self(&item) {
