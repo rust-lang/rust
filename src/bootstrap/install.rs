@@ -205,6 +205,12 @@ install!((self, builder, _config),
             .expect("missing miri");
         install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
     };
+    LlvmTools, alias = "llvm-tools", Self::should_build(_config), only_hosts: true, {
+        let tarball = builder
+            .ensure(dist::LlvmTools { target: self.target })
+            .expect("missing llvm-tools");
+        install_sh(builder, "llvm-tools", self.compiler.stage, Some(self.target), &tarball);
+    };
     Rustfmt, alias = "rustfmt", Self::should_build(_config), only_hosts: true, {
         if let Some(tarball) = builder.ensure(dist::Rustfmt {
             compiler: self.compiler,
