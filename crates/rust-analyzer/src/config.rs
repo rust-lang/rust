@@ -1125,11 +1125,8 @@ impl Config {
         }
     }
 
-    pub fn flycheck(&self) -> Option<FlycheckConfig> {
-        if !self.data.checkOnSave_enable {
-            return None;
-        }
-        let flycheck_config = match &self.data.checkOnSave_overrideCommand {
+    pub fn flycheck(&self) -> FlycheckConfig {
+        match &self.data.checkOnSave_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -1183,8 +1180,11 @@ impl Config {
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
             },
-        };
-        Some(flycheck_config)
+        }
+    }
+
+    pub fn check_on_save(&self) -> bool {
+        self.data.checkOnSave_enable
     }
 
     pub fn runnables(&self) -> RunnablesConfig {

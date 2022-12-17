@@ -581,10 +581,7 @@ impl GlobalState {
                 // When we're running multiple flychecks, we have to include a disambiguator in
                 // the title, or the editor complains. Note that this is a user-facing string.
                 let title = if self.flycheck.len() == 1 {
-                    match self.config.flycheck() {
-                        Some(config) => format!("{}", config),
-                        None => "cargo check".to_string(),
-                    }
+                    format!("{}", self.config.flycheck())
                 } else {
                     format!("cargo check (#{})", id + 1)
                 };
@@ -593,7 +590,7 @@ impl GlobalState {
                     state,
                     message,
                     None,
-                    Some(format!("rust-analyzer/checkOnSave/{}", id)),
+                    Some(format!("rust-analyzer/flycheck/{}", id)),
                 );
             }
         }
@@ -796,7 +793,7 @@ impl GlobalState {
             })?
             .on::<lsp_types::notification::WorkDoneProgressCancel>(|this, params| {
                 if let lsp_types::NumberOrString::String(s) = &params.token {
-                    if let Some(id) = s.strip_prefix("rust-analyzer/checkOnSave/") {
+                    if let Some(id) = s.strip_prefix("rust-analyzer/flycheck/") {
                         if let Ok(id) = u32::from_str_radix(id, 10) {
                             if let Some(flycheck) = this.flycheck.get(id as usize) {
                                 flycheck.cancel();
@@ -888,14 +885,14 @@ impl GlobalState {
                         }
                     }
 
-                    if run_flycheck(this, vfs_path) {
+                    if !this.config.check_on_save() || run_flycheck(this, vfs_path) {
                         return Ok(());
                     }
-                }
-
-                // No specific flycheck was triggered, so let's trigger all of them.
-                for flycheck in this.flycheck.iter() {
-                    flycheck.restart();
+                } else if this.config.check_on_save() {
+                    // No specific flycheck was triggered, so let's trigger all of them.
+                    for flycheck in this.flycheck.iter() {
+                        flycheck.restart();
+                    }
                 }
                 Ok(())
             })?
