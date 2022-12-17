@@ -7,6 +7,8 @@ use socketpair::SocketPair;
 
 use shims::unix::fs::EvalContextExt as _;
 
+use std::cell::Cell;
+
 pub mod epoll;
 pub mod event;
 pub mod socketpair;
@@ -101,6 +103,60 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
+    /// The `epoll_wait()` system call waits for events on the `Epoll`
+    /// instance referred to by the file descriptor `epfd`. The buffer
+    /// pointed to by `events` is used to return information from the ready
+    /// list about file descriptors in the interest list that have some
+    /// events available. Up to `maxevents` are returned by `epoll_wait()`.
+    /// The `maxevents` argument must be greater than zero.
+
+    /// The `timeout` argument specifies the number of milliseconds that
+    /// `epoll_wait()` will block. Time is measured against the
+    /// CLOCK_MONOTONIC clock.
+
+    /// A call to `epoll_wait()` will block until either:
+    /// • a file descriptor delivers an event;
+    /// • the call is interrupted by a signal handler; or
+    /// • the timeout expires.
+
+    /// Note that the timeout interval will be rounded up to the system
+    /// clock granularity, and kernel scheduling delays mean that the
+    /// blocking interval may overrun by a small amount. Specifying a
+    /// timeout of -1 causes `epoll_wait()` to block indefinitely, while
+    /// specifying a timeout equal to zero cause `epoll_wait()` to return
+    /// immediately, even if no events are available.
+    ///
+    /// On success, `epoll_wait()` returns the number of file descriptors
+    /// ready for the requested I/O, or zero if no file descriptor became
+    /// ready during the requested timeout milliseconds. On failure,
+    /// `epoll_wait()` returns -1 and errno is set to indicate the error.
+    ///
+    /// <https://man7.org/linux/man-pages/man2/epoll_wait.2.html>
+    fn epoll_wait(
+        &mut self,
+        epfd: &OpTy<'tcx, Provenance>,
+        events: &OpTy<'tcx, Provenance>,
+        maxevents: &OpTy<'tcx, Provenance>,
+        timeout: &OpTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, Scalar<Provenance>> {
+        let this = self.eval_context_mut();
+
+        let epfd = this.read_scalar(epfd)?.to_i32()?;
+        let _events = this.read_scalar(events)?.to_pointer(this)?;
+        let _maxevents = this.read_scalar(maxevents)?.to_i32()?;
+        let _timeout = this.read_scalar(timeout)?.to_i32()?;
+
+        let numevents = 0;
+        if let Some(epfd) = this.machine.file_handler.handles.get_mut(&epfd) {
+            let _epfd = epfd.as_epoll_handle()?;
+
+            // FIXME return number of events ready when scheme for marking events ready exists
+            Ok(Scalar::from_i32(numevents))
+        } else {
+            Ok(Scalar::from_i32(this.handle_not_found()?))
+        }
+    }
+
     /// This function creates an `Event` that is used as an event wait/notify mechanism by
     /// user-space applications, and by the kernel to notify user-space applications of events.
     /// The `Event` contains an `u64` counter maintained by the kernel. The counter is initialized
@@ -142,7 +198,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let fh = &mut this.machine.file_handler;
-        let fd = fh.insert_fd(Box::new(Event { val }));
+        let fd = fh.insert_fd(Box::new(Event { val: Cell::new(val.into()) }));
         Ok(Scalar::from_i32(fd))
     }
 
