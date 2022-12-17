@@ -539,13 +539,11 @@ ul.block, .block li {
 
 .rustdoc .example-wrap > pre {
 	margin: 0;
-	flex-grow: 1;
 	overflow-x: auto;
 }
 
 .rustdoc .example-wrap > pre.example-line-numbers,
 .rustdoc .example-wrap > pre.src-line-numbers {
-	flex-grow: 0;
 	overflow: initial;
 	text-align: right;
 	-webkit-user-select: none;
