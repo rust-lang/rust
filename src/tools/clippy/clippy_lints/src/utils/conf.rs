@@ -205,10 +205,49 @@ macro_rules! define_Conf {
 }
 
 define_Conf! {
-    /// Lint: Arithmetic.
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
     ///
-    /// Suppress checking of the passed type names.
+    /// Suppress checking of the passed type names in all types of operations.
+    ///
+    /// If a specific operation is desired, consider using `arithmetic_side_effects_allowed_binary` or `arithmetic_side_effects_allowed_unary` instead.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed = ["SomeType", "AnotherType"]
+    /// ```
+    ///
+    /// #### Noteworthy
+    ///
+    /// A type, say `SomeType`, listed in this configuration has the same behavior of `["SomeType" , "*"], ["*", "SomeType"]` in `arithmetic_side_effects_allowed_binary`.
     (arithmetic_side_effects_allowed: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
+    ///
+    /// Suppress checking of the passed type pair names in binary operations like addition or
+    /// multiplication.
+    ///
+    /// Supports the "*" wildcard to indicate that a certain type won't trigger the lint regardless
+    /// of the involved counterpart. For example, `["SomeType", "*"]` or `["*", "AnotherType"]`.
+    ///
+    /// Pairs are asymmetric, which means that `["SomeType", "AnotherType"]` is not the same as
+    /// `["AnotherType", "SomeType"]`.
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed-binary = [["SomeType" , "f32"], ["AnotherType", "*"]]
+    /// ```
+    (arithmetic_side_effects_allowed_binary: Vec<[String; 2]> = <_>::default()),
+    /// Lint: ARITHMETIC_SIDE_EFFECTS.
+    ///
+    /// Suppress checking of the passed type names in unary operations like "negation" (`-`).
+    ///
+    /// #### Example
+    ///
+    /// ```toml
+    /// arithmetic-side-effects-allowed-unary = ["SomeType", "AnotherType"]
+    /// ```
+    (arithmetic_side_effects_allowed_unary: rustc_data_structures::fx::FxHashSet<String> = <_>::default()),
     /// Lint: ENUM_VARIANT_NAMES, LARGE_TYPES_PASSED_BY_VALUE, TRIVIALLY_COPY_PASS_BY_REF, UNNECESSARY_WRAPS, UNUSED_SELF, UPPER_CASE_ACRONYMS, WRONG_SELF_CONVENTION, BOX_COLLECTION, REDUNDANT_ALLOCATION, RC_BUFFER, VEC_BOX, OPTION_OPTION, LINKEDLIST, RC_MUTEX.
     ///
     /// Suppress lints whenever the suggested change would cause breakage for other crates.
@@ -406,6 +445,14 @@ define_Conf! {
     ///
     /// Whether to allow mixed uninlined format args, e.g. `format!("{} {}", a, foo.bar)`
     (allow_mixed_uninlined_format_args: bool = true),
+    /// Lint: INDEXING_SLICING
+    ///
+    /// Whether to suppress a restriction lint in constant code. In same
+    /// cases the restructured operation might not be unavoidable, as the
+    /// suggested counterparts are unavailable in constant code. This
+    /// configuration will cause restriction lints to trigger even
+    /// if no suggestion can be made.
+    (suppress_restriction_lint_in_const: bool = false),
 }
 
 /// Search for the configuration file.

@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::ty::implements_trait;
-use clippy_utils::{get_trait_def_id, match_def_path, paths};
+use clippy_utils::{get_trait_def_id, is_expr_used_or_unified, match_def_path, paths};
 use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind};
@@ -18,6 +18,10 @@ pub(super) fn check<'tcx>(
 ) {
     // Get receiver type
     let ty = cx.typeck_results().expr_ty(recv).peel_refs();
+
+    if is_expr_used_or_unified(cx.tcx, expr) {
+        return;
+    }
 
     if let Some(seek_trait_id) = get_trait_def_id(cx, &paths::STD_IO_SEEK) &&
         implements_trait(cx, ty, seek_trait_id, &[]) &&

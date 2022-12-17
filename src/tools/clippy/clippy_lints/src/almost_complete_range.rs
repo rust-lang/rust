@@ -10,8 +10,8 @@ use rustc_span::Span;
 
 declare_clippy_lint! {
     /// ### What it does
-    /// Checks for ranges which almost include the entire range of letters from 'a' to 'z', but
-    /// don't because they're a half open range.
+    /// Checks for ranges which almost include the entire range of letters from 'a' to 'z'
+    /// or digits from '0' to '9', but don't because they're a half open range.
     ///
     /// ### Why is this bad?
     /// This (`'a'..'z'`) is almost certainly a typo meant to include all letters.
@@ -25,21 +25,21 @@ declare_clippy_lint! {
     /// let _ = 'a'..='z';
     /// ```
     #[clippy::version = "1.63.0"]
-    pub ALMOST_COMPLETE_LETTER_RANGE,
+    pub ALMOST_COMPLETE_RANGE,
     suspicious,
-    "almost complete letter range"
+    "almost complete range"
 }
-impl_lint_pass!(AlmostCompleteLetterRange => [ALMOST_COMPLETE_LETTER_RANGE]);
+impl_lint_pass!(AlmostCompleteRange => [ALMOST_COMPLETE_RANGE]);
 
-pub struct AlmostCompleteLetterRange {
+pub struct AlmostCompleteRange {
     msrv: Msrv,
 }
-impl AlmostCompleteLetterRange {
+impl AlmostCompleteRange {
     pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
-impl EarlyLintPass for AlmostCompleteLetterRange {
+impl EarlyLintPass for AlmostCompleteRange {
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &Expr) {
         if let ExprKind::Range(Some(start), Some(end), RangeLimits::HalfOpen) = &e.kind {
             let ctxt = e.span.ctxt();
@@ -87,14 +87,18 @@ fn check_range(cx: &EarlyContext<'_>, span: Span, start: &Expr, end: &Expr, sugg
                 Ok(LitKind::Byte(b'A') | LitKind::Char('A')),
                 Ok(LitKind::Byte(b'Z') | LitKind::Char('Z')),
             )
+            | (
+                Ok(LitKind::Byte(b'0') | LitKind::Char('0')),
+                Ok(LitKind::Byte(b'9') | LitKind::Char('9')),
+            )
         )
         && !in_external_macro(cx.sess(), span)
     {
         span_lint_and_then(
             cx,
-            ALMOST_COMPLETE_LETTER_RANGE,
+            ALMOST_COMPLETE_RANGE,
             span,
-            "almost complete ascii letter range",
+            "almost complete ascii range",
             |diag| {
                 if let Some((span, sugg)) = sugg {
                     diag.span_suggestion(

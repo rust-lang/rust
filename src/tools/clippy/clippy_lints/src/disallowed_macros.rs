@@ -47,7 +47,7 @@ declare_clippy_lint! {
     ///     value: usize,
     /// }
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub DISALLOWED_MACROS,
     style,
     "use of a disallowed macro"

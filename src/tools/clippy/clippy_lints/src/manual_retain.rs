@@ -70,7 +70,8 @@ impl<'tcx> LateLintPass<'tcx> for ManualRetain {
             && seg.args.is_none()
             && let hir::ExprKind::MethodCall(_, target_expr, [], _) = &collect_expr.kind
             && let Some(collect_def_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id)
-            && match_def_path(cx, collect_def_id, &paths::CORE_ITER_COLLECT) {
+            && cx.tcx.is_diagnostic_item(sym::iterator_collect_fn, collect_def_id)
+        {
             check_into_iter(cx, parent_expr, left_expr, target_expr, &self.msrv);
             check_iter(cx, parent_expr, left_expr, target_expr, &self.msrv);
             check_to_owned(cx, parent_expr, left_expr, target_expr, &self.msrv);

@@ -151,7 +151,12 @@ fn emit_manual_let_else(cx: &LateContext<'_>, span: Span, expr: &Expr<'_>, pat: 
             } else {
                 format!("{{ {sn_else} }}")
             };
-            let sugg = format!("let {sn_pat} = {sn_expr} else {else_bl};");
+            let sn_bl = if matches!(pat.kind, PatKind::Or(..)) {
+                format!("({sn_pat})")
+            } else {
+                sn_pat.into_owned()
+            };
+            let sugg = format!("let {sn_bl} = {sn_expr} else {else_bl};");
             diag.span_suggestion(span, "consider writing", sugg, app);
         },
     );

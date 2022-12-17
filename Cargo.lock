@@ -394,7 +394,7 @@ dependencies = [
  "directories",
  "rustc-build-sysroot",
  "rustc-workspace-hack",
- "rustc_tools_util",
+ "rustc_tools_util 0.2.1",
  "rustc_version",
  "serde",
  "serde_json",
@@ -658,7 +658,7 @@ dependencies = [
 
 [[package]]
 name = "clippy"
-version = "0.1.67"
+version = "0.1.68"
 dependencies = [
  "clippy_lints",
  "clippy_utils",
@@ -673,7 +673,7 @@ dependencies = [
  "regex",
  "rustc-semver",
  "rustc-workspace-hack",
- "rustc_tools_util",
+ "rustc_tools_util 0.3.0",
  "semver",
  "serde",
  "syn",
@@ -700,7 +700,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_lints"
-version = "0.1.67"
+version = "0.1.68"
 dependencies = [
  "cargo_metadata 0.14.0",
  "clippy_utils",
@@ -723,7 +723,7 @@ dependencies = [
 
 [[package]]
 name = "clippy_utils"
-version = "0.1.67"
+version = "0.1.68"
 dependencies = [
  "arrayvec",
  "if_chain",
@@ -1068,7 +1068,7 @@ checksum = "a0afaad2b26fa326569eb264b1363e8ae3357618c43982b3f285f0774ce76b69"
 
 [[package]]
 name = "declare_clippy_lint"
-version = "0.1.67"
+version = "0.1.68"
 dependencies = [
  "itertools",
  "quote",
@@ -4428,6 +4428,12 @@ name = "rustc_tools_util"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "598f48ce2a421542b3e64828aa742b687cc1b91d2f96591cfdb7ac5988cd6366"
+
+[[package]]
+name = "rustc_tools_util"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8ba09476327c4b70ccefb6180f046ef588c26a24cf5d269a9feba316eb4f029f"
 
 [[package]]
 name = "rustc_trait_selection"

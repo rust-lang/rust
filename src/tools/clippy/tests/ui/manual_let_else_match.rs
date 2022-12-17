@@ -64,6 +64,13 @@ fn fire() {
         Ok(v) => v,
         Err(()) => return,
     };
+
+    let f = Variant::Bar(1);
+
+    let _value = match f {
+        Variant::Bar(_) | Variant::Baz(_) => (),
+        _ => return,
+    };
 }
 
 fn not_fire() {

@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_applicability};
 use clippy_utils::ty::is_type_lang_item;
+use clippy_utils::{get_expr_use_or_unification_node, peel_blocks, SpanlessEq};
 use clippy_utils::{get_parent_expr, is_lint_allowed, match_function_call, method_calls, paths};
-use clippy_utils::{peel_blocks, SpanlessEq};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::def_id::DefId;
-use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, QPath};
+use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, LangItem, Node, QPath};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
@@ -249,6 +249,7 @@ const MAX_LENGTH_BYTE_STRING_LIT: usize = 32;
 declare_lint_pass!(StringLitAsBytes => [STRING_LIT_AS_BYTES, STRING_FROM_UTF8_AS_BYTES]);
 
 impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
+    #[expect(clippy::too_many_lines)]
     fn check_expr(&mut self, cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) {
         use rustc_ast::LitKind;
 
@@ -316,18 +317,27 @@ impl<'tcx> LateLintPass<'tcx> for StringLitAsBytes {
                     && lit_content.as_str().len() <= MAX_LENGTH_BYTE_STRING_LIT
                     && !receiver.span.from_expansion()
                 {
-                    span_lint_and_sugg(
-                        cx,
-                        STRING_LIT_AS_BYTES,
-                        e.span,
-                        "calling `as_bytes()` on a string literal",
-                        "consider using a byte string literal instead",
-                        format!(
-                            "b{}",
-                            snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability)
-                        ),
-                        applicability,
-                    );
+                    if let Some((parent, id)) = get_expr_use_or_unification_node(cx.tcx, e)
+                        && let Node::Expr(parent) = parent
+                        && let ExprKind::Match(scrutinee, ..) = parent.kind
+                        && scrutinee.hir_id == id
+                    {
+                        // Don't lint. Byte strings produce `&[u8; N]` whereas `as_bytes()` produces
+                        // `&[u8]`. This change would prevent matching with different sized slices.
+                    } else {
+                        span_lint_and_sugg(
+                            cx,
+                            STRING_LIT_AS_BYTES,
+                            e.span,
+                            "calling `as_bytes()` on a string literal",
+                            "consider using a byte string literal instead",
+                            format!(
+                                "b{}",
+                                snippet_with_applicability(cx, receiver.span, r#""foo""#, &mut applicability)
+                            ),
+                            applicability,
+                        );
+                    }
                 }
             }
         }
