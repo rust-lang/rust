@@ -1,6 +1,7 @@
 use super::FnCtxt;
 
 use crate::errors::{AddReturnTypeSuggestion, ExpectedReturnTypeLabel};
+use crate::method::probe::{IsSuggestion, Mode, ProbeScope};
 use rustc_ast::util::parser::{ExprPrecedence, PREC_POSTFIX};
 use rustc_errors::{Applicability, Diagnostic, MultiSpan};
 use rustc_hir as hir;
@@ -15,10 +16,11 @@ use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{
     self, suggest_constraining_type_params, Binder, DefIdTree, IsSuggestable, ToPredicate, Ty,
+    TypeVisitable,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
-use rustc_span::symbol::sym;
-use rustc_span::Span;
+use rustc_span::symbol::{sym, Ident};
+use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
@@ -1233,6 +1235,84 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 true
             }
             _ => false,
+        }
+    }
+
+    pub(crate) fn suggest_associated_const(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        let Some((DefKind::AssocFn, old_def_id)) = self.typeck_results.borrow().type_dependent_def(expr.hir_id) else {
+            return false;
+        };
+        let old_item_name = self.tcx.item_name(old_def_id);
+        let capitalized_name = Symbol::intern(&old_item_name.as_str().to_uppercase());
+        if old_item_name == capitalized_name {
+            return false;
+        }
+        let (item, segment) = match expr.kind {
+            hir::ExprKind::Path(QPath::Resolved(
+                Some(ty),
+                hir::Path { segments: [segment], .. },
+            ))
+            | hir::ExprKind::Path(QPath::TypeRelative(ty, segment)) => {
+                let self_ty = <dyn AstConv<'_>>::ast_ty_to_ty(self, ty);
+                if let Ok(pick) = self.probe_for_name(
+                    Mode::Path,
+                    Ident::new(capitalized_name, segment.ident.span),
+                    IsSuggestion(true),
+                    self_ty,
+                    expr.hir_id,
+                    ProbeScope::TraitsInScope,
+                ) {
+                    (pick.item, segment)
+                } else {
+                    return false;
+                }
+            }
+            hir::ExprKind::Path(QPath::Resolved(
+                None,
+                hir::Path { segments: [.., segment], .. },
+            )) => {
+                // we resolved through some path that doesn't end in the item name,
+                // better not do a bad suggestion by accident.
+                if old_item_name != segment.ident.name {
+                    return false;
+                }
+                if let Some(item) = self
+                    .tcx
+                    .associated_items(self.tcx.parent(old_def_id))
+                    .filter_by_name_unhygienic(capitalized_name)
+                    .next()
+                {
+                    (*item, segment)
+                } else {
+                    return false;
+                }
+            }
+            _ => return false,
+        };
+        if item.def_id == old_def_id || self.tcx.def_kind(item.def_id) != DefKind::AssocConst {
+            // Same item
+            return false;
+        }
+        let item_ty = self.tcx.type_of(item.def_id);
+        // FIXME(compiler-errors): This check is *so* rudimentary
+        if item_ty.needs_subst() {
+            return false;
+        }
+        if self.can_coerce(item_ty, expected_ty) {
+            err.span_suggestion_verbose(
+                segment.ident.span,
+                format!("try referring to the associated const `{capitalized_name}` instead",),
+                capitalized_name,
+                Applicability::MachineApplicable,
+            );
+            true
+        } else {
+            false
         }
     }
 
