@@ -77,8 +77,6 @@ mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
 mod nrvo;
-// This pass is public to allow external drivers to perform MIR cleanup
-pub mod remove_false_edges;
 mod remove_noop_landing_pads;
 mod remove_storage_markers;
 mod remove_uninit_drops;
@@ -494,10 +492,9 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
 /// After this series of passes, no lifetime analysis based on borrowing can be done.
 fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
     let passes: &[&dyn MirPass<'tcx>] = &[
-        &remove_false_edges::RemoveFalseEdges,
+        &cleanup_post_borrowck::CleanupPostBorrowck,
         &simplify_branches::SimplifyConstCondition::new("initial"),
         &remove_noop_landing_pads::RemoveNoopLandingPads,
-        &cleanup_post_borrowck::CleanupPostBorrowck,
         &simplify::SimplifyCfg::new("early-opt"),
         &deref_separator::Derefer,
     ];
