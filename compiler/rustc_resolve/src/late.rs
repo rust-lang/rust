@@ -1512,7 +1512,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
             count: 1,
         };
         let elision_candidate = LifetimeElisionCandidate::Missing(missing_lifetime);
-        for rib in self.lifetime_ribs.iter().rev() {
+        for (i, rib) in self.lifetime_ribs.iter().enumerate().rev() {
             debug!(?rib.kind);
             match rib.kind {
                 LifetimeRibKind::AnonymousCreateParameter { binder, .. } => {
@@ -1529,16 +1529,31 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     } else {
                         ("`'_` cannot be used here", "`'_` is a reserved lifetime name")
                     };
-                    rustc_errors::struct_span_err!(
+                    let mut diag = rustc_errors::struct_span_err!(
                         self.r.session,
                         lifetime.ident.span,
                         E0637,
                         "{}",
                         msg,
-                    )
-                    .span_label(lifetime.ident.span, note)
-                    .emit();
-
+                    );
+                    diag.span_label(lifetime.ident.span, note);
+                    if elided {
+                        for rib in self.lifetime_ribs[i..].iter().rev() {
+                            if let LifetimeRibKind::Generics {
+                                span,
+                                kind: LifetimeBinderKind::PolyTrait | LifetimeBinderKind::WhereBound,
+                                ..
+                            } = &rib.kind
+                            {
+                                diag.span_help(
+                                    *span,
+                                    "consider introducing a higher-ranked lifetime here with `for<'a>`",
+                                );
+                                break;
+                            }
+                        }
+                    }
+                    diag.emit();
                     self.record_lifetime_res(lifetime.id, LifetimeRes::Error, elision_candidate);
                     return;
                 }
