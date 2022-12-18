@@ -18,7 +18,8 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
         return false;
     }
 
-    // Catching transmute over constants that resolve to `null`.
+    // Catching:
+    // transmute over constants that resolve to `null`.
     let mut const_eval_context = constant_context(cx, cx.typeck_results());
     if let ExprKind::Path(ref _qpath) = arg.kind &&
         let Some(Constant::RawPtr(0)) = const_eval_context.expr(arg)
