@@ -108,7 +108,7 @@ pub fn get_linker<'a>(
     if sess.target.is_like_msvc {
         if let Some(ref tool) = msvc_tool {
             cmd.args(tool.args());
-            for &(ref k, ref v) in tool.env() {
+            for (k, v) in tool.env() {
                 if k == "PATH" {
                     new_path.extend(env::split_paths(v));
                     msvc_changed_path = true;

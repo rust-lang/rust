@@ -226,7 +226,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             let arg_length = arguments.len();
             let distinct = matches!(other, &[ArgKind::Tuple(..)]);
             match (arg_length, arguments.get(0)) {
-                (1, Some(&ArgKind::Tuple(_, ref fields))) => {
+                (1, Some(ArgKind::Tuple(_, fields))) => {
                     format!("a single {}-tuple as argument", fields.len())
                 }
                 _ => format!(
@@ -1735,8 +1735,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
                     infer::ValuePairs::Terms(ExpectedFound::new(
                         is_normalized_ty_expected,
-                        normalized_ty.into(),
-                        expected_ty.into(),
+                        normalized_ty,
+                        expected_ty,
                     ))
                 }),
                 err,

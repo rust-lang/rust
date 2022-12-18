@@ -792,7 +792,7 @@ impl<'tt> FirstSets<'tt> {
                 TokenTree::Sequence(sp, ref seq_rep) => {
                     let subfirst_owned;
                     let subfirst = match self.first.get(&sp.entire()) {
-                        Some(&Some(ref subfirst)) => subfirst,
+                        Some(Some(subfirst)) => subfirst,
                         Some(&None) => {
                             subfirst_owned = self.first(&seq_rep.tts);
                             &subfirst_owned

@@ -249,7 +249,7 @@ fn dump_graph(query: &DepGraphQuery) {
         // dump a .txt file with just the edges:
         let txt_path = format!("{}.txt", path);
         let mut file = BufWriter::new(File::create(&txt_path).unwrap());
-        for &(ref source, ref target) in &edges {
+        for (source, target) in &edges {
             write!(file, "{:?} -> {:?}\n", source, target).unwrap();
         }
     }

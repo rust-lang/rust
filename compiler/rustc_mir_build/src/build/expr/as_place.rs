@@ -356,7 +356,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
         match self {
             PlaceBuilder::Local { local, projection } => PlaceBuilder::Local {
                 local: *local,
-                projection: Vec::from_iter(projection.iter().copied().chain([elem.into()])),
+                projection: Vec::from_iter(projection.iter().copied().chain([elem])),
             },
             PlaceBuilder::Upvar { upvar, projection } => PlaceBuilder::Upvar {
                 upvar: *upvar,

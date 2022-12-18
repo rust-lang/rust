@@ -730,10 +730,6 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        if let Subcommand::Setup { profile } = &self.config.cmd {
-            return setup::setup(&self.config, *profile);
-        }
-
         // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
 

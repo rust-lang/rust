@@ -141,7 +141,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
         match self.meta {
             MemPlaceMeta::None => Immediate::from(Scalar::from_maybe_pointer(self.ptr, cx)),
             MemPlaceMeta::Meta(meta) => {
-                Immediate::ScalarPair(Scalar::from_maybe_pointer(self.ptr, cx).into(), meta.into())
+                Immediate::ScalarPair(Scalar::from_maybe_pointer(self.ptr, cx), meta)
             }
         }
     }

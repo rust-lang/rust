@@ -39,7 +39,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
 impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     #[inline(always)]
     fn from(val: Scalar<Prov>) -> Self {
-        Immediate::Scalar(val.into())
+        Immediate::Scalar(val)
     }
 }
 
@@ -53,7 +53,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
+        Immediate::ScalarPair(val, Scalar::from_machine_usize(len, cx))
     }
 
     pub fn new_dyn_trait(
@@ -61,7 +61,7 @@ impl<Prov: Provenance> Immediate<Prov> {
         vtable: Pointer<Option<Prov>>,
         cx: &impl HasDataLayout,
     ) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_maybe_pointer(vtable, cx))
+        Immediate::ScalarPair(val, Scalar::from_maybe_pointer(vtable, cx))
     }
 
     #[inline]
@@ -341,10 +341,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(b_offset, b_size),
                     /*read_provenance*/ b.is_ptr(),
                 )?;
-                Some(ImmTy {
-                    imm: Immediate::ScalarPair(a_val.into(), b_val.into()),
-                    layout: mplace.layout,
-                })
+                Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }
             _ => {
                 // Neither a scalar nor scalar pair.

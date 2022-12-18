@@ -754,7 +754,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     return true
                 }
             }
-            &hir::FnRetTy::Return(ref ty) => {
+            hir::FnRetTy::Return(ty) => {
                 // Only point to return type if the expected type is the return type, as if they
                 // are not, the expectation must have been caused by something else.
                 debug!("suggest_missing_return_type: return type {:?} node {:?}", ty, ty.kind);
