@@ -226,7 +226,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             let arg_length = arguments.len();
             let distinct = matches!(other, &[ArgKind::Tuple(..)]);
             match (arg_length, arguments.get(0)) {
-                (1, Some(&ArgKind::Tuple(_, ref fields))) => {
+                (1, Some(ArgKind::Tuple(_, fields))) => {
                     format!("a single {}-tuple as argument", fields.len())
                 }
                 _ => format!(

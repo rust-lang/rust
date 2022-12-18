@@ -1874,7 +1874,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // I don't use 'is_range_literal' because only double-sided, half-open ranges count.
         if let ExprKind::Struct(
                 QPath::LangItem(LangItem::Range, ..),
-                &[ref range_start, ref range_end],
+                [range_start, range_end],
                 _,
             ) = last_expr_field.expr.kind
             && let variant_field =

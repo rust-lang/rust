@@ -576,7 +576,7 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
                 // Ensure there is at most one `self` in the list
                 let self_spans = items
                     .iter()
-                    .filter_map(|&(ref use_tree, _)| {
+                    .filter_map(|(use_tree, _)| {
                         if let ast::UseTreeKind::Simple(..) = use_tree.kind {
                             if use_tree.ident().name == kw::SelfLower {
                                 return Some(use_tree.span);
