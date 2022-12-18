@@ -55,50 +55,50 @@ fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 
 impl<'tcx> LateLintPass<'tcx> for FnNullCheck {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
-        // Catching:
-        // (fn_ptr as *<const/mut> <ty>).is_null()
-        if let ExprKind::MethodCall(method_name, receiver, _, _) = expr.kind
-            && method_name.ident.as_str() == "is_null"
-            && is_fn_ptr_cast(cx, receiver)
-        {
-                lint_expr(cx, expr);
-                return;
-        }
-
-        if let ExprKind::Binary(op, left, right) = expr.kind
-            && let BinOpKind::Eq = op.node
-        {
-            let to_check: &Expr<'_>;
-            if is_fn_ptr_cast(cx, left) {
-                to_check = right;
-            } else if is_fn_ptr_cast(cx, right) {
-                to_check = left;
-            } else {
-                return;
-            }
-
-            // Catching:
-            // (fn_ptr as *<const/mut> <ty>) == <const that evaluates to null_ptr>
-            let c = constant(cx, cx.typeck_results(), to_check);
-            if let Some((Constant::RawPtr(0), _)) = c {
-                lint_expr(cx, expr);
-                return;
-            }
-
-            // Catching:
-            // (fn_ptr as *<const/mut> <ty>) == (0 as <ty>)
-            if let ExprKind::Cast(cast_expr, _) = to_check.kind && is_integer_literal(cast_expr, 0) {
-                lint_expr(cx, expr);
-                return;
-            }
-
-            // Catching:
-            // (fn_ptr as *<const/mut> <ty>) == std::ptr::null()
-            if let ExprKind::Call(func, []) = to_check.kind &&
-                is_path_diagnostic_item(cx, func, sym::ptr_null)
+        match expr.kind {
+            ExprKind::MethodCall(method_name, receiver, _, _)
+                if method_name.ident.as_str() == "is_null" && is_fn_ptr_cast(cx, receiver) =>
             {
                 lint_expr(cx, expr);
-            }
+            },
+
+            ExprKind::Binary(op, left, right) if matches!(op.node, BinOpKind::Eq) => {
+                let to_check: &Expr<'_>;
+                if is_fn_ptr_cast(cx, left) {
+                    to_check = right;
+                } else if is_fn_ptr_cast(cx, right) {
+                    to_check = left;
+                } else {
+                    return;
+                }
+
+                match to_check.kind {
+                    // Catching:
+                    // (fn_ptr as *<const/mut> <ty>) == (0 as <ty>)
+                    ExprKind::Cast(cast_expr, _) if is_integer_literal(cast_expr, 0) => {
+                        lint_expr(cx, expr);
+                    },
+
+                    // Catching:
+                    // (fn_ptr as *<const/mut> <ty>) == std::ptr::null()
+                    ExprKind::Call(func, []) if is_path_diagnostic_item(cx, func, sym::ptr_null) => {
+                        lint_expr(cx, expr);
+                    },
+
+                    // Catching:
+                    // (fn_ptr as *<const/mut> <ty>) == <const that evaluates to null_ptr>
+                    _ if matches!(
+                        constant(cx, cx.typeck_results(), to_check),
+                        Some((Constant::RawPtr(0), _))
+                    ) =>
+                    {
+                        lint_expr(cx, expr);
+                    },
+
+                    _ => {},
+                }
+            },
+            _ => {},
         }
     }
 }
