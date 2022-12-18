@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 args_span
                             };
-                            labels.push((span, format!("multiple arguments are missing")));
+                            labels.push((span, "multiple arguments are missing".to_string()));
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None | SuggestionText::Provide(_) => {
                                     SuggestionText::Provide(true)

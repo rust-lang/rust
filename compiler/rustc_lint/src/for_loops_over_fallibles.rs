@@ -71,11 +71,11 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
                 );
             } else {
                 lint.multipart_suggestion_verbose(
-                    format!("to check pattern in a loop use `while let`"),
+                    "to check pattern in a loop use `while let`",
                     vec![
                         // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
                         (expr.span.with_hi(pat.span.lo()), format!("while let {var}(")),
-                        (pat.span.between(arg.span), format!(") = ")),
+                        (pat.span.between(arg.span), ") = ".to_string()),
                     ],
                     Applicability::MaybeIncorrect
                 );
@@ -95,7 +95,7 @@ impl<'tcx> LateLintPass<'tcx> for ForLoopsOverFallibles {
                 vec![
                     // NB can't use `until` here because `expr.span` and `pat.span` have different syntax contexts
                     (expr.span.with_hi(pat.span.lo()), format!("if let {var}(")),
-                    (pat.span.between(arg.span), format!(") = ")),
+                    (pat.span.between(arg.span), ") = ".to_string()),
                 ],
                 Applicability::MaybeIncorrect,
             )
