@@ -16,16 +16,16 @@ pub fn expand_deriving_default(
     mitem: &ast::MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     item.visit_with(&mut DetectNonVariantDefaultAttr { cx });
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let trait_def = TraitDef {
         span,
         path: Path::new(vec![kw::Default, sym::Default]),
+        skip_path_as_bound: has_a_default_variant(item),
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![MethodDef {
             name: kw::Default,
@@ -46,6 +46,7 @@ pub fn expand_deriving_default(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }
@@ -61,15 +62,12 @@ fn default_struct_substructure(
     let default_call = |span| cx.expr_call_global(span, default_ident.clone(), Vec::new());
 
     let expr = match summary {
-        Unnamed(ref fields, is_tuple) => {
-            if !is_tuple {
-                cx.expr_ident(trait_span, substr.type_ident)
-            } else {
-                let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
-                cx.expr_call_ident(trait_span, substr.type_ident, exprs)
-            }
+        Unnamed(_, false) => cx.expr_ident(trait_span, substr.type_ident),
+        Unnamed(fields, true) => {
+            let exprs = fields.iter().map(|sp| default_call(*sp)).collect();
+            cx.expr_call_ident(trait_span, substr.type_ident, exprs)
         }
-        Named(ref fields) => {
+        Named(fields) => {
             let default_fields = fields
                 .iter()
                 .map(|&(ident, span)| cx.field_imm(span, ident, default_call(span)))
@@ -144,7 +142,7 @@ fn extract_default_variant<'a>(
                 let suggestion = default_variants
                     .iter()
                     .filter_map(|v| {
-                        if v.ident == variant.ident {
+                        if v.span == variant.span {
                             None
                         } else {
                             Some((cx.sess.find_by_name(&v.attrs, kw::Default)?.span, String::new()))
@@ -261,4 +259,23 @@ impl<'a, 'b> rustc_ast::visit::Visitor<'a> for DetectNonVariantDefaultAttr<'a, '
             rustc_ast::visit::walk_attribute(self, attr);
         }
     }
+}
+
+fn has_a_default_variant(item: &Annotatable) -> bool {
+    struct HasDefaultAttrOnVariant {
+        found: bool,
+    }
+
+    impl<'ast> rustc_ast::visit::Visitor<'ast> for HasDefaultAttrOnVariant {
+        fn visit_variant(&mut self, v: &'ast rustc_ast::Variant) {
+            if v.attrs.iter().any(|attr| attr.has_name(kw::Default)) {
+                self.found = true;
+            }
+            // no need to subrecurse.
+        }
+    }
+
+    let mut visitor = HasDefaultAttrOnVariant { found: false };
+    item.visit_with(&mut visitor);
+    visitor.found
 }

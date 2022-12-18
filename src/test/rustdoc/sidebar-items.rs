@@ -2,17 +2,17 @@
 #![crate_name = "foo"]
 
 // @has foo/trait.Foo.html
-// @has - '//*[@class="sidebar-title"]/a[@href="#required-methods"]' 'Required Methods'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#required-methods"]' 'Required Methods'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'bar'
-// @has - '//*[@class="sidebar-title"]/a[@href="#provided-methods"]' 'Provided Methods'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#provided-methods"]' 'Provided Methods'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'foo'
-// @has - '//*[@class="sidebar-title"]/a[@href="#required-associated-consts"]' 'Required Associated Constants'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#required-associated-consts"]' 'Required Associated Constants'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'FOO'
-// @has - '//*[@class="sidebar-title"]/a[@href="#provided-associated-consts"]' 'Provided Associated Constants'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#provided-associated-consts"]' 'Provided Associated Constants'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'BAR'
-// @has - '//*[@class="sidebar-title"]/a[@href="#required-associated-types"]' 'Required Associated Types'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#required-associated-types"]' 'Required Associated Types'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Output'
-// @has - '//*[@class="sidebar-title"]/a[@href="#provided-associated-types"]' 'Provided Associated Types'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#provided-associated-types"]' 'Provided Associated Types'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Extra'
 pub trait Foo {
     const FOO: usize;
@@ -25,7 +25,7 @@ pub trait Foo {
 }
 
 // @has foo/struct.Bar.html
-// @has - '//*[@class="sidebar-title"]/a[@href="#fields"]' 'Fields'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Fields'
 // @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f"]' 'f'
 // @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.u"]' 'u'
 // @!has - '//*[@class="sidebar-elems"]//section//a' 'waza'
@@ -36,7 +36,7 @@ pub struct Bar {
 }
 
 // @has foo/enum.En.html
-// @has - '//*[@class="sidebar-title"]/a[@href="#variants"]' 'Variants'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#variants"]' 'Variants'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Foo'
 // @has - '//*[@class="sidebar-elems"]//section//a' 'Bar'
 pub enum En {
@@ -45,7 +45,7 @@ pub enum En {
 }
 
 // @has foo/union.MyUnion.html
-// @has - '//*[@class="sidebar-title"]/a[@href="#fields"]' 'Fields'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Fields'
 // @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f1"]' 'f1'
 // @has - '//*[@class="sidebar-elems"]//section//a[@href="#structfield.f2"]' 'f2'
 // @!has - '//*[@class="sidebar-elems"]//section//a' 'waza'

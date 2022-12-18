@@ -16,11 +16,12 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
+use crate::bolt::{instrument_with_bolt_inplace, optimize_library_with_bolt_inplace};
 use crate::builder::{Builder, RunConfig, ShouldRun, Step};
 use crate::channel;
-use crate::config::TargetSelection;
+use crate::config::{Config, TargetSelection};
 use crate::util::get_clang_cl_resource_dir;
-use crate::util::{self, exe, output, program_out_of_date, t, up_to_date};
+use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo};
 
 pub struct Meta {
@@ -64,7 +65,7 @@ pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
 ) -> Result<PathBuf, Meta> {
-    maybe_download_ci_llvm(builder);
+    builder.config.maybe_download_ci_llvm();
 
     // If we're using a custom LLVM bail out here, but we can only use a
     // custom LLVM for the build triple.
@@ -116,7 +117,7 @@ pub fn prebuilt_llvm_config(
 }
 
 /// This retrieves the LLVM sha we *want* to use, according to git history.
-pub(crate) fn detect_llvm_sha(config: &crate::config::Config, is_git: bool) -> String {
+pub(crate) fn detect_llvm_sha(config: &Config, is_git: bool) -> String {
     let llvm_sha = if is_git {
         let mut rev_list = config.git();
         rev_list.args(&[
@@ -154,7 +155,7 @@ pub(crate) fn detect_llvm_sha(config: &crate::config::Config, is_git: bool) -> S
 /// This checks both the build triple platform to confirm we're usable at all,
 /// and then verifies if the current HEAD matches the detected LLVM SHA head,
 /// in which case LLVM is indicated as not available.
-pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool) -> bool {
+pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
     // This is currently all tier 1 targets and tier 2 targets with host tools
     // (since others may not have CI artifacts)
     // https://doc.rust-lang.org/rustc/platform-support.html#tier-1
@@ -214,80 +215,6 @@ pub(crate) fn is_ci_llvm_available(config: &crate::config::Config, asserts: bool
     }
 
     true
-}
-
-pub(crate) fn maybe_download_ci_llvm(builder: &Builder<'_>) {
-    let config = &builder.config;
-    if !config.llvm_from_ci {
-        return;
-    }
-    let llvm_root = config.ci_llvm_root();
-    let llvm_stamp = llvm_root.join(".llvm-stamp");
-    let llvm_sha = detect_llvm_sha(&config, builder.rust_info.is_managed_git_subrepository());
-    let key = format!("{}{}", llvm_sha, config.llvm_assertions);
-    if program_out_of_date(&llvm_stamp, &key) && !config.dry_run {
-        download_ci_llvm(builder, &llvm_sha);
-        for entry in t!(fs::read_dir(llvm_root.join("bin"))) {
-            builder.fix_bin_or_dylib(&t!(entry).path());
-        }
-
-        // Update the timestamp of llvm-config to force rustc_llvm to be
-        // rebuilt. This is a hacky workaround for a deficiency in Cargo where
-        // the rerun-if-changed directive doesn't handle changes very well.
-        // https://github.com/rust-lang/cargo/issues/10791
-        // Cargo only compares the timestamp of the file relative to the last
-        // time `rustc_llvm` build script ran. However, the timestamps of the
-        // files in the tarball are in the past, so it doesn't trigger a
-        // rebuild.
-        let now = filetime::FileTime::from_system_time(std::time::SystemTime::now());
-        let llvm_config = llvm_root.join("bin").join(exe("llvm-config", builder.config.build));
-        t!(filetime::set_file_times(&llvm_config, now, now));
-
-        let llvm_lib = llvm_root.join("lib");
-        for entry in t!(fs::read_dir(&llvm_lib)) {
-            let lib = t!(entry).path();
-            if lib.extension().map_or(false, |ext| ext == "so") {
-                builder.fix_bin_or_dylib(&lib);
-            }
-        }
-        t!(fs::write(llvm_stamp, key));
-    }
-}
-
-fn download_ci_llvm(builder: &Builder<'_>, llvm_sha: &str) {
-    let llvm_assertions = builder.config.llvm_assertions;
-
-    let cache_prefix = format!("llvm-{}-{}", llvm_sha, llvm_assertions);
-    let cache_dst = builder.out.join("cache");
-    let rustc_cache = cache_dst.join(cache_prefix);
-    if !rustc_cache.exists() {
-        t!(fs::create_dir_all(&rustc_cache));
-    }
-    let base = if llvm_assertions {
-        &builder.config.stage0_metadata.config.artifacts_with_llvm_assertions_server
-    } else {
-        &builder.config.stage0_metadata.config.artifacts_server
-    };
-    let channel = builder.config.artifact_channel(builder, llvm_sha);
-    let filename = format!("rust-dev-{}-{}.tar.xz", channel, builder.build.build.triple);
-    let tarball = rustc_cache.join(&filename);
-    if !tarball.exists() {
-        let help_on_error = "error: failed to download llvm from ci
-
-help: old builds get deleted after a certain time
-help: if trying to compile an old commit of rustc, disable `download-ci-llvm` in config.toml:
-
-[llvm]
-download-ci-llvm = false
-";
-        builder.download_component(
-            &format!("{base}/{llvm_sha}/{filename}"),
-            &tarball,
-            help_on_error,
-        );
-    }
-    let llvm_root = builder.config.ci_llvm_root();
-    builder.unpack(&tarball, &llvm_root, "rust-dev");
 }
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
@@ -403,6 +330,12 @@ impl Step for Llvm {
         if let Some(path) = builder.config.llvm_profile_use.as_ref() {
             cfg.define("LLVM_PROFDATA_FILE", &path);
         }
+        if builder.config.llvm_bolt_profile_generate
+            || builder.config.llvm_bolt_profile_use.is_some()
+        {
+            // Relocations are required for BOLT to work.
+            ldflags.push_all("-Wl,-q");
+        }
 
         // Disable zstd to avoid a dependency on libzstd.so.
         cfg.define("LLVM_ENABLE_ZSTD", "OFF");
@@ -497,22 +430,22 @@ impl Step for Llvm {
 
         // https://llvm.org/docs/HowToCrossCompileLLVM.html
         if target != builder.config.build {
-            builder.ensure(Llvm { target: builder.config.build });
-            // FIXME: if the llvm root for the build triple is overridden then we
-            //        should use llvm-tblgen from there, also should verify that it
-            //        actually exists most of the time in normal installs of LLVM.
-            let host_bin = builder.llvm_out(builder.config.build).join("bin");
-            cfg.define("LLVM_TABLEGEN", host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION));
-            // LLVM_NM is required for cross compiling using MSVC
-            cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
-            cfg.define(
-                "LLVM_CONFIG_PATH",
-                host_bin.join("llvm-config").with_extension(EXE_EXTENSION),
-            );
+            let llvm_config = builder.ensure(Llvm { target: builder.config.build });
+            if !builder.config.dry_run() {
+                let llvm_bindir = output(Command::new(&llvm_config).arg("--bindir"));
+                let host_bin = Path::new(llvm_bindir.trim());
+                cfg.define(
+                    "LLVM_TABLEGEN",
+                    host_bin.join("llvm-tblgen").with_extension(EXE_EXTENSION),
+                );
+                // LLVM_NM is required for cross compiling using MSVC
+                cfg.define("LLVM_NM", host_bin.join("llvm-nm").with_extension(EXE_EXTENSION));
+            }
+            cfg.define("LLVM_CONFIG_PATH", llvm_config);
             if builder.config.llvm_clang {
                 let build_bin = builder.llvm_out(builder.config.build).join("build").join("bin");
                 let clang_tblgen = build_bin.join("clang-tblgen").with_extension(EXE_EXTENSION);
-                if !builder.config.dry_run && !clang_tblgen.exists() {
+                if !builder.config.dry_run() && !clang_tblgen.exists() {
                     panic!("unable to find {}", clang_tblgen.display());
                 }
                 cfg.define("CLANG_TABLEGEN", clang_tblgen);
@@ -546,7 +479,7 @@ impl Step for Llvm {
         //        tools. Figure out how to filter them down and only build the right
         //        tools and libs on all platforms.
 
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return build_llvm_config;
         }
 
@@ -571,10 +504,32 @@ impl Step for Llvm {
             }
         }
 
+        // After LLVM is built, we modify (instrument or optimize) the libLLVM.so library file
+        // in place. This is fine, because currently we do not support incrementally rebuilding
+        // LLVM after a configuration change, so to rebuild it the build files have to be removed,
+        // which will also remove these modified files.
+        if builder.config.llvm_bolt_profile_generate {
+            instrument_with_bolt_inplace(&get_built_llvm_lib_path(&build_llvm_config));
+        }
+        if let Some(path) = &builder.config.llvm_bolt_profile_use {
+            optimize_library_with_bolt_inplace(
+                &get_built_llvm_lib_path(&build_llvm_config),
+                &Path::new(path),
+            );
+        }
+
         t!(stamp.write());
 
         build_llvm_config
     }
+}
+
+/// Returns path to a built LLVM library (libLLVM.so).
+/// Assumes that we have built LLVM into a single library file.
+fn get_built_llvm_lib_path(llvm_config_path: &Path) -> PathBuf {
+    let mut cmd = Command::new(llvm_config_path);
+    cmd.arg("--libfiles");
+    PathBuf::from(output(&mut cmd).trim())
 }
 
 fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
@@ -582,7 +537,7 @@ fn check_llvm_version(builder: &Builder<'_>, llvm_config: &Path) {
         return;
     }
 
-    if builder.config.dry_run {
+    if builder.config.dry_run() {
         return;
     }
 
@@ -843,7 +798,7 @@ impl Step for Lld {
 
     /// Compile LLD for `target`.
     fn run(self, builder: &Builder<'_>) -> PathBuf {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return PathBuf::from("lld-out-dir-test-gen");
         }
         let target = self.target;
@@ -961,7 +916,7 @@ impl Step for TestHelpers {
     /// Compiles the `rust_test_helpers.c` library which we used in various
     /// `run-pass` tests for ABI testing.
     fn run(self, builder: &Builder<'_>) {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return;
         }
         // The x86_64-fortanix-unknown-sgx target doesn't have a working C
@@ -1037,7 +992,7 @@ impl Step for Sanitizers {
         }
 
         let llvm_config = builder.ensure(Llvm { target: builder.config.build });
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return runtimes;
         }
 
@@ -1211,7 +1166,7 @@ impl Step for CrtBeginEnd {
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let out_dir = builder.native_dir(self.target).join("crt");
 
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return out_dir;
         }
 
@@ -1275,7 +1230,7 @@ impl Step for Libunwind {
 
     /// Build linunwind.a
     fn run(self, builder: &Builder<'_>) -> Self::Output {
-        if builder.config.dry_run {
+        if builder.config.dry_run() {
             return PathBuf::new();
         }
 

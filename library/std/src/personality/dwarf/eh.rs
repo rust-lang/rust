@@ -13,6 +13,7 @@
 
 use super::DwarfReader;
 use core::mem;
+use core::ptr;
 
 pub const DW_EH_PE_omit: u8 = 0xFF;
 pub const DW_EH_PE_absptr: u8 = 0x00;
@@ -98,9 +99,8 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                 }
             }
         }
-        // Ip is not present in the table.  This should not happen... but it does: issue #35011.
-        // So rather than returning EHAction::Terminate, we do this.
-        Ok(EHAction::None)
+        // Ip is not present in the table. This indicates a nounwind call.
+        Ok(EHAction::Terminate)
     } else {
         // SjLj version:
         // The "IP" is an index into the call-site table, with two exceptions:
@@ -152,7 +152,7 @@ unsafe fn read_encoded_pointer(
 
     // DW_EH_PE_aligned implies it's an absolute pointer value
     if encoding == DW_EH_PE_aligned {
-        reader.ptr = round_up(reader.ptr as usize, mem::size_of::<usize>())? as *const u8;
+        reader.ptr = reader.ptr.with_addr(round_up(reader.ptr.addr(), mem::size_of::<usize>())?);
         return Ok(reader.read::<usize>());
     }
 
@@ -172,7 +172,7 @@ unsafe fn read_encoded_pointer(
     result += match encoding & 0x70 {
         DW_EH_PE_absptr => 0,
         // relative to address of the encoded value, despite the name
-        DW_EH_PE_pcrel => reader.ptr as usize,
+        DW_EH_PE_pcrel => reader.ptr.expose_addr(),
         DW_EH_PE_funcrel => {
             if context.func_start == 0 {
                 return Err(());
@@ -185,7 +185,7 @@ unsafe fn read_encoded_pointer(
     };
 
     if encoding & DW_EH_PE_indirect != 0 {
-        result = *(result as *const usize);
+        result = *ptr::from_exposed_addr::<usize>(result);
     }
 
     Ok(result)

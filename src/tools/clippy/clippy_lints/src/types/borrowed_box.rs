@@ -31,10 +31,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                         return false;
                     }
 
-                    let ltopt = if lt.name.is_anonymous() {
+                    let ltopt = if lt.is_anonymous() {
                         String::new()
                     } else {
-                        format!("{} ", lt.name.ident().as_str())
+                        format!("{} ", lt.ident.as_str())
                     };
 
                     if mut_ty.mutbl == Mutability::Mut {
@@ -49,15 +49,15 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, lt: &Lifetime, m
                     let inner_snippet = snippet(cx, inner.span, "..");
                     let suggestion = match &inner.kind {
                         TyKind::TraitObject(bounds, lt_bound, _) if bounds.len() > 1 || !lt_bound.is_elided() => {
-                            format!("&{}({})", ltopt, &inner_snippet)
+                            format!("&{ltopt}({})", &inner_snippet)
                         },
                         TyKind::Path(qpath)
                             if get_bounds_if_impl_trait(cx, qpath, inner.hir_id)
                                 .map_or(false, |bounds| bounds.len() > 1) =>
                         {
-                            format!("&{}({})", ltopt, &inner_snippet)
+                            format!("&{ltopt}({})", &inner_snippet)
                         },
-                        _ => format!("&{}{}", ltopt, &inner_snippet),
+                        _ => format!("&{ltopt}{}", &inner_snippet),
                     };
                     span_lint_and_sugg(
                         cx,

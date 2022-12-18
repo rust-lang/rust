@@ -21,21 +21,27 @@
 mod tests;
 
 pub mod backtrace;
-pub mod condvar;
 pub mod fs;
 pub mod io;
 pub mod lazy_box;
 pub mod memchr;
-pub mod mutex;
+pub mod once;
 pub mod process;
 pub mod remutex;
-pub mod rwlock;
 pub mod thread;
 pub mod thread_info;
 pub mod thread_local_dtor;
-pub mod thread_local_key;
 pub mod thread_parker;
+pub mod wstr;
 pub mod wtf8;
+
+cfg_if::cfg_if! {
+    if #[cfg(target_os = "windows")] {
+        pub use crate::sys::thread_local_key;
+    } else {
+        pub mod thread_local_key;
+    }
+}
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",

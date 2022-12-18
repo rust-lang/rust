@@ -9,7 +9,7 @@
 // It also validates that functions can be called through function pointers
 // through traits.
 
-#![feature(no_core, lang_items, unboxed_closures, arbitrary_self_types)]
+#![feature(no_core, lang_items, intrinsics, unboxed_closures, arbitrary_self_types)]
 #![crate_type = "lib"]
 #![no_core]
 
@@ -19,6 +19,8 @@ pub trait Sized { }
 pub trait Copy { }
 #[lang = "receiver"]
 pub trait Receiver { }
+#[lang = "tuple_trait"]
+pub trait Tuple { }
 
 pub struct Result<T, E> { _a: T, _b: E }
 
@@ -29,7 +31,7 @@ impl Copy for &usize {}
 pub unsafe fn drop_in_place<T: ?Sized>(_: *mut T) {}
 
 #[lang = "fn_once"]
-pub trait FnOnce<Args> {
+pub trait FnOnce<Args: Tuple> {
     #[lang = "fn_once_output"]
     type Output;
 
@@ -37,22 +39,18 @@ pub trait FnOnce<Args> {
 }
 
 #[lang = "fn_mut"]
-pub trait FnMut<Args> : FnOnce<Args> {
+pub trait FnMut<Args: Tuple> : FnOnce<Args> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output;
 }
 
 #[lang = "fn"]
-pub trait Fn<Args>: FnOnce<Args> {
+pub trait Fn<Args: Tuple>: FnOnce<Args> {
     /// Performs the call operation.
     extern "rust-call" fn call(&self, args: Args) -> Self::Output;
 }
 
-impl<'a, A, R> FnOnce<A> for &'a fn(A) -> R {
-    type Output = R;
-
-    extern "rust-call" fn call_once(self, args: A) -> R {
-        (*self)(args)
-    }
+extern "rust-intrinsic" {
+    pub fn transmute<Src, Dst>(src: Src) -> Dst;
 }
 
 pub static mut STORAGE_FOO: fn(&usize, &mut u32) -> Result<(), ()> = arbitrary_black_box;
@@ -92,4 +90,22 @@ pub extern "C" fn test() {
     unsafe {
         STORAGE_FOO(&1, &mut buf);
     }
+}
+
+// Validate that we can codegen transmutes between data ptrs and fn ptrs.
+
+// CHECK: define{{.+}}{{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}} @transmute_data_ptr_to_fn({{\{\}\*|ptr}}{{.*}} %x)
+#[no_mangle]
+pub unsafe fn transmute_data_ptr_to_fn(x: *const ()) -> fn() {
+    // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
+    // as long as it doesn't cause a verifier error by using `bitcast`.
+    transmute(x)
+}
+
+// CHECK: define{{.+}}{{\{\}\*|ptr}} @transmute_fn_ptr_to_data({{void \(\) addrspace\(1\)\*|ptr addrspace\(1\)}}{{.*}} %x)
+#[no_mangle]
+pub unsafe fn transmute_fn_ptr_to_data(x: fn()) -> *const () {
+    // It doesn't matter precisely how this is codegenned (through memory or an addrspacecast),
+    // as long as it doesn't cause a verifier error by using `bitcast`.
+    transmute(x)
 }

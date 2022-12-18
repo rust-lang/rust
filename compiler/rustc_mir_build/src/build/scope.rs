@@ -85,6 +85,7 @@ use std::mem;
 
 use crate::build::{BlockAnd, BlockAndExtension, BlockFrame, Builder, CFG};
 use rustc_data_structures::fx::FxHashMap;
+use rustc_hir::HirId;
 use rustc_index::vec::IndexVec;
 use rustc_middle::middle::region;
 use rustc_middle::mir::*;
@@ -443,8 +444,9 @@ impl<'tcx> Scopes<'tcx> {
 impl<'a, 'tcx> Builder<'a, 'tcx> {
     // Adding and removing scopes
     // ==========================
-    //  Start a breakable scope, which tracks where `continue`, `break` and
-    //  `return` should branch to.
+
+    ///  Start a breakable scope, which tracks where `continue`, `break` and
+    ///  `return` should branch to.
     pub(crate) fn in_breakable_scope<F>(
         &mut self,
         loop_block: Option<BasicBlock>,
@@ -466,9 +468,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let normal_exit_block = f(self);
         let breakable_scope = self.scopes.breakable_scopes.pop().unwrap();
         assert!(breakable_scope.region_scope == region_scope);
-        let break_block = self.build_exit_tree(breakable_scope.break_drops, None);
+        let break_block =
+            self.build_exit_tree(breakable_scope.break_drops, region_scope, span, None);
         if let Some(drops) = breakable_scope.continue_drops {
-            self.build_exit_tree(drops, loop_block);
+            self.build_exit_tree(drops, region_scope, span, loop_block);
         }
         match (normal_exit_block, break_block) {
             (Some(block), None) | (None, Some(block)) => block,
@@ -510,6 +513,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn in_if_then_scope<F>(
         &mut self,
         region_scope: region::Scope,
+        span: Span,
         f: F,
     ) -> (BasicBlock, BasicBlock)
     where
@@ -524,7 +528,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         assert!(if_then_scope.region_scope == region_scope);
 
         let else_block = self
-            .build_exit_tree(if_then_scope.else_drops, None)
+            .build_exit_tree(if_then_scope.else_drops, region_scope, span, None)
             .map_or_else(|| self.cfg.start_new_block(), |else_block_and| unpack!(else_block_and));
 
         (then_block, else_block)
@@ -564,25 +568,10 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         F: FnOnce(&mut Builder<'a, 'tcx>) -> BlockAnd<R>,
     {
         let source_scope = self.source_scope;
-        let tcx = self.tcx;
         if let LintLevel::Explicit(current_hir_id) = lint_level {
-            // Use `maybe_lint_level_root_bounded` with `root_lint_level` as a bound
-            // to avoid adding Hir dependencies on our parents.
-            // We estimate the true lint roots here to avoid creating a lot of source scopes.
-
-            let parent_root = tcx.maybe_lint_level_root_bounded(
-                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root,
-                self.hir_id,
-            );
-            let current_root = tcx.maybe_lint_level_root_bounded(current_hir_id, self.hir_id);
-
-            if parent_root != current_root {
-                self.source_scope = self.new_source_scope(
-                    region_scope.1.span,
-                    LintLevel::Explicit(current_root),
-                    None,
-                );
-            }
+            let parent_id =
+                self.source_scopes[source_scope].local_data.as_ref().assert_crate_local().lint_root;
+            self.maybe_new_source_scope(region_scope.1.span, None, current_hir_id, parent_id);
         }
         self.push_scope(region_scope);
         let mut block;
@@ -755,6 +744,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         ))
     }
 
+    /// Possibly creates a new source scope if `current_root` and `parent_root`
+    /// are different, or if -Zmaximal-hir-to-mir-coverage is enabled.
+    pub(crate) fn maybe_new_source_scope(
+        &mut self,
+        span: Span,
+        safety: Option<Safety>,
+        current_id: HirId,
+        parent_id: HirId,
+    ) {
+        let (current_root, parent_root) =
+            if self.tcx.sess.opts.unstable_opts.maximal_hir_to_mir_coverage {
+                // Some consumers of rustc need to map MIR locations back to HIR nodes. Currently the
+                // the only part of rustc that tracks MIR -> HIR is the `SourceScopeLocalData::lint_root`
+                // field that tracks lint levels for MIR locations.  Normally the number of source scopes
+                // is limited to the set of nodes with lint annotations. The -Zmaximal-hir-to-mir-coverage
+                // flag changes this behavior to maximize the number of source scopes, increasing the
+                // granularity of the MIR->HIR mapping.
+                (current_id, parent_id)
+            } else {
+                // Use `maybe_lint_level_root_bounded` with `self.hir_id` as a bound
+                // to avoid adding Hir dependencies on our parents.
+                // We estimate the true lint roots here to avoid creating a lot of source scopes.
+                (
+                    self.tcx.maybe_lint_level_root_bounded(current_id, self.hir_id),
+                    self.tcx.maybe_lint_level_root_bounded(parent_id, self.hir_id),
+                )
+            };
+
+        if current_root != parent_root {
+            let lint_level = LintLevel::Explicit(current_root);
+            self.source_scope = self.new_source_scope(span, lint_level, safety);
+        }
+    }
+
     /// Creates a new source scope, nested in the current one.
     pub(crate) fn new_source_scope(
         &mut self,
@@ -797,6 +820,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Finding scopes
     // ==============
+
     /// Returns the scope that we should use as the lifetime of an
     /// operand. Basically, an operand must live until it is consumed.
     /// This is similar to, but not quite the same as, the temporary
@@ -822,6 +846,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Scheduling drops
     // ================
+
     pub(crate) fn schedule_drop_storage_and_value(
         &mut self,
         span: Span,
@@ -994,13 +1019,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
     // Other
     // =====
+
     /// Returns the [DropIdx] for the innermost drop if the function unwound at
     /// this point. The `DropIdx` will be created if it doesn't already exist.
     fn diverge_cleanup(&mut self) -> DropIdx {
-        let is_generator = self.generator_kind.is_some();
-        let (uncached_scope, mut cached_drop) = self
-            .scopes
-            .scopes
+        // It is okay to use dummy span because the getting scope index on the topmost scope
+        // must always succeed.
+        self.diverge_cleanup_target(self.scopes.topmost(), DUMMY_SP)
+    }
+
+    /// This is similar to [diverge_cleanup](Self::diverge_cleanup) except its target is set to
+    /// some ancestor scope instead of the current scope.
+    /// It is possible to unwind to some ancestor scope if some drop panics as
+    /// the program breaks out of a if-then scope.
+    fn diverge_cleanup_target(&mut self, target_scope: region::Scope, span: Span) -> DropIdx {
+        let target = self.scopes.scope_index(target_scope, span);
+        let (uncached_scope, mut cached_drop) = self.scopes.scopes[..=target]
             .iter()
             .enumerate()
             .rev()
@@ -1009,7 +1043,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             })
             .unwrap_or((0, ROOT_NODE));
 
-        for scope in &mut self.scopes.scopes[uncached_scope..] {
+        if uncached_scope > target {
+            return cached_drop;
+        }
+
+        let is_generator = self.generator_kind.is_some();
+        for scope in &mut self.scopes.scopes[uncached_scope..=target] {
             for drop in &scope.drops {
                 if is_generator || drop.kind == DropKind::Value {
                     cached_drop = self.scopes.unwind_drops.add_drop(*drop, cached_drop);
@@ -1222,21 +1261,24 @@ impl<'a, 'tcx: 'a> Builder<'a, 'tcx> {
     fn build_exit_tree(
         &mut self,
         mut drops: DropTree,
+        else_scope: region::Scope,
+        span: Span,
         continue_block: Option<BasicBlock>,
     ) -> Option<BlockAnd<()>> {
         let mut blocks = IndexVec::from_elem(None, &drops.drops);
         blocks[ROOT_NODE] = continue_block;
 
         drops.build_mir::<ExitScopes>(&mut self.cfg, &mut blocks);
+        let is_generator = self.generator_kind.is_some();
 
         // Link the exit drop tree to unwind drop tree.
         if drops.drops.iter().any(|(drop, _)| drop.kind == DropKind::Value) {
-            let unwind_target = self.diverge_cleanup();
+            let unwind_target = self.diverge_cleanup_target(else_scope, span);
             let mut unwind_indices = IndexVec::from_elem_n(unwind_target, 1);
             for (drop_idx, drop_data) in drops.drops.iter_enumerated().skip(1) {
                 match drop_data.0.kind {
                     DropKind::Storage => {
-                        if self.generator_kind.is_some() {
+                        if is_generator {
                             let unwind_drop = self
                                 .scopes
                                 .unwind_drops

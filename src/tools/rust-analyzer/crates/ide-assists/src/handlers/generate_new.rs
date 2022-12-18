@@ -39,7 +39,8 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
     };
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), "new")?;
+    let impl_def =
+        find_struct_impl(ctx, &ast::Adt::Struct(strukt.clone()), &[String::from("new")])?;
 
     let current_module = ctx.sema.scope(strukt.syntax())?.module();
 
@@ -51,11 +52,13 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             buf.push('\n');
         }
 
-        let vis = strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+        let vis = strukt.visibility().map_or(String::new(), |v| format!("{v} "));
 
         let trivial_constructors = field_list
             .fields()
             .map(|f| {
+                let name = f.name()?;
+
                 let ty = ctx.sema.resolve_type(&f.ty()?)?;
 
                 let item_in_ns = hir::ItemInNs::from(hir::ModuleDef::from(ty.as_adt()?));
@@ -72,7 +75,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                     &ty,
                 )?;
 
-                Some(format!("{}: {}", f.name()?.syntax(), expr))
+                Some(format!("{name}: {expr}"))
             })
             .collect::<Vec<_>>();
 
@@ -81,7 +84,10 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             .enumerate()
             .filter_map(|(i, f)| {
                 if trivial_constructors[i].is_none() {
-                    Some(format!("{}: {}", f.name()?.syntax(), f.ty()?.syntax()))
+                    let name = f.name()?;
+                    let ty = f.ty()?;
+
+                    Some(format!("{name}: {ty}"))
                 } else {
                     None
                 }
@@ -101,7 +107,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
             })
             .format(", ");
 
-        format_to!(buf, "    {}fn new({}) -> Self {{ Self {{ {} }} }}", vis, params, fields);
+        format_to!(buf, "    {vis}fn new({params}) -> Self {{ Self {{ {fields} }} }}");
 
         let start_offset = impl_def
             .and_then(|impl_def| find_impl_block_start(impl_def, &mut buf))

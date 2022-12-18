@@ -202,12 +202,11 @@ fn check_variant(cx: &LateContext<'_>, threshold: u64, def: &EnumDef<'_>, item_n
         cx,
         ENUM_VARIANT_NAMES,
         span,
-        &format!("all variants have the same {}fix: `{}`", what, value),
+        &format!("all variants have the same {what}fix: `{value}`"),
         None,
         &format!(
-            "remove the {}fixes and use full paths to \
-             the variants instead of glob imports",
-            what
+            "remove the {what}fixes and use full paths to \
+             the variants instead of glob imports"
         ),
     );
 }
@@ -251,7 +250,7 @@ impl LateLintPass<'_> for EnumVariantNames {
         let item_name = item.ident.name.as_str();
         let item_camel = to_camel_case(item_name);
         if !item.span.from_expansion() && is_present_in_source(cx, item.span) {
-            if let Some(&(ref mod_name, ref mod_camel)) = self.modules.last() {
+            if let Some((mod_name, mod_camel)) = self.modules.last() {
                 // constants don't have surrounding modules
                 if !mod_camel.is_empty() {
                     if mod_name == &item.ident.name {
@@ -266,7 +265,7 @@ impl LateLintPass<'_> for EnumVariantNames {
                     }
                     // The `module_name_repetitions` lint should only trigger if the item has the module in its
                     // name. Having the same name is accepted.
-                    if cx.tcx.visibility(item.def_id).is_public() && item_camel.len() > mod_camel.len() {
+                    if cx.tcx.visibility(item.owner_id).is_public() && item_camel.len() > mod_camel.len() {
                         let matching = count_match_start(mod_camel, &item_camel);
                         let rmatching = count_match_end(mod_camel, &item_camel);
                         let nchars = mod_camel.chars().count();
@@ -297,7 +296,7 @@ impl LateLintPass<'_> for EnumVariantNames {
             }
         }
         if let ItemKind::Enum(ref def, _) = item.kind {
-            if !(self.avoid_breaking_exported_api && cx.access_levels.is_exported(item.def_id.def_id)) {
+            if !(self.avoid_breaking_exported_api && cx.effective_visibilities.is_exported(item.owner_id.def_id)) {
                 check_variant(cx, self.threshold, def, item_name, item.span);
             }
         }

@@ -4,12 +4,21 @@ use rustc_session::cstore::DllImport;
 use rustc_session::Session;
 use rustc_span::symbol::Symbol;
 
-use object::read::archive::ArchiveFile;
+use super::metadata::search_for_section;
 
-use std::fmt::Display;
+pub use ar_archive_writer::get_native_object_symbols;
+use ar_archive_writer::{write_archive_to_stream, ArchiveKind, NewArchiveMember};
+use object::read::archive::ArchiveFile;
+use object::read::macho::FatArch;
+use tempfile::Builder as TempFileBuilder;
+
+use std::error::Error;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
+
+// Re-exporting for rustc_codegen_llvm::back::archive
+pub use crate::errors::{ArchiveBuildFailure, ExtractBundledLibsError, UnknownArchiveKind};
 
 pub trait ArchiveBuilderBuilder {
     fn new_archive_builder<'a>(&self, sess: &'a Session) -> Box<dyn ArchiveBuilder<'a> + 'a>;
@@ -25,34 +34,41 @@ pub trait ArchiveBuilderBuilder {
         lib_name: &str,
         dll_imports: &[DllImport],
         tmpdir: &Path,
+        is_direct_dependency: bool,
     ) -> PathBuf;
 
-    fn extract_bundled_libs(
-        &self,
-        rlib: &Path,
+    fn extract_bundled_libs<'a>(
+        &'a self,
+        rlib: &'a Path,
         outdir: &Path,
         bundled_lib_file_names: &FxHashSet<Symbol>,
-    ) -> Result<(), String> {
-        let message = |msg: &str, e: &dyn Display| format!("{} '{}': {}", msg, &rlib.display(), e);
+    ) -> Result<(), ExtractBundledLibsError<'_>> {
         let archive_map = unsafe {
-            Mmap::map(File::open(rlib).map_err(|e| message("failed to open file", &e))?)
-                .map_err(|e| message("failed to mmap file", &e))?
+            Mmap::map(
+                File::open(rlib)
+                    .map_err(|e| ExtractBundledLibsError::OpenFile { rlib, error: Box::new(e) })?,
+            )
+            .map_err(|e| ExtractBundledLibsError::MmapFile { rlib, error: Box::new(e) })?
         };
         let archive = ArchiveFile::parse(&*archive_map)
-            .map_err(|e| message("failed to parse archive", &e))?;
+            .map_err(|e| ExtractBundledLibsError::ParseArchive { rlib, error: Box::new(e) })?;
 
         for entry in archive.members() {
-            let entry = entry.map_err(|e| message("failed to read entry", &e))?;
+            let entry = entry
+                .map_err(|e| ExtractBundledLibsError::ReadEntry { rlib, error: Box::new(e) })?;
             let data = entry
                 .data(&*archive_map)
-                .map_err(|e| message("failed to get data from archive member", &e))?;
+                .map_err(|e| ExtractBundledLibsError::ArchiveMember { rlib, error: Box::new(e) })?;
             let name = std::str::from_utf8(entry.name())
-                .map_err(|e| message("failed to convert name", &e))?;
+                .map_err(|e| ExtractBundledLibsError::ConvertName { rlib, error: Box::new(e) })?;
             if !bundled_lib_file_names.contains(&Symbol::intern(name)) {
                 continue; // We need to extract only native libraries.
             }
+            let data = search_for_section(rlib, data, ".bundled_lib").map_err(|e| {
+                ExtractBundledLibsError::ExtractSection { rlib, error: Box::<dyn Error>::from(e) }
+            })?;
             std::fs::write(&outdir.join(&name), data)
-                .map_err(|e| message("failed to write file", &e))?;
+                .map_err(|e| ExtractBundledLibsError::WriteFile { rlib, error: Box::new(e) })?;
         }
         Ok(())
     }
@@ -68,4 +84,224 @@ pub trait ArchiveBuilder<'a> {
     ) -> io::Result<()>;
 
     fn build(self: Box<Self>, output: &Path) -> bool;
+}
+
+#[must_use = "must call build() to finish building the archive"]
+pub struct ArArchiveBuilder<'a> {
+    sess: &'a Session,
+    get_object_symbols:
+        fn(buf: &[u8], f: &mut dyn FnMut(&[u8]) -> io::Result<()>) -> io::Result<bool>,
+
+    src_archives: Vec<(PathBuf, Mmap)>,
+    // Don't use an `HashMap` here, as the order is important. `lib.rmeta` needs
+    // to be at the end of an archive in some cases for linkers to not get confused.
+    entries: Vec<(Vec<u8>, ArchiveEntry)>,
+}
+
+#[derive(Debug)]
+enum ArchiveEntry {
+    FromArchive { archive_index: usize, file_range: (u64, u64) },
+    File(PathBuf),
+}
+
+impl<'a> ArArchiveBuilder<'a> {
+    pub fn new(
+        sess: &'a Session,
+        get_object_symbols: fn(
+            buf: &[u8],
+            f: &mut dyn FnMut(&[u8]) -> io::Result<()>,
+        ) -> io::Result<bool>,
+    ) -> ArArchiveBuilder<'a> {
+        ArArchiveBuilder { sess, get_object_symbols, src_archives: vec![], entries: vec![] }
+    }
+}
+
+fn try_filter_fat_archs<'a>(
+    archs: object::read::Result<&[impl FatArch]>,
+    target_arch: object::Architecture,
+    archive_map_data: &'a [u8],
+) -> io::Result<Option<(&'a [u8], u64)>> {
+    let archs = archs.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
+
+    let desired = match archs.iter().filter(|a| a.architecture() == target_arch).next() {
+        Some(a) => a,
+        None => return Ok(None),
+    };
+
+    Ok(Some((
+        desired.data(archive_map_data).map_err(|e| io::Error::new(io::ErrorKind::Other, e))?,
+        desired.offset().into(),
+    )))
+}
+
+pub fn try_extract_macho_fat_archive<'a>(
+    sess: &Session,
+    archive_bytes: &'a [u8],
+) -> io::Result<Option<(&'a [u8], u64)>> {
+    let target_arch = match sess.target.arch.as_ref() {
+        "aarch64" => object::Architecture::Aarch64,
+        "x86_64" => object::Architecture::X86_64,
+        _ => return Ok(None),
+    };
+
+    match object::macho::FatHeader::parse(archive_bytes) {
+        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC => {
+            let archs = object::macho::FatHeader::parse_arch32(archive_bytes);
+            try_filter_fat_archs(archs, target_arch, archive_bytes)
+        }
+        Ok(h) if h.magic.get(object::endian::BigEndian) == object::macho::FAT_MAGIC_64 => {
+            let archs = object::macho::FatHeader::parse_arch64(archive_bytes);
+            try_filter_fat_archs(archs, target_arch, archive_bytes)
+        }
+        // Not a FatHeader at all, just return None.
+        _ => Ok(None),
+    }
+}
+
+impl<'a> ArchiveBuilder<'a> for ArArchiveBuilder<'a> {
+    fn add_archive(
+        &mut self,
+        archive_path: &Path,
+        mut skip: Box<dyn FnMut(&str) -> bool + 'static>,
+    ) -> io::Result<()> {
+        let archive_map = unsafe { Mmap::map(File::open(&archive_path)?)? };
+        if self.src_archives.iter().any(|archive| archive.0 == archive_path) {
+            return Ok(());
+        }
+
+        let (archive_bytes, offset) = if self.sess.target.llvm_target.contains("-apple-macosx") {
+            if let Some((sub_archive, archive_offset)) =
+                try_extract_macho_fat_archive(&self.sess, &*archive_map)?
+            {
+                (sub_archive, Some(archive_offset))
+            } else {
+                (&*archive_map, None)
+            }
+        } else {
+            (&*archive_map, None)
+        };
+
+        let archive = ArchiveFile::parse(&*archive_bytes)
+            .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+        let archive_index = self.src_archives.len();
+
+        for entry in archive.members() {
+            let entry = entry.map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            let file_name = String::from_utf8(entry.name().to_vec())
+                .map_err(|err| io::Error::new(io::ErrorKind::InvalidData, err))?;
+            if !skip(&file_name) {
+                let mut range = entry.file_range();
+                if let Some(offset) = offset {
+                    range.0 += offset;
+                }
+                self.entries.push((
+                    file_name.into_bytes(),
+                    ArchiveEntry::FromArchive { archive_index, file_range: range },
+                ));
+            }
+        }
+
+        self.src_archives.push((archive_path.to_owned(), archive_map));
+        Ok(())
+    }
+
+    /// Adds an arbitrary file to this archive
+    fn add_file(&mut self, file: &Path) {
+        self.entries.push((
+            file.file_name().unwrap().to_str().unwrap().to_string().into_bytes(),
+            ArchiveEntry::File(file.to_owned()),
+        ));
+    }
+
+    /// Combine the provided files, rlibs, and native libraries into a single
+    /// `Archive`.
+    fn build(self: Box<Self>, output: &Path) -> bool {
+        let sess = self.sess;
+        match self.build_inner(output) {
+            Ok(any_members) => any_members,
+            Err(e) => sess.emit_fatal(ArchiveBuildFailure { error: e }),
+        }
+    }
+}
+
+impl<'a> ArArchiveBuilder<'a> {
+    fn build_inner(self, output: &Path) -> io::Result<bool> {
+        let archive_kind = match &*self.sess.target.archive_format {
+            "gnu" => ArchiveKind::Gnu,
+            "bsd" => ArchiveKind::Bsd,
+            "darwin" => ArchiveKind::Darwin,
+            "coff" => ArchiveKind::Coff,
+            kind => {
+                self.sess.emit_fatal(UnknownArchiveKind { kind });
+            }
+        };
+
+        let mut entries = Vec::new();
+
+        for (entry_name, entry) in self.entries {
+            let data =
+                match entry {
+                    ArchiveEntry::FromArchive { archive_index, file_range } => {
+                        let src_archive = &self.src_archives[archive_index];
+
+                        let data = &src_archive.1
+                            [file_range.0 as usize..file_range.0 as usize + file_range.1 as usize];
+
+                        Box::new(data) as Box<dyn AsRef<[u8]>>
+                    }
+                    ArchiveEntry::File(file) => unsafe {
+                        Box::new(
+                            Mmap::map(File::open(file).map_err(|err| {
+                                io_error_context("failed to open object file", err)
+                            })?)
+                            .map_err(|err| io_error_context("failed to map object file", err))?,
+                        ) as Box<dyn AsRef<[u8]>>
+                    },
+                };
+
+            entries.push(NewArchiveMember {
+                buf: data,
+                get_symbols: self.get_object_symbols,
+                member_name: String::from_utf8(entry_name).unwrap(),
+                mtime: 0,
+                uid: 0,
+                gid: 0,
+                perms: 0o644,
+            })
+        }
+
+        // Write to a temporary file first before atomically renaming to the final name.
+        // This prevents programs (including rustc) from attempting to read a partial archive.
+        // It also enables writing an archive with the same filename as a dependency on Windows as
+        // required by a test.
+        let mut archive_tmpfile = TempFileBuilder::new()
+            .suffix(".temp-archive")
+            .tempfile_in(output.parent().unwrap_or_else(|| Path::new("")))
+            .map_err(|err| io_error_context("couldn't create a temp file", err))?;
+
+        write_archive_to_stream(
+            archive_tmpfile.as_file_mut(),
+            &entries,
+            true,
+            archive_kind,
+            true,
+            false,
+        )?;
+
+        let any_entries = !entries.is_empty();
+        drop(entries);
+        // Drop src_archives to unmap all input archives, which is necessary if we want to write the
+        // output archive to the same location as an input archive on Windows.
+        drop(self.src_archives);
+
+        archive_tmpfile
+            .persist(output)
+            .map_err(|err| io_error_context("failed to rename archive file", err.error))?;
+
+        Ok(any_entries)
+    }
+}
+
+fn io_error_context(context: &str, err: io::Error) -> io::Error {
+    io::Error::new(io::ErrorKind::Other, format!("{context}: {err}"))
 }

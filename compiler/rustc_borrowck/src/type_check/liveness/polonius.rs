@@ -121,8 +121,8 @@ pub(super) fn populate_access_facts<'a, 'tcx>(
     }
 }
 
-// For every potentially drop()-touched region `region` in `local`'s type
-// (`kind`), emit a Polonius `use_of_var_derefs_origin(local, origin)` fact.
+/// For every potentially drop()-touched region `region` in `local`'s type
+/// (`kind`), emit a Polonius `use_of_var_derefs_origin(local, origin)` fact.
 pub(super) fn add_drop_of_var_derefs_origin<'tcx>(
     typeck: &mut TypeChecker<'_, 'tcx>,
     local: Local,

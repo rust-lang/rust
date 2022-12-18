@@ -1,4 +1,4 @@
-use std::{collections::hash_map::Entry, iter};
+use std::{collections::hash_map::Entry, io::Write, iter};
 
 use log::trace;
 
@@ -23,8 +23,6 @@ use rustc_target::{
 
 use super::backtrace::EvalContextExt as _;
 use crate::helpers::{convert::Truncate, target_os_is_unix};
-#[cfg(unix)]
-use crate::shims::ffi_support::EvalContextExt as _;
 use crate::*;
 
 /// Returned by `emulate_foreign_item_by_name`.
@@ -288,7 +286,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                         let [code] = this.check_shim(abi, exp_abi, link_name, args)?;
                         // it's really u32 for ExitProcess, but we have to put it into the `Exit` variant anyway
                         let code = this.read_scalar(code)?.to_i32()?;
-                        throw_machine_stop!(TerminationInfo::Exit(code.into()));
+                        throw_machine_stop!(TerminationInfo::Exit { code: code.into(), leak_check: false });
                     }
                     "abort" => {
                         let [] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -301,8 +299,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                             return Ok(Some(body));
                         }
                         this.handle_unsupported(format!(
-                            "can't call (diverging) foreign function: {}",
-                            link_name
+                            "can't call (diverging) foreign function: {link_name}"
                         ))?;
                         return Ok(None);
                     }
@@ -323,7 +320,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     return Ok(Some(body));
                 }
 
-                this.handle_unsupported(format!("can't call foreign function: {}", link_name))?;
+                this.handle_unsupported(format!("can't call foreign function: {link_name}"))?;
                 return Ok(None);
             }
         }
@@ -372,8 +369,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_mut();
 
         // First deal with any external C functions in linked .so file.
-        #[cfg(unix)]
+        #[cfg(target_os = "linux")]
         if this.machine.external_so_lib.as_ref().is_some() {
+            use crate::shims::ffi_support::EvalContextExt as _;
             // An Ok(false) here means that the function being called was not exported
             // by the specified `.so` file; we should continue and check if it corresponds to
             // a provided shim.
@@ -418,6 +416,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // shim, add it to the corresponding submodule.
         match link_name.as_str() {
             // Miri-specific extern functions
+            "miri_get_alloc_id" => {
+                let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let (alloc_id, _, _) = this.ptr_get_alloc_id(ptr).map_err(|_e| {
+                    err_machine_stop!(TerminationInfo::Abort(
+                        format!("pointer passed to miri_get_alloc_id must not be dangling, got {ptr:?}")
+                    ))
+                })?;
+                this.write_scalar(Scalar::from_u64(alloc_id.0.get()), dest)?;
+            }
+            "miri_print_borrow_stacks" => {
+                let [id] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let id = this.read_scalar(id)?.to_u64()?;
+                if let Some(id) = std::num::NonZeroU64::new(id) {
+                    this.print_stacks(AllocId(id))?;
+                }
+            }
             "miri_static_root" => {
                 let [ptr] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
@@ -450,6 +465,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.handle_miri_resolve_frame_names(abi, link_name, args)?;
             }
 
+            // Writes some bytes to the interpreter's stdout/stderr. See the
+            // README for details.
+            "miri_write_to_stdout" | "miri_write_to_stderr" => {
+                let [bytes] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let (ptr, len) = this.read_immediate(bytes)?.to_scalar_pair();
+                let ptr = ptr.to_pointer(this)?;
+                let len = len.to_machine_usize(this)?;
+                let msg = this.read_bytes_ptr_strip_provenance(ptr, Size::from_bytes(len))?;
+
+                // Note: we're ignoring errors writing to host stdout/stderr.
+                let _ignore = match link_name.as_str() {
+                    "miri_write_to_stdout" => std::io::stdout().write_all(msg),
+                    "miri_write_to_stderr" => std::io::stderr().write_all(msg),
+                    _ => unreachable!(),
+                };
+            }
+
             // Standard C allocation
             "malloc" => {
                 let [size] = this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
@@ -480,22 +512,37 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Rust allocation
-            "__rust_alloc" => {
+            "__rust_alloc" | "miri_alloc" => {
                 let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let size = this.read_scalar(size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
 
-                return this.emulate_allocator(Symbol::intern("__rg_alloc"), |this| {
+                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
                     Self::check_alloc_request(size, align)?;
+
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_alloc" => MiriMemoryKind::Rust,
+                        "miri_alloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
 
                     let ptr = this.allocate_ptr(
                         Size::from_bytes(size),
                         Align::from_bytes(align).unwrap(),
-                        MiriMemoryKind::Rust.into(),
+                        memory_kind.into(),
                     )?;
 
                     this.write_pointer(ptr, dest)
-                });
+                };
+
+                match link_name.as_str() {
+                    "__rust_alloc" => return this.emulate_allocator(Symbol::intern("__rg_alloc"), default),
+                    "miri_alloc" => {
+                        default(this)?;
+                        return Ok(EmulateByNameResult::NeedsJumping);
+                    },
+                    _ => unreachable!(),
+                }
             }
             "__rust_alloc_zeroed" => {
                 let [size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
@@ -516,20 +563,35 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     this.write_pointer(ptr, dest)
                 });
             }
-            "__rust_dealloc" => {
+            "__rust_dealloc" | "miri_dealloc" => {
                 let [ptr, old_size, align] = this.check_shim(abi, Abi::Rust, link_name, args)?;
                 let ptr = this.read_pointer(ptr)?;
                 let old_size = this.read_scalar(old_size)?.to_machine_usize(this)?;
                 let align = this.read_scalar(align)?.to_machine_usize(this)?;
 
-                return this.emulate_allocator(Symbol::intern("__rg_dealloc"), |this| {
+                let default = |this: &mut MiriInterpCx<'mir, 'tcx>| {
+                    let memory_kind = match link_name.as_str() {
+                        "__rust_dealloc" => MiriMemoryKind::Rust,
+                        "miri_dealloc" => MiriMemoryKind::Miri,
+                        _ => unreachable!(),
+                    };
+
                     // No need to check old_size/align; we anyway check that they match the allocation.
                     this.deallocate_ptr(
                         ptr,
                         Some((Size::from_bytes(old_size), Align::from_bytes(align).unwrap())),
-                        MiriMemoryKind::Rust.into(),
+                        memory_kind.into(),
                     )
-                });
+                };
+
+                match link_name.as_str() {
+                    "__rust_dealloc" => return this.emulate_allocator(Symbol::intern("__rg_dealloc"), default),
+                    "miri_dealloc" => {
+                        default(this)?;
+                        return Ok(EmulateByNameResult::NeedsJumping);
+                    }
+                    _ => unreachable!(),
+                }
             }
             "__rust_realloc" => {
                 let [ptr, old_size, align, new_size] = this.check_shim(abi, Abi::Rust, link_name, args)?;

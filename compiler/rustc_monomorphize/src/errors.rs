@@ -6,7 +6,7 @@ use rustc_macros::{Diagnostic, LintDiagnostic};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(monomorphize::recursion_limit)]
+#[diag(monomorphize_recursion_limit)]
 pub struct RecursionLimit {
     #[primary_span]
     pub span: Span,
@@ -14,28 +14,22 @@ pub struct RecursionLimit {
     #[note]
     pub def_span: Span,
     pub def_path_str: String,
-    #[note(monomorphize::written_to_path)]
+    #[note(monomorphize_written_to_path)]
     pub was_written: Option<()>,
     pub path: PathBuf,
 }
 
 #[derive(Diagnostic)]
-#[diag(monomorphize::type_length_limit)]
-#[help(monomorphize::consider_type_length_limit)]
+#[diag(monomorphize_type_length_limit)]
+#[help(monomorphize_consider_type_length_limit)]
 pub struct TypeLengthLimit {
     #[primary_span]
     pub span: Span,
     pub shrunk: String,
-    #[note(monomorphize::written_to_path)]
+    #[note(monomorphize_written_to_path)]
     pub was_written: Option<()>,
     pub path: PathBuf,
     pub type_length: usize,
-}
-
-#[derive(Diagnostic)]
-#[diag(monomorphize::requires_lang_item)]
-pub struct RequiresLangItem {
-    pub lang_item: String,
 }
 
 pub struct UnusedGenericParams {
@@ -45,12 +39,12 @@ pub struct UnusedGenericParams {
 }
 
 impl IntoDiagnostic<'_> for UnusedGenericParams {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
     ) -> rustc_errors::DiagnosticBuilder<'_, ErrorGuaranteed> {
-        let mut diag =
-            handler.struct_err(rustc_errors::fluent::monomorphize::unused_generic_params);
+        let mut diag = handler.struct_err(rustc_errors::fluent::monomorphize_unused_generic_params);
         diag.set_span(self.span);
         for (span, name) in self.param_spans.into_iter().zip(self.param_names) {
             // FIXME: I can figure out how to do a label with a fluent string with a fixed message,
@@ -63,7 +57,7 @@ impl IntoDiagnostic<'_> for UnusedGenericParams {
 }
 
 #[derive(LintDiagnostic)]
-#[diag(monomorphize::large_assignments)]
+#[diag(monomorphize_large_assignments)]
 #[note]
 pub struct LargeAssignmentsLint {
     #[label]
@@ -73,13 +67,19 @@ pub struct LargeAssignmentsLint {
 }
 
 #[derive(Diagnostic)]
-#[diag(monomorphize::unknown_partition_strategy)]
+#[diag(monomorphize_unknown_partition_strategy)]
 pub struct UnknownPartitionStrategy;
 
 #[derive(Diagnostic)]
-#[diag(monomorphize::symbol_already_defined)]
+#[diag(monomorphize_symbol_already_defined)]
 pub struct SymbolAlreadyDefined {
     #[primary_span]
     pub span: Option<Span>,
     pub symbol: String,
+}
+
+#[derive(Diagnostic)]
+#[diag(monomorphize_couldnt_dump_mono_stats)]
+pub struct CouldntDumpMonoStats {
+    pub error: String,
 }

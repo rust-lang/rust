@@ -1,17 +1,16 @@
+use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::Config;
 use crate::{t, VERSION};
-use crate::{Config, TargetSelection};
 use std::env::consts::EXE_SUFFIX;
 use std::fmt::Write as _;
 use std::fs::File;
+use std::io::Write;
 use std::path::{Path, PathBuf, MAIN_SEPARATOR};
 use std::process::Command;
 use std::str::FromStr;
-use std::{
-    env, fmt, fs,
-    io::{self, Write},
-};
+use std::{fmt, fs, io};
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Hash)]
 pub enum Profile {
     Compiler,
     Codegen,
@@ -50,6 +49,16 @@ impl Profile {
         }
         out
     }
+
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Profile::Compiler => "compiler",
+            Profile::Codegen => "codegen",
+            Profile::Library => "library",
+            Profile::Tools => "tools",
+            Profile::User => "user",
+        }
+    }
 }
 
 impl FromStr for Profile {
@@ -71,20 +80,99 @@ impl FromStr for Profile {
 
 impl fmt::Display for Profile {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Profile::Compiler => write!(f, "compiler"),
-            Profile::Codegen => write!(f, "codegen"),
-            Profile::Library => write!(f, "library"),
-            Profile::User => write!(f, "user"),
-            Profile::Tools => write!(f, "tools"),
+        f.write_str(self.as_str())
+    }
+}
+
+impl Step for Profile {
+    type Output = ();
+    const DEFAULT: bool = true;
+
+    fn should_run(mut run: ShouldRun<'_>) -> ShouldRun<'_> {
+        for choice in Profile::all() {
+            run = run.alias(choice.as_str());
         }
+        run
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        // for Profile, `run.paths` will have 1 and only 1 element
+        // this is because we only accept at most 1 path from user input.
+        // If user calls `x.py setup` without arguments, the interactive TUI
+        // will guide user to provide one.
+        let profile = if run.paths.len() > 1 {
+            // HACK: `builder` runs this step with all paths if no path was passed.
+            t!(interactive_path())
+        } else {
+            run.paths
+                .first()
+                .unwrap()
+                .assert_single_path()
+                .path
+                .as_path()
+                .as_os_str()
+                .to_str()
+                .unwrap()
+                .parse()
+                .unwrap()
+        };
+
+        run.builder.ensure(profile);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        setup(&builder.build.config, self)
     }
 }
 
 pub fn setup(config: &Config, profile: Profile) {
-    let path = &config.config;
+    let stage_path =
+        ["build", config.build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
 
+    if !rustup_installed() && profile != Profile::User {
+        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
+    } else if stage_dir_exists(&stage_path[..]) && !config.dry_run() {
+        attempt_toolchain_link(&stage_path[..]);
+    }
+
+    let suggestions = match profile {
+        Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
+        Profile::Tools => &[
+            "check",
+            "build",
+            "test src/test/rustdoc*",
+            "test src/tools/clippy",
+            "test src/tools/miri",
+            "test src/tools/rustfmt",
+        ],
+        Profile::Library => &["check", "build", "test library/std", "doc"],
+        Profile::User => &["dist", "build"],
+    };
+
+    if !config.dry_run() {
+        t!(install_git_hook_maybe(&config));
+    }
+
+    println!();
+
+    println!("To get started, try one of the following commands:");
+    for cmd in suggestions {
+        println!("- `x.py {}`", cmd);
+    }
+
+    if profile != Profile::User {
+        println!(
+            "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
+        );
+    }
+
+    let path = &config.config.clone().unwrap_or(PathBuf::from("config.toml"));
+    setup_config_toml(path, profile, config);
+}
+
+fn setup_config_toml(path: &PathBuf, profile: Profile, config: &Config) {
     if path.exists() {
+        eprintln!();
         eprintln!(
             "error: you asked `x.py` to setup a new config file, but one already exists at `{}`",
             path.display()
@@ -103,53 +191,11 @@ pub fn setup(config: &Config, profile: Profile) {
     changelog-seen = {}\n",
         profile, VERSION
     );
+
     t!(fs::write(path, settings));
 
     let include_path = profile.include_path(&config.src);
     println!("`x.py` will now use the configuration at {}", include_path.display());
-
-    let build = TargetSelection::from_user(&env!("BUILD_TRIPLE"));
-    let stage_path =
-        ["build", build.rustc_target_arg(), "stage1"].join(&MAIN_SEPARATOR.to_string());
-
-    println!();
-
-    if !rustup_installed() && profile != Profile::User {
-        eprintln!("`rustup` is not installed; cannot link `stage1` toolchain");
-    } else if stage_dir_exists(&stage_path[..]) {
-        attempt_toolchain_link(&stage_path[..]);
-    }
-
-    let suggestions = match profile {
-        Profile::Codegen | Profile::Compiler => &["check", "build", "test"][..],
-        Profile::Tools => &[
-            "check",
-            "build",
-            "test src/test/rustdoc*",
-            "test src/tools/clippy",
-            "test src/tools/miri",
-            "test src/tools/rustfmt",
-        ],
-        Profile::Library => &["check", "build", "test library/std", "doc"],
-        Profile::User => &["dist", "build"],
-    };
-
-    println!();
-
-    t!(install_git_hook_maybe(&config));
-
-    println!();
-
-    println!("To get started, try one of the following commands:");
-    for cmd in suggestions {
-        println!("- `x.py {}`", cmd);
-    }
-
-    if profile != Profile::User {
-        println!(
-            "For more suggestions, see https://rustc-dev-guide.rust-lang.org/building/suggested.html"
-        );
-    }
 }
 
 fn rustup_installed() -> bool {
@@ -303,7 +349,18 @@ pub fn interactive_path() -> io::Result<Profile> {
 
 // install a git hook to automatically run tidy --bless, if they want
 fn install_git_hook_maybe(config: &Config) -> io::Result<()> {
+    let git = t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
+        assert!(output.status.success(), "failed to run `git`");
+        PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
+    }));
+    let dst = git.join("hooks").join("pre-push");
+    if dst.exists() {
+        // The git hook has already been set up, or the user already has a custom hook.
+        return Ok(());
+    }
+
     let mut input = String::new();
+    println!();
     println!(
         "Rust's CI will automatically fail if it doesn't pass `tidy`, the internal tool for ensuring code quality.
 If you'd like, x.py can install a git hook for you that will automatically run `tidy --bless` before
@@ -329,12 +386,6 @@ undesirable, simply delete the `pre-push` file from .git/hooks."
 
     if should_install {
         let src = config.src.join("src").join("etc").join("pre-push.sh");
-        let git =
-            t!(config.git().args(&["rev-parse", "--git-common-dir"]).output().map(|output| {
-                assert!(output.status.success(), "failed to run `git`");
-                PathBuf::from(t!(String::from_utf8(output.stdout)).trim())
-            }));
-        let dst = git.join("hooks").join("pre-push");
         match fs::hard_link(src, &dst) {
             Err(e) => eprintln!(
                 "error: could not create hook {}: do you already have the git hook installed?\n{}",

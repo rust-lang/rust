@@ -177,13 +177,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     let dst = if dst_offset == sugg::EMPTY && dst_limit == sugg::EMPTY {
         dst_base_str
     } else {
-        format!(
-            "{}[{}..{}]",
-            dst_base_str,
-            dst_offset.maybe_par(),
-            dst_limit.maybe_par()
-        )
-        .into()
+        format!("{dst_base_str}[{}..{}]", dst_offset.maybe_par(), dst_limit.maybe_par()).into()
     };
 
     let method_str = if is_copy(cx, elem_ty) {
@@ -193,10 +187,7 @@ fn build_manual_memcpy_suggestion<'tcx>(
     };
 
     format!(
-        "{}.{}(&{}[{}..{}]);",
-        dst,
-        method_str,
-        src_base_str,
+        "{dst}.{method_str}(&{src_base_str}[{}..{}]);",
         src_offset.maybe_par(),
         src_limit.maybe_par()
     )

@@ -362,6 +362,10 @@ impl Read for ChildStdout {
     fn is_read_vectored(&self) -> bool {
         self.inner.is_read_vectored()
     }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<usize> {
+        self.inner.read_to_end(buf)
+    }
 }
 
 impl AsInner<AnonPipe> for ChildStdout {
@@ -907,10 +911,8 @@ impl Command {
     /// ```
     #[stable(feature = "process", since = "1.0.0")]
     pub fn output(&mut self) -> io::Result<Output> {
-        self.inner
-            .spawn(imp::Stdio::MakePipe, false)
-            .map(Child::from_inner)
-            .and_then(|p| p.wait_with_output())
+        let (status, stdout, stderr) = self.inner.output()?;
+        Ok(Output { status: ExitStatus(status), stdout, stderr })
     }
 
     /// Executes a command as a child process, waiting for it to finish and
@@ -1629,7 +1631,7 @@ impl ExitStatusError {
     ///
     /// This is exactly like [`code()`](Self::code), except that it returns a `NonZeroI32`.
     ///
-    /// Plain `code`, returning a plain integer, is provided because is is often more convenient.
+    /// Plain `code`, returning a plain integer, is provided because it is often more convenient.
     /// The returned value from `code()` is indeed also nonzero; use `code_nonzero()` when you want
     /// a type-level guarantee of nonzeroness.
     ///
@@ -2154,8 +2156,16 @@ pub fn id() -> u32 {
 #[cfg_attr(not(test), lang = "termination")]
 #[stable(feature = "termination_trait_lib", since = "1.61.0")]
 #[rustc_on_unimplemented(
-    message = "`main` has invalid return type `{Self}`",
-    label = "`main` can only return types that implement `{Termination}`"
+    on(
+        all(not(bootstrap), cause = "MainFunctionType"),
+        message = "`main` has invalid return type `{Self}`",
+        label = "`main` can only return types that implement `{Termination}`"
+    ),
+    on(
+        bootstrap,
+        message = "`main` has invalid return type `{Self}`",
+        label = "`main` can only return types that implement `{Termination}`"
+    )
 )]
 pub trait Termination {
     /// Is called to get the representation of the value as status code.
@@ -2200,9 +2210,7 @@ impl<T: Termination, E: fmt::Debug> Termination for Result<T, E> {
         match self {
             Ok(val) => val.report(),
             Err(err) => {
-                // Ignore error if the write fails, for example because stderr is
-                // already closed. There is not much point panicking at this point.
-                let _ = writeln!(io::stderr(), "Error: {err:?}");
+                io::attempt_print_to_stderr(format_args_nl!("Error: {err:?}"));
                 ExitCode::FAILURE
             }
         }

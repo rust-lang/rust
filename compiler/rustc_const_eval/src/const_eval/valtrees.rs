@@ -142,12 +142,11 @@ pub(crate) fn const_to_valtree_inner<'tcx>(
         | ty::Foreign(..)
         | ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Projection(..)
+        // FIXME(oli-obk): we could look behind opaque types
+        | ty::Alias(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
-        // FIXME(oli-obk): we could look behind opaque types
-        | ty::Opaque(..)
         | ty::Infer(_)
         // FIXME(oli-obk): we can probably encode closures just like structs
         | ty::Closure(..)
@@ -212,7 +211,7 @@ fn create_pointee_place<'tcx>(
 ) -> MPlaceTy<'tcx> {
     let tcx = ecx.tcx.tcx;
 
-    if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty()) {
+    if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty()) {
         // We need to create `Allocation`s for custom DSTs
 
         let (unsized_inner_ty, num_elems) = get_info_on_unsized_field(ty, valtree, tcx);
@@ -307,11 +306,10 @@ pub fn valtree_to_const_value<'tcx>(
         | ty::Foreign(..)
         | ty::Infer(ty::FreshIntTy(_))
         | ty::Infer(ty::FreshFloatTy(_))
-        | ty::Projection(..)
+        | ty::Alias(..)
         | ty::Param(_)
         | ty::Bound(..)
         | ty::Placeholder(..)
-        | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Closure(..)
         | ty::Generator(..)
@@ -398,7 +396,7 @@ fn valtree_into_mplace<'tcx>(
 
                 let mut place_inner = match ty.kind() {
                     ty::Str | ty::Slice(_) => ecx.mplace_index(&place, i as u64).unwrap(),
-                    _ if !ty.is_sized(ecx.tcx, ty::ParamEnv::empty())
+                    _ if !ty.is_sized(*ecx.tcx, ty::ParamEnv::empty())
                         && i == branches.len() - 1 =>
                     {
                         // Note: For custom DSTs we need to manually process the last unsized field.

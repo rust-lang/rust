@@ -575,6 +575,11 @@ fn test_asinh() {
     assert_approx_eq!((-2.0f64).asinh(), -1.443635475178810342493276740273105f64);
     // regression test for the catastrophic cancellation fixed in 72486
     assert_approx_eq!((-67452098.07139316f64).asinh(), -18.72007542627454439398548429400083);
+
+    // test for low accuracy from issue 104548
+    assert_approx_eq!(60.0f64, 60.0f64.sinh().asinh());
+    // mul needed for approximate comparison to be meaningful
+    assert_approx_eq!(1.0f64, 1e-15f64.sinh().asinh() * 1e15f64);
 }
 
 #[test]
@@ -590,6 +595,9 @@ fn test_acosh() {
     assert!(nan.acosh().is_nan());
     assert_approx_eq!(2.0f64.acosh(), 1.31695789692481670862504634730796844f64);
     assert_approx_eq!(3.0f64.acosh(), 1.76274717403908605046521864995958461f64);
+
+    // test for low accuracy from issue 104548
+    assert_approx_eq!(60.0f64, 60.0f64.cosh().acosh());
 }
 
 #[test]

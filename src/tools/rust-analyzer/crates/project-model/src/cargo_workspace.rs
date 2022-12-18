@@ -14,8 +14,8 @@ use rustc_hash::FxHashMap;
 use serde::Deserialize;
 use serde_json::from_value;
 
-use crate::CfgOverrides;
-use crate::{utf8_stdout, ManifestPath};
+use crate::{utf8_stdout, InvocationLocation, ManifestPath};
+use crate::{CfgOverrides, InvocationStrategy};
 
 /// [`CargoWorkspace`] represents the logical structure of, well, a Cargo
 /// workspace. It pretty closely mirrors `cargo metadata` output.
@@ -71,36 +71,43 @@ impl Default for UnsetTestCrates {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum CargoFeatures {
+    All,
+    Selected {
+        /// List of features to activate.
+        features: Vec<String>,
+        /// Do not activate the `default` feature.
+        no_default_features: bool,
+    },
+}
+
+impl Default for CargoFeatures {
+    fn default() -> Self {
+        CargoFeatures::Selected { features: vec![], no_default_features: false }
+    }
+}
+
 #[derive(Default, Clone, Debug, PartialEq, Eq)]
 pub struct CargoConfig {
-    /// Do not activate the `default` feature.
-    pub no_default_features: bool,
-
-    /// Activate all available features
-    pub all_features: bool,
-
     /// List of features to activate.
-    /// This will be ignored if `cargo_all_features` is true.
-    pub features: Vec<String>,
-
+    pub features: CargoFeatures,
     /// rustc target
     pub target: Option<String>,
-
-    /// Don't load sysroot crates (`std`, `core` & friends). Might be useful
-    /// when debugging isolated issues.
-    pub no_sysroot: bool,
-
+    /// Sysroot loading behavior
+    pub sysroot: Option<RustcSource>,
     /// rustc private crate source
     pub rustc_source: Option<RustcSource>,
-
     /// crates to disable `#[cfg(test)]` on
     pub unset_test_crates: UnsetTestCrates,
-
+    /// Invoke `cargo check` through the RUSTC_WRAPPER.
     pub wrap_rustc_in_build_scripts: bool,
-
+    /// The command to run instead of `cargo check` for building build scripts.
     pub run_build_script_command: Option<Vec<String>>,
-
+    /// Extra env vars to set when invoking the cargo command
     pub extra_env: FxHashMap<String, String>,
+    pub invocation_strategy: InvocationStrategy,
+    pub invocation_location: InvocationLocation,
 }
 
 impl CargoConfig {
@@ -143,7 +150,7 @@ pub struct PackageData {
     pub targets: Vec<Target>,
     /// Does this package come from the local filesystem (and is editable)?
     pub is_local: bool,
-    // Whether this package is a member of the workspace
+    /// Whether this package is a member of the workspace
     pub is_member: bool,
     /// List of packages this package depends on
     pub dependencies: Vec<PackageDependency>,
@@ -249,8 +256,8 @@ impl TargetKind {
     }
 }
 
+// Deserialize helper for the cargo metadata
 #[derive(Deserialize, Default)]
-// Deserialise helper for the cargo metadata
 struct PackageMetadata {
     #[serde(rename = "rust-analyzer")]
     rust_analyzer: Option<RustAnalyzerPackageMetaData>,
@@ -263,31 +270,32 @@ impl CargoWorkspace {
         config: &CargoConfig,
         progress: &dyn Fn(String),
     ) -> Result<cargo_metadata::Metadata> {
-        let target = config
-            .target
-            .clone()
-            .or_else(|| cargo_config_build_target(cargo_toml, config))
-            .or_else(|| rustc_discover_host_triple(cargo_toml, config));
+        let targets = find_list_of_build_targets(config, cargo_toml);
 
         let mut meta = MetadataCommand::new();
         meta.cargo_path(toolchain::cargo());
         meta.manifest_path(cargo_toml.to_path_buf());
-        if config.all_features {
-            meta.features(CargoOpt::AllFeatures);
-        } else {
-            if config.no_default_features {
-                // FIXME: `NoDefaultFeatures` is mutual exclusive with `SomeFeatures`
-                // https://github.com/oli-obk/cargo_metadata/issues/79
-                meta.features(CargoOpt::NoDefaultFeatures);
+        match &config.features {
+            CargoFeatures::All => {
+                meta.features(CargoOpt::AllFeatures);
             }
-            if !config.features.is_empty() {
-                meta.features(CargoOpt::SomeFeatures(config.features.clone()));
+            CargoFeatures::Selected { features, no_default_features } => {
+                if *no_default_features {
+                    meta.features(CargoOpt::NoDefaultFeatures);
+                }
+                if !features.is_empty() {
+                    meta.features(CargoOpt::SomeFeatures(features.clone()));
+                }
             }
         }
         meta.current_dir(current_dir.as_os_str());
 
-        if let Some(target) = target {
-            meta.other_options(vec![String::from("--filter-platform"), target]);
+        if !targets.is_empty() {
+            let other_options: Vec<_> = targets
+                .into_iter()
+                .flat_map(|target| ["--filter-platform".to_string(), target])
+                .collect();
+            meta.other_options(other_options);
         }
 
         // FIXME: Fetching metadata is a slow process, as it might require
@@ -295,12 +303,9 @@ impl CargoWorkspace {
         // unclear whether cargo itself supports it.
         progress("metadata".to_string());
 
-        fn exec_with_env(
-            command: &cargo_metadata::MetadataCommand,
-            extra_env: &FxHashMap<String, String>,
-        ) -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
-            let mut command = command.cargo_command();
-            command.envs(extra_env);
+        (|| -> Result<cargo_metadata::Metadata, cargo_metadata::Error> {
+            let mut command = meta.cargo_command();
+            command.envs(&config.extra_env);
             let output = command.output()?;
             if !output.status.success() {
                 return Err(cargo_metadata::Error::CargoMetadata {
@@ -312,12 +317,8 @@ impl CargoWorkspace {
                 .find(|line| line.starts_with('{'))
                 .ok_or(cargo_metadata::Error::NoJson)?;
             cargo_metadata::MetadataCommand::parse(stdout)
-        }
-
-        let meta = exec_with_env(&meta, &config.extra_env)
-            .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))?;
-
-        Ok(meta)
+        })()
+        .with_context(|| format!("Failed to run `{:?}`", meta.cargo_command()))
     }
 
     pub fn new(mut meta: cargo_metadata::Metadata) -> CargoWorkspace {
@@ -328,18 +329,21 @@ impl CargoWorkspace {
         let ws_members = &meta.workspace_members;
 
         meta.packages.sort_by(|a, b| a.id.cmp(&b.id));
-        for meta_pkg in &meta.packages {
+        for meta_pkg in meta.packages {
             let cargo_metadata::Package {
-                id,
-                edition,
                 name,
-                manifest_path,
                 version,
-                metadata,
+                id,
+                source,
+                targets: meta_targets,
+                features,
+                manifest_path,
                 repository,
+                edition,
+                metadata,
                 ..
             } = meta_pkg;
-            let meta = from_value::<PackageMetadata>(metadata.clone()).unwrap_or_default();
+            let meta = from_value::<PackageMetadata>(metadata).unwrap_or_default();
             let edition = match edition {
                 cargo_metadata::Edition::E2015 => Edition::Edition2015,
                 cargo_metadata::Edition::E2018 => Edition::Edition2018,
@@ -351,67 +355,50 @@ impl CargoWorkspace {
             };
             // We treat packages without source as "local" packages. That includes all members of
             // the current workspace, as well as any path dependency outside the workspace.
-            let is_local = meta_pkg.source.is_none();
-            let is_member = ws_members.contains(id);
+            let is_local = source.is_none();
+            let is_member = ws_members.contains(&id);
 
             let pkg = packages.alloc(PackageData {
                 id: id.repr.clone(),
-                name: name.clone(),
-                version: version.clone(),
-                manifest: AbsPathBuf::assert(PathBuf::from(&manifest_path)).try_into().unwrap(),
+                name,
+                version,
+                manifest: AbsPathBuf::assert(manifest_path.into()).try_into().unwrap(),
                 targets: Vec::new(),
                 is_local,
                 is_member,
                 edition,
-                repository: repository.clone(),
+                repository,
                 dependencies: Vec::new(),
-                features: meta_pkg.features.clone().into_iter().collect(),
+                features: features.into_iter().collect(),
                 active_features: Vec::new(),
                 metadata: meta.rust_analyzer.unwrap_or_default(),
             });
             let pkg_data = &mut packages[pkg];
             pkg_by_id.insert(id, pkg);
-            for meta_tgt in &meta_pkg.targets {
-                let is_proc_macro = meta_tgt.kind.as_slice() == ["proc-macro"];
+            for meta_tgt in meta_targets {
+                let cargo_metadata::Target { name, kind, required_features, src_path, .. } =
+                    meta_tgt;
                 let tgt = targets.alloc(TargetData {
                     package: pkg,
-                    name: meta_tgt.name.clone(),
-                    root: AbsPathBuf::assert(PathBuf::from(&meta_tgt.src_path)),
-                    kind: TargetKind::new(meta_tgt.kind.as_slice()),
-                    is_proc_macro,
-                    required_features: meta_tgt.required_features.clone(),
+                    name,
+                    root: AbsPathBuf::assert(src_path.into()),
+                    kind: TargetKind::new(&kind),
+                    is_proc_macro: &*kind == ["proc-macro"],
+                    required_features,
                 });
                 pkg_data.targets.push(tgt);
             }
         }
         let resolve = meta.resolve.expect("metadata executed with deps");
         for mut node in resolve.nodes {
-            let source = match pkg_by_id.get(&node.id) {
-                Some(&src) => src,
-                // FIXME: replace this and a similar branch below with `.unwrap`, once
-                // https://github.com/rust-lang/cargo/issues/7841
-                // is fixed and hits stable (around 1.43-is probably?).
-                None => {
-                    tracing::error!("Node id do not match in cargo metadata, ignoring {}", node.id);
-                    continue;
-                }
-            };
+            let &source = pkg_by_id.get(&node.id).unwrap();
             node.deps.sort_by(|a, b| a.pkg.cmp(&b.pkg));
-            for (dep_node, kind) in node
+            let dependencies = node
                 .deps
                 .iter()
-                .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)))
-            {
-                let pkg = match pkg_by_id.get(&dep_node.pkg) {
-                    Some(&pkg) => pkg,
-                    None => {
-                        tracing::error!(
-                            "Dep node id do not match in cargo metadata, ignoring {}",
-                            dep_node.pkg
-                        );
-                        continue;
-                    }
-                };
+                .flat_map(|dep| DepKind::iter(&dep.dep_kinds).map(move |kind| (dep, kind)));
+            for (dep_node, kind) in dependencies {
+                let &pkg = pkg_by_id.get(&dep_node.pkg).unwrap();
                 let dep = PackageDependency { name: dep_node.name.clone(), pkg, kind };
                 packages[source].dependencies.push(dep);
             }
@@ -456,10 +443,7 @@ impl CargoWorkspace {
                     found = true
                 }
                 self[pkg].dependencies.iter().find_map(|dep| {
-                    if &self[dep.pkg].manifest == manifest_path {
-                        return Some(self[pkg].manifest.clone());
-                    }
-                    None
+                    (&self[dep.pkg].manifest == manifest_path).then(|| self[pkg].manifest.clone())
                 })
             })
             .collect::<Vec<ManifestPath>>();
@@ -485,9 +469,25 @@ impl CargoWorkspace {
     }
 }
 
-fn rustc_discover_host_triple(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
+fn find_list_of_build_targets(config: &CargoConfig, cargo_toml: &ManifestPath) -> Vec<String> {
+    if let Some(target) = &config.target {
+        return [target.into()].to_vec();
+    }
+
+    let build_targets = cargo_config_build_target(cargo_toml, &config.extra_env);
+    if !build_targets.is_empty() {
+        return build_targets;
+    }
+
+    rustc_discover_host_triple(cargo_toml, &config.extra_env).into_iter().collect()
+}
+
+fn rustc_discover_host_triple(
+    cargo_toml: &ManifestPath,
+    extra_env: &FxHashMap<String, String>,
+) -> Option<String> {
     let mut rustc = Command::new(toolchain::rustc());
-    rustc.envs(&config.extra_env);
+    rustc.envs(extra_env);
     rustc.current_dir(cargo_toml.parent()).arg("-vV");
     tracing::debug!("Discovering host platform by {:?}", rustc);
     match utf8_stdout(rustc) {
@@ -509,20 +509,32 @@ fn rustc_discover_host_triple(cargo_toml: &ManifestPath, config: &CargoConfig) -
     }
 }
 
-fn cargo_config_build_target(cargo_toml: &ManifestPath, config: &CargoConfig) -> Option<String> {
+fn cargo_config_build_target(
+    cargo_toml: &ManifestPath,
+    extra_env: &FxHashMap<String, String>,
+) -> Vec<String> {
     let mut cargo_config = Command::new(toolchain::cargo());
-    cargo_config.envs(&config.extra_env);
+    cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
         .args(&["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
+    // or `build.target = ["<target 1>", ..]`
     tracing::debug!("Discovering cargo config target by {:?}", cargo_config);
-    match utf8_stdout(cargo_config) {
-        Ok(stdout) => stdout
-            .strip_prefix("build.target = \"")
-            .and_then(|stdout| stdout.strip_suffix('"'))
-            .map(ToOwned::to_owned),
-        Err(_) => None,
+    utf8_stdout(cargo_config).map(parse_output_cargo_config_build_target).unwrap_or_default()
+}
+
+fn parse_output_cargo_config_build_target(stdout: String) -> Vec<String> {
+    let trimmed = stdout.trim_start_matches("build.target = ").trim_matches('"');
+
+    if !trimmed.starts_with('[') {
+        return [trimmed.to_string()].to_vec();
     }
+
+    let res = serde_json::from_str(trimmed);
+    if let Err(e) = &res {
+        tracing::warn!("Failed to parse `build.target` as an array of target: {}`", e);
+    }
+    res.unwrap_or_default()
 }

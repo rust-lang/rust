@@ -52,7 +52,8 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                 GenericArg::Type(inner_ty) => Some(inner_ty),
                 _ => None,
             });
-            if let TyKind::Rptr(_, _) = inner_ty.kind;
+            if let TyKind::Rptr(_, ref inner_mut_ty) = inner_ty.kind;
+            if inner_mut_ty.mutbl == Mutability::Not;
 
             then {
                 span_lint_and_sugg(

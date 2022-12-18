@@ -7,7 +7,6 @@ use rustc_middle::ty::ParameterizedOverTcx;
 use rustc_serialize::opaque::FileEncoder;
 use rustc_serialize::Encoder as _;
 use rustc_span::hygiene::MacroKind;
-use std::convert::TryInto;
 use std::marker::PhantomData;
 use std::num::NonZeroUsize;
 
@@ -101,10 +100,8 @@ fixed_size_enum! {
         ( Static(ast::Mutability::Mut)             )
         ( Ctor(CtorOf::Struct, CtorKind::Fn)       )
         ( Ctor(CtorOf::Struct, CtorKind::Const)    )
-        ( Ctor(CtorOf::Struct, CtorKind::Fictive)  )
         ( Ctor(CtorOf::Variant, CtorKind::Fn)      )
         ( Ctor(CtorOf::Variant, CtorKind::Const)   )
-        ( Ctor(CtorOf::Variant, CtorKind::Fictive) )
         ( Macro(MacroKind::Bang)                   )
         ( Macro(MacroKind::Attr)                   )
         ( Macro(MacroKind::Derive)                 )

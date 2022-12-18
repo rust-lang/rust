@@ -11,7 +11,7 @@ use std::{env, fs, path::Path, process};
 
 use lsp_server::Connection;
 use project_model::ProjectManifest;
-use rust_analyzer::{cli::flags, config::Config, from_json, lsp_ext::supports_utf8, Result};
+use rust_analyzer::{cli::flags, config::Config, from_json, Result};
 use vfs::AbsPathBuf;
 
 #[cfg(all(feature = "mimalloc"))]
@@ -37,16 +37,15 @@ fn main() {
         process::exit(code);
     }
 
-    if let Err(err) = try_main() {
+    let flags = flags::RustAnalyzer::from_env_or_exit();
+    if let Err(err) = try_main(flags) {
         tracing::error!("Unexpected error: {}", err);
         eprintln!("{}", err);
         process::exit(101);
     }
 }
 
-fn try_main() -> Result<()> {
-    let flags = flags::RustAnalyzer::from_env()?;
-
+fn try_main(flags: flags::RustAnalyzer) -> Result<()> {
     #[cfg(debug_assertions)]
     if flags.wait_dbg || env::var("RA_WAIT_DBG").is_ok() {
         #[allow(unused_mut)]
@@ -74,10 +73,6 @@ fn try_main() -> Result<()> {
             }
             if cmd.version {
                 println!("rust-analyzer {}", rust_analyzer::version());
-                return Ok(());
-            }
-            if cmd.help {
-                println!("{}", flags::RustAnalyzer::HELP);
                 return Ok(());
             }
             with_extra_thread("LspServer", run_server)?;
@@ -196,11 +191,7 @@ fn run_server() -> Result<()> {
             name: String::from("rust-analyzer"),
             version: Some(rust_analyzer::version().to_string()),
         }),
-        offset_encoding: if supports_utf8(config.caps()) {
-            Some("utf-8".to_string())
-        } else {
-            None
-        },
+        offset_encoding: None,
     };
 
     let initialize_result = serde_json::to_value(initialize_result).unwrap();

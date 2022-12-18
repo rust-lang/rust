@@ -398,23 +398,7 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
     }
 
     fn llvm_cconv(&self) -> llvm::CallConv {
-        match self.conv {
-            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
-            Conv::RustCold => llvm::ColdCallConv,
-            Conv::AmdGpuKernel => llvm::AmdGpuKernel,
-            Conv::AvrInterrupt => llvm::AvrInterrupt,
-            Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
-            Conv::ArmAapcs => llvm::ArmAapcsCallConv,
-            Conv::Msp430Intr => llvm::Msp430Intr,
-            Conv::PtxKernel => llvm::PtxKernel,
-            Conv::X86Fastcall => llvm::X86FastcallCallConv,
-            Conv::X86Intr => llvm::X86_Intr,
-            Conv::X86Stdcall => llvm::X86StdcallCallConv,
-            Conv::X86ThisCall => llvm::X86_ThisCall,
-            Conv::X86VectorCall => llvm::X86_VectorCall,
-            Conv::X86_64SysV => llvm::X86_64_SysV,
-            Conv::X86_64Win64 => llvm::X86_64_Win64,
-        }
+        self.conv.into()
     }
 
     fn apply_attrs_llfn(&self, cx: &CodegenCx<'ll, 'tcx>, llfn: &'ll Value) {
@@ -594,5 +578,27 @@ impl<'ll, 'tcx> FnAbiLlvmExt<'ll, 'tcx> for FnAbi<'tcx, Ty<'tcx>> {
 impl<'tcx> AbiBuilderMethods<'tcx> for Builder<'_, '_, 'tcx> {
     fn get_param(&mut self, index: usize) -> Self::Value {
         llvm::get_param(self.llfn(), index as c_uint)
+    }
+}
+
+impl From<Conv> for llvm::CallConv {
+    fn from(conv: Conv) -> Self {
+        match conv {
+            Conv::C | Conv::Rust | Conv::CCmseNonSecureCall => llvm::CCallConv,
+            Conv::RustCold => llvm::ColdCallConv,
+            Conv::AmdGpuKernel => llvm::AmdGpuKernel,
+            Conv::AvrInterrupt => llvm::AvrInterrupt,
+            Conv::AvrNonBlockingInterrupt => llvm::AvrNonBlockingInterrupt,
+            Conv::ArmAapcs => llvm::ArmAapcsCallConv,
+            Conv::Msp430Intr => llvm::Msp430Intr,
+            Conv::PtxKernel => llvm::PtxKernel,
+            Conv::X86Fastcall => llvm::X86FastcallCallConv,
+            Conv::X86Intr => llvm::X86_Intr,
+            Conv::X86Stdcall => llvm::X86StdcallCallConv,
+            Conv::X86ThisCall => llvm::X86_ThisCall,
+            Conv::X86VectorCall => llvm::X86_VectorCall,
+            Conv::X86_64SysV => llvm::X86_64_SysV,
+            Conv::X86_64Win64 => llvm::X86_64_Win64,
+        }
     }
 }

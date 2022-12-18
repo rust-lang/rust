@@ -134,7 +134,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) {
                     diag.span_suggestion(
                         keep_arm.pat.span,
                         "try merging the arm patterns",
-                        format!("{} | {}", keep_pat_snip, move_pat_snip),
+                        format!("{keep_pat_snip} | {move_pat_snip}"),
                         Applicability::MaybeIncorrect,
                     )
                     .help("or try changing either arm body")
@@ -221,7 +221,6 @@ fn iter_matching_struct_fields<'a>(
 
 #[expect(clippy::similar_names)]
 impl<'a> NormalizedPat<'a> {
-    #[expect(clippy::too_many_lines)]
     fn from_pat(cx: &LateContext<'_>, arena: &'a DroplessArena, pat: &'a Pat<'_>) -> Self {
         match pat.kind {
             PatKind::Wild | PatKind::Binding(.., None) => Self::Wild,
@@ -235,9 +234,8 @@ impl<'a> NormalizedPat<'a> {
                 Self::Struct(cx.qpath_res(path, pat.hir_id).opt_def_id(), fields)
             },
             PatKind::TupleStruct(ref path, pats, wild_idx) => {
-                let adt = match cx.typeck_results().pat_ty(pat).ty_adt_def() {
-                    Some(x) => x,
-                    None => return Self::Wild,
+                let Some(adt) = cx.typeck_results().pat_ty(pat).ty_adt_def() else {
+                    return Self::Wild
                 };
                 let (var_id, variant) = if adt.is_enum() {
                     match cx.qpath_res(path, pat.hir_id).opt_def_id() {
@@ -284,7 +282,7 @@ impl<'a> NormalizedPat<'a> {
                 // TODO: Handle negative integers. They're currently treated as a wild match.
                 ExprKind::Lit(lit) => match lit.node {
                     LitKind::Str(sym, _) => Self::LitStr(sym),
-                    LitKind::ByteStr(ref bytes) => Self::LitBytes(bytes),
+                    LitKind::ByteStr(ref bytes, _) => Self::LitBytes(bytes),
                     LitKind::Byte(val) => Self::LitInt(val.into()),
                     LitKind::Char(val) => Self::LitInt(val.into()),
                     LitKind::Int(val, _) => Self::LitInt(val),

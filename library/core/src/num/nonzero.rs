@@ -56,7 +56,10 @@ macro_rules! nonzero_integers {
                 pub const unsafe fn new_unchecked(n: $Int) -> Self {
                     // SAFETY: this is guaranteed to be safe by the caller.
                     unsafe {
-                        core::intrinsics::assert_unsafe_precondition!((n: $Int) => n != 0);
+                        core::intrinsics::assert_unsafe_precondition!(
+                            concat!(stringify!($Ty), "::new_unchecked requires a non-zero argument"),
+                            (n: $Int) => n != 0
+                        );
                         Self(n)
                     }
                 }
@@ -318,7 +321,6 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -353,7 +355,6 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -388,8 +389,8 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let one = ", stringify!($Ty), "::new(1)?;")]
@@ -417,7 +418,6 @@ macro_rules! nonzero_unsigned_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -457,14 +457,13 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(7).unwrap().ilog2(), 2);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
                 /// ```
-                #[unstable(feature = "int_log", issue = "70887")]
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -482,14 +481,13 @@ macro_rules! nonzero_unsigned_operations {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(int_log)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(99).unwrap().ilog10(), 1);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
                 /// ```
-                #[unstable(feature = "int_log", issue = "70887")]
+                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -523,7 +521,6 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -553,7 +550,6 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -588,7 +584,6 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -623,7 +618,6 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
@@ -659,14 +653,13 @@ macro_rules! nonzero_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let pos = ", stringify!($Ty), "::new(1)?;")]
                 #[doc = concat!("let neg = ", stringify!($Ty), "::new(-1)?;")]
                 #[doc = concat!("let min = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MIN)?;")]
-                #[doc = concat!("let max = ", stringify!($Ty), "::new(",
+                #[doc = concat!("# let max = ", stringify!($Ty), "::new(",
                                 stringify!($Int), "::MAX)?;")]
                 ///
                 /// assert_eq!(pos, pos.wrapping_abs());
@@ -902,7 +895,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -938,7 +930,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -983,8 +974,8 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 /// #![feature(nonzero_ops)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let two = ", stringify!($Ty), "::new(2)?;")]
@@ -1011,7 +1002,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
@@ -1055,7 +1045,6 @@ macro_rules! nonzero_unsigned_signed_operations {
                 ///
                 /// ```
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
-                ///
                 /// # fn main() { test().unwrap(); }
                 /// # fn test() -> Option<()> {
                 #[doc = concat!("let three = ", stringify!($Ty), "::new(3)?;")]
@@ -1159,8 +1148,8 @@ macro_rules! nonzero_min_max_unsigned {
                 ///
                 /// ```
                 /// #![feature(nonzero_min_max)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
                 /// ```
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
@@ -1174,8 +1163,8 @@ macro_rules! nonzero_min_max_unsigned {
                 ///
                 /// ```
                 /// #![feature(nonzero_min_max)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
@@ -1201,8 +1190,8 @@ macro_rules! nonzero_min_max_signed {
                 ///
                 /// ```
                 /// #![feature(nonzero_min_max)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
                 /// ```
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
@@ -1220,8 +1209,8 @@ macro_rules! nonzero_min_max_signed {
                 ///
                 /// ```
                 /// #![feature(nonzero_min_max)]
-                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
+                #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
                 #[unstable(feature = "nonzero_min_max", issue = "89065")]
@@ -1260,12 +1249,11 @@ macro_rules! nonzero_bits {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_bits)]
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
                 /// ```
-                #[unstable(feature = "nonzero_bits", issue = "94881")]
+                #[stable(feature = "nonzero_bits", since = "CURRENT_RUSTC_VERSION")]
                 pub const BITS: u32 = <$Int>::BITS;
             }
         )+

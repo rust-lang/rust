@@ -13,7 +13,7 @@ LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();
    = note: inside `std::panicking::r#try::do_call::<[closure@$DIR/bad_unwind.rs:LL:CC], ()>` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panicking::r#try::<(), [closure@$DIR/bad_unwind.rs:LL:CC]>` at RUSTLIB/std/src/panicking.rs:LL:CC
    = note: inside `std::panic::catch_unwind::<[closure@$DIR/bad_unwind.rs:LL:CC], ()>` at RUSTLIB/std/src/panic.rs:LL:CC
-note: inside `main` at $DIR/bad_unwind.rs:LL:CC
+note: inside `main`
   --> $DIR/bad_unwind.rs:LL:CC
    |
 LL |     std::panic::catch_unwind(|| unwind()).unwrap_err();

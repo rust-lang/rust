@@ -1,4 +1,5 @@
 use crate::back::write::{self, save_temp_bitcode, DiagnosticHandlers};
+use crate::errors::DynamicLinkingWithLTO;
 use crate::llvm::{self, build_string};
 use crate::{LlvmCodegenBackend, ModuleLlvm};
 use object::read::archive::ArchiveFile;
@@ -32,8 +33,8 @@ pub const THIN_LTO_KEYS_INCR_COMP_FILE_NAME: &str = "thin-lto-past-keys.bin";
 
 pub fn crate_type_allows_lto(crate_type: CrateType) -> bool {
     match crate_type {
-        CrateType::Executable | CrateType::Staticlib | CrateType::Cdylib => true,
-        CrateType::Dylib | CrateType::Rlib | CrateType::ProcMacro => false,
+        CrateType::Executable | CrateType::Dylib | CrateType::Staticlib | CrateType::Cdylib => true,
+        CrateType::Rlib | CrateType::ProcMacro => false,
     }
 }
 
@@ -73,17 +74,6 @@ fn prepare_lto(
     // with either fat or thin LTO
     let mut upstream_modules = Vec::new();
     if cgcx.lto != Lto::ThinLocal {
-        if cgcx.opts.cg.prefer_dynamic {
-            diag_handler
-                .struct_err("cannot prefer dynamic linking when performing LTO")
-                .note(
-                    "only 'staticlib', 'bin', and 'cdylib' outputs are \
-                               supported with LTO",
-                )
-                .emit();
-            return Err(FatalError);
-        }
-
         // Make sure we actually can run LTO
         for crate_type in cgcx.crate_types.iter() {
             if !crate_type_allows_lto(*crate_type) {
@@ -92,7 +82,17 @@ fn prepare_lto(
                                             static library outputs",
                 );
                 return Err(e);
+            } else if *crate_type == CrateType::Dylib {
+                if !cgcx.opts.unstable_opts.dylib_lto {
+                    return Err(diag_handler
+                        .fatal("lto cannot be used for `dylib` crate type without `-Zdylib-lto`"));
+                }
             }
+        }
+
+        if cgcx.opts.cg.prefer_dynamic && !cgcx.opts.unstable_opts.dylib_lto {
+            diag_handler.emit_err(DynamicLinkingWithLTO);
+            return Err(FatalError);
         }
 
         for &(cnum, ref path) in cgcx.each_linked_rlib_for_lto.iter() {
@@ -133,6 +133,10 @@ fn prepare_lto(
         }
     }
 
+    // __llvm_profile_counter_bias is pulled in at link time by an undefined reference to
+    // __llvm_profile_runtime, therefore we won't know until link time if this symbol
+    // should have default visibility.
+    symbols_below_threshold.push(CString::new("__llvm_profile_counter_bias").unwrap());
     Ok((symbols_below_threshold, upstream_modules))
 }
 
@@ -206,7 +210,7 @@ pub(crate) fn run_thin(
 }
 
 pub(crate) fn prepare_thin(module: ModuleCodegen<ModuleLlvm>) -> (String, ThinBuffer) {
-    let name = module.name.clone();
+    let name = module.name;
     let buffer = ThinBuffer::new(module.module_llvm.llmod(), true);
     (name, buffer)
 }
@@ -421,7 +425,7 @@ fn thin_lto(
         info!("going for that thin, thin LTO");
 
         let green_modules: FxHashMap<_, _> =
-            cached_modules.iter().map(|&(_, ref wp)| (wp.cgu_name.clone(), wp.clone())).collect();
+            cached_modules.iter().map(|(_, wp)| (wp.cgu_name.clone(), wp.clone())).collect();
 
         let full_scope_len = modules.len() + serialized_modules.len() + cached_modules.len();
         let mut thin_buffers = Vec::with_capacity(modules.len());
@@ -573,7 +577,7 @@ pub(crate) fn run_pass_manager(
     module: &mut ModuleCodegen<ModuleLlvm>,
     thin: bool,
 ) -> Result<(), FatalError> {
-    let _timer = cgcx.prof.extra_verbose_generic_activity("LLVM_lto_optimize", &*module.name);
+    let _timer = cgcx.prof.verbose_generic_activity_with_arg("LLVM_lto_optimize", &*module.name);
     let config = cgcx.config(module.kind);
 
     // Now we have one massive module inside of llmod. Time to run the

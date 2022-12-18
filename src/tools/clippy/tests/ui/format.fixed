@@ -1,13 +1,13 @@
 // run-rustfix
-
+#![warn(clippy::useless_format)]
 #![allow(
     unused_tuple_struct_fields,
     clippy::print_literal,
     clippy::redundant_clone,
     clippy::to_string_in_format_args,
-    clippy::needless_borrow
+    clippy::needless_borrow,
+    clippy::uninlined_format_args
 )]
-#![warn(clippy::useless_format)]
 
 struct Foo(pub String);
 

@@ -3,7 +3,7 @@
 // needs-asm-support
 // build-pass
 
-#![feature(no_core, lang_items, rustc_attrs, isa_attribute)]
+#![feature(no_core, lang_items, rustc_attrs)]
 #![no_core]
 #![crate_type = "rlib"]
 

@@ -163,6 +163,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Edges<'s, 'tcx, D> {
                 span: DUMMY_SP,
                 category: ConstraintCategory::Internal,
                 variance_info: VarianceDiagInfo::default(),
+                from_closure: false,
             })
         } else {
             None

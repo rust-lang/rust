@@ -4,11 +4,12 @@ use clippy_utils::source::snippet;
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::{is_type_diagnostic_item, needs_ordered_drop};
 use clippy_utils::visitors::any_temporaries_need_ordered_drop;
-use clippy_utils::{higher, is_lang_ctor, is_trait_method};
+use clippy_utils::{higher, is_trait_method};
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
 use rustc_errors::Applicability;
-use rustc_hir::LangItem::{self, OptionSome, OptionNone, PollPending, PollReady, ResultOk, ResultErr};
+use rustc_hir::def::{DefKind, Res};
+use rustc_hir::LangItem::{self, OptionNone, OptionSome, PollPending, PollReady, ResultErr, ResultOk};
 use rustc_hir::{Arm, Expr, ExprKind, Node, Pat, PatKind, QPath, UnOp};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, subst::GenericArgKind, DefIdTree, Ty};
@@ -87,15 +88,21 @@ fn find_sugg_for_if_let<'tcx>(
             }
         },
         PatKind::Path(ref path) => {
-            let method = if is_lang_ctor(cx, path, OptionNone) {
-                "is_none()"
-            } else if is_lang_ctor(cx, path, PollPending) {
-                "is_pending()"
+            if let Res::Def(DefKind::Ctor(..), ctor_id) = cx.qpath_res(path, check_pat.hir_id)
+                && let Some(variant_id) = cx.tcx.opt_parent(ctor_id)
+            {
+                let method = if cx.tcx.lang_items().option_none_variant() == Some(variant_id) {
+                    "is_none()"
+                } else if cx.tcx.lang_items().poll_pending_variant() == Some(variant_id) {
+                    "is_pending()"
+                } else {
+                    return;
+                };
+                // `None` and `Pending` don't have an inner type.
+                (method, cx.tcx.types.unit)
             } else {
                 return;
-            };
-            // `None` and `Pending` don't have an inner type.
-            (method, cx.tcx.types.unit)
+            }
         },
         _ => return,
     };
@@ -138,7 +145,7 @@ fn find_sugg_for_if_let<'tcx>(
         cx,
         REDUNDANT_PATTERN_MATCHING,
         let_pat.span,
-        &format!("redundant pattern matching, consider using `{}`", good_method),
+        &format!("redundant pattern matching, consider using `{good_method}`"),
         |diag| {
             // if/while let ... = ... { ... }
             // ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -162,7 +169,7 @@ fn find_sugg_for_if_let<'tcx>(
                 .maybe_par()
                 .to_string();
 
-            diag.span_suggestion(span, "try this", format!("{} {}.{}", keyword, sugg, good_method), app);
+            diag.span_suggestion(span, "try this", format!("{keyword} {sugg}.{good_method}"), app);
 
             if needs_drop {
                 diag.note("this will change drop order of the result, as well as all temporaries");
@@ -213,7 +220,6 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 if patterns.len() == 1 =>
             {
                 if let PatKind::Wild = patterns[0].kind {
-
                     find_good_method_for_match(
                         cx,
                         arms,
@@ -253,12 +259,12 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
                 cx,
                 REDUNDANT_PATTERN_MATCHING,
                 expr.span,
-                &format!("redundant pattern matching, consider using `{}`", good_method),
+                &format!("redundant pattern matching, consider using `{good_method}`"),
                 |diag| {
                     diag.span_suggestion(
                         span,
                         "try this",
-                        format!("{}.{}", snippet(cx, result_expr.span, "_"), good_method),
+                        format!("{}.{good_method}", snippet(cx, result_expr.span, "_")),
                         Applicability::MaybeIncorrect, // snippet
                     );
                 },
@@ -269,8 +275,8 @@ pub(super) fn check_match<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, op
 
 #[derive(Clone, Copy)]
 enum Item {
-  Lang(LangItem),
-  Diag(Symbol, Symbol),
+    Lang(LangItem),
+    Diag(Symbol, Symbol),
 }
 
 fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expected_item: Item) -> bool {
@@ -285,15 +291,16 @@ fn is_pat_variant(cx: &LateContext<'_>, pat: &Pat<'_>, path: &QPath<'_>, expecte
             let ty = cx.typeck_results().pat_ty(pat);
 
             if is_type_diagnostic_item(cx, ty, expected_ty) {
-                let variant = ty.ty_adt_def()
+                let variant = ty
+                    .ty_adt_def()
                     .expect("struct pattern type is not an ADT")
                     .variant_of_res(cx.qpath_res(path, pat.hir_id));
 
-                return variant.name == expected_variant
+                return variant.name == expected_variant;
             }
 
             false
-        }
+        },
     }
 }
 
@@ -308,20 +315,16 @@ fn find_good_method_for_match<'a>(
     should_be_left: &'a str,
     should_be_right: &'a str,
 ) -> Option<&'a str> {
-    let pat_left = arms[0].pat;
-    let pat_right = arms[1].pat;
+    let first_pat = arms[0].pat;
+    let second_pat = arms[1].pat;
 
-    let body_node_pair = if (
-        is_pat_variant(cx, pat_left, path_left, expected_item_left)
-    ) && (
-        is_pat_variant(cx, pat_right, path_right, expected_item_right)
-    ) {
+    let body_node_pair = if (is_pat_variant(cx, first_pat, path_left, expected_item_left))
+        && (is_pat_variant(cx, second_pat, path_right, expected_item_right))
+    {
         (&arms[0].body.kind, &arms[1].body.kind)
-    } else if (
-        is_pat_variant(cx, pat_left, path_left, expected_item_right)
-    ) && (
-        is_pat_variant(cx, pat_right, path_right, expected_item_left)
-    ) {
+    } else if (is_pat_variant(cx, first_pat, path_left, expected_item_right))
+        && (is_pat_variant(cx, second_pat, path_right, expected_item_left))
+    {
         (&arms[1].body.kind, &arms[0].body.kind)
     } else {
         return None;

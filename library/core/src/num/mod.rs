@@ -3,11 +3,14 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use crate::ascii;
-use crate::error::Error;
+use crate::convert::TryInto;
 use crate::intrinsics;
 use crate::mem;
 use crate::ops::{Add, Mul, Sub};
 use crate::str::FromStr;
+
+#[cfg(not(no_fp_fmt_parse))]
+use crate::error::Error;
 
 // Used because the `?` operator is not allowed in a const context.
 macro_rules! try_opt {
@@ -622,6 +625,38 @@ impl u8 {
         matches!(*self, b'0'..=b'9')
     }
 
+    /// Checks if the value is an ASCII octal digit:
+    /// U+0030 '0' ..= U+0037 '7'.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(is_ascii_octdigit)]
+    ///
+    /// let uppercase_a = b'A';
+    /// let a = b'a';
+    /// let zero = b'0';
+    /// let seven = b'7';
+    /// let nine = b'9';
+    /// let percent = b'%';
+    /// let lf = b'\n';
+    ///
+    /// assert!(!uppercase_a.is_ascii_octdigit());
+    /// assert!(!a.is_ascii_octdigit());
+    /// assert!(zero.is_ascii_octdigit());
+    /// assert!(seven.is_ascii_octdigit());
+    /// assert!(!nine.is_ascii_octdigit());
+    /// assert!(!percent.is_ascii_octdigit());
+    /// assert!(!lf.is_ascii_octdigit());
+    /// ```
+    #[must_use]
+    #[unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[rustc_const_unstable(feature = "is_ascii_octdigit", issue = "101288")]
+    #[inline]
+    pub const fn is_ascii_octdigit(&self) -> bool {
+        matches!(*self, b'0'..=b'7')
+    }
+
     /// Checks if the value is an ASCII hexadecimal digit:
     ///
     /// - U+0030 '0' ..= U+0039 '9', or
@@ -976,8 +1011,8 @@ impl usize {
 /// assert_eq!(num.classify(), FpCategory::Normal);
 /// assert_eq!(inf.classify(), FpCategory::Infinite);
 /// assert_eq!(zero.classify(), FpCategory::Zero);
-/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// assert_eq!(sub.classify(), FpCategory::Subnormal);
+/// assert_eq!(nan.classify(), FpCategory::Nan);
 /// ```
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]

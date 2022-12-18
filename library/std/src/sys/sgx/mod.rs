@@ -3,6 +3,7 @@
 //! This module contains the facade (aka platform-specific) implementations of
 //! OS level functionality for Fortanix SGX.
 #![deny(unsafe_op_in_unsafe_fn)]
+#![allow(fuzzy_provenance_casts)] // FIXME: this entire module systematically confuses pointers and integers
 
 use crate::io::ErrorKind;
 use crate::sync::atomic::{AtomicBool, Ordering};
@@ -33,6 +34,7 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
+pub mod thread_parker;
 pub mod time;
 
 mod condvar;

@@ -5,7 +5,7 @@ use crate::deriving::path_std;
 use rustc_ast::{self as ast, MetaItem};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_expand::base::{Annotatable, ExtCtxt};
-use rustc_span::symbol::{sym, Ident};
+use rustc_span::symbol::sym;
 use rustc_span::Span;
 use thin_vec::thin_vec;
 
@@ -15,18 +15,19 @@ pub fn expand_deriving_eq(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let span = cx.with_def_site_ctxt(span);
-    let inline = cx.meta_word(span, sym::inline);
-    let hidden = rustc_ast::attr::mk_nested_word_item(Ident::new(sym::hidden, span));
-    let doc = rustc_ast::attr::mk_list_item(Ident::new(sym::doc, span), vec![hidden]);
-    let no_coverage = cx.meta_word(span, sym::no_coverage);
-    let attrs = thin_vec![cx.attribute(inline), cx.attribute(doc), cx.attribute(no_coverage)];
+    let attrs = thin_vec![
+        cx.attr_word(sym::inline, span),
+        cx.attr_nested_word(sym::doc, sym::hidden, span),
+        cx.attr_word(sym::no_coverage, span)
+    ];
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::Eq),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: true,
         methods: vec![MethodDef {
             name: sym::assert_receiver_is_total_eq,
@@ -41,6 +42,7 @@ pub fn expand_deriving_eq(
             })),
         }],
         associated_types: Vec::new(),
+        is_const,
     };
 
     super::inject_impl_of_structural_trait(cx, span, item, path_std!(marker::StructuralEq), push);

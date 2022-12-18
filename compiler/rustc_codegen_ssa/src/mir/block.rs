@@ -1,7 +1,7 @@
 use super::operand::OperandRef;
 use super::operand::OperandValue::{Immediate, Pair, Ref};
 use super::place::PlaceRef;
-use super::{FunctionCx, LocalRef};
+use super::{CachedLlbb, FunctionCx, LocalRef};
 
 use crate::base;
 use crate::common::{self, IntPredicate};
@@ -17,12 +17,22 @@ use rustc_middle::mir::{self, AssertKind, SwitchTargets};
 use rustc_middle::ty::layout::{HasTyCtxt, LayoutOf};
 use rustc_middle::ty::print::{with_no_trimmed_paths, with_no_visible_paths};
 use rustc_middle::ty::{self, Instance, Ty, TypeVisitable};
+use rustc_session::config::OptLevel;
 use rustc_span::source_map::Span;
 use rustc_span::{sym, Symbol};
 use rustc_symbol_mangling::typeid::typeid_for_fnabi;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode, Reg};
 use rustc_target::abi::{self, HasDataLayout, WrappingRange};
 use rustc_target::spec::abi::Abi;
+
+// Indicates if we are in the middle of merging a BB's successor into it. This
+// can happen when BB jumps directly to its successor and the successor has no
+// other predecessors.
+#[derive(Debug, PartialEq)]
+enum MergingSucc {
+    False,
+    True,
+}
 
 /// Used by `FunctionCx::codegen_terminator` for emitting common patterns
 /// e.g., creating a basic block, calling a function, etc.
@@ -63,45 +73,54 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         }
     }
 
-    fn lltarget<Bx: BuilderMethods<'a, 'tcx>>(
-        &self,
-        fx: &mut FunctionCx<'a, 'tcx, Bx>,
-        target: mir::BasicBlock,
-    ) -> (Bx::BasicBlock, bool) {
-        let span = self.terminator.source_info.span;
-        let lltarget = fx.llbb(target);
-        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
-        match (self.funclet_bb, target_funclet) {
-            (None, None) => (lltarget, false),
-            (Some(f), Some(t_f)) if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) => {
-                (lltarget, false)
-            }
-            // jump *into* cleanup - need a landing pad if GNU, cleanup pad if MSVC
-            (None, Some(_)) => (fx.landing_pad_for(target), false),
-            (Some(_), None) => span_bug!(span, "{:?} - jump out of cleanup?", self.terminator),
-            (Some(_), Some(_)) => (fx.landing_pad_for(target), true),
-        }
-    }
-
-    /// Create a basic block.
-    fn llblock<Bx: BuilderMethods<'a, 'tcx>>(
+    /// Get a basic block (creating it if necessary), possibly with cleanup
+    /// stuff in it or next to it.
+    fn llbb_with_cleanup<Bx: BuilderMethods<'a, 'tcx>>(
         &self,
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         target: mir::BasicBlock,
     ) -> Bx::BasicBlock {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
+        let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
+        let mut lltarget = fx.llbb(target);
+        if needs_landing_pad {
+            lltarget = fx.landing_pad_for(target);
+        }
         if is_cleanupret {
             // MSVC cross-funclet jump - need a trampoline
-
-            debug!("llblock: creating cleanup trampoline for {:?}", target);
+            debug_assert!(base::wants_msvc_seh(fx.cx.tcx().sess));
+            debug!("llbb_with_cleanup: creating cleanup trampoline for {:?}", target);
             let name = &format!("{:?}_cleanup_trampoline_{:?}", self.bb, target);
-            let trampoline = Bx::append_block(fx.cx, fx.llfn, name);
-            let mut trampoline_bx = Bx::build(fx.cx, trampoline);
+            let trampoline_llbb = Bx::append_block(fx.cx, fx.llfn, name);
+            let mut trampoline_bx = Bx::build(fx.cx, trampoline_llbb);
             trampoline_bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
-            trampoline
+            trampoline_llbb
         } else {
             lltarget
         }
+    }
+
+    fn llbb_characteristics<Bx: BuilderMethods<'a, 'tcx>>(
+        &self,
+        fx: &mut FunctionCx<'a, 'tcx, Bx>,
+        target: mir::BasicBlock,
+    ) -> (bool, bool) {
+        let target_funclet = fx.cleanup_kinds[target].funclet_bb(target);
+        let (needs_landing_pad, is_cleanupret) = match (self.funclet_bb, target_funclet) {
+            (None, None) => (false, false),
+            (None, Some(_)) => (true, false),
+            (Some(_), None) => {
+                let span = self.terminator.source_info.span;
+                span_bug!(span, "{:?} - jump out of cleanup?", self.terminator);
+            }
+            (Some(f), Some(t_f)) => {
+                if f == t_f || !base::wants_msvc_seh(fx.cx.tcx().sess) {
+                    (false, false)
+                } else {
+                    (true, true)
+                }
+            }
+        };
+        (needs_landing_pad, is_cleanupret)
     }
 
     fn funclet_br<Bx: BuilderMethods<'a, 'tcx>>(
@@ -109,14 +128,25 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         fx: &mut FunctionCx<'a, 'tcx, Bx>,
         bx: &mut Bx,
         target: mir::BasicBlock,
-    ) {
-        let (lltarget, is_cleanupret) = self.lltarget(fx, target);
-        if is_cleanupret {
-            // micro-optimization: generate a `ret` rather than a jump
-            // to a trampoline.
-            bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+        mergeable_succ: bool,
+    ) -> MergingSucc {
+        let (needs_landing_pad, is_cleanupret) = self.llbb_characteristics(fx, target);
+        if mergeable_succ && !needs_landing_pad && !is_cleanupret {
+            // We can merge the successor into this bb, so no need for a `br`.
+            MergingSucc::True
         } else {
-            bx.br(lltarget);
+            let mut lltarget = fx.llbb(target);
+            if needs_landing_pad {
+                lltarget = fx.landing_pad_for(target);
+            }
+            if is_cleanupret {
+                // micro-optimization: generate a `ret` rather than a jump
+                // to a trampoline.
+                bx.cleanup_ret(self.funclet(fx).unwrap(), Some(lltarget));
+            } else {
+                bx.br(lltarget);
+            }
+            MergingSucc::False
         }
     }
 
@@ -132,13 +162,14 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         destination: Option<(ReturnDest<'tcx, Bx::Value>, mir::BasicBlock)>,
         cleanup: Option<mir::BasicBlock>,
         copied_constant_arguments: &[PlaceRef<'tcx, <Bx as BackendTypes>::Value>],
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         // If there is a cleanup block and the function we're calling can unwind, then
         // do an invoke, otherwise do a call.
         let fn_ty = bx.fn_decl_backend_type(&fn_abi);
 
         let unwind_block = if let Some(cleanup) = cleanup.filter(|_| fn_abi.can_unwind) {
-            Some(self.llblock(fx, cleanup))
+            Some(self.llbb_with_cleanup(fx, cleanup))
         } else if fx.mir[self.bb].is_cleanup
             && fn_abi.can_unwind
             && !base::wants_msvc_seh(fx.cx.tcx().sess)
@@ -183,6 +214,7 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, invokeret);
             }
+            MergingSucc::False
         } else {
             let llret = bx.call(fn_ty, Some(&fn_abi), fn_ptr, &llargs, self.funclet(fx));
             if fx.mir[self.bb].is_cleanup {
@@ -198,9 +230,10 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                     bx.lifetime_end(tmp.llval, tmp.layout.size);
                 }
                 fx.store_return(bx, ret_dest, &fn_abi.ret, llret);
-                self.funclet_br(fx, bx, target);
+                self.funclet_br(fx, bx, target, mergeable_succ)
             } else {
                 bx.unreachable();
+                MergingSucc::False
             }
         }
     }
@@ -217,7 +250,8 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
         destination: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         instance: Instance<'_>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         if let Some(cleanup) = cleanup {
             let ret_llbb = if let Some(target) = destination {
                 fx.llbb(target)
@@ -231,15 +265,17 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
                 options,
                 line_spans,
                 instance,
-                Some((ret_llbb, self.llblock(fx, cleanup), self.funclet(fx))),
+                Some((ret_llbb, self.llbb_with_cleanup(fx, cleanup), self.funclet(fx))),
             );
+            MergingSucc::False
         } else {
             bx.codegen_inline_asm(template, &operands, options, line_spans, instance, None);
 
             if let Some(target) = destination {
-                self.funclet_br(fx, bx, target);
+                self.funclet_br(fx, bx, target, mergeable_succ)
             } else {
                 bx.unreachable();
+                MergingSucc::False
             }
         }
     }
@@ -248,43 +284,39 @@ impl<'a, 'tcx> TerminatorCodegenHelper<'tcx> {
 /// Codegen implementations for some terminator variants.
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     /// Generates code for a `Resume` terminator.
-    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, mut bx: Bx) {
+    fn codegen_resume_terminator(&mut self, helper: TerminatorCodegenHelper<'tcx>, bx: &mut Bx) {
         if let Some(funclet) = helper.funclet(self) {
             bx.cleanup_ret(funclet, None);
         } else {
-            let slot = self.get_personality_slot(&mut bx);
-            let lp0 = slot.project_field(&mut bx, 0);
-            let lp0 = bx.load_operand(lp0).immediate();
-            let lp1 = slot.project_field(&mut bx, 1);
-            let lp1 = bx.load_operand(lp1).immediate();
-            slot.storage_dead(&mut bx);
+            let slot = self.get_personality_slot(bx);
+            let exn0 = slot.project_field(bx, 0);
+            let exn0 = bx.load_operand(exn0).immediate();
+            let exn1 = slot.project_field(bx, 1);
+            let exn1 = bx.load_operand(exn1).immediate();
+            slot.storage_dead(bx);
 
-            let mut lp = bx.const_undef(self.landing_pad_type());
-            lp = bx.insert_value(lp, lp0, 0);
-            lp = bx.insert_value(lp, lp1, 1);
-            bx.resume(lp);
+            bx.resume(exn0, exn1);
         }
     }
 
     fn codegen_switchint_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         discr: &mir::Operand<'tcx>,
-        switch_ty: Ty<'tcx>,
         targets: &SwitchTargets,
     ) {
-        let discr = self.codegen_operand(&mut bx, &discr);
-        // `switch_ty` is redundant, sanity-check that.
-        assert_eq!(discr.layout.ty, switch_ty);
+        let discr = self.codegen_operand(bx, &discr);
+        let switch_ty = discr.layout.ty;
         let mut target_iter = targets.iter();
         if target_iter.len() == 1 {
-            // If there are two targets (one conditional, one fallback), emit br instead of switch
+            // If there are two targets (one conditional, one fallback), emit `br` instead of
+            // `switch`.
             let (test_value, target) = target_iter.next().unwrap();
-            let lltrue = helper.llblock(self, target);
-            let llfalse = helper.llblock(self, targets.otherwise());
+            let lltrue = helper.llbb_with_cleanup(self, target);
+            let llfalse = helper.llbb_with_cleanup(self, targets.otherwise());
             if switch_ty == bx.tcx().types.bool {
-                // Don't generate trivial icmps when switching on bool
+                // Don't generate trivial icmps when switching on bool.
                 match test_value {
                     0 => bx.cond_br(discr.immediate(), llfalse, lltrue),
                     1 => bx.cond_br(discr.immediate(), lltrue, llfalse),
@@ -296,16 +328,40 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
                 bx.cond_br(cmp, lltrue, llfalse);
             }
+        } else if self.cx.sess().opts.optimize == OptLevel::No
+            && target_iter.len() == 2
+            && self.mir[targets.otherwise()].is_empty_unreachable()
+        {
+            // In unoptimized builds, if there are two normal targets and the `otherwise` target is
+            // an unreachable BB, emit `br` instead of `switch`. This leaves behind the unreachable
+            // BB, which will usually (but not always) be dead code.
+            //
+            // Why only in unoptimized builds?
+            // - In unoptimized builds LLVM uses FastISel which does not support switches, so it
+            //   must fall back to the to the slower SelectionDAG isel. Therefore, using `br` gives
+            //   significant compile time speedups for unoptimized builds.
+            // - In optimized builds the above doesn't hold, and using `br` sometimes results in
+            //   worse generated code because LLVM can no longer tell that the value being switched
+            //   on can only have two values, e.g. 0 and 1.
+            //
+            let (test_value1, target1) = target_iter.next().unwrap();
+            let (_test_value2, target2) = target_iter.next().unwrap();
+            let ll1 = helper.llbb_with_cleanup(self, target1);
+            let ll2 = helper.llbb_with_cleanup(self, target2);
+            let switch_llty = bx.immediate_backend_type(bx.layout_of(switch_ty));
+            let llval = bx.const_uint_big(switch_llty, test_value1);
+            let cmp = bx.icmp(IntPredicate::IntEQ, discr.immediate(), llval);
+            bx.cond_br(cmp, ll1, ll2);
         } else {
             bx.switch(
                 discr.immediate(),
-                helper.llblock(self, targets.otherwise()),
-                target_iter.map(|(value, target)| (value, helper.llblock(self, target))),
+                helper.llbb_with_cleanup(self, targets.otherwise()),
+                target_iter.map(|(value, target)| (value, helper.llbb_with_cleanup(self, target))),
             );
         }
     }
 
-    fn codegen_return_terminator(&mut self, mut bx: Bx) {
+    fn codegen_return_terminator(&mut self, bx: &mut Bx) {
         // Call `va_end` if this is the definition of a C-variadic function.
         if self.fn_abi.c_variadic {
             // The `VaList` "spoofed" argument is just after all the real arguments.
@@ -335,11 +391,11 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
 
             PassMode::Direct(_) | PassMode::Pair(..) => {
-                let op = self.codegen_consume(&mut bx, mir::Place::return_place().as_ref());
+                let op = self.codegen_consume(bx, mir::Place::return_place().as_ref());
                 if let Ref(llval, _, align) = op.val {
                     bx.load(bx.backend_type(op.layout), llval, align)
                 } else {
-                    op.immediate_or_packed_pair(&mut bx)
+                    op.immediate_or_packed_pair(bx)
                 }
             }
 
@@ -355,8 +411,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 };
                 let llslot = match op.val {
                     Immediate(_) | Pair(..) => {
-                        let scratch = PlaceRef::alloca(&mut bx, self.fn_abi.ret.layout);
-                        op.val.store(&mut bx, scratch);
+                        let scratch = PlaceRef::alloca(bx, self.fn_abi.ret.layout);
+                        op.val.store(bx, scratch);
                         scratch.llval
                     }
                     Ref(llval, _, align) => {
@@ -376,22 +432,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     fn codegen_drop_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         location: mir::Place<'tcx>,
         target: mir::BasicBlock,
         unwind: Option<mir::BasicBlock>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let ty = location.ty(self.mir, bx.tcx()).ty;
         let ty = self.monomorphize(ty);
         let drop_fn = Instance::resolve_drop_in_place(bx.tcx(), ty);
 
         if let ty::InstanceDef::DropGlue(_, None) = drop_fn.def {
             // we don't actually need to drop anything.
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
-        let place = self.codegen_place(&mut bx, location.as_ref());
+        let place = self.codegen_place(bx, location.as_ref());
         let (args1, args2);
         let mut args = if let Some(llextra) = place.llextra {
             args2 = [place.llval, llextra];
@@ -429,7 +485,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 args = &args[..1];
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, ty, &fn_abi),
+                        .get_fn(bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -474,7 +530,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 debug!("args' = {:?}", args);
                 (
                     meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_DROPINPLACE)
-                        .get_fn(&mut bx, vtable, ty, &fn_abi),
+                        .get_fn(bx, vtable, ty, &fn_abi),
                     fn_abi,
                 )
             }
@@ -482,29 +538,31 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
         helper.do_call(
             self,
-            &mut bx,
+            bx,
             fn_abi,
             drop_fn,
             args,
             Some((ReturnDest::Nothing, target)),
             unwind,
             &[],
-        );
+            mergeable_succ,
+        )
     }
 
     fn codegen_assert_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         cond: &mir::Operand<'tcx>,
         expected: bool,
         msg: &mir::AssertMessage<'tcx>,
         target: mir::BasicBlock,
         cleanup: Option<mir::BasicBlock>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let span = terminator.source_info.span;
-        let cond = self.codegen_operand(&mut bx, cond).immediate();
+        let cond = self.codegen_operand(bx, cond).immediate();
         let mut const_cond = bx.const_to_opt_u128(cond, false).map(|c| c == 1);
 
         // This case can currently arise only from functions marked
@@ -522,15 +580,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // Don't codegen the panic block if success if known.
         if const_cond == Some(expected) {
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
         // Pass the condition through llvm.expect for branch hinting.
         let cond = bx.expect(cond, expected);
 
         // Create the failure block and the conditional branch to it.
-        let lltarget = helper.llblock(self, target);
+        let lltarget = helper.llbb_with_cleanup(self, target);
         let panic_block = bx.append_sibling_block("panic");
         if expected {
             bx.cond_br(cond, lltarget, panic_block);
@@ -540,16 +597,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         // After this point, bx is the block for the call to panic.
         bx.switch_to_block(panic_block);
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        self.set_debug_loc(bx, terminator.source_info);
 
         // Get the location information.
-        let location = self.get_caller_location(&mut bx, terminator.source_info).immediate();
+        let location = self.get_caller_location(bx, terminator.source_info).immediate();
 
         // Put together the arguments to the panic entry point.
         let (lang_item, args) = match msg {
             AssertKind::BoundsCheck { ref len, ref index } => {
-                let len = self.codegen_operand(&mut bx, len).immediate();
-                let index = self.codegen_operand(&mut bx, index).immediate();
+                let len = self.codegen_operand(bx, len).immediate();
+                let index = self.codegen_operand(bx, index).immediate();
                 // It's `fn panic_bounds_check(index: usize, len: usize)`,
                 // and `#[track_caller]` adds an implicit third argument.
                 (LangItem::PanicBoundsCheck, vec![index, len, location])
@@ -562,29 +619,32 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             }
         };
 
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), lang_item);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), lang_item);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &args, None, cleanup, &[]);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &args, None, cleanup, &[], false);
+        assert_eq!(merging_succ, MergingSucc::False);
+        MergingSucc::False
     }
 
     fn codegen_abort_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
     ) {
         let span = terminator.source_info.span;
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        self.set_debug_loc(bx, terminator.source_info);
 
         // Obtain the panic entry point.
-        let (fn_abi, llfn) = common::build_langcall(&bx, Some(span), LangItem::PanicNoUnwind);
+        let (fn_abi, llfn) = common::build_langcall(bx, Some(span), LangItem::PanicNoUnwind);
 
         // Codegen the actual panic invoke/call.
-        helper.do_call(self, &mut bx, fn_abi, llfn, &[], None, None, &[]);
+        let merging_succ = helper.do_call(self, bx, fn_abi, llfn, &[], None, None, &[], false);
+        assert_eq!(merging_succ, MergingSucc::False);
     }
 
-    /// Returns `true` if this is indeed a panic intrinsic and codegen is done.
+    /// Returns `Some` if this is indeed a panic intrinsic and codegen is done.
     fn codegen_panic_intrinsic(
         &mut self,
         helper: &TerminatorCodegenHelper<'tcx>,
@@ -594,7 +654,8 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         source_info: mir::SourceInfo,
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
-    ) -> bool {
+        mergeable_succ: bool,
+    ) -> Option<MergingSucc> {
         // Emit a panic or a no-op for `assert_*` intrinsics.
         // These are intrinsics that compile to panics so that we can get a message
         // which mentions the offending type, even from a const context.
@@ -620,7 +681,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 ZeroValid => !bx.tcx().permits_zero_init(layout),
                 UninitValid => !bx.tcx().permits_uninit_init(layout),
             };
-            if do_panic {
+            Some(if do_panic {
                 let msg_str = with_no_visible_paths!({
                     with_no_trimmed_paths!({
                         if layout.abi.is_uninhabited() {
@@ -653,22 +714,22 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     target.as_ref().map(|bb| (ReturnDest::Nothing, *bb)),
                     cleanup,
                     &[],
-                );
+                    mergeable_succ,
+                )
             } else {
                 // a NOP
                 let target = target.unwrap();
-                helper.funclet_br(self, bx, target)
-            }
-            true
+                helper.funclet_br(self, bx, target, mergeable_succ)
+            })
         } else {
-            false
+            None
         }
     }
 
     fn codegen_call_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         func: &mir::Operand<'tcx>,
         args: &[mir::Operand<'tcx>],
@@ -676,20 +737,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         target: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         fn_span: Span,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let source_info = terminator.source_info;
         let span = source_info.span;
 
         // Create the callee. This is a fn ptr or zero-sized and hence a kind of scalar.
-        let callee = self.codegen_operand(&mut bx, func);
+        let callee = self.codegen_operand(bx, func);
 
         let (instance, mut llfn) = match *callee.layout.ty.kind() {
             ty::FnDef(def_id, substs) => (
                 Some(
-                    ty::Instance::resolve(bx.tcx(), ty::ParamEnv::reveal_all(), def_id, substs)
-                        .unwrap()
-                        .unwrap()
-                        .polymorphize(bx.tcx()),
+                    ty::Instance::expect_resolve(
+                        bx.tcx(),
+                        ty::ParamEnv::reveal_all(),
+                        def_id,
+                        substs,
+                    )
+                    .polymorphize(bx.tcx()),
                 ),
                 None,
             ),
@@ -701,8 +766,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         if let Some(ty::InstanceDef::DropGlue(_, None)) = def {
             // Empty drop glue; a no-op.
             let target = target.unwrap();
-            helper.funclet_br(self, &mut bx, target);
-            return;
+            return helper.funclet_br(self, bx, target, mergeable_succ);
         }
 
         // FIXME(eddyb) avoid computing this if possible, when `instance` is
@@ -729,9 +793,9 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         };
 
         if intrinsic == Some(sym::transmute) {
-            if let Some(target) = target {
-                self.codegen_transmute(&mut bx, &args[0], destination);
-                helper.funclet_br(self, &mut bx, target);
+            return if let Some(target) = target {
+                self.codegen_transmute(bx, &args[0], destination);
+                helper.funclet_br(self, bx, target, mergeable_succ)
             } else {
                 // If we are trying to transmute to an uninhabited type,
                 // it is likely there is no allotted destination. In fact,
@@ -741,20 +805,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 // it must be unreachable.
                 assert_eq!(fn_abi.ret.layout.abi, abi::Abi::Uninhabited);
                 bx.unreachable();
-            }
-            return;
+                MergingSucc::False
+            };
         }
 
-        if self.codegen_panic_intrinsic(
+        if let Some(merging_succ) = self.codegen_panic_intrinsic(
             &helper,
-            &mut bx,
+            bx,
             intrinsic,
             instance,
             source_info,
             target,
             cleanup,
+            mergeable_succ,
         ) {
-            return;
+            return merging_succ;
         }
 
         // The arguments we'll be passing. Plus one to account for outptr, if used.
@@ -764,23 +829,24 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         // Prepare the return value destination
         let ret_dest = if target.is_some() {
             let is_intrinsic = intrinsic.is_some();
-            self.make_return_dest(&mut bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
+            self.make_return_dest(bx, destination, &fn_abi.ret, &mut llargs, is_intrinsic)
         } else {
             ReturnDest::Nothing
         };
 
         if intrinsic == Some(sym::caller_location) {
-            if let Some(target) = target {
-                let location = self
-                    .get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
+            return if let Some(target) = target {
+                let location =
+                    self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
 
                 if let ReturnDest::IndirectOperand(tmp, _) = ret_dest {
-                    location.val.store(&mut bx, tmp);
+                    location.val.store(bx, tmp);
                 }
-                self.store_return(&mut bx, ret_dest, &fn_abi.ret, location.immediate());
-                helper.funclet_br(self, &mut bx, target);
-            }
-            return;
+                self.store_return(bx, ret_dest, &fn_abi.ret, location.immediate());
+                helper.funclet_br(self, bx, target, mergeable_succ)
+            } else {
+                MergingSucc::False
+            };
         }
 
         match intrinsic {
@@ -824,12 +890,12 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                             }
                         }
 
-                        self.codegen_operand(&mut bx, arg)
+                        self.codegen_operand(bx, arg)
                     })
                     .collect();
 
                 Self::codegen_intrinsic_call(
-                    &mut bx,
+                    bx,
                     *instance.as_ref().unwrap(),
                     &fn_abi,
                     &args,
@@ -838,16 +904,15 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 );
 
                 if let ReturnDest::IndirectOperand(dst, _) = ret_dest {
-                    self.store_return(&mut bx, ret_dest, &fn_abi.ret, dst.llval);
+                    self.store_return(bx, ret_dest, &fn_abi.ret, dst.llval);
                 }
 
-                if let Some(target) = target {
-                    helper.funclet_br(self, &mut bx, target);
+                return if let Some(target) = target {
+                    helper.funclet_br(self, bx, target, mergeable_succ)
                 } else {
                     bx.unreachable();
-                }
-
-                return;
+                    MergingSucc::False
+                };
             }
         }
 
@@ -861,7 +926,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         let mut copied_constant_arguments = vec![];
         'make_args: for (i, arg) in first_args.iter().enumerate() {
-            let mut op = self.codegen_operand(&mut bx, arg);
+            let mut op = self.codegen_operand(bx, arg);
 
             if let (0, Some(ty::InstanceDef::Virtual(_, idx))) = (i, def) {
                 match op.val {
@@ -871,12 +936,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // that is understood elsewhere in the compiler as a method on
                         // `dyn Trait`.
                         // To get a `*mut RcBox<Self>`, we just keep unwrapping newtypes until
-                        // we get a value of a built-in pointer type
+                        // we get a value of a built-in pointer type.
+                        //
+                        // This is also relevant for `Pin<&mut Self>`, where we need to peel the `Pin`.
                         'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
                             && !op.layout.ty.is_region_ptr()
                         {
                             for i in 0..op.layout.fields.count() {
-                                let field = op.extract_field(&mut bx, i);
+                                let field = op.extract_field(bx, i);
                                 if !field.layout.is_zst() {
                                     // we found the one non-zero-sized field that is allowed
                                     // now find *its* non-zero-sized field, or stop if it's a
@@ -893,7 +960,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         // data pointer and vtable. Look up the method in the vtable, and pass
                         // the data pointer as the first argument
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta,
                             op.layout.ty,
                             &fn_abi,
@@ -904,7 +971,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     Ref(data_ptr, Some(meta), _) => {
                         // by-value dynamic dispatch
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta,
                             op.layout.ty,
                             &fn_abi,
@@ -913,19 +980,35 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                         continue;
                     }
                     Immediate(_) => {
-                        let ty::Ref(_, ty, _) = op.layout.ty.kind() else {
-                            span_bug!(span, "can't codegen a virtual call on {:#?}", op);
-                        };
-                        if !ty.is_dyn_star() {
+                        // See comment above explaining why we peel these newtypes
+                        'descend_newtypes: while !op.layout.ty.is_unsafe_ptr()
+                            && !op.layout.ty.is_region_ptr()
+                        {
+                            for i in 0..op.layout.fields.count() {
+                                let field = op.extract_field(bx, i);
+                                if !field.layout.is_zst() {
+                                    // we found the one non-zero-sized field that is allowed
+                                    // now find *its* non-zero-sized field, or stop if it's a
+                                    // pointer
+                                    op = field;
+                                    continue 'descend_newtypes;
+                                }
+                            }
+
+                            span_bug!(span, "receiver has no non-zero-sized fields {:?}", op);
+                        }
+
+                        // Make sure that we've actually unwrapped the rcvr down
+                        // to a pointer or ref to `dyn* Trait`.
+                        if !op.layout.ty.builtin_deref(true).unwrap().ty.is_dyn_star() {
                             span_bug!(span, "can't codegen a virtual call on {:#?}", op);
                         }
-                        // FIXME(dyn-star): Make sure this is done on a &dyn* receiver
                         let place = op.deref(bx.cx());
-                        let data_ptr = place.project_field(&mut bx, 0);
-                        let meta_ptr = place.project_field(&mut bx, 1);
+                        let data_ptr = place.project_field(bx, 0);
+                        let meta_ptr = place.project_field(bx, 1);
                         let meta = bx.load_operand(meta_ptr);
                         llfn = Some(meth::VirtualIndex::from_index(idx).get_fn(
-                            &mut bx,
+                            bx,
                             meta.immediate(),
                             op.layout.ty,
                             &fn_abi,
@@ -944,24 +1027,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             match (arg, op.val) {
                 (&mir::Operand::Copy(_), Ref(_, None, _))
                 | (&mir::Operand::Constant(_), Ref(_, None, _)) => {
-                    let tmp = PlaceRef::alloca(&mut bx, op.layout);
+                    let tmp = PlaceRef::alloca(bx, op.layout);
                     bx.lifetime_start(tmp.llval, tmp.layout.size);
-                    op.val.store(&mut bx, tmp);
+                    op.val.store(bx, tmp);
                     op.val = Ref(tmp.llval, None, tmp.align);
                     copied_constant_arguments.push(tmp);
                 }
                 _ => {}
             }
 
-            self.codegen_argument(&mut bx, op, &mut llargs, &fn_abi.args[i]);
+            self.codegen_argument(bx, op, &mut llargs, &fn_abi.args[i]);
         }
         let num_untupled = untuple.map(|tup| {
-            self.codegen_arguments_untupled(
-                &mut bx,
-                tup,
-                &mut llargs,
-                &fn_abi.args[first_args.len()..],
-            )
+            self.codegen_arguments_untupled(bx, tup, &mut llargs, &fn_abi.args[first_args.len()..])
         });
 
         let needs_location =
@@ -981,14 +1059,14 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 fn_abi,
             );
             let location =
-                self.get_caller_location(&mut bx, mir::SourceInfo { span: fn_span, ..source_info });
+                self.get_caller_location(bx, mir::SourceInfo { span: fn_span, ..source_info });
             debug!(
                 "codegen_call_terminator({:?}): location={:?} (fn_span {:?})",
                 terminator, location, fn_span
             );
 
             let last_arg = fn_abi.args.last().unwrap();
-            self.codegen_argument(&mut bx, location, &mut llargs, last_arg);
+            self.codegen_argument(bx, location, &mut llargs, last_arg);
         }
 
         let (is_indirect_call, fn_ptr) = match (llfn, instance) {
@@ -1013,40 +1091,43 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             bx.cond_br(cond, bb_pass, bb_fail);
 
             bx.switch_to_block(bb_pass);
-            helper.do_call(
+            let merging_succ = helper.do_call(
                 self,
-                &mut bx,
+                bx,
                 fn_abi,
                 fn_ptr,
                 &llargs,
                 target.as_ref().map(|&target| (ret_dest, target)),
                 cleanup,
                 &copied_constant_arguments,
+                false,
             );
+            assert_eq!(merging_succ, MergingSucc::False);
 
             bx.switch_to_block(bb_fail);
             bx.abort();
             bx.unreachable();
 
-            return;
+            return MergingSucc::False;
         }
 
         helper.do_call(
             self,
-            &mut bx,
+            bx,
             fn_abi,
             fn_ptr,
             &llargs,
             target.as_ref().map(|&target| (ret_dest, target)),
             cleanup,
             &copied_constant_arguments,
-        );
+            mergeable_succ,
+        )
     }
 
     fn codegen_asm_terminator(
         &mut self,
         helper: TerminatorCodegenHelper<'tcx>,
-        mut bx: Bx,
+        bx: &mut Bx,
         terminator: &mir::Terminator<'tcx>,
         template: &[ast::InlineAsmTemplatePiece],
         operands: &[mir::InlineAsmOperand<'tcx>],
@@ -1055,24 +1136,25 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         destination: Option<mir::BasicBlock>,
         cleanup: Option<mir::BasicBlock>,
         instance: Instance<'_>,
-    ) {
+        mergeable_succ: bool,
+    ) -> MergingSucc {
         let span = terminator.source_info.span;
 
         let operands: Vec<_> = operands
             .iter()
             .map(|op| match *op {
                 mir::InlineAsmOperand::In { reg, ref value } => {
-                    let value = self.codegen_operand(&mut bx, value);
+                    let value = self.codegen_operand(bx, value);
                     InlineAsmOperandRef::In { reg, value }
                 }
                 mir::InlineAsmOperand::Out { reg, late, ref place } => {
-                    let place = place.map(|place| self.codegen_place(&mut bx, place.as_ref()));
+                    let place = place.map(|place| self.codegen_place(bx, place.as_ref()));
                     InlineAsmOperandRef::Out { reg, late, place }
                 }
                 mir::InlineAsmOperand::InOut { reg, late, ref in_value, ref out_place } => {
-                    let in_value = self.codegen_operand(&mut bx, in_value);
+                    let in_value = self.codegen_operand(bx, in_value);
                     let out_place =
-                        out_place.map(|out_place| self.codegen_place(&mut bx, out_place.as_ref()));
+                        out_place.map(|out_place| self.codegen_place(bx, out_place.as_ref()));
                     InlineAsmOperandRef::InOut { reg, late, in_value, out_place }
                 }
                 mir::InlineAsmOperand::Const { ref value } => {
@@ -1110,7 +1192,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
 
         helper.do_inlineasm(
             self,
-            &mut bx,
+            bx,
             template,
             &operands,
             options,
@@ -1118,71 +1200,128 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             destination,
             cleanup,
             instance,
-        );
+            mergeable_succ,
+        )
     }
 }
 
 impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
-    pub fn codegen_block(&mut self, bb: mir::BasicBlock) {
-        let llbb = self.llbb(bb);
-        let mut bx = Bx::build(self.cx, llbb);
+    pub fn codegen_block(&mut self, mut bb: mir::BasicBlock) {
+        let llbb = match self.try_llbb(bb) {
+            Some(llbb) => llbb,
+            None => return,
+        };
+        let bx = &mut Bx::build(self.cx, llbb);
         let mir = self.mir;
-        let data = &mir[bb];
 
-        debug!("codegen_block({:?}={:?})", bb, data);
+        // MIR basic blocks stop at any function call. This may not be the case
+        // for the backend's basic blocks, in which case we might be able to
+        // combine multiple MIR basic blocks into a single backend basic block.
+        loop {
+            let data = &mir[bb];
 
-        for statement in &data.statements {
-            bx = self.codegen_statement(bx, statement);
+            debug!("codegen_block({:?}={:?})", bb, data);
+
+            for statement in &data.statements {
+                self.codegen_statement(bx, statement);
+            }
+
+            let merging_succ = self.codegen_terminator(bx, bb, data.terminator());
+            if let MergingSucc::False = merging_succ {
+                break;
+            }
+
+            // We are merging the successor into the produced backend basic
+            // block. Record that the successor should be skipped when it is
+            // reached.
+            //
+            // Note: we must not have already generated code for the successor.
+            // This is implicitly ensured by the reverse postorder traversal,
+            // and the assertion explicitly guarantees that.
+            let mut successors = data.terminator().successors();
+            let succ = successors.next().unwrap();
+            assert!(matches!(self.cached_llbbs[succ], CachedLlbb::None));
+            self.cached_llbbs[succ] = CachedLlbb::Skip;
+            bb = succ;
         }
-
-        self.codegen_terminator(bx, bb, data.terminator());
     }
 
     fn codegen_terminator(
         &mut self,
-        mut bx: Bx,
+        bx: &mut Bx,
         bb: mir::BasicBlock,
         terminator: &'tcx mir::Terminator<'tcx>,
-    ) {
+    ) -> MergingSucc {
         debug!("codegen_terminator: {:?}", terminator);
 
         // Create the cleanup bundle, if needed.
         let funclet_bb = self.cleanup_kinds[bb].funclet_bb(bb);
         let helper = TerminatorCodegenHelper { bb, terminator, funclet_bb };
 
-        self.set_debug_loc(&mut bx, terminator.source_info);
+        let mergeable_succ = || {
+            // Note: any call to `switch_to_block` will invalidate a `true` value
+            // of `mergeable_succ`.
+            let mut successors = terminator.successors();
+            if let Some(succ) = successors.next()
+                && successors.next().is_none()
+                && let &[succ_pred] = self.mir.basic_blocks.predecessors()[succ].as_slice()
+            {
+                // bb has a single successor, and bb is its only predecessor. This
+                // makes it a candidate for merging.
+                assert_eq!(succ_pred, bb);
+                true
+            } else {
+                false
+            }
+        };
+
+        self.set_debug_loc(bx, terminator.source_info);
         match terminator.kind {
-            mir::TerminatorKind::Resume => self.codegen_resume_terminator(helper, bx),
+            mir::TerminatorKind::Resume => {
+                self.codegen_resume_terminator(helper, bx);
+                MergingSucc::False
+            }
 
             mir::TerminatorKind::Abort => {
                 self.codegen_abort_terminator(helper, bx, terminator);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Goto { target } => {
-                helper.funclet_br(self, &mut bx, target);
+                helper.funclet_br(self, bx, target, mergeable_succ())
             }
 
-            mir::TerminatorKind::SwitchInt { ref discr, switch_ty, ref targets } => {
-                self.codegen_switchint_terminator(helper, bx, discr, switch_ty, targets);
+            mir::TerminatorKind::SwitchInt { ref discr, ref targets } => {
+                self.codegen_switchint_terminator(helper, bx, discr, targets);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Return => {
                 self.codegen_return_terminator(bx);
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Unreachable => {
                 bx.unreachable();
+                MergingSucc::False
             }
 
             mir::TerminatorKind::Drop { place, target, unwind } => {
-                self.codegen_drop_terminator(helper, bx, place, target, unwind);
+                self.codegen_drop_terminator(helper, bx, place, target, unwind, mergeable_succ())
             }
 
-            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => {
-                self.codegen_assert_terminator(
-                    helper, bx, terminator, cond, expected, msg, target, cleanup,
-                );
-            }
+            mir::TerminatorKind::Assert { ref cond, expected, ref msg, target, cleanup } => self
+                .codegen_assert_terminator(
+                    helper,
+                    bx,
+                    terminator,
+                    cond,
+                    expected,
+                    msg,
+                    target,
+                    cleanup,
+                    mergeable_succ(),
+                ),
 
             mir::TerminatorKind::DropAndReplace { .. } => {
                 bug!("undesugared DropAndReplace in codegen: {:?}", terminator);
@@ -1196,19 +1335,18 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 cleanup,
                 from_hir_call: _,
                 fn_span,
-            } => {
-                self.codegen_call_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    func,
-                    args,
-                    destination,
-                    target,
-                    cleanup,
-                    fn_span,
-                );
-            }
+            } => self.codegen_call_terminator(
+                helper,
+                bx,
+                terminator,
+                func,
+                args,
+                destination,
+                target,
+                cleanup,
+                fn_span,
+                mergeable_succ(),
+            ),
             mir::TerminatorKind::GeneratorDrop | mir::TerminatorKind::Yield { .. } => {
                 bug!("generator ops in codegen")
             }
@@ -1223,20 +1361,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 line_spans,
                 destination,
                 cleanup,
-            } => {
-                self.codegen_asm_terminator(
-                    helper,
-                    bx,
-                    terminator,
-                    template,
-                    operands,
-                    options,
-                    line_spans,
-                    destination,
-                    cleanup,
-                    self.instance,
-                );
-            }
+            } => self.codegen_asm_terminator(
+                helper,
+                bx,
+                terminator,
+                template,
+                operands,
+                options,
+                line_spans,
+                destination,
+                cleanup,
+                self.instance,
+                mergeable_succ(),
+            ),
         }
     }
 
@@ -1459,20 +1596,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                 //          bar();
                 //      }
                 Some(&mir::TerminatorKind::Abort) => {
-                    let cs_bb =
+                    let cs_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cs_funclet{:?}", bb));
-                    let cp_bb =
+                    let cp_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("cp_funclet{:?}", bb));
-                    ret_llbb = cs_bb;
+                    ret_llbb = cs_llbb;
 
-                    let mut cs_bx = Bx::build(self.cx, cs_bb);
-                    let cs = cs_bx.catch_switch(None, None, &[cp_bb]);
+                    let mut cs_bx = Bx::build(self.cx, cs_llbb);
+                    let cs = cs_bx.catch_switch(None, None, &[cp_llbb]);
 
                     // The "null" here is actually a RTTI type descriptor for the
                     // C++ personality function, but `catch (...)` has no type so
                     // it's null. The 64 here is actually a bitfield which
                     // represents that this is a catch-all block.
-                    let mut cp_bx = Bx::build(self.cx, cp_bb);
+                    let mut cp_bx = Bx::build(self.cx, cp_llbb);
                     let null = cp_bx.const_null(
                         cp_bx.type_i8p_ext(cp_bx.cx().data_layout().instruction_address_space),
                     );
@@ -1481,10 +1618,10 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     cp_bx.br(llbb);
                 }
                 _ => {
-                    let cleanup_bb =
+                    let cleanup_llbb =
                         Bx::append_block(self.cx, self.llfn, &format!("funclet_{:?}", bb));
-                    ret_llbb = cleanup_bb;
-                    let mut cleanup_bx = Bx::build(self.cx, cleanup_bb);
+                    ret_llbb = cleanup_llbb;
+                    let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
                     funclet = cleanup_bx.cleanup_pad(None, &[]);
                     cleanup_bx.br(llbb);
                 }
@@ -1492,25 +1629,19 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.funclets[bb] = Some(funclet);
             ret_llbb
         } else {
-            let bb = Bx::append_block(self.cx, self.llfn, "cleanup");
-            let mut bx = Bx::build(self.cx, bb);
+            let cleanup_llbb = Bx::append_block(self.cx, self.llfn, "cleanup");
+            let mut cleanup_bx = Bx::build(self.cx, cleanup_llbb);
 
             let llpersonality = self.cx.eh_personality();
-            let llretty = self.landing_pad_type();
-            let lp = bx.cleanup_landing_pad(llretty, llpersonality);
+            let (exn0, exn1) = cleanup_bx.cleanup_landing_pad(llpersonality);
 
-            let slot = self.get_personality_slot(&mut bx);
-            slot.storage_live(&mut bx);
-            Pair(bx.extract_value(lp, 0), bx.extract_value(lp, 1)).store(&mut bx, slot);
+            let slot = self.get_personality_slot(&mut cleanup_bx);
+            slot.storage_live(&mut cleanup_bx);
+            Pair(exn0, exn1).store(&mut cleanup_bx, slot);
 
-            bx.br(llbb);
-            bx.llbb()
+            cleanup_bx.br(llbb);
+            cleanup_llbb
         }
-    }
-
-    fn landing_pad_type(&self) -> Bx::Type {
-        let cx = self.cx;
-        cx.type_struct(&[cx.type_i8p(), cx.type_i32()], false)
     }
 
     fn unreachable_block(&mut self) -> Bx::BasicBlock {
@@ -1532,8 +1663,7 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
             self.set_debug_loc(&mut bx, mir::SourceInfo::outermost(self.mir.span));
 
             let llpersonality = self.cx.eh_personality();
-            let llretty = self.landing_pad_type();
-            bx.cleanup_landing_pad(llretty, llpersonality);
+            bx.cleanup_landing_pad(llpersonality);
 
             let (fn_abi, fn_ptr) = common::build_langcall(&bx, None, LangItem::PanicNoUnwind);
             let fn_ty = bx.fn_decl_backend_type(&fn_abi);
@@ -1553,12 +1683,21 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
     // FIXME(eddyb) rename `llbb` and other `ll`-prefixed things to use a
     // more backend-agnostic prefix such as `cg` (i.e. this would be `cgbb`).
     pub fn llbb(&mut self, bb: mir::BasicBlock) -> Bx::BasicBlock {
-        self.cached_llbbs[bb].unwrap_or_else(|| {
-            // FIXME(eddyb) only name the block if `fewer_names` is `false`.
-            let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
-            self.cached_llbbs[bb] = Some(llbb);
-            llbb
-        })
+        self.try_llbb(bb).unwrap()
+    }
+
+    /// Like `llbb`, but may fail if the basic block should be skipped.
+    pub fn try_llbb(&mut self, bb: mir::BasicBlock) -> Option<Bx::BasicBlock> {
+        match self.cached_llbbs[bb] {
+            CachedLlbb::None => {
+                // FIXME(eddyb) only name the block if `fewer_names` is `false`.
+                let llbb = Bx::append_block(self.cx, self.llfn, &format!("{:?}", bb));
+                self.cached_llbbs[bb] = CachedLlbb::Some(llbb);
+                Some(llbb)
+            }
+            CachedLlbb::Some(llbb) => Some(llbb),
+            CachedLlbb::Skip => None,
+        }
     }
 
     fn make_return_dest(
@@ -1663,15 +1802,20 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
         match (src.layout.abi, dst.layout.abi) {
             (abi::Abi::Scalar(src_scalar), abi::Abi::Scalar(dst_scalar)) => {
                 // HACK(eddyb) LLVM doesn't like `bitcast`s between pointers and non-pointers.
-                if (src_scalar.primitive() == abi::Pointer)
-                    == (dst_scalar.primitive() == abi::Pointer)
-                {
+                let src_is_ptr = src_scalar.primitive() == abi::Pointer;
+                let dst_is_ptr = dst_scalar.primitive() == abi::Pointer;
+                if src_is_ptr == dst_is_ptr {
                     assert_eq!(src.layout.size, dst.layout.size);
 
                     // NOTE(eddyb) the `from_immediate` and `to_immediate_scalar`
                     // conversions allow handling `bool`s the same as `u8`s.
                     let src = bx.from_immediate(src.immediate());
-                    let src_as_dst = bx.bitcast(src, bx.backend_type(dst.layout));
+                    // LLVM also doesn't like `bitcast`s between pointers in different address spaces.
+                    let src_as_dst = if src_is_ptr {
+                        bx.pointercast(src, bx.backend_type(dst.layout))
+                    } else {
+                        bx.bitcast(src, bx.backend_type(dst.layout))
+                    };
                     Immediate(bx.to_immediate_scalar(src_as_dst, dst_scalar)).store(bx, dst);
                     return;
                 }

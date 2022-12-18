@@ -336,15 +336,17 @@ impl<'tcx> CanonicalVarValues<'tcx> {
                         tcx.mk_ty(ty::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i).into())).into()
                     }
                     GenericArgKind::Lifetime(..) => {
-                        let br =
-                            ty::BoundRegion { var: ty::BoundVar::from_u32(i), kind: ty::BrAnon(i) };
+                        let br = ty::BoundRegion {
+                            var: ty::BoundVar::from_u32(i),
+                            kind: ty::BrAnon(i, None),
+                        };
                         tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
                     }
                     GenericArgKind::Const(ct) => tcx
-                        .mk_const(ty::ConstS {
-                            ty: ct.ty(),
-                            kind: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
-                        })
+                        .mk_const(
+                            ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from_u32(i)),
+                            ct.ty(),
+                        )
                         .into(),
                 })
                 .collect(),

@@ -1,3 +1,11 @@
+#![deny(rustc::untranslatable_diagnostic)]
+
+use crate::errors::{
+    ArgumentNotAttributes, AttrNoArguments, AttributeMetaItem, AttributeSingleWord,
+    AttributesWrongForm, CannotBeNameOfMacro, ExpectedCommaInList, HelperAttributeNameInvalid,
+    MacroBodyStability, MacroConstStability, NotAMetaItem, OnlyOneArgument, OnlyOneWord,
+    ResolveRelativePath, TakesNoArguments,
+};
 use crate::expand::{self, AstFragment, Invocation};
 use crate::module::DirOwnership;
 
@@ -16,16 +24,16 @@ use rustc_errors::{
 use rustc_lint_defs::builtin::PROC_MACRO_BACK_COMPAT;
 use rustc_lint_defs::{BufferedEarlyLint, BuiltinLintDiagnostics};
 use rustc_parse::{self, parser, MACRO_ARGUMENTS};
+use rustc_session::errors::report_lit_error;
 use rustc_session::{parse::ParseSess, Limit, Session};
 use rustc_span::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::{AstPass, ExpnData, ExpnKind, LocalExpnId};
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{FileName, Span, DUMMY_SP};
+use rustc_span::{BytePos, FileName, RealFileName, Span, DUMMY_SP};
 use smallvec::{smallvec, SmallVec};
 
-use std::default::Default;
 use std::iter;
 use std::path::PathBuf;
 use std::rc::Rc;
@@ -242,14 +250,15 @@ pub enum ExpandResult<T, U> {
     Retry(U),
 }
 
-// `meta_item` is the attribute, and `item` is the item being modified.
 pub trait MultiItemModifier {
+    /// `meta_item` is the attribute, and `item` is the item being modified.
     fn expand(
         &self,
         ecx: &mut ExtCtxt<'_>,
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable>;
 }
 
@@ -263,6 +272,7 @@ where
         span: Span,
         meta_item: &ast::MetaItem,
         item: Annotatable,
+        _is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         ExpandResult::Ready(self(ecx, span, meta_item, item))
     }
@@ -505,7 +515,7 @@ impl MacResult for MacEager {
             return Some(p);
         }
         if let Some(e) = self.expr {
-            if let ast::ExprKind::Lit(_) = e.kind {
+            if matches!(e.kind, ast::ExprKind::Lit(_) | ast::ExprKind::IncludedBytes(_)) {
                 return Some(P(ast::Pat {
                     id: ast::DUMMY_NODE_ID,
                     span: e.span,
@@ -674,8 +684,13 @@ pub enum SyntaxExtensionKind {
 
     /// A token-based derive macro.
     Derive(
-        /// An expander with signature TokenStream -> TokenStream (not yet).
+        /// An expander with signature TokenStream -> TokenStream.
         /// The produced TokenSteam is appended to the input TokenSteam.
+        ///
+        /// FIXME: The text above describes how this should work. Currently it
+        /// is handled identically to `LegacyDerive`. It should be migrated to
+        /// a token-based representation like `Bang` and `Attr`, instead of
+        /// using `MultiItemModifier`.
         Box<dyn MultiItemModifier + sync::Sync + sync::Send>,
     ),
 
@@ -781,26 +796,16 @@ impl SyntaxExtension {
             .unwrap_or_else(|| (None, helper_attrs));
         let (stability, const_stability, body_stability) = attr::find_stability(&sess, attrs, span);
         if let Some((_, sp)) = const_stability {
-            sess.parse_sess
-                .span_diagnostic
-                .struct_span_err(sp, "macros cannot have const stability attributes")
-                .span_label(sp, "invalid const stability attribute")
-                .span_label(
-                    sess.source_map().guess_head_span(span),
-                    "const stability attribute affects this macro",
-                )
-                .emit();
+            sess.emit_err(MacroConstStability {
+                span: sp,
+                head_span: sess.source_map().guess_head_span(span),
+            });
         }
         if let Some((_, sp)) = body_stability {
-            sess.parse_sess
-                .span_diagnostic
-                .struct_span_err(sp, "macros cannot have body stability attributes")
-                .span_label(sp, "invalid body stability attribute")
-                .span_label(
-                    sess.source_map().guess_head_span(span),
-                    "body stability attribute affects this macro",
-                )
-                .emit();
+            sess.emit_err(MacroBodyStability {
+                span: sp,
+                head_span: sess.source_map().guess_head_span(span),
+            });
         }
 
         SyntaxExtension {
@@ -873,7 +878,7 @@ impl SyntaxExtension {
 /// Error type that denotes indeterminacy.
 pub struct Indeterminate;
 
-pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>)>;
+pub type DeriveResolutions = Vec<(ast::Path, Annotatable, Option<Lrc<SyntaxExtension>>, bool)>;
 
 pub trait ResolverExpand {
     fn next_node_id(&mut self) -> NodeId;
@@ -952,7 +957,7 @@ pub trait LintStoreExpand {
         node_id: NodeId,
         attrs: &[Attribute],
         items: &[P<Item>],
-        name: &str,
+        name: Symbol,
     );
 }
 
@@ -1192,13 +1197,11 @@ pub fn resolve_path(
                 .expect("attempting to resolve a file path in an external file"),
             FileName::DocTest(path, _) => path,
             other => {
-                return Err(parse_sess.span_diagnostic.struct_span_err(
+                return Err(ResolveRelativePath {
                     span,
-                    &format!(
-                        "cannot resolve relative path in non-file source `{}`",
-                        parse_sess.source_map().filename_for_diagnostics(&other)
-                    ),
-                ));
+                    path: parse_sess.source_map().filename_for_diagnostics(&other).to_string(),
+                }
+                .into_diagnostic(&parse_sess.span_diagnostic));
             }
         };
         result.pop();
@@ -1214,6 +1217,8 @@ pub fn resolve_path(
 /// The returned bool indicates whether an applicable suggestion has already been
 /// added to the diagnostic to avoid emitting multiple suggestions. `Err(None)`
 /// indicates that an ast error was encountered.
+// FIXME(Nilstrieb) Make this function setup translatable
+#[allow(rustc::untranslatable_diagnostic)]
 pub fn expr_to_spanned_string<'a>(
     cx: &'a mut ExtCtxt<'_>,
     expr: P<ast::Expr>,
@@ -1224,20 +1229,25 @@ pub fn expr_to_spanned_string<'a>(
     let expr = cx.expander().fully_expand_fragment(AstFragment::Expr(expr)).make_expr();
 
     Err(match expr.kind {
-        ast::ExprKind::Lit(ref l) => match l.kind {
-            ast::LitKind::Str(s, style) => return Ok((s, style, expr.span)),
-            ast::LitKind::ByteStr(_) => {
-                let mut err = cx.struct_span_err(l.span, err_msg);
+        ast::ExprKind::Lit(token_lit) => match ast::LitKind::from_token_lit(token_lit) {
+            Ok(ast::LitKind::Str(s, style)) => return Ok((s, style, expr.span)),
+            Ok(ast::LitKind::ByteStr(..)) => {
+                let mut err = cx.struct_span_err(expr.span, err_msg);
+                let span = expr.span.shrink_to_lo();
                 err.span_suggestion(
-                    expr.span.shrink_to_lo(),
+                    span.with_hi(span.lo() + BytePos(1)),
                     "consider removing the leading `b`",
                     "",
                     Applicability::MaybeIncorrect,
                 );
                 Some((err, true))
             }
-            ast::LitKind::Err => None,
-            _ => Some((cx.struct_span_err(l.span, err_msg), false)),
+            Ok(ast::LitKind::Err) => None,
+            Err(err) => {
+                report_lit_error(&cx.sess.parse_sess, err, token_lit, expr.span);
+                None
+            }
+            _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
         },
         ast::ExprKind::Err => None,
         _ => Some((cx.struct_span_err(expr.span, err_msg), false)),
@@ -1267,9 +1277,9 @@ pub fn expr_to_string(
 /// compilation should call
 /// `cx.parse_sess.span_diagnostic.abort_if_errors()` (this should be
 /// done as rarely as possible).
-pub fn check_zero_tts(cx: &ExtCtxt<'_>, sp: Span, tts: TokenStream, name: &str) {
+pub fn check_zero_tts(cx: &ExtCtxt<'_>, span: Span, tts: TokenStream, name: &str) {
     if !tts.is_empty() {
-        cx.span_err(sp, &format!("{} takes no arguments", name));
+        cx.emit_err(TakesNoArguments { span, name });
     }
 }
 
@@ -1291,31 +1301,27 @@ pub fn parse_expr(p: &mut parser::Parser<'_>) -> Option<P<ast::Expr>> {
 /// expect exactly one string literal, or emit an error and return `None`.
 pub fn get_single_str_from_tts(
     cx: &mut ExtCtxt<'_>,
-    sp: Span,
+    span: Span,
     tts: TokenStream,
     name: &str,
 ) -> Option<Symbol> {
     let mut p = cx.new_parser_from_tts(tts);
     if p.token == token::Eof {
-        cx.span_err(sp, &format!("{} takes 1 argument", name));
+        cx.emit_err(OnlyOneArgument { span, name });
         return None;
     }
     let ret = parse_expr(&mut p)?;
     let _ = p.eat(&token::Comma);
 
     if p.token != token::Eof {
-        cx.span_err(sp, &format!("{} takes 1 argument", name));
+        cx.emit_err(OnlyOneArgument { span, name });
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| s)
 }
 
 /// Extracts comma-separated expressions from `tts`.
 /// On error, emit it, and return `None`.
-pub fn get_exprs_from_tts(
-    cx: &mut ExtCtxt<'_>,
-    sp: Span,
-    tts: TokenStream,
-) -> Option<Vec<P<ast::Expr>>> {
+pub fn get_exprs_from_tts(cx: &mut ExtCtxt<'_>, tts: TokenStream) -> Option<Vec<P<ast::Expr>>> {
     let mut p = cx.new_parser_from_tts(tts);
     let mut es = Vec::new();
     while p.token != token::Eof {
@@ -1330,7 +1336,7 @@ pub fn get_exprs_from_tts(
             continue;
         }
         if p.token != token::Eof {
-            cx.span_err(sp, "expected token: `,`");
+            cx.emit_err(ExpectedCommaInList { span: p.token.span });
             return None;
         }
     }
@@ -1340,64 +1346,58 @@ pub fn get_exprs_from_tts(
 pub fn parse_macro_name_and_helper_attrs(
     diag: &rustc_errors::Handler,
     attr: &Attribute,
-    descr: &str,
+    macro_type: &str,
 ) -> Option<(Symbol, Vec<Symbol>)> {
     // Once we've located the `#[proc_macro_derive]` attribute, verify
     // that it's of the form `#[proc_macro_derive(Foo)]` or
     // `#[proc_macro_derive(Foo, attributes(A, ..))]`
     let list = attr.meta_item_list()?;
     if list.len() != 1 && list.len() != 2 {
-        diag.span_err(attr.span, "attribute must have either one or two arguments");
+        diag.emit_err(AttrNoArguments { span: attr.span });
         return None;
     }
     let Some(trait_attr) = list[0].meta_item() else {
-        diag.span_err(list[0].span(), "not a meta item");
+        diag.emit_err(NotAMetaItem {span: list[0].span()});
         return None;
     };
     let trait_ident = match trait_attr.ident() {
         Some(trait_ident) if trait_attr.is_word() => trait_ident,
         _ => {
-            diag.span_err(trait_attr.span, "must only be one word");
+            diag.emit_err(OnlyOneWord { span: trait_attr.span });
             return None;
         }
     };
 
     if !trait_ident.name.can_be_raw() {
-        diag.span_err(
-            trait_attr.span,
-            &format!("`{}` cannot be a name of {} macro", trait_ident, descr),
-        );
+        diag.emit_err(CannotBeNameOfMacro { span: trait_attr.span, trait_ident, macro_type });
     }
 
     let attributes_attr = list.get(1);
     let proc_attrs: Vec<_> = if let Some(attr) = attributes_attr {
         if !attr.has_name(sym::attributes) {
-            diag.span_err(attr.span(), "second argument must be `attributes`");
+            diag.emit_err(ArgumentNotAttributes { span: attr.span() });
         }
         attr.meta_item_list()
             .unwrap_or_else(|| {
-                diag.span_err(attr.span(), "attribute must be of form: `attributes(foo, bar)`");
+                diag.emit_err(AttributesWrongForm { span: attr.span() });
                 &[]
             })
             .iter()
             .filter_map(|attr| {
                 let Some(attr) = attr.meta_item() else {
-                    diag.span_err(attr.span(), "not a meta item");
+                    diag.emit_err(AttributeMetaItem { span: attr.span() });
                     return None;
                 };
 
                 let ident = match attr.ident() {
                     Some(ident) if attr.is_word() => ident,
                     _ => {
-                        diag.span_err(attr.span, "must only be one word");
+                        diag.emit_err(AttributeSingleWord { span: attr.span });
                         return None;
                     }
                 };
                 if !ident.name.can_be_raw() {
-                    diag.span_err(
-                        attr.span,
-                        &format!("`{}` cannot be a name of derive helper attribute", ident),
-                    );
+                    diag.emit_err(HelperAttributeNameInvalid { span: attr.span, name: ident });
                 }
 
                 Some(ident.name)
@@ -1422,16 +1422,40 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
         if let ast::ItemKind::Enum(enum_def, _) = &item.kind {
             if let [variant] = &*enum_def.variants {
                 if variant.ident.name == sym::Input {
-                    sess.buffer_lint_with_diagnostic(
-                        &PROC_MACRO_BACK_COMPAT,
-                        item.ident.span,
-                        ast::CRATE_NODE_ID,
-                        "using `procedural-masquerade` crate",
-                        BuiltinLintDiagnostics::ProcMacroBackCompat(
-                        "The `procedural-masquerade` crate has been unnecessary since Rust 1.30.0. \
-                        Versions of this crate below 0.1.7 will eventually stop compiling.".to_string())
-                    );
-                    return true;
+                    let filename = sess.source_map().span_to_filename(item.ident.span);
+                    if let FileName::Real(RealFileName::LocalPath(path)) = filename {
+                        if let Some(c) = path
+                            .components()
+                            .flat_map(|c| c.as_os_str().to_str())
+                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
+                        {
+                            let crate_matches = if c.starts_with("allsorts-rental") {
+                                true
+                            } else {
+                                let mut version = c.trim_start_matches("rental-").split('.');
+                                version.next() == Some("0")
+                                    && version.next() == Some("5")
+                                    && version
+                                        .next()
+                                        .and_then(|c| c.parse::<u32>().ok())
+                                        .map_or(false, |v| v < 6)
+                            };
+
+                            if crate_matches {
+                                sess.buffer_lint_with_diagnostic(
+                                        &PROC_MACRO_BACK_COMPAT,
+                                        item.ident.span,
+                                        ast::CRATE_NODE_ID,
+                                        "using an old version of `rental`",
+                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
+                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
+                                        )
+                                    );
+                                return true;
+                            }
+                        }
+                    }
                 }
             }
         }

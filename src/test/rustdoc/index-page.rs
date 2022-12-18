@@ -5,7 +5,7 @@
 #![crate_name = "foo"]
 
 // @has foo/../index.html
-// @has - '//span[@class="in-band"]' 'List of all crates'
+// @has - '//h1[@class="fqn"]' 'List of all crates'
 // @has - '//ul[@class="all-items"]//a[@href="foo/index.html"]' 'foo'
 // @has - '//ul[@class="all-items"]//a[@href="all_item_types/index.html"]' 'all_item_types'
 pub struct Foo;

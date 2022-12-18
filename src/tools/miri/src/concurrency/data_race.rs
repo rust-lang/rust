@@ -49,7 +49,7 @@ use std::{
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
-use rustc_middle::{mir, ty::layout::TyAndLayout};
+use rustc_middle::mir;
 use rustc_target::abi::{Align, Size};
 
 use crate::*;
@@ -59,7 +59,7 @@ use super::{
     weak_memory::EvalContextExt as _,
 };
 
-pub type AllocExtra = VClockAlloc;
+pub type AllocState = VClockAlloc;
 
 /// Valid atomic read-write orderings, alias of atomic::Ordering (not non-exhaustive).
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
@@ -158,7 +158,7 @@ impl ThreadClockSet {
 
 /// Error returned by finding a data race
 /// should be elaborated upon.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct DataRace;
 
 /// Externally stored memory cell clocks
@@ -440,33 +440,6 @@ impl MemoryCellClocks {
 /// Evaluation context extensions.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
-    /// Atomic variant of read_scalar_at_offset.
-    fn read_scalar_at_offset_atomic(
-        &self,
-        op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-        layout: TyAndLayout<'tcx>,
-        atomic: AtomicReadOrd,
-    ) -> InterpResult<'tcx, Scalar<Provenance>> {
-        let this = self.eval_context_ref();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
-        this.read_scalar_atomic(&value_place, atomic)
-    }
-
-    /// Atomic variant of write_scalar_at_offset.
-    fn write_scalar_at_offset_atomic(
-        &mut self,
-        op: &OpTy<'tcx, Provenance>,
-        offset: u64,
-        value: impl Into<Scalar<Provenance>>,
-        layout: TyAndLayout<'tcx>,
-        atomic: AtomicWriteOrd,
-    ) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        let value_place = this.deref_operand_and_offset(op, offset, layout)?;
-        this.write_scalar_atomic(value.into(), &value_place, atomic)
-    }
-
     /// Perform an atomic read operation at the memory location.
     fn read_scalar_atomic(
         &self,
@@ -696,6 +669,12 @@ pub struct VClockAlloc {
     alloc_ranges: RefCell<RangeMap<MemoryCellClocks>>,
 }
 
+impl VisitTags for VClockAlloc {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+        // No tags here.
+    }
+}
+
 impl VClockAlloc {
     /// Create a new data-race detector for newly allocated memory.
     pub fn new_allocation(
@@ -707,7 +686,10 @@ impl VClockAlloc {
         let (alloc_timestamp, alloc_index) = match kind {
             // User allocated and stack memory should track allocation.
             MemoryKind::Machine(
-                MiriMemoryKind::Rust | MiriMemoryKind::C | MiriMemoryKind::WinHeap,
+                MiriMemoryKind::Rust
+                | MiriMemoryKind::Miri
+                | MiriMemoryKind::C
+                | MiriMemoryKind::WinHeap,
             )
             | MemoryKind::Stack => {
                 let (alloc_index, clocks) = global.current_thread_state(thread_mgr);
@@ -856,18 +838,18 @@ impl VClockAlloc {
         &self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
+        let global = machine.data_race.as_ref().unwrap();
         if global.race_detecting() {
-            let (index, clocks) = global.current_thread_state(thread_mgr);
+            let (index, clocks) = global.current_thread_state(&machine.threads);
             let mut alloc_ranges = self.alloc_ranges.borrow_mut();
             for (offset, range) in alloc_ranges.iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.read_race_detect(&clocks, index) {
                     // Report data-race.
                     return Self::report_data_race(
                         global,
-                        thread_mgr,
+                        &machine.threads,
                         range,
                         "Read",
                         false,
@@ -887,17 +869,17 @@ impl VClockAlloc {
         alloc_id: AllocId,
         range: AllocRange,
         write_type: WriteType,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
+        let global = machine.data_race.as_mut().unwrap();
         if global.race_detecting() {
-            let (index, clocks) = global.current_thread_state(thread_mgr);
+            let (index, clocks) = global.current_thread_state(&machine.threads);
             for (offset, range) in self.alloc_ranges.get_mut().iter_mut(range.start, range.size) {
                 if let Err(DataRace) = range.write_race_detect(&clocks, index, write_type) {
                     // Report data-race
                     return Self::report_data_race(
                         global,
-                        thread_mgr,
+                        &machine.threads,
                         range,
                         write_type.get_descriptor(),
                         false,
@@ -919,10 +901,9 @@ impl VClockAlloc {
         &mut self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
-        self.unique_access(alloc_id, range, WriteType::Write, global, thread_mgr)
+        self.unique_access(alloc_id, range, WriteType::Write, machine)
     }
 
     /// Detect data-races for an unsynchronized deallocate operation, will not perform
@@ -933,10 +914,9 @@ impl VClockAlloc {
         &mut self,
         alloc_id: AllocId,
         range: AllocRange,
-        global: &mut GlobalState,
-        thread_mgr: &ThreadManager<'_, '_>,
+        machine: &mut MiriMachine<'_, '_>,
     ) -> InterpResult<'tcx> {
-        self.unique_access(alloc_id, range, WriteType::Deallocate, global, thread_mgr)
+        self.unique_access(alloc_id, range, WriteType::Deallocate, machine)
     }
 }
 
@@ -1237,6 +1217,12 @@ pub struct GlobalState {
 
     /// Track when an outdated (weak memory) load happens.
     pub track_outdated_loads: bool,
+}
+
+impl VisitTags for GlobalState {
+    fn visit_tags(&self, _visit: &mut dyn FnMut(BorTag)) {
+        // We don't have any tags.
+    }
 }
 
 impl GlobalState {

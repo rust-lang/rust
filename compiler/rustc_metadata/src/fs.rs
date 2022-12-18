@@ -6,7 +6,7 @@ use crate::{encode_metadata, EncodedMetadata};
 use rustc_data_structures::temp_dir::MaybeTempDir;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::{CrateType, OutputFilenames, OutputType};
+use rustc_session::config::{CrateType, OutputType};
 use rustc_session::output::filename_for_metadata;
 use rustc_session::Session;
 use tempfile::Builder as TempFileBuilder;
@@ -22,9 +22,14 @@ pub const METADATA_FILENAME: &str = "lib.rmeta";
 /// building an `.rlib` (stomping over one another), or writing an `.rmeta` into a
 /// directory being searched for `extern crate` (observing an incomplete file).
 /// The returned path is the temporary file containing the complete metadata.
-pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> PathBuf {
-    let out_filename = tmpdir.as_ref().join(METADATA_FILENAME);
-    let result = fs::write(&out_filename, metadata);
+pub fn emit_wrapper_file(
+    sess: &Session,
+    data: &[u8],
+    tmpdir: &MaybeTempDir,
+    name: &str,
+) -> PathBuf {
+    let out_filename = tmpdir.as_ref().join(name);
+    let result = fs::write(&out_filename, data);
 
     if let Err(err) = result {
         sess.emit_fatal(FailedWriteError { filename: out_filename, err });
@@ -33,10 +38,7 @@ pub fn emit_metadata(sess: &Session, metadata: &[u8], tmpdir: &MaybeTempDir) -> 
     out_filename
 }
 
-pub fn encode_and_write_metadata(
-    tcx: TyCtxt<'_>,
-    outputs: &OutputFilenames,
-) -> (EncodedMetadata, bool) {
+pub fn encode_and_write_metadata(tcx: TyCtxt<'_>) -> (EncodedMetadata, bool) {
     #[derive(PartialEq, Eq, PartialOrd, Ord)]
     enum MetadataKind {
         None,
@@ -59,7 +61,7 @@ pub fn encode_and_write_metadata(
         .unwrap_or(MetadataKind::None);
 
     let crate_name = tcx.crate_name(LOCAL_CRATE);
-    let out_filename = filename_for_metadata(tcx.sess, crate_name.as_str(), outputs);
+    let out_filename = filename_for_metadata(tcx.sess, crate_name, tcx.output_filenames(()));
     // To avoid races with another rustc process scanning the output directory,
     // we need to write the file somewhere else and atomically move it to its
     // final destination, with an `fs::rename` call. In order for the rename to

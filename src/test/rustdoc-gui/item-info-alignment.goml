@@ -1,6 +1,6 @@
 // This test ensures that the "item-info" looks about the same
 // whether or not it's inside a toggle.
-goto: file://|DOC_PATH|/lib2/struct.ItemInfoAlignmentTest.html
+goto: "file://" + |DOC_PATH| + "/lib2/struct.ItemInfoAlignmentTest.html"
 
 // First, we try it in "desktop" mode.
 size: (1200, 870)

@@ -75,26 +75,26 @@ LL |     if let first = &opt && let None = Some(1) {}
    = note: this pattern will always match
    = help: consider moving it outside of the construct
 
-error: irrefutable `let` patterns
+error: irrefutable `if let` guard patterns
   --> $DIR/irrefutable-lets.rs:44:28
    |
 LL |         Some(ref first) if let second = first && let _third = second && let v = 4 + 4 => {},
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: these patterns will always match, so the `let` is useless
-   = help: consider removing `let`
+   = note: these patterns will always match, so the guard is useless
+   = help: consider removing the guard and adding a `let` inside the match arm
 
-error: leading irrefutable pattern in let chain
-  --> $DIR/irrefutable-lets.rs:50:28
+error: trailing irrefutable patterns in let chain
+  --> $DIR/irrefutable-lets.rs:59:16
    |
-LL |         Some(ref first) if let Range { start: local_start, end: _ } = first
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             && let v = local_end && let w = v => {},
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
-   = note: this pattern will always match
-   = help: consider moving it outside of the construct
+   = note: these patterns will always match
+   = help: consider moving them into the body
 
 error: irrefutable `while let` patterns
-  --> $DIR/irrefutable-lets.rs:59:11
+  --> $DIR/irrefutable-lets.rs:68:11
    |
 LL |     while let first = &opt && let (a, b) = (1, 2) {}
    |           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -103,7 +103,7 @@ LL |     while let first = &opt && let (a, b) = (1, 2) {}
    = help: consider instead using a `loop { ... }` with a `let` inside it
 
 error: trailing irrefutable patterns in let chain
-  --> $DIR/irrefutable-lets.rs:62:40
+  --> $DIR/irrefutable-lets.rs:71:40
    |
 LL |     while let Some(ref first) = opt && let second = first && let _third = second {}
    |                                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

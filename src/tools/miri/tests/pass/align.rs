@@ -22,7 +22,7 @@ fn align_to() {
 
 fn main() {
     // Do this a couple times in a loop because it may work "by chance".
-    for _ in 0..10 {
+    for _ in 0..20 {
         manual_alignment();
         align_to();
     }

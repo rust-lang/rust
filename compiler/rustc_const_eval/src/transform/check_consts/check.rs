@@ -10,14 +10,11 @@ use rustc_middle::mir::visit::{MutatingUseContext, NonMutatingUseContext, PlaceC
 use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
-use rustc_middle::ty::{Binder, TraitPredicate, TraitRef, TypeVisitable};
+use rustc_middle::ty::{Binder, TraitRef, TypeVisitable};
 use rustc_mir_dataflow::{self, Analysis};
 use rustc_span::{sym, Span, Symbol};
-use rustc_trait_selection::infer::InferCtxtExt;
-use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
-use rustc_trait_selection::traits::{
-    self, ObligationCauseCode, SelectionContext, TraitEngine, TraitEngineExt,
-};
+use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
+use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
 
 use std::mem;
 use std::ops::Deref;
@@ -452,8 +449,17 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
             | Rvalue::CopyForDeref(..)
             | Rvalue::Repeat(..)
             | Rvalue::Discriminant(..)
-            | Rvalue::Len(_)
-            | Rvalue::Aggregate(..) => {}
+            | Rvalue::Len(_) => {}
+
+            Rvalue::Aggregate(ref kind, ..) => {
+                if let AggregateKind::Generator(def_id, ..) = kind.as_ref() {
+                    if let Some(generator_kind) = self.tcx.generator_kind(def_id.to_def_id()) {
+                        if matches!(generator_kind, hir::GeneratorKind::Async(..)) {
+                            self.check_op(ops::Generator(generator_kind));
+                        }
+                    }
+                }
+            }
 
             Rvalue::Ref(_, kind @ BorrowKind::Mut { .. }, ref place)
             | Rvalue::Ref(_, kind @ BorrowKind::Unique, ref place) => {
@@ -553,7 +559,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                 unimplemented!()
             }
 
-            Rvalue::Cast(CastKind::Misc, _, _) => {}
+            Rvalue::Cast(_, _, _) => {}
 
             Rvalue::NullaryOp(NullOp::SizeOf | NullOp::AlignOf, _) => {}
             Rvalue::ShallowInitBox(_, _) => {}
@@ -729,55 +735,44 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     }
 
                     let trait_ref = TraitRef::from_method(tcx, trait_id, substs);
-                    let poly_trait_pred = Binder::dummy(TraitPredicate {
-                        trait_ref,
-                        constness: ty::BoundConstness::ConstIfConst,
-                        polarity: ty::ImplPolarity::Positive,
-                    });
+                    let poly_trait_pred =
+                        Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
                     let obligation =
-                        Obligation::new(ObligationCause::dummy(), param_env, poly_trait_pred);
+                        Obligation::new(tcx, ObligationCause::dummy(), param_env, poly_trait_pred);
 
-                    let implsrc = tcx.infer_ctxt().enter(|infcx| {
+                    let implsrc = {
+                        let infcx = tcx.infer_ctxt().build();
                         let mut selcx = SelectionContext::new(&infcx);
                         selcx.select(&obligation)
-                    });
+                    };
 
                     // do a well-formedness check on the trait method being called. This is because typeck only does a
                     // "non-const" check. This is required for correctness here.
-                    tcx.infer_ctxt().enter(|infcx| {
-                        let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
+                    {
+                        let infcx = tcx.infer_ctxt().build();
+                        let ocx = ObligationCtxt::new(&infcx);
+
                         let predicates = tcx.predicates_of(callee).instantiate(tcx, substs);
                         let hir_id = tcx
                             .hir()
                             .local_def_id_to_hir_id(self.body.source.def_id().expect_local());
-                        let cause = || {
-                            ObligationCause::new(
-                                terminator.source_info.span,
-                                hir_id,
-                                ObligationCauseCode::ItemObligation(callee),
-                            )
-                        };
-                        let normalized = infcx.partially_normalize_associated_types_in(
-                            cause(),
-                            param_env,
-                            predicates,
+                        let cause = ObligationCause::new(
+                            terminator.source_info.span,
+                            hir_id,
+                            ObligationCauseCode::ItemObligation(callee),
                         );
-
-                        for p in normalized.obligations {
-                            fulfill_cx.register_predicate_obligation(&infcx, p);
-                        }
-                        for obligation in traits::predicates_for_generics(
-                            |_, _| cause(),
+                        let normalized_predicates = ocx.normalize(&cause, param_env, predicates);
+                        ocx.register_obligations(traits::predicates_for_generics(
+                            |_, _| cause.clone(),
                             self.param_env,
-                            normalized.value,
-                        ) {
-                            fulfill_cx.register_predicate_obligation(&infcx, obligation);
-                        }
-                        let errors = fulfill_cx.select_all_or_error(&infcx);
+                            normalized_predicates,
+                        ));
+
+                        let errors = ocx.select_all_or_error();
                         if !errors.is_empty() {
-                            infcx.report_fulfillment_errors(&errors, None, false);
+                            infcx.err_ctxt().report_fulfillment_errors(&errors, None);
                         }
-                    });
+                    }
 
                     match implsrc {
                         Ok(Some(ImplSource::Param(_, ty::BoundConstness::ConstIfConst))) => {
@@ -826,25 +821,22 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
 
                             if !nonconst_call_permission {
                                 let obligation = Obligation::new(
+                                    tcx,
                                     ObligationCause::dummy_with_span(*fn_span),
                                     param_env,
-                                    tcx.mk_predicate(
-                                        poly_trait_pred.map_bound(ty::PredicateKind::Trait),
-                                    ),
+                                    poly_trait_pred,
                                 );
 
                                 // improve diagnostics by showing what failed. Our requirements are stricter this time
                                 // as we are going to error again anyways.
-                                tcx.infer_ctxt().enter(|infcx| {
-                                    if let Err(e) = implsrc {
-                                        infcx.report_selection_error(
-                                            obligation.clone(),
-                                            &obligation,
-                                            &e,
-                                            false,
-                                        );
-                                    }
-                                });
+                                let infcx = tcx.infer_ctxt().build();
+                                if let Err(e) = implsrc {
+                                    infcx.err_ctxt().report_selection_error(
+                                        obligation.clone(),
+                                        &obligation,
+                                        &e,
+                                    );
+                                }
 
                                 self.check_op(ops::FnCallNonConst {
                                     caller,
@@ -899,16 +891,6 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     self.check_op(ops::HeapAllocation);
                     return;
                 }
-
-                // `async` blocks get lowered to `std::future::from_generator(/* a closure */)`.
-                let is_async_block = Some(callee) == tcx.lang_items().from_generator_fn();
-                if is_async_block {
-                    let kind = hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block);
-                    self.check_op(ops::Generator(kind));
-                    return;
-                }
-
-                let is_intrinsic = tcx.is_intrinsic(callee);
 
                 if !tcx.is_const_fn_raw(callee) {
                     if !tcx.is_const_default_method(callee) {
@@ -969,7 +951,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                     // We do not use `const` modifiers for intrinsic "functions", as intrinsics are
                     // `extern` functions, and these have no way to get marked `const`. So instead we
                     // use `rustc_const_(un)stable` attributes to mean that the intrinsic is `const`
-                    if self.ccx.is_const_stable_const_fn() || is_intrinsic {
+                    if self.ccx.is_const_stable_const_fn() || tcx.is_intrinsic(callee) {
                         self.check_op(ops::FnCallUnstable(callee, None));
                         return;
                     }

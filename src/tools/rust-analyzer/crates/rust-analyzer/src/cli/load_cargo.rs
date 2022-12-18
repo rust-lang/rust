@@ -6,7 +6,7 @@ use anyhow::Result;
 use crossbeam_channel::{unbounded, Receiver};
 use hir::db::DefDatabase;
 use ide::{AnalysisHost, Change};
-use ide_db::base_db::CrateGraph;
+use ide_db::{base_db::CrateGraph, FxHashMap};
 use proc_macro_api::ProcMacroServer;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
 use vfs::{loader::Handle, AbsPath, AbsPathBuf};
@@ -38,7 +38,7 @@ pub fn load_workspace_at(
         workspace.set_build_scripts(build_scripts)
     }
 
-    load_workspace(workspace, cargo_config, load_config)
+    load_workspace(workspace, &cargo_config.extra_env, load_config)
 }
 
 // Note: Since this function is used by external tools that use rust-analyzer as a library
@@ -48,7 +48,7 @@ pub fn load_workspace_at(
 // these tools need access to `ProjectWorkspace`, too, which `load_workspace_at` hides.
 pub fn load_workspace(
     ws: ProjectWorkspace,
-    cargo_config: &CargoConfig,
+    extra_env: &FxHashMap<String, String>,
     load_config: &LoadCargoConfig,
 ) -> Result<(AnalysisHost, vfs::Vfs, Option<ProcMacroServer>)> {
     let (sender, receiver) = unbounded();
@@ -60,10 +60,14 @@ pub fn load_workspace(
     };
 
     let proc_macro_client = if load_config.with_proc_macro {
-        let path = AbsPathBuf::assert(std::env::current_exe()?);
-        Ok(ProcMacroServer::spawn(path, &["proc-macro"]).unwrap())
+        let (server_path, args): (_, &[_]) = match ws.find_sysroot_proc_macro_srv() {
+            Some(server_path) => (server_path, &[]),
+            None => (AbsPathBuf::assert(std::env::current_exe()?), &["proc-macro"]),
+        };
+
+        ProcMacroServer::spawn(server_path, args).map_err(|e| e.to_string())
     } else {
-        Err("proc macro server not started".to_owned())
+        Err("proc macro server disabled".to_owned())
     };
 
     let crate_graph = ws.to_crate_graph(
@@ -76,7 +80,7 @@ pub fn load_workspace(
             vfs.set_file_contents(path.clone(), contents);
             vfs.file_id(&path)
         },
-        cargo_config,
+        extra_env,
     );
 
     let project_folders = ProjectFolders::new(&[ws], &[]);

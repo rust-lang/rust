@@ -162,5 +162,23 @@ error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a sl
 LL | fn mut_vec_slice_methods(v: &mut Vec<u32>) {
    |                             ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
 
-error: aborting due to 17 previous errors
+error: writing `&mut Vec` instead of `&mut [_]` involves a new object where a slice will do
+  --> $DIR/ptr_arg.rs:224:17
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                 ^^^^^^^^^^^^^ help: change this to: `&mut [u32]`
+
+error: writing `&mut String` instead of `&mut str` involves a new object where a slice will do
+  --> $DIR/ptr_arg.rs:224:35
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                                   ^^^^^^^^^^^ help: change this to: `&mut str`
+
+error: writing `&mut PathBuf` instead of `&mut Path` involves a new object where a slice will do
+  --> $DIR/ptr_arg.rs:224:51
+   |
+LL | fn dyn_trait(a: &mut Vec<u32>, b: &mut String, c: &mut PathBuf) {
+   |                                                   ^^^^^^^^^^^^ help: change this to: `&mut Path`
+
+error: aborting due to 20 previous errors
 

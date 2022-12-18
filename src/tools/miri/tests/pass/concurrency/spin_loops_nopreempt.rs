@@ -1,4 +1,3 @@
-//@ignore-target-windows: Channels on Windows are not supported yet.
 // This specifically tests behavior *without* preemption.
 //@compile-flags: -Zmiri-preemption-rate=0
 

@@ -7,7 +7,11 @@ fn f<A: ToString + Clone, B: ToString + Clone>(a: A, b: B) -> (X<A, B>, X<A, B>)
     (a.clone(), a)
 }
 
-type Foo<'a, 'b> = impl std::fmt::Debug;
+pub trait Captures<'a> {}
+
+impl<'a, T: ?Sized> Captures<'a> for T {}
+
+type Foo<'a, 'b> = impl std::fmt::Debug + Captures<'a> + Captures<'b>;
 
 fn foo<'x, 'y>(i: &'x i32, j: &'y i32) -> (Foo<'x, 'y>, Foo<'y, 'x>) {
     (i, j)

@@ -5,7 +5,7 @@ LL |     fn f() { ::bar::m!(); }
    |              ----------- in this macro invocation
 ...
 LL |         Vec::new();
-   |         ^^^ not found in this scope
+   |         ^^^ use of undeclared type `Vec`
    |
    = note: this error originates in the macro `::bar::m` (in Nightly builds, run with -Z macro-backtrace for more info)
 help: consider importing this struct

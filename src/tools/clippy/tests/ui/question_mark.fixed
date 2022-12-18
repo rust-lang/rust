@@ -134,6 +134,9 @@ fn result_func(x: Result<i32, i32>) -> Result<i32, i32> {
         return func_returning_result();
     }
 
+    // no warning
+    let _ = if let Err(e) = x { Err(e) } else { Ok(0) };
+
     Ok(y)
 }
 
@@ -223,3 +226,12 @@ fn pattern() -> Result<(), PatternedError> {
 }
 
 fn main() {}
+
+// should not lint, `?` operator not available in const context
+const fn issue9175(option: Option<()>) -> Option<()> {
+    if option.is_none() {
+        return None;
+    }
+    //stuff
+    Some(())
+}

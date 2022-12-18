@@ -1,5 +1,6 @@
 #![allow(rustc::potential_query_instability)]
 #![feature(box_patterns)]
+#![feature(drain_filter)]
 #![feature(let_chains)]
 #![feature(map_try_insert)]
 #![feature(min_specialization)]
@@ -54,8 +55,10 @@ mod const_goto;
 mod const_prop;
 mod const_prop_lint;
 mod coverage;
+mod dataflow_const_prop;
 mod dead_store_elimination;
 mod deaggregator;
+mod deduce_param_attrs;
 mod deduplicate_blocks;
 mod deref_separator;
 mod dest_prop;
@@ -70,7 +73,6 @@ mod inline;
 mod instcombine;
 mod lower_intrinsics;
 mod lower_slice_len;
-mod marker;
 mod match_branches;
 mod multiple_return_terminators;
 mod normalize_array_len;
@@ -91,6 +93,7 @@ pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
 mod simplify_try;
+mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
 
@@ -139,6 +142,7 @@ pub fn provide(providers: &mut Providers) {
         promoted_mir_of_const_arg: |tcx, (did, param_did)| {
             promoted_mir(tcx, ty::WithOptConstParam { did, const_param_did: Some(param_did) })
         },
+        deduced_param_attrs: deduce_param_attrs::deduced_param_attrs,
         ..*providers
     };
 }
@@ -216,19 +220,18 @@ fn mir_keys(tcx: TyCtxt<'_>, (): ()) -> FxIndexSet<LocalDefId> {
 
     // Additionally, tuple struct/variant constructors have MIR, but
     // they don't have a BodyId, so we need to build them separately.
-    struct GatherCtors<'a, 'tcx> {
-        tcx: TyCtxt<'tcx>,
+    struct GatherCtors<'a> {
         set: &'a mut FxIndexSet<LocalDefId>,
     }
-    impl<'tcx> Visitor<'tcx> for GatherCtors<'_, 'tcx> {
+    impl<'tcx> Visitor<'tcx> for GatherCtors<'_> {
         fn visit_variant_data(&mut self, v: &'tcx hir::VariantData<'tcx>) {
-            if let hir::VariantData::Tuple(_, hir_id) = *v {
-                self.set.insert(self.tcx.hir().local_def_id(hir_id));
+            if let hir::VariantData::Tuple(_, _, def_id) = *v {
+                self.set.insert(def_id);
             }
             intravisit::walk_struct_def(self, v)
         }
     }
-    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { tcx, set: &mut set });
+    tcx.hir().visit_all_item_likes_in_crate(&mut GatherCtors { set: &mut set });
 
     set
 }
@@ -287,7 +290,7 @@ fn mir_const<'tcx>(
 
     let mut body = tcx.mir_built(def).steal();
 
-    rustc_middle::mir::dump_mir(tcx, None, "mir_map", &0, &body, |_, _| Ok(()));
+    pass_manager::dump_mir_for_phase_change(tcx, &body);
 
     pm::run_passes(
         tcx,
@@ -301,6 +304,7 @@ fn mir_const<'tcx>(
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck, // Just a lint
         ],
+        None,
     );
     tcx.alloc_steal_mir(body)
 }
@@ -340,6 +344,7 @@ fn mir_promoted<'tcx>(
             &simplify::SimplifyCfg::new("promote-consts"),
             &coverage::InstrumentCoverage,
         ],
+        Some(MirPhase::Analysis(AnalysisPhase::Initial)),
     );
 
     let promoted = promote_pass.promoted_fragments.into_inner();
@@ -407,10 +412,8 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
             pm::run_passes(
                 tcx,
                 &mut body,
-                &[
-                    &const_prop::ConstProp,
-                    &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
-                ],
+                &[&const_prop::ConstProp],
+                Some(MirPhase::Runtime(RuntimePhase::Optimized)),
             );
         }
     }
@@ -472,6 +475,7 @@ fn run_analysis_to_runtime_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>
                 &remove_uninit_drops::RemoveUninitDrops,
                 &simplify::SimplifyCfg::new("remove-false-edges"),
             ],
+            None,
         );
         check_consts::post_drop_elaboration::check_live_drops(tcx, &body); // FIXME: make this a MIR lint
     }
@@ -496,10 +500,9 @@ fn run_analysis_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &cleanup_post_borrowck::CleanupNonCodegenStatements,
         &simplify::SimplifyCfg::new("early-opt"),
         &deref_separator::Derefer,
-        &marker::PhaseChange(MirPhase::Analysis(AnalysisPhase::PostCleanup)),
     ];
 
-    pm::run_passes(tcx, body, passes);
+    pm::run_passes(tcx, body, passes, Some(MirPhase::Analysis(AnalysisPhase::PostCleanup)));
 }
 
 /// Returns the sequence of passes that lowers analysis to runtime MIR.
@@ -524,9 +527,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // CTFE support for aggregates.
         &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
-        &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Initial)),
     ];
-    pm::run_passes_no_validate(tcx, body, passes);
+    pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
@@ -535,10 +537,9 @@ fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         &elaborate_box_derefs::ElaborateBoxDerefs,
         &lower_intrinsics::LowerIntrinsics,
         &simplify::SimplifyCfg::new("elaborate-drops"),
-        &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::PostCleanup)),
     ];
 
-    pm::run_passes(tcx, body, passes);
+    pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 }
 
 fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -562,6 +563,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &remove_zsts::RemoveZsts,
             &const_goto::ConstGoto,
             &remove_unneeded_drops::RemoveUnneededDrops,
+            &sroa::ScalarReplacementOfAggregates,
             &match_branches::MatchBranchSimplification,
             // inst combine is after MatchBranchSimplification to clean up Ne(_1, false)
             &multiple_return_terminators::MultipleReturnTerminators,
@@ -570,6 +572,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
+            &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
             &const_debuginfo::ConstDebugInfo,
@@ -589,10 +592,10 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
-            &marker::PhaseChange(MirPhase::Runtime(RuntimePhase::Optimized)),
             // Dump the end result for testing and debugging purposes.
             &dump_mir::Marker("PreCodegen"),
         ],
+        Some(MirPhase::Runtime(RuntimePhase::Optimized)),
     );
 }
 

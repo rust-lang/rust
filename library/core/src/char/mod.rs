@@ -110,7 +110,7 @@ pub fn decode_utf16<I: IntoIterator<Item = u16>>(iter: I) -> DecodeUtf16<I::Into
 
 /// Converts a `u32` to a `char`. Use [`char::from_u32`] instead.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_stable(feature = "const_char_convert", since = "CURRENT_RUSTC_VERSION")]
 #[must_use]
 #[inline]
 pub const fn from_u32(i: u32) -> Option<char> {
@@ -120,7 +120,7 @@ pub const fn from_u32(i: u32) -> Option<char> {
 /// Converts a `u32` to a `char`, ignoring validity. Use [`char::from_u32_unchecked`].
 /// instead.
 #[stable(feature = "char_from_unchecked", since = "1.5.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_unstable(feature = "const_char_from_u32_unchecked", issue = "89259")]
 #[must_use]
 #[inline]
 pub const unsafe fn from_u32_unchecked(i: u32) -> char {
@@ -130,7 +130,7 @@ pub const unsafe fn from_u32_unchecked(i: u32) -> char {
 
 /// Converts a digit in the given radix to a `char`. Use [`char::from_digit`] instead.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[rustc_const_unstable(feature = "const_char_convert", issue = "89259")]
+#[rustc_const_stable(feature = "const_char_convert", since = "CURRENT_RUSTC_VERSION")]
 #[must_use]
 #[inline]
 pub const fn from_digit(num: u32, radix: u32) -> Option<char> {

@@ -109,7 +109,7 @@ where
 
             for component in components {
                 match *component.kind() {
-                    _ if component.is_copy_modulo_regions(tcx.at(DUMMY_SP), self.param_env) => (),
+                    _ if component.is_copy_modulo_regions(tcx, self.param_env) => (),
 
                     ty::Closure(_, substs) => {
                         queue_type(self, substs.as_closure().tupled_upvars_ty());
@@ -152,7 +152,7 @@ where
                             queue_type(self, required);
                         }
                     }
-                    ty::Array(..) | ty::Opaque(..) | ty::Projection(..) | ty::Param(_) => {
+                    ty::Array(..) | ty::Alias(..) | ty::Param(_) => {
                         if ty == component {
                             // Return the type to the caller: they may be able
                             // to normalize further than we can.
@@ -264,7 +264,7 @@ fn adt_consider_insignificant_dtor<'tcx>(
         if is_marked_insig {
             // In some cases like `std::collections::HashMap` where the struct is a wrapper around
             // a type that is a Drop type, and the wrapped type (eg: `hashbrown::HashMap`) lies
-            // outside stdlib, we might choose to still annotate the the wrapper (std HashMap) with
+            // outside stdlib, we might choose to still annotate the wrapper (std HashMap) with
             // `rustc_insignificant_dtor`, even if the type itself doesn't have a `Drop` impl.
             Some(DtorType::Insignificant)
         } else if adt_def.destructor(tcx).is_some() {

@@ -1,11 +1,14 @@
 //! Functions concerning immediate values and operands, and reading from operands.
 //! All high-level functions to read from memory work on operands as sources.
 
+use either::{Either, Left, Right};
+
 use rustc_hir::def::Namespace;
 use rustc_middle::ty::layout::{LayoutOf, PrimitiveExt, TyAndLayout};
 use rustc_middle::ty::print::{FmtPrinter, PrettyPrinter};
-use rustc_middle::ty::{ConstInt, DelaySpanBugEmitted, Ty};
+use rustc_middle::ty::{ConstInt, Ty, ValTree};
 use rustc_middle::{mir, ty};
+use rustc_span::Span;
 use rustc_target::abi::{self, Abi, Align, HasDataLayout, Size, TagEncoding};
 use rustc_target::abi::{VariantIdx, Variants};
 
@@ -36,7 +39,7 @@ pub enum Immediate<Prov: Provenance = AllocId> {
 impl<Prov: Provenance> From<Scalar<Prov>> for Immediate<Prov> {
     #[inline(always)]
     fn from(val: Scalar<Prov>) -> Self {
-        Immediate::Scalar(val.into())
+        Immediate::Scalar(val)
     }
 }
 
@@ -50,7 +53,7 @@ impl<Prov: Provenance> Immediate<Prov> {
     }
 
     pub fn new_slice(val: Scalar<Prov>, len: u64, cx: &impl HasDataLayout) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_machine_usize(len, cx).into())
+        Immediate::ScalarPair(val, Scalar::from_machine_usize(len, cx))
     }
 
     pub fn new_dyn_trait(
@@ -58,7 +61,7 @@ impl<Prov: Provenance> Immediate<Prov> {
         vtable: Pointer<Option<Prov>>,
         cx: &impl HasDataLayout,
     ) -> Self {
-        Immediate::ScalarPair(val.into(), Scalar::from_maybe_pointer(vtable, cx))
+        Immediate::ScalarPair(val, Scalar::from_maybe_pointer(vtable, cx))
     }
 
     #[inline]
@@ -260,9 +263,9 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        match self.try_as_mplace() {
-            Ok(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
-            Err(imm) => {
+        match self.as_mplace_or_imm() {
+            Left(mplace) => Ok(mplace.offset_with_meta(offset, meta, layout, cx)?.into()),
+            Right(imm) => {
                 assert!(
                     matches!(*imm, Immediate::Uninit),
                     "Scalar/ScalarPair cannot be offset into"
@@ -280,7 +283,7 @@ impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 }
@@ -338,10 +341,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     alloc_range(b_offset, b_size),
                     /*read_provenance*/ b.is_ptr(),
                 )?;
-                Some(ImmTy {
-                    imm: Immediate::ScalarPair(a_val.into(), b_val.into()),
-                    layout: mplace.layout,
-                })
+                Some(ImmTy { imm: Immediate::ScalarPair(a_val, b_val), layout: mplace.layout })
             }
             _ => {
                 // Neither a scalar nor scalar pair.
@@ -352,8 +352,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     /// Try returning an immediate for the operand. If the layout does not permit loading this as an
     /// immediate, return where in memory we can find the data.
-    /// Note that for a given layout, this operation will either always fail or always
-    /// succeed!  Whether it succeeds depends on whether the layout can be represented
+    /// Note that for a given layout, this operation will either always return Left or Right!
+    /// succeed!  Whether it returns Left depends on whether the layout can be represented
     /// in an `Immediate`, not on which data is stored there currently.
     ///
     /// This is an internal function that should not usually be used; call `read_immediate` instead.
@@ -361,22 +361,22 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     pub fn read_immediate_raw(
         &self,
         src: &OpTy<'tcx, M::Provenance>,
-    ) -> InterpResult<'tcx, Result<ImmTy<'tcx, M::Provenance>, MPlaceTy<'tcx, M::Provenance>>> {
-        Ok(match src.try_as_mplace() {
-            Ok(ref mplace) => {
+    ) -> InterpResult<'tcx, Either<MPlaceTy<'tcx, M::Provenance>, ImmTy<'tcx, M::Provenance>>> {
+        Ok(match src.as_mplace_or_imm() {
+            Left(ref mplace) => {
                 if let Some(val) = self.read_immediate_from_mplace_raw(mplace)? {
-                    Ok(val)
+                    Right(val)
                 } else {
-                    Err(*mplace)
+                    Left(*mplace)
                 }
             }
-            Err(val) => Ok(val),
+            Right(val) => Right(val),
         })
     }
 
     /// Read an immediate from a place, asserting that that is possible with the given layout.
     ///
-    /// If this suceeds, the `ImmTy` is never `Uninit`.
+    /// If this succeeds, the `ImmTy` is never `Uninit`.
     #[inline(always)]
     pub fn read_immediate(
         &self,
@@ -389,7 +389,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ) {
             span_bug!(self.cur_span(), "primitive read not possible for type: {:?}", op.layout.ty);
         }
-        let imm = self.read_immediate_raw(op)?.unwrap();
+        let imm = self.read_immediate_raw(op)?.right().unwrap();
         if matches!(*imm, Immediate::Uninit) {
             throw_ub!(InvalidUninitBytes(None));
         }
@@ -431,9 +431,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // Basically we just transmute this place into an array following simd_size_and_type.
         // This only works in memory, but repr(simd) types should never be immediates anyway.
         assert!(op.layout.ty.is_simd());
-        match op.try_as_mplace() {
-            Ok(mplace) => self.mplace_to_simd(&mplace),
-            Err(imm) => match *imm {
+        match op.as_mplace_or_imm() {
+            Left(mplace) => self.mplace_to_simd(&mplace),
+            Right(imm) => match *imm {
                 Immediate::Uninit => {
                     throw_ub!(InvalidUninitBytes(None))
                 }
@@ -527,14 +527,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Copy(place) | Move(place) => self.eval_place_to_op(place, layout)?,
 
             Constant(ref constant) => {
-                let val =
+                let c =
                     self.subst_from_current_frame_and_normalize_erasing_regions(constant.literal)?;
 
                 // This can still fail:
                 // * During ConstProp, with `TooGeneric` or since the `required_consts` were not all
                 //   checked yet.
                 // * During CTFE, since promoteds in `const`/`static` initializer bodies can fail.
-                self.const_to_op(&val, layout)?
+                self.eval_mir_constant(&c, Some(constant.span), layout)?
             }
         };
         trace!("{:?}: {:?}", mir_op, *op);
@@ -549,51 +549,62 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         ops.iter().map(|op| self.eval_operand(op, None)).collect()
     }
 
-    pub fn const_to_op(
+    fn eval_ty_constant(
+        &self,
+        val: ty::Const<'tcx>,
+        span: Option<Span>,
+    ) -> InterpResult<'tcx, ValTree<'tcx>> {
+        Ok(match val.kind() {
+            ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
+                throw_inval!(TooGeneric)
+            }
+            // FIXME(generic_const_exprs): `ConstKind::Expr` should be able to be evaluated
+            ty::ConstKind::Expr(_) => throw_inval!(TooGeneric),
+            ty::ConstKind::Error(reported) => {
+                throw_inval!(AlreadyReported(reported))
+            }
+            ty::ConstKind::Unevaluated(uv) => {
+                let instance = self.resolve(uv.def, uv.substs)?;
+                let cid = GlobalId { instance, promoted: None };
+                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
+                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+            }
+            ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
+                span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")
+            }
+            ty::ConstKind::Value(valtree) => valtree,
+        })
+    }
+
+    pub fn eval_mir_constant(
         &self,
         val: &mir::ConstantKind<'tcx>,
+        span: Option<Span>,
         layout: Option<TyAndLayout<'tcx>>,
     ) -> InterpResult<'tcx, OpTy<'tcx, M::Provenance>> {
+        // FIXME(const_prop): normalization needed b/c const prop lint in
+        // `mir_drops_elaborated_and_const_checked`, which happens before
+        // optimized MIR. Only after optimizing the MIR can we guarantee
+        // that the `RevealAll` pass has happened and that the body's consts
+        // are normalized, so any call to resolve before that needs to be
+        // manually normalized.
+        let val = self.tcx.normalize_erasing_regions(self.param_env, *val);
         match val {
             mir::ConstantKind::Ty(ct) => {
-                match ct.kind() {
-                    ty::ConstKind::Param(_) | ty::ConstKind::Placeholder(..) => {
-                        throw_inval!(TooGeneric)
-                    }
-                    ty::ConstKind::Error(DelaySpanBugEmitted { reported, .. }) => {
-                        throw_inval!(AlreadyReported(reported))
-                    }
-                    ty::ConstKind::Unevaluated(uv) => {
-                        // NOTE: We evaluate to a `ValTree` here as a check to ensure
-                        // we're working with valid constants, even though we never need it.
-                        let instance = self.resolve(uv.def, uv.substs)?;
-                        let cid = GlobalId { instance, promoted: None };
-                        let _valtree = self
-                            .tcx
-                            .eval_to_valtree(self.param_env.and(cid))?
-                            .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"));
-
-                        Ok(self.eval_to_allocation(cid)?.into())
-                    }
-                    ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
-                        span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {ct:?}")
-                    }
-                    ty::ConstKind::Value(valtree) => {
-                        let ty = ct.ty();
-                        let const_val = self.tcx.valtree_to_const_val((ty, valtree));
-                        self.const_val_to_op(const_val, ty, layout)
-                    }
-                }
+                let ty = ct.ty();
+                let valtree = self.eval_ty_constant(ct, span)?;
+                let const_val = self.tcx.valtree_to_const_val((ty, valtree));
+                self.const_val_to_op(const_val, ty, layout)
             }
-            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(*val, *ty, layout),
+            mir::ConstantKind::Val(val, ty) => self.const_val_to_op(val, ty, layout),
             mir::ConstantKind::Unevaluated(uv, _) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
-                Ok(self.eval_to_allocation(GlobalId { instance, promoted: uv.promoted })?.into())
+                Ok(self.eval_global(GlobalId { instance, promoted: uv.promoted }, span)?.into())
             }
         }
     }
 
-    pub(crate) fn const_val_to_op(
+    pub(super) fn const_val_to_op(
         &self,
         val_val: ConstValue<'tcx>,
         ty: Ty<'tcx>,
@@ -788,9 +799,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Immediate, 48);
     static_assert_size!(ImmTy<'_>, 64);
     static_assert_size!(Operand, 56);
     static_assert_size!(OpTy<'_>, 80);
+    // tidy-alphabetical-end
 }

@@ -1,3 +1,4 @@
+#![feature(type_alias_impl_trait)]
 #![warn(clippy::new_ret_no_self)]
 #![allow(dead_code)]
 
@@ -348,5 +349,77 @@ struct RetOtherSelfWrapper<T>(T);
 impl RetOtherSelf<T> {
     fn new(t: T) -> RetOtherSelf<RetOtherSelfWrapper<T>> {
         RetOtherSelf(RetOtherSelfWrapper(t))
+    }
+}
+
+mod issue7344 {
+    struct RetImplTraitSelf<T>(T);
+
+    impl<T> RetImplTraitSelf<T> {
+        // should not trigger lint
+        fn new(t: T) -> impl Into<Self> {
+            Self(t)
+        }
+    }
+
+    struct RetImplTraitNoSelf<T>(T);
+
+    impl<T> RetImplTraitNoSelf<T> {
+        // should trigger lint
+        fn new(t: T) -> impl Into<i32> {
+            1
+        }
+    }
+
+    trait Trait2<T, U> {}
+    impl<T, U> Trait2<T, U> for () {}
+
+    struct RetImplTraitSelf2<T>(T);
+
+    impl<T> RetImplTraitSelf2<T> {
+        // should not trigger lint
+        fn new(t: T) -> impl Trait2<(), Self> {
+            unimplemented!()
+        }
+    }
+
+    struct RetImplTraitNoSelf2<T>(T);
+
+    impl<T> RetImplTraitNoSelf2<T> {
+        // should trigger lint
+        fn new(t: T) -> impl Trait2<(), i32> {
+            unimplemented!()
+        }
+    }
+
+    struct RetImplTraitSelfAdt<'a>(&'a str);
+
+    impl<'a> RetImplTraitSelfAdt<'a> {
+        // should not trigger lint
+        fn new<'b: 'a>(s: &'b str) -> impl Into<RetImplTraitSelfAdt<'b>> {
+            RetImplTraitSelfAdt(s)
+        }
+    }
+}
+
+mod issue10041 {
+    struct Bomb;
+
+    impl Bomb {
+        // Hidden <Rhs = Self> default generic paramter.
+        pub fn new() -> impl PartialOrd {
+            0i32
+        }
+    }
+
+    // TAIT with self-referencing bounds
+    type X = impl std::ops::Add<Output = X>;
+
+    struct Bomb2;
+
+    impl Bomb2 {
+        pub fn new() -> X {
+            0i32
+        }
     }
 }

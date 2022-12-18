@@ -1,9 +1,13 @@
 // run-rustfix
+#![feature(lint_reasons)]
+#![allow(
+    unused,
+    clippy::uninlined_format_args,
+    clippy::unnecessary_mut_passed,
+    clippy::unnecessary_to_owned
+)]
+#![warn(clippy::needless_borrow)]
 
-#![feature(custom_inner_attributes, lint_reasons)]
-
-#[warn(clippy::all, clippy::needless_borrow)]
-#[allow(unused_variables, clippy::unnecessary_mut_passed)]
 fn main() {
     let a = 5;
     let ref_a = &a;
@@ -134,6 +138,7 @@ fn main() {
     multiple_constraints([[""]]);
     multiple_constraints_normalizes_to_same(X, X);
     let _ = Some("").unwrap_or("");
+    let _ = std::fs::write("x", "".to_string());
 
     only_sized(&""); // Don't lint. `Sized` is only bound
     let _ = std::any::Any::type_id(&""); // Don't lint. `Any` is only bound
@@ -166,14 +171,12 @@ impl<'a> Trait for &'a str {}
 
 fn h(_: &dyn Trait) {}
 
-#[allow(dead_code)]
 fn check_expect_suppression() {
     let a = 5;
     #[expect(clippy::needless_borrow)]
     let _ = x(&&a);
 }
 
-#[allow(dead_code)]
 mod issue9160 {
     pub struct S<F> {
         f: F,
@@ -262,7 +265,6 @@ where
 }
 
 // https://github.com/rust-lang/rust-clippy/pull/9136#pullrequestreview-1037379321
-#[allow(dead_code)]
 mod copyable_iterator {
     #[derive(Clone, Copy)]
     struct Iter;
@@ -276,25 +278,216 @@ mod copyable_iterator {
     fn dont_warn(mut x: Iter) {
         takes_iter(&mut x);
     }
+    #[allow(unused_mut)]
     fn warn(mut x: &mut Iter) {
-        takes_iter(&mut x)
+        takes_iter(x)
     }
 }
 
+#[clippy::msrv = "1.52.0"]
 mod under_msrv {
-    #![allow(dead_code)]
-    #![clippy::msrv = "1.52.0"]
-
     fn foo() {
         let _ = std::process::Command::new("ls").args(&["-a", "-l"]).status().unwrap();
     }
 }
 
+#[clippy::msrv = "1.53.0"]
 mod meets_msrv {
-    #![allow(dead_code)]
-    #![clippy::msrv = "1.53.0"]
-
     fn foo() {
         let _ = std::process::Command::new("ls").args(["-a", "-l"]).status().unwrap();
+    }
+}
+
+fn issue9383() {
+    // Should not lint because unions need explicit deref when accessing field
+    use std::mem::ManuallyDrop;
+
+    union Coral {
+        crab: ManuallyDrop<Vec<i32>>,
+    }
+
+    union Ocean {
+        coral: ManuallyDrop<Coral>,
+    }
+
+    let mut ocean = Ocean {
+        coral: ManuallyDrop::new(Coral {
+            crab: ManuallyDrop::new(vec![1, 2, 3]),
+        }),
+    };
+
+    unsafe {
+        ManuallyDrop::drop(&mut (&mut ocean.coral).crab);
+
+        (*ocean.coral).crab = ManuallyDrop::new(vec![4, 5, 6]);
+        ManuallyDrop::drop(&mut (*ocean.coral).crab);
+
+        ManuallyDrop::drop(&mut ocean.coral);
+    }
+}
+
+fn closure_test() {
+    let env = "env".to_owned();
+    let arg = "arg".to_owned();
+    let f = |arg| {
+        let loc = "loc".to_owned();
+        let _ = std::fs::write("x", &env); // Don't lint. In environment
+        let _ = std::fs::write("x", arg);
+        let _ = std::fs::write("x", loc);
+    };
+    let _ = std::fs::write("x", &env); // Don't lint. Borrowed by `f`
+    f(arg);
+}
+
+mod significant_drop {
+    #[derive(Debug)]
+    struct X;
+
+    #[derive(Debug)]
+    struct Y;
+
+    impl Drop for Y {
+        fn drop(&mut self) {}
+    }
+
+    fn foo(x: X, y: Y) {
+        debug(x);
+        debug(&y); // Don't lint. Has significant drop
+    }
+
+    fn debug(_: impl std::fmt::Debug) {}
+}
+
+mod used_exactly_once {
+    fn foo(x: String) {
+        use_x(x);
+    }
+    fn use_x(_: impl AsRef<str>) {}
+}
+
+mod used_more_than_once {
+    fn foo(x: String) {
+        use_x(&x);
+        use_x_again(&x);
+    }
+    fn use_x(_: impl AsRef<str>) {}
+    fn use_x_again(_: impl AsRef<str>) {}
+}
+
+// https://github.com/rust-lang/rust-clippy/issues/9111#issuecomment-1277114280
+mod issue_9111 {
+    struct A;
+
+    impl Extend<u8> for A {
+        fn extend<T: IntoIterator<Item = u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    impl<'a> Extend<&'a u8> for A {
+        fn extend<T: IntoIterator<Item = &'a u8>>(&mut self, _: T) {
+            unimplemented!()
+        }
+    }
+
+    fn main() {
+        let mut a = A;
+        a.extend(&[]); // vs a.extend([]);
+    }
+}
+
+mod issue_9710 {
+    fn main() {
+        let string = String::new();
+        for _i in 0..10 {
+            f(&string);
+        }
+    }
+
+    fn f<T: AsRef<str>>(_: T) {}
+}
+
+mod issue_9739 {
+    fn foo<D: std::fmt::Display>(_it: impl IntoIterator<Item = D>) {}
+
+    fn main() {
+        foo(if std::env::var_os("HI").is_some() {
+            &[0]
+        } else {
+            &[] as &[u32]
+        });
+    }
+}
+
+mod issue_9739_method_variant {
+    struct S;
+
+    impl S {
+        fn foo<D: std::fmt::Display>(&self, _it: impl IntoIterator<Item = D>) {}
+    }
+
+    fn main() {
+        S.foo(if std::env::var_os("HI").is_some() {
+            &[0]
+        } else {
+            &[] as &[u32]
+        });
+    }
+}
+
+mod issue_9782 {
+    fn foo<T: AsRef<[u8]>>(t: T) {
+        println!("{}", std::mem::size_of::<T>());
+        let _t: &[u8] = t.as_ref();
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        // 100
+        foo::<[u8; 100]>(a);
+        foo(a);
+
+        // 16
+        foo::<&[u8]>(&a);
+        foo(a.as_slice());
+
+        // 8
+        foo::<&[u8; 100]>(&a);
+        foo(a);
+    }
+}
+
+mod issue_9782_type_relative_variant {
+    struct S;
+
+    impl S {
+        fn foo<T: AsRef<[u8]>>(t: T) {
+            println!("{}", std::mem::size_of::<T>());
+            let _t: &[u8] = t.as_ref();
+        }
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        S::foo::<&[u8; 100]>(&a);
+    }
+}
+
+mod issue_9782_method_variant {
+    struct S;
+
+    impl S {
+        fn foo<T: AsRef<[u8]>>(&self, t: T) {
+            println!("{}", std::mem::size_of::<T>());
+            let _t: &[u8] = t.as_ref();
+        }
+    }
+
+    fn main() {
+        let a: [u8; 100] = [0u8; 100];
+
+        S.foo::<&[u8; 100]>(&a);
     }
 }

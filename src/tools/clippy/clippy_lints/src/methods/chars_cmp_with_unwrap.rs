@@ -9,8 +9,8 @@ use rustc_lint::LateContext;
 use rustc_lint::Lint;
 
 /// Wrapper fn for `CHARS_NEXT_CMP` and `CHARS_LAST_CMP` lints with `unwrap()`.
-pub(super) fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub(super) fn check(
+    cx: &LateContext<'_>,
     info: &crate::methods::BinaryExprInfo<'_>,
     chain_methods: &[&str],
     lint: &'static Lint,
@@ -26,12 +26,11 @@ pub(super) fn check<'tcx>(
                 cx,
                 lint,
                 info.expr.span,
-                &format!("you should use the `{}` method", suggest),
+                &format!("you should use the `{suggest}` method"),
                 "like this",
-                format!("{}{}.{}('{}')",
+                format!("{}{}.{suggest}('{}')",
                         if info.eq { "" } else { "!" },
                         snippet_with_applicability(cx, args[0].0.span, "..", &mut applicability),
-                        suggest,
                         c.escape_default()),
                 applicability,
             );

@@ -2,10 +2,13 @@ error[E0507]: cannot move out of `*a` which is behind a shared reference
   --> $DIR/move-errors.rs:6:13
    |
 LL |     let b = *a;
-   |             ^^
-   |             |
-   |             move occurs because `*a` has type `A`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&*a`
+   |             ^^ move occurs because `*a` has type `A`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let b = *a;
+LL +     let b = a;
+   |
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
   --> $DIR/move-errors.rs:12:13
@@ -15,25 +18,35 @@ LL |     let b = a[0];
    |             |
    |             cannot move out of here
    |             move occurs because `a[_]` has type `A`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&a[0]`
+   |
+help: consider borrowing here
+   |
+LL |     let b = &a[0];
+   |             +
 
 error[E0507]: cannot move out of `**r` which is behind a shared reference
   --> $DIR/move-errors.rs:19:13
    |
 LL |     let s = **r;
-   |             ^^^
-   |             |
-   |             move occurs because `**r` has type `A`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&**r`
+   |             ^^^ move occurs because `**r` has type `A`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let s = **r;
+LL +     let s = *r;
+   |
 
 error[E0507]: cannot move out of an `Rc`
   --> $DIR/move-errors.rs:27:13
    |
 LL |     let s = *r;
-   |             ^^
-   |             |
-   |             move occurs because value has type `A`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&*r`
+   |             ^^ move occurs because value has type `A`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let s = *r;
+LL +     let s = r;
+   |
 
 error[E0508]: cannot move out of type `[A; 1]`, a non-copy array
   --> $DIR/move-errors.rs:32:13
@@ -43,16 +56,26 @@ LL |     let a = [A("".to_string())][0];
    |             |
    |             cannot move out of here
    |             move occurs because value has type `A`, which does not implement the `Copy` trait
-   |             help: consider borrowing here: `&[A("".to_string())][0]`
+   |
+help: consider borrowing here
+   |
+LL |     let a = &[A("".to_string())][0];
+   |             +
 
 error[E0507]: cannot move out of `a` which is behind a shared reference
   --> $DIR/move-errors.rs:38:16
    |
 LL |     let A(s) = *a;
-   |           -    ^^ help: consider borrowing here: `&*a`
+   |           -    ^^
    |           |
    |           data moved here
    |           move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     let A(s) = *a;
+LL +     let A(s) = a;
+   |
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:44:19
@@ -62,6 +85,11 @@ LL |     let C(D(s)) = c;
    |             |
    |             data moved here
    |             move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |     let C(D(ref s)) = c;
+   |             +++
 
 error[E0507]: cannot move out of `*a` which is behind a shared reference
   --> $DIR/move-errors.rs:51:9
@@ -73,10 +101,7 @@ error[E0508]: cannot move out of type `[B; 1]`, a non-copy array
   --> $DIR/move-errors.rs:74:11
    |
 LL |     match x[0] {
-   |           ^^^^
-   |           |
-   |           cannot move out of here
-   |           help: consider borrowing here: `&x[0]`
+   |           ^^^^ cannot move out of here
 LL |
 LL |         B::U(d) => (),
    |              - data moved here
@@ -84,6 +109,10 @@ LL |         B::V(s) => (),
    |              - ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing here
+   |
+LL |     match &x[0] {
+   |           +
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:83:11
@@ -96,6 +125,11 @@ LL |         B::U(D(s)) => (),
    |                |
    |                data moved here
    |                move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         B::U(D(ref s)) => (),
+   |                +++
 
 error[E0509]: cannot move out of type `D`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:92:11
@@ -108,6 +142,11 @@ LL |         (D(s), &t) => (),
    |            |
    |            data moved here
    |            move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (D(ref s), &t) => (),
+   |            +++
 
 error[E0507]: cannot move out of `*x.1` which is behind a shared reference
   --> $DIR/move-errors.rs:92:11
@@ -120,6 +159,11 @@ LL |         (D(s), &t) => (),
    |                 |
    |                 data moved here
    |                 move occurs because `t` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing the pattern binding
+   |
+LL |         (D(s), &ref t) => (),
+   |                 +++
 
 error[E0509]: cannot move out of type `F`, which implements the `Drop` trait
   --> $DIR/move-errors.rs:102:11
@@ -133,18 +177,32 @@ LL |         F(s, mut t) => (),
    |           data moved here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         F(ref s, mut t) => (),
+   |           +++
+help: consider borrowing the pattern binding
+   |
+LL |         F(s, ref mut t) => (),
+   |              +++
 
 error[E0507]: cannot move out of `x` as enum variant `Err` which is behind a shared reference
   --> $DIR/move-errors.rs:110:11
    |
 LL |     match *x {
-   |           ^^ help: consider borrowing here: `&*x`
+   |           ^^
 LL |
 LL |         Ok(s) | Err(s) => (),
    |            -
    |            |
    |            data moved here
    |            move occurs because `s` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider removing the dereference here
+   |
+LL -     match *x {
+LL +     match x {
+   |
 
 error: aborting due to 14 previous errors
 

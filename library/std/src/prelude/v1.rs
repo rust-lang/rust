@@ -59,8 +59,15 @@ pub use core::prelude::v1::{RustcDecodable, RustcEncodable};
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
+#[cfg(not(bootstrap))]
+#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
+pub use core::prelude::v1::alloc_error_handler;
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 pub use core::prelude::v1::{bench, derive, global_allocator, test, test_case};
+
+#[unstable(feature = "derive_const", issue = "none")]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::derive_const;
 
 // Do not `doc(no_inline)` either.
 #[unstable(
@@ -77,6 +84,15 @@ pub use core::prelude::v1::cfg_accessible;
     reason = "`cfg_eval` is a recently implemented feature"
 )]
 pub use core::prelude::v1::cfg_eval;
+
+// Do not `doc(no_inline)` either.
+#[unstable(
+    feature = "type_ascription",
+    issue = "23416",
+    reason = "placeholder syntax for type ascription"
+)]
+#[cfg(not(bootstrap))]
+pub use core::prelude::v1::type_ascribe;
 
 // The file so far is equivalent to src/libcore/prelude/v1.rs,
 // and below to src/liballoc/prelude.rs.

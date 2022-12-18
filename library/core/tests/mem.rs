@@ -1,4 +1,5 @@
 use core::mem::*;
+use core::ptr;
 
 #[cfg(panic = "unwind")]
 use std::rc::Rc;
@@ -76,6 +77,25 @@ fn align_of_val_basic() {
 }
 
 #[test]
+#[cfg(not(bootstrap))] // stage 0 doesn't have the fix yet, so the test fails
+fn align_of_val_raw_packed() {
+    #[repr(C, packed)]
+    struct B {
+        f: [u32],
+    }
+    let storage = [0u8; 4];
+    let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+    assert_eq!(unsafe { align_of_val_raw(b) }, 1);
+
+    const ALIGN_OF_VAL_RAW: usize = {
+        let storage = [0u8; 4];
+        let b: *const B = ptr::from_raw_parts(storage.as_ptr().cast(), 1);
+        unsafe { align_of_val_raw(b) }
+    };
+    assert_eq!(ALIGN_OF_VAL_RAW, 1);
+}
+
+#[test]
 fn test_swap() {
     let mut x = 31337;
     let mut y = 42;
@@ -130,7 +150,11 @@ fn test_transmute_copy_grow_panics() {
             payload
                 .downcast::<&'static str>()
                 .and_then(|s| {
-                    if *s == "cannot transmute_copy if U is larger than T" { Ok(s) } else { Err(s) }
+                    if *s == "cannot transmute_copy if Dst is larger than Src" {
+                        Ok(s)
+                    } else {
+                        Err(s)
+                    }
                 })
                 .unwrap_or_else(|p| panic::resume_unwind(p));
         }
@@ -163,18 +187,18 @@ fn assume_init_good() {
 
 #[test]
 fn uninit_array_assume_init() {
-    let mut array: [MaybeUninit<i16>; 5] = MaybeUninit::uninit_array();
+    let mut array = [MaybeUninit::<i16>::uninit(); 5];
     array[0].write(3);
     array[1].write(1);
     array[2].write(4);
     array[3].write(1);
     array[4].write(5);
 
-    let array = unsafe { MaybeUninit::array_assume_init(array) };
+    let array = unsafe { array.transpose().assume_init() };
 
     assert_eq!(array, [3, 1, 4, 1, 5]);
 
-    let [] = unsafe { MaybeUninit::<!>::array_assume_init([]) };
+    let [] = unsafe { [MaybeUninit::<!>::uninit(); 0].transpose().assume_init() };
 }
 
 #[test]

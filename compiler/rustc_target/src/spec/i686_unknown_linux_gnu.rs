@@ -1,11 +1,11 @@
-use crate::spec::{LinkerFlavor, SanitizerSet, StackProbeType, Target};
+use crate::spec::{Cc, LinkerFlavor, Lld, SanitizerSet, StackProbeType, Target};
 
 pub fn target() -> Target {
     let mut base = super::linux_gnu_base::opts();
     base.cpu = "pentium4".into();
     base.max_atomic_width = Some(64);
     base.supported_sanitizers = SanitizerSet::ADDRESS;
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-m32"]);
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-m32"]);
     base.stack_probes = StackProbeType::X86;
 
     Target {

@@ -13,20 +13,20 @@ extern crate rustc_span;
 
 use rustc_errors::{
     AddToDiagnostic, IntoDiagnostic, Diagnostic, DiagnosticBuilder,
-    ErrorGuaranteed, Handler, fluent
+    ErrorGuaranteed, Handler, fluent, SubdiagnosticMessage,
 };
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(parser::expect_path)]
+#[diag(compiletest_example)]
 struct DeriveDiagnostic {
     #[primary_span]
     span: Span,
 }
 
 #[derive(Subdiagnostic)]
-#[note(parser::add_paren)]
+#[note(compiletest_example)]
 struct Note {
     #[primary_span]
     span: Span,
@@ -45,14 +45,17 @@ pub struct TranslatableInIntoDiagnostic;
 
 impl<'a> IntoDiagnostic<'a, ErrorGuaranteed> for TranslatableInIntoDiagnostic {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        handler.struct_err(fluent::parser::expect_path)
+        handler.struct_err(fluent::compiletest_example)
     }
 }
 
 pub struct UntranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         diag.note("untranslatable diagnostic");
         //~^ ERROR diagnostics should be created using translatable messages
     }
@@ -61,13 +64,16 @@ impl AddToDiagnostic for UntranslatableInAddToDiagnostic {
 pub struct TranslatableInAddToDiagnostic;
 
 impl AddToDiagnostic for TranslatableInAddToDiagnostic {
-    fn add_to_diagnostic(self, diag: &mut Diagnostic) {
-        diag.note(fluent::typeck::note);
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.note(fluent::note);
     }
 }
 
 pub fn make_diagnostics<'a>(handler: &'a Handler) {
-    let _diag = handler.struct_err(fluent::parser::expect_path);
+    let _diag = handler.struct_err(fluent::compiletest_example);
     //~^ ERROR diagnostics should only be created in `IntoDiagnostic`/`AddToDiagnostic` impls
 
     let _diag = handler.struct_err("untranslatable diagnostic");

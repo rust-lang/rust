@@ -41,7 +41,7 @@ pub fn analyze_source_file(
 }
 
 cfg_if::cfg_if! {
-    if #[cfg(all(any(target_arch = "x86", target_arch = "x86_64")))] {
+    if #[cfg(any(target_arch = "x86", target_arch = "x86_64"))] {
         fn analyze_source_file_dispatch(src: &str,
                                     source_file_start_pos: BytePos,
                                     lines: &mut Vec<BytePos>,
@@ -175,7 +175,7 @@ cfg_if::cfg_if! {
             // There might still be a tail left to analyze
             let tail_start = chunk_count * CHUNK_SIZE + intra_chunk_offset;
             if tail_start < src.len() {
-                analyze_source_file_generic(&src[tail_start as usize ..],
+                analyze_source_file_generic(&src[tail_start ..],
                                         src.len() - tail_start,
                                         output_offset + BytePos::from_usize(tail_start),
                                         lines,
@@ -219,7 +219,7 @@ fn analyze_source_file_generic(
     while i < scan_len {
         let byte = unsafe {
             // We verified that i < scan_len <= src.len()
-            *src_bytes.get_unchecked(i as usize)
+            *src_bytes.get_unchecked(i)
         };
 
         // How much to advance in order to get to the next UTF-8 char in the
@@ -247,7 +247,7 @@ fn analyze_source_file_generic(
             // The slow path:
             // This is either ASCII control character "DEL" or the beginning of
             // a multibyte char. Just decode to `char`.
-            let c = (&src[i..]).chars().next().unwrap();
+            let c = src[i..].chars().next().unwrap();
             char_len = c.len_utf8();
 
             let pos = BytePos::from_usize(i) + output_offset;

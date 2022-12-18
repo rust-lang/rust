@@ -26,8 +26,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "pthread_set_name_np" => {
                 let [thread, name] =
                     this.check_shim(abi, Abi::C { unwind: false }, link_name, args)?;
-                let res =
-                    this.pthread_setname_np(this.read_scalar(thread)?, this.read_scalar(name)?)?;
+                let max_len = usize::MAX; // freebsd does not seem to have a limit.
+                let res = this.pthread_setname_np(
+                    this.read_scalar(thread)?,
+                    this.read_scalar(name)?,
+                    max_len,
+                )?;
                 this.write_scalar(res, dest)?;
             }
 

@@ -88,6 +88,49 @@ fn consts() {
 }
 
 #[test]
+fn enums() {
+    check_number(
+        r#"
+    enum E {
+        F1 = 1,
+        F2 = 2 * E::F1 as u8,
+        F3 = 3 * E::F2 as u8,
+    }
+    const GOAL: i32 = E::F3 as u8;
+    "#,
+        6,
+    );
+    check_number(
+        r#"
+    enum E { F1 = 1, F2, }
+    const GOAL: i32 = E::F2 as u8;
+    "#,
+        2,
+    );
+    check_number(
+        r#"
+    enum E { F1, }
+    const GOAL: i32 = E::F1 as u8;
+    "#,
+        0,
+    );
+    let r = eval_goal(
+        r#"
+        enum E { A = 1, }
+        const GOAL: E = E::A;
+        "#,
+    )
+    .unwrap();
+    match r {
+        ComputedExpr::Enum(name, _, Literal::Uint(val, _)) => {
+            assert_eq!(name, "E::A");
+            assert_eq!(val, 1);
+        }
+        x => panic!("Expected enum but found {:?}", x),
+    }
+}
+
+#[test]
 fn const_loop() {
     check_fail(
         r#"

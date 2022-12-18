@@ -5,6 +5,7 @@ use crate::prelude::*;
 
 use rustc_ast::expand::allocator::{AllocatorKind, AllocatorTy, ALLOCATOR_METHODS};
 use rustc_session::config::OomStrategy;
+use rustc_span::symbol::sym;
 
 /// Returns whether an allocator shim was created
 pub(crate) fn codegen(
@@ -23,7 +24,7 @@ pub(crate) fn codegen(
             module,
             unwind_context,
             kind,
-            tcx.lang_items().oom().is_some(),
+            tcx.alloc_error_handler_kind(()).unwrap(),
             tcx.sess.opts.unstable_opts.oom,
         );
         true
@@ -36,7 +37,7 @@ fn codegen_inner(
     module: &mut impl Module,
     unwind_context: &mut UnwindContext,
     kind: AllocatorKind,
-    has_alloc_error_handler: bool,
+    alloc_error_handler_kind: AllocatorKind,
     oom_strategy: OomStrategy,
 ) {
     let usize_ty = module.target_config().pointer_type();
@@ -65,7 +66,7 @@ fn codegen_inner(
         };
 
         let sig = Signature {
-            call_conv: CallConv::triple_default(module.isa().triple()),
+            call_conv: module.target_config().default_call_conv,
             params: arg_tys.iter().cloned().map(AbiParam::new).collect(),
             returns: output.into_iter().map(AbiParam::new).collect(),
         };
@@ -78,7 +79,7 @@ fn codegen_inner(
         let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
         let mut ctx = Context::new();
-        ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig.clone());
+        ctx.func.signature = sig.clone();
         {
             let mut func_ctx = FunctionBuilderContext::new();
             let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);
@@ -103,20 +104,20 @@ fn codegen_inner(
     }
 
     let sig = Signature {
-        call_conv: CallConv::triple_default(module.isa().triple()),
+        call_conv: module.target_config().default_call_conv,
         params: vec![AbiParam::new(usize_ty), AbiParam::new(usize_ty)],
         returns: vec![],
     };
 
-    let callee_name = if has_alloc_error_handler { "__rg_oom" } else { "__rdl_oom" };
+    let callee_name = alloc_error_handler_kind.fn_name(sym::oom);
 
     let func_id =
         module.declare_function("__rust_alloc_error_handler", Linkage::Export, &sig).unwrap();
 
-    let callee_func_id = module.declare_function(callee_name, Linkage::Import, &sig).unwrap();
+    let callee_func_id = module.declare_function(&callee_name, Linkage::Import, &sig).unwrap();
 
     let mut ctx = Context::new();
-    ctx.func = Function::with_name_signature(ExternalName::user(0, 0), sig);
+    ctx.func.signature = sig;
     {
         let mut func_ctx = FunctionBuilderContext::new();
         let mut bcx = FunctionBuilder::new(&mut ctx.func, &mut func_ctx);

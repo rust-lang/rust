@@ -42,18 +42,27 @@ fn main() {
 
     match opt {
         Some(ref first) if let second = first && let _third = second && let v = 4 + 4 => {},
-        //[disallowed]~^ ERROR irrefutable `let` patterns
+        //[disallowed]~^ ERROR irrefutable `if let` guard patterns
         _ => {}
     }
 
+    // No error about leading irrefutable patterns: the expr on the rhs might
+    // use the bindings created by the match.
     match opt {
         Some(ref first) if let Range { start: local_start, end: _ } = first
-        //[disallowed]~^ ERROR leading irrefutable pattern in let chain
             && let None = local_start => {},
         _ => {}
     }
 
-    // No error, despite the prefix being irrefutable
+    match opt {
+        Some(ref first) if let Range { start: Some(_), end: local_end } = first
+            && let v = local_end && let w = v => {},
+        //[disallowed]~^ ERROR trailing irrefutable patterns in let chain
+        _ => {}
+    }
+
+    // No error, despite the prefix being irrefutable: moving out could change the behaviour,
+    // due to possible side effects of the operation.
     while let first = &opt && let Some(ref second) = first && let None = second.start {}
 
     while let first = &opt && let (a, b) = (1, 2) {}

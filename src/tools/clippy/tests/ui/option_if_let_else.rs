@@ -230,3 +230,12 @@ fn main() {
     };
     let _ = if let Ok(a) = res { a + 1 } else { 5 };
 }
+
+#[allow(dead_code)]
+fn issue9742() -> Option<&'static str> {
+    // should not lint because of guards
+    match Some("foo  ") {
+        Some(name) if name.starts_with("foo") => Some(name.trim()),
+        _ => None,
+    }
+}

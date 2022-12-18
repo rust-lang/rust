@@ -1,116 +1,179 @@
-use crate::*;
 use rustc_data_structures::fx::FxHashSet;
+
+use crate::*;
+
+pub trait VisitTags {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag));
+}
+
+impl<T: VisitTags> VisitTags for Option<T> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        if let Some(x) = self {
+            x.visit_tags(visit);
+        }
+    }
+}
+
+impl<T: VisitTags> VisitTags for std::cell::RefCell<T> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        self.borrow().visit_tags(visit)
+    }
+}
+
+impl VisitTags for BorTag {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        visit(*self)
+    }
+}
+
+impl VisitTags for Provenance {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        if let Provenance::Concrete { tag, .. } = self {
+            visit(*tag);
+        }
+    }
+}
+
+impl VisitTags for Pointer<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let (prov, _offset) = self.into_parts();
+        prov.visit_tags(visit);
+    }
+}
+
+impl VisitTags for Pointer<Option<Provenance>> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let (prov, _offset) = self.into_parts();
+        prov.visit_tags(visit);
+    }
+}
+
+impl VisitTags for Scalar<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        match self {
+            Scalar::Ptr(ptr, _) => ptr.visit_tags(visit),
+            Scalar::Int(_) => (),
+        }
+    }
+}
+
+impl VisitTags for Immediate<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        match self {
+            Immediate::Scalar(s) => {
+                s.visit_tags(visit);
+            }
+            Immediate::ScalarPair(s1, s2) => {
+                s1.visit_tags(visit);
+                s2.visit_tags(visit);
+            }
+            Immediate::Uninit => {}
+        }
+    }
+}
+
+impl VisitTags for MemPlaceMeta<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        match self {
+            MemPlaceMeta::Meta(m) => m.visit_tags(visit),
+            MemPlaceMeta::None => {}
+        }
+    }
+}
+
+impl VisitTags for MemPlace<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let MemPlace { ptr, meta } = self;
+        ptr.visit_tags(visit);
+        meta.visit_tags(visit);
+    }
+}
+
+impl VisitTags for MPlaceTy<'_, Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        (**self).visit_tags(visit)
+    }
+}
+
+impl VisitTags for Place<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        match self {
+            Place::Ptr(p) => p.visit_tags(visit),
+            Place::Local { .. } => {
+                // Will be visited as part of the stack frame.
+            }
+        }
+    }
+}
+
+impl VisitTags for PlaceTy<'_, Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        (**self).visit_tags(visit)
+    }
+}
+
+impl VisitTags for Operand<Provenance> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        match self {
+            Operand::Immediate(imm) => {
+                imm.visit_tags(visit);
+            }
+            Operand::Indirect(p) => {
+                p.visit_tags(visit);
+            }
+        }
+    }
+}
+
+impl VisitTags for Allocation<Provenance, AllocExtra> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for prov in self.provenance().provenances() {
+            prov.visit_tags(visit);
+        }
+
+        self.extra.visit_tags(visit);
+    }
+}
+
+impl VisitTags for crate::MiriInterpCx<'_, '_> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        // Memory.
+        self.memory.alloc_map().iter(|it| {
+            for (_id, (_kind, alloc)) in it {
+                alloc.visit_tags(visit);
+            }
+        });
+
+        // And all the other machine values.
+        self.machine.visit_tags(visit);
+    }
+}
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
     fn garbage_collect_tags(&mut self) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         // No reason to do anything at all if stacked borrows is off.
-        if this.machine.stacked_borrows.is_none() {
+        if this.machine.borrow_tracker.is_none() {
             return Ok(());
         }
 
         let mut tags = FxHashSet::default();
-
-        for thread in this.machine.threads.iter() {
-            if let Some(Scalar::Ptr(
-                Pointer { provenance: Provenance::Concrete { sb, .. }, .. },
-                _,
-            )) = thread.panic_payload
-            {
-                tags.insert(sb);
-            }
-        }
-
-        self.find_tags_in_tls(&mut tags);
-        self.find_tags_in_memory(&mut tags);
-        self.find_tags_in_locals(&mut tags)?;
-
+        this.visit_tags(&mut |tag| {
+            tags.insert(tag);
+        });
         self.remove_unreachable_tags(tags);
 
         Ok(())
     }
 
-    fn find_tags_in_tls(&mut self, tags: &mut FxHashSet<SbTag>) {
-        let this = self.eval_context_mut();
-        this.machine.tls.iter(|scalar| {
-            if let Scalar::Ptr(Pointer { provenance: Provenance::Concrete { sb, .. }, .. }, _) =
-                scalar
-            {
-                tags.insert(*sb);
-            }
-        });
-    }
-
-    fn find_tags_in_memory(&mut self, tags: &mut FxHashSet<SbTag>) {
+    fn remove_unreachable_tags(&mut self, tags: FxHashSet<BorTag>) {
         let this = self.eval_context_mut();
         this.memory.alloc_map().iter(|it| {
             for (_id, (_kind, alloc)) in it {
-                for (_size, prov) in alloc.provenance().iter() {
-                    if let Provenance::Concrete { sb, .. } = prov {
-                        tags.insert(*sb);
-                    }
+                if let Some(bt) = &alloc.extra.borrow_tracker {
+                    bt.remove_unreachable_tags(&tags);
                 }
-            }
-        });
-    }
-
-    fn find_tags_in_locals(&mut self, tags: &mut FxHashSet<SbTag>) -> InterpResult<'tcx> {
-        let this = self.eval_context_mut();
-        for frame in this.machine.threads.all_stacks().flatten() {
-            // Handle the return place of each frame
-            if let Ok(return_place) = frame.return_place.try_as_mplace() {
-                if let Some(Provenance::Concrete { sb, .. }) = return_place.ptr.provenance {
-                    tags.insert(sb);
-                }
-            }
-
-            for local in frame.locals.iter() {
-                let LocalValue::Live(value) = local.value else {
-                continue;
-            };
-                match value {
-                    Operand::Immediate(Immediate::Scalar(Scalar::Ptr(ptr, _))) =>
-                        if let Provenance::Concrete { sb, .. } = ptr.provenance {
-                            tags.insert(sb);
-                        },
-                    Operand::Immediate(Immediate::ScalarPair(s1, s2)) => {
-                        if let Scalar::Ptr(ptr, _) = s1 {
-                            if let Provenance::Concrete { sb, .. } = ptr.provenance {
-                                tags.insert(sb);
-                            }
-                        }
-                        if let Scalar::Ptr(ptr, _) = s2 {
-                            if let Provenance::Concrete { sb, .. } = ptr.provenance {
-                                tags.insert(sb);
-                            }
-                        }
-                    }
-                    Operand::Indirect(MemPlace { ptr, .. }) => {
-                        if let Some(Provenance::Concrete { sb, .. }) = ptr.provenance {
-                            tags.insert(sb);
-                        }
-                    }
-                    Operand::Immediate(Immediate::Uninit)
-                    | Operand::Immediate(Immediate::Scalar(Scalar::Int(_))) => {}
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    fn remove_unreachable_tags(&mut self, tags: FxHashSet<SbTag>) {
-        let this = self.eval_context_mut();
-        this.memory.alloc_map().iter(|it| {
-            for (_id, (_kind, alloc)) in it {
-                alloc
-                    .extra
-                    .stacked_borrows
-                    .as_ref()
-                    .unwrap()
-                    .borrow_mut()
-                    .remove_unreachable_tags(&tags);
             }
         });
     }

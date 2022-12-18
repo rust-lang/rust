@@ -2,23 +2,21 @@
 
 use clippy_utils::diagnostics::{span_lint, span_lint_and_help, span_lint_and_sugg, span_lint_and_then};
 use clippy_utils::macros::{is_panic, macro_backtrace};
-use clippy_utils::msrvs;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::{first_line_of_span, is_present_in_source, snippet_opt, without_block_comments};
-use clippy_utils::{extract_msrv_attr, meets_msrv};
 use if_chain::if_chain;
-use rustc_ast::{AttrKind, AttrStyle, Attribute, Lit, LitKind, MetaItemKind, NestedMetaItem};
+use rustc_ast::{AttrKind, AttrStyle, Attribute, LitKind, MetaItemKind, MetaItemLit, NestedMetaItem};
 use rustc_errors::Applicability;
 use rustc_hir::{
     Block, Expr, ExprKind, ImplItem, ImplItemKind, Item, ItemKind, StmtKind, TraitFn, TraitItem, TraitItemKind,
 };
-use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext};
+use rustc_lint::{EarlyContext, EarlyLintPass, LateContext, LateLintPass, Level, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_lint_pass, declare_tool_lint, impl_lint_pass};
 use rustc_span::source_map::Span;
-use rustc_span::sym;
 use rustc_span::symbol::Symbol;
+use rustc_span::{sym, DUMMY_SP};
 use semver::Version;
 
 static UNIX_SYSTEMS: &[&str] = &[
@@ -303,6 +301,26 @@ declare_lint_pass!(Attributes => [
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Attributes {
+    fn check_crate(&mut self, cx: &LateContext<'tcx>) {
+        for (name, level) in &cx.sess().opts.lint_opts {
+            if name == "clippy::restriction" && *level > Level::Allow {
+                span_lint_and_then(
+                    cx,
+                    BLANKET_CLIPPY_RESTRICTION_LINTS,
+                    DUMMY_SP,
+                    "`clippy::restriction` is not meant to be enabled as a group",
+                    |diag| {
+                        diag.note(format!(
+                            "because of the command line `--{} clippy::restriction`",
+                            level.as_str()
+                        ));
+                        diag.help("enable the restriction lints you need individually");
+                    },
+                );
+            }
+        }
+    }
+
     fn check_attribute(&mut self, cx: &LateContext<'tcx>, attr: &'tcx Attribute) {
         if let Some(items) = &attr.meta_item_list() {
             if let Some(ident) = attr.ident() {
@@ -357,7 +375,10 @@ impl<'tcx> LateLintPass<'tcx> for Attributes {
                                                     "wildcard_imports"
                                                         | "enum_glob_use"
                                                         | "redundant_pub_crate"
-                                                        | "macro_use_imports",
+                                                        | "macro_use_imports"
+                                                        | "unsafe_removed_from_name"
+                                                        | "module_name_repetitions"
+                                                        | "single_component_path_imports"
                                                 )
                                             })
                                         {
@@ -440,9 +461,9 @@ fn check_clippy_lint_names(cx: &LateContext<'_>, name: Symbol, items: &[NestedMe
                     cx,
                     BLANKET_CLIPPY_RESTRICTION_LINTS,
                     lint.span(),
-                    "restriction lints are not meant to be all enabled",
+                    "`clippy::restriction` is not meant to be enabled as a group",
                     None,
-                    "try enabling only the lints you really need",
+                    "enable the restriction lints you need individually",
                 );
             }
         }
@@ -460,6 +481,11 @@ fn check_lint_reason(cx: &LateContext<'_>, name: Symbol, items: &[NestedMetaItem
         && let MetaItemKind::NameValue(_) = &item.kind
         && item.path == sym::reason
     {
+        return;
+    }
+
+    // Check if the attribute is in an external macro and therefore out of the developer's control
+    if in_external_macro(cx.sess(), attr.span) {
         return;
     }
 
@@ -541,17 +567,14 @@ fn check_attrs(cx: &LateContext<'_>, span: Span, name: Symbol, attrs: &[Attribut
                     cx,
                     INLINE_ALWAYS,
                     attr.span,
-                    &format!(
-                        "you have declared `#[inline(always)]` on `{}`. This is usually a bad idea",
-                        name
-                    ),
+                    &format!("you have declared `#[inline(always)]` on `{name}`. This is usually a bad idea"),
                 );
             }
         }
     }
 }
 
-fn check_semver(cx: &LateContext<'_>, span: Span, lit: &Lit) {
+fn check_semver(cx: &LateContext<'_>, span: Span, lit: &MetaItemLit) {
     if let LitKind::Str(is, _) = lit.kind {
         if Version::parse(is.as_str()).is_ok() {
             return;
@@ -574,7 +597,7 @@ fn is_word(nmi: &NestedMetaItem, expected: Symbol) -> bool {
 }
 
 pub struct EarlyAttributes {
-    pub msrv: Option<RustcVersion>,
+    pub msrv: Msrv,
 }
 
 impl_lint_pass!(EarlyAttributes => [
@@ -589,7 +612,7 @@ impl EarlyLintPass for EarlyAttributes {
     }
 
     fn check_attribute(&mut self, cx: &EarlyContext<'_>, attr: &Attribute) {
-        check_deprecated_cfg_attr(cx, attr, self.msrv);
+        check_deprecated_cfg_attr(cx, attr, &self.msrv);
         check_mismatched_target_os(cx, attr);
     }
 
@@ -629,9 +652,9 @@ fn check_empty_line_after_outer_attr(cx: &EarlyContext<'_>, item: &rustc_ast::It
     }
 }
 
-fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: Option<RustcVersion>) {
+fn check_deprecated_cfg_attr(cx: &EarlyContext<'_>, attr: &Attribute, msrv: &Msrv) {
     if_chain! {
-        if meets_msrv(msrv, msrvs::TOOL_ATTRIBUTES);
+        if msrv.meets(msrvs::TOOL_ATTRIBUTES);
         // check cfg_attr
         if attr.has_name(sym::cfg_attr);
         if let Some(items) = attr.meta_item_list();
@@ -720,7 +743,7 @@ fn check_mismatched_target_os(cx: &EarlyContext<'_>, attr: &Attribute) {
                 let mut unix_suggested = false;
 
                 for (os, span) in mismatched {
-                    let sugg = format!("target_os = \"{}\"", os);
+                    let sugg = format!("target_os = \"{os}\"");
                     diag.span_suggestion(span, "try", sugg, Applicability::MaybeIncorrect);
 
                     if !unix_suggested && is_unix(os) {

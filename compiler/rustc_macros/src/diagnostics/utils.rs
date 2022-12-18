@@ -2,17 +2,30 @@ use crate::diagnostics::error::{
     span_err, throw_invalid_attr, throw_invalid_nested_attr, throw_span_err, DiagnosticDeriveError,
 };
 use proc_macro::Span;
-use proc_macro2::TokenStream;
+use proc_macro2::{Ident, TokenStream};
 use quote::{format_ident, quote, ToTokens};
-use std::cmp::Ordering;
+use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use std::fmt;
 use std::str::FromStr;
 use syn::{spanned::Spanned, Attribute, Field, Meta, Type, TypeTuple};
 use syn::{MetaList, MetaNameValue, NestedMeta, Path};
-use synstructure::{BindStyle, BindingInfo, VariantInfo};
+use synstructure::{BindingInfo, VariantInfo};
 
-use super::error::invalid_nested_attr;
+use super::error::{invalid_attr, invalid_nested_attr};
+
+thread_local! {
+    pub static CODE_IDENT_COUNT: RefCell<u32> = RefCell::new(0);
+}
+
+/// Returns an ident of the form `__code_N` where `N` is incremented once with every call.
+pub(crate) fn new_code_ident() -> syn::Ident {
+    CODE_IDENT_COUNT.with(|count| {
+        let ident = format_ident!("__code_{}", *count.borrow());
+        *count.borrow_mut() += 1;
+        ident
+    })
+}
 
 /// Checks whether the type name of `ty` matches `name`.
 ///
@@ -67,7 +80,7 @@ fn report_error_if_not_applied_to_ty(
     path: &[&str],
     ty_name: &str,
 ) -> Result<(), DiagnosticDeriveError> {
-    if !type_matches_path(&info.ty, path) {
+    if !type_matches_path(info.ty, path) {
         report_type_error(attr, ty_name)?;
     }
 
@@ -92,8 +105,8 @@ pub(crate) fn report_error_if_not_applied_to_span(
     attr: &Attribute,
     info: &FieldInfo<'_>,
 ) -> Result<(), DiagnosticDeriveError> {
-    if !type_matches_path(&info.ty, &["rustc_span", "Span"])
-        && !type_matches_path(&info.ty, &["rustc_errors", "MultiSpan"])
+    if !type_matches_path(info.ty, &["rustc_span", "Span"])
+        && !type_matches_path(info.ty, &["rustc_errors", "MultiSpan"])
     {
         report_type_error(attr, "`Span` or `MultiSpan`")?;
     }
@@ -140,6 +153,15 @@ impl<'ty> FieldInnerTy<'ty> {
         }
 
         unreachable!();
+    }
+
+    /// Returns `true` if `FieldInnerTy::with` will result in iteration for this inner type (i.e.
+    /// that cloning might be required for values moved in the loop body).
+    pub(crate) fn will_iterate(&self) -> bool {
+        match self {
+            FieldInnerTy::Vec(..) => true,
+            FieldInnerTy::Option(..) | FieldInnerTy::None => false,
+        }
     }
 
     /// Returns `Option` containing inner type if there is one.
@@ -373,17 +395,90 @@ pub(super) fn build_field_mapping<'v>(variant: &VariantInfo<'v>) -> HashMap<Stri
     fields_map
 }
 
+#[derive(Copy, Clone, Debug)]
+pub(super) enum AllowMultipleAlternatives {
+    No,
+    Yes,
+}
+
+/// Constructs the `format!()` invocation(s) necessary for a `#[suggestion*(code = "foo")]` or
+/// `#[suggestion*(code("foo", "bar"))]` attribute field
+pub(super) fn build_suggestion_code(
+    code_field: &Ident,
+    meta: &Meta,
+    fields: &impl HasFieldMap,
+    allow_multiple: AllowMultipleAlternatives,
+) -> TokenStream {
+    let values = match meta {
+        // `code = "foo"`
+        Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(s), .. }) => vec![s],
+        // `code("foo", "bar")`
+        Meta::List(MetaList { nested, .. }) => {
+            if let AllowMultipleAlternatives::No = allow_multiple {
+                span_err(
+                    meta.span().unwrap(),
+                    "expected exactly one string literal for `code = ...`",
+                )
+                .emit();
+                vec![]
+            } else if nested.is_empty() {
+                span_err(
+                    meta.span().unwrap(),
+                    "expected at least one string literal for `code(...)`",
+                )
+                .emit();
+                vec![]
+            } else {
+                nested
+                    .into_iter()
+                    .filter_map(|item| {
+                        if let NestedMeta::Lit(syn::Lit::Str(s)) = item {
+                            Some(s)
+                        } else {
+                            span_err(
+                                item.span().unwrap(),
+                                "`code(...)` must contain only string literals",
+                            )
+                            .emit();
+                            None
+                        }
+                    })
+                    .collect()
+            }
+        }
+        _ => {
+            span_err(
+                meta.span().unwrap(),
+                r#"`code = "..."`/`code(...)` must contain only string literals"#,
+            )
+            .emit();
+            vec![]
+        }
+    };
+
+    if let AllowMultipleAlternatives::Yes = allow_multiple {
+        let formatted_strings: Vec<_> = values
+            .into_iter()
+            .map(|value| fields.build_format(&value.value(), value.span()))
+            .collect();
+        quote! { let #code_field = [#(#formatted_strings),*].into_iter(); }
+    } else if let [value] = values.as_slice() {
+        let formatted_str = fields.build_format(&value.value(), value.span());
+        quote! { let #code_field = #formatted_str; }
+    } else {
+        // error handled previously
+        quote! { let #code_field = String::new(); }
+    }
+}
+
 /// Possible styles for suggestion subdiagnostics.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub(super) enum SuggestionKind {
-    /// `#[suggestion]`
     Normal,
-    /// `#[suggestion_short]`
     Short,
-    /// `#[suggestion_hidden]`
     Hidden,
-    /// `#[suggestion_verbose]`
     Verbose,
+    ToolOnly,
 }
 
 impl FromStr for SuggestionKind {
@@ -391,11 +486,24 @@ impl FromStr for SuggestionKind {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "" => Ok(SuggestionKind::Normal),
-            "_short" => Ok(SuggestionKind::Short),
-            "_hidden" => Ok(SuggestionKind::Hidden),
-            "_verbose" => Ok(SuggestionKind::Verbose),
+            "normal" => Ok(SuggestionKind::Normal),
+            "short" => Ok(SuggestionKind::Short),
+            "hidden" => Ok(SuggestionKind::Hidden),
+            "verbose" => Ok(SuggestionKind::Verbose),
+            "tool-only" => Ok(SuggestionKind::ToolOnly),
             _ => Err(()),
+        }
+    }
+}
+
+impl fmt::Display for SuggestionKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            SuggestionKind::Normal => write!(f, "normal"),
+            SuggestionKind::Short => write!(f, "short"),
+            SuggestionKind::Hidden => write!(f, "hidden"),
+            SuggestionKind::Verbose => write!(f, "verbose"),
+            SuggestionKind::ToolOnly => write!(f, "tool-only"),
         }
     }
 }
@@ -415,6 +523,19 @@ impl SuggestionKind {
             SuggestionKind::Verbose => {
                 quote! { rustc_errors::SuggestionStyle::ShowAlways }
             }
+            SuggestionKind::ToolOnly => {
+                quote! { rustc_errors::SuggestionStyle::CompletelyHidden }
+            }
+        }
+    }
+
+    fn from_suffix(s: &str) -> Option<Self> {
+        match s {
+            "" => Some(SuggestionKind::Normal),
+            "_short" => Some(SuggestionKind::Short),
+            "_hidden" => Some(SuggestionKind::Hidden),
+            "_verbose" => Some(SuggestionKind::Verbose),
+            _ => None,
         }
     }
 }
@@ -434,7 +555,12 @@ pub(super) enum SubdiagnosticKind {
     Suggestion {
         suggestion_kind: SuggestionKind,
         applicability: SpannedOption<Applicability>,
-        code: TokenStream,
+        /// Identifier for variable used for formatted code, e.g. `___code_0`. Enables separation
+        /// of formatting and diagnostic emission so that `set_arg` calls can happen in-between..
+        code_field: syn::Ident,
+        /// Initialization logic for `code_field`'s variable, e.g.
+        /// `let __formatted_code = /* whatever */;`
+        code_init: TokenStream,
     },
     /// `#[multipart_suggestion{,_short,_hidden,_verbose}]`
     MultipartSuggestion {
@@ -450,31 +576,61 @@ impl SubdiagnosticKind {
     pub(super) fn from_attr(
         attr: &Attribute,
         fields: &impl HasFieldMap,
-    ) -> Result<(SubdiagnosticKind, Option<Path>), DiagnosticDeriveError> {
+    ) -> Result<Option<(SubdiagnosticKind, Option<Path>)>, DiagnosticDeriveError> {
+        // Always allow documentation comments.
+        if is_doc_comment(attr) {
+            return Ok(None);
+        }
+
         let span = attr.span().unwrap();
 
         let name = attr.path.segments.last().unwrap().ident.to_string();
         let name = name.as_str();
 
         let meta = attr.parse_meta()?;
+
         let mut kind = match name {
             "label" => SubdiagnosticKind::Label,
             "note" => SubdiagnosticKind::Note,
             "help" => SubdiagnosticKind::Help,
             "warning" => SubdiagnosticKind::Warn,
             _ => {
+                // Recover old `#[(multipart_)suggestion_*]` syntaxes
+                // FIXME(#100717): remove
                 if let Some(suggestion_kind) =
-                    name.strip_prefix("suggestion").and_then(|s| s.parse().ok())
+                    name.strip_prefix("suggestion").and_then(SuggestionKind::from_suffix)
                 {
+                    if suggestion_kind != SuggestionKind::Normal {
+                        invalid_attr(attr, &meta)
+                            .help(format!(
+                                r#"Use `#[suggestion(..., style = "{}")]` instead"#,
+                                suggestion_kind
+                            ))
+                            .emit();
+                    }
+
                     SubdiagnosticKind::Suggestion {
-                        suggestion_kind,
+                        suggestion_kind: SuggestionKind::Normal,
                         applicability: None,
-                        code: TokenStream::new(),
+                        code_field: new_code_ident(),
+                        code_init: TokenStream::new(),
                     }
                 } else if let Some(suggestion_kind) =
-                    name.strip_prefix("multipart_suggestion").and_then(|s| s.parse().ok())
+                    name.strip_prefix("multipart_suggestion").and_then(SuggestionKind::from_suffix)
                 {
-                    SubdiagnosticKind::MultipartSuggestion { suggestion_kind, applicability: None }
+                    if suggestion_kind != SuggestionKind::Normal {
+                        invalid_attr(attr, &meta)
+                            .help(format!(
+                                r#"Use `#[multipart_suggestion(..., style = "{}")]` instead"#,
+                                suggestion_kind
+                            ))
+                            .emit();
+                    }
+
+                    SubdiagnosticKind::MultipartSuggestion {
+                        suggestion_kind: SuggestionKind::Normal,
+                        applicability: None,
+                    }
                 } else {
                     throw_invalid_attr!(attr, &meta);
                 }
@@ -498,7 +654,9 @@ impl SubdiagnosticKind {
                     | SubdiagnosticKind::Note
                     | SubdiagnosticKind::Help
                     | SubdiagnosticKind::Warn
-                    | SubdiagnosticKind::MultipartSuggestion { .. } => return Ok((kind, None)),
+                    | SubdiagnosticKind::MultipartSuggestion { .. } => {
+                        return Ok(Some((kind, None)));
+                    }
                     SubdiagnosticKind::Suggestion { .. } => {
                         throw_span_err!(span, "suggestion without `code = \"...\"`")
                     }
@@ -510,6 +668,7 @@ impl SubdiagnosticKind {
         };
 
         let mut code = None;
+        let mut suggestion_kind = None;
 
         let mut nested_iter = nested.into_iter().peekable();
 
@@ -527,7 +686,7 @@ impl SubdiagnosticKind {
             let meta = match nested_attr {
                 NestedMeta::Meta(ref meta) => meta,
                 NestedMeta::Lit(_) => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
+                    invalid_nested_attr(attr, nested_attr).emit();
                     continue;
                 }
             };
@@ -536,68 +695,112 @@ impl SubdiagnosticKind {
             let nested_name = meta.path().segments.last().unwrap().ident.to_string();
             let nested_name = nested_name.as_str();
 
-            let value = match meta {
-                Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) => value,
-                Meta::Path(_) => throw_invalid_nested_attr!(attr, &nested_attr, |diag| {
+            let string_value = match meta {
+                Meta::NameValue(MetaNameValue { lit: syn::Lit::Str(value), .. }) => Some(value),
+
+                Meta::Path(_) => throw_invalid_nested_attr!(attr, nested_attr, |diag| {
                     diag.help("a diagnostic slug must be the first argument to the attribute")
                 }),
-                _ => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
-                    continue;
-                }
+                _ => None,
             };
 
             match (nested_name, &mut kind) {
-                ("code", SubdiagnosticKind::Suggestion { .. }) => {
-                    let formatted_str = fields.build_format(&value.value(), value.span());
-                    code.set_once(formatted_str, span);
+                ("code", SubdiagnosticKind::Suggestion { code_field, .. }) => {
+                    let code_init = build_suggestion_code(
+                        code_field,
+                        meta,
+                        fields,
+                        AllowMultipleAlternatives::Yes,
+                    );
+                    code.set_once(code_init, span);
                 }
                 (
                     "applicability",
                     SubdiagnosticKind::Suggestion { ref mut applicability, .. }
                     | SubdiagnosticKind::MultipartSuggestion { ref mut applicability, .. },
                 ) => {
+                    let Some(value) = string_value else {
+                        invalid_nested_attr(attr, nested_attr).emit();
+                        continue;
+                    };
+
                     let value = Applicability::from_str(&value.value()).unwrap_or_else(|()| {
                         span_err(span, "invalid applicability").emit();
                         Applicability::Unspecified
                     });
                     applicability.set_once(value, span);
                 }
+                (
+                    "style",
+                    SubdiagnosticKind::Suggestion { .. }
+                    | SubdiagnosticKind::MultipartSuggestion { .. },
+                ) => {
+                    let Some(value) = string_value else {
+                        invalid_nested_attr(attr, nested_attr).emit();
+                        continue;
+                    };
+
+                    let value = value.value().parse().unwrap_or_else(|()| {
+                        span_err(value.span().unwrap(), "invalid suggestion style")
+                            .help("valid styles are `normal`, `short`, `hidden`, `verbose` and `tool-only`")
+                            .emit();
+                        SuggestionKind::Normal
+                    });
+
+                    suggestion_kind.set_once(value, span);
+                }
 
                 // Invalid nested attribute
                 (_, SubdiagnosticKind::Suggestion { .. }) => {
-                    invalid_nested_attr(attr, &nested_attr)
-                        .help("only `code` and `applicability` are valid nested attributes")
+                    invalid_nested_attr(attr, nested_attr)
+                        .help(
+                            "only `style`, `code` and `applicability` are valid nested attributes",
+                        )
                         .emit();
                 }
                 (_, SubdiagnosticKind::MultipartSuggestion { .. }) => {
-                    invalid_nested_attr(attr, &nested_attr)
-                        .help("only `applicability` is a valid nested attributes")
+                    invalid_nested_attr(attr, nested_attr)
+                        .help("only `style` and `applicability` are valid nested attributes")
                         .emit()
                 }
                 _ => {
-                    invalid_nested_attr(attr, &nested_attr).emit();
+                    invalid_nested_attr(attr, nested_attr).emit();
                 }
             }
         }
 
         match kind {
-            SubdiagnosticKind::Suggestion { code: ref mut code_field, .. } => {
-                *code_field = if let Some((code, _)) = code {
-                    code
+            SubdiagnosticKind::Suggestion {
+                ref code_field,
+                ref mut code_init,
+                suggestion_kind: ref mut kind_field,
+                ..
+            } => {
+                if let Some(kind) = suggestion_kind.value() {
+                    *kind_field = kind;
+                }
+
+                *code_init = if let Some(init) = code.value() {
+                    init
                 } else {
                     span_err(span, "suggestion without `code = \"...\"`").emit();
-                    quote! { "" }
+                    quote! { let #code_field = std::iter::empty(); }
+                };
+            }
+            SubdiagnosticKind::MultipartSuggestion {
+                suggestion_kind: ref mut kind_field, ..
+            } => {
+                if let Some(kind) = suggestion_kind.value() {
+                    *kind_field = kind;
                 }
             }
             SubdiagnosticKind::Label
             | SubdiagnosticKind::Note
             | SubdiagnosticKind::Help
-            | SubdiagnosticKind::Warn
-            | SubdiagnosticKind::MultipartSuggestion { .. } => {}
+            | SubdiagnosticKind::Warn => {}
         }
 
-        Ok((kind, slug))
+        Ok(Some((kind, slug)))
     }
 }
 
@@ -608,7 +811,7 @@ impl quote::IdentFragment for SubdiagnosticKind {
             SubdiagnosticKind::Note => write!(f, "note"),
             SubdiagnosticKind::Help => write!(f, "help"),
             SubdiagnosticKind::Warn => write!(f, "warn"),
-            SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestion_with_style"),
+            SubdiagnosticKind::Suggestion { .. } => write!(f, "suggestions_with_style"),
             SubdiagnosticKind::MultipartSuggestion { .. } => {
                 write!(f, "multipart_suggestion_with_style")
             }
@@ -620,65 +823,12 @@ impl quote::IdentFragment for SubdiagnosticKind {
     }
 }
 
-/// Wrapper around `synstructure::BindStyle` which implements `Ord`.
-#[derive(PartialEq, Eq)]
-pub(super) struct OrderedBindStyle(pub(super) BindStyle);
-
-impl OrderedBindStyle {
-    /// Is `BindStyle::Move` or `BindStyle::MoveMut`?
-    pub(super) fn is_move(&self) -> bool {
-        matches!(self.0, BindStyle::Move | BindStyle::MoveMut)
-    }
-}
-
-impl Ord for OrderedBindStyle {
-    fn cmp(&self, other: &Self) -> Ordering {
-        match (self.is_move(), other.is_move()) {
-            // If both `self` and `other` are the same, then ordering is equal.
-            (true, true) | (false, false) => Ordering::Equal,
-            // If `self` is not a move then it should be considered less than `other` (so that
-            // references are sorted first).
-            (false, _) => Ordering::Less,
-            // If `self` is a move then it must be greater than `other` (again, so that references
-            // are sorted first).
-            (true, _) => Ordering::Greater,
-        }
-    }
-}
-
-impl PartialOrd for OrderedBindStyle {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
 /// Returns `true` if `field` should generate a `set_arg` call rather than any other diagnostic
 /// call (like `span_label`).
 pub(super) fn should_generate_set_arg(field: &Field) -> bool {
     field.attrs.is_empty()
 }
 
-/// Returns `true` if `field` needs to have code generated in the by-move branch of the
-/// generated derive rather than the by-ref branch.
-pub(super) fn bind_style_of_field(field: &Field) -> OrderedBindStyle {
-    let generates_set_arg = should_generate_set_arg(field);
-    let is_multispan = type_matches_path(&field.ty, &["rustc_errors", "MultiSpan"]);
-    // FIXME(davidtwco): better support for one field needing to be in the by-move and
-    // by-ref branches.
-    let is_subdiagnostic = field
-        .attrs
-        .iter()
-        .map(|attr| attr.path.segments.last().unwrap().ident.to_string())
-        .any(|attr| attr == "subdiagnostic");
-
-    // `set_arg` calls take their argument by-move..
-    let needs_move = generates_set_arg
-        // If this is a `MultiSpan` field then it needs to be moved to be used by any
-        // attribute..
-        || is_multispan
-        // If this a `#[subdiagnostic]` then it needs to be moved as the other diagnostic is
-        // unlikely to be `Copy`..
-        || is_subdiagnostic;
-
-    OrderedBindStyle(if needs_move { BindStyle::Move } else { BindStyle::Ref })
+pub(super) fn is_doc_comment(attr: &Attribute) -> bool {
+    attr.path.segments.last().unwrap().ident == "doc"
 }

@@ -1,7 +1,7 @@
 // This test ensure that the sidebar isn't "hidden" on mobile but instead moved out of the viewport.
 // This is especially important for devices for "text-first" content (like for users with
 // sight issues).
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 // Switching to "mobile view" by reducing the width to 600px.
 size: (600, 600)
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
@@ -13,7 +13,7 @@ click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 // Force the sidebar open by focusing a link inside it.
 // This makes it easier for keyboard users to get to it.
-focus: ".sidebar-title a"
+focus: ".sidebar-elems h3 a"
 assert-css: (".sidebar", {"display": "block", "left": "0px"})
 // When we tab out of the sidebar, close it.
 focus: ".search-input"
@@ -23,8 +23,19 @@ assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 click: ".sidebar-menu-toggle"
 assert-css: (".sidebar", {"left": "0px"})
 
+// Make sure the "struct Foo" header is hidden, since the mobile topbar already does it.
+assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='Foo']/parent::h2", {"display": "none"})
+// Make sure the global navigation is still here.
+assert-css: ("//nav[contains(@class, 'sidebar')]//h2/a[text()='In test_docs']/parent::h2", {"display": "block"})
+
 // Click elsewhere.
 click: "body"
+assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
+
+// Open the sidebar menu, and make sure pressing Escape closes it.
+click: ".sidebar-menu-toggle"
+assert-css: (".sidebar", {"left": "0px"})
+press-key: "Escape"
 assert-css: (".sidebar", {"display": "block", "left": "-1000px"})
 
 // Check that the topbar is visible
@@ -39,26 +50,39 @@ assert-position: ("#method\.must_use", {"y": 45})
 // Check that the bottom-most item on the sidebar menu can be scrolled fully into view.
 click: ".sidebar-menu-toggle"
 scroll-to: ".block.keyword li:nth-child(1)"
-compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543})
+compare-elements-position-near: (".block.keyword li:nth-child(1)", ".mobile-topbar", {"y": 543.19})
 
 // Now checking the background color of the sidebar.
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "dark"}
-reload:
+show-text: true
 
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(80, 80, 80)"})
+define-function: (
+    "check-colors",
+    (theme, color, background),
+    [
+        ("local-storage", {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}),
+        ("reload"),
 
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "ayu"}
-reload:
+        // Open the sidebar menu.
+        ("click", ".sidebar-menu-toggle"),
+        ("assert-css", (".sidebar", {
+            "background-color": |background|,
+            "color": |color|,
+        })),
+    ],
+)
 
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(20, 25, 31)"})
-
-local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": "light"}
-reload:
-
-// Open the sidebar menu.
-click: ".sidebar-menu-toggle"
-assert-css: (".sidebar", {"background-color": "rgb(245, 245, 245)"})
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(197, 197, 197)",
+    "background": "rgb(20, 25, 31)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(221, 221, 221)",
+    "background": "rgb(80, 80, 80)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(0, 0, 0)",
+    "background": "rgb(245, 245, 245)",
+})

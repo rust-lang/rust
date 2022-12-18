@@ -112,7 +112,7 @@ targeting Windows-like targets
 This is fixed if you explicitly set the target, for example
 `cargo build --target x86_64-pc-windows-msvc`
 Without an explicit --target the flags will be passed to all compiler invocations (including build
-scripts and proc macros), see [cargo docs on rustflags](https://doc.rust-lang.org/cargo/reference/config.html#buildrustflags)
+scripts and proc macros), see [cargo docs on rustflags](../cargo/reference/config.html#buildrustflags)
 
 If you have dependencies using the `cc` crate, you will need to set these
 environment variables:
@@ -131,24 +131,47 @@ able to get around this problem by setting `-Clinker=lld-link` in RUSTFLAGS
 
 ## Toolchain Compatibility
 
-<!-- NOTE: to update the below table, you can use this shell script:
+<!-- NOTE: to update the below table, you can use this Python script:
 
-```sh
-rustup toolchain install --profile minimal nightly
-MINOR_VERSION=$(rustc +nightly --version | cut -d . -f 2)
-LOWER_BOUND=61
+```python
+from collections import defaultdict
+import subprocess
 
-llvm_version() {
-    toolchain="$1"
-    printf "Rust $toolchain    |    Clang "
-    rustc +"$toolchain" -Vv | grep LLVM | cut -d ':' -f 2 | tr -d ' '
-}
+def minor_version(version):
+    return int(version.split('.')[1])
 
-for version in `seq $LOWER_BOUND $((MINOR_VERSION - 2))`; do
-    toolchain=1.$version.0
-    rustup toolchain install --no-self-update --profile  minimal $toolchain >/dev/null 2>&1
-    llvm_version $toolchain
-done
+INSTALL_TOOLCHAIN = ["rustup", "toolchain", "install", "--profile", "minimal"]
+subprocess.run(INSTALL_TOOLCHAIN + ["nightly"])
+
+LOWER_BOUND = 65
+NIGHTLY_VERSION = minor_version(subprocess.run(
+    ["rustc", "+nightly", "--version"],
+    capture_output=True,
+    text=True).stdout)
+
+def llvm_version(toolchain):
+    version_text = subprocess.run(
+        ["rustc", "+{}".format(toolchain), "-Vv"],
+        capture_output=True,
+        text=True).stdout
+    return int(version_text.split("LLVM")[1].split(':')[1].split('.')[0])
+
+version_map = defaultdict(lambda: [])
+for version in range(LOWER_BOUND, NIGHTLY_VERSION - 1):
+    toolchain = "1.{}.0".format(version)
+    subprocess.run(
+        INSTALL_TOOLCHAIN + ["--no-self-update", toolchain],
+        capture_output=True)
+    version_map[llvm_version(toolchain)].append(version)
+
+print("| Rust Version | Clang Version |")
+print("|--------------|---------------|")
+for clang, rust in sorted(version_map.items()):
+    if len(rust) > 1:
+        rust_range = "1.{} - 1.{}".format(rust[0], rust[-1])
+    else:
+        rust_range = "1.{}       ".format(rust[0])
+    print("| {}  |      {}       |".format(rust_range, clang))
 ```
 
 -->
@@ -166,32 +189,13 @@ The following table shows known good combinations of toolchain versions.
 
 | Rust Version | Clang Version |
 |--------------|---------------|
-| Rust 1.34    |    Clang 8    |
-| Rust 1.35    |    Clang 8    |
-| Rust 1.36    |    Clang 8    |
-| Rust 1.37    |    Clang 8    |
-| Rust 1.38    |    Clang 9    |
-| Rust 1.39    |    Clang 9    |
-| Rust 1.40    |    Clang 9    |
-| Rust 1.41    |    Clang 9    |
-| Rust 1.42    |    Clang 9    |
-| Rust 1.43    |    Clang 9    |
-| Rust 1.44    |    Clang 9    |
-| Rust 1.45    |    Clang 10   |
-| Rust 1.46    |    Clang 10   |
-| Rust 1.47    |    Clang 11   |
-| Rust 1.48    |    Clang 11   |
-| Rust 1.49    |    Clang 11   |
-| Rust 1.50    |    Clang 11   |
-| Rust 1.51    |    Clang 11   |
-| Rust 1.52    |    Clang 12   |
-| Rust 1.53    |    Clang 12   |
-| Rust 1.54    |    Clang 12   |
-| Rust 1.55    |    Clang 12   |
-| Rust 1.56    |    Clang 13   |
-| Rust 1.57    |    Clang 13   |
-| Rust 1.58    |    Clang 13   |
-| Rust 1.59    |    Clang 13   |
-| Rust 1.60    |    Clang 14   |
+| 1.34 - 1.37  |       8       |
+| 1.38 - 1.44  |       9       |
+| 1.45 - 1.46  |      10       |
+| 1.47 - 1.51  |      11       |
+| 1.52 - 1.55  |      12       |
+| 1.56 - 1.59  |      13       |
+| 1.60 - 1.64  |      14       |
+| 1.65         |      15       |
 
 Note that the compatibility policy for this feature might change in the future.

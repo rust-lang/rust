@@ -2,12 +2,12 @@ use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::ty::{is_normalizable, is_type_diagnostic_item};
 use if_chain::if_chain;
 use rustc_hir::{self as hir, HirId, ItemKind, Node};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::layout::LayoutOf as _;
 use rustc_middle::ty::{Adt, Ty, TypeVisitable};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
-use rustc_hir_analysis::hir_ty_to_ty;
 
 declare_clippy_lint! {
     /// ### What it does
@@ -69,10 +69,7 @@ impl LateLintPass<'_> for ZeroSizedMapValues {
 
 fn in_trait_impl(cx: &LateContext<'_>, hir_id: HirId) -> bool {
     let parent_id = cx.tcx.hir().get_parent_item(hir_id);
-    let second_parent_id = cx
-        .tcx
-        .hir()
-        .get_parent_item(parent_id.into()).def_id;
+    let second_parent_id = cx.tcx.hir().get_parent_item(parent_id.into()).def_id;
     if let Some(Node::Item(item)) = cx.tcx.hir().find_by_def_id(second_parent_id) {
         if let ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = item.kind {
             return true;

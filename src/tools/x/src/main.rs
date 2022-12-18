@@ -1,50 +1,43 @@
-//! Run `x.py` from any subdirectory of a rust compiler checkout.
+//! Run bootstrap from any subdirectory of a rust compiler checkout.
 //!
 //! We prefer `exec`, to avoid adding an extra process in the process tree.
 //! However, since `exec` isn't available on Windows, we indirect through
 //! `exec_or_status`, which will call `exec` on unix and `status` on Windows.
 //!
-//! We use `python`, `python3`, or `python2` as the python interpreter to run
-//! `x.py`, in that order of preference.
+//! We use `powershell.exe x.ps1` on Windows, and `sh -c x` on Unix, those are
+//! the ones that call `x.py`. We use `sh -c` on Unix, because it is a standard.
+//! We also don't use `pwsh` on Windows, because it is not installed by default;
 
 use std::{
     env, io,
+    path::Path,
     process::{self, Command, ExitStatus},
 };
 
-const PYTHON: &str = "python";
-const PYTHON2: &str = "python2";
-const PYTHON3: &str = "python3";
+#[cfg(windows)]
+fn x_command(dir: &Path) -> Command {
+    let mut cmd = Command::new("powershell.exe");
+    cmd.args([
+        "-NoLogo",
+        "-NoProfile",
+        "-NonInteractive",
+        "-ExecutionPolicy",
+        "RemoteSigned",
+        "-Command",
+        "./x.ps1",
+    ])
+    .current_dir(dir);
+    cmd
+}
 
-fn python() -> &'static str {
-    let val = match env::var_os("PATH") {
-        Some(val) => val,
-        None => return PYTHON,
-    };
+#[cfg(unix)]
+fn x_command(dir: &Path) -> Command {
+    Command::new(dir.join("x"))
+}
 
-    let mut python2 = false;
-    let mut python3 = false;
-
-    for dir in env::split_paths(&val) {
-        // `python` should always take precedence over python2 / python3 if it exists
-        if dir.join(PYTHON).exists() {
-            return PYTHON;
-        }
-
-        python2 |= dir.join(PYTHON2).exists();
-        python3 |= dir.join(PYTHON3).exists();
-    }
-
-    // try 3 before 2
-    if python3 {
-        PYTHON3
-    } else if python2 {
-        PYTHON2
-    } else {
-        // Python was not found on path, so exit
-        eprintln!("Unable to find python in your PATH. Please check it is installed.");
-        process::exit(1);
-    }
+#[cfg(not(any(windows, unix)))]
+fn x_command(_dir: &Path) -> Command {
+    compile_error!("Unsupported platform");
 }
 
 #[cfg(unix)]
@@ -71,15 +64,15 @@ fn main() {
         let candidate = dir.join("x.py");
 
         if candidate.exists() {
-            let mut python = Command::new(python());
+            let mut cmd = x_command(dir);
 
-            python.arg(&candidate).args(env::args().skip(1)).current_dir(dir);
+            cmd.args(env::args().skip(1)).current_dir(dir);
 
-            let result = exec_or_status(&mut python);
+            let result = exec_or_status(&mut cmd);
 
             match result {
                 Err(error) => {
-                    eprintln!("Failed to invoke `{}`: {}", candidate.display(), error);
+                    eprintln!("Failed to invoke `{:?}`: {}", cmd, error);
                 }
                 Ok(status) => {
                     process::exit(status.code().unwrap_or(1));

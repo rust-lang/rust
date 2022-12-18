@@ -9,7 +9,7 @@ use ide_db::{
     search::FileReference,
     FxHashSet, RootDatabase,
 };
-use itertools::{Itertools, Position};
+use itertools::Itertools;
 use syntax::{
     ast::{
         self, edit::IndentLevel, edit_in_place::Indent, make, AstNode, HasAttrs, HasGenericParams,
@@ -296,40 +296,14 @@ fn create_struct_def(
 
 fn update_variant(variant: &ast::Variant, generics: Option<ast::GenericParamList>) -> Option<()> {
     let name = variant.name()?;
-    let ty = generics
+    let generic_args = generics
         .filter(|generics| generics.generic_params().count() > 0)
-        .map(|generics| {
-            let mut generic_str = String::with_capacity(8);
-
-            for (p, more) in generics.generic_params().with_position().map(|p| match p {
-                Position::First(p) | Position::Middle(p) => (p, true),
-                Position::Last(p) | Position::Only(p) => (p, false),
-            }) {
-                match p {
-                    ast::GenericParam::ConstParam(konst) => {
-                        if let Some(name) = konst.name() {
-                            generic_str.push_str(name.text().as_str());
-                        }
-                    }
-                    ast::GenericParam::LifetimeParam(lt) => {
-                        if let Some(lt) = lt.lifetime() {
-                            generic_str.push_str(lt.text().as_str());
-                        }
-                    }
-                    ast::GenericParam::TypeParam(ty) => {
-                        if let Some(name) = ty.name() {
-                            generic_str.push_str(name.text().as_str());
-                        }
-                    }
-                }
-                if more {
-                    generic_str.push_str(", ");
-                }
-            }
-
-            make::ty(&format!("{}<{}>", &name.text(), &generic_str))
-        })
-        .unwrap_or_else(|| make::ty(&name.text()));
+        .map(|generics| generics.to_generic_args());
+    // FIXME: replace with a `ast::make` constructor
+    let ty = match generic_args {
+        Some(generic_args) => make::ty(&format!("{name}{generic_args}")),
+        None => make::ty(&name.text()),
+    };
 
     // change from a record to a tuple field list
     let tuple_field = make::tuple_field(None, ty);

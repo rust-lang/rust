@@ -75,11 +75,11 @@ pub fn eq_field_pat(l: &PatField, r: &PatField) -> bool {
         && over(&l.attrs, &r.attrs, eq_attr)
 }
 
-pub fn eq_qself(l: &QSelf, r: &QSelf) -> bool {
+pub fn eq_qself(l: &P<QSelf>, r: &P<QSelf>) -> bool {
     l.position == r.position && eq_ty(&l.ty, &r.ty)
 }
 
-pub fn eq_maybe_qself(l: &Option<QSelf>, r: &Option<QSelf>) -> bool {
+pub fn eq_maybe_qself(l: &Option<P<QSelf>>, r: &Option<P<QSelf>>) -> bool {
     match (l, r) {
         (Some(l), Some(r)) => eq_qself(l, r),
         (None, None) => true,
@@ -147,12 +147,23 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (Array(l), Array(r)) | (Tup(l), Tup(r)) => over(l, r, |l, r| eq_expr(l, r)),
         (Repeat(le, ls), Repeat(re, rs)) => eq_expr(le, re) && eq_expr(&ls.value, &rs.value),
         (Call(lc, la), Call(rc, ra)) => eq_expr(lc, rc) && over(la, ra, |l, r| eq_expr(l, r)),
-        (MethodCall(lc, ls, la, _), MethodCall(rc, rs, ra, _)) => {
-            eq_path_seg(lc, rc) && eq_expr(ls, rs) && over(la, ra, |l, r| eq_expr(l, r))
-        },
+        (
+            MethodCall(box ast::MethodCall {
+                seg: ls,
+                receiver: lr,
+                args: la,
+                ..
+            }),
+            MethodCall(box ast::MethodCall {
+                seg: rs,
+                receiver: rr,
+                args: ra,
+                ..
+            }),
+        ) => eq_path_seg(ls, rs) && eq_expr(lr, rr) && over(la, ra, |l, r| eq_expr(l, r)),
         (Binary(lo, ll, lr), Binary(ro, rl, rr)) => lo.node == ro.node && eq_expr(ll, rl) && eq_expr(lr, rr),
         (Unary(lo, l), Unary(ro, r)) => mem::discriminant(lo) == mem::discriminant(ro) && eq_expr(l, r),
-        (Lit(l), Lit(r)) => l.kind == r.kind,
+        (Lit(l), Lit(r)) => l == r,
         (Cast(l, lt), Cast(r, rt)) | (Type(l, lt), Type(r, rt)) => eq_expr(l, r) && eq_ty(lt, rt),
         (Let(lp, le, _), Let(rp, re, _)) => eq_pat(lp, rp) && eq_expr(le, re),
         (If(lc, lt, le), If(rc, rt, re)) => eq_expr(lc, rc) && eq_block(lt, rt) && eq_expr_opt(le, re),
@@ -160,7 +171,7 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (ForLoop(lp, li, lt, ll), ForLoop(rp, ri, rt, rl)) => {
             eq_label(ll, rl) && eq_pat(lp, rp) && eq_expr(li, ri) && eq_block(lt, rt)
         },
-        (Loop(lt, ll), Loop(rt, rl)) => eq_label(ll, rl) && eq_block(lt, rt),
+        (Loop(lt, ll, _), Loop(rt, rl, _)) => eq_label(ll, rl) && eq_block(lt, rt),
         (Block(lb, ll), Block(rb, rl)) => eq_label(ll, rl) && eq_block(lb, rb),
         (TryBlock(l), TryBlock(r)) => eq_block(l, r),
         (Yield(l), Yield(r)) | (Ret(l), Ret(r)) => eq_expr_opt(l, r),
@@ -170,7 +181,26 @@ pub fn eq_expr(l: &Expr, r: &Expr) -> bool {
         (AssignOp(lo, lp, lv), AssignOp(ro, rp, rv)) => lo.node == ro.node && eq_expr(lp, rp) && eq_expr(lv, rv),
         (Field(lp, lf), Field(rp, rf)) => eq_id(*lf, *rf) && eq_expr(lp, rp),
         (Match(ls, la), Match(rs, ra)) => eq_expr(ls, rs) && over(la, ra, eq_arm),
-        (Closure(lb, lc, la, lm, lf, le, _), Closure(rb, rc, ra, rm, rf, re, _)) => {
+        (
+            Closure(box ast::Closure {
+                binder: lb,
+                capture_clause: lc,
+                asyncness: la,
+                movability: lm,
+                fn_decl: lf,
+                body: le,
+                ..
+            }),
+            Closure(box ast::Closure {
+                binder: rb,
+                capture_clause: rc,
+                asyncness: ra,
+                movability: rm,
+                fn_decl: rf,
+                body: re,
+                ..
+            }),
+        ) => {
             eq_closure_binder(lb, rb)
                 && lc == rc
                 && la.is_async() == ra.is_async()
@@ -366,7 +396,7 @@ pub fn eq_item_kind(l: &ItemKind, r: &ItemKind) -> bool {
                 && over(li, ri, |l, r| eq_item(l, r, eq_assoc_item_kind))
         },
         (MacCall(l), MacCall(r)) => eq_mac_call(l, r),
-        (MacroDef(l), MacroDef(r)) => l.macro_rules == r.macro_rules && eq_mac_args(&l.body, &r.body),
+        (MacroDef(l), MacroDef(r)) => l.macro_rules == r.macro_rules && eq_delim_args(&l.body, &r.body),
         _ => false,
     }
 }
@@ -438,14 +468,14 @@ pub fn eq_assoc_item_kind(l: &AssocItemKind, r: &AssocItemKind) -> bool {
             eq_defaultness(*ld, *rd) && eq_fn_sig(lf, rf) && eq_generics(lg, rg) && both(lb, rb, |l, r| eq_block(l, r))
         },
         (
-            TyAlias(box ast::TyAlias {
+            Type(box ast::TyAlias {
                 defaultness: ld,
                 generics: lg,
                 bounds: lb,
                 ty: lt,
                 ..
             }),
-            TyAlias(box ast::TyAlias {
+            Type(box ast::TyAlias {
                 defaultness: rd,
                 generics: rg,
                 bounds: rb,
@@ -536,7 +566,7 @@ pub fn eq_use_tree_kind(l: &UseTreeKind, r: &UseTreeKind) -> bool {
     use UseTreeKind::*;
     match (l, r) {
         (Glob, Glob) => true,
-        (Simple(l, _, _), Simple(r, _, _)) => both(l, r, |l, r| eq_id(*l, *r)),
+        (Simple(l), Simple(r)) => both(l, r, |l, r| eq_id(*l, *r)),
         (Nested(l), Nested(r)) => over(l, r, |(l, _), (r, _)| eq_use_tree(l, r)),
         _ => false,
     }
@@ -687,7 +717,7 @@ pub fn eq_assoc_constraint(l: &AssocConstraint, r: &AssocConstraint) -> bool {
 }
 
 pub fn eq_mac_call(l: &MacCall, r: &MacCall) -> bool {
-    eq_path(&l.path, &r.path) && eq_mac_args(&l.args, &r.args)
+    eq_path(&l.path, &r.path) && eq_delim_args(&l.args, &r.args)
 }
 
 pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
@@ -695,18 +725,22 @@ pub fn eq_attr(l: &Attribute, r: &Attribute) -> bool {
     l.style == r.style
         && match (&l.kind, &r.kind) {
             (DocComment(l1, l2), DocComment(r1, r2)) => l1 == r1 && l2 == r2,
-            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_mac_args(&l.item.args, &r.item.args),
+            (Normal(l), Normal(r)) => eq_path(&l.item.path, &r.item.path) && eq_attr_args(&l.item.args, &r.item.args),
             _ => false,
         }
 }
 
-pub fn eq_mac_args(l: &MacArgs, r: &MacArgs) -> bool {
-    use MacArgs::*;
+pub fn eq_attr_args(l: &AttrArgs, r: &AttrArgs) -> bool {
+    use AttrArgs::*;
     match (l, r) {
         (Empty, Empty) => true,
-        (Delimited(_, ld, lts), Delimited(_, rd, rts)) => ld == rd && lts.eq_unspanned(rts),
-        (Eq(_, MacArgsEq::Ast(le)), Eq(_, MacArgsEq::Ast(re))) => eq_expr(le, re),
-        (Eq(_, MacArgsEq::Hir(ll)), Eq(_, MacArgsEq::Hir(rl))) => ll.kind == rl.kind,
+        (Delimited(la), Delimited(ra)) => eq_delim_args(la, ra),
+        (Eq(_, AttrArgsEq::Ast(le)), Eq(_, AttrArgsEq::Ast(re))) => eq_expr(le, re),
+        (Eq(_, AttrArgsEq::Hir(ll)), Eq(_, AttrArgsEq::Hir(rl))) => ll.kind == rl.kind,
         _ => false,
     }
+}
+
+pub fn eq_delim_args(l: &DelimArgs, r: &DelimArgs) -> bool {
+    l.delim == r.delim && l.tokens.eq_unspanned(&r.tokens)
 }

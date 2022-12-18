@@ -4,13 +4,10 @@ version = "0.0.0"
 description = "TBD"
 license = "MIT OR Apache-2.0"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.65"
 
 [lib]
 doctest = false
 
 [dependencies]
 xshell = "0.2.2"
-
-[features]
-in-rust-tree = []

@@ -74,7 +74,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
         cx,
         UNIT_ARG,
         expr.span,
-        &format!("passing {}unit value{} to a function", singular, plural),
+        &format!("passing {singular}unit value{plural} to a function"),
         |db| {
             let mut or = "";
             args_to_recover
@@ -129,7 +129,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
 
                 if arg_snippets_without_empty_blocks.is_empty() {
                     db.multipart_suggestion(
-                        &format!("use {}unit literal{} instead", singular, plural),
+                        &format!("use {singular}unit literal{plural} instead"),
                         args_to_recover
                             .iter()
                             .map(|arg| (arg.span, "()".to_string()))
@@ -143,8 +143,7 @@ fn lint_unit_args(cx: &LateContext<'_>, expr: &Expr<'_>, args_to_recover: &[&Exp
                     db.span_suggestion(
                         expr.span,
                         &format!(
-                            "{}move the expression{} in front of the call and replace {} with the unit literal `()`",
-                            or, empty_or_s, it_or_them
+                            "{or}move the expression{empty_or_s} in front of the call and replace {it_or_them} with the unit literal `()`"
                         ),
                         sugg,
                         applicability,

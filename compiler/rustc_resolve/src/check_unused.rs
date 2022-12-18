@@ -234,7 +234,7 @@ impl Resolver<'_> {
                         if !import.span.is_dummy() {
                             self.lint_buffer.buffer_lint(
                                 MACRO_USE_EXTERN_CRATE,
-                                import.id,
+                                import.root_id,
                                 import.span,
                                 "deprecated `#[macro_use]` attribute used to \
                                 import macros should be replaced at use sites \
@@ -244,13 +244,13 @@ impl Resolver<'_> {
                         }
                     }
                 }
-                ImportKind::ExternCrate { .. } => {
-                    let def_id = self.local_def_id(import.id);
+                ImportKind::ExternCrate { id, .. } => {
+                    let def_id = self.local_def_id(id);
                     self.maybe_unused_extern_crates.push((def_id, import.span));
                 }
                 ImportKind::MacroUse => {
                     let msg = "unused `#[macro_use]` import";
-                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.id, import.span, msg);
+                    self.lint_buffer.buffer_lint(UNUSED_IMPORTS, import.root_id, import.span, msg);
                 }
                 _ => {}
             }

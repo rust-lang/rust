@@ -1,6 +1,6 @@
 // We check that when the anchor changes and is output of the displayed content,
 // the page is scrolled to it.
-goto: file://|DOC_PATH|/src/link_to_definition/lib.rs.html
+goto: "file://" + |DOC_PATH| + "/src/link_to_definition/lib.rs.html"
 
 // We reduce the window size to make it easier to make an element "out of the page".
 size: (600, 800)

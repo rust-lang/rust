@@ -5,9 +5,7 @@ use rustc_middle::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use rustc_middle::mir::interpret::{
     read_target_uint, AllocId, ConstAllocation, ConstValue, ErrorHandled, GlobalAlloc, Scalar,
 };
-use rustc_span::DUMMY_SP;
 
-use cranelift_codegen::ir::GlobalValueData;
 use cranelift_module::*;
 
 use crate::prelude::*;
@@ -30,9 +28,7 @@ impl ConstantCx {
     }
 
     pub(crate) fn finalize(mut self, tcx: TyCtxt<'_>, module: &mut dyn Module) {
-        //println!("todo {:?}", self.todo);
         define_all_allocs(tcx, module, &mut self);
-        //println!("done {:?}", self.done);
         self.done.clear();
     }
 }
@@ -40,22 +36,8 @@ impl ConstantCx {
 pub(crate) fn check_constants(fx: &mut FunctionCx<'_, '_, '_>) -> bool {
     let mut all_constants_ok = true;
     for constant in &fx.mir.required_consts {
-        let unevaluated = match fx.monomorphize(constant.literal) {
-            ConstantKind::Ty(_) => unreachable!(),
-            ConstantKind::Unevaluated(uv, _) => uv,
-            ConstantKind::Val(..) => continue,
-        };
-
-        if let Err(err) = fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
+        if eval_mir_constant(fx, constant).is_none() {
             all_constants_ok = false;
-            match err {
-                ErrorHandled::Reported(_) | ErrorHandled::Linted => {
-                    fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
-                }
-                ErrorHandled::TooGeneric => {
-                    span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
-                }
-            }
         }
     }
     all_constants_ok
@@ -81,52 +63,54 @@ pub(crate) fn codegen_tls_ref<'tcx>(
     CValue::by_val(tls_ptr, layout)
 }
 
-fn codegen_static_ref<'tcx>(
-    fx: &mut FunctionCx<'_, '_, 'tcx>,
-    def_id: DefId,
-    layout: TyAndLayout<'tcx>,
-) -> CPlace<'tcx> {
-    let data_id = data_id_for_static(fx.tcx, fx.module, def_id, false);
-    let local_data_id = fx.module.declare_data_in_func(data_id, &mut fx.bcx.func);
-    if fx.clif_comments.enabled() {
-        fx.add_comment(local_data_id, format!("{:?}", def_id));
-    }
-    let global_ptr = fx.bcx.ins().global_value(fx.pointer_type, local_data_id);
-    assert!(!layout.is_unsized(), "unsized statics aren't supported");
-    assert!(
-        matches!(
-            fx.bcx.func.global_values[local_data_id],
-            GlobalValueData::Symbol { tls: false, .. }
-        ),
-        "tls static referenced without Rvalue::ThreadLocalRef"
-    );
-    CPlace::for_ptr(crate::pointer::Pointer::new(global_ptr), layout)
+pub(crate) fn eval_mir_constant<'tcx>(
+    fx: &FunctionCx<'_, '_, 'tcx>,
+    constant: &Constant<'tcx>,
+) -> Option<(ConstValue<'tcx>, Ty<'tcx>)> {
+    let constant_kind = fx.monomorphize(constant.literal);
+    let uv = match constant_kind {
+        ConstantKind::Ty(const_) => match const_.kind() {
+            ty::ConstKind::Unevaluated(uv) => uv.expand(),
+            ty::ConstKind::Value(val) => {
+                return Some((fx.tcx.valtree_to_const_val((const_.ty(), val)), const_.ty()));
+            }
+            err => span_bug!(
+                constant.span,
+                "encountered bad ConstKind after monomorphizing: {:?}",
+                err
+            ),
+        },
+        ConstantKind::Unevaluated(mir::UnevaluatedConst { def, .. }, _)
+            if fx.tcx.is_static(def.did) =>
+        {
+            span_bug!(constant.span, "MIR constant refers to static");
+        }
+        ConstantKind::Unevaluated(uv, _) => uv,
+        ConstantKind::Val(val, _) => return Some((val, constant_kind.ty())),
+    };
+
+    let val = fx
+        .tcx
+        .const_eval_resolve(ty::ParamEnv::reveal_all(), uv, None)
+        .map_err(|err| match err {
+            ErrorHandled::Reported(_) => {
+                fx.tcx.sess.span_err(constant.span, "erroneous constant encountered");
+            }
+            ErrorHandled::TooGeneric => {
+                span_bug!(constant.span, "codegen encountered polymorphic constant: {:?}", err);
+            }
+        })
+        .ok();
+    val.map(|val| (val, constant_kind.ty()))
 }
 
-pub(crate) fn codegen_constant<'tcx>(
+pub(crate) fn codegen_constant_operand<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     constant: &Constant<'tcx>,
 ) -> CValue<'tcx> {
-    let (const_val, ty) = match fx.monomorphize(constant.literal) {
-        ConstantKind::Ty(const_) => unreachable!("{:?}", const_),
-        ConstantKind::Unevaluated(mir::UnevaluatedConst { def, substs, promoted }, ty)
-            if fx.tcx.is_static(def.did) =>
-        {
-            assert!(substs.is_empty());
-            assert!(promoted.is_none());
-
-            return codegen_static_ref(fx, def.did, fx.layout_of(ty)).to_cvalue(fx);
-        }
-        ConstantKind::Unevaluated(unevaluated, ty) => {
-            match fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), unevaluated, None) {
-                Ok(const_val) => (const_val, ty),
-                Err(_) => {
-                    span_bug!(constant.span, "erroneous constant not captured by required_consts");
-                }
-            }
-        }
-        ConstantKind::Val(val, ty) => (val, ty),
-    };
+    let (const_val, ty) = eval_mir_constant(fx, constant).unwrap_or_else(|| {
+        span_bug!(constant.span, "erroneous constant not captured by required_consts")
+    });
 
     codegen_const_value(fx, const_val, ty)
 }
@@ -137,7 +121,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     ty: Ty<'tcx>,
 ) -> CValue<'tcx> {
     let layout = fx.layout_of(ty);
-    assert!(!layout.is_unsized(), "sized const value");
+    assert!(layout.is_sized(), "unsized const value");
 
     if layout.is_zst() {
         return CValue::by_ref(crate::Pointer::dangling(layout.align.pref), layout);
@@ -244,7 +228,7 @@ pub(crate) fn codegen_const_value<'tcx>(
     }
 }
 
-pub(crate) fn pointer_for_allocation<'tcx>(
+fn pointer_for_allocation<'tcx>(
     fx: &mut FunctionCx<'_, '_, 'tcx>,
     alloc: ConstAllocation<'tcx>,
 ) -> crate::pointer::Pointer {
@@ -271,9 +255,9 @@ pub(crate) fn data_id_for_alloc_id(
     mutability: rustc_hir::Mutability,
 ) -> DataId {
     cx.todo.push(TodoItem::Alloc(alloc_id));
-    *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
-        module.declare_anonymous_data(mutability == rustc_hir::Mutability::Mut, false).unwrap()
-    })
+    *cx.anon_allocs
+        .entry(alloc_id)
+        .or_insert_with(|| module.declare_anonymous_data(mutability.is_mut(), false).unwrap())
 }
 
 fn data_id_for_static(
@@ -282,16 +266,7 @@ fn data_id_for_static(
     def_id: DefId,
     definition: bool,
 ) -> DataId {
-    let rlinkage = tcx.codegen_fn_attrs(def_id).linkage;
-    let linkage = if definition {
-        crate::linkage::get_static_linkage(tcx, def_id)
-    } else if rlinkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
-        || rlinkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
-    {
-        Linkage::Preemptible
-    } else {
-        Linkage::Import
-    };
+    let attrs = tcx.codegen_fn_attrs(def_id);
 
     let instance = Instance::mono(tcx, def_id).polymorphize(tcx);
     let symbol_name = tcx.symbol_name(instance).name;
@@ -299,26 +274,34 @@ fn data_id_for_static(
     let is_mutable = if tcx.is_mutable_static(def_id) {
         true
     } else {
-        !ty.is_freeze(tcx.at(DUMMY_SP), ParamEnv::reveal_all())
+        !ty.is_freeze(tcx, ParamEnv::reveal_all())
     };
     let align = tcx.layout_of(ParamEnv::reveal_all().and(ty)).unwrap().align.pref.bytes();
 
-    let attrs = tcx.codegen_fn_attrs(def_id);
+    if let Some(import_linkage) = attrs.import_linkage {
+        assert!(!definition);
 
-    let data_id = match module.declare_data(
-        &*symbol_name,
-        linkage,
-        is_mutable,
-        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
-    ) {
-        Ok(data_id) => data_id,
-        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
-            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
-        )),
-        Err(err) => Err::<_, _>(err).unwrap(),
-    };
+        let linkage = if import_linkage == rustc_middle::mir::mono::Linkage::ExternalWeak
+            || import_linkage == rustc_middle::mir::mono::Linkage::WeakAny
+        {
+            Linkage::Preemptible
+        } else {
+            Linkage::Import
+        };
 
-    if rlinkage.is_some() {
+        let data_id = match module.declare_data(
+            &*symbol_name,
+            linkage,
+            is_mutable,
+            attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+        ) {
+            Ok(data_id) => data_id,
+            Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+                "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+            )),
+            Err(err) => Err::<_, _>(err).unwrap(),
+        };
+
         // Comment copied from https://github.com/rust-lang/rust/blob/45060c2a66dfd667f88bd8b94261b28a58d85bd5/src/librustc_codegen_llvm/consts.rs#L141
         // Declare an internal global `extern_with_linkage_foo` which
         // is initialized with the address of `foo`.  If `foo` is
@@ -340,10 +323,34 @@ fn data_id_for_static(
             Err(ModuleError::DuplicateDefinition(_)) => {}
             res => res.unwrap(),
         }
-        ref_data_id
-    } else {
-        data_id
+
+        return ref_data_id;
     }
+
+    let linkage = if definition {
+        crate::linkage::get_static_linkage(tcx, def_id)
+    } else if attrs.linkage == Some(rustc_middle::mir::mono::Linkage::ExternalWeak)
+        || attrs.linkage == Some(rustc_middle::mir::mono::Linkage::WeakAny)
+    {
+        Linkage::Preemptible
+    } else {
+        Linkage::Import
+    };
+
+    let data_id = match module.declare_data(
+        &*symbol_name,
+        linkage,
+        is_mutable,
+        attrs.flags.contains(CodegenFnAttrFlags::THREAD_LOCAL),
+    ) {
+        Ok(data_id) => data_id,
+        Err(ModuleError::IncompatibleDeclaration(_)) => tcx.sess.fatal(&format!(
+            "attempt to declare `{symbol_name}` as static, but it was already declared as function"
+        )),
+        Err(err) => Err::<_, _>(err).unwrap(),
+    };
+
+    data_id
 }
 
 fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut ConstantCx) {
@@ -357,18 +364,11 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     }
                 };
                 let data_id = *cx.anon_allocs.entry(alloc_id).or_insert_with(|| {
-                    module
-                        .declare_anonymous_data(
-                            alloc.inner().mutability == rustc_hir::Mutability::Mut,
-                            false,
-                        )
-                        .unwrap()
+                    module.declare_anonymous_data(alloc.inner().mutability.is_mut(), false).unwrap()
                 });
                 (data_id, alloc, None)
             }
             TodoItem::Static(def_id) => {
-                //println!("static {:?}", def_id);
-
                 let section_name = tcx.codegen_fn_attrs(def_id).link_section;
 
                 let alloc = tcx.eval_static_initializer(def_id).unwrap();
@@ -378,7 +378,6 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
             }
         };
 
-        //("data_id {}", data_id);
         if cx.done.contains(&data_id) {
             continue;
         }
@@ -407,7 +406,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
         let bytes = alloc.inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len()).to_vec();
         data_ctx.define(bytes.into_boxed_slice());
 
-        for &(offset, alloc_id) in alloc.provenance().iter() {
+        for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
             let addend = {
                 let endianness = tcx.data_layout.endian;
                 let offset = offset.bytes() as usize;
@@ -440,7 +439,7 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
                     {
                         tcx.sess.fatal(&format!(
                             "Allocation {:?} contains reference to TLS value {:?}",
-                            alloc, def_id
+                            alloc_id, def_id
                         ));
                     }
 
@@ -462,21 +461,13 @@ fn define_all_allocs(tcx: TyCtxt<'_>, module: &mut dyn Module, cx: &mut Constant
     assert!(cx.todo.is_empty(), "{:?}", cx.todo);
 }
 
+/// Used only for intrinsic implementations that need a compile-time constant
 pub(crate) fn mir_operand_get_const_val<'tcx>(
     fx: &FunctionCx<'_, '_, 'tcx>,
     operand: &Operand<'tcx>,
 ) -> Option<ConstValue<'tcx>> {
     match operand {
-        Operand::Constant(const_) => match const_.literal {
-            ConstantKind::Ty(const_) => fx
-                .monomorphize(const_)
-                .eval_for_mir(fx.tcx, ParamEnv::reveal_all())
-                .try_to_value(fx.tcx),
-            ConstantKind::Val(val, _) => Some(val),
-            ConstantKind::Unevaluated(uv, _) => {
-                fx.tcx.const_eval_resolve(ParamEnv::reveal_all(), uv, None).ok()
-            }
-        },
+        Operand::Constant(const_) => Some(eval_mir_constant(fx, const_).unwrap().0),
         // FIXME(rust-lang/rust#85105): Casts like `IMM8 as u32` result in the const being stored
         // inside a temporary before being passed to the intrinsic requiring the const argument.
         // This code tries to find a single constant defining definition of the referenced local.
@@ -490,7 +481,16 @@ pub(crate) fn mir_operand_get_const_val<'tcx>(
                     match &stmt.kind {
                         StatementKind::Assign(local_and_rvalue) if &local_and_rvalue.0 == place => {
                             match &local_and_rvalue.1 {
-                                Rvalue::Cast(CastKind::Misc, operand, ty) => {
+                                Rvalue::Cast(
+                                    CastKind::IntToInt
+                                    | CastKind::FloatToFloat
+                                    | CastKind::FloatToInt
+                                    | CastKind::IntToFloat
+                                    | CastKind::FnPtrToPtr
+                                    | CastKind::PtrToPtr,
+                                    operand,
+                                    ty,
+                                ) => {
                                     if computed_const_val.is_some() {
                                         return None; // local assigned twice
                                     }

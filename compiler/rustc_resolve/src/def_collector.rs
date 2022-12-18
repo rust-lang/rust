@@ -118,8 +118,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 match i.kind {
                     ItemKind::Struct(ref struct_def, _) | ItemKind::Union(ref struct_def, _) => {
                         // If this is a unit or tuple-like struct, register the constructor.
-                        if let Some(ctor_hir_id) = struct_def.ctor_id() {
-                            this.create_def(ctor_hir_id, DefPathData::Ctor, i.span);
+                        if let Some(ctor_node_id) = struct_def.ctor_node_id() {
+                            this.create_def(ctor_node_id, DefPathData::Ctor, i.span);
                         }
                     }
                     _ => {}
@@ -131,11 +131,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     fn visit_fn(&mut self, fn_kind: FnKind<'a>, span: Span, _: NodeId) {
         if let FnKind::Fn(_, _, sig, _, generics, body) = fn_kind {
-            if let Async::Yes { closure_id, return_impl_trait_id, .. } = sig.header.asyncness {
+            if let Async::Yes { closure_id, .. } = sig.header.asyncness {
                 self.visit_generics(generics);
-
-                let return_impl_trait_id =
-                    self.create_def(return_impl_trait_id, DefPathData::ImplTrait, span);
 
                 // For async functions, we need to create their inner defs inside of a
                 // closure to match their desugared representation. Besides that,
@@ -144,9 +141,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
                 for param in &sig.decl.inputs {
                     self.visit_param(param);
                 }
-                self.with_parent(return_impl_trait_id, |this| {
-                    this.visit_fn_ret_ty(&sig.decl.output)
-                });
+                self.visit_fn_ret_ty(&sig.decl.output);
                 // If this async fn has no body (i.e. it's an async fn signature in a trait)
                 // then the closure_def will never be used, and we should avoid generating a
                 // def-id for it.
@@ -163,14 +158,6 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
 
     fn visit_use_tree(&mut self, use_tree: &'a UseTree, id: NodeId, _nested: bool) {
         self.create_def(id, DefPathData::Use, use_tree.span);
-        match use_tree.kind {
-            UseTreeKind::Simple(_, id1, id2) => {
-                self.create_def(id1, DefPathData::Use, use_tree.prefix.span);
-                self.create_def(id2, DefPathData::Use, use_tree.prefix.span);
-            }
-            UseTreeKind::Glob => (),
-            UseTreeKind::Nested(..) => {}
-        }
         visit::walk_use_tree(self, use_tree, id);
     }
 
@@ -196,8 +183,8 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
         }
         let def = self.create_def(v.id, DefPathData::TypeNs(v.ident.name), v.span);
         self.with_parent(def, |this| {
-            if let Some(ctor_hir_id) = v.data.ctor_id() {
-                this.create_def(ctor_hir_id, DefPathData::Ctor, v.span);
+            if let Some(ctor_node_id) = v.data.ctor_node_id() {
+                this.create_def(ctor_node_id, DefPathData::Ctor, v.span);
             }
             visit::walk_variant(this, v)
         });
@@ -239,7 +226,7 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_assoc_item(&mut self, i: &'a AssocItem, ctxt: visit::AssocCtxt) {
         let def_data = match &i.kind {
             AssocItemKind::Fn(..) | AssocItemKind::Const(..) => DefPathData::ValueNs(i.ident.name),
-            AssocItemKind::TyAlias(..) => DefPathData::TypeNs(i.ident.name),
+            AssocItemKind::Type(..) => DefPathData::TypeNs(i.ident.name),
             AssocItemKind::MacCall(..) => return self.visit_macro_invoc(i.id),
         };
 
@@ -262,11 +249,11 @@ impl<'a, 'b> visit::Visitor<'a> for DefCollector<'a, 'b> {
     fn visit_expr(&mut self, expr: &'a Expr) {
         let parent_def = match expr.kind {
             ExprKind::MacCall(..) => return self.visit_macro_invoc(expr.id),
-            ExprKind::Closure(_, _, asyncness, ..) => {
+            ExprKind::Closure(ref closure) => {
                 // Async closures desugar to closures inside of closures, so
                 // we must create two defs.
                 let closure_def = self.create_def(expr.id, DefPathData::ClosureExpr, expr.span);
-                match asyncness {
+                match closure.asyncness {
                     Async::Yes { closure_id, .. } => {
                         self.create_def(closure_id, DefPathData::ClosureExpr, expr.span)
                     }

@@ -72,6 +72,50 @@
 //! }
 //! ```
 //!
+//! # The question mark operator, `?`
+//!
+//! Similar to the [`Result`] type, when writing code that calls many functions that return the
+//! [`Option`] type, handling `Some`/`None` can be tedious. The question mark
+//! operator, [`?`], hides some of the boilerplate of propagating values
+//! up the call stack.
+//!
+//! It replaces this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     let a = stack.pop();
+//!     let b = stack.pop();
+//!
+//!     match (a, b) {
+//!         (Some(x), Some(y)) => Some(x + y),
+//!         _ => None,
+//!     }
+//! }
+//!
+//! ```
+//!
+//! With this:
+//!
+//! ```
+//! # #![allow(dead_code)]
+//! fn add_last_numbers(stack: &mut Vec<i32>) -> Option<i32> {
+//!     Some(stack.pop()? + stack.pop()?)
+//! }
+//! ```
+//!
+//! *It's much nicer!*
+//!
+//! Ending the expression with [`?`] will result in the [`Some`]'s unwrapped value, unless the
+//! result is [`None`], in which case [`None`] is returned early from the enclosing function.
+//!
+//! [`?`] can be used in functions that return [`Option`] because of the
+//! early return of [`None`] that it provides.
+//!
+//! [`?`]: crate::ops::Try
+//! [`Some`]: Some
+//! [`None`]: None
+//!
 //! # Representation
 //!
 //! Rust guarantees to optimize the following types `T` such that
@@ -512,7 +556,7 @@ use crate::{
 };
 
 /// The `Option` type. See [the module level documentation](self) for more.
-#[derive(Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
+#[derive(Copy, PartialOrd, Eq, Ord, Debug, Hash)]
 #[rustc_diagnostic_item = "Option"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
@@ -1713,8 +1757,6 @@ impl<T, U> Option<(T, U)> {
     /// # Examples
     ///
     /// ```
-    /// #![feature(unzip_option)]
-    ///
     /// let x = Some((1, "hi"));
     /// let y = None::<(u8, u32)>;
     ///
@@ -1722,8 +1764,13 @@ impl<T, U> Option<(T, U)> {
     /// assert_eq!(y.unzip(), (None, None));
     /// ```
     #[inline]
-    #[unstable(feature = "unzip_option", issue = "87800", reason = "recently added")]
-    pub const fn unzip(self) -> (Option<T>, Option<U>) {
+    #[stable(feature = "unzip_option", since = "1.66.0")]
+    #[rustc_const_unstable(feature = "const_option", issue = "67441")]
+    pub const fn unzip(self) -> (Option<T>, Option<U>)
+    where
+        T: ~const Destruct,
+        U: ~const Destruct,
+    {
         match self {
             Some((a, b)) => (Some(a), Some(b)),
             None => (None, None),
@@ -2029,6 +2076,72 @@ impl<'a, T> const From<&'a mut Option<T>> for Option<&'a mut T> {
     /// ```
     fn from(o: &'a mut Option<T>) -> Option<&'a mut T> {
         o.as_mut()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> crate::marker::StructuralPartialEq for Option<T> {}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: PartialEq> PartialEq for Option<T> {
+    #[inline]
+    fn eq(&self, other: &Self) -> bool {
+        SpecOptionPartialEq::eq(self, other)
+    }
+}
+
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
+#[doc(hidden)]
+pub trait SpecOptionPartialEq: Sized {
+    fn eq(l: &Option<Self>, other: &Option<Self>) -> bool;
+}
+
+#[unstable(feature = "spec_option_partial_eq", issue = "none", reason = "exposed only for rustc")]
+impl<T: PartialEq> SpecOptionPartialEq for T {
+    #[inline]
+    default fn eq(l: &Option<T>, r: &Option<T>) -> bool {
+        match (l, r) {
+            (Some(l), Some(r)) => *l == *r,
+            (None, None) => true,
+            _ => false,
+        }
+    }
+}
+
+macro_rules! non_zero_option {
+    ( $( #[$stability: meta] $NZ:ty; )+ ) => {
+        $(
+            #[$stability]
+            impl SpecOptionPartialEq for $NZ {
+                #[inline]
+                fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+                    l.map(Self::get).unwrap_or(0) == r.map(Self::get).unwrap_or(0)
+                }
+            }
+        )+
+    };
+}
+
+non_zero_option! {
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU8;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU16;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU32;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU64;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroU128;
+    #[stable(feature = "nonzero", since = "1.28.0")] crate::num::NonZeroUsize;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI8;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI16;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI32;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI64;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroI128;
+    #[stable(feature = "signed_nonzero", since = "1.34.0")] crate::num::NonZeroIsize;
+}
+
+#[stable(feature = "nonnull", since = "1.25.0")]
+impl<T> SpecOptionPartialEq for crate::ptr::NonNull<T> {
+    #[inline]
+    fn eq(l: &Option<Self>, r: &Option<Self>) -> bool {
+        l.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
+            == r.map(Self::as_ptr).unwrap_or_else(|| crate::ptr::null_mut())
     }
 }
 

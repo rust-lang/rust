@@ -29,7 +29,7 @@ pub(super) fn infer_predicates<'tcx>(
 
         // Visit all the crates and infer predicates
         for id in tcx.hir().items() {
-            let item_did = id.def_id;
+            let item_did = id.owner_id;
 
             debug!("InferVisitor::visit_item(item={:?})", item_did);
 
@@ -196,13 +196,13 @@ fn insert_required_predicates_to_be_wf<'tcx>(
                 }
             }
 
-            ty::Projection(obj) => {
+            ty::Alias(ty::Projection, obj) => {
                 // This corresponds to `<T as Foo<'a>>::Bar`. In this case, we should use the
                 // explicit predicates as well.
                 debug!("Projection");
                 check_explicit_predicates(
                     tcx,
-                    tcx.parent(obj.item_def_id),
+                    tcx.parent(obj.def_id),
                     obj.substs,
                     required_predicates,
                     explicit_map,

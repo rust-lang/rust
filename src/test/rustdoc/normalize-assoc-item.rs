@@ -11,9 +11,22 @@ impl Trait for usize {
     type X = isize;
 }
 
+impl Trait for () {
+    type X = fn() -> i32;
+}
+
+impl Trait for isize {
+    type X = <() as Trait>::X;
+}
+
 // @has 'normalize_assoc_item/fn.f.html' '//pre[@class="rust fn"]' 'pub fn f() -> isize'
 pub fn f() -> <usize as Trait>::X {
     0
+}
+
+// @has 'normalize_assoc_item/fn.f2.html' '//pre[@class="rust fn"]' 'pub fn f2() -> fn() -> i32'
+pub fn f2() -> <isize as Trait>::X {
+    todo!()
 }
 
 pub struct S {

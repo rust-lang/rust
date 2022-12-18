@@ -9,17 +9,17 @@ use rustc_ast::{self as ast, *};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, PartialRes, Res};
 use rustc_hir::GenericArg;
-use rustc_span::symbol::{kw, Ident};
+use rustc_span::symbol::{kw, sym, Ident};
 use rustc_span::{BytePos, Span, DUMMY_SP};
 
-use smallvec::smallvec;
+use smallvec::{smallvec, SmallVec};
 
 impl<'a, 'hir> LoweringContext<'a, 'hir> {
     #[instrument(level = "trace", skip(self))]
     pub(crate) fn lower_qpath(
         &mut self,
         id: NodeId,
-        qself: &Option<QSelf>,
+        qself: &Option<ptr::P<QSelf>>,
         p: &Path,
         param_mode: ParamMode,
         itctx: &ImplTraitContext,
@@ -29,11 +29,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         let partial_res =
             self.resolver.get_partial_res(id).unwrap_or_else(|| PartialRes::new(Res::Err));
+        let base_res = partial_res.base_res();
+        let unresolved_segments = partial_res.unresolved_segments();
 
         let path_span_lo = p.span.shrink_to_lo();
-        let proj_start = p.segments.len() - partial_res.unresolved_segments();
+        let proj_start = p.segments.len() - unresolved_segments;
         let path = self.arena.alloc(hir::Path {
-            res: self.lower_res(partial_res.base_res()),
+            res: self.lower_res(base_res),
             segments: self.arena.alloc_from_iter(p.segments[..proj_start].iter().enumerate().map(
                 |(i, segment)| {
                     let param_mode = match (qself_position, param_mode) {
@@ -46,7 +48,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         _ => param_mode,
                     };
 
-                    let parenthesized_generic_args = match partial_res.base_res() {
+                    let parenthesized_generic_args = match base_res {
                         // `a::b::Trait(Args)`
                         Res::Def(DefKind::Trait, _) if i + 1 == proj_start => {
                             ParenthesizedGenericArgs::Ok
@@ -83,7 +85,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
         // Simple case, either no projections, or only fully-qualified.
         // E.g., `std::mem::size_of` or `<I as Iterator>::Item`.
-        if partial_res.unresolved_segments() == 0 {
+        if unresolved_segments == 0 {
             return hir::QPath::Resolved(qself, path);
         }
 
@@ -142,13 +144,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         );
     }
 
-    pub(crate) fn lower_path_extra(
+    pub(crate) fn lower_use_path(
         &mut self,
-        res: Res,
+        res: SmallVec<[Res; 3]>,
         p: &Path,
         param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        self.arena.alloc(hir::Path {
+    ) -> &'hir hir::UsePath<'hir> {
+        self.arena.alloc(hir::UsePath {
             res,
             segments: self.arena.alloc_from_iter(p.segments.iter().map(|segment| {
                 self.lower_path_segment(
@@ -163,17 +165,6 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         })
     }
 
-    pub(crate) fn lower_path(
-        &mut self,
-        id: NodeId,
-        p: &Path,
-        param_mode: ParamMode,
-    ) -> &'hir hir::Path<'hir> {
-        let res = self.expect_full_res(id);
-        let res = self.lower_res(res);
-        self.lower_path_extra(res, p, param_mode)
-    }
-
     pub(crate) fn lower_path_segment(
         &mut self,
         path_span: Span,
@@ -183,13 +174,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         itctx: &ImplTraitContext,
     ) -> hir::PathSegment<'hir> {
         debug!("path_span: {:?}, lower_path_segment(segment: {:?})", path_span, segment,);
-        let (mut generic_args, infer_args) = if let Some(ref generic_args) = segment.args {
-            match **generic_args {
-                GenericArgs::AngleBracketed(ref data) => {
+        let (mut generic_args, infer_args) = if let Some(generic_args) = segment.args.as_deref() {
+            match generic_args {
+                GenericArgs::AngleBracketed(data) => {
                     self.lower_angle_bracketed_parameter_data(data, param_mode, itctx)
                 }
-                GenericArgs::Parenthesized(ref data) => match parenthesized_generic_args {
-                    ParenthesizedGenericArgs::Ok => self.lower_parenthesized_parameter_data(data),
+                GenericArgs::Parenthesized(data) => match parenthesized_generic_args {
+                    ParenthesizedGenericArgs::Ok => {
+                        self.lower_parenthesized_parameter_data(data, itctx)
+                    }
                     ParenthesizedGenericArgs::Err => {
                         // Suggest replacing parentheses with angle brackets `Trait(params...)` to `Trait<params...>`
                         let sub = if !data.inputs.is_empty() {
@@ -305,7 +298,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 let id = NodeId::from_u32(i);
                 let l = self.lower_lifetime(&Lifetime {
                     id,
-                    ident: Ident::new(kw::UnderscoreLifetime, elided_lifetime_span),
+                    ident: Ident::new(kw::Empty, elided_lifetime_span),
                 });
                 GenericArg::Lifetime(l)
             }),
@@ -342,6 +335,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_parenthesized_parameter_data(
         &mut self,
         data: &ParenthesizedArgs,
+        itctx: &ImplTraitContext,
     ) -> (GenericArgsCtor<'hir>, bool) {
         // Switch to `PassThrough` mode for anonymous lifetimes; this
         // means that we permit things like `&Ref<T>`, where `Ref` has
@@ -353,6 +347,24 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             self.lower_ty_direct(ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitParam))
         }));
         let output_ty = match output {
+            // Only allow `impl Trait` in return position. i.e.:
+            // ```rust
+            // fn f(_: impl Fn() -> impl Debug) -> impl Fn() -> impl Debug
+            // //      disallowed --^^^^^^^^^^        allowed --^^^^^^^^^^
+            // ```
+            FnRetTy::Ty(ty) if matches!(itctx, ImplTraitContext::ReturnPositionOpaqueTy { .. }) => {
+                if self.tcx.features().impl_trait_in_fn_trait_return {
+                    self.lower_ty(&ty, itctx)
+                } else {
+                    self.lower_ty(
+                        &ty,
+                        &ImplTraitContext::FeatureGated(
+                            ImplTraitPosition::FnTraitReturn,
+                            sym::impl_trait_in_fn_trait_return,
+                        ),
+                    )
+                }
+            }
             FnRetTy::Ty(ty) => {
                 self.lower_ty(&ty, &ImplTraitContext::Disallowed(ImplTraitPosition::FnTraitReturn))
             }

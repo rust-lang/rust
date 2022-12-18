@@ -1,6 +1,11 @@
 #include <stdio.h>
 #include <stdint.h>
 
+void _cdecl LooksLikeAPrivateGlobal(int i) {
+    printf("LooksLikeAPrivateGlobal(%d)\n", i);
+    fflush(stdout);
+}
+
 void _cdecl cdecl_fn_undecorated(int i) {
     printf("cdecl_fn_undecorated(%d)\n", i);
     fflush(stdout);

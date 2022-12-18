@@ -1,5 +1,5 @@
 use clippy_utils::{
-    diagnostics::span_lint_and_sugg, is_lang_ctor, peel_hir_expr_refs, peel_ref_operators, sugg,
+    diagnostics::span_lint_and_sugg, is_res_lang_ctor, path_res, peel_hir_expr_refs, peel_ref_operators, sugg,
     ty::is_type_diagnostic_item,
 };
 use rustc_errors::Applicability;
@@ -33,7 +33,7 @@ declare_clippy_lint! {
     ///     if f.is_some() { "yay" } else { "nay" }
     /// }
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.65.0"]
     pub PARTIALEQ_TO_NONE,
     style,
     "Binary comparison to `Option<T>::None` relies on `T: PartialEq`, which is unneeded"
@@ -54,8 +54,7 @@ impl<'tcx> LateLintPass<'tcx> for PartialeqToNone {
         // If the expression is a literal `Option::None`
         let is_none_ctor = |expr: &Expr<'_>| {
             !expr.span.from_expansion()
-                && matches!(&peel_hir_expr_refs(expr).0.kind,
-            ExprKind::Path(p) if is_lang_ctor(cx, p, LangItem::OptionNone))
+                && is_res_lang_ctor(cx, path_res(cx, peel_hir_expr_refs(expr).0), LangItem::OptionNone)
         };
 
         let mut applicability = Applicability::MachineApplicable;

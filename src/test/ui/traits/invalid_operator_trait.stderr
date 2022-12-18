@@ -1,0 +1,8 @@
+error: `add` must not have any generic parameters
+  --> $DIR/invalid_operator_trait.rs:15:5
+   |
+LL |     fn add<Y>(self, _: RHS) -> Self::Output;
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+

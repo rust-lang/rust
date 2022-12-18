@@ -17,7 +17,7 @@ use rustc_session::config::{self, CheckCfg, ErrorOutputType, Input, OutputFilena
 use rustc_session::early_error;
 use rustc_session::lint;
 use rustc_session::parse::{CrateConfig, ParseSess};
-use rustc_session::{DiagnosticOutput, Session};
+use rustc_session::Session;
 use rustc_span::source_map::{FileLoader, FileName};
 use rustc_span::symbol::sym;
 use std::path::PathBuf;
@@ -25,7 +25,10 @@ use std::result;
 
 pub type Result<T> = result::Result<T, ErrorGuaranteed>;
 
-/// Represents a compiler session.
+/// Represents a compiler session. Note that every `Compiler` contains a
+/// `Session`, but `Compiler` also contains some things that cannot be in
+/// `Session`, due to `Session` being in a crate that has many fewer
+/// dependencies than this crate.
 ///
 /// Can be used to run `rustc_interface` queries.
 /// Created by passing [`Config`] to [`run_compiler`].
@@ -191,7 +194,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
                                         for val in values {
                                             if let Some(LitKind::Str(s, _)) =
-                                                val.literal().map(|lit| &lit.kind)
+                                                val.lit().map(|lit| &lit.kind)
                                             {
                                                 ident_values.insert(s.to_string());
                                             } else {
@@ -247,7 +250,6 @@ pub struct Config {
     pub output_dir: Option<PathBuf>,
     pub output_file: Option<PathBuf>,
     pub file_loader: Option<Box<dyn FileLoader + Send + Sync>>,
-    pub diagnostic_output: DiagnosticOutput,
 
     pub lint_caps: FxHashMap<lint::LintId, lint::Level>,
 
@@ -276,59 +278,6 @@ pub struct Config {
     pub registry: Registry,
 }
 
-pub fn create_compiler_and_run<R>(config: Config, f: impl FnOnce(&Compiler) -> R) -> R {
-    crate::callbacks::setup_callbacks();
-
-    let registry = &config.registry;
-    let (mut sess, codegen_backend) = util::create_session(
-        config.opts,
-        config.crate_cfg,
-        config.crate_check_cfg,
-        config.diagnostic_output,
-        config.file_loader,
-        config.input_path.clone(),
-        config.lint_caps,
-        config.make_codegen_backend,
-        registry.clone(),
-    );
-
-    if let Some(parse_sess_created) = config.parse_sess_created {
-        parse_sess_created(
-            &mut Lrc::get_mut(&mut sess)
-                .expect("create_session() should never share the returned session")
-                .parse_sess,
-        );
-    }
-
-    let temps_dir = sess.opts.unstable_opts.temps_dir.as_ref().map(|o| PathBuf::from(&o));
-
-    let compiler = Compiler {
-        sess,
-        codegen_backend,
-        input: config.input,
-        input_path: config.input_path,
-        output_dir: config.output_dir,
-        output_file: config.output_file,
-        temps_dir,
-        register_lints: config.register_lints,
-        override_queries: config.override_queries,
-    };
-
-    rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
-        let r = {
-            let _sess_abort_error = OnDrop(|| {
-                compiler.sess.finish_diagnostics(registry);
-            });
-
-            f(&compiler)
-        };
-
-        let prof = compiler.sess.prof.clone();
-        prof.generic_activity("drop_compiler").run(move || drop(compiler));
-        r
-    })
-}
-
 // JUSTIFICATION: before session exists, only config
 #[allow(rustc::bad_opt_access)]
 pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Send) -> R {
@@ -336,7 +285,53 @@ pub fn run_compiler<R: Send>(config: Config, f: impl FnOnce(&Compiler) -> R + Se
     util::run_in_thread_pool_with_globals(
         config.opts.edition,
         config.opts.unstable_opts.threads,
-        || create_compiler_and_run(config, f),
+        || {
+            crate::callbacks::setup_callbacks();
+
+            let registry = &config.registry;
+            let (mut sess, codegen_backend) = util::create_session(
+                config.opts,
+                config.crate_cfg,
+                config.crate_check_cfg,
+                config.file_loader,
+                config.input_path.clone(),
+                config.lint_caps,
+                config.make_codegen_backend,
+                registry.clone(),
+            );
+
+            if let Some(parse_sess_created) = config.parse_sess_created {
+                parse_sess_created(&mut sess.parse_sess);
+            }
+
+            let temps_dir = sess.opts.unstable_opts.temps_dir.as_deref().map(PathBuf::from);
+
+            let compiler = Compiler {
+                sess: Lrc::new(sess),
+                codegen_backend: Lrc::new(codegen_backend),
+                input: config.input,
+                input_path: config.input_path,
+                output_dir: config.output_dir,
+                output_file: config.output_file,
+                temps_dir,
+                register_lints: config.register_lints,
+                override_queries: config.override_queries,
+            };
+
+            rustc_span::with_source_map(compiler.sess.parse_sess.clone_source_map(), move || {
+                let r = {
+                    let _sess_abort_error = OnDrop(|| {
+                        compiler.sess.finish_diagnostics(registry);
+                    });
+
+                    f(&compiler)
+                };
+
+                let prof = compiler.sess.prof.clone();
+                prof.generic_activity("drop_compiler").run(move || drop(compiler));
+                r
+            })
+        },
     )
 }
 

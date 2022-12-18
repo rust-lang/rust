@@ -327,7 +327,7 @@
 //! - `text` must not contain any `'{'` or `'}'` characters,
 //! - `ws` is any character for which [`char::is_whitespace`] returns `true`, has no semantic
 //!   meaning and is completely optional,
-//! - `integer` is a decimal integer that may contain leading zeroes and
+//! - `integer` is a decimal integer that may contain leading zeroes and must fit into an `usize` and
 //! - `identifier` is an `IDENTIFIER_OR_KEYWORD` (not an `IDENTIFIER`) as defined by the [Rust language reference](https://doc.rust-lang.org/reference/identifiers.html).
 //!
 //! # Formatting traits
@@ -419,7 +419,7 @@
 //!         // documentation for details, and the function `pad` can be used
 //!         // to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
-//!         let string = format!("{:.*}", decimals, magnitude);
+//!         let string = format!("{magnitude:.decimals$}");
 //!         f.pad_integral(true, "", &string)
 //!     }
 //! }
@@ -518,7 +518,7 @@
 //! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
 //! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
+//!     write!(&mut io::stdout(), "{args}");
 //! }
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```

@@ -4,7 +4,7 @@
 #![feature(rustdoc_internals)]
 
 // @has foo/primitive.slice.html '//a[@class="primitive"]' 'slice'
-// @has - '//span[@class="in-band"]' 'Primitive Type slice'
+// @has - '//h1[@class="fqn"]' 'Primitive Type slice'
 // @has - '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 // @has - '//h2[@id="synthetic-implementations"]' 'Auto Trait Implementations'
 // @has - '//div[@id="synthetic-implementations-list"]//h3' 'impl<T> Send for [T]where T: Send'

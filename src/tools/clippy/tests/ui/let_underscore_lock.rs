@@ -3,20 +3,6 @@
 extern crate parking_lot;
 
 fn main() {
-    let m = std::sync::Mutex::new(());
-    let rw = std::sync::RwLock::new(());
-
-    let _ = m.lock();
-    let _ = rw.read();
-    let _ = rw.write();
-    let _ = m.try_lock();
-    let _ = rw.try_read();
-    let _ = rw.try_write();
-
-    // These shouldn't throw an error.
-    let _ = m;
-    let _ = rw;
-
     use parking_lot::{lock_api::RawMutex, Mutex, RwLock};
 
     let p_m: Mutex<()> = Mutex::const_new(RawMutex::INIT, ());
@@ -33,4 +19,21 @@ fn main() {
     let _ = p_m;
     let _ = p_m1;
     let _ = p_rw;
+}
+
+fn uplifted() {
+    // shouldn't lint std locks as they were uplifted as rustc's `let_underscore_lock`
+
+    let m = std::sync::Mutex::new(());
+    let rw = std::sync::RwLock::new(());
+
+    let _ = m.lock();
+    let _ = rw.read();
+    let _ = rw.write();
+    let _ = m.try_lock();
+    let _ = rw.try_read();
+    let _ = rw.try_write();
+
+    let _ = m;
+    let _ = rw;
 }

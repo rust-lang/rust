@@ -25,7 +25,7 @@ fn moved_here_1() {
 fn moved_here_2() {
     let value = NonCopy{};
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used = value;
         //~^ NOTE value moved here
         loop {
@@ -38,7 +38,7 @@ fn moved_here_2() {
 fn moved_loop_1() {
     let value = NonCopy{};
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used = value; //~ ERROR use of moved value: `value`
         //~^ NOTE value moved here, in previous iteration of loop
     }
@@ -49,7 +49,7 @@ fn moved_loop_2() {
     //~^ NOTE move occurs because `value` has type `NonCopy`, which does not implement the `Copy` trait
     let _used = value;
     value = NonCopy{};
-    loop {
+    loop { //~ NOTE inside of this loop
         let _used2 = value; //~ ERROR use of moved value: `value`
         //~^ NOTE value moved here, in previous iteration of loop
     }

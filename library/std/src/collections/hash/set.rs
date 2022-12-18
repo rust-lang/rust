@@ -376,7 +376,8 @@ impl<T, S> HashSet<T, S> {
     /// ```
     #[inline]
     #[stable(feature = "hashmap_build_hasher", since = "1.7.0")]
-    pub fn with_hasher(hasher: S) -> HashSet<T, S> {
+    #[rustc_const_unstable(feature = "const_collections_with_hasher", issue = "102575")]
+    pub const fn with_hasher(hasher: S) -> HashSet<T, S> {
         HashSet { base: base::HashSet::with_hasher(hasher) }
     }
 
@@ -461,7 +462,7 @@ where
 
     /// Tries to reserve capacity for at least `additional` more elements to be inserted
     /// in the `HashSet`. The collection may reserve more space to speculatively
-    /// avoid frequent reallocations. After calling `reserve`,
+    /// avoid frequent reallocations. After calling `try_reserve`,
     /// capacity will be greater than or equal to `self.len() + additional` if
     /// it returns `Ok(())`.
     /// Does nothing if capacity is already sufficient.

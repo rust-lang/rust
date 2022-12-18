@@ -333,7 +333,7 @@ pub fn make_format_args(
             parse::Piece::String(s) => {
                 unfinished_literal.push_str(s);
             }
-            parse::Piece::NextArgument(parse::Argument { position, position_span, format }) => {
+            parse::Piece::NextArgument(box parse::Argument { position, position_span, format }) => {
                 if !unfinished_literal.is_empty() {
                     template.push(FormatArgsPiece::Literal(Symbol::intern(&unfinished_literal)));
                     unfinished_literal.clear();

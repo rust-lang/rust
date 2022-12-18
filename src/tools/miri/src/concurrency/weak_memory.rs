@@ -17,7 +17,7 @@
 //! load to the first, as a result of C++20's coherence-ordered before rules.
 //!
 //! Rust follows the C++20 memory model (except for the Consume ordering and some operations not performable through C++'s
-//! std::atomic<T> API). It is therefore possible for this implementation to generate behaviours never observable when the
+//! `std::atomic<T>` API). It is therefore possible for this implementation to generate behaviours never observable when the
 //! same program is compiled and run natively. Unfortunately, no literature exists at the time of writing which proposes
 //! an implementable and C++20-compatible relaxed memory model that supports all atomic operation existing in Rust. The closest one is
 //! A Promising Semantics for Relaxed-Memory Concurrency by Jeehoon Kang et al. (<https://www.cs.tau.ac.il/~orilahav/papers/popl17.pdf>)
@@ -93,7 +93,7 @@ use super::{
     vector_clock::{VClock, VTimestamp, VectorIdx},
 };
 
-pub type AllocExtra = StoreBufferAlloc;
+pub type AllocState = StoreBufferAlloc;
 
 // Each store buffer must be bounded otherwise it will grow indefinitely.
 // However, bounding the store buffer means restricting the amount of weak
@@ -106,6 +106,19 @@ pub struct StoreBufferAlloc {
     /// Store buffer of each atomic object in this allocation
     // Behind a RefCell because we need to allocate/remove on read access
     store_buffers: RefCell<RangeObjectMap<StoreBuffer>>,
+}
+
+impl VisitTags for StoreBufferAlloc {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        let Self { store_buffers } = self;
+        for val in store_buffers
+            .borrow()
+            .iter()
+            .flat_map(|buf| buf.buffer.iter().map(|element| &element.val))
+        {
+            val.visit_tags(visit);
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

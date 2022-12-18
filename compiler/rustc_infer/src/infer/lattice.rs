@@ -31,7 +31,7 @@ use rustc_middle::ty::{self, Ty};
 /// GLB moves "down" the lattice (to smaller values); LUB moves
 /// "up" the lattice (to bigger values).
 pub trait LatticeDir<'f, 'tcx>: TypeRelation<'tcx> {
-    fn infcx(&self) -> &'f InferCtxt<'f, 'tcx>;
+    fn infcx(&self) -> &'f InferCtxt<'tcx>;
 
     fn cause(&self) -> &ObligationCause<'tcx>;
 
@@ -105,11 +105,13 @@ where
             Ok(v)
         }
 
-        (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
-            infcx.super_combine_tys(this, a, b)
-        }
-        (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
-            if this.define_opaque_types() && did.is_local() =>
+        (
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+            &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+        ) if a_def_id == b_def_id => infcx.super_combine_tys(this, a, b),
+        (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+        | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+            if this.define_opaque_types() && def_id.is_local() =>
         {
             this.add_obligations(
                 infcx

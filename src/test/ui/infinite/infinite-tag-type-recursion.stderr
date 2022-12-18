@@ -3,10 +3,8 @@ error[E0072]: recursive type `MList` has infinite size
    |
 LL | enum MList { Cons(isize, MList), Nil }
    | ^^^^^^^^^^               ----- recursive without indirection
-   | |
-   | recursive type has infinite size
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `MList` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL | enum MList { Cons(isize, Box<MList>), Nil }
    |                          ++++     +

@@ -274,6 +274,39 @@ pub fn explain_lint_level_source(
     }
 }
 
+/// The innermost function for emitting lints.
+///
+/// If you are looking to implement a lint, look for higher level functions,
+/// for example:
+/// - [`TyCtxt::emit_spanned_lint`]
+/// - [`TyCtxt::struct_span_lint_hir`]
+/// - [`TyCtxt::emit_lint`]
+/// - [`TyCtxt::struct_lint_node`]
+/// - `LintContext::lookup`
+///
+/// ## `decorate` signature
+///
+/// The return value of `decorate` is ignored by this function. So what is the
+/// point of returning `&'b mut DiagnosticBuilder<'a, ()>`?
+///
+/// There are 2 reasons for this signature.
+///
+/// First of all, it prevents accidental use of `.emit()` -- it's clear that the
+/// builder will be later used and shouldn't be emitted right away (this is
+/// especially important because the old API expected you to call `.emit()` in
+/// the closure).
+///
+/// Second of all, it makes the most common case of adding just a single label
+/// /suggestion much nicer, since [`DiagnosticBuilder`] methods return
+/// `&mut DiagnosticBuilder`, you can just chain methods, without needed
+/// awkward `{ ...; }`:
+/// ```ignore pseudo-code
+/// struct_lint_level(
+///     ...,
+///     |lint| lint.span_label(sp, "lbl")
+///     //          ^^^^^^^^^^^^^^^^^^^^^ returns `&mut DiagnosticBuilder` by default
+/// )
+/// ```
 pub fn struct_lint_level(
     sess: &Session,
     lint: &'static Lint,
@@ -350,7 +383,6 @@ pub fn struct_lint_level(
             (Level::Deny | Level::Forbid, None) => sess.diagnostic().struct_err_lint(""),
         };
 
-        err.set_primary_message(msg);
         err.set_is_lint();
 
         // If this code originates in a foreign macro, aka something that this crate
@@ -374,6 +406,10 @@ pub fn struct_lint_level(
                 return;
             }
         }
+
+        // Delay evaluating and setting the primary message until after we've
+        // suppressed the lint due to macros.
+        err.set_primary_message(msg);
 
         // Lint diagnostics that are covered by the expect level will not be emitted outside
         // the compiler. It is therefore not necessary to add any information for the user.
@@ -443,7 +479,9 @@ pub fn in_external_macro(sess: &Session, span: Span) -> bool {
     match expn_data.kind {
         ExpnKind::Inlined
         | ExpnKind::Root
-        | ExpnKind::Desugaring(DesugaringKind::ForLoop | DesugaringKind::WhileLoop) => false,
+        | ExpnKind::Desugaring(
+            DesugaringKind::ForLoop | DesugaringKind::WhileLoop | DesugaringKind::OpaqueTy,
+        ) => false,
         ExpnKind::AstPass(_) | ExpnKind::Desugaring(_) => true, // well, it's "external"
         ExpnKind::Macro(MacroKind::Bang, _) => {
             // Dummy span for the `def_site` means it's an external macro.

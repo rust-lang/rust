@@ -1,5 +1,6 @@
 include ../tools.mk
 
+# needs-asm-support
 # ignore-windows-msvc
 #
 # Because of Windows exception handling, the code is not necessarily any shorter.

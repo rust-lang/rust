@@ -1,5 +1,5 @@
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:16:5
+  --> $DIR/generic_duplicate_param_use.rs:21:5
    |
 LL |     t
    |     ^
@@ -11,25 +11,25 @@ LL | type TwoTys<T, U> = impl Debug;
    |             ^  ^
 
 error: non-defining opaque type use in defining scope
-  --> $DIR/generic_duplicate_param_use.rs:21:5
-   |
-LL |     t
-   |     ^
-   |
-note: lifetime used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:10:19
-   |
-LL | type TwoLifetimes<'a, 'b> = impl Debug;
-   |                   ^^  ^^
-
-error: non-defining opaque type use in defining scope
   --> $DIR/generic_duplicate_param_use.rs:26:5
    |
 LL |     t
    |     ^
    |
+note: lifetime used multiple times
+  --> $DIR/generic_duplicate_param_use.rs:15:19
+   |
+LL | type TwoLifetimes<'a, 'b> = impl Debug + Captures<'a> + Captures<'b>;
+   |                   ^^  ^^
+
+error: non-defining opaque type use in defining scope
+  --> $DIR/generic_duplicate_param_use.rs:31:5
+   |
+LL |     t
+   |     ^
+   |
 note: constant used multiple times
-  --> $DIR/generic_duplicate_param_use.rs:12:16
+  --> $DIR/generic_duplicate_param_use.rs:17:16
    |
 LL | type TwoConsts<const X: usize, const Y: usize> = impl Debug;
    |                ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^^

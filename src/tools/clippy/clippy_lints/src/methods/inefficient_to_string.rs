@@ -1,19 +1,19 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::source::snippet_with_applicability;
-use clippy_utils::ty::{is_type_diagnostic_item, walk_ptrs_ty_depth};
+use clippy_utils::ty::{is_type_lang_item, walk_ptrs_ty_depth};
 use clippy_utils::{match_def_path, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{sym, Symbol};
+use rustc_span::symbol::{Symbol, sym};
 
 use super::INEFFICIENT_TO_STRING;
 
 /// Checks for the `INEFFICIENT_TO_STRING` lint
-pub fn check<'tcx>(
-    cx: &LateContext<'tcx>,
+pub fn check(
+    cx: &LateContext<'_>,
     expr: &hir::Expr<'_>,
     method_name: Symbol,
     receiver: &hir::Expr<'_>,
@@ -34,18 +34,17 @@ pub fn check<'tcx>(
                 cx,
                 INEFFICIENT_TO_STRING,
                 expr.span,
-                &format!("calling `to_string` on `{}`", arg_ty),
+                &format!("calling `to_string` on `{arg_ty}`"),
                 |diag| {
                     diag.help(&format!(
-                        "`{}` implements `ToString` through a slower blanket impl, but `{}` has a fast specialization of `ToString`",
-                        self_ty, deref_self_ty
+                        "`{self_ty}` implements `ToString` through a slower blanket impl, but `{deref_self_ty}` has a fast specialization of `ToString`"
                     ));
                     let mut applicability = Applicability::MachineApplicable;
                     let arg_snippet = snippet_with_applicability(cx, receiver.span, "..", &mut applicability);
                     diag.span_suggestion(
                         expr.span,
                         "try dereferencing the receiver",
-                        format!("({}{}).to_string()", "*".repeat(deref_count), arg_snippet),
+                        format!("({}{arg_snippet}).to_string()", "*".repeat(deref_count)),
                         applicability,
                     );
                 },
@@ -61,12 +60,12 @@ fn specializes_tostring(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
         return true;
     }
 
-    if is_type_diagnostic_item(cx, ty, sym::String) {
+    if is_type_lang_item(cx, ty, hir::LangItem::String) {
         return true;
     }
 
     if let ty::Adt(adt, substs) = ty.kind() {
-        match_def_path(cx, adt.did(), &paths::COW) && substs.type_at(1).is_str()
+        cx.tcx.is_diagnostic_item(sym::Cow, adt.did()) && substs.type_at(1).is_str()
     } else {
         false
     }

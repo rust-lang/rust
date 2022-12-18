@@ -324,7 +324,7 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
+            !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
         } else {
             false
         }
@@ -845,7 +845,7 @@ fn is_useful<'p, 'tcx>(
 
         // Opaque types can't get destructured/split, but the patterns can
         // actually hint at hidden types, so we use the patterns' types instead.
-        if let ty::Opaque(..) = ty.kind() {
+        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
             if let Some(row) = rows.first() {
                 ty = row.head().ty();
             }
@@ -885,7 +885,7 @@ fn is_useful<'p, 'tcx>(
             // that has the potential to trigger the `non_exhaustive_omitted_patterns` lint.
             // To understand the workings checkout `Constructor::split` and `SplitWildcard::new/into_ctors`
             if is_non_exhaustive_and_wild
-                // We check that the match has a wildcard pattern and that that wildcard is useful,
+                // We check that the match has a wildcard pattern and that wildcard is useful,
                 // meaning there are variants that are covered by the wildcard. Without the check
                 // for `witness_preference` the lint would trigger on `if let NonExhaustiveEnum::A = foo {}`
                 && usefulness.is_useful() && matches!(witness_preference, RealArm)

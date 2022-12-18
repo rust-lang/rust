@@ -1,6 +1,4 @@
-use rustc_errors::{
-    Applicability, Diagnostic, DiagnosticBuilder, EmissionGuarantee, ErrorGuaranteed,
-};
+use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::Node;
@@ -221,8 +219,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef {
                 local,
                 projection:
-                    &[
-                        ref proj_base @ ..,
+                    [
+                        proj_base @ ..,
                         ProjectionElem::Deref,
                         ProjectionElem::Field(field, _),
                         ProjectionElem::Deref,
@@ -233,7 +231,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 if let Some(span) = get_mut_span_in_struct_field(
                     self.infcx.tcx,
                     Place::ty_from(local, proj_base, self.body, self.infcx.tcx).ty,
-                    field,
+                    *field,
                 ) {
                     err.span_suggestion_verbose(
                         span,
@@ -391,13 +389,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             // diagnostic: if the span starts with a mutable borrow of
             // a local variable, then just suggest the user remove it.
             PlaceRef { local: _, projection: [] }
-                if {
-                    if let Ok(snippet) = self.infcx.tcx.sess.source_map().span_to_snippet(span) {
-                        snippet.starts_with("&mut ")
-                    } else {
-                        false
-                    }
-                } =>
+                if self
+                    .infcx
+                    .tcx
+                    .sess
+                    .source_map()
+                    .span_to_snippet(span)
+                    .map_or(false, |snippet| snippet.starts_with("&mut ")) =>
             {
                 err.span_label(span, format!("cannot {ACT}", ACT = act));
                 err.span_suggestion(
@@ -629,25 +627,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         self.buffer_error(err);
     }
 
-    fn suggest_map_index_mut_alternatives(
-        &self,
-        ty: Ty<'_>,
-        err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
-        span: Span,
-    ) {
+    fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diagnostic, span: Span) {
         let Some(adt) = ty.ty_adt_def() else { return };
         let did = adt.did();
         if self.infcx.tcx.is_diagnostic_item(sym::HashMap, did)
             || self.infcx.tcx.is_diagnostic_item(sym::BTreeMap, did)
         {
-            struct V<'a, 'b, 'tcx, G: EmissionGuarantee> {
+            struct V<'a, 'tcx> {
                 assign_span: Span,
-                err: &'a mut DiagnosticBuilder<'b, G>,
+                err: &'a mut Diagnostic,
                 ty: Ty<'tcx>,
                 suggested: bool,
             }
-            impl<'a, 'b: 'a, 'hir, 'tcx, G: EmissionGuarantee> Visitor<'hir> for V<'a, 'b, 'tcx, G> {
-                fn visit_stmt(&mut self, stmt: &'hir hir::Stmt<'hir>) {
+            impl<'a, 'tcx> Visitor<'tcx> for V<'a, 'tcx> {
+                fn visit_stmt(&mut self, stmt: &'tcx hir::Stmt<'tcx>) {
                     hir::intravisit::walk_stmt(self, stmt);
                     let expr = match stmt.kind {
                         hir::StmtKind::Semi(expr) | hir::StmtKind::Expr(expr) => expr,
@@ -705,7 +698,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                     ),
                                     (rv.span.shrink_to_hi(), ")".to_string()),
                                 ],
-                            ].into_iter(),
+                            ],
                             Applicability::MachineApplicable,
                         );
                         self.suggested = true;
@@ -1218,7 +1211,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         && let hir::Node::Field(field) = node
         && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
     {
-        return Some(lt.span.between(ty.span));
+        return Some(lt.ident.span.between(ty.span));
     }
 
     None

@@ -543,7 +543,7 @@ impl<P: Deref> Pin<P> {
     ///         let p: Pin<&mut T> = Pin::new_unchecked(&mut a);
     ///         // This should mean the pointee `a` can never move again.
     ///     }
-    ///     mem::swap(&mut a, &mut b);
+    ///     mem::swap(&mut a, &mut b); // Potential UB down the road ⚠️
     ///     // The address of `a` changed to `b`'s stack slot, so `a` got moved even
     ///     // though we have previously pinned it! We have violated the pinning API contract.
     /// }
@@ -563,12 +563,65 @@ impl<P: Deref> Pin<P> {
     ///         // This should mean the pointee can never move again.
     ///     }
     ///     drop(pinned);
-    ///     let content = Rc::get_mut(&mut x).unwrap();
+    ///     let content = Rc::get_mut(&mut x).unwrap(); // Potential UB down the road ⚠️
     ///     // Now, if `x` was the only reference, we have a mutable reference to
     ///     // data that we pinned above, which we could use to move it as we have
     ///     // seen in the previous example. We have violated the pinning API contract.
     ///  }
     ///  ```
+    ///
+    /// ## Pinning of closure captures
+    ///
+    /// Particular care is required when using `Pin::new_unchecked` in a closure:
+    /// `Pin::new_unchecked(&mut var)` where `var` is a by-value (moved) closure capture
+    /// implicitly makes the promise that the closure itself is pinned, and that *all* uses
+    /// of this closure capture respect that pinning.
+    /// ```
+    /// use std::pin::Pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     // Create a closure that moves `x`, and then internally uses it in a pinned way.
+    ///     let mut closure = move || unsafe {
+    ///         let _ignore = Pin::new_unchecked(&mut x).poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else. This also moves `x`!
+    ///     let mut moved = closure;
+    ///     // Calling it again means we polled the future from two different locations,
+    ///     // violating the pinning API contract.
+    ///     moved(); // Potential UB ⚠️
+    /// }
+    /// ```
+    /// When passing a closure to another API, it might be moving the closure any time, so
+    /// `Pin::new_unchecked` on closure captures may only be used if the API explicitly documents
+    /// that the closure is pinned.
+    ///
+    /// The better alternative is to avoid all that trouble and do the pinning in the outer function
+    /// instead (here using the unstable `pin` macro):
+    /// ```
+    /// #![feature(pin_macro)]
+    /// use std::pin::pin;
+    /// use std::task::Context;
+    /// use std::future::Future;
+    ///
+    /// fn move_pinned_closure(mut x: impl Future, cx: &mut Context<'_>) {
+    ///     let mut x = pin!(x);
+    ///     // Create a closure that captures `x: Pin<&mut _>`, which is safe to move.
+    ///     let mut closure = move || {
+    ///         let _ignore = x.as_mut().poll(cx);
+    ///     };
+    ///     // Call the closure, so the future can assume it has been pinned.
+    ///     closure();
+    ///     // Move the closure somewhere else.
+    ///     let mut moved = closure;
+    ///     // Calling it again here is fine (except that we might be polling a future that already
+    ///     // returned `Poll::Ready`, but that is a separate problem).
+    ///     moved();
+    /// }
+    /// ```
     ///
     /// [`mem::swap`]: crate::mem::swap
     #[lang = "new_unchecked"]
@@ -1059,7 +1112,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// 8  | let x: Pin<&mut Foo> = {
 ///    |     - borrow later stored here
 /// 9  |     let x: Pin<&mut Foo> = pin!(Foo { /* … */ });
-///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+///    |                            ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 /// 10 |     x
 /// 11 | }; // <- Foo is dropped
 ///    | - temporary value is freed at the end of this statement

@@ -2,5 +2,5 @@
 // can't be used without JS.
 javascript: false
 
-goto: file://|DOC_PATH|/test_docs/struct.Foo.html
+goto: "file://" + |DOC_PATH| + "/test_docs/struct.Foo.html"
 assert-css: (".sub", {"display": "none"})

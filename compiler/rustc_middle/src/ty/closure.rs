@@ -5,6 +5,7 @@ use crate::{mir, ty};
 
 use std::fmt::Write;
 
+use hir::LangItem;
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -14,8 +15,8 @@ use super::{Ty, TyCtxt};
 
 use self::BorrowKind::*;
 
-// Captures are represented using fields inside a structure.
-// This represents accessing self in the closure structure
+/// Captures are represented using fields inside a structure.
+/// This represents accessing self in the closure structure
 pub const CAPTURE_STRUCT_LOCAL: mir::Local = mir::Local::from_u32(1);
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, TyEncodable, TyDecodable, HashStable)]
@@ -90,20 +91,26 @@ pub enum ClosureKind {
 }
 
 impl<'tcx> ClosureKind {
-    // This is the initial value used when doing upvar inference.
+    /// This is the initial value used when doing upvar inference.
     pub const LATTICE_BOTTOM: ClosureKind = ClosureKind::Fn;
 
     /// Returns `true` if a type that impls this closure kind
     /// must also implement `other`.
     pub fn extends(self, other: ty::ClosureKind) -> bool {
-        matches!(
-            (self, other),
-            (ClosureKind::Fn, ClosureKind::Fn)
-                | (ClosureKind::Fn, ClosureKind::FnMut)
-                | (ClosureKind::Fn, ClosureKind::FnOnce)
-                | (ClosureKind::FnMut, ClosureKind::FnMut)
-                | (ClosureKind::FnMut, ClosureKind::FnOnce)
-                | (ClosureKind::FnOnce, ClosureKind::FnOnce)
+        self <= other
+    }
+
+    /// Converts `self` to a [`DefId`] of the corresponding trait.
+    ///
+    /// Note: the inverse of this function is [`TyCtxt::fn_trait_kind_from_def_id`].
+    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
+        tcx.require_lang_item(
+            match self {
+                ClosureKind::Fn => LangItem::Fn,
+                ClosureKind::FnMut => LangItem::FnMut,
+                ClosureKind::FnOnce => LangItem::FnOnce,
+            },
+            None,
         )
     }
 
@@ -114,26 +121,6 @@ impl<'tcx> ClosureKind {
             ClosureKind::Fn => tcx.types.i8,
             ClosureKind::FnMut => tcx.types.i16,
             ClosureKind::FnOnce => tcx.types.i32,
-        }
-    }
-
-    pub fn from_def_id(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ClosureKind> {
-        if Some(def_id) == tcx.lang_items().fn_once_trait() {
-            Some(ClosureKind::FnOnce)
-        } else if Some(def_id) == tcx.lang_items().fn_mut_trait() {
-            Some(ClosureKind::FnMut)
-        } else if Some(def_id) == tcx.lang_items().fn_trait() {
-            Some(ClosureKind::Fn)
-        } else {
-            None
-        }
-    }
-
-    pub fn to_def_id(&self, tcx: TyCtxt<'_>) -> DefId {
-        match self {
-            ClosureKind::Fn => tcx.lang_items().fn_once_trait().unwrap(),
-            ClosureKind::FnMut => tcx.lang_items().fn_mut_trait().unwrap(),
-            ClosureKind::FnOnce => tcx.lang_items().fn_trait().unwrap(),
         }
     }
 }

@@ -1,7 +1,5 @@
-//
-// popped up in in #94012, where an alternative desugaring was
+// popped up in #94012, where an alternative desugaring was
 // causing unreachable code errors
-
 
 #![deny(unused_variables)]
 #![deny(unreachable_code)]

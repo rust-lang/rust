@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(
                 cx,
                 USELESS_TRANSMUTE,
                 e.span,
-                &format!("transmute from a type (`{}`) to itself", from_ty),
+                &format!("transmute from a type (`{from_ty}`) to itself"),
             );
             true
         },

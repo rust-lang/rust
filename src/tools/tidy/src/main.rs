@@ -31,8 +31,22 @@ fn main() {
     let args: Vec<String> = env::args().skip(1).collect();
 
     let verbose = args.iter().any(|s| *s == "--verbose");
+    let bless = args.iter().any(|s| *s == "--bless");
 
     let bad = std::sync::Arc::new(AtomicBool::new(false));
+
+    let drain_handles = |handles: &mut VecDeque<ScopedJoinHandle<'_, ()>>| {
+        // poll all threads for completion before awaiting the oldest one
+        for i in (0..handles.len()).rev() {
+            if handles[i].is_finished() {
+                handles.swap_remove_back(i).unwrap().join().unwrap();
+            }
+        }
+
+        while handles.len() >= concurrency.get() {
+            handles.pop_front().unwrap().join().unwrap();
+        }
+    };
 
     scope(|s| {
         let mut handles: VecDeque<ScopedJoinHandle<'_, ()>> =
@@ -40,9 +54,7 @@ fn main() {
 
         macro_rules! check {
             ($p:ident $(, $args:expr)* ) => {
-                while handles.len() >= concurrency.get() {
-                    handles.pop_front().unwrap().join().unwrap();
-                }
+                drain_handles(&mut handles);
 
                 let handle = s.spawn(|| {
                     let mut flag = false;
@@ -64,6 +76,7 @@ fn main() {
         // Checks over tests.
         check!(debug_artifacts, &src_path);
         check!(ui_tests, &src_path);
+        check!(mir_opt_tests, &src_path, bless);
 
         // Checks that only make sense for the compiler.
         check!(errors, &compiler_path);
@@ -90,10 +103,13 @@ fn main() {
         check!(edition, &compiler_path);
         check!(edition, &library_path);
 
+        check!(alphabetical, &src_path);
+        check!(alphabetical, &compiler_path);
+        check!(alphabetical, &library_path);
+
         let collected = {
-            while handles.len() >= concurrency.get() {
-                handles.pop_front().unwrap().join().unwrap();
-            }
+            drain_handles(&mut handles);
+
             let mut flag = false;
             let r = features::check(&src_path, &compiler_path, &library_path, &mut flag, verbose);
             if flag {

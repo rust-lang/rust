@@ -1,7 +1,11 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
+use crate::errors::{
+    IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
+    UnsupportedKeyValue, WrongFragmentKind,
+};
 use crate::hygiene::SyntaxContext;
-use crate::mbe::macro_rules::annotate_err_with_kind;
+use crate::mbe::diagnostics::annotate_err_with_kind;
 use crate::module::{mod_dir_path, parse_external_mod, DirOwnership, ParsedExternalMod};
 use crate::placeholders::{placeholder, PlaceholderExpander};
 
@@ -11,14 +15,14 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter};
 use rustc_ast::tokenstream::TokenStream;
 use rustc_ast::visit::{self, AssocCtxt, Visitor};
-use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrStyle, AttrVec, ExprKind, ForeignItemKind};
-use rustc_ast::{HasAttrs, HasNodeId};
-use rustc_ast::{Inline, ItemKind, MacArgs, MacStmtStyle, MetaItemKind, ModKind};
+use rustc_ast::{AssocItemKind, AstNodeWrapper, AttrArgs, AttrStyle, AttrVec, ExprKind};
+use rustc_ast::{ForeignItemKind, HasAttrs, HasNodeId};
+use rustc_ast::{Inline, ItemKind, MacStmtStyle, MetaItemKind, ModKind};
 use rustc_ast::{NestedMetaItem, NodeId, PatKind, StmtKind, TyKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::map_in_place::MapInPlace;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::{Applicability, PResult};
+use rustc_errors::PResult;
 use rustc_feature::Features;
 use rustc_parse::parser::{
     AttemptLocalParseRecovery, CommaRecoveryMode, ForceCollect, Parser, RecoverColon, RecoverComma,
@@ -50,6 +54,7 @@ macro_rules! ast_fragments {
         /// Can also serve as an input and intermediate result for macro expansion operations.
         pub enum AstFragment {
             OptExpr(Option<P<ast::Expr>>),
+            MethodReceiverExpr(P<ast::Expr>),
             $($Kind($AstTy),)*
         }
 
@@ -57,6 +62,7 @@ macro_rules! ast_fragments {
         #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum AstFragmentKind {
             OptExpr,
+            MethodReceiverExpr,
             $($Kind,)*
         }
 
@@ -64,6 +70,7 @@ macro_rules! ast_fragments {
             pub fn name(self) -> &'static str {
                 match self {
                     AstFragmentKind::OptExpr => "expression",
+                    AstFragmentKind::MethodReceiverExpr => "expression",
                     $(AstFragmentKind::$Kind => $kind_name,)*
                 }
             }
@@ -72,6 +79,8 @@ macro_rules! ast_fragments {
                 match self {
                     AstFragmentKind::OptExpr =>
                         result.make_expr().map(Some).map(AstFragment::OptExpr),
+                    AstFragmentKind::MethodReceiverExpr =>
+                        result.make_expr().map(AstFragment::MethodReceiverExpr),
                     $(AstFragmentKind::$Kind => result.$make_ast().map(AstFragment::$Kind),)*
                 }
             }
@@ -98,6 +107,13 @@ macro_rules! ast_fragments {
                 }
             }
 
+            pub fn make_method_receiver_expr(self) -> P<ast::Expr> {
+                match self {
+                    AstFragment::MethodReceiverExpr(expr) => expr,
+                    _ => panic!("AstFragment::make_* called on the wrong kind of fragment"),
+                }
+            }
+
             $(pub fn $make_ast(self) -> $AstTy {
                 match self {
                     AstFragment::$Kind(ast) => ast,
@@ -120,6 +136,7 @@ macro_rules! ast_fragments {
                             }
                         });
                     }
+                    AstFragment::MethodReceiverExpr(expr) => vis.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ast) => vis.$mut_visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ast) =>
                         ast.flat_map_in_place(|ast| vis.$flat_map_ast_elt(ast)),)?)*
@@ -130,6 +147,7 @@ macro_rules! ast_fragments {
                 match *self {
                     AstFragment::OptExpr(Some(ref expr)) => visitor.visit_expr(expr),
                     AstFragment::OptExpr(None) => {}
+                    AstFragment::MethodReceiverExpr(ref expr) => visitor.visit_method_receiver_expr(expr),
                     $($(AstFragment::$Kind(ref ast) => visitor.$visit_ast(ast),)?)*
                     $($(AstFragment::$Kind(ref ast) => for ast_elt in &ast[..] {
                         visitor.$visit_ast_elt(ast_elt, $($args)*);
@@ -222,6 +240,7 @@ impl AstFragmentKind {
         match self {
             AstFragmentKind::OptExpr
             | AstFragmentKind::Expr
+            | AstFragmentKind::MethodReceiverExpr
             | AstFragmentKind::Stmts
             | AstFragmentKind::Ty
             | AstFragmentKind::Pat => SupportsMacroExpansion::Yes { supports_inner_attrs: false },
@@ -285,6 +304,9 @@ impl AstFragmentKind {
             AstFragmentKind::Expr => AstFragment::Expr(
                 items.next().expect("expected exactly one expression").expect_expr(),
             ),
+            AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(
+                items.next().expect("expected exactly one expression").expect_expr(),
+            ),
             AstFragmentKind::OptExpr => {
                 AstFragment::OptExpr(items.next().map(Annotatable::expect_expr))
             }
@@ -319,6 +341,7 @@ pub enum InvocationKind {
     },
     Derive {
         path: ast::Path,
+        is_const: bool,
         item: Annotatable,
     },
 }
@@ -327,7 +350,7 @@ impl InvocationKind {
     fn placeholder_visibility(&self) -> Option<ast::Visibility> {
         // HACK: For unnamed fields placeholders should have the same visibility as the actual
         // fields because for tuple structs/variants resolve determines visibilities of their
-        // constructor using these field visibilities before attributes on them are are expanded.
+        // constructor using these field visibilities before attributes on them are expanded.
         // The assumption is that the attribute expansion cannot change field visibilities,
         // and it holds because only inert attributes are supported in this position.
         match self {
@@ -382,7 +405,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         krate
     }
 
-    // Recursively expand all macro invocations in this AST fragment.
+    /// Recursively expand all macro invocations in this AST fragment.
     pub fn fully_expand_fragment(&mut self, input_fragment: AstFragment) -> AstFragment {
         let orig_expansion_data = self.cx.current_expansion.clone();
         let orig_force_mode = self.cx.force_mode;
@@ -460,13 +483,13 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                             derive_invocations.reserve(derives.len());
                             derives
                                 .into_iter()
-                                .map(|(path, item, _exts)| {
+                                .map(|(path, item, _exts, is_const)| {
                                     // FIXME: Consider using the derive resolutions (`_exts`)
                                     // instead of enqueuing the derives to be resolved again later.
                                     let expn_id = LocalExpnId::fresh_empty();
                                     derive_invocations.push((
                                         Invocation {
-                                            kind: InvocationKind::Derive { path, item },
+                                            kind: InvocationKind::Derive { path, item, is_const },
                                             fragment_kind,
                                             expansion_data: ExpansionData {
                                                 id: expn_id,
@@ -587,29 +610,22 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             Limit(0) => Limit(2),
             limit => limit * 2,
         };
-        self.cx
-            .struct_span_err(
-                expn_data.call_site,
-                &format!("recursion limit reached while expanding `{}`", expn_data.kind.descr()),
-            )
-            .help(&format!(
-                "consider increasing the recursion limit by adding a \
-                 `#![recursion_limit = \"{}\"]` attribute to your crate (`{}`)",
-                suggested_limit, self.cx.ecfg.crate_name,
-            ))
-            .emit();
+
+        self.cx.emit_err(RecursionLimitReached {
+            span: expn_data.call_site,
+            descr: expn_data.kind.descr(),
+            suggested_limit,
+            crate_name: &self.cx.ecfg.crate_name,
+        });
+
         self.cx.trace_macros_diag();
     }
 
     /// A macro's expansion does not fit in this fragment kind.
     /// For example, a non-type macro in a type position.
     fn error_wrong_fragment_kind(&mut self, kind: AstFragmentKind, mac: &ast::MacCall, span: Span) {
-        let msg = format!(
-            "non-{kind} macro in {kind} position: {path}",
-            kind = kind.name(),
-            path = pprust::path_to_string(&mac.path),
-        );
-        self.cx.span_err(span, &msg);
+        self.cx.emit_err(WrongFragmentKind { span, kind: kind.name(), name: &mac.path });
+
         self.cx.trace_macros_diag();
     }
 
@@ -635,7 +651,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
         ExpandResult::Ready(match invoc.kind {
             InvocationKind::Bang { mac, .. } => match ext {
                 SyntaxExtensionKind::Bang(expander) => {
-                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.inner_tokens()) else {
+                    let Ok(tok_result) = expander.expand(self.cx, span, mac.args.tokens.clone()) else {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     };
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
@@ -643,7 +659,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyBang(expander) => {
                     let prev = self.cx.current_expansion.prior_type_ascription;
                     self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
-                    let tok_result = expander.expand(self.cx, span, mac.args.inner_tokens());
+                    let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
                     } else {
@@ -687,8 +703,8 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                         _ => item.to_tokens(),
                     };
                     let attr_item = attr.unwrap_normal_item();
-                    if let MacArgs::Eq(..) = attr_item.args {
-                        self.cx.span_err(span, "key-value macro attributes are not supported");
+                    if let AttrArgs::Eq(..) = attr_item.args {
+                        self.cx.emit_err(UnsupportedKeyValue { span });
                     }
                     let inner_tokens = attr_item.args.inner_tokens();
                     let Ok(tok_result) = expander.expand(self.cx, span, inner_tokens, tokens) else {
@@ -699,7 +715,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 SyntaxExtensionKind::LegacyAttr(expander) => {
                     match validate_attr::parse_meta(&self.cx.sess.parse_sess, &attr) {
                         Ok(meta) => {
-                            let items = match expander.expand(self.cx, span, &meta, item) {
+                            let items = match expander.expand(self.cx, span, &meta, item, false) {
                                 ExpandResult::Ready(items) => items,
                                 ExpandResult::Retry(item) => {
                                     // Reassemble the original invocation for retrying.
@@ -710,9 +726,7 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                                 }
                             };
                             if fragment_kind == AstFragmentKind::Expr && items.is_empty() {
-                                let msg =
-                                    "removing an expression is not supported in this position";
-                                self.cx.span_err(span, msg);
+                                self.cx.emit_err(RemoveExprNotSupported { span });
                                 fragment_kind.dummy(span)
                             } else {
                                 fragment_kind.expect_from_annotatables(items)
@@ -731,19 +745,19 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                 }
                 _ => unreachable!(),
             },
-            InvocationKind::Derive { path, item } => match ext {
+            InvocationKind::Derive { path, item, is_const } => match ext {
                 SyntaxExtensionKind::Derive(expander)
                 | SyntaxExtensionKind::LegacyDerive(expander) => {
                     if let SyntaxExtensionKind::Derive(..) = ext {
                         self.gate_proc_macro_input(&item);
                     }
                     let meta = ast::MetaItem { kind: MetaItemKind::Word, span, path };
-                    let items = match expander.expand(self.cx, span, &meta, item) {
+                    let items = match expander.expand(self.cx, span, &meta, item, is_const) {
                         ExpandResult::Ready(items) => items,
                         ExpandResult::Retry(item) => {
                             // Reassemble the original invocation for retrying.
                             return ExpandResult::Retry(Invocation {
-                                kind: InvocationKind::Derive { path: meta.path, item },
+                                kind: InvocationKind::Derive { path: meta.path, item, is_const },
                                 ..invoc
                             });
                         }
@@ -893,6 +907,7 @@ pub fn parse_ast_fragment<'a>(
             AstFragment::Stmts(stmts)
         }
         AstFragmentKind::Expr => AstFragment::Expr(this.parse_expr()?),
+        AstFragmentKind::MethodReceiverExpr => AstFragment::MethodReceiverExpr(this.parse_expr()?),
         AstFragmentKind::OptExpr => {
             if this.token != token::Eof {
                 AstFragment::OptExpr(Some(this.parse_expr()?))
@@ -919,39 +934,32 @@ pub fn parse_ast_fragment<'a>(
 }
 
 pub fn ensure_complete_parse<'a>(
-    this: &mut Parser<'a>,
+    parser: &mut Parser<'a>,
     macro_path: &ast::Path,
     kind_name: &str,
     span: Span,
 ) {
-    if this.token != token::Eof {
-        let token = pprust::token_to_string(&this.token);
-        let msg = format!("macro expansion ignores token `{}` and any following", token);
+    if parser.token != token::Eof {
+        let token = pprust::token_to_string(&parser.token);
         // Avoid emitting backtrace info twice.
-        let def_site_span = this.token.span.with_ctxt(SyntaxContext::root());
-        let mut err = this.struct_span_err(def_site_span, &msg);
-        err.span_label(span, "caused by the macro expansion here");
-        let msg = format!(
-            "the usage of `{}!` is likely invalid in {} context",
-            pprust::path_to_string(macro_path),
-            kind_name,
-        );
-        err.note(&msg);
-        let semi_span = this.sess.source_map().next_point(span);
+        let def_site_span = parser.token.span.with_ctxt(SyntaxContext::root());
 
-        let semi_full_span = semi_span.to(this.sess.source_map().next_point(semi_span));
-        match this.sess.source_map().span_to_snippet(semi_full_span) {
+        let semi_span = parser.sess.source_map().next_point(span);
+        let add_semicolon = match parser.sess.source_map().span_to_snippet(semi_span) {
             Ok(ref snippet) if &snippet[..] != ";" && kind_name == "expression" => {
-                err.span_suggestion(
-                    semi_span,
-                    "you might be missing a semicolon here",
-                    ";",
-                    Applicability::MaybeIncorrect,
-                );
+                Some(span.shrink_to_hi())
             }
-            _ => {}
-        }
-        err.emit();
+            _ => None,
+        };
+
+        parser.sess.emit_err(IncompleteParse {
+            span: def_site_span,
+            token,
+            label_span: span,
+            macro_path,
+            kind_name,
+            add_semicolon,
+        });
     }
 }
 
@@ -1103,7 +1111,7 @@ impl InvocationCollectorNode for P<ast::Item> {
                         ecx.current_expansion.lint_node_id,
                         &attrs,
                         &items,
-                        ident.name.as_str(),
+                        ident.name,
                     );
                 }
 
@@ -1478,6 +1486,42 @@ impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, OptExprTag> {
     }
 }
 
+/// This struct is a hack to workaround unstable of `stmt_expr_attributes`.
+/// It can be removed once that feature is stabilized.
+struct MethodReceiverTag;
+impl DummyAstNode for MethodReceiverTag {
+    fn dummy() -> MethodReceiverTag {
+        MethodReceiverTag
+    }
+}
+impl InvocationCollectorNode for AstNodeWrapper<P<ast::Expr>, MethodReceiverTag> {
+    type OutputTy = Self;
+    type AttrsTy = ast::AttrVec;
+    const KIND: AstFragmentKind = AstFragmentKind::MethodReceiverExpr;
+    fn descr() -> &'static str {
+        "an expression"
+    }
+    fn to_annotatable(self) -> Annotatable {
+        Annotatable::Expr(self.wrapped)
+    }
+    fn fragment_to_output(fragment: AstFragment) -> Self::OutputTy {
+        AstNodeWrapper::new(fragment.make_method_receiver_expr(), MethodReceiverTag)
+    }
+    fn noop_visit<V: MutVisitor>(&mut self, visitor: &mut V) {
+        noop_visit_expr(&mut self.wrapped, visitor)
+    }
+    fn is_mac_call(&self) -> bool {
+        matches!(self.wrapped.kind, ast::ExprKind::MacCall(..))
+    }
+    fn take_mac_call(self) -> (P<ast::MacCall>, Self::AttrsTy, AddSemicolon) {
+        let node = self.wrapped.into_inner();
+        match node.kind {
+            ExprKind::MacCall(mac) => (mac, node.attrs, AddSemicolon::No),
+            _ => unreachable!(),
+        }
+    }
+}
+
 struct InvocationCollector<'a, 'b> {
     cx: &'a mut ExtCtxt<'b>,
     invocations: Vec<(Invocation, Option<Lrc<SyntaxExtension>>)>,
@@ -1589,7 +1633,7 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
         let mut span: Option<Span> = None;
         while let Some(attr) = attrs.next() {
             rustc_ast_passes::feature_gate::check_attribute(attr, self.cx.sess, features);
-            validate_attr::check_meta(&self.cx.sess.parse_sess, attr);
+            validate_attr::check_attr(&self.cx.sess.parse_sess, attr);
 
             let current_span = if let Some(sp) = span { sp.to(attr.span) } else { attr.span };
             span = Some(current_span);
@@ -1711,9 +1755,8 @@ impl<'a, 'b> InvocationCollector<'a, 'b> {
                         if self.expand_cfg_true(node, attr, pos) {
                             continue;
                         }
-                        let msg =
-                            format!("removing {} is not supported in this position", Node::descr());
-                        self.cx.span_err(span, &msg);
+
+                        self.cx.emit_err(RemoveNodeNotSupported { span, descr: Node::descr() });
                         continue;
                     }
                     sym::cfg_attr => {
@@ -1841,6 +1884,14 @@ impl<'a, 'b> MutVisitor for InvocationCollector<'a, 'b> {
         self.visit_node(node)
     }
 
+    fn visit_method_receiver_expr(&mut self, node: &mut P<ast::Expr>) {
+        visit_clobber(node, |node| {
+            let mut wrapper = AstNodeWrapper::new(node, MethodReceiverTag);
+            self.visit_node(&mut wrapper);
+            wrapper.wrapped
+        })
+    }
+
     fn filter_map_expr(&mut self, node: P<ast::Expr>) -> Option<P<ast::Expr>> {
         self.flat_map_node(AstNodeWrapper::new(node, OptExprTag))
     }
@@ -1868,9 +1919,12 @@ pub struct ExpansionConfig<'feat> {
     pub features: Option<&'feat Features>,
     pub recursion_limit: Limit,
     pub trace_mac: bool,
-    pub should_test: bool,          // If false, strip `#[test]` nodes
-    pub span_debug: bool,           // If true, use verbose debugging for `proc_macro::Span`
-    pub proc_macro_backtrace: bool, // If true, show backtraces for proc-macro panics
+    /// If false, strip `#[test]` nodes
+    pub should_test: bool,
+    /// If true, use verbose debugging for `proc_macro::Span`
+    pub span_debug: bool,
+    /// If true, show backtraces for proc-macro panics
+    pub proc_macro_backtrace: bool,
 }
 
 impl<'feat> ExpansionConfig<'feat> {

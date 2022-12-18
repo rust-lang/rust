@@ -1,0 +1,58 @@
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:68:13
+   |
+LL |     let _ = Baz + Baz;
+   |             ^^^^^^^^^
+   |
+   = note: `-D clippy::arithmetic-side-effects` implied by `-D warnings`
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:79:13
+   |
+LL |     let _ = 1i32 + Baz;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:82:13
+   |
+LL |     let _ = 1i64 + Foo;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:86:13
+   |
+LL |     let _ = 1i64 + Baz;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:97:13
+   |
+LL |     let _ = Baz + 1i32;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:100:13
+   |
+LL |     let _ = Foo + 1i64;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:104:13
+   |
+LL |     let _ = Baz + 1i64;
+   |             ^^^^^^^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:113:13
+   |
+LL |     let _ = -Bar;
+   |             ^^^^
+
+error: arithmetic operation that can potentially result in unexpected side-effects
+  --> $DIR/arithmetic_side_effects_allowed.rs:115:13
+   |
+LL |     let _ = -Baz;
+   |             ^^^^
+
+error: aborting due to 9 previous errors
+

@@ -1,10 +1,9 @@
 use rustc_infer::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelatingDelegate};
 use rustc_infer::infer::NllRegionVariableOrigin;
-use rustc_infer::traits::ObligationCause;
+use rustc_infer::traits::PredicateObligations;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{self, Const, Ty};
+use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
 use rustc_trait_selection::traits::query::Fallible;
 
@@ -136,16 +135,10 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
                 span: self.locations.span(self.type_checker.body),
                 category: self.category,
                 variance_info: info,
+                from_closure: false,
             },
         );
     }
-
-    // We don't have to worry about the equality of consts during borrow checking
-    // as consts always have a static lifetime.
-    // FIXME(oli-obk): is this really true? We can at least have HKL and with
-    // inline consts we may have further lifetimes that may be unsound to treat as
-    // 'static.
-    fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {}
 
     fn normalization() -> NormalizationStrategy {
         NormalizationStrategy::Eager
@@ -155,33 +148,18 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for NllTypeRelatingDelegate<'_, '_, 'tcx> 
         true
     }
 
-    fn register_opaque_type(
-        &mut self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
-    ) -> Result<(), TypeError<'tcx>> {
-        let param_env = self.param_env();
-        let span = self.span();
-        let def_id = self.type_checker.body.source.def_id().expect_local();
-        let body_id = self.type_checker.tcx().hir().local_def_id_to_hir_id(def_id);
-        let cause = ObligationCause::misc(span, body_id);
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
         self.type_checker
             .fully_perform_op(
                 self.locations,
                 self.category,
                 InstantiateOpaqueType {
-                    obligations: self
-                        .type_checker
-                        .infcx
-                        .handle_opaque_type(a, b, a_is_expected, &cause, param_env)?
-                        .obligations,
+                    obligations,
                     // These fields are filled in during execution of the operation
                     base_universe: None,
                     region_constraints: None,
                 },
             )
             .unwrap();
-        Ok(())
     }
 }

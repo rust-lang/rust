@@ -13,7 +13,7 @@ use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::Instance;
 use rustc_middle::ty::{self, SymbolName, TyCtxt};
-use rustc_session::config::CrateType;
+use rustc_session::config::{CrateType, OomStrategy};
 use rustc_target::spec::SanitizerSet;
 
 pub fn threshold(tcx: TyCtxt<'_>) -> SymbolExportLevel {
@@ -76,7 +76,7 @@ fn reachable_non_generics_provider(tcx: TyCtxt<'_>, cnum: CrateNum) -> DefIdMap<
             // let it through if it's included statically.
             match tcx.hir().get_by_def_id(def_id) {
                 Node::ForeignItem(..) => {
-                    tcx.is_statically_included_foreign_item(def_id).then_some(def_id)
+                    tcx.native_library(def_id).map_or(false, |library| library.kind.is_statically_included()).then_some(def_id)
                 }
 
                 // Only consider nodes that actually have exported symbols.
@@ -180,7 +180,8 @@ fn exported_symbols_provider_local<'tcx>(
         .collect();
 
     if tcx.entry_fn(()).is_some() {
-        let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, "main"));
+        let exported_symbol =
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, tcx.sess.target.entry_name.as_ref()));
 
         symbols.push((
             exported_symbol,
@@ -193,8 +194,11 @@ fn exported_symbols_provider_local<'tcx>(
     }
 
     if tcx.allocator_kind(()).is_some() {
-        for method in ALLOCATOR_METHODS {
-            let symbol_name = format!("__rust_{}", method.name);
+        for symbol_name in ALLOCATOR_METHODS
+            .iter()
+            .map(|method| format!("__rust_{}", method.name))
+            .chain(["__rust_alloc_error_handler".to_string(), OomStrategy::SYMBOL.to_string()])
+        {
             let exported_symbol = ExportedSymbol::NoDefId(SymbolName::new(tcx, &symbol_name));
 
             symbols.push((
@@ -206,6 +210,15 @@ fn exported_symbols_provider_local<'tcx>(
                 },
             ));
         }
+
+        symbols.push((
+            ExportedSymbol::NoDefId(SymbolName::new(tcx, OomStrategy::SYMBOL)),
+            SymbolExportInfo {
+                level: SymbolExportLevel::Rust,
+                kind: SymbolExportKind::Text,
+                used: false,
+            },
+        ));
     }
 
     if tcx.sess.instrument_coverage() || tcx.sess.opts.cg.profile_generate.enabled() {

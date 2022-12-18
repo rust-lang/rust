@@ -2,8 +2,6 @@ use crate::MirPass;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 
-use std::borrow::Cow;
-
 /// A pass that replaces a branch with a goto when its condition is known.
 pub struct SimplifyConstCondition {
     label: String,
@@ -16,8 +14,8 @@ impl SimplifyConstCondition {
 }
 
 impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
-    fn name(&self) -> Cow<'_, str> {
-        Cow::Borrowed(&self.label)
+    fn name(&self) -> &str {
+        &self.label
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -26,12 +24,9 @@ impl<'tcx> MirPass<'tcx> for SimplifyConstCondition {
             let terminator = block.terminator_mut();
             terminator.kind = match terminator.kind {
                 TerminatorKind::SwitchInt {
-                    discr: Operand::Constant(ref c),
-                    switch_ty,
-                    ref targets,
-                    ..
+                    discr: Operand::Constant(ref c), ref targets, ..
                 } => {
-                    let constant = c.literal.try_eval_bits(tcx, param_env, switch_ty);
+                    let constant = c.literal.try_eval_bits(tcx, param_env, c.ty());
                     if let Some(constant) = constant {
                         let target = targets.target_for_value(constant);
                         TerminatorKind::Goto { target }

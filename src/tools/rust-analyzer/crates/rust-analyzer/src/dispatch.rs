@@ -52,7 +52,7 @@ impl<'a> RequestDispatcher<'a> {
             let _pctx = stdx::panic_context::enter(panic_context);
             f(self.global_state, params)
         };
-        if let Ok(response) = result_to_response::<R>(req.id.clone(), result) {
+        if let Ok(response) = result_to_response::<R>(req.id, result) {
             self.global_state.respond(response);
         }
 
@@ -80,7 +80,7 @@ impl<'a> RequestDispatcher<'a> {
             f(global_state_snapshot, params)
         });
 
-        if let Ok(response) = thread_result_to_response::<R>(req.id.clone(), result) {
+        if let Ok(response) = thread_result_to_response::<R>(req.id, result) {
             self.global_state.respond(response);
         }
 

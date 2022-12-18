@@ -9,7 +9,6 @@ note: the trait `PartialEq<_>` is implemented for `T`, but that implementation i
    |
 LL |     *t == *t
    |        ^^
-   = help: the trait `PartialEq<&B>` is implemented for `&A`
 
 error: aborting due to previous error
 

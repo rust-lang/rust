@@ -33,3 +33,11 @@ cfg-expr = {name = "cfg-expr", versions = ['0.7.1']}
 puffin = {name = "puffin", git_url = "https://github.com/EmbarkStudios/puffin", git_hash = "02dd4a3"}
 rpmalloc = {name = "rpmalloc", versions = ['0.2.0']}
 tame-oidc = {name = "tame-oidc", versions = ['0.1.0']}
+
+[recursive]
+ignore = [
+    # Takes ~30s to lint
+    "combine",
+    # Has 1.2 million `clippy::match_same_arms`s
+    "unicode-normalization",
+]

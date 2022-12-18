@@ -1,4 +1,4 @@
-// Type Names for Debug Info.
+//! Type Names for Debug Info.
 
 // Notes on targeting MSVC:
 // In general, MSVC's debugger attempts to parse all arguments as C++ expressions,
@@ -26,10 +26,10 @@ use std::fmt::Write;
 
 use crate::debuginfo::wants_c_like_enum_debuginfo;
 
-// Compute the name of the type as it should be stored in debuginfo. Does not do
-// any caching, i.e., calling the function twice with the same type will also do
-// the work twice. The `qualified` parameter only affects the first level of the
-// type name, further levels (i.e., type parameters) are always fully qualified.
+/// Compute the name of the type as it should be stored in debuginfo. Does not do
+/// any caching, i.e., calling the function twice with the same type will also do
+/// the work twice. The `qualified` parameter only affects the first level of the
+/// type name, further levels (i.e., type parameters) are always fully qualified.
 pub fn compute_debuginfo_type_name<'tcx>(
     tcx: TyCtxt<'tcx>,
     t: Ty<'tcx>,
@@ -59,7 +59,13 @@ fn push_debuginfo_type_name<'tcx>(
     match *t.kind() {
         ty::Bool => output.push_str("bool"),
         ty::Char => output.push_str("char"),
-        ty::Str => output.push_str("str"),
+        ty::Str => {
+            if cpp_like_debuginfo {
+                output.push_str("str$")
+            } else {
+                output.push_str("str")
+            }
+        }
         ty::Never => {
             if cpp_like_debuginfo {
                 output.push_str("never$");
@@ -152,25 +158,19 @@ fn push_debuginfo_type_name<'tcx>(
             }
         }
         ty::Ref(_, inner_type, mutbl) => {
-            // Slices and `&str` are treated like C++ pointers when computing debug
-            // info for MSVC debugger. However, wrapping these types' names in a synthetic type
-            // causes the .natvis engine for WinDbg to fail to display their data, so we opt these
-            // types out to aid debugging in MSVC.
-            let is_slice_or_str = matches!(*inner_type.kind(), ty::Slice(_) | ty::Str);
-
-            if !cpp_like_debuginfo {
-                output.push('&');
-                output.push_str(mutbl.prefix_str());
-            } else if !is_slice_or_str {
+            if cpp_like_debuginfo {
                 match mutbl {
                     Mutability::Not => output.push_str("ref$<"),
                     Mutability::Mut => output.push_str("ref_mut$<"),
                 }
+            } else {
+                output.push('&');
+                output.push_str(mutbl.prefix_str());
             }
 
             push_debuginfo_type_name(tcx, inner_type, qualified, output, visited);
 
-            if cpp_like_debuginfo && !is_slice_or_str {
+            if cpp_like_debuginfo {
                 push_close_angle_bracket(cpp_like_debuginfo, output);
             }
         }
@@ -195,7 +195,7 @@ fn push_debuginfo_type_name<'tcx>(
         }
         ty::Slice(inner_type) => {
             if cpp_like_debuginfo {
-                output.push_str("slice$<");
+                output.push_str("slice2$<");
             } else {
                 output.push('[');
             }
@@ -235,7 +235,7 @@ fn push_debuginfo_type_name<'tcx>(
                 let projection_bounds: SmallVec<[_; 4]> = trait_data
                     .projection_bounds()
                     .map(|bound| {
-                        let ExistentialProjection { item_def_id, term, .. } =
+                        let ExistentialProjection { def_id: item_def_id, term, .. } =
                             tcx.erase_late_bound_regions(bound);
                         // FIXME(associated_const_equality): allow for consts here
                         (item_def_id, term.ty().unwrap())
@@ -411,9 +411,8 @@ fn push_debuginfo_type_name<'tcx>(
         ty::Error(_)
         | ty::Infer(_)
         | ty::Placeholder(..)
-        | ty::Projection(..)
+        | ty::Alias(..)
         | ty::Bound(..)
-        | ty::Opaque(..)
         | ty::GeneratorWitness(..) => {
             bug!(
                 "debuginfo: Trying to create type name for \
@@ -666,10 +665,8 @@ fn push_const_param<'tcx>(tcx: TyCtxt<'tcx>, ct: ty::Const<'tcx>, output: &mut S
                     hcx.while_hashing_spans(false, |hcx| {
                         ct.to_valtree().hash_stable(hcx, &mut hasher)
                     });
-                    // Note: Don't use `StableHashResult` impl of `u64` here directly, since that
-                    // would lead to endianness problems.
-                    let hash: u128 = hasher.finish();
-                    (hash.to_le() as u64).to_le()
+                    let hash: u64 = hasher.finish();
+                    hash
                 });
 
                 if cpp_like_debuginfo(tcx) {

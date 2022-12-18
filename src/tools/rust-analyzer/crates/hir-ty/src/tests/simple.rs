@@ -214,7 +214,7 @@ fn infer_paths() {
 fn a() -> u32 { 1 }
 
 mod b {
-    fn c() -> u32 { 1 }
+    pub fn c() -> u32 { 1 }
 }
 
 fn test() {
@@ -225,13 +225,13 @@ fn test() {
         expect![[r#"
             14..19 '{ 1 }': u32
             16..17 '1': u32
-            47..52 '{ 1 }': u32
-            49..50 '1': u32
-            66..90 '{     ...c(); }': ()
-            72..73 'a': fn a() -> u32
-            72..75 'a()': u32
-            81..85 'b::c': fn c() -> u32
-            81..87 'b::c()': u32
+            51..56 '{ 1 }': u32
+            53..54 '1': u32
+            70..94 '{     ...c(); }': ()
+            76..77 'a': fn a() -> u32
+            76..79 'a()': u32
+            85..89 'b::c': fn c() -> u32
+            85..91 'b::c()': u32
         "#]],
     );
 }
@@ -1693,16 +1693,16 @@ fn infer_type_param() {
 fn infer_const() {
     check_infer(
         r#"
-        struct Foo;
-        impl Foo { const ASSOC_CONST: u32 = 0; }
-        const GLOBAL_CONST: u32 = 101;
-        fn test() {
-            const LOCAL_CONST: u32 = 99;
-            let x = LOCAL_CONST;
-            let z = GLOBAL_CONST;
-            let id = Foo::ASSOC_CONST;
-        }
-        "#,
+struct Foo;
+impl Foo { const ASSOC_CONST: u32 = 0; }
+const GLOBAL_CONST: u32 = 101;
+fn test() {
+    const LOCAL_CONST: u32 = 99;
+    let x = LOCAL_CONST;
+    let z = GLOBAL_CONST;
+    let id = Foo::ASSOC_CONST;
+}
+"#,
         expect![[r#"
             48..49 '0': u32
             79..82 '101': u32
@@ -1722,17 +1722,17 @@ fn infer_const() {
 fn infer_static() {
     check_infer(
         r#"
-        static GLOBAL_STATIC: u32 = 101;
-        static mut GLOBAL_STATIC_MUT: u32 = 101;
-        fn test() {
-            static LOCAL_STATIC: u32 = 99;
-            static mut LOCAL_STATIC_MUT: u32 = 99;
-            let x = LOCAL_STATIC;
-            let y = LOCAL_STATIC_MUT;
-            let z = GLOBAL_STATIC;
-            let w = GLOBAL_STATIC_MUT;
-        }
-        "#,
+static GLOBAL_STATIC: u32 = 101;
+static mut GLOBAL_STATIC_MUT: u32 = 101;
+fn test() {
+    static LOCAL_STATIC: u32 = 99;
+    static mut LOCAL_STATIC_MUT: u32 = 99;
+    let x = LOCAL_STATIC;
+    let y = LOCAL_STATIC_MUT;
+    let z = GLOBAL_STATIC;
+    let w = GLOBAL_STATIC_MUT;
+}
+"#,
         expect![[r#"
             28..31 '101': u32
             69..72 '101': u32
@@ -1747,6 +1747,41 @@ fn infer_static() {
             259..276 'GLOBAL...IC_MUT': u32
             117..119 '99': u32
             160..162 '99': u32
+        "#]],
+    );
+}
+
+#[test]
+fn infer_enum_variant() {
+    check_infer(
+        r#"
+enum Foo {
+    A = 15,
+    B = Foo::A as isize + 1
+}
+"#,
+        expect![[r#"
+            19..21 '15': isize
+            31..37 'Foo::A': Foo
+            31..46 'Foo::A as isize': isize
+            31..50 'Foo::A...ze + 1': isize
+            49..50 '1': isize
+        "#]],
+    );
+    check_infer(
+        r#"
+#[repr(u32)]
+enum Foo {
+    A = 15,
+    B = Foo::A as u32 + 1
+}
+"#,
+        expect![[r#"
+            32..34 '15': u32
+            44..50 'Foo::A': Foo
+            44..57 'Foo::A as u32': u32
+            44..61 'Foo::A...32 + 1': u32
+            60..61 '1': u32
         "#]],
     );
 }
@@ -1821,7 +1856,7 @@ fn not_shadowing_module_by_primitive() {
     check_types(
         r#"
 //- /str.rs
-fn foo() -> u32 {0}
+pub fn foo() -> u32 {0}
 
 //- /main.rs
 mod str;
@@ -1914,6 +1949,88 @@ fn closure_return_inferred() {
             33..43 '{ "test" }': &str
             35..41 '"test"': &str
         "#]],
+    );
+}
+
+#[test]
+fn generator_types_inferred() {
+    check_infer(
+        r#"
+//- minicore: generator, deref
+use core::ops::{Generator, GeneratorState};
+use core::pin::Pin;
+
+fn f(v: i64) {}
+fn test() {
+    let mut g = |r| {
+        let a = yield 0;
+        let a = yield 1;
+        let a = yield 2;
+        "return value"
+    };
+
+    match Pin::new(&mut g).resume(0usize) {
+        GeneratorState::Yielded(y) => { f(y); }
+        GeneratorState::Complete(r) => {}
+    }
+}
+        "#,
+        expect![[r#"
+            70..71 'v': i64
+            78..80 '{}': ()
+            91..362 '{     ...   } }': ()
+            101..106 'mut g': |usize| yields i64 -> &str
+            109..218 '|r| { ...     }': |usize| yields i64 -> &str
+            110..111 'r': usize
+            113..218 '{     ...     }': &str
+            127..128 'a': usize
+            131..138 'yield 0': usize
+            137..138 '0': i64
+            152..153 'a': usize
+            156..163 'yield 1': usize
+            162..163 '1': i64
+            177..178 'a': usize
+            181..188 'yield 2': usize
+            187..188 '2': i64
+            198..212 '"return value"': &str
+            225..360 'match ...     }': ()
+            231..239 'Pin::new': fn new<&mut |usize| yields i64 -> &str>(&mut |usize| yields i64 -> &str) -> Pin<&mut |usize| yields i64 -> &str>
+            231..247 'Pin::n...mut g)': Pin<&mut |usize| yields i64 -> &str>
+            231..262 'Pin::n...usize)': GeneratorState<i64, &str>
+            240..246 '&mut g': &mut |usize| yields i64 -> &str
+            245..246 'g': |usize| yields i64 -> &str
+            255..261 '0usize': usize
+            273..299 'Genera...ded(y)': GeneratorState<i64, &str>
+            297..298 'y': i64
+            303..312 '{ f(y); }': ()
+            305..306 'f': fn f(i64)
+            305..309 'f(y)': ()
+            307..308 'y': i64
+            321..348 'Genera...ete(r)': GeneratorState<i64, &str>
+            346..347 'r': &str
+            352..354 '{}': ()
+        "#]],
+    );
+}
+
+#[test]
+fn generator_resume_yield_return_unit() {
+    check_no_mismatches(
+        r#"
+//- minicore: generator, deref
+use core::ops::{Generator, GeneratorState};
+use core::pin::Pin;
+fn test() {
+    let mut g = || {
+        let () = yield;
+    };
+
+    match Pin::new(&mut g).resume(()) {
+        GeneratorState::Yielded(()) => {}
+        GeneratorState::Complete(()) => {}
+    }
+}
+        "#,
     );
 }
 

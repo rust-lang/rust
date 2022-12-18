@@ -19,8 +19,8 @@ LL |         1 => |c| c + 1,
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |         1 => |c: _| c + 1,
-   |                +++
+LL |         1 => |c: /* Type */| c + 1,
+   |                ++++++++++++
 
 error: aborting due to 2 previous errors
 

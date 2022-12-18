@@ -146,7 +146,6 @@ use crate::slice;
 ///
 /// ```
 /// use std::mem::MaybeUninit;
-/// use std::ptr;
 ///
 /// // Create an uninitialized array of `MaybeUninit`. The `assume_init` is
 /// // safe because the type we are claiming to have initialized here is a
@@ -162,7 +161,7 @@ use crate::slice;
 ///
 /// // For each item in the array, drop if we allocated it.
 /// for elem in &mut data[0..data_len] {
-///     unsafe { ptr::drop_in_place(elem.as_mut_ptr()); }
+///     unsafe { elem.assume_init_drop(); }
 /// }
 /// ```
 ///
@@ -647,7 +646,7 @@ impl<T> MaybeUninit<T> {
     /// implements the [`Copy`] trait or not. When using multiple copies of the
     /// data (by calling `assume_init_read` multiple times, or first calling
     /// `assume_init_read` and then [`assume_init`]), it is your responsibility
-    /// to ensure that that data may indeed be duplicated.
+    /// to ensure that data may indeed be duplicated.
     ///
     /// [inv]: #initialization-invariant
     /// [`assume_init`]: MaybeUninit::assume_init
@@ -1173,7 +1172,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_as_bytes, maybe_uninit_slice)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let val = 0x12345678i32;
+    /// let val = 0x12345678_i32;
     /// let uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes();
     /// let bytes = unsafe { MaybeUninit::slice_assume_init_ref(uninit_bytes) };
@@ -1199,7 +1198,7 @@ impl<T> MaybeUninit<T> {
     /// #![feature(maybe_uninit_as_bytes)]
     /// use std::mem::MaybeUninit;
     ///
-    /// let val = 0x12345678i32;
+    /// let val = 0x12345678_i32;
     /// let mut uninit = MaybeUninit::new(val);
     /// let uninit_bytes = uninit.as_bytes_mut();
     /// if cfg!(target_endian = "little") {
@@ -1282,5 +1281,44 @@ impl<T> MaybeUninit<T> {
                 this.len() * mem::size_of::<T>(),
             )
         }
+    }
+}
+
+impl<T, const N: usize> MaybeUninit<[T; N]> {
+    /// Transposes a `MaybeUninit<[T; N]>` into a `[MaybeUninit<T>; N]`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
+    /// # use std::mem::MaybeUninit;
+    ///
+    /// let data: [MaybeUninit<u8>; 1000] = MaybeUninit::uninit().transpose();
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
+    #[inline]
+    pub const fn transpose(self) -> [MaybeUninit<T>; N] {
+        // SAFETY: T and MaybeUninit<T> have the same layout
+        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
+    }
+}
+
+impl<T, const N: usize> [MaybeUninit<T>; N] {
+    /// Transposes a `[MaybeUninit<T>; N]` into a `MaybeUninit<[T; N]>`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// #![feature(maybe_uninit_uninit_array_transpose)]
+    /// # use std::mem::MaybeUninit;
+    ///
+    /// let data = [MaybeUninit::<u8>::uninit(); 1000];
+    /// let data: MaybeUninit<[u8; 1000]> = data.transpose();
+    /// ```
+    #[unstable(feature = "maybe_uninit_uninit_array_transpose", issue = "96097")]
+    #[inline]
+    pub const fn transpose(self) -> MaybeUninit<[T; N]> {
+        // SAFETY: T and MaybeUninit<T> have the same layout
+        unsafe { super::transmute_copy(&ManuallyDrop::new(self)) }
     }
 }

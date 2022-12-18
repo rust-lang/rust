@@ -14,13 +14,12 @@ use rustc_parse::maybe_new_parser_from_source_str;
 use rustc_parse::parser::attr::InnerAttrPolicy;
 use rustc_session::config::{self, CrateType, ErrorOutputType};
 use rustc_session::parse::ParseSess;
-use rustc_session::{lint, DiagnosticOutput, Session};
+use rustc_session::{lint, Session};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::sym;
-use rustc_span::Symbol;
 use rustc_span::{BytePos, FileName, Pos, Span, DUMMY_SP};
-use rustc_target::spec::TargetTriple;
+use rustc_target::spec::{Target, TargetTriple};
 use tempfile::Builder as TempFileBuilder;
 
 use std::env;
@@ -80,7 +79,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         lint_cap: Some(options.lint_cap.unwrap_or(lint::Forbid)),
         cg: options.codegen_options.clone(),
         externs: options.externs.clone(),
-        unstable_features: options.render_options.unstable_features,
+        unstable_features: options.unstable_features,
         actually_rustdoc: true,
         edition: options.edition,
         target_triple: options.target.clone(),
@@ -100,7 +99,6 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
         output_file: None,
         output_dir: None,
         file_loader: None,
-        diagnostic_output: DiagnosticOutput::Default,
         lint_caps,
         parse_sess_created: None,
         register_lints: Some(Box::new(crate::lint::register_lints)),
@@ -125,7 +123,7 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
                     let opts = scrape_test_config(crate_attrs);
                     let enable_per_target_ignores = options.enable_per_target_ignores;
                     let mut collector = Collector::new(
-                        tcx.crate_name(LOCAL_CRATE),
+                        tcx.crate_name(LOCAL_CRATE).to_string(),
                         options,
                         false,
                         opts,
@@ -210,12 +208,13 @@ pub(crate) fn run(options: RustdocOptions) -> Result<(), ErrorGuaranteed> {
 pub(crate) fn run_tests(
     mut test_args: Vec<String>,
     nocapture: bool,
-    tests: Vec<test::TestDescAndFn>,
+    mut tests: Vec<test::TestDescAndFn>,
 ) {
     test_args.insert(0, "rustdoctest".to_string());
     if nocapture {
         test_args.push("--nocapture".to_string());
     }
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
     test::test_main(&test_args, tests, None);
 }
 
@@ -294,6 +293,16 @@ struct UnusedExterns {
     unused_extern_names: Vec<String>,
 }
 
+fn add_exe_suffix(input: String, target: &TargetTriple) -> String {
+    let exe_suffix = match target {
+        TargetTriple::TargetTriple(_) => Target::expect_builtin(target).options.exe_suffix,
+        TargetTriple::TargetJson { contents, .. } => {
+            Target::from_json(contents.parse().unwrap()).unwrap().0.options.exe_suffix
+        }
+    };
+    input + &exe_suffix
+}
+
 fn run_test(
     test: &str,
     crate_name: &str,
@@ -314,7 +323,9 @@ fn run_test(
     let (test, line_offset, supports_color) =
         make_test(test, Some(crate_name), lang_string.test_harness, opts, edition, Some(test_id));
 
-    let output_file = outdir.path().join("rust_out");
+    // Make sure we emit well-formed executable names for our target.
+    let rust_out = add_exe_suffix("rust_out".to_owned(), &target);
+    let output_file = outdir.path().join(rust_out);
 
     let rustc_binary = rustdoc_options
         .test_builder
@@ -552,6 +563,7 @@ pub(crate) fn make_test(
                 false,
                 Some(80),
                 false,
+                false,
             )
             .supports_color();
 
@@ -564,6 +576,7 @@ pub(crate) fn make_test(
                 false,
                 false,
                 None,
+                false,
                 false,
             );
 
@@ -749,6 +762,7 @@ fn check_if_attr_is_complete(source: &str, edition: Edition) -> bool {
                 false,
                 None,
                 false,
+                false,
             );
 
             let handler = Handler::with_emitter(false, None, Box::new(emitter));
@@ -909,7 +923,7 @@ pub(crate) struct Collector {
     rustdoc_options: RustdocOptions,
     use_headers: bool,
     enable_per_target_ignores: bool,
-    crate_name: Symbol,
+    crate_name: String,
     opts: GlobalTestOptions,
     position: Span,
     source_map: Option<Lrc<SourceMap>>,
@@ -921,7 +935,7 @@ pub(crate) struct Collector {
 
 impl Collector {
     pub(crate) fn new(
-        crate_name: Symbol,
+        crate_name: String,
         rustdoc_options: RustdocOptions,
         use_headers: bool,
         opts: GlobalTestOptions,
@@ -984,7 +998,7 @@ impl Tester for Collector {
     fn add_test(&mut self, test: String, config: LangString, line: usize) {
         let filename = self.get_filename();
         let name = self.generate_name(line, &filename);
-        let crate_name = self.crate_name.to_string();
+        let crate_name = self.crate_name.clone();
         let opts = self.opts.clone();
         let edition = config.edition.unwrap_or(self.rustdoc_options.edition);
         let rustdoc_options = self.rustdoc_options.clone();
@@ -1291,7 +1305,7 @@ impl<'a, 'hir, 'tcx> intravisit::Visitor<'hir> for HirCollector<'a, 'hir, 'tcx> 
     }
 
     fn visit_variant(&mut self, v: &'hir hir::Variant<'_>) {
-        self.visit_testable(v.ident.to_string(), v.id, v.span, |this| {
+        self.visit_testable(v.ident.to_string(), v.hir_id, v.span, |this| {
             intravisit::walk_variant(this, v);
         });
     }

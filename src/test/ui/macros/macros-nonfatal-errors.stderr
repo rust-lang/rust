@@ -215,11 +215,21 @@ error: trace_macros! accepts only `true` or `false`
 LL |     trace_macros!(invalid);
    |     ^^^^^^^^^^^^^^^^^^^^^^
 
+error: default variant must be exhaustive
+  --> $DIR/macros-nonfatal-errors.rs:127:9
+   |
+LL |         #[non_exhaustive]
+   |         ----------------- declared `#[non_exhaustive]` here
+LL |         Foo,
+   |         ^^^
+   |
+   = help: consider a manual implementation of `Default`
+
 error: cannot find macro `llvm_asm` in this scope
   --> $DIR/macros-nonfatal-errors.rs:99:5
    |
 LL |     llvm_asm!(invalid);
    |     ^^^^^^^^
 
-error: aborting due to 27 previous errors
+error: aborting due to 28 previous errors
 

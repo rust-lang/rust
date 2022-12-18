@@ -49,7 +49,7 @@ macro_rules! impl_from {
             // Rustdocs on the impl block show a "[+] show undocumented items" toggle.
             // Rustdocs on functions do not.
             #[doc = $doc]
-            #[inline]
+            #[inline(always)]
             fn from(small: $Small) -> Self {
                 small as Self
             }

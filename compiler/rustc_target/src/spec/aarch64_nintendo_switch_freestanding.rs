@@ -1,4 +1,4 @@
-use super::{LinkerFlavor, LldFlavor, PanicStrategy, RelroLevel, Target, TargetOptions};
+use super::{Cc, LinkerFlavor, Lld, PanicStrategy, RelroLevel, Target, TargetOptions};
 
 const LINKER_SCRIPT: &str = include_str!("./aarch64_nintendo_switch_freestanding_linker_script.ld");
 
@@ -10,7 +10,7 @@ pub fn target() -> Target {
         data_layout: "e-m:e-i8:8:32-i16:16:32-i64:64-i128:128-n32:64-S128".into(),
         arch: "aarch64".into(),
         options: TargetOptions {
-            linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+            linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
             linker: Some("rust-lld".into()),
             link_script: Some(LINKER_SCRIPT.into()),
             os: "horizon".into(),

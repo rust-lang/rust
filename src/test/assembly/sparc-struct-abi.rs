@@ -44,12 +44,16 @@ pub unsafe extern "C" fn callee(arg: Franta) {
     tst_use(arg.b);
     tst_use(arg.c);
     tst_use(arg.d);
+    tail_call_avoidance_fn();
 }
 
 extern "C" {
     fn opaque_callee(arg: Franta, intarg: i32);
     fn tst_use(arg: f32);
     fn clobber();
+    // This exists so that post-https://reviews.llvm.org/D138741 LLVM doesn't
+    // tail-call away some of our assertions.
+    fn tail_call_avoidance_fn();
 }
 
 #[no_mangle]
@@ -62,4 +66,5 @@ pub unsafe extern "C" fn caller() {
     // CHECK: call opaque_callee
     // CHECK: mov     3, %o2
     opaque_callee(Franta { a: 1.0, b: 2.0, c: 3.0, d: 4.0 }, 3);
+    tail_call_avoidance_fn();
 }

@@ -4,11 +4,10 @@ use crate::clean::render_macro_matchers::render_macro_matcher;
 use crate::clean::{
     clean_doc_module, clean_middle_const, clean_middle_region, clean_middle_ty, inline, Crate,
     ExternalCrate, Generic, GenericArg, GenericArgs, ImportSource, Item, ItemKind, Lifetime, Path,
-    PathSegment, Primitive, PrimitiveType, Type, TypeBinding, Visibility,
+    PathSegment, Primitive, PrimitiveType, Term, Type, TypeBinding, TypeBindingKind,
 };
 use crate::core::DocContext;
-use crate::formats::item_type::ItemType;
-use crate::visit_lib::LibEmbargoVisitor;
+use crate::html::format::visibility_to_src_with_space;
 
 use rustc_ast as ast;
 use rustc_ast::tokenstream::TokenTree;
@@ -22,7 +21,7 @@ use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_span::symbol::{kw, sym, Symbol};
 use std::fmt::Write as _;
 use std::mem;
-use thin_vec::ThinVec;
+use thin_vec::{thin_vec, ThinVec};
 
 #[cfg(test)]
 mod tests;
@@ -32,7 +31,7 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
 
     for &cnum in cx.tcx.crates(()) {
         // Analyze doc-reachability for extern items
-        LibEmbargoVisitor::new(cx).visit_lib(cnum);
+        crate::visit_lib::lib_embargo_visit_item(cx, cnum.as_def_id());
     }
 
     // Clean the crate, translating the entire librustc_ast AST to one that is
@@ -74,17 +73,21 @@ pub(crate) fn krate(cx: &mut DocContext<'_>) -> Crate {
         }));
     }
 
-    Crate { module, primitives, external_traits: cx.external_traits.clone() }
+    Crate { module, external_traits: cx.external_traits.clone() }
 }
 
 pub(crate) fn substs_to_args<'tcx>(
     cx: &mut DocContext<'tcx>,
-    substs: &[ty::subst::GenericArg<'tcx>],
+    substs: ty::Binder<'tcx, &[ty::subst::GenericArg<'tcx>]>,
     mut skip_first: bool,
 ) -> Vec<GenericArg> {
     let mut ret_val =
-        Vec::with_capacity(substs.len().saturating_sub(if skip_first { 1 } else { 0 }));
-    ret_val.extend(substs.iter().filter_map(|kind| match kind.unpack() {
+        Vec::with_capacity(substs.skip_binder().len().saturating_sub(if skip_first {
+            1
+        } else {
+            0
+        }));
+    ret_val.extend(substs.iter().filter_map(|kind| match kind.skip_binder().unpack() {
         GenericArgKind::Lifetime(lt) => {
             Some(GenericArg::Lifetime(clean_middle_region(lt).unwrap_or(Lifetime::elided())))
         }
@@ -92,8 +95,12 @@ pub(crate) fn substs_to_args<'tcx>(
             skip_first = false;
             None
         }
-        GenericArgKind::Type(ty) => Some(GenericArg::Type(clean_middle_ty(ty, cx, None))),
-        GenericArgKind::Const(ct) => Some(GenericArg::Const(Box::new(clean_middle_const(ct, cx)))),
+        GenericArgKind::Type(ty) => {
+            Some(GenericArg::Type(clean_middle_ty(kind.rebind(ty), cx, None)))
+        }
+        GenericArgKind::Const(ct) => {
+            Some(GenericArg::Const(Box::new(clean_middle_const(kind.rebind(ct), cx))))
+        }
     }));
     ret_val
 }
@@ -103,23 +110,28 @@ fn external_generic_args<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> GenericArgs {
-    let args = substs_to_args(cx, substs, has_self);
+    let args = substs_to_args(cx, substs.map_bound(|substs| &substs[..]), has_self);
 
-    if cx.tcx.fn_trait_kind_from_lang_item(did).is_some() {
+    if cx.tcx.fn_trait_kind_from_def_id(did).is_some() {
+        let ty = substs
+            .iter()
+            .nth(if has_self { 1 } else { 0 })
+            .unwrap()
+            .map_bound(|arg| arg.expect_ty());
         let inputs =
             // The trait's first substitution is the one after self, if there is one.
-            match substs.iter().nth(if has_self { 1 } else { 0 }).unwrap().expect_ty().kind() {
-                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(t, cx, None)).collect::<Vec<_>>().into(),
+            match ty.skip_binder().kind() {
+                ty::Tuple(tys) => tys.iter().map(|t| clean_middle_ty(ty.rebind(t), cx, None)).collect::<Vec<_>>().into(),
                 _ => return GenericArgs::AngleBracketed { args: args.into(), bindings },
             };
-        let output = None;
-        // FIXME(#20299) return type comes from a projection now
-        // match types[1].kind {
-        //     ty::Tuple(ref v) if v.is_empty() => None, // -> ()
-        //     _ => Some(types[1].clean(cx))
-        // };
+        let output = bindings.into_iter().next().and_then(|binding| match binding.kind {
+            TypeBindingKind::Equality { term: Term::Type(ty) } if ty != Type::Tuple(Vec::new()) => {
+                Some(Box::new(ty))
+            }
+            _ => None,
+        });
         GenericArgs::Parenthesized { inputs, output }
     } else {
         GenericArgs::AngleBracketed { args: args.into(), bindings: bindings.into() }
@@ -131,13 +143,13 @@ pub(super) fn external_path<'tcx>(
     did: DefId,
     has_self: bool,
     bindings: ThinVec<TypeBinding>,
-    substs: SubstsRef<'tcx>,
+    substs: ty::Binder<'tcx, SubstsRef<'tcx>>,
 ) -> Path {
     let def_kind = cx.tcx.def_kind(did);
     let name = cx.tcx.item_name(did);
     Path {
         res: Res::Def(def_kind, did),
-        segments: vec![PathSegment {
+        segments: thin_vec![PathSegment {
             name,
             args: external_generic_args(cx, did, has_self, bindings, substs),
         }],
@@ -243,19 +255,13 @@ pub(crate) fn print_const(cx: &DocContext<'_>, n: ty::Const<'_>) -> String {
 
             s
         }
-        _ => {
-            let mut s = n.to_string();
-            // array lengths are obviously usize
-            if s.ends_with("_usize") {
-                let n = s.len() - "_usize".len();
-                s.truncate(n);
-                if s.ends_with(": ") {
-                    let n = s.len() - ": ".len();
-                    s.truncate(n);
-                }
-            }
-            s
+        // array lengths are obviously usize
+        ty::ConstKind::Value(ty::ValTree::Leaf(scalar))
+            if *n.ty().kind() == ty::Uint(ty::UintTy::Usize) =>
+        {
+            scalar.to_string()
         }
+        _ => n.to_string(),
     }
 }
 
@@ -304,9 +310,9 @@ fn format_integer_with_underscore_sep(num: &str) -> String {
         .collect()
 }
 
-fn print_const_with_custom_print_scalar(
-    tcx: TyCtxt<'_>,
-    ct: mir::ConstantKind<'_>,
+fn print_const_with_custom_print_scalar<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ct: mir::ConstantKind<'tcx>,
     underscores_and_type: bool,
 ) -> String {
     // Use a slightly different format for integer types which always shows the actual value.
@@ -320,7 +326,7 @@ fn print_const_with_custom_print_scalar(
             }
         }
         (mir::ConstantKind::Val(ConstValue::Scalar(int), _), ty::Int(i)) => {
-            let ty = tcx.lift(ct.ty()).unwrap();
+            let ty = ct.ty();
             let size = tcx.layout_of(ty::ParamEnv::empty().and(ty)).unwrap().size;
             let data = int.assert_bits(size);
             let sign_extended_data = size.sign_extend(data) as i128;
@@ -504,9 +510,6 @@ pub(crate) fn register_res(cx: &mut DocContext<'_>, res: Res) -> DefId {
         return did;
     }
     inline::record_extern_fqn(cx, did, kind);
-    if let ItemType::Trait = kind {
-        inline::record_extern_trait(cx, did);
-    }
     did
 }
 
@@ -588,9 +591,9 @@ pub(super) fn display_macro_source(
     name: Symbol,
     def: &ast::MacroDef,
     def_id: DefId,
-    vis: Visibility,
+    vis: ty::Visibility<DefId>,
 ) -> String {
-    let tts: Vec<_> = def.body.inner_tokens().into_trees().collect();
+    let tts: Vec<_> = def.body.tokens.clone().into_trees().collect();
     // Extract the spans of all matchers. They represent the "interface" of the macro.
     let matchers = tts.chunks(4).map(|arm| &arm[0]);
 
@@ -600,14 +603,14 @@ pub(super) fn display_macro_source(
         if matchers.len() <= 1 {
             format!(
                 "{}macro {}{} {{\n    ...\n}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 matchers.map(|matcher| render_macro_matcher(cx.tcx, matcher)).collect::<String>(),
             )
         } else {
             format!(
                 "{}macro {} {{\n{}}}",
-                vis.to_src_with_space(cx.tcx, def_id),
+                visibility_to_src_with_space(Some(vis), cx.tcx, def_id),
                 name,
                 render_macro_arms(cx.tcx, matchers, ","),
             )

@@ -14,7 +14,7 @@ use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::traits::Reveal;
 use rustc_middle::ty::{
-    self, Binder, BoundConstness, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate, TraitRef,
+    self, Binder, BoundConstness, Clause, GenericParamDefKind, ImplPolarity, ParamEnv, PredicateKind, TraitPredicate,
     Ty, TyCtxt,
 };
 use rustc_session::{declare_lint_pass, declare_tool_lint};
@@ -191,7 +191,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.63.0"]
     pub DERIVE_PARTIAL_EQ_WITHOUT_EQ,
-    style,
+    nursery,
     "deriving `PartialEq` on a type that can implement `Eq`, without implementing `Eq`"
 }
 
@@ -210,8 +210,8 @@ impl<'tcx> LateLintPass<'tcx> for Derive {
             ..
         }) = item.kind
         {
-            let ty = cx.tcx.type_of(item.def_id);
-            let is_automatically_derived = cx.tcx.has_attr(item.def_id.to_def_id(), sym::automatically_derived);
+            let ty = cx.tcx.type_of(item.owner_id);
+            let is_automatically_derived = cx.tcx.has_attr(item.owner_id.to_def_id(), sym::automatically_derived);
 
             check_hash_peq(cx, item.span, trait_ref, ty, is_automatically_derived);
             check_ord_partial_ord(cx, item.span, trait_ref, ty, is_automatically_derived);
@@ -339,10 +339,7 @@ fn check_copy_clone<'tcx>(cx: &LateContext<'tcx>, item: &Item<'_>, trait_ref: &h
         Some(id) if trait_ref.trait_def_id() == Some(id) => id,
         _ => return,
     };
-    let copy_id = match cx.tcx.lang_items().copy_trait() {
-        Some(id) => id,
-        None => return,
-    };
+    let Some(copy_id) = cx.tcx.lang_items().copy_trait() else { return };
     let (ty_adt, ty_subs) = match *ty.kind() {
         // Unions can't derive clone.
         ty::Adt(adt, subs) if !adt.is_union() => (adt, subs),
@@ -469,12 +466,12 @@ fn check_partial_eq_without_eq<'tcx>(cx: &LateContext<'tcx>, span: Span, trait_r
         if let Some(def_id) = trait_ref.trait_def_id();
         if cx.tcx.is_diagnostic_item(sym::PartialEq, def_id);
         let param_env = param_env_for_derived_eq(cx.tcx, adt.did(), eq_trait_def_id);
-        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]);
+        if !implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []);
         // If all of our fields implement `Eq`, we can implement `Eq` too
         if adt
             .all_fields()
             .map(|f| f.ty(cx.tcx, substs))
-            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, &[]));
+            .all(|ty| implements_trait_with_env(cx.tcx, param_env, ty, eq_trait_def_id, []));
         then {
             span_lint_and_sugg(
                 cx,
@@ -502,7 +499,7 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
 
     let ty_predicates = tcx.predicates_of(did).predicates;
     for (p, _) in ty_predicates {
-        if let PredicateKind::Trait(p) = p.kind().skip_binder()
+        if let PredicateKind::Clause(Clause::Trait(p)) = p.kind().skip_binder()
             && p.trait_ref.def_id == eq_trait_id
             && let ty::Param(self_ty) = p.trait_ref.self_ty().kind()
             && p.constness == BoundConstness::NotConst
@@ -515,14 +512,11 @@ fn param_env_for_derived_eq(tcx: TyCtxt<'_>, did: DefId, eq_trait_id: DefId) -> 
     ParamEnv::new(
         tcx.mk_predicates(ty_predicates.iter().map(|&(p, _)| p).chain(
             params.iter().filter(|&&(_, needs_eq)| needs_eq).map(|&(param, _)| {
-                tcx.mk_predicate(Binder::dummy(PredicateKind::Trait(TraitPredicate {
-                    trait_ref: TraitRef::new(
-                        eq_trait_id,
-                        tcx.mk_substs(std::iter::once(tcx.mk_param_from_def(param))),
-                    ),
+                tcx.mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Trait(TraitPredicate {
+                    trait_ref: tcx.mk_trait_ref(eq_trait_id, [tcx.mk_param_from_def(param)]),
                     constness: BoundConstness::NotConst,
                     polarity: ImplPolarity::Positive,
-                })))
+                }))))
             }),
         )),
         Reveal::UserFacing,

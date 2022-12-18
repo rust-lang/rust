@@ -48,10 +48,14 @@ pub(crate) fn goto_definition(
             _ => 1,
         })?;
     if let Some(doc_comment) = token_as_doc_comment(&original_token) {
-        return doc_comment.get_definition_with_descend_at(sema, position.offset, |def, _, _| {
-            let nav = def.try_to_nav(db)?;
-            Some(RangeInfo::new(original_token.text_range(), vec![nav]))
-        });
+        return doc_comment.get_definition_with_descend_at(
+            sema,
+            position.offset,
+            |def, _, link_range| {
+                let nav = def.try_to_nav(db)?;
+                Some(RangeInfo::new(link_range, vec![nav]))
+            },
+        );
     }
     let navs = sema
         .descend_into_macros(original_token.clone())
@@ -95,6 +99,14 @@ fn try_lookup_include_path(
     if !matches!(&*name.text(), "include" | "include_str" | "include_bytes") {
         return None;
     }
+
+    // Ignore non-built-in macros to account for shadowing
+    if let Some(it) = sema.resolve_macro_call(&macro_call) {
+        if !matches!(it.kind(sema.db), hir::MacroKind::BuiltIn) {
+            return None;
+        }
+    }
+
     let file_id = sema.db.resolve_path(AnchoredPath { anchor: file_id, path: &path })?;
     let size = sema.db.file_text(file_id).len().try_into().ok()?;
     Some(NavigationTarget {
@@ -156,9 +168,6 @@ mod tests {
     fn check(ra_fixture: &str) {
         let (analysis, position, expected) = fixture::annotations(ra_fixture);
         let navs = analysis.goto_definition(position).unwrap().expect("no definition found").info;
-        if navs.is_empty() {
-            panic!("unresolved reference")
-        }
 
         let cmp = |&FileRange { file_id, range }: &_| (file_id, range.start());
         let navs = navs
@@ -280,10 +289,10 @@ mod b;
 enum E { X(Foo$0) }
 
 //- /a.rs
-struct Foo;
-     //^^^
+pub struct Foo;
+         //^^^
 //- /b.rs
-struct Foo;
+pub struct Foo;
 "#,
         );
     }
@@ -1348,6 +1357,10 @@ fn f(e: Enum) {
         check(
             r#"
 //- /main.rs
+
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
 fn main() {
     let str = include_str!("foo.txt$0");
 }
@@ -1357,6 +1370,42 @@ fn main() {
 "#,
         );
     }
+
+    #[test]
+    fn goto_doc_include_str() {
+        check(
+            r#"
+//- /main.rs
+#[rustc_builtin_macro]
+macro_rules! include_str {}
+
+#[doc = include_str!("docs.md$0")]
+struct Item;
+
+//- /docs.md
+// docs
+//^file
+"#,
+        );
+    }
+
+    #[test]
+    fn goto_shadow_include() {
+        check(
+            r#"
+//- /main.rs
+macro_rules! include {
+    ("included.rs") => {}
+}
+
+include!("included.rs$0");
+
+//- /included.rs
+// empty
+"#,
+        );
+    }
+
     #[cfg(test)]
     mod goto_impl_of_trait_fn {
         use super::check;
@@ -1784,5 +1833,87 @@ fn f() {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn goto_bin_op_multiple_impl() {
+        check(
+            r#"
+//- minicore: add
+struct S;
+impl core::ops::Add for S {
+    fn add(
+     //^^^
+    ) {}
+}
+impl core::ops::Add<usize> for S {
+    fn add(
+    ) {}
+}
+
+fn f() {
+    S +$0 S
+}
+"#,
+        );
+
+        check(
+            r#"
+//- minicore: add
+struct S;
+impl core::ops::Add for S {
+    fn add(
+    ) {}
+}
+impl core::ops::Add<usize> for S {
+    fn add(
+     //^^^
+    ) {}
+}
+
+fn f() {
+    S +$0 0usize
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn path_call_multiple_trait_impl() {
+        check(
+            r#"
+trait Trait<T> {
+    fn f(_: T);
+}
+impl Trait<i32> for usize {
+    fn f(_: i32) {}
+     //^
+}
+impl Trait<i64> for usize {
+    fn f(_: i64) {}
+}
+fn main() {
+    usize::f$0(0i32);
+}
+"#,
+        );
+
+        check(
+            r#"
+trait Trait<T> {
+    fn f(_: T);
+}
+impl Trait<i32> for usize {
+    fn f(_: i32) {}
+}
+impl Trait<i64> for usize {
+    fn f(_: i64) {}
+     //^
+}
+fn main() {
+    usize::f$0(0i64);
+}
+"#,
+        )
     }
 }

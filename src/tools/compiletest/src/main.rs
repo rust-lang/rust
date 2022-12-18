@@ -69,6 +69,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         .optopt("", "llvm-filecheck", "path to LLVM's FileCheck binary", "DIR")
         .reqopt("", "src-base", "directory to scan for test files", "PATH")
         .reqopt("", "build-base", "directory to deposit test outputs", "PATH")
+        .reqopt("", "sysroot-base", "directory containing the compiler sysroot", "PATH")
         .reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET")
         .reqopt(
             "",
@@ -200,7 +201,9 @@ pub fn parse_config(args: Vec<String>) -> Config {
         Some(x) => panic!("argument for --color must be auto, always, or never, but found `{}`", x),
     };
     let llvm_version =
-        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version);
+        matches.opt_str("llvm-version").as_deref().and_then(header::extract_llvm_version).or_else(
+            || header::extract_llvm_version_from_binary(&matches.opt_str("llvm-filecheck")?),
+        );
 
     let src_base = opt_path(matches, "src-base");
     let run_ignored = matches.opt_present("ignored");
@@ -232,6 +235,7 @@ pub fn parse_config(args: Vec<String>) -> Config {
         llvm_bin_dir: matches.opt_str("llvm-bin-dir").map(PathBuf::from),
         src_base,
         build_base: opt_path(matches, "build-base"),
+        sysroot_base: opt_path(matches, "sysroot-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
         mode,
         suite: matches.opt_str("suite").unwrap(),
@@ -252,8 +256,8 @@ pub fn parse_config(args: Vec<String>) -> Config {
         }),
         logfile: matches.opt_str("logfile").map(|s| PathBuf::from(&s)),
         runtool: matches.opt_str("runtool"),
-        host_rustcflags: Some(matches.opt_strs("host-rustcflags").join(" ")),
-        target_rustcflags: Some(matches.opt_strs("target-rustcflags").join(" ")),
+        host_rustcflags: matches.opt_strs("host-rustcflags"),
+        target_rustcflags: matches.opt_strs("target-rustcflags"),
         optimize_tests: matches.opt_present("optimize-tests"),
         target,
         host: opt_str2(matches.opt_str("host")),
@@ -320,8 +324,8 @@ pub fn log_config(config: &Config) {
         format!("force_pass_mode: {}", opt_str(&config.force_pass_mode.map(|m| format!("{}", m))),),
     );
     logv(c, format!("runtool: {}", opt_str(&config.runtool)));
-    logv(c, format!("host-rustcflags: {}", opt_str(&config.host_rustcflags)));
-    logv(c, format!("target-rustcflags: {}", opt_str(&config.target_rustcflags)));
+    logv(c, format!("host-rustcflags: {:?}", config.host_rustcflags));
+    logv(c, format!("target-rustcflags: {:?}", config.target_rustcflags));
     logv(c, format!("target: {}", config.target));
     logv(c, format!("host: {}", config.host));
     logv(c, format!("android-cross-path: {:?}", config.android_cross_path.display()));
@@ -394,6 +398,8 @@ pub fn run_tests(config: Config) {
     for c in &configs {
         make_tests(c, &mut tests);
     }
+
+    tests.sort_by(|a, b| a.desc.name.as_slice().cmp(&b.desc.name.as_slice()));
 
     let res = test::run_tests_console(&opts, tests);
     match res {
@@ -508,6 +514,7 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         options: test::Options::new(),
         time_options: None,
         force_run_in_process: false,
+        fail_fast: std::env::var_os("RUSTC_TEST_FAIL_FAST").is_some(),
     }
 }
 

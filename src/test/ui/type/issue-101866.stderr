@@ -10,7 +10,7 @@ LL |     TraitA::<i32>::func();
 help: use the fully-qualified path to the only available implementation
    |
 LL -     TraitA::<i32>::func();
-LL +     <::StructA as TraitA<i32>>::func();
+LL +     <StructA as TraitA<i32>>::func();
    |
 
 error: aborting due to previous error

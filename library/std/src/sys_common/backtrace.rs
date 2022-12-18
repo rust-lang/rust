@@ -7,15 +7,14 @@ use crate::fmt;
 use crate::io;
 use crate::io::prelude::*;
 use crate::path::{self, Path, PathBuf};
-use crate::sys_common::mutex::StaticMutex;
+use crate::sync::{Mutex, PoisonError};
 
 /// Max number of frames to print.
 const MAX_NB_FRAMES: usize = 100;
 
-// SAFETY: Don't attempt to lock this reentrantly.
-pub unsafe fn lock() -> impl Drop {
-    static LOCK: StaticMutex = StaticMutex::new();
-    LOCK.lock()
+pub fn lock() -> impl Drop {
+    static LOCK: Mutex<()> = Mutex::new(());
+    LOCK.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
 /// Prints the current backtrace.

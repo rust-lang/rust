@@ -90,7 +90,7 @@ rustup target add aarch64-fuchsia
 After installing our Fuchsia targets, we can now compile a Rust binary that targets
 Fuchsia.
 
-To create our Rust project, we can issue a standard `cargo` command as follows:
+To create our Rust project, we can use [`cargo`][cargo] as follows:
 
 **From base working directory**
 ```sh
@@ -189,17 +189,45 @@ Fuchsia as well. A recent version (14+) of clang should be sufficient to compile
 Rust for Fuchsia.
 
 x86-64 and AArch64 Fuchsia targets can be enabled using the following
-configuration.
-
-In `config.toml`, add:
+configuration in `config.toml`:
 
 ```toml
 [build]
 target = ["<host_platform>", "aarch64-fuchsia", "x86_64-fuchsia"]
+
+[rust]
+lld = true
+
+[target.x86_64-fuchsia]
+cc = "clang"
+cxx = "clang++"
+
+[target.aarch64-fuchsia]
+cc = "clang"
+cxx = "clang++"
 ```
 
-Additionally, the following environment variables must be configured (for
-example, using a script like `config-env.sh`):
+Though not strictly required, you may also want to use `clang` for your host
+target as well:
+
+```toml
+[target.<host_platform>]
+cc = "clang"
+cxx = "clang++"
+```
+
+By default, the Rust compiler installs itself to `/usr/local` on most UNIX
+systems. You may want to install it to another location (e.g. a local `install`
+directory) by setting a custom prefix in `config.toml`:
+
+```toml
+[install]
+# Make sure to use the absolute path to your install directory
+prefix = "<RUST_SRC_PATH>/install"
+```
+
+Next, the following environment variables must be configured. For example, using
+a script we name `config-env.sh`:
 
 ```sh
 # Configure this environment variable to be the path to the downloaded SDK
@@ -215,8 +243,11 @@ export LDFLAGS_x86_64_fuchsia="--target=x86_64-fuchsia --sysroot=${SDK_PATH}/arc
 export CARGO_TARGET_X86_64_FUCHSIA_RUSTFLAGS="-C link-arg=--sysroot=${SDK_PATH}/arch/x64/sysroot -Lnative=${SDK_PATH}/arch/x64/sysroot/lib -Lnative=${SDK_PATH}/arch/x64/lib"
 ```
 
-These can be run together in a shell environment by executing
-`(source config-env.sh && ./x.py install)`.
+Finally, the Rust compiler can be built and installed:
+
+```sh
+(source config-env.sh && ./x.py install)
+```
 
 Once `rustc` is installed, we can create a new working directory to work from,
 `hello_fuchsia` along with `hello_fuchsia/src`:
@@ -641,8 +672,72 @@ available on the [Fuchsia devsite].
 
 ### Running the compiler test suite
 
-Running the Rust test suite on Fuchsia is [not currently supported], but work is
-underway to enable it.
+The commands in this section assume that they are being run from inside your
+local Rust source checkout:
+
+```sh
+cd ${RUST_SRC_PATH}
+```
+
+To run the Rust test suite on an emulated Fuchsia device, you must install the
+Rust compiler locally. See "[Targeting Fuchsia with a compiler built from source](#targeting-fuchsia-with-a-compiler-built-from-source)"
+for the steps to build locally.
+
+You'll also need to download a copy of the Fuchsia SDK. The current minimum
+supported SDK version is [9.20220726.1.1](https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core/linux-amd64/+/version:9.20220726.1.1).
+
+Fuchsia's test runner interacts with the Fuchsia emulator and is located at
+`src/ci/docker/scripts/fuchsia-test-runner.py`. We can use it to start our
+test environment with:
+
+```sh
+src/ci/docker/scripts/fuchsia-test-runner.py start
+    --rust ${RUST_SRC_PATH}/install
+    --sdk ${SDK_PATH}
+    --target-arch {x64,arm64}
+```
+
+Where `${RUST_SRC_PATH}/install` is the `prefix` set in `config.toml` and
+`${SDK_PATH}` is the path to the downloaded and unzipped SDK.
+
+Once our environment is started, we can run our tests using `x.py` as usual. The
+test runner script will run the compiled tests on an emulated Fuchsia device. To
+run the full `src/test/ui` test suite:
+
+```sh
+( \
+    source config-env.sh &&                                                   \
+    ./x.py                                                                    \
+    --config config.toml                                                      \
+    --stage=2                                                                 \
+    test src/test/ui                                                          \
+    --target x86_64-fuchsia                                                   \
+    --run=always --jobs 1                                                     \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/sysroot/lib                      \
+    --test-args --target-rustcflags                                           \
+    --test-args -L                                                            \
+    --test-args --target-rustcflags                                           \
+    --test-args ${SDK_PATH}/arch/{x64|arm64}/lib                              \
+    --test-args --target-rustcflags                                           \
+    --test-args -Cpanic=abort                                                 \
+    --test-args --target-rustcflags                                           \
+    --test-args -Zpanic_abort_tests                                           \
+    --test-args --remote-test-client                                          \
+    --test-args src/ci/docker/scripts/fuchsia-test-runner.py                  \
+)
+```
+
+*Note: The test suite cannot be run in parallel at the moment, so `x.py`
+must be run with `--jobs 1` to ensure only one test runs at a time.*
+
+When finished, the test runner can be used to stop the test environment:
+
+```sh
+src/ci/docker/scripts/fuchsia-test-runner.py stop
+```
 
 ## Debugging
 
@@ -772,7 +867,7 @@ ${SDK_PATH}/tools/${ARCH}/ffx debug connect -- \
 [Fuchsia]: https://fuchsia.dev/
 [source tree]: https://fuchsia.dev/fuchsia-src/get-started/learn/build
 [rustup]: https://rustup.rs/
-[cargo]: https://doc.rust-lang.org/cargo/
+[cargo]: ../../cargo/index.html
 [Fuchsia SDK]: https://chrome-infra-packages.appspot.com/p/fuchsia/sdk/core
 [overview of CML]: https://fuchsia.dev/fuchsia-src/concepts/components/v2/component_manifests
 [reference for the file format]: https://fuchsia.dev/reference/cml

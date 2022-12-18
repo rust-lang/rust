@@ -54,13 +54,22 @@ macro_rules! TrivialTypeTraversalImpls {
             impl<$tcx> $crate::ty::fold::TypeFoldable<$tcx> for $ty {
                 fn try_fold_with<F: $crate::ty::fold::FallibleTypeFolder<$tcx>>(
                     self,
-                    _: &mut F
-                ) -> ::std::result::Result<$ty, F::Error> {
+                    _: &mut F,
+                ) -> ::std::result::Result<Self, F::Error> {
                     Ok(self)
+                }
+
+                #[inline]
+                fn fold_with<F: $crate::ty::fold::TypeFolder<$tcx>>(
+                    self,
+                    _: &mut F,
+                ) -> Self {
+                    self
                 }
             }
 
             impl<$tcx> $crate::ty::visit::TypeVisitable<$tcx> for $ty {
+                #[inline]
                 fn visit_with<F: $crate::ty::visit::TypeVisitor<$tcx>>(
                     &self,
                     _: &mut F)

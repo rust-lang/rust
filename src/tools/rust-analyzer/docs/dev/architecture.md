@@ -479,7 +479,9 @@ It is not cheap enough to enable in prod, and this is a bug which should be fixe
 ### Configurability
 
 rust-analyzer strives to be as configurable as possible while offering reasonable defaults where no configuration exists yet.
+The rule of thumb is to enable most features by default unless they are buggy or degrade performance too much.
 There will always be features that some people find more annoying than helpful, so giving the users the ability to tweak or disable these is a big part of offering a good user experience.
+Enabling them by default is a matter of discoverability, as many users don't know about some features even though they are presented in the manual.
 Mind the code--architecture gap: at the moment, we are using fewer feature flags than we really should.
 
 ### Serialization
@@ -490,8 +492,8 @@ If a type is serializable, then it is a part of some IPC boundary.
 You often don't control the other side of this boundary, so changing serializable types is hard.
 
 For this reason, the types in `ide`, `base_db` and below are not serializable by design.
-If such types need to cross an IPC boundary, then the client of rust-analyzer needs to provide custom, client-specific serialization format.
+If such types need to cross an IPC boundary, then the client of rust-analyzer needs to provide a custom, client-specific serialization format.
 This isolates backwards compatibility and migration concerns to a specific client.
 
-For example, `rust-project.json` is it's own format -- it doesn't include `CrateGraph` as is.
+For example, `rust-project.json` is its own format -- it doesn't include `CrateGraph` as is.
 Instead, it creates a `CrateGraph` by calling appropriate constructing functions.

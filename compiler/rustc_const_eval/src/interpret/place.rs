@@ -2,6 +2,8 @@
 //! into a place.
 //! All high-level functions to write to memory work on places as destinations.
 
+use either::{Either, Left, Right};
+
 use rustc_ast::Mutability;
 use rustc_middle::mir;
 use rustc_middle::ty;
@@ -139,7 +141,7 @@ impl<Prov: Provenance> MemPlace<Prov> {
         match self.meta {
             MemPlaceMeta::None => Immediate::from(Scalar::from_maybe_pointer(self.ptr, cx)),
             MemPlaceMeta::Meta(meta) => {
-                Immediate::ScalarPair(Scalar::from_maybe_pointer(self.ptr, cx).into(), meta.into())
+                Immediate::ScalarPair(Scalar::from_maybe_pointer(self.ptr, cx), meta)
             }
         }
     }
@@ -201,7 +203,7 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
         layout: TyAndLayout<'tcx>,
         cx: &impl HasDataLayout,
     ) -> InterpResult<'tcx, Self> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         self.offset_with_meta(offset, MemPlaceMeta::None, layout, cx)
     }
 
@@ -252,36 +254,36 @@ impl<'tcx, Prov: Provenance> MPlaceTy<'tcx, Prov> {
 // These are defined here because they produce a place.
 impl<'tcx, Prov: Provenance> OpTy<'tcx, Prov> {
     #[inline(always)]
-    pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
+    pub fn as_mplace_or_imm(&self) -> Either<MPlaceTy<'tcx, Prov>, ImmTy<'tcx, Prov>> {
         match **self {
             Operand::Indirect(mplace) => {
-                Ok(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
+                Left(MPlaceTy { mplace, layout: self.layout, align: self.align.unwrap() })
             }
-            Operand::Immediate(imm) => Err(ImmTy::from_immediate(imm, self.layout)),
+            Operand::Immediate(imm) => Right(ImmTy::from_immediate(imm, self.layout)),
         }
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.try_as_mplace().unwrap()
+        self.as_mplace_or_imm().left().unwrap()
     }
 }
 
 impl<'tcx, Prov: Provenance> PlaceTy<'tcx, Prov> {
     /// A place is either an mplace or some local.
     #[inline]
-    pub fn try_as_mplace(&self) -> Result<MPlaceTy<'tcx, Prov>, (usize, mir::Local)> {
+    pub fn as_mplace_or_local(&self) -> Either<MPlaceTy<'tcx, Prov>, (usize, mir::Local)> {
         match **self {
-            Place::Ptr(mplace) => Ok(MPlaceTy { mplace, layout: self.layout, align: self.align }),
-            Place::Local { frame, local } => Err((frame, local)),
+            Place::Ptr(mplace) => Left(MPlaceTy { mplace, layout: self.layout, align: self.align }),
+            Place::Local { frame, local } => Right((frame, local)),
         }
     }
 
     #[inline(always)]
     #[cfg_attr(debug_assertions, track_caller)] // only in debug builds due to perf (see #98980)
     pub fn assert_mem_place(&self) -> MPlaceTy<'tcx, Prov> {
-        self.try_as_mplace().unwrap()
+        self.as_mplace_or_local().left().unwrap()
     }
 }
 
@@ -316,8 +318,7 @@ where
         Ok(MPlaceTy { mplace, layout, align })
     }
 
-    /// Take an operand, representing a pointer, and dereference it to a place -- that
-    /// will always be a MemPlace.  Lives in `place.rs` because it creates a place.
+    /// Take an operand, representing a pointer, and dereference it to a place.
     #[instrument(skip(self), level = "debug")]
     pub fn deref_operand(
         &self,
@@ -331,7 +332,7 @@ where
         }
 
         let mplace = self.ref_to_mplace(&val)?;
-        self.check_mplace_access(mplace, CheckInAllocMsg::DerefTest)?;
+        self.check_mplace(mplace)?;
         Ok(mplace)
     }
 
@@ -340,7 +341,7 @@ where
         &self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRef<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc(place.ptr, size, place.align)
@@ -351,24 +352,20 @@ where
         &mut self,
         place: &MPlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Option<AllocRefMut<'_, 'tcx, M::Provenance, M::AllocExtra>>> {
-        assert!(!place.layout.is_unsized());
+        assert!(place.layout.is_sized());
         assert!(!place.meta.has_meta());
         let size = place.layout.size;
         self.get_ptr_alloc_mut(place.ptr, size, place.align)
     }
 
     /// Check if this mplace is dereferenceable and sufficiently aligned.
-    fn check_mplace_access(
-        &self,
-        mplace: MPlaceTy<'tcx, M::Provenance>,
-        msg: CheckInAllocMsg,
-    ) -> InterpResult<'tcx> {
+    pub fn check_mplace(&self, mplace: MPlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
         let (size, align) = self
             .size_and_align_of_mplace(&mplace)?
             .unwrap_or((mplace.layout.size, mplace.layout.align.abi));
         assert!(mplace.align <= align, "dynamic alignment less strict than static one?");
-        let align = M::enforce_alignment(self).then_some(align);
-        self.check_ptr_access_align(mplace.ptr, size, align.unwrap_or(Align::ONE), msg)?;
+        let align = if M::enforce_alignment(self).should_check() { align } else { Align::ONE };
+        self.check_ptr_access_align(mplace.ptr, size, align, CheckInAllocMsg::DerefTest)?;
         Ok(())
     }
 
@@ -485,7 +482,7 @@ where
         src: Immediate<M::Provenance>,
         dest: &PlaceTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx> {
-        assert!(!dest.layout.is_unsized(), "Cannot write unsized data");
+        assert!(dest.layout.is_sized(), "Cannot write unsized data");
         trace!("write_immediate: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
 
         // See if we can avoid an allocation. This is the counterpart to `read_immediate_raw`,
@@ -569,9 +566,9 @@ where
     }
 
     pub fn write_uninit(&mut self, dest: &PlaceTy<'tcx, M::Provenance>) -> InterpResult<'tcx> {
-        let mplace = match dest.try_as_mplace() {
-            Ok(mplace) => mplace,
-            Err((frame, local)) => {
+        let mplace = match dest.as_mplace_or_local() {
+            Left(mplace) => mplace,
+            Right((frame, local)) => {
                 match M::access_local_mut(self, frame, local)? {
                     Operand::Immediate(local) => {
                         *local = Immediate::Uninit;
@@ -639,12 +636,18 @@ where
         // Let us see if the layout is simple so we take a shortcut,
         // avoid force_allocation.
         let src = match self.read_immediate_raw(src)? {
-            Ok(src_val) => {
-                assert!(!src.layout.is_unsized(), "cannot copy unsized immediates");
-                assert!(
-                    !dest.layout.is_unsized(),
-                    "the src is sized, so the dest must also be sized"
-                );
+            Right(src_val) => {
+                // FIXME(const_prop): Const-prop can possibly evaluate an
+                // unsized copy operation when it thinks that the type is
+                // actually sized, due to a trivially false where-clause
+                // predicate like `where Self: Sized` with `Self = dyn Trait`.
+                // See #102553 for an example of such a predicate.
+                if src.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(src.layout.ty));
+                }
+                if dest.layout.is_unsized() {
+                    throw_inval!(SizeOfUnsizedType(dest.layout.ty));
+                }
                 assert_eq!(src.layout.size, dest.layout.size);
                 // Yay, we got a value that we can write directly.
                 return if layout_compat {
@@ -663,7 +666,7 @@ where
                     )
                 };
             }
-            Err(mplace) => mplace,
+            Left(mplace) => mplace,
         };
         // Slow path, this does not fit into an immediate. Just memcpy.
         trace!("copy_op: {:?} <- {:?}: {}", *dest, src, dest.layout.ty);
@@ -740,7 +743,7 @@ where
         layout: TyAndLayout<'tcx>,
         kind: MemoryKind<M::MemoryKind>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
-        assert!(!layout.is_unsized());
+        assert!(layout.is_sized());
         let ptr = self.allocate_ptr(layout.size, layout.align.abi, kind)?;
         Ok(MPlaceTy::from_aligned_ptr(ptr.into(), layout))
     }
@@ -886,10 +889,11 @@ where
 mod size_asserts {
     use super::*;
     use rustc_data_structures::static_assert_size;
-    // These are in alphabetical order, which is easy to maintain.
-    static_assert_size!(MemPlaceMeta, 24);
+    // tidy-alphabetical-start
     static_assert_size!(MemPlace, 40);
+    static_assert_size!(MemPlaceMeta, 24);
     static_assert_size!(MPlaceTy<'_>, 64);
     static_assert_size!(Place, 40);
     static_assert_size!(PlaceTy<'_>, 64);
+    // tidy-alphabetical-end
 }

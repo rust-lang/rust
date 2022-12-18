@@ -5,7 +5,7 @@ LL |         if let Some(mut _x) = opt {}
    |                     ^^^^^^ value moved here, in previous iteration of loop
    |
    = note: move occurs because value has type `&mut i32`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving `opt.0`
+help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         if let Some(ref mut _x) = opt {}
    |                     +++

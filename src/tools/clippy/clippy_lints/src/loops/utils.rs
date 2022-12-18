@@ -5,12 +5,12 @@ use rustc_ast::ast::{LitIntType, LitKind};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_expr, walk_local, walk_pat, walk_stmt, Visitor};
 use rustc_hir::{BinOpKind, BorrowKind, Expr, ExprKind, HirId, HirIdMap, Local, Mutability, Pat, PatKind, Stmt};
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::LateContext;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Symbol};
-use rustc_hir_analysis::hir_ty_to_ty;
 use std::iter::Iterator;
 
 #[derive(Debug, PartialEq, Eq)]
@@ -25,7 +25,6 @@ pub(super) struct IncrementVisitor<'a, 'tcx> {
     cx: &'a LateContext<'tcx>,                  // context reference
     states: HirIdMap<IncrementVisitorVarState>, // incremented variables
     depth: u32,                                 // depth of conditional expressions
-    done: bool,
 }
 
 impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
@@ -34,7 +33,6 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
             cx,
             states: HirIdMap::default(),
             depth: 0,
-            done: false,
         }
     }
 
@@ -51,10 +49,6 @@ impl<'a, 'tcx> IncrementVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &'tcx Expr<'_>) {
-        if self.done {
-            return;
-        }
-
         // If node is a variable
         if let Some(def_id) = path_to_local(expr) {
             if let Some(parent) = get_parent_expr(self.cx, expr) {
@@ -95,7 +89,9 @@ impl<'a, 'tcx> Visitor<'tcx> for IncrementVisitor<'a, 'tcx> {
             walk_expr(self, expr);
             self.depth -= 1;
         } else if let ExprKind::Continue(_) = expr.kind {
-            self.done = true;
+            // If we see a `continue` block, then we increment depth so that the IncrementVisitor
+            // state will be set to DontWarn if we see the variable being modified anywhere afterwards.
+            self.depth += 1;
         } else {
             walk_expr(self, expr);
         }
@@ -344,9 +340,8 @@ pub(super) fn make_iterator_snippet(cx: &LateContext<'_>, arg: &Expr<'_>, applic
                     _ => arg,
                 };
                 format!(
-                    "{}.{}()",
+                    "{}.{method_name}()",
                     sugg::Sugg::hir_with_applicability(cx, caller, "_", applic_ref).maybe_par(),
-                    method_name,
                 )
             },
             _ => format!(

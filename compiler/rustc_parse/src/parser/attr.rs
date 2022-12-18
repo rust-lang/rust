@@ -6,7 +6,6 @@ use rustc_ast::attr;
 use rustc_ast::token::{self, Delimiter, Nonterminal};
 use rustc_errors::{error_code, fluent, Diagnostic, IntoDiagnostic, PResult};
 use rustc_span::{sym, BytePos, Span};
-use std::convert::TryInto;
 
 // Public for rustfmt usage
 #[derive(Debug)]
@@ -55,7 +54,7 @@ impl<'a> Parser<'a> {
                     let span = self.token.span;
                     let mut err = self.sess.span_diagnostic.struct_span_err_with_code(
                         span,
-                        fluent::parser::inner_doc_comment_not_permitted,
+                        fluent::parse_inner_doc_comment_not_permitted,
                         error_code!(E0753),
                     );
                     if let Some(replacement_span) = self.annotate_following_item_if_applicable(
@@ -66,10 +65,10 @@ impl<'a> Parser<'a> {
                             token::CommentKind::Block => OuterAttributeType::DocBlockComment,
                         },
                     ) {
-                        err.note(fluent::parser::note);
+                        err.note(fluent::note);
                         err.span_suggestion_verbose(
                             replacement_span,
-                            fluent::parser::suggestion,
+                            fluent::suggestion,
                             "",
                             rustc_errors::Applicability::MachineApplicable,
                         );
@@ -173,10 +172,10 @@ impl<'a> Parser<'a> {
             Ok(Some(item)) => {
                 // FIXME(#100717)
                 err.set_arg("item", item.kind.descr());
-                err.span_label(item.span, fluent::parser::label_does_not_annotate_this);
+                err.span_label(item.span, fluent::label_does_not_annotate_this);
                 err.span_suggestion_verbose(
                     replacement_span,
-                    fluent::parser::sugg_change_inner_to_outer,
+                    fluent::sugg_change_inner_to_outer,
                     match attr_type {
                         OuterAttributeType::Attribute => "",
                         OuterAttributeType::DocBlockComment => "*",
@@ -200,27 +199,27 @@ impl<'a> Parser<'a> {
                 Some(InnerAttrForbiddenReason::AfterOuterDocComment { prev_doc_comment_span }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser::inner_attr_not_permitted_after_outer_doc_comment,
+                        fluent::parse_inner_attr_not_permitted_after_outer_doc_comment,
                     );
-                    diag.span_label(attr_sp, fluent::parser::label_attr)
-                        .span_label(prev_doc_comment_span, fluent::parser::label_prev_doc_comment);
+                    diag.span_label(attr_sp, fluent::label_attr)
+                        .span_label(prev_doc_comment_span, fluent::label_prev_doc_comment);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::AfterOuterAttribute { prev_outer_attr_sp }) => {
                     let mut diag = self.struct_span_err(
                         attr_sp,
-                        fluent::parser::inner_attr_not_permitted_after_outer_attr,
+                        fluent::parse_inner_attr_not_permitted_after_outer_attr,
                     );
-                    diag.span_label(attr_sp, fluent::parser::label_attr)
-                        .span_label(prev_outer_attr_sp, fluent::parser::label_prev_attr);
+                    diag.span_label(attr_sp, fluent::label_attr)
+                        .span_label(prev_outer_attr_sp, fluent::label_prev_attr);
                     diag
                 }
                 Some(InnerAttrForbiddenReason::InCodeBlock) | None => {
-                    self.struct_span_err(attr_sp, fluent::parser::inner_attr_not_permitted)
+                    self.struct_span_err(attr_sp, fluent::parse_inner_attr_not_permitted)
                 }
             };
 
-            diag.note(fluent::parser::inner_attr_explanation);
+            diag.note(fluent::parse_inner_attr_explanation);
             if self
                 .annotate_following_item_if_applicable(
                     &mut diag,
@@ -229,7 +228,7 @@ impl<'a> Parser<'a> {
                 )
                 .is_some()
             {
-                diag.note(fluent::parser::outer_attr_explanation);
+                diag.note(fluent::parse_outer_attr_explanation);
             };
             diag.emit();
         }
@@ -245,9 +244,9 @@ impl<'a> Parser<'a> {
     ///     PATH `=` UNSUFFIXED_LIT
     /// The delimiters or `=` are still put into the resulting token stream.
     pub fn parse_attr_item(&mut self, capture_tokens: bool) -> PResult<'a, ast::AttrItem> {
-        let item = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                Nonterminal::NtMeta(ref item) => Some(item.clone().into_inner()),
+        let item = match &self.token.kind {
+            token::Interpolated(nt) => match &**nt {
+                Nonterminal::NtMeta(item) => Some(item.clone().into_inner()),
                 _ => None,
             },
             _ => None,
@@ -315,9 +314,10 @@ impl<'a> Parser<'a> {
         Ok(attrs)
     }
 
-    pub(crate) fn parse_unsuffixed_lit(&mut self) -> PResult<'a, ast::Lit> {
-        let lit = self.parse_lit()?;
-        debug!("checking if {:?} is unusuffixed", lit);
+    // Note: must be unsuffixed.
+    pub(crate) fn parse_unsuffixed_meta_item_lit(&mut self) -> PResult<'a, ast::MetaItemLit> {
+        let lit = self.parse_meta_item_lit()?;
+        debug!("checking if {:?} is unsuffixed", lit);
 
         if !lit.kind.is_unsuffixed() {
             self.sess.emit_err(SuffixedLiteralInAttribute { span: lit.span });
@@ -364,9 +364,9 @@ impl<'a> Parser<'a> {
     /// meta_item_inner : (meta_item | UNSUFFIXED_LIT) (',' meta_item_inner)? ;
     /// ```
     pub fn parse_meta_item(&mut self) -> PResult<'a, ast::MetaItem> {
-        let nt_meta = match self.token.kind {
-            token::Interpolated(ref nt) => match **nt {
-                token::NtMeta(ref e) => Some(e.clone()),
+        let nt_meta = match &self.token.kind {
+            token::Interpolated(nt) => match &**nt {
+                token::NtMeta(e) => Some(e.clone()),
                 _ => None,
             },
             _ => None,
@@ -391,7 +391,7 @@ impl<'a> Parser<'a> {
 
     pub(crate) fn parse_meta_item_kind(&mut self) -> PResult<'a, ast::MetaItemKind> {
         Ok(if self.eat(&token::Eq) {
-            ast::MetaItemKind::NameValue(self.parse_unsuffixed_lit()?)
+            ast::MetaItemKind::NameValue(self.parse_unsuffixed_meta_item_lit()?)
         } else if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
             // Matches `meta_seq = ( COMMASEP(meta_item_inner) )`.
             let (list, _) = self.parse_paren_comma_seq(|p| p.parse_meta_item_inner())?;
@@ -403,8 +403,8 @@ impl<'a> Parser<'a> {
 
     /// Matches `meta_item_inner : (meta_item | UNSUFFIXED_LIT) ;`.
     fn parse_meta_item_inner(&mut self) -> PResult<'a, ast::NestedMetaItem> {
-        match self.parse_unsuffixed_lit() {
-            Ok(lit) => return Ok(ast::NestedMetaItem::Literal(lit)),
+        match self.parse_unsuffixed_meta_item_lit() {
+            Ok(lit) => return Ok(ast::NestedMetaItem::Lit(lit)),
             Err(err) => err.cancel(),
         }
 

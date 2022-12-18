@@ -32,7 +32,7 @@ use crate::html::escape::Escape;
 use crate::html::format::{join_with_double_colon, Buffer};
 use crate::html::markdown::{self, plain_text_summary, ErrorCodes, IdMap};
 use crate::html::url_parts_builder::UrlPartsBuilder;
-use crate::html::{layout, sources};
+use crate::html::{layout, sources, static_files};
 use crate::scrape_examples::AllCallLocations;
 use crate::try_err;
 
@@ -69,11 +69,13 @@ pub(crate) struct Context<'tcx> {
     /// the source files are present in the html rendering, then this will be
     /// `true`.
     pub(crate) include_sources: bool,
+    /// Collection of all types with notable traits referenced in the current module.
+    pub(crate) types_with_notable_traits: FxHashSet<clean::Type>,
 }
 
 // `Context` is cloned a lot, so we don't want the size to grow unexpectedly.
 #[cfg(all(not(windows), target_arch = "x86_64", target_pointer_width = "64"))]
-rustc_data_structures::static_assert_size!(Context<'_>, 128);
+rustc_data_structures::static_assert_size!(Context<'_>, 160);
 
 /// Shared mutable state used in [`Context`] and elsewhere.
 pub(crate) struct SharedContext<'tcx> {
@@ -430,7 +432,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             extension_css,
             resource_suffix,
             static_root_path,
-            unstable_features,
             generate_redirect_map,
             show_type_layout,
             generate_link_to_definition,
@@ -499,7 +500,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         );
 
         let (sender, receiver) = channel();
-        let mut scx = SharedContext {
+        let scx = SharedContext {
             tcx,
             src_root,
             local_sources,
@@ -511,7 +512,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             resource_suffix,
             static_root_path,
             fs: DocFS::new(sender),
-            codes: ErrorCodes::from(unstable_features.is_nightly_build()),
+            codes: ErrorCodes::from(options.unstable_features.is_nightly_build()),
             playground,
             all: RefCell::new(AllTypes::new()),
             errors: receiver,
@@ -521,19 +522,6 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             cache,
             call_locations,
         };
-
-        // Add the default themes to the `Vec` of stylepaths
-        //
-        // Note that these must be added before `sources::render` is called
-        // so that the resulting source pages are styled
-        //
-        // `light.css` is not disabled because it is the stylesheet that stays loaded
-        // by the browser as the theme stylesheet. The theme system (hackily) works by
-        // changing the href to this stylesheet. All other themes are disabled to
-        // prevent rule conflicts
-        scx.style_files.push(StylePath { path: PathBuf::from("light.css") });
-        scx.style_files.push(StylePath { path: PathBuf::from("dark.css") });
-        scx.style_files.push(StylePath { path: PathBuf::from("ayu.css") });
 
         let dst = output;
         scx.ensure_dir(&dst)?;
@@ -546,6 +534,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             deref_id_map: FxHashMap::default(),
             shared: Rc::new(scx),
             include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         };
 
         if emit_crate {
@@ -574,6 +563,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
             id_map: IdMap::new(),
             shared: Rc::clone(&self.shared),
             include_sources: self.include_sources,
+            types_with_notable_traits: FxHashSet::default(),
         }
     }
 
@@ -581,6 +571,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
         let crate_name = self.tcx().crate_name(LOCAL_CRATE);
         let final_file = self.dst.join(crate_name.as_str()).join("all.html");
         let settings_file = self.dst.join("settings.html");
+        let help_file = self.dst.join("help.html");
         let scrape_examples_help_file = self.dst.join("scrape-examples-help.html");
 
         let mut root_path = self.dst.to_str().expect("invalid path").to_owned();
@@ -634,9 +625,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 write!(
                     buf,
                     "<div class=\"main-heading\">\
-                     <h1 class=\"fqn\">\
-                         <span class=\"in-band\">Rustdoc settings</span>\
-                     </h1>\
+                     <h1 class=\"fqn\">Rustdoc settings</h1>\
                      <span class=\"out-of-band\">\
                          <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
                             Back\
@@ -648,16 +637,50 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                             You need to enable Javascript be able to update your settings.\
                         </section>\
                      </noscript>\
-                     <link rel=\"stylesheet\" type=\"text/css\" \
-                         href=\"{root_path}settings{suffix}.css\">\
-                     <script defer src=\"{root_path}settings{suffix}.js\"></script>",
-                    root_path = page.static_root_path.unwrap_or(""),
-                    suffix = page.resource_suffix,
+                     <link rel=\"stylesheet\" \
+                         href=\"{static_root_path}{settings_css}\">\
+                     <script defer src=\"{static_root_path}{settings_js}\"></script>",
+                    static_root_path = page.get_static_root_path(),
+                    settings_css = static_files::STATIC_FILES.settings_css,
+                    settings_js = static_files::STATIC_FILES.settings_js,
                 )
             },
             &shared.style_files,
         );
         shared.fs.write(settings_file, v)?;
+
+        // Generating help page.
+        page.title = "Rustdoc help";
+        page.description = "Documentation for Rustdoc";
+        page.root_path = "./";
+
+        let sidebar = "<h2 class=\"location\">Help</h2><div class=\"sidebar-elems\"></div>";
+        let v = layout::render(
+            &shared.layout,
+            &page,
+            sidebar,
+            |buf: &mut Buffer| {
+                write!(
+                    buf,
+                    "<div class=\"main-heading\">\
+                     <h1 class=\"fqn\">Rustdoc help</h1>\
+                     <span class=\"out-of-band\">\
+                         <a id=\"back\" href=\"javascript:void(0)\" onclick=\"history.back();\">\
+                            Back\
+                        </a>\
+                     </span>\
+                     </div>\
+                     <noscript>\
+                        <section>\
+                            <p>You need to enable Javascript to use keyboard commands or search.</p>\
+                            <p>For more information, browse the <a href=\"https://doc.rust-lang.org/rustdoc/\">rustdoc handbook</a>.</p>\
+                        </section>\
+                     </noscript>",
+                )
+            },
+            &shared.style_files,
+        );
+        shared.fs.write(help_file, v)?;
 
         if shared.layout.scrape_examples_extension {
             page.title = "About scraped examples";
@@ -784,6 +807,7 @@ impl<'tcx> FormatRenderer<'tcx> for Context<'tcx> {
                 }
             }
         }
+
         Ok(())
     }
 

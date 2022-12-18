@@ -172,7 +172,7 @@ fn test_can_not_overflow() {
 
            // Calcutate the string length for the smallest overflowing number:
            let max_len_string = format_radix(num, base as u128);
-           // Ensure that that string length is deemed to potentially overflow:
+           // Ensure that string length is deemed to potentially overflow:
            assert!(can_overflow::<$t>(base, &max_len_string));
         }
         )*)

@@ -51,7 +51,7 @@ TypeArg =
   Type
 
 AssocTypeArg =
-  NameRef GenericParamList? (':' TypeBoundList | ('=' Type | ConstArg))
+  NameRef GenericArgList? (':' TypeBoundList | ('=' Type | ConstArg))
 
 LifetimeArg =
   Lifetime
@@ -239,8 +239,11 @@ Static =
 Trait =
   Attr* Visibility?
   'unsafe'? 'auto'?
-  'trait' Name GenericParamList? (':' TypeBoundList?)? WhereClause?
-  AssocItemList
+  'trait' Name GenericParamList?
+  (
+    (':' TypeBoundList?)? WhereClause? AssocItemList
+    | '=' TypeBoundList? WhereClause? ';'
+  )
 
 AssocItemList =
   '{' Attr* AssocItem* '}'

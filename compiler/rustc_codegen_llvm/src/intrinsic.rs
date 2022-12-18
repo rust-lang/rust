@@ -340,17 +340,26 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
 
             sym::black_box => {
                 args[0].val.store(self, result);
-
+                let result_val_span = [result.llval];
                 // We need to "use" the argument in some way LLVM can't introspect, and on
                 // targets that support it we can typically leverage inline assembly to do
                 // this. LLVM's interpretation of inline assembly is that it's, well, a black
                 // box. This isn't the greatest implementation since it probably deoptimizes
                 // more than we want, but it's so far good enough.
+                //
+                // For zero-sized types, the location pointed to by the result may be
+                // uninitialized. Do not "use" the result in this case; instead just clobber
+                // the memory.
+                let (constraint, inputs): (&str, &[_]) = if result.layout.is_zst() {
+                    ("~{memory}", &[])
+                } else {
+                    ("r,~{memory}", &result_val_span)
+                };
                 crate::asm::inline_asm_call(
                     self,
                     "",
-                    "r,~{memory}",
-                    &[result.llval],
+                    constraint,
+                    inputs,
                     self.type_void(),
                     true,
                     false,
@@ -415,7 +424,9 @@ impl<'ll, 'tcx> IntrinsicCallMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         typeid: &'ll Value,
     ) -> Self::Value {
         let vtable_byte_offset = self.const_i32(vtable_byte_offset as i32);
-        self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid])
+        let type_checked_load =
+            self.call_intrinsic("llvm.type.checked.load", &[llvtable, vtable_byte_offset, typeid]);
+        self.extract_value(type_checked_load, 0)
     }
 
     fn va_start(&mut self, va_list: &'ll Value) -> &'ll Value {
@@ -1491,7 +1502,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
         let (_, element_ty1) = arg_tys[1].simd_size_and_type(bx.tcx());
         let (_, element_ty2) = arg_tys[2].simd_size_and_type(bx.tcx());
         let (pointer_count, underlying_ty) = match element_ty1.kind() {
-            ty::RawPtr(p) if p.ty == in_elem && p.mutbl == hir::Mutability::Mut => {
+            ty::RawPtr(p) if p.ty == in_elem && p.mutbl.is_mut() => {
                 (ptr_count(element_ty1), non_ptr(element_ty1))
             }
             _ => {

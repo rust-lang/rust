@@ -22,7 +22,6 @@ Rust MIR: a lowered representation of Rust.
 #![feature(yeet_expr)]
 #![feature(is_some_and)]
 #![recursion_limit = "256"]
-#![allow(rustc::potential_query_instability)]
 
 #[macro_use]
 extern crate tracing;
@@ -32,7 +31,6 @@ extern crate rustc_middle;
 pub mod const_eval;
 mod errors;
 pub mod interpret;
-mod might_permit_raw_init;
 pub mod transform;
 pub mod util;
 
@@ -61,7 +59,6 @@ pub fn provide(providers: &mut Providers) {
         const_eval::deref_mir_constant(tcx, param_env, value)
     };
     providers.permits_uninit_init =
-        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Uninit);
-    providers.permits_zero_init =
-        |tcx, ty| might_permit_raw_init::might_permit_raw_init(tcx, ty, InitKind::Zero);
+        |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::UninitMitigated0x01Fill);
+    providers.permits_zero_init = |tcx, ty| util::might_permit_raw_init(tcx, ty, InitKind::Zero);
 }

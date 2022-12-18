@@ -1,0 +1,9 @@
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-evalutation-ice.rs:10:22
+   |
+LL | pub const N: usize = 0 - (mem::size_of::<S>() != 400) as usize;
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempt to compute `0_usize - 1_usize`, which would overflow
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0080`.

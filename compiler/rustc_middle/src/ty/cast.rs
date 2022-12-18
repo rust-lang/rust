@@ -2,6 +2,7 @@
 // typeck and codegen.
 
 use crate::ty::{self, Ty};
+use rustc_middle::mir;
 
 use rustc_macros::HashStable;
 
@@ -74,4 +75,29 @@ impl<'tcx> CastTy<'tcx> {
             _ => None,
         }
     }
+}
+
+/// Returns `mir::CastKind` from the given parameters.
+pub fn mir_cast_kind<'tcx>(from_ty: Ty<'tcx>, cast_ty: Ty<'tcx>) -> mir::CastKind {
+    let from = CastTy::from_ty(from_ty);
+    let cast = CastTy::from_ty(cast_ty);
+    let cast_kind = match (from, cast) {
+        (Some(CastTy::Ptr(_) | CastTy::FnPtr), Some(CastTy::Int(_))) => {
+            mir::CastKind::PointerExposeAddress
+        }
+        (Some(CastTy::Int(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PointerFromExposedAddress,
+        (_, Some(CastTy::DynStar)) => mir::CastKind::DynStar,
+        (Some(CastTy::Int(_)), Some(CastTy::Int(_))) => mir::CastKind::IntToInt,
+        (Some(CastTy::FnPtr), Some(CastTy::Ptr(_))) => mir::CastKind::FnPtrToPtr,
+
+        (Some(CastTy::Float), Some(CastTy::Int(_))) => mir::CastKind::FloatToInt,
+        (Some(CastTy::Int(_)), Some(CastTy::Float)) => mir::CastKind::IntToFloat,
+        (Some(CastTy::Float), Some(CastTy::Float)) => mir::CastKind::FloatToFloat,
+        (Some(CastTy::Ptr(_)), Some(CastTy::Ptr(_))) => mir::CastKind::PtrToPtr,
+
+        (_, _) => {
+            bug!("Attempting to cast non-castable types {:?} and {:?}", from_ty, cast_ty)
+        }
+    };
+    cast_kind
 }

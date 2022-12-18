@@ -244,6 +244,10 @@ impl<'a> SymbolCollector<'a> {
             DefWithBodyId::ConstId(id) => Some(
                 id.lookup(self.db.upcast()).source(self.db.upcast()).value.name()?.text().into(),
             ),
+            DefWithBodyId::VariantId(id) => Some({
+                let db = self.db.upcast();
+                id.parent.lookup(db).source(db).value.name()?.text().into()
+            }),
         }
     }
 

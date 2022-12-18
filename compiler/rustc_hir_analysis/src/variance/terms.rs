@@ -42,22 +42,22 @@ impl<'a> fmt::Debug for VarianceTerm<'a> {
     }
 }
 
-// The first pass over the crate simply builds up the set of inferreds.
+/// The first pass over the crate simply builds up the set of inferreds.
 
 pub struct TermsContext<'a, 'tcx> {
     pub tcx: TyCtxt<'tcx>,
     pub arena: &'a DroplessArena,
 
-    // For marker types, UnsafeCell, and other lang items where
-    // variance is hardcoded, records the item-id and the hardcoded
-    // variance.
+    /// For marker types, `UnsafeCell`, and other lang items where
+    /// variance is hardcoded, records the item-id and the hardcoded
+    /// variance.
     pub lang_items: Vec<(LocalDefId, Vec<ty::Variance>)>,
 
-    // Maps from the node id of an item to the first inferred index
-    // used for its type & region parameters.
+    /// Maps from the node id of an item to the first inferred index
+    /// used for its type & region parameters.
     pub inferred_starts: LocalDefIdMap<InferredIndex>,
 
-    // Maps from an InferredIndex to the term for that variable.
+    /// Maps from an InferredIndex to the term for that variable.
     pub inferred_terms: Vec<VarianceTermPtr<'a>>,
 }
 
@@ -91,8 +91,8 @@ pub fn determine_parameters_to_be_inferred<'a, 'tcx>(
 
                 let adt = tcx.adt_def(def_id);
                 for variant in adt.variants() {
-                    if let Some(ctor) = variant.ctor_def_id {
-                        terms_cx.add_inferreds_for_item(ctor.expect_local());
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        terms_cx.add_inferreds_for_item(ctor_def_id.expect_local());
                     }
                 }
             }

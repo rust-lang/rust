@@ -1,10 +1,7 @@
-use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
-use crate::interpret::eval_nullary_intrinsic;
-use crate::interpret::{
-    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
-    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
-    RefTracking, StackPopCleanup,
-};
+use crate::const_eval::CheckAlignment;
+use std::borrow::Cow;
+
+use either::{Left, Right};
 
 use rustc_hir::def::DefKind;
 use rustc_middle::mir;
@@ -16,8 +13,14 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
 use rustc_target::abi::{self, Abi};
-use std::borrow::Cow;
-use std::convert::TryInto;
+
+use super::{CompileTimeEvalContext, CompileTimeInterpreter, ConstEvalErr};
+use crate::interpret::eval_nullary_intrinsic;
+use crate::interpret::{
+    intern_const_alloc_recursive, Allocation, ConstAlloc, ConstValue, CtfeValidationMode, GlobalId,
+    Immediate, InternKind, InterpCx, InterpError, InterpResult, MPlaceTy, MemoryKind, OpTy,
+    RefTracking, StackPopCleanup,
+};
 
 const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
@@ -46,7 +49,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
         ecx.tcx.def_kind(cid.instance.def_id())
     );
     let layout = ecx.layout_of(body.bound_return_ty().subst(tcx, cid.instance.substs))?;
-    assert!(!layout.is_unsized());
+    assert!(layout.is_sized());
     let ret = ecx.allocate(layout, MemoryKind::Stack)?;
 
     trace!(
@@ -63,7 +66,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     )?;
 
     // The main interpreter loop.
-    ecx.run()?;
+    while ecx.step()? {}
 
     // Intern the result
     let intern_kind = if cid.promoted.is_some() {
@@ -74,7 +77,7 @@ fn eval_body_using_ecx<'mir, 'tcx>(
             None => InternKind::Constant,
         }
     };
-    ecx.machine.check_alignment = false; // interning doesn't need to respect alignment
+    ecx.machine.check_alignment = CheckAlignment::No; // interning doesn't need to respect alignment
     intern_const_alloc_recursive(ecx, intern_kind, &ret)?;
     // we leave alignment checks off, since this `ecx` will not be used for further evaluation anyway
 
@@ -100,11 +103,7 @@ pub(super) fn mk_eval_cx<'mir, 'tcx>(
         tcx,
         root_span,
         param_env,
-        CompileTimeInterpreter::new(
-            tcx.const_eval_limit(),
-            can_access_statics,
-            /*check_alignment:*/ false,
-        ),
+        CompileTimeInterpreter::new(tcx.const_eval_limit(), can_access_statics, CheckAlignment::No),
     )
 }
 
@@ -135,14 +134,14 @@ pub(super) fn op_to_const<'tcx>(
         _ => false,
     };
     let immediate = if try_as_immediate {
-        Err(ecx.read_immediate(op).expect("normalization works on validated constants"))
+        Right(ecx.read_immediate(op).expect("normalization works on validated constants"))
     } else {
         // It is guaranteed that any non-slice scalar pair is actually ByRef here.
         // When we come back from raw const eval, we are always by-ref. The only way our op here is
         // by-val is if we are in destructure_mir_constant, i.e., if this is (a field of) something that we
         // "tried to make immediate" before. We wouldn't do that for non-slice scalar pairs or
         // structs containing such.
-        op.try_as_mplace()
+        op.as_mplace_or_imm()
     };
 
     debug!(?immediate);
@@ -168,9 +167,9 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Ok(ref mplace) => to_const_value(mplace),
+        Left(ref mplace) => to_const_value(mplace),
         // see comment on `let try_as_immediate` above
-        Err(imm) => match *imm {
+        Right(imm) => match *imm {
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
             Immediate::Scalar(x) => ConstValue::Scalar(x),
             Immediate::ScalarPair(a, b) => {
@@ -255,7 +254,7 @@ pub fn eval_to_const_value_raw_provider<'tcx>(
         return eval_nullary_intrinsic(tcx, key.param_env, def_id, substs).map_err(|error| {
             let span = tcx.def_span(def_id);
             let error = ConstEvalErr { error: error.into_kind(), stacktrace: vec![], span };
-            error.report_as_error(tcx.at(span), "could not evaluate nullary intrinsic")
+            error.report(tcx.at(span), "could not evaluate nullary intrinsic")
         });
     }
 
@@ -309,7 +308,11 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
         CompileTimeInterpreter::new(
             tcx.const_eval_limit(),
             /*can_access_statics:*/ is_static,
-            /*check_alignment:*/ tcx.sess.opts.unstable_opts.extra_const_ub_checks,
+            if tcx.sess.opts.unstable_opts.extra_const_ub_checks {
+                CheckAlignment::Error
+            } else {
+                CheckAlignment::FutureIncompat
+            },
         ),
     );
 
@@ -317,45 +320,23 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
     match res.and_then(|body| eval_body_using_ecx(&mut ecx, cid, &body)) {
         Err(error) => {
             let err = ConstEvalErr::new(&ecx, error, None);
-            // Some CTFE errors raise just a lint, not a hard error; see
-            // <https://github.com/rust-lang/rust/issues/71800>.
-            let is_hard_err = if let Some(def) = def.as_local() {
-                // (Associated) consts only emit a lint, since they might be unused.
-                !matches!(tcx.def_kind(def.did.to_def_id()), DefKind::Const | DefKind::AssocConst)
-                    // check if the inner InterpError is hard
-                    || err.error.is_hard_err()
+            let msg = if is_static {
+                Cow::from("could not evaluate static initializer")
             } else {
-                // use of broken constant from other crate: always an error
-                true
+                // If the current item has generics, we'd like to enrich the message with the
+                // instance and its substs: to show the actual compile-time values, in addition to
+                // the expression, leading to the const eval error.
+                let instance = &key.value.instance;
+                if !instance.substs.is_empty() {
+                    let instance = with_no_trimmed_paths!(instance.to_string());
+                    let msg = format!("evaluation of `{}` failed", instance);
+                    Cow::from(msg)
+                } else {
+                    Cow::from("evaluation of constant value failed")
+                }
             };
 
-            if is_hard_err {
-                let msg = if is_static {
-                    Cow::from("could not evaluate static initializer")
-                } else {
-                    // If the current item has generics, we'd like to enrich the message with the
-                    // instance and its substs: to show the actual compile-time values, in addition to
-                    // the expression, leading to the const eval error.
-                    let instance = &key.value.instance;
-                    if !instance.substs.is_empty() {
-                        let instance = with_no_trimmed_paths!(instance.to_string());
-                        let msg = format!("evaluation of `{}` failed", instance);
-                        Cow::from(msg)
-                    } else {
-                        Cow::from("evaluation of constant value failed")
-                    }
-                };
-
-                Err(err.report_as_error(ecx.tcx.at(err.span), &msg))
-            } else {
-                let hir_id = tcx.hir().local_def_id_to_hir_id(def.as_local().unwrap().did);
-                Err(err.report_as_lint(
-                    tcx.at(tcx.def_span(def.did)),
-                    "any use of this value will cause an error",
-                    hir_id,
-                    Some(err.span),
-                ))
-            }
+            Err(err.report(ecx.tcx.at(err.span), &msg))
         }
         Ok(mplace) => {
             // Since evaluation had no errors, validate the resulting constant.
@@ -380,7 +361,7 @@ pub fn eval_to_allocation_raw_provider<'tcx>(
             if let Err(error) = validation {
                 // Validation failed, report an error. This is always a hard error.
                 let err = ConstEvalErr::new(&ecx, error, None);
-                Err(err.struct_error(
+                Err(err.report_decorated(
                     ecx.tcx,
                     "it is undefined behavior to use this value",
                     |diag| {

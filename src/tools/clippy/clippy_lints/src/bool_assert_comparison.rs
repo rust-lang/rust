@@ -59,7 +59,7 @@ fn is_impl_not_trait_with_bool_out(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
             )
         })
         .map_or(false, |assoc_item| {
-            let proj = cx.tcx.mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(ty, &[]));
+            let proj = cx.tcx.mk_projection(assoc_item.def_id, cx.tcx.mk_substs_trait(ty, []));
             let nty = cx.tcx.normalize_erasing_regions(cx.param_env, proj);
 
             nty.is_bool()
@@ -98,9 +98,9 @@ impl<'tcx> LateLintPass<'tcx> for BoolAssertComparison {
             cx,
             BOOL_ASSERT_COMPARISON,
             macro_call.span,
-            &format!("used `{}!` with a literal bool", macro_name),
+            &format!("used `{macro_name}!` with a literal bool"),
             "replace it with",
-            format!("{}!(..)", non_eq_mac),
+            format!("{non_eq_mac}!(..)"),
             Applicability::MaybeIncorrect,
         );
     }

@@ -58,13 +58,13 @@ impl InnerOffset {
 
 /// A piece is a portion of the format string which represents the next part
 /// to emit. These are emitted as a stream by the `Parser` class.
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub enum Piece<'a> {
     /// A literal string which should directly be emitted
     String(&'a str),
     /// This describes that formatting should process the next argument (as
     /// specified inside) for emission.
-    NextArgument(Argument<'a>),
+    NextArgument(Box<Argument<'a>>),
 }
 
 /// Representation of an argument specification.
@@ -244,7 +244,7 @@ impl<'a> Iterator for Parser<'a> {
                         } else {
                             self.suggest_positional_arg_instead_of_captured_arg(arg);
                         }
-                        Some(NextArgument(arg))
+                        Some(NextArgument(Box::new(arg)))
                     }
                 }
                 '}' => {
@@ -740,20 +740,40 @@ impl<'a> Parser<'a> {
         word
     }
 
-    /// Optionally parses an integer at the current position. This doesn't deal
-    /// with overflow at all, it's just accumulating digits.
     fn integer(&mut self) -> Option<usize> {
-        let mut cur = 0;
+        let mut cur: usize = 0;
         let mut found = false;
+        let mut overflow = false;
+        let start = self.current_pos();
         while let Some(&(_, c)) = self.cur.peek() {
             if let Some(i) = c.to_digit(10) {
-                cur = cur * 10 + i as usize;
+                let (tmp, mul_overflow) = cur.overflowing_mul(10);
+                let (tmp, add_overflow) = tmp.overflowing_add(i as usize);
+                if mul_overflow || add_overflow {
+                    overflow = true;
+                }
+                cur = tmp;
                 found = true;
                 self.cur.next();
             } else {
                 break;
             }
         }
+
+        if overflow {
+            let end = self.current_pos();
+            let overflowed_int = &self.input[start..end];
+            self.err(
+                format!(
+                    "integer `{}` does not fit into the type `usize` whose range is `0..={}`",
+                    overflowed_int,
+                    usize::MAX
+                ),
+                "integer out of range for `usize`",
+                self.span(start, end),
+            );
+        }
+
         if found { Some(cur) } else { None }
     }
 
@@ -798,86 +818,99 @@ fn find_skips_from_snippet(
         _ => return (vec![], false),
     };
 
-    fn find_skips(snippet: &str, is_raw: bool) -> Vec<usize> {
-        let mut s = snippet.char_indices().peekable();
-        let mut skips = vec![];
-        while let Some((pos, c)) = s.next() {
-            match (c, s.peek()) {
-                // skip whitespace and empty lines ending in '\\'
-                ('\\', Some((next_pos, '\n'))) if !is_raw => {
-                    skips.push(pos);
-                    skips.push(*next_pos);
-                    let _ = s.next();
-
-                    while let Some((pos, c)) = s.peek() {
-                        if matches!(c, ' ' | '\n' | '\t') {
-                            skips.push(*pos);
-                            let _ = s.next();
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
-                    skips.push(*next_pos);
-                    let _ = s.next();
-                }
-                ('\\', Some((_, 'x'))) if !is_raw => {
-                    for _ in 0..3 {
-                        // consume `\xAB` literal
-                        if let Some((pos, _)) = s.next() {
-                            skips.push(pos);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                ('\\', Some((_, 'u'))) if !is_raw => {
-                    if let Some((pos, _)) = s.next() {
-                        skips.push(pos);
-                    }
-                    if let Some((next_pos, next_c)) = s.next() {
-                        if next_c == '{' {
-                            skips.push(next_pos);
-                            let mut i = 0; // consume up to 6 hexanumeric chars + closing `}`
-                            while let (Some((next_pos, c)), true) = (s.next(), i < 7) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else if c == '}' {
-                                    skips.push(next_pos);
-                                    break;
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        } else if next_c.is_digit(16) {
-                            skips.push(next_pos);
-                            // We suggest adding `{` and `}` when appropriate, accept it here as if
-                            // it were correct
-                            let mut i = 0; // consume up to 6 hexanumeric chars
-                            while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
-                                if c.is_digit(16) {
-                                    skips.push(next_pos);
-                                } else {
-                                    break;
-                                }
-                                i += 1;
-                            }
-                        }
-                    }
-                }
-                _ => {}
-            }
-        }
-        skips
+    if str_style.is_some() {
+        return (vec![], true);
     }
 
-    let r_start = str_style.map_or(0, |r| r + 1);
-    let r_end = str_style.unwrap_or(0);
-    let s = &snippet[r_start + 1..snippet.len() - r_end - 1];
-    (find_skips(s, str_style.is_some()), true)
+    let snippet = &snippet[1..snippet.len() - 1];
+
+    let mut s = snippet.char_indices();
+    let mut skips = vec![];
+    while let Some((pos, c)) = s.next() {
+        match (c, s.clone().next()) {
+            // skip whitespace and empty lines ending in '\\'
+            ('\\', Some((next_pos, '\n'))) => {
+                skips.push(pos);
+                skips.push(next_pos);
+                let _ = s.next();
+
+                while let Some((pos, c)) = s.clone().next() {
+                    if matches!(c, ' ' | '\n' | '\t') {
+                        skips.push(pos);
+                        let _ = s.next();
+                    } else {
+                        break;
+                    }
+                }
+            }
+            ('\\', Some((next_pos, 'n' | 't' | 'r' | '0' | '\\' | '\'' | '\"'))) => {
+                skips.push(next_pos);
+                let _ = s.next();
+            }
+            ('\\', Some((_, 'x'))) => {
+                for _ in 0..3 {
+                    // consume `\xAB` literal
+                    if let Some((pos, _)) = s.next() {
+                        skips.push(pos);
+                    } else {
+                        break;
+                    }
+                }
+            }
+            ('\\', Some((_, 'u'))) => {
+                if let Some((pos, _)) = s.next() {
+                    skips.push(pos);
+                }
+                if let Some((next_pos, next_c)) = s.next() {
+                    if next_c == '{' {
+                        // consume up to 6 hexanumeric chars
+                        let digits_len =
+                            s.clone().take(6).take_while(|(_, c)| c.is_digit(16)).count();
+
+                        let len_utf8 = s
+                            .as_str()
+                            .get(..digits_len)
+                            .and_then(|digits| u32::from_str_radix(digits, 16).ok())
+                            .and_then(char::from_u32)
+                            .map_or(1, char::len_utf8);
+
+                        // Skip the digits, for chars that encode to more than 1 utf-8 byte
+                        // exclude as many digits as it is greater than 1 byte
+                        //
+                        // So for a 3 byte character, exclude 2 digits
+                        let required_skips = digits_len.saturating_sub(len_utf8.saturating_sub(1));
+
+                        // skip '{' and '}' also
+                        for pos in (next_pos..).take(required_skips + 2) {
+                            skips.push(pos)
+                        }
+
+                        s.nth(digits_len);
+                    } else if next_c.is_digit(16) {
+                        skips.push(next_pos);
+                        // We suggest adding `{` and `}` when appropriate, accept it here as if
+                        // it were correct
+                        let mut i = 0; // consume up to 6 hexanumeric chars
+                        while let (Some((next_pos, c)), _) = (s.next(), i < 6) {
+                            if c.is_digit(16) {
+                                skips.push(next_pos);
+                            } else {
+                                break;
+                            }
+                            i += 1;
+                        }
+                    }
+                }
+            }
+            _ => {}
+        }
+    }
+    (skips, true)
 }
+
+// Assert a reasonable size for `Piece`
+#[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
+rustc_data_structures::static_assert_size!(Piece<'_>, 16);
 
 #[cfg(test)]
 mod tests;

@@ -4,8 +4,10 @@
 // test is not enough.
 #![feature(const_trait_impl)]
 
+#[const_trait]
 trait Bar {}
 
+#[const_trait]
 trait Foo {
     fn a();
     fn b() where Self: ~const Bar;

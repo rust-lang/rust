@@ -5,7 +5,7 @@ use rustc_hir::{ForeignItem, ForeignItemKind, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_infer::traits::{ObligationCause, WellFormedLoc};
 use rustc_middle::ty::query::Providers;
-use rustc_middle::ty::{self, Region, ToPredicate, TyCtxt, TypeFoldable, TypeFolder};
+use rustc_middle::ty::{self, Region, TyCtxt, TypeFoldable, TypeFolder};
 use rustc_trait_selection::traits;
 
 pub fn provide(providers: &mut Providers) {
@@ -64,38 +64,36 @@ fn diagnostic_hir_wf_check<'tcx>(
 
     impl<'tcx> Visitor<'tcx> for HirWfCheck<'tcx> {
         fn visit_ty(&mut self, ty: &'tcx hir::Ty<'tcx>) {
-            self.tcx.infer_ctxt().enter(|infcx| {
-                let tcx_ty =
-                    self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
-                let cause = traits::ObligationCause::new(
-                    ty.span,
-                    self.hir_id,
-                    traits::ObligationCauseCode::WellFormed(None),
-                );
-                let errors = traits::fully_solve_obligation(
-                    &infcx,
-                    traits::Obligation::new(
-                        cause,
-                        self.param_env,
-                        ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into()))
-                            .to_predicate(self.tcx),
-                    ),
-                );
-                if !errors.is_empty() {
-                    debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
-                    for error in errors {
-                        if error.obligation.predicate == self.predicate {
-                            // Save the cause from the greatest depth - this corresponds
-                            // to picking more-specific types (e.g. `MyStruct<u8>`)
-                            // over less-specific types (e.g. `Option<MyStruct<u8>>`)
-                            if self.depth >= self.cause_depth {
-                                self.cause = Some(error.obligation.cause);
-                                self.cause_depth = self.depth
-                            }
+            let infcx = self.tcx.infer_ctxt().build();
+            let tcx_ty = self.icx.to_ty(ty).fold_with(&mut EraseAllBoundRegions { tcx: self.tcx });
+            let cause = traits::ObligationCause::new(
+                ty.span,
+                self.hir_id,
+                traits::ObligationCauseCode::WellFormed(None),
+            );
+            let errors = traits::fully_solve_obligation(
+                &infcx,
+                traits::Obligation::new(
+                    self.tcx,
+                    cause,
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::WellFormed(tcx_ty.into())),
+                ),
+            );
+            if !errors.is_empty() {
+                debug!("Wf-check got errors for {:?}: {:?}", ty, errors);
+                for error in errors {
+                    if error.obligation.predicate == self.predicate {
+                        // Save the cause from the greatest depth - this corresponds
+                        // to picking more-specific types (e.g. `MyStruct<u8>`)
+                        // over less-specific types (e.g. `Option<MyStruct<u8>>`)
+                        if self.depth >= self.cause_depth {
+                            self.cause = Some(error.obligation.cause);
+                            self.cause_depth = self.depth
                         }
                     }
                 }
-            });
+            }
             self.depth += 1;
             intravisit::walk_ty(self, ty);
             self.depth -= 1;
@@ -119,7 +117,7 @@ fn diagnostic_hir_wf_check<'tcx>(
     let ty = match loc {
         WellFormedLoc::Ty(_) => match hir.get(hir_id) {
             hir::Node::ImplItem(item) => match item.kind {
-                hir::ImplItemKind::TyAlias(ty) => Some(ty),
+                hir::ImplItemKind::Type(ty) => Some(ty),
                 hir::ImplItemKind::Const(ty, _) => Some(ty),
                 ref item => bug!("Unexpected ImplItem {:?}", item),
             },

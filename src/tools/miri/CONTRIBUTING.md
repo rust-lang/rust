@@ -23,13 +23,13 @@ tested against. Other versions will likely not work. After installing
 [`rustup-toolchain-install-master`], you can run the following command to
 install that exact version of rustc as a toolchain:
 ```
-./rustup-toolchain
+./miri toolchain
 ```
 This will set up a rustup toolchain called `miri` and set it as an override for
 the current directory.
 
 You can also create a `.auto-everything` file (contents don't matter, can be empty), which
-will cause any `./miri` command to automatically call `rustup-toolchain`, `clippy` and `rustfmt`
+will cause any `./miri` command to automatically call `./miri toolchain`, `clippy` and `rustfmt`
 for you. If you don't want all of these to happen, you can add individual `.auto-toolchain`,
 `.auto-clippy` and `.auto-fmt` files respectively.
 
@@ -38,7 +38,7 @@ for you. If you don't want all of these to happen, you can add individual `.auto
 ## Building and testing Miri
 
 Invoking Miri requires getting a bunch of flags right and setting up a custom
-sysroot with xargo. The `miri` script takes care of that for you. With the
+sysroot. The `miri` script takes care of that for you. With the
 build environment prepared, compiling Miri is just one command away:
 
 ```
@@ -104,7 +104,7 @@ MIRI_LOG=rustc_mir::interpret=info,miri::stacked_borrows ./miri run tests/pass/v
 In addition, you can set `MIRI_BACKTRACE=1` to get a backtrace of where an
 evaluation error was originally raised.
 
-#### UI testing
+### UI testing
 
 We use ui-testing in Miri, meaning we generate `.stderr` and `.stdout` files for the output
 produced by Miri. You can use `./miri bless` to automatically (re)generate these files when
@@ -132,11 +132,14 @@ development version of Miri using
 and then you can use it as if it was installed by `rustup`.  Make sure you use
 the same toolchain when calling `cargo miri` that you used when installing Miri!
 Usually this means you have to write `cargo +miri miri ...` to select the `miri`
-toolchain that was installed by `./rustup-toolchain`.
+toolchain that was installed by `./miri toolchain`.
 
 There's a test for the cargo wrapper in the `test-cargo-miri` directory; run
 `./run-test.py` in there to execute it. Like `./miri test`, this respects the
 `MIRI_TEST_TARGET` environment variable to execute the test for another target.
+
+Note that installing Miri like this will "take away" Miri management from `rustup`.
+If you want to later go back to a rustup-installed Miri, run `rustup update`.
 
 ### Using a modified standard library
 
@@ -147,7 +150,8 @@ is set the `MIRI_LIB_SRC` environment variable to the `library` folder of a
 `rust-lang/rust` repository checkout. Note that changing files in that directory
 does not automatically trigger a re-build of the standard library; you have to
 clear the Miri build cache manually (on Linux, `rm -rf ~/.cache/miri`;
-and on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`).
+on Windows, `rmdir /S "%LOCALAPPDATA%\rust-lang\miri\cache"`;
+and on macOS, `rm -rf ~/Library/Caches/org.rust-lang.miri`).
 
 ### Benchmarking
 
@@ -199,79 +203,82 @@ for more information about configuring VS Code and `rust-analyzer`.
 
 [rdg-r-a]: https://rustc-dev-guide.rust-lang.org/building/suggested.html#configuring-rust-analyzer-for-rustc
 
-## Advanced topic: other build environments
+## Advanced topic: Working on Miri in the rustc tree
 
 We described above the simplest way to get a working build environment for Miri,
 which is to use the version of rustc indicated by `rustc-version`. But
 sometimes, that is not enough.
 
-### Updating `rustc-version`
+A big part of the Miri driver is shared with rustc, so working on Miri will
+sometimes require also working on rustc itself. In this case, you should *not*
+work in a clone of the Miri repository, but in a clone of the
+[main Rust repository](https://github.com/rust-lang/rust/). There is a copy of
+Miri located at `src/tools/miri` that you can work on directly. A maintainer
+will eventually sync those changes back into this repository.
 
-The `rustc-version` file is regularly updated to keep Miri close to the latest
-version of rustc. Usually, new contributors do not have to worry about this. But
-sometimes a newer rustc is needed for a patch, and sometimes Miri needs fixing
-for changes in rustc. In both cases, `rustc-version` needs updating.
+When working on Miri in the rustc tree, here's how you can run tests:
 
-To update the `rustc-version` file and install the latest rustc, you can run:
 ```
-./rustup-toolchain HEAD
+./x.py test miri --stage 0
 ```
 
-Now edit Miri until `./miri test` passes, and submit a PR. Generally, it is
-preferred to separate updating `rustc-version` and doing what it takes to get
-Miri working again, from implementing new features that rely on the updated
-rustc. This avoids blocking all Miri development on landing a big PR.
+`--bless` will work, too.
 
-### Building Miri with a locally built rustc
+You can also directly run Miri on a Rust source file:
 
-[building Miri with a locally built rustc]: #building-miri-with-a-locally-built-rustc
+```
+./x.py run miri --stage 0 --args src/tools/miri/tests/pass/hello.rs
+```
 
-A big part of the Miri driver lives in rustc, so working on Miri will sometimes
-require using a locally built rustc. The bug you want to fix may actually be on
-the rustc side, or you just need to get more detailed trace of the execution
-than what is possible with release builds -- in both cases, you should develop
-Miri against a rustc you compiled yourself, with debug assertions (and hence
-tracing) enabled.
+## Advanced topic: Syncing with the rustc repo
 
-The setup for a local rustc works as follows:
+We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit
+changes between the rustc and Miri repositories. For now, the latest git version
+of josh needs to be built from source. This downloads and runs josh:
+
 ```sh
-# Clone the rust-lang/rust repo.
-git clone https://github.com/rust-lang/rust rustc
-cd rustc
-# Create a config.toml with defaults for working on Miri.
-./x.py setup compiler
- # Now edit `config.toml` and under `[rust]` set `debug-assertions = true`.
-
-# Build a stage 2 rustc, and build the rustc libraries with that rustc.
-# This step can take 30 minutes or more.
-./x.py build --stage 2 compiler/rustc
-# If you change something, you can get a faster rebuild by doing
-./x.py build --keep-stage 0 --stage 2 compiler/rustc
-# You may have to change the architecture in the next command
-rustup toolchain link stage2 build/x86_64-unknown-linux-gnu/stage2
-# Now cd to your Miri directory, then configure rustup
-rustup override set stage2
+git clone https://github.com/josh-project/josh
+cd josh
+cargo run --release -p josh-proxy -- --local=local --remote=https://github.com --no-background
 ```
 
-Note: When you are working with a locally built rustc or any other toolchain that
-is not the same as the one in `rust-version`, you should not have `.auto-everything` or
-`.auto-toolchain` as that will keep resetting your toolchain.
+### Importing changes from the rustc repo
 
+Josh needs to be running, as described above.
+We assume we start on an up-to-date master branch in the Miri repo.
+
+```sh
+# Fetch and merge rustc side of the history. Takes ca 5 min the first time.
+# This will also update the 'rustc-version' file.
+./miri rustc-pull
+# Update local toolchain and apply formatting.
+./miri toolchain && ./miri fmt
+git commit -am "rustup"
 ```
-rm -f .auto-everything .auto-toolchain
+
+Now push this to a new branch in your Miri fork, and create a PR. It is worth
+running `./miri test` locally in parallel, since the test suite in the Miri repo
+is stricter than the one on the rustc side, so some small tweaks might be
+needed.
+
+### Exporting changes to the rustc repo
+
+Keep in mind that pushing is the most complicated job that josh has to do --
+pulling just filters the rustc history, but pushing needs to construct a new
+rustc history that would filter to the given Miri history! To avoid problems, it
+is a good idea to always pull immediately before you push. In particular, you
+should never do two josh pushes without an intermediate pull; that can lead to
+duplicated commits.
+
+Josh needs to be running, as described above. We will use the josh proxy to push
+to your fork of rustc. Run the following in the Miri repo, assuming we are on an
+up-to-date master branch:
+
+```sh
+# Push the Miri changes to your rustc fork (substitute your github handle for YOUR_NAME).
+./miri rustc-push YOUR_NAME miri
 ```
 
-Important: You need to delete the Miri cache when you change the stdlib; otherwise the
-old, chached version will be used. On Linux, the cache is located at `~/.cache/miri`,
-and on Windows, it is located at `%LOCALAPPDATA%\rust-lang\miri\cache`; the exact
-location is printed after the library build: "A libstd for Miri is now available in ...".
-
-Note: `./x.py --stage 2 compiler/rustc` currently errors with `thread 'main'
-panicked at 'fs::read(stamp) failed with No such file or directory (os error 2)`,
-you can simply ignore that error; Miri will build anyway.
-
-For more information about building and configuring a local compiler,
-see <https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html>.
-
-With this, you should now have a working development setup! See
-[above](#building-and-testing-miri) for how to proceed working on Miri.
+This will create a new branch called 'miri' in your fork, and the output should
+include a link to create a rustc PR that will integrate those changes into the
+main repository.

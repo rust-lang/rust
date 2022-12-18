@@ -227,13 +227,17 @@ impl<'a> TyLoweringContext<'a> {
                     .intern(Interner)
             }
             TypeRef::Placeholder => TyKind::Error.intern(Interner),
-            TypeRef::Fn(params, is_varargs) => {
+            &TypeRef::Fn(ref params, variadic, is_unsafe) => {
                 let substs = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
                     Substitution::from_iter(Interner, params.iter().map(|(_, tr)| ctx.lower_ty(tr)))
                 });
                 TyKind::Function(FnPointer {
                     num_binders: 0, // FIXME lower `for<'a> fn()` correctly
-                    sig: FnSig { abi: (), safety: Safety::Safe, variadic: *is_varargs },
+                    sig: FnSig {
+                        abi: (),
+                        safety: if is_unsafe { Safety::Unsafe } else { Safety::Safe },
+                        variadic,
+                    },
                     substitution: FnSubst(substs),
                 })
                 .intern(Interner)
@@ -306,7 +310,7 @@ impl<'a> TyLoweringContext<'a> {
                         // FIXME we're probably doing something wrong here
                         self.impl_trait_counter.set(idx + count_impl_traits(type_ref) as u16);
                         let (
-                            parent_params,
+                            _parent_params,
                             self_params,
                             list_params,
                             const_params,
@@ -319,7 +323,7 @@ impl<'a> TyLoweringContext<'a> {
                         };
                         TyKind::BoundVar(BoundVar::new(
                             self.in_binders,
-                            idx as usize + parent_params + self_params + list_params + const_params,
+                            idx as usize + self_params + list_params + const_params,
                         ))
                         .intern(Interner)
                     }
@@ -447,12 +451,31 @@ impl<'a> TyLoweringContext<'a> {
                             .db
                             .trait_data(trait_ref.hir_trait_id())
                             .associated_type_by_name(segment.name);
+
                         match found {
                             Some(associated_ty) => {
-                                // FIXME handle type parameters on the segment
+                                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                                // that method to optionally take parent `Substitution` as we already know them at
+                                // this point (`trait_ref.substitution`).
+                                let substitution = self.substs_from_path_segment(
+                                    segment,
+                                    Some(associated_ty.into()),
+                                    false,
+                                    None,
+                                );
+                                let len_self =
+                                    generics(self.db.upcast(), associated_ty.into()).len_self();
+                                let substitution = Substitution::from_iter(
+                                    Interner,
+                                    substitution
+                                        .iter(Interner)
+                                        .take(len_self)
+                                        .chain(trait_ref.substitution.iter(Interner)),
+                                );
                                 TyKind::Alias(AliasTy::Projection(ProjectionTy {
                                     associated_ty_id: to_assoc_type_id(associated_ty),
-                                    substitution: trait_ref.substitution,
+                                    substitution,
                                 }))
                                 .intern(Interner)
                             }
@@ -499,14 +522,31 @@ impl<'a> TyLoweringContext<'a> {
                 .intern(Interner)
             }
             TypeNs::SelfType(impl_id) => {
-                let generics = generics(self.db.upcast(), impl_id.into());
-                let substs = match self.type_param_mode {
-                    ParamLoweringMode::Placeholder => generics.placeholder_subst(self.db),
-                    ParamLoweringMode::Variable => {
-                        generics.bound_vars_subst(self.db, self.in_binders)
+                let def =
+                    self.resolver.generic_def().expect("impl should have generic param scope");
+                let generics = generics(self.db.upcast(), def);
+
+                match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        // `def` can be either impl itself or item within, and we need impl itself
+                        // now.
+                        let generics = generics.parent_generics().unwrap_or(&generics);
+                        let subst = generics.placeholder_subst(self.db);
+                        self.db.impl_self_ty(impl_id).substitute(Interner, &subst)
                     }
-                };
-                self.db.impl_self_ty(impl_id).substitute(Interner, &substs)
+                    ParamLoweringMode::Variable => {
+                        let starting_from = match def {
+                            GenericDefId::ImplId(_) => 0,
+                            // `def` is an item within impl. We need to substitute `BoundVar`s but
+                            // remember that they are for parent (i.e. impl) generic params so they
+                            // come after our own params.
+                            _ => generics.len_self(),
+                        };
+                        TyBuilder::impl_self_ty(self.db, impl_id)
+                            .fill_with_bound_vars(self.in_binders, starting_from)
+                            .build()
+                    }
+                }
             }
             TypeNs::AdtSelfType(adt) => {
                 let generics = generics(self.db.upcast(), adt.into());
@@ -573,36 +613,48 @@ impl<'a> TyLoweringContext<'a> {
             res,
             Some(segment.name.clone()),
             move |name, t, associated_ty| {
-                if name == segment.name {
-                    let substs = match self.type_param_mode {
-                        ParamLoweringMode::Placeholder => {
-                            // if we're lowering to placeholders, we have to put
-                            // them in now
-                            let generics = generics(
-                                self.db.upcast(),
-                                self.resolver
-                                    .generic_def()
-                                    .expect("there should be generics if there's a generic param"),
-                            );
-                            let s = generics.placeholder_subst(self.db);
-                            s.apply(t.substitution.clone(), Interner)
-                        }
-                        ParamLoweringMode::Variable => t.substitution.clone(),
-                    };
-                    // We need to shift in the bound vars, since
-                    // associated_type_shorthand_candidates does not do that
-                    let substs = substs.shifted_in_from(Interner, self.in_binders);
-                    // FIXME handle type parameters on the segment
-                    Some(
-                        TyKind::Alias(AliasTy::Projection(ProjectionTy {
-                            associated_ty_id: to_assoc_type_id(associated_ty),
-                            substitution: substs,
-                        }))
-                        .intern(Interner),
-                    )
-                } else {
-                    None
+                if name != segment.name {
+                    return None;
                 }
+
+                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                // that method to optionally take parent `Substitution` as we already know them at
+                // this point (`t.substitution`).
+                let substs = self.substs_from_path_segment(
+                    segment.clone(),
+                    Some(associated_ty.into()),
+                    false,
+                    None,
+                );
+
+                let len_self = generics(self.db.upcast(), associated_ty.into()).len_self();
+
+                let substs = Substitution::from_iter(
+                    Interner,
+                    substs.iter(Interner).take(len_self).chain(t.substitution.iter(Interner)),
+                );
+
+                let substs = match self.type_param_mode {
+                    ParamLoweringMode::Placeholder => {
+                        // if we're lowering to placeholders, we have to put
+                        // them in now
+                        let generics = generics(self.db.upcast(), def);
+                        let s = generics.placeholder_subst(self.db);
+                        s.apply(substs, Interner)
+                    }
+                    ParamLoweringMode::Variable => substs,
+                };
+                // We need to shift in the bound vars, since
+                // associated_type_shorthand_candidates does not do that
+                let substs = substs.shifted_in_from(Interner, self.in_binders);
+                Some(
+                    TyKind::Alias(AliasTy::Projection(ProjectionTy {
+                        associated_ty_id: to_assoc_type_id(associated_ty),
+                        substitution: substs,
+                    }))
+                    .intern(Interner),
+                )
             },
         );
 
@@ -663,40 +715,31 @@ impl<'a> TyLoweringContext<'a> {
     fn substs_from_path_segment(
         &self,
         segment: PathSegment<'_>,
-        def_generic: Option<GenericDefId>,
+        def: Option<GenericDefId>,
         infer_args: bool,
         explicit_self_ty: Option<Ty>,
     ) -> Substitution {
+        // Remember that the item's own generic args come before its parent's.
         let mut substs = Vec::new();
-        let def_generics = if let Some(def) = def_generic {
-            generics(self.db.upcast(), def)
+        let def = if let Some(d) = def {
+            d
         } else {
             return Substitution::empty(Interner);
         };
+        let def_generics = generics(self.db.upcast(), def);
         let (parent_params, self_params, type_params, const_params, impl_trait_params) =
             def_generics.provenance_split();
-        let total_len =
-            parent_params + self_params + type_params + const_params + impl_trait_params;
+        let item_len = self_params + type_params + const_params + impl_trait_params;
+        let total_len = parent_params + item_len;
 
-        let ty_error = GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner);
+        let ty_error = TyKind::Error.intern(Interner).cast(Interner);
 
         let mut def_generic_iter = def_generics.iter_id();
-
-        for _ in 0..parent_params {
-            if let Some(eid) = def_generic_iter.next() {
-                match eid {
-                    Either::Left(_) => substs.push(ty_error.clone()),
-                    Either::Right(x) => {
-                        substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
-                    }
-                }
-            }
-        }
 
         let fill_self_params = || {
             for x in explicit_self_ty
                 .into_iter()
-                .map(|x| GenericArgData::Ty(x).intern(Interner))
+                .map(|x| x.cast(Interner))
                 .chain(iter::repeat(ty_error.clone()))
                 .take(self_params)
             {
@@ -757,37 +800,48 @@ impl<'a> TyLoweringContext<'a> {
             fill_self_params();
         }
 
+        // These params include those of parent.
+        let remaining_params: SmallVec<[_; 2]> = def_generic_iter
+            .map(|eid| match eid {
+                Either::Left(_) => ty_error.clone(),
+                Either::Right(x) => unknown_const_as_generic(self.db.const_param_ty(x)),
+            })
+            .collect();
+        assert_eq!(remaining_params.len() + substs.len(), total_len);
+
         // handle defaults. In expression or pattern path segments without
         // explicitly specified type arguments, missing type arguments are inferred
         // (i.e. defaults aren't used).
-        if !infer_args || had_explicit_args {
-            if let Some(def_generic) = def_generic {
-                let defaults = self.db.generic_defaults(def_generic);
-                assert_eq!(total_len, defaults.len());
+        // Generic parameters for associated types are not supposed to have defaults, so we just
+        // ignore them.
+        let is_assoc_ty = if let GenericDefId::TypeAliasId(id) = def {
+            let container = id.lookup(self.db.upcast()).container;
+            matches!(container, ItemContainerId::TraitId(_))
+        } else {
+            false
+        };
+        if !is_assoc_ty && (!infer_args || had_explicit_args) {
+            let defaults = self.db.generic_defaults(def);
+            assert_eq!(total_len, defaults.len());
+            let parent_from = item_len - substs.len();
 
-                for default_ty in defaults.iter().skip(substs.len()) {
-                    // each default can depend on the previous parameters
-                    let substs_so_far = Substitution::from_iter(Interner, substs.clone());
-                    if let Some(_id) = def_generic_iter.next() {
-                        substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
-                    }
-                }
+            for (idx, default_ty) in defaults[substs.len()..item_len].iter().enumerate() {
+                // each default can depend on the previous parameters
+                let substs_so_far = Substitution::from_iter(
+                    Interner,
+                    substs.iter().cloned().chain(remaining_params[idx..].iter().cloned()),
+                );
+                substs.push(default_ty.clone().substitute(Interner, &substs_so_far));
             }
+
+            // Keep parent's params as unknown.
+            let mut remaining_params = remaining_params;
+            substs.extend(remaining_params.drain(parent_from..));
+        } else {
+            substs.extend(remaining_params);
         }
 
-        // add placeholders for args that were not provided
-        // FIXME: emit diagnostics in contexts where this is not allowed
-        for eid in def_generic_iter {
-            match eid {
-                Either::Left(_) => substs.push(ty_error.clone()),
-                Either::Right(x) => {
-                    substs.push(unknown_const_as_generic(self.db.const_param_ty(x)))
-                }
-            }
-        }
-        // If this assert fails, it means you pushed into subst but didn't call .next() of def_generic_iter
         assert_eq!(substs.len(), total_len);
-
         Substitution::from_iter(Interner, substs)
     }
 
@@ -955,9 +1009,28 @@ impl<'a> TyLoweringContext<'a> {
                     None => return SmallVec::new(),
                     Some(t) => t,
                 };
+                // FIXME: `substs_from_path_segment()` pushes `TyKind::Error` for every parent
+                // generic params. It's inefficient to splice the `Substitution`s, so we may want
+                // that method to optionally take parent `Substitution` as we already know them at
+                // this point (`super_trait_ref.substitution`).
+                let substitution = self.substs_from_path_segment(
+                    // FIXME: This is hack. We shouldn't really build `PathSegment` directly.
+                    PathSegment { name: &binding.name, args_and_bindings: binding.args.as_deref() },
+                    Some(associated_ty.into()),
+                    false, // this is not relevant
+                    Some(super_trait_ref.self_type_parameter(Interner)),
+                );
+                let self_params = generics(self.db.upcast(), associated_ty.into()).len_self();
+                let substitution = Substitution::from_iter(
+                    Interner,
+                    substitution
+                        .iter(Interner)
+                        .take(self_params)
+                        .chain(super_trait_ref.substitution.iter(Interner)),
+                );
                 let projection_ty = ProjectionTy {
                     associated_ty_id: to_assoc_type_id(associated_ty),
-                    substitution: super_trait_ref.substitution,
+                    substitution,
                 };
                 let mut preds: SmallVec<[_; 1]> = SmallVec::with_capacity(
                     binding.type_ref.as_ref().map_or(0, |_| 1) + binding.bounds.len(),
@@ -981,10 +1054,11 @@ impl<'a> TyLoweringContext<'a> {
 
     fn lower_dyn_trait(&self, bounds: &[Interned<TypeBound>]) -> Ty {
         let self_ty = TyKind::BoundVar(BoundVar::new(DebruijnIndex::INNERMOST, 0)).intern(Interner);
-        // INVARIANT: The principal trait bound must come first. Others may be in any order but
-        // should be in the same order for the same set but possibly different order of bounds in
-        // the input.
-        // This invariant is used by `TyExt::dyn_trait()` and chalk.
+        // INVARIANT: The principal trait bound, if present, must come first. Others may be in any
+        // order but should be in the same order for the same set but possibly different order of
+        // bounds in the input.
+        // INVARIANT: If this function returns `DynTy`, there should be at least one trait bound.
+        // These invariants are utilized by `TyExt::dyn_trait()` and chalk.
         let bounds = self.with_shifted_in(DebruijnIndex::ONE, |ctx| {
             let mut bounds: Vec<_> = bounds
                 .iter()
@@ -1035,6 +1109,12 @@ impl<'a> TyLoweringContext<'a> {
                 return None;
             }
 
+            if bounds.first().and_then(|b| b.trait_id()).is_none() {
+                // When there's no trait bound, that's an error. This happens when the trait refs
+                // are unresolved.
+                return None;
+            }
+
             // As multiple occurrences of the same auto traits *are* permitted, we dedulicate the
             // bounds. We shouldn't have repeated elements besides auto traits at this point.
             bounds.dedup();
@@ -1046,7 +1126,8 @@ impl<'a> TyLoweringContext<'a> {
             let bounds = crate::make_single_type_binders(bounds);
             TyKind::Dyn(DynTy { bounds, lifetime: static_lifetime() }).intern(Interner)
         } else {
-            // FIXME: report error (additional non-auto traits or associated type rebound)
+            // FIXME: report error
+            // (additional non-auto traits, associated type rebound, or no resolved trait)
             TyKind::Error.intern(Interner)
         }
     }
@@ -1139,11 +1220,28 @@ fn named_associated_type_shorthand_candidates<R>(
     };
 
     match res {
-        TypeNs::SelfType(impl_id) => search(
+        TypeNs::SelfType(impl_id) => {
             // we're _in_ the impl -- the binders get added back later. Correct,
             // but it would be nice to make this more explicit
-            db.impl_trait(impl_id)?.into_value_and_skipped_binders().0,
-        ),
+            let trait_ref = db.impl_trait(impl_id)?.into_value_and_skipped_binders().0;
+
+            let impl_id_as_generic_def: GenericDefId = impl_id.into();
+            if impl_id_as_generic_def != def {
+                // `trait_ref` contains `BoundVar`s bound by impl's `Binders`, but here we need
+                // `BoundVar`s from `def`'s point of view.
+                // FIXME: A `HirDatabase` query may be handy if this process is needed in more
+                // places. It'd be almost identical as `impl_trait_query` where `resolver` would be
+                // of `def` instead of `impl_id`.
+                let starting_idx = generics(db.upcast(), def).len_self();
+                let subst = TyBuilder::subst_for_def(db, impl_id, None)
+                    .fill_with_bound_vars(DebruijnIndex::INNERMOST, starting_idx)
+                    .build();
+                let trait_ref = subst.apply(trait_ref, Interner);
+                search(trait_ref)
+            } else {
+                search(trait_ref)
+            }
+        }
         TypeNs::GenericParam(param_id) => {
             let predicates = db.generic_predicates_for_param(def, param_id.into(), assoc_name);
             let res = predicates.iter().find_map(|pred| match pred.skip_binders().skip_binders() {
@@ -1160,10 +1258,18 @@ fn named_associated_type_shorthand_candidates<R>(
             }
             // Handle `Self::Type` referring to own associated type in trait definitions
             if let GenericDefId::TraitId(trait_id) = param_id.parent() {
-                let generics = generics(db.upcast(), trait_id.into());
-                if generics.params.type_or_consts[param_id.local_id()].is_trait_self() {
+                let trait_generics = generics(db.upcast(), trait_id.into());
+                if trait_generics.params.type_or_consts[param_id.local_id()].is_trait_self() {
+                    let def_generics = generics(db.upcast(), def);
+                    let starting_idx = match def {
+                        GenericDefId::TraitId(_) => 0,
+                        // `def` is an item within trait. We need to substitute `BoundVar`s but
+                        // remember that they are for parent (i.e. trait) generic params so they
+                        // come after our own params.
+                        _ => def_generics.len_self(),
+                    };
                     let trait_ref = TyBuilder::trait_ref(db, trait_id)
-                        .fill_with_bound_vars(DebruijnIndex::INNERMOST, 0)
+                        .fill_with_bound_vars(DebruijnIndex::INNERMOST, starting_idx)
                         .build();
                     return search(trait_ref);
                 }
@@ -1405,6 +1511,7 @@ pub(crate) fn generic_defaults_query(
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     let generic_params = generics(db.upcast(), def);
+    let parent_start_idx = generic_params.len_self();
 
     let defaults = generic_params
         .iter()
@@ -1417,19 +1524,17 @@ pub(crate) fn generic_defaults_query(
                     let val = unknown_const_as_generic(
                         db.const_param_ty(ConstParamId::from_unchecked(id)),
                     );
-                    return crate::make_binders_with_count(db, idx, &generic_params, val);
+                    return make_binders(db, &generic_params, val);
                 }
             };
             let mut ty =
                 p.default.as_ref().map_or(TyKind::Error.intern(Interner), |t| ctx.lower_ty(t));
 
             // Each default can only refer to previous parameters.
-            // type variable default referring to parameter coming
-            // after it. This is forbidden (FIXME: report
-            // diagnostic)
-            ty = fallback_bound_vars(ty, idx);
-            let val = GenericArgData::Ty(ty).intern(Interner);
-            crate::make_binders_with_count(db, idx, &generic_params, val)
+            // Type variable default referring to parameter coming
+            // after it is forbidden (FIXME: report diagnostic)
+            ty = fallback_bound_vars(ty, idx, parent_start_idx);
+            crate::make_binders(db, &generic_params, ty.cast(Interner))
         })
         .collect();
 
@@ -1446,15 +1551,14 @@ pub(crate) fn generic_defaults_recover(
     // we still need one default per parameter
     let defaults = generic_params
         .iter_id()
-        .enumerate()
-        .map(|(count, id)| {
+        .map(|id| {
             let val = match id {
                 itertools::Either::Left(_) => {
                     GenericArgData::Ty(TyKind::Error.intern(Interner)).intern(Interner)
                 }
                 itertools::Either::Right(id) => unknown_const_as_generic(db.const_param_ty(id)),
             };
-            crate::make_binders_with_count(db, count, &generic_params, val)
+            crate::make_binders(db, &generic_params, val)
         })
         .collect();
 
@@ -1473,7 +1577,12 @@ fn fn_sig_for_fn(db: &dyn HirDatabase, def: FunctionId) -> PolyFnSig {
         .with_type_param_mode(ParamLoweringMode::Variable);
     let ret = ctx_ret.lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
-    let sig = CallableSig::from_params_and_return(params, ret, data.is_varargs());
+    let sig = CallableSig::from_params_and_return(
+        params,
+        ret,
+        data.is_varargs(),
+        if data.has_unsafe_kw() { Safety::Unsafe } else { Safety::Safe },
+    );
     make_binders(db, &generics, sig)
 }
 
@@ -1517,7 +1626,7 @@ fn fn_sig_for_struct_constructor(db: &dyn HirDatabase, def: StructId) -> PolyFnS
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
     let (ret, binders) = type_for_adt(db, def.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
 }
 
 /// Build the type of a tuple struct constructor.
@@ -1544,7 +1653,7 @@ fn fn_sig_for_enum_variant_constructor(db: &dyn HirDatabase, def: EnumVariantId)
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
     let params = fields.iter().map(|(_, field)| ctx.lower_ty(&field.type_ref)).collect::<Vec<_>>();
     let (ret, binders) = type_for_adt(db, def.parent.into()).into_value_and_skipped_binders();
-    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false))
+    Binders::new(binders, CallableSig::from_params_and_return(params, ret, false, Safety::Safe))
 }
 
 /// Build the type of a tuple enum variant constructor.
@@ -1632,6 +1741,19 @@ pub enum ValueTyDefId {
     StaticId(StaticId),
 }
 impl_from!(FunctionId, StructId, UnionId, EnumVariantId, ConstId, StaticId for ValueTyDefId);
+
+impl ValueTyDefId {
+    pub(crate) fn to_generic_def_id(self) -> Option<GenericDefId> {
+        match self {
+            Self::FunctionId(id) => Some(id.into()),
+            Self::StructId(id) => Some(id.into()),
+            Self::UnionId(id) => Some(id.into()),
+            Self::EnumVariantId(var) => Some(var.into()),
+            Self::ConstId(id) => Some(id.into()),
+            Self::StaticId(_) => None,
+        }
+    }
+}
 
 /// Build the declared type of an item. This depends on the namespace; e.g. for
 /// `struct Foo(usize)`, we have two types: The type of the struct itself, and
@@ -1816,26 +1938,48 @@ pub(crate) fn const_or_path_to_chalk(
     }
 }
 
-/// This replaces any 'free' Bound vars in `s` (i.e. those with indices past
-/// num_vars_to_keep) by `TyKind::Unknown`.
+/// Replaces any 'free' `BoundVar`s in `s` by `TyKind::Error` from the perspective of generic
+/// parameter whose index is `param_index`. A `BoundVar` is free when it is or (syntactically)
+/// appears after the generic parameter of `param_index`.
 fn fallback_bound_vars<T: TypeFoldable<Interner> + HasInterner<Interner = Interner>>(
     s: T,
-    num_vars_to_keep: usize,
+    param_index: usize,
+    parent_start: usize,
 ) -> T {
+    // Keep in mind that parent generic parameters, if any, come *after* those of the item in
+    // question. In the diagrams below, `c*` and `p*` represent generic parameters of the item and
+    // its parent respectively.
+    let is_allowed = |index| {
+        if param_index < parent_start {
+            // The parameter of `param_index` is one from the item in question. Any parent generic
+            // parameters or the item's generic parameters that come before `param_index` is
+            // allowed.
+            // [c1, .., cj, .., ck, p1, .., pl] where cj is `param_index`
+            //  ^^^^^^              ^^^^^^^^^^ these are allowed
+            !(param_index..parent_start).contains(&index)
+        } else {
+            // The parameter of `param_index` is one from the parent generics. Only parent generic
+            // parameters that come before `param_index` are allowed.
+            // [c1, .., ck, p1, .., pj, .., pl] where pj is `param_index`
+            //              ^^^^^^ these are allowed
+            (parent_start..param_index).contains(&index)
+        }
+    };
+
     crate::fold_free_vars(
         s,
         |bound, binders| {
-            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-                TyKind::Error.intern(Interner)
-            } else {
+            if bound.index_if_innermost().map_or(true, is_allowed) {
                 bound.shifted_in_from(binders).to_ty(Interner)
+            } else {
+                TyKind::Error.intern(Interner)
             }
         },
         |ty, bound, binders| {
-            if bound.index >= num_vars_to_keep && bound.debruijn == DebruijnIndex::INNERMOST {
-                unknown_const(ty.clone())
-            } else {
+            if bound.index_if_innermost().map_or(true, is_allowed) {
                 bound.shifted_in_from(binders).to_const(Interner, ty)
+            } else {
+                unknown_const(ty.clone())
             }
         },
     )

@@ -28,44 +28,44 @@
           _7 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
           _8 = const 4_usize;              // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
           _9 = Ge(move _7, move _8);       // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
-          switchInt(move _9) -> [false: bb6, otherwise: bb2]; // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
+          switchInt(move _9) -> [0: bb6, otherwise: bb2]; // scope 0 at $DIR/deduplicate_blocks.rs:+2:9: +2:37
       }
   
       bb2: {
-          switchInt((*_2)[0 of 4]) -> [47_u8: bb3, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+          switchInt((*_2)[0 of 4]) -> [47: bb3, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb3: {
-          switchInt((*_2)[1 of 4]) -> [47_u8: bb4, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+          switchInt((*_2)[1 of 4]) -> [47: bb4, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb4: {
-          switchInt((*_2)[2 of 4]) -> [47_u8: bb5, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+          switchInt((*_2)[2 of 4]) -> [47: bb5, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb5: {
--         switchInt((*_2)[3 of 4]) -> [47_u8: bb11, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
-+         switchInt((*_2)[3 of 4]) -> [47_u8: bb10, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+-         switchInt((*_2)[3 of 4]) -> [47: bb11, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
++         switchInt((*_2)[3 of 4]) -> [47: bb10, otherwise: bb6]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb6: {
           _4 = Len((*_2));                 // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
           _5 = const 3_usize;              // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
           _6 = Ge(move _4, move _5);       // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
-          switchInt(move _6) -> [false: bb10, otherwise: bb7]; // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
+          switchInt(move _6) -> [0: bb10, otherwise: bb7]; // scope 0 at $DIR/deduplicate_blocks.rs:+3:9: +3:31
       }
   
       bb7: {
-          switchInt((*_2)[0 of 3]) -> [47_u8: bb8, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+          switchInt((*_2)[0 of 3]) -> [47: bb8, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb8: {
-          switchInt((*_2)[1 of 3]) -> [47_u8: bb9, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+          switchInt((*_2)[1 of 3]) -> [47: bb9, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb9: {
--         switchInt((*_2)[2 of 3]) -> [47_u8: bb12, 33_u8: bb13, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
-+         switchInt((*_2)[2 of 3]) -> [47_u8: bb11, 33_u8: bb11, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
+-         switchInt((*_2)[2 of 3]) -> [47: bb12, 33: bb13, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
++         switchInt((*_2)[2 of 3]) -> [47: bb11, 33: bb11, otherwise: bb10]; // scope 0 at $DIR/deduplicate_blocks.rs:+1:5: +1:23
       }
   
       bb10: {

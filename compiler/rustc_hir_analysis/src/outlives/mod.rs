@@ -3,7 +3,7 @@ use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::subst::GenericArgKind;
-use rustc_middle::ty::{self, CratePredicatesMap, ToPredicate, TyCtxt};
+use rustc_middle::ty::{self, CratePredicatesMap, TyCtxt};
 use rustc_span::symbol::sym;
 use rustc_span::Span;
 
@@ -17,12 +17,12 @@ pub fn provide(providers: &mut Providers) {
     *providers = Providers { inferred_outlives_of, inferred_outlives_crate, ..*providers };
 }
 
-fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate<'_>, Span)] {
+fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Clause<'_>, Span)] {
     let id = tcx.hir().local_def_id_to_hir_id(item_def_id.expect_local());
 
     if matches!(tcx.def_kind(item_def_id), hir::def::DefKind::AnonConst) && tcx.lazy_normalization()
     {
-        if tcx.hir().opt_const_param_default_param_hir_id(id).is_some() {
+        if tcx.hir().opt_const_param_default_param_def_id(id).is_some() {
             // In `generics_of` we set the generics' parent to be our parent's parent which means that
             // we lose out on the predicates of our actual parent if we dont return those predicates here.
             // (See comment in `generics_of` for more information on why the parent shenanigans is necessary)
@@ -50,10 +50,10 @@ fn inferred_outlives_of(tcx: TyCtxt<'_>, item_def_id: DefId) -> &[(ty::Predicate
                 if tcx.has_attr(item_def_id, sym::rustc_outlives) {
                     let mut pred: Vec<String> = predicates
                         .iter()
-                        .map(|(out_pred, _)| match out_pred.kind().skip_binder() {
-                            ty::PredicateKind::RegionOutlives(p) => p.to_string(),
-                            ty::PredicateKind::TypeOutlives(p) => p.to_string(),
-                            err => bug!("unexpected predicate {:?}", err),
+                        .map(|(out_pred, _)| match out_pred {
+                            ty::Clause::RegionOutlives(p) => p.to_string(),
+                            ty::Clause::TypeOutlives(p) => p.to_string(),
+                            err => bug!("unexpected clause {:?}", err),
                         })
                         .collect();
                     pred.sort();
@@ -101,17 +101,11 @@ fn inferred_outlives_crate(tcx: TyCtxt<'_>, (): ()) -> CratePredicatesMap<'_> {
                 |(ty::OutlivesPredicate(kind1, region2), &span)| {
                     match kind1.unpack() {
                         GenericArgKind::Type(ty1) => Some((
-                            ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                                ty::OutlivesPredicate(ty1, *region2),
-                            ))
-                            .to_predicate(tcx),
+                            ty::Clause::TypeOutlives(ty::OutlivesPredicate(ty1, *region2)),
                             span,
                         )),
                         GenericArgKind::Lifetime(region1) => Some((
-                            ty::Binder::dummy(ty::PredicateKind::RegionOutlives(
-                                ty::OutlivesPredicate(region1, *region2),
-                            ))
-                            .to_predicate(tcx),
+                            ty::Clause::RegionOutlives(ty::OutlivesPredicate(region1, *region2)),
                             span,
                         )),
                         GenericArgKind::Const(_) => {

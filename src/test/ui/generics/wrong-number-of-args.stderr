@@ -812,8 +812,8 @@ LL |         trait GenericLifetimeLifetimeAT<'a, 'b> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type B = Box<dyn GenericLifetimeLifetimeAT<'static, 'b, AssocTy=()>>;
-   |                                                           ++++
+LL |         type B = Box<dyn GenericLifetimeLifetimeAT<'static, 'static, AssocTy=()>>;
+   |                                                           +++++++++
 
 error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:287:26
@@ -846,8 +846,8 @@ LL |         trait GenericLifetimeLifetimeTypeAT<'a, 'b, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type B = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'b, AssocTy=()>>;
-   |                                                               ++++
+LL |         type B = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'static, AssocTy=()>>;
+   |                                                               +++++++++
 
 error[E0107]: this trait takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:294:26
@@ -880,8 +880,8 @@ LL |         trait GenericLifetimeLifetimeTypeAT<'a, 'b, A> {
    |               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ --  --
 help: add missing lifetime argument
    |
-LL |         type C = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'b, (), AssocTy=()>>;
-   |                                                               ++++
+LL |         type C = Box<dyn GenericLifetimeLifetimeTypeAT<'static, 'static, (), AssocTy=()>>;
+   |                                                               +++++++++
 
 error[E0107]: missing generics for struct `HashMap`
   --> $DIR/wrong-number-of-args.rs:310:18
@@ -889,11 +889,6 @@ error[E0107]: missing generics for struct `HashMap`
 LL |         type A = HashMap;
    |                  ^^^^^^^ expected at least 2 generic arguments
    |
-note: struct defined here, with at least 2 generic parameters: `K`, `V`
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type A = HashMap<K, V>;
@@ -907,11 +902,6 @@ LL |         type B = HashMap<String>;
    |                  |
    |                  expected at least 2 generic arguments
    |
-note: struct defined here, with at least 2 generic parameters: `K`, `V`
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -
 help: add missing generic argument
    |
 LL |         type B = HashMap<String, V>;
@@ -924,12 +914,6 @@ LL |         type C = HashMap<'static>;
    |                  ^^^^^^^--------- help: remove these generics
    |                  |
    |                  expected 0 lifetime arguments
-   |
-note: struct defined here, with 0 lifetime parameters
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^
 
 error[E0107]: this struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:318:18
@@ -937,11 +921,6 @@ error[E0107]: this struct takes at least 2 generic arguments but 0 generic argum
 LL |         type C = HashMap<'static>;
    |                  ^^^^^^^ expected at least 2 generic arguments
    |
-note: struct defined here, with at least 2 generic parameters: `K`, `V`
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type C = HashMap<'static, K, V>;
@@ -954,12 +933,6 @@ LL |         type D = HashMap<usize, String, char, f64>;
    |                  ^^^^^^^                      --- help: remove this generic argument
    |                  |
    |                  expected at most 3 generic arguments
-   |
-note: struct defined here, with at most 3 generic parameters: `K`, `V`, `S`
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -  ---------------
 
 error[E0107]: this struct takes at least 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:328:18
@@ -967,11 +940,6 @@ error[E0107]: this struct takes at least 2 generic arguments but 0 generic argum
 LL |         type E = HashMap<>;
    |                  ^^^^^^^ expected at least 2 generic arguments
    |
-note: struct defined here, with at least 2 generic parameters: `K`, `V`
-  --> $SRC_DIR/std/src/collections/hash/map.rs:LL:COL
-   |
-LL | pub struct HashMap<K, V, S = RandomState> {
-   |            ^^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type E = HashMap<K, V>;
@@ -983,11 +951,6 @@ error[E0107]: missing generics for enum `Result`
 LL |         type A = Result;
    |                  ^^^^^^ expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type A = Result<T, E>;
@@ -1001,11 +964,6 @@ LL |         type B = Result<String>;
    |                  |
    |                  expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic argument
    |
 LL |         type B = Result<String, E>;
@@ -1018,12 +976,6 @@ LL |         type C = Result<'static>;
    |                  ^^^^^^--------- help: remove these generics
    |                  |
    |                  expected 0 lifetime arguments
-   |
-note: enum defined here, with 0 lifetime parameters
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^
 
 error[E0107]: this enum takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:342:18
@@ -1031,11 +983,6 @@ error[E0107]: this enum takes 2 generic arguments but 0 generic arguments were s
 LL |         type C = Result<'static>;
    |                  ^^^^^^ expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type C = Result<'static, T, E>;
@@ -1048,12 +995,6 @@ LL |         type D = Result<usize, String, char>;
    |                  ^^^^^^                ---- help: remove this generic argument
    |                  |
    |                  expected 2 generic arguments
-   |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 
 error[E0107]: this enum takes 2 generic arguments but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:352:18
@@ -1061,11 +1002,6 @@ error[E0107]: this enum takes 2 generic arguments but 0 generic arguments were s
 LL |         type E = Result<>;
    |                  ^^^^^^ expected 2 generic arguments
    |
-note: enum defined here, with 2 generic parameters: `T`, `E`
-  --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL | pub enum Result<T, E> {
-   |          ^^^^^^ -  -
 help: add missing generic arguments
    |
 LL |         type E = Result<T, E>;

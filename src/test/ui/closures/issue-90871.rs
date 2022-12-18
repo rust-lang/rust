@@ -1,5 +1,7 @@
+#![feature(type_ascription)]
+
 fn main() {
-    2: n([u8; || 1])
+    type_ascribe!(2, n([u8; || 1]))
     //~^ ERROR cannot find type `n` in this scope
     //~| ERROR mismatched types
 }

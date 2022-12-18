@@ -1,0 +1,21 @@
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/impl-fn-predefined-lifetimes.rs:7:9
+   |
+LL |     |x| x
+   |         ^ expected `impl Debug + '_`, got `&u8`
+   |
+note: previous use here
+  --> $DIR/impl-fn-predefined-lifetimes.rs:7:5
+   |
+LL |     |x| x
+   |     ^^^^^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/impl-fn-predefined-lifetimes.rs:4:35
+   |
+LL | fn a<'a>() -> impl Fn(&'a u8) -> (impl Debug + '_) {
+   |                                   ^^^^^^^^^^^^^^^ cannot resolve opaque type
+
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0720`.

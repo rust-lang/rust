@@ -7,11 +7,11 @@
 #![crate_type = "lib"]
 #![feature(no_sanitize)]
 
-// CHECK: ; Function Attrs:{{.*}}shadowcallstack
-// CHECK-NEXT: scs
+// CHECK: ; sanitizer_scs_attr_check::scs
+// CHECK-NEXT: ; Function Attrs:{{.*}}shadowcallstack
 pub fn scs() {}
 
+// CHECK: ; sanitizer_scs_attr_check::no_scs
 // CHECK-NOT: ; Function Attrs:{{.*}}shadowcallstack
-// CHECK-NEXT: no_scs
 #[no_sanitize(shadow_call_stack)]
 pub fn no_scs() {}

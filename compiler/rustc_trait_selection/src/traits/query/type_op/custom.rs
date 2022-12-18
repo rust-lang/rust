@@ -16,7 +16,7 @@ pub struct CustomTypeOp<F, G> {
 impl<F, G> CustomTypeOp<F, G> {
     pub fn new<'tcx, R>(closure: F, description: G) -> Self
     where
-        F: FnOnce(&InferCtxt<'_, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+        F: FnOnce(&InferCtxt<'tcx>) -> Fallible<InferOk<'tcx, R>>,
         G: Fn() -> String,
     {
         CustomTypeOp { closure, description }
@@ -25,7 +25,7 @@ impl<F, G> CustomTypeOp<F, G> {
 
 impl<'tcx, F, R: fmt::Debug, G> super::TypeOp<'tcx> for CustomTypeOp<F, G>
 where
-    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'cx, 'tcx>) -> Fallible<InferOk<'tcx, R>>,
+    F: for<'a, 'cx> FnOnce(&'a InferCtxt<'tcx>) -> Fallible<InferOk<'tcx, R>>,
     G: Fn() -> String,
 {
     type Output = R;
@@ -36,7 +36,7 @@ where
     /// Processes the operation and all resulting obligations,
     /// returning the final result along with any region constraints
     /// (they will be given over to the NLL region solver).
-    fn fully_perform(self, infcx: &InferCtxt<'_, 'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
+    fn fully_perform(self, infcx: &InferCtxt<'tcx>) -> Fallible<TypeOpOutput<'tcx, Self>> {
         if cfg!(debug_assertions) {
             info!("fully_perform({:?})", self);
         }
@@ -57,7 +57,7 @@ where
 /// Executes `op` and then scrapes out all the "old style" region
 /// constraints that result, creating query-region-constraints.
 pub fn scrape_region_constraints<'tcx, Op: super::TypeOp<'tcx, Output = R>, R>(
-    infcx: &InferCtxt<'_, 'tcx>,
+    infcx: &InferCtxt<'tcx>,
     op: impl FnOnce() -> Fallible<InferOk<'tcx, R>>,
 ) -> Fallible<(TypeOpOutput<'tcx, Op>, RegionConstraintData<'tcx>)> {
     // During NLL, we expect that nobody will register region

@@ -27,7 +27,7 @@ pub(super) fn check(cx: &LateContext<'_>, e: &Expr<'_>, op: BinOpKind, lhs: &Exp
                 if let Some(lhs_snip) = snippet_opt(cx, lhs.span)
                     && let Some(rhs_snip) = snippet_opt(cx, rhs.span)
                 {
-                    let sugg = format!("{} {} {}", lhs_snip, op_str, rhs_snip);
+                    let sugg = format!("{lhs_snip} {op_str} {rhs_snip}");
                     diag.span_suggestion(e.span, "try", sugg, Applicability::MachineApplicable);
                 }
             },

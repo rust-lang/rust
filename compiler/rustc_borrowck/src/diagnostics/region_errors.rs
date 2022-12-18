@@ -2,7 +2,7 @@
 #![deny(rustc::diagnostic_outside_of_impl)]
 //! Error reporting machinery for lifetime errors.
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
@@ -21,7 +21,7 @@ use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::Span;
 
 use crate::borrowck_errors;
@@ -181,12 +181,12 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     // Try to convert the lower-bound region into something named we can print for the user.
                     let lower_bound_region = self.to_error_region(type_test.lower_bound);
 
-                    let type_test_span = type_test.locations.span(&self.body);
+                    let type_test_span = type_test.span;
 
                     if let Some(lower_bound_region) = lower_bound_region {
                         let generic_ty = type_test.generic_kind.to_ty(self.infcx.tcx);
                         let origin = RelateParamBound(type_test_span, generic_ty, None);
-                        self.buffer_error(self.infcx.construct_generic_bound_failure(
+                        self.buffer_error(self.infcx.err_ctxt().construct_generic_bound_failure(
                             self.body.source.def_id().expect_local(),
                             type_test_span,
                             Some(origin),
@@ -276,7 +276,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn get_impl_ident_and_self_ty_from_trait(
         &self,
         def_id: DefId,
-        trait_objects: &FxHashSet<DefId>,
+        trait_objects: &FxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
         let tcx = self.infcx.tcx;
         match tcx.hir().get_if_local(def_id) {
@@ -341,7 +341,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     /// Report an error because the universal region `fr` was required to outlive
     /// `outlived_fr` but it is not known to do so. For example:
     ///
-    /// ```compile_fail,E0312
+    /// ```compile_fail
     /// fn foo<'a, 'b>(x: &'a u32) -> &'b u32 { x }
     /// ```
     ///
@@ -365,7 +365,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         // Check if we can use one of the "nice region errors".
         if let (Some(f), Some(o)) = (self.to_error_region(fr), self.to_error_region(outlived_fr)) {
-            let nice = NiceRegionError::new_from_span(self.infcx, cause.span, o, f);
+            let infer_err = self.infcx.err_ctxt();
+            let nice = NiceRegionError::new_from_span(&infer_err, cause.span, o, f);
             if let Some(diag) = nice.try_report_from_nll() {
                 self.buffer_error(diag);
                 return;
@@ -503,7 +504,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let ErrorConstraintInfo { outlived_fr, span, .. } = errci;
 
         let mut output_ty = self.regioncx.universal_regions().unnormalized_output_ty;
-        if let ty::Opaque(def_id, _) = *output_ty.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *output_ty.kind() {
             output_ty = self.infcx.tcx.type_of(def_id)
         };
 
@@ -513,9 +514,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             span: *span,
             ty_err: match output_ty.kind() {
                 ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
-                ty::Adt(def, _)
-                    if self.infcx.tcx.is_diagnostic_item(sym::gen_future, def.did()) =>
-                {
+                ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
                 }
                 _ => FnMutReturnTypeErr::ReturnRef { span: *span },
@@ -829,7 +828,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         debug!(?param);
 
-        let mut visitor = TraitObjectVisitor(FxHashSet::default());
+        let mut visitor = TraitObjectVisitor(FxIndexSet::default());
         visitor.visit_ty(param.param_ty);
 
         let Some((ident, self_ty)) =
@@ -842,7 +841,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diagnostic,
-        found_dids: &FxHashSet<DefId>,
+        found_dids: &FxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
@@ -922,14 +921,18 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 }
             }
             hir::ExprKind::Block(blk, _) => {
-                if let Some(ref expr) = blk.expr {
+                if let Some(expr) = blk.expr {
                     // only when the block is a closure
                     if let hir::ExprKind::Closure(hir::Closure {
                         capture_clause: hir::CaptureBy::Ref,
+                        body,
                         ..
                     }) = expr.kind
                     {
-                        closure_span = Some(expr.span.shrink_to_lo());
+                        let body = map.body(*body);
+                        if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                            closure_span = Some(expr.span.shrink_to_lo());
+                        }
                     }
                 }
             }

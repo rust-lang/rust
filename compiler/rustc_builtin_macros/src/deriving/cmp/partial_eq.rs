@@ -14,6 +14,7 @@ pub fn expand_deriving_partial_eq(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     fn cs_eq(cx: &mut ExtCtxt<'_>, span: Span, substr: &Substructure<'_>) -> BlockOrExpr {
         let base = true;
@@ -67,8 +68,7 @@ pub fn expand_deriving_partial_eq(
 
     // No need to generate `ne`, the default suffices, and not generating it is
     // faster.
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
     let methods = vec![MethodDef {
         name: sym::eq,
         generics: Bounds::empty(),
@@ -83,11 +83,12 @@ pub fn expand_deriving_partial_eq(
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::PartialEq),
+        skip_path_as_bound: false,
         additional_bounds: Vec::new(),
-        generics: Bounds::empty(),
         supports_unions: false,
         methods,
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

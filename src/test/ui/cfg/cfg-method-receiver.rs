@@ -7,6 +7,5 @@ macro_rules! cbor_map {
 
 fn main() {
     cbor_map! { #[cfg(test)] 4};
-    //~^ ERROR attributes on expressions are experimental
-    //~| ERROR removing an expression is not supported in this position
+    //~^ ERROR removing an expression is not supported in this position
 }

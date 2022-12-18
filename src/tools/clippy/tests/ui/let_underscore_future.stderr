@@ -1,0 +1,27 @@
+error: non-binding `let` on a future
+  --> $DIR/let_underscore_future.rs:14:5
+   |
+LL |     let _ = some_async_fn();
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
+   = note: `-D clippy::let-underscore-future` implied by `-D warnings`
+
+error: non-binding `let` on a future
+  --> $DIR/let_underscore_future.rs:15:5
+   |
+LL |     let _ = custom();
+   |     ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
+
+error: non-binding `let` on a future
+  --> $DIR/let_underscore_future.rs:19:5
+   |
+LL |     let _ = future;
+   |     ^^^^^^^^^^^^^^^
+   |
+   = help: consider awaiting the future or dropping explicitly with `std::mem::drop`
+
+error: aborting due to 3 previous errors
+

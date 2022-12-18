@@ -40,4 +40,23 @@ fn main() {
     ) {
         println!("{}", x);
     }
+
+    if x == x && x = x && x == x {
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
+        //~| ERROR mismatched types
+        println!("{}", x);
+    }
+
+    if x == x && x == x && x = x {
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
+        println!("{}", x);
+    }
+
+    if x = 1 && x == 1 {
+        //~^ ERROR mismatched types
+        //~| ERROR mismatched types
+        println!("{}", x);
+    }
 }

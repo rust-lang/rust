@@ -172,7 +172,11 @@ pub fn parse_asm_args<'a>(
             // If it can't possibly expand to a string, provide diagnostics here to include other
             // things it could have been.
             match template.kind {
-                ast::ExprKind::Lit(ast::Lit { kind: ast::LitKind::Str(..), .. }) => {}
+                ast::ExprKind::Lit(token_lit)
+                    if matches!(
+                        token_lit.kind,
+                        token::LitKind::Str | token::LitKind::StrRaw(_)
+                    ) => {}
                 ast::ExprKind::MacCall(..) => {}
                 _ => {
                     let errstr = if is_global_asm {
@@ -560,7 +564,7 @@ fn expand_preparsed_asm(ecx: &mut ExtCtxt<'_>, args: AsmArgs) -> Option<ast::Inl
         let template_snippet = ecx.source_map().span_to_snippet(template_sp).ok();
         template_strs.push((
             template_str,
-            template_snippet.as_ref().map(|s| Symbol::intern(s)),
+            template_snippet.as_deref().map(Symbol::intern),
             template_sp,
         ));
         let template_str = template_str.as_str();

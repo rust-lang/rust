@@ -6,9 +6,6 @@ LL |     let _ = Some(3, 2);
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^^^
 help: remove the extra argument
    |
 LL |     let _ = Some(3);
@@ -24,9 +21,6 @@ LL |     let _ = Ok(3, 6, 2);
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^
 help: remove the extra arguments
    |
 LL |     let _ = Ok(3);
@@ -40,9 +34,6 @@ LL |     let _ = Ok();
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^
 help: provide the argument
    |
 LL |     let _ = Ok(/* value */);

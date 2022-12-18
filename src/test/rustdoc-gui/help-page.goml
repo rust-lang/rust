@@ -1,0 +1,63 @@
+// This test ensures that opening the help page in its own tab works.
+goto: "file://" + |DOC_PATH| + "/help.html"
+size: (1000, 1000) // Try desktop size first.
+wait-for: "#help"
+assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
+click: "#help-button > a"
+assert-css: ("#help", {"display": "block"})
+compare-elements-property: (".sub", "#help", ["offsetWidth"])
+compare-elements-position: (".sub", "#help", ("x"))
+size: (500, 1000) // Try mobile next.
+assert-css: ("#help", {"display": "block"})
+compare-elements-property: (".sub", "#help", ["offsetWidth"])
+compare-elements-position: (".sub", "#help", ("x"))
+
+// Checking the color of the elements of the help menu.
+show-text: true
+define-function: (
+    "check-colors",
+    (theme, color, background, box_shadow),
+    [
+        // Setting the theme.
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        // We reload the page so the local storage settings are being used.
+        ("reload"),
+        ("assert-css", ("#help kbd", {
+            "color": |color|,
+            "background-color": |background|,
+            "box-shadow": |box_shadow| + " 0px -1px 0px 0px inset",
+        }, ALL)),
+    ],
+)
+
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(197, 197, 197)",
+    "background": "rgb(49, 69, 89)",
+    "box_shadow": "rgb(92, 103, 115)",
+})
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(221, 221, 221)",
+    "background": "rgb(250, 251, 252)",
+    "box_shadow": "rgb(198, 203, 209)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(0, 0, 0)",
+    "background": "rgb(250, 251, 252)",
+    "box_shadow": "rgb(198, 203, 209)",
+})
+
+// This test ensures that opening the help popover without switching pages works.
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+size: (1000, 1000) // Only supported on desktop.
+assert-false: "#help"
+click: "#help-button > a"
+assert-css: ("#help", {"display": "block"})
+assert-css: ("#help dd", {"font-size": "16px"})
+click: "#help-button > a"
+assert-css: ("#help", {"display": "none"})
+compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
+compare-elements-position-false: (".sub", "#help", ("x"))

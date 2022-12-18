@@ -22,8 +22,8 @@ use {
     rustc_data_structures::{jobserver, OnDrop},
     rustc_rayon_core as rayon_core,
     rustc_span::DUMMY_SP,
-    std::iter::{self, FromIterator},
-    std::{mem, process},
+    std::iter,
+    std::process,
 };
 
 /// Represents a span and a query key.
@@ -247,7 +247,7 @@ impl QueryLatch {
             jobserver::release_thread();
             waiter.condvar.wait(&mut info);
             // Release the lock before we potentially block in `acquire_thread`
-            mem::drop(info);
+            drop(info);
             jobserver::acquire_thread();
         }
     }
@@ -551,7 +551,7 @@ pub fn deadlock(query_map: QueryMap, registry: &rayon_core::Registry) {
 #[cold]
 pub(crate) fn report_cycle<'a>(
     sess: &'a Session,
-    CycleError { usage, cycle: stack }: CycleError,
+    CycleError { usage, cycle: stack }: &CycleError,
 ) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
     assert!(!stack.is_empty());
 
@@ -569,10 +569,10 @@ pub(crate) fn report_cycle<'a>(
     }
 
     let mut cycle_usage = None;
-    if let Some((span, query)) = usage {
+    if let Some((span, ref query)) = *usage {
         cycle_usage = Some(crate::error::CycleUsage {
             span: query.default_span(span),
-            usage: query.description,
+            usage: query.description.to_string(),
         });
     }
 
@@ -596,8 +596,8 @@ pub(crate) fn report_cycle<'a>(
     cycle_diag.into_diagnostic(&sess.parse_sess.span_diagnostic)
 }
 
-pub fn print_query_stack<CTX: QueryContext>(
-    tcx: CTX,
+pub fn print_query_stack<Qcx: QueryContext>(
+    qcx: Qcx,
     mut current_query: Option<QueryJobId>,
     handler: &Handler,
     num_frames: Option<usize>,
@@ -606,7 +606,7 @@ pub fn print_query_stack<CTX: QueryContext>(
     // a panic hook, which means that the global `Handler` may be in a weird
     // state if it was responsible for triggering the panic.
     let mut i = 0;
-    let query_map = tcx.try_collect_active_jobs();
+    let query_map = qcx.try_collect_active_jobs();
 
     while let Some(query) = current_query {
         if Some(i) == num_frames {

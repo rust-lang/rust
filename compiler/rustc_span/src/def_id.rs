@@ -1,4 +1,4 @@
-use crate::HashStableContext;
+use crate::{HashStableContext, Symbol};
 use rustc_data_structures::fingerprint::Fingerprint;
 use rustc_data_structures::stable_hasher::{HashStable, StableHasher, ToStableHashKey};
 use rustc_data_structures::AtomicRef;
@@ -34,7 +34,7 @@ impl CrateNum {
 
 impl fmt::Display for CrateNum {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        fmt::Display::fmt(&self.private, f)
+        fmt::Display::fmt(&self.as_u32(), f)
     }
 }
 
@@ -149,9 +149,11 @@ impl StableCrateId {
 
     /// Computes the stable ID for a crate with the given name and
     /// `-Cmetadata` arguments.
-    pub fn new(crate_name: &str, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
+    pub fn new(crate_name: Symbol, is_exe: bool, mut metadata: Vec<String>) -> StableCrateId {
         let mut hasher = StableHasher::new();
-        crate_name.hash(&mut hasher);
+        // We must hash the string text of the crate name, not the id, as the id is not stable
+        // across builds.
+        crate_name.as_str().hash(&mut hasher);
 
         // We don't want the stable crate ID to depend on the order of
         // -C metadata arguments, so sort them:
@@ -274,7 +276,7 @@ impl Ord for DefId {
 impl PartialOrd for DefId {
     #[inline]
     fn partial_cmp(&self, other: &DefId) -> Option<std::cmp::Ordering> {
-        Some(Ord::cmp(self, other))
+        Some(self.cmp(other))
     }
 }
 

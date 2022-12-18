@@ -121,25 +121,25 @@ impl<'tcx> LateLintPass<'tcx> for ArrayIntoIter {
             cx.struct_span_lint(
                 ARRAY_INTO_ITER,
                 call.ident.span,
-                fluent::lint::array_into_iter,
+                fluent::lint_array_into_iter,
                 |diag| {
                     diag.set_arg("target", target);
                     diag.span_suggestion(
                         call.ident.span,
-                        fluent::lint::use_iter_suggestion,
+                        fluent::use_iter_suggestion,
                         "iter",
                         Applicability::MachineApplicable,
                     );
                     if self.for_expr_span == expr.span {
                         diag.span_suggestion(
                             receiver_arg.span.shrink_to_hi().to(expr.span.shrink_to_hi()),
-                            fluent::lint::remove_into_iter_suggestion,
+                            fluent::remove_into_iter_suggestion,
                             "",
                             Applicability::MaybeIncorrect,
                         );
                     } else if receiver_ty.is_array() {
                         diag.multipart_suggestion(
-                            fluent::lint::use_explicit_into_iter_suggestion,
+                            fluent::use_explicit_into_iter_suggestion,
                             vec![
                                 (expr.span.shrink_to_lo(), "IntoIterator::into_iter(".into()),
                                 (

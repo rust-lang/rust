@@ -241,20 +241,53 @@ fn resolve_expr<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, expr: &'tcx h
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
             hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::And, .. },
-                _,
-                ref r,
-            )
-            | hir::ExprKind::Binary(
-                source_map::Spanned { node: hir::BinOpKind::Or, .. },
-                _,
+                source_map::Spanned { node: hir::BinOpKind::And | hir::BinOpKind::Or, .. },
+                ref l,
                 ref r,
             ) => {
-                // For shortcircuiting operators, mark the RHS as a terminating
-                // scope since it only executes conditionally.
-                terminating(r.hir_id.local_id);
-            }
+                // expr is a short circuiting operator (|| or &&). As its
+                // functionality can't be overridden by traits, it always
+                // processes bool sub-expressions. bools are Copy and thus we
+                // can drop any temporaries in evaluation (read) order
+                // (with the exception of potentially failing let expressions).
+                // We achieve this by enclosing the operands in a terminating
+                // scope, both the LHS and the RHS.
 
+                // We optimize this a little in the presence of chains.
+                // Chains like a && b && c get lowered to AND(AND(a, b), c).
+                // In here, b and c are RHS, while a is the only LHS operand in
+                // that chain. This holds true for longer chains as well: the
+                // leading operand is always the only LHS operand that is not a
+                // binop itself. Putting a binop like AND(a, b) into a
+                // terminating scope is not useful, thus we only put the LHS
+                // into a terminating scope if it is not a binop.
+
+                let terminate_lhs = match l.kind {
+                    // let expressions can create temporaries that live on
+                    hir::ExprKind::Let(_) => false,
+                    // binops already drop their temporaries, so there is no
+                    // need to put them into a terminating scope.
+                    // This is purely an optimization to reduce the number of
+                    // terminating scopes.
+                    hir::ExprKind::Binary(
+                        source_map::Spanned {
+                            node: hir::BinOpKind::And | hir::BinOpKind::Or, ..
+                        },
+                        ..,
+                    ) => false,
+                    // otherwise: mark it as terminating
+                    _ => true,
+                };
+                if terminate_lhs {
+                    terminating(l.hir_id.local_id);
+                }
+
+                // `Let` expressions (in a let-chain) shouldn't be terminating, as their temporaries
+                // should live beyond the immediate expression
+                if !matches!(r.kind, hir::ExprKind::Let(_)) {
+                    terminating(r.hir_id.local_id);
+                }
+            }
             hir::ExprKind::If(_, ref then, Some(ref otherwise)) => {
                 terminating(then.hir_id.local_id);
                 terminating(otherwise.hir_id.local_id);

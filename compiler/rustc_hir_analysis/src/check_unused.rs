@@ -1,5 +1,6 @@
 use crate::errors::{ExternCrateNotIdiomatic, UnusedExternCrate};
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::unord::UnordSet;
 use rustc_hir as hir;
 use rustc_hir::def::DefKind;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -8,12 +9,12 @@ use rustc_session::lint;
 use rustc_span::{Span, Symbol};
 
 pub fn check_crate(tcx: TyCtxt<'_>) {
-    let mut used_trait_imports: FxHashSet<LocalDefId> = FxHashSet::default();
+    let mut used_trait_imports: UnordSet<LocalDefId> = Default::default();
 
     for item_def_id in tcx.hir().body_owners() {
         let imports = tcx.used_trait_imports(item_def_id);
         debug!("GatherVisitor: item_def_id={:?} with imports {:#?}", item_def_id, imports);
-        used_trait_imports.extend(imports.iter());
+        used_trait_imports.extend(imports.items().copied());
     }
 
     for &id in tcx.maybe_unused_trait_imports(()) {
@@ -56,25 +57,6 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
         .maybe_unused_extern_crates(())
         .iter()
         .filter(|&&(def_id, _)| {
-            // The `def_id` here actually was calculated during resolution (at least
-            // at the time of this writing) and is being shipped to us via a side
-            // channel of the tcx. There may have been extra expansion phases,
-            // however, which ended up removing the `def_id` *after* expansion.
-            //
-            // As a result we need to verify that `def_id` is indeed still valid for
-            // our AST and actually present in the HIR map. If it's not there then
-            // there's safely nothing to warn about, and otherwise we carry on with
-            // our execution.
-            //
-            // Note that if we carry through to the `extern_mod_stmt_cnum` query
-            // below it'll cause a panic because `def_id` is actually bogus at this
-            // point in time otherwise.
-            if tcx.hir().find(tcx.hir().local_def_id_to_hir_id(def_id)).is_none() {
-                return false;
-            }
-            true
-        })
-        .filter(|&&(def_id, _)| {
             tcx.extern_mod_stmt_cnum(def_id).map_or(true, |cnum| {
                 !tcx.is_compiler_builtins(cnum)
                     && !tcx.is_panic_runtime(cnum)
@@ -89,11 +71,11 @@ fn unused_crates_lint(tcx: TyCtxt<'_>) {
     let mut crates_to_lint = vec![];
 
     for id in tcx.hir().items() {
-        if matches!(tcx.def_kind(id.def_id), DefKind::ExternCrate) {
+        if matches!(tcx.def_kind(id.owner_id), DefKind::ExternCrate) {
             let item = tcx.hir().item(id);
             if let hir::ItemKind::ExternCrate(orig_name) = item.kind {
                 crates_to_lint.push(ExternCrateToLint {
-                    def_id: item.def_id.to_def_id(),
+                    def_id: item.owner_id.to_def_id(),
                     span: item.span,
                     orig_name,
                     warn_if_unused: !item.ident.as_str().starts_with('_'),

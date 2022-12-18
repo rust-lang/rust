@@ -132,9 +132,14 @@ impl Thread {
 
     #[cfg(target_os = "linux")]
     pub fn set_name(name: &CStr) {
+        const TASK_COMM_LEN: usize = 16;
+
         unsafe {
             // Available since glibc 2.12, musl 1.1.16, and uClibc 1.0.20.
-            libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            let name = truncate_cstr::<{ TASK_COMM_LEN }>(name);
+            let res = libc::pthread_setname_np(libc::pthread_self(), name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -148,20 +153,23 @@ impl Thread {
     #[cfg(any(target_os = "macos", target_os = "ios", target_os = "watchos"))]
     pub fn set_name(name: &CStr) {
         unsafe {
-            libc::pthread_setname_np(name.as_ptr());
+            let name = truncate_cstr::<{ libc::MAXTHREADNAMESIZE }>(name);
+            let res = libc::pthread_setname_np(name.as_ptr());
+            // We have no good way of propagating errors here, but in debug-builds let's check that this actually worked.
+            debug_assert_eq!(res, 0);
         }
     }
 
     #[cfg(target_os = "netbsd")]
     pub fn set_name(name: &CStr) {
-        use crate::ffi::CString;
-        let cname = CString::new(&b"%s"[..]).unwrap();
         unsafe {
-            libc::pthread_setname_np(
+            let cname = CStr::from_bytes_with_nul_unchecked(b"%s\0".as_slice());
+            let res = libc::pthread_setname_np(
                 libc::pthread_self(),
                 cname.as_ptr(),
                 name.as_ptr() as *mut libc::c_void,
             );
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -174,9 +182,8 @@ impl Thread {
         }
 
         if let Some(f) = pthread_setname_np.get() {
-            unsafe {
-                f(libc::pthread_self(), name.as_ptr());
-            }
+            let res = unsafe { f(libc::pthread_self(), name.as_ptr()) };
+            debug_assert_eq!(res, 0);
         }
     }
 
@@ -275,6 +282,15 @@ impl Drop for Thread {
         let ret = unsafe { libc::pthread_detach(self.id) };
         debug_assert_eq!(ret, 0);
     }
+}
+
+#[cfg(any(target_os = "linux", target_os = "macos", target_os = "ios", target_os = "watchos"))]
+fn truncate_cstr<const MAX_WITH_NUL: usize>(cstr: &CStr) -> [libc::c_char; MAX_WITH_NUL] {
+    let mut result = [0; MAX_WITH_NUL];
+    for (src, dst) in cstr.to_bytes().iter().zip(&mut result[..MAX_WITH_NUL - 1]) {
+        *dst = *src as libc::c_char;
+    }
+    result
 }
 
 pub fn available_parallelism() -> io::Result<NonZeroUsize> {
@@ -637,7 +653,10 @@ pub mod guard {
 ))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    use libc::{mmap, mprotect};
+    #[cfg(not(target_os = "linux"))]
+    use libc::{mmap as mmap64, mprotect};
+    #[cfg(target_os = "linux")]
+    use libc::{mmap64, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
     use crate::io;
@@ -767,6 +786,16 @@ pub mod guard {
             const GUARD_PAGES: usize = 1;
             let guard = guardaddr..guardaddr + GUARD_PAGES * page_size;
             Some(guard)
+        } else if cfg!(target_os = "openbsd") {
+            // OpenBSD stack already includes a guard page, and stack is
+            // immutable.
+            //
+            // We'll just note where we expect rlimit to start
+            // faulting, so our handler can report "stack overflow", and
+            // trust that the kernel's own stack guard will work.
+            let stackptr = get_stack_start_aligned()?;
+            let stackaddr = stackptr.addr();
+            Some(stackaddr - page_size..stackaddr)
         } else {
             // Reallocate the last page of the stack.
             // This ensures SIGBUS will be raised on
@@ -777,7 +806,7 @@ pub mod guard {
             // read/write permissions and only then mprotect() it to
             // no permissions at all. See issue #50313.
             let stackptr = get_stack_start_aligned()?;
-            let result = mmap(
+            let result = mmap64(
                 stackptr,
                 page_size,
                 PROT_READ | PROT_WRITE,

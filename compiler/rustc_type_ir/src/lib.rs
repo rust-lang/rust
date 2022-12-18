@@ -19,9 +19,11 @@ use std::mem::discriminant;
 
 pub mod codec;
 pub mod sty;
+pub mod ty_info;
 
 pub use codec::*;
 pub use sty::*;
+pub use ty_info::*;
 
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
@@ -40,12 +42,12 @@ pub trait Interner {
     type ListBinderExistentialPredicate: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BinderListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ProjectionTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type AliasTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type DelaySpanBugEmitted: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ErrorGuaranteed: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
     type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
 
@@ -60,10 +62,10 @@ pub trait InternAs<T: ?Sized, R> {
     type Output;
     fn intern_with<F>(self, f: F) -> Self::Output
     where
-        F: FnOnce(&T) -> R;
+        F: FnOnce(&[T]) -> R;
 }
 
-impl<I, T, R, E> InternAs<[T], R> for I
+impl<I, T, R, E> InternAs<T, R> for I
 where
     E: InternIteratorElement<T, R>,
     I: Iterator<Item = E>,
@@ -675,9 +677,9 @@ impl<CTX> HashStable<CTX> for InferTy {
         use InferTy::*;
         discriminant(self).hash_stable(ctx, hasher);
         match self {
-            TyVar(v) => v.as_u32().hash_stable(ctx, hasher),
-            IntVar(v) => v.index.hash_stable(ctx, hasher),
-            FloatVar(v) => v.index.hash_stable(ctx, hasher),
+            TyVar(_) | IntVar(_) | FloatVar(_) => {
+                panic!("type variables should not be hashed: {self:?}")
+            }
             FreshTy(v) | FreshIntTy(v) | FreshFloatTy(v) => v.hash_stable(ctx, hasher),
         }
     }

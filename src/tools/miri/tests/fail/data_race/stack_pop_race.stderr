@@ -8,7 +8,7 @@ LL | }
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `race` at $DIR/stack_pop_race.rs:LL:CC
-note: inside `main` at $DIR/stack_pop_race.rs:LL:CC
+note: inside `main`
   --> $DIR/stack_pop_race.rs:LL:CC
    |
 LL |     race(0);

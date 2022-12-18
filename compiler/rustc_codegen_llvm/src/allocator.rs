@@ -15,7 +15,7 @@ pub(crate) unsafe fn codegen(
     module_llvm: &mut ModuleLlvm,
     module_name: &str,
     kind: AllocatorKind,
-    has_alloc_error_handler: bool,
+    alloc_error_handler_kind: AllocatorKind,
 ) {
     let llcx = &*module_llvm.llcx;
     let llmod = module_llvm.llmod();
@@ -88,7 +88,8 @@ pub(crate) unsafe fn codegen(
             callee,
             args.as_ptr(),
             args.len() as c_uint,
-            None,
+            [].as_ptr(),
+            0 as c_uint,
         );
         llvm::LLVMSetTailCall(ret, True);
         if output.is_some() {
@@ -117,8 +118,7 @@ pub(crate) unsafe fn codegen(
         attributes::apply_to_llfn(llfn, llvm::AttributePlace::Function, &[uwtable]);
     }
 
-    let kind = if has_alloc_error_handler { AllocatorKind::Global } else { AllocatorKind::Default };
-    let callee = kind.fn_name(sym::oom);
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
     let callee = llvm::LLVMRustGetOrInsertFunction(llmod, callee.as_ptr().cast(), callee.len(), ty);
     // -> ! DIFlagNoReturn
     attributes::apply_to_llfn(callee, llvm::AttributePlace::Function, &[no_return]);
@@ -133,8 +133,15 @@ pub(crate) unsafe fn codegen(
         .enumerate()
         .map(|(i, _)| llvm::LLVMGetParam(llfn, i as c_uint))
         .collect::<Vec<_>>();
-    let ret =
-        llvm::LLVMRustBuildCall(llbuilder, ty, callee, args.as_ptr(), args.len() as c_uint, None);
+    let ret = llvm::LLVMRustBuildCall(
+        llbuilder,
+        ty,
+        callee,
+        args.as_ptr(),
+        args.len() as c_uint,
+        [].as_ptr(),
+        0 as c_uint,
+    );
     llvm::LLVMSetTailCall(ret, True);
     llvm::LLVMBuildRetVoid(llbuilder);
     llvm::LLVMDisposeBuilder(llbuilder);

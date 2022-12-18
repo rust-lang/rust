@@ -35,9 +35,6 @@ changelog-seen = 2
 # Unless you're developing for a target where Rust CI doesn't build a compiler
 # toolchain or changing LLVM locally, you probably want to set this to true.
 #
-# This is false by default so that distributions don't unexpectedly download
-# LLVM from the internet.
-#
 # All tier 1 targets are currently supported; set this to `"if-available"` if
 # you are not sure whether you're on a tier 1 target.
 #
@@ -45,7 +42,9 @@ changelog-seen = 2
 #
 # Note that many of the LLVM options are not currently supported for
 # downloading. Currently only the "assertions" option can be toggled.
-#download-ci-llvm = false
+#
+# Defaults to "if-available" when `channel = "dev"` and "false" otherwise.
+#download-ci-llvm = "if-available"
 
 # Indicates whether LLVM rebuild should be skipped when running bootstrap. If
 # this is `false` then the compiler's LLVM will be rebuilt whenever the built
@@ -87,9 +86,10 @@ changelog-seen = 2
 # this flag will indicate that this version check should not be done.
 #version-check = true
 
-# Link libstdc++ statically into the rustc_llvm instead of relying on a
-# dynamic version to be available.
-#static-libstdcpp = true
+# When true, link libstdc++ statically into the rustc_llvm.
+# This is useful if you don't want to use the dynamic version of that
+# library provided by LLVM.
+#static-libstdcpp = false
 
 # Whether to use Ninja to build LLVM. This runs much faster than make.
 #ninja = true
@@ -254,6 +254,16 @@ changelog-seen = 2
 # Defaults to the Python interpreter used to execute x.py
 #python = "python"
 
+# The path to the REUSE executable to use. Note that REUSE is not required in
+# most cases, as our tooling relies on a cached (and shrinked) copy of the
+# REUSE output present in the git repository and in our source tarballs.
+#
+# REUSE is only needed if your changes caused the overral licensing of the
+# repository to change, and the cached copy has to be regenerated.
+#
+# Defaults to the "reuse" command in the system path.
+#reuse = "reuse"
+
 # Force Cargo to check that Cargo.lock describes the precise dependency
 # set that all the Cargo.toml files create, instead of updating it.
 #locked-deps = false
@@ -290,10 +300,6 @@ changelog-seen = 2
 # Build the profiler runtime (required when compiling with options that depend
 # on this runtime, such as `-C profile-generate` or `-C instrument-coverage`).
 #profiler = false
-
-# Use the optimized LLVM C intrinsics for `compiler_builtins`, rather than Rust intrinsics.
-# Requires the LLVM submodule to be managed by bootstrap (i.e. not external).
-#optimized-compiler-builtins = false
 
 # Indicates whether the native libraries linked into Cargo will be statically
 # linked or not.
@@ -637,6 +643,11 @@ changelog-seen = 2
 # standard library.
 # If an explicit setting is given, it will be used for all parts of the codebase.
 #new-symbol-mangling = true|false (see comment)
+
+# Select LTO mode that will be used for compiling rustc. By default, thin local LTO
+# (LTO within a single crate) is used (like for any Rust crate). You can also select
+# "thin" or "fat" to apply Thin/Fat LTO to the `rustc_driver` dylib.
+#lto = "thin-local"
 
 # =============================================================================
 # Options for specific targets

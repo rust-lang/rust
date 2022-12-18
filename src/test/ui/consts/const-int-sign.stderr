@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:2:29
    |
 LL |     let x: &'static bool = &(5_i32.is_negative());
-   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -13,7 +13,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/const-int-sign.rs:4:29
    |
 LL |     let y: &'static bool = &(5_i32.is_positive());
-   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            -------------    ^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |

@@ -147,7 +147,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     let mut ntest = 0;
     let mut nbench = 0;
 
-    for test in filter_tests(&opts, tests) {
+    for test in filter_tests(&opts, tests).into_iter() {
         use crate::TestFn::*;
 
         let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
@@ -228,9 +228,9 @@ fn on_test_event(
     out: &mut dyn OutputFormatter,
 ) -> io::Result<()> {
     match (*event).clone() {
-        TestEvent::TeFiltered(ref filtered_tests, shuffle_seed) => {
-            st.total = filtered_tests.len();
-            out.write_run_start(filtered_tests.len(), shuffle_seed)?;
+        TestEvent::TeFiltered(filtered_tests, shuffle_seed) => {
+            st.total = filtered_tests;
+            out.write_run_start(filtered_tests, shuffle_seed)?;
         }
         TestEvent::TeFilteredOut(filtered_out) => {
             st.filtered_out = filtered_out;
@@ -293,7 +293,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
     run_tests(opts, tests, |x| on_test_event(&x, &mut st, &mut *out))?;
     st.exec_time = start_time.map(|t| TestSuiteExecTime(t.elapsed()));
 
-    assert!(st.current_test_count() == st.total);
+    assert!(opts.fail_fast || st.current_test_count() == st.total);
 
     out.write_run_finish(&st)
 }

@@ -11,6 +11,11 @@ error[E0432]: unresolved import `std::simd::intrinsics`
    |
 LL | use std::simd::intrinsics;
    |     ^^^^^^^^^^^^^^^^^^^^^ no `intrinsics` in `simd`
+   |
+help: consider importing this module instead
+   |
+LL | use std::intrinsics;
+   |     ~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 

@@ -16,23 +16,22 @@ use crate::infer::nll_relate::{NormalizationStrategy, TypeRelating, TypeRelating
 use crate::infer::region_constraints::{Constraint, RegionConstraintData};
 use crate::infer::{InferCtxt, InferOk, InferResult, NllRegionVariableOrigin};
 use crate::traits::query::{Fallible, NoSolution};
-use crate::traits::TraitEngine;
 use crate::traits::{Obligation, ObligationCause, PredicateObligation};
+use crate::traits::{PredicateObligations, TraitEngine};
 use rustc_data_structures::captures::Captures;
 use rustc_index::vec::Idx;
 use rustc_index::vec::IndexVec;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::mir::ConstraintCategory;
-use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::fold::TypeFoldable;
 use rustc_middle::ty::relate::TypeRelation;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind};
-use rustc_middle::ty::{self, BoundVar, Const, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{self, BoundVar, ToPredicate, Ty, TyCtxt};
 use rustc_span::Span;
 use std::fmt::Debug;
 use std::iter;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// This method is meant to be invoked as the final step of a canonical query
     /// implementation. It is given:
     ///
@@ -509,7 +508,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
         for &(a, b) in &query_response.value.opaque_types {
             let a = substitute_value(self.tcx, &result_subst, a);
             let b = substitute_value(self.tcx, &result_subst, b);
-            obligations.extend(self.handle_opaque_type(a, b, true, cause, param_env)?.obligations);
+            obligations.extend(self.at(cause, param_env).eq(a, b)?.obligations);
         }
 
         Ok(InferOk { value: result_subst, obligations })
@@ -570,10 +569,10 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
 
         let atom = match k1.unpack() {
             GenericArgKind::Lifetime(r1) => {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(r1, r2))
+                ty::PredicateKind::Clause(ty::Clause::RegionOutlives(ty::OutlivesPredicate(r1, r2)))
             }
             GenericArgKind::Type(t1) => {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(t1, r2))
+                ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(t1, r2)))
             }
             GenericArgKind::Const(..) => {
                 // Consts cannot outlive one another, so we don't expect to
@@ -581,9 +580,9 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
                 span_bug!(cause.span, "unexpected const outlives {:?}", predicate);
             }
         };
-        let predicate = predicate.0.rebind(atom).to_predicate(self.tcx);
+        let predicate = predicate.0.rebind(atom);
 
-        Obligation::new(cause, param_env, predicate)
+        Obligation::new(self.tcx, cause, param_env, predicate)
     }
 
     /// Given two sets of values for the same set of canonical variables, unify them.
@@ -677,7 +676,7 @@ pub fn make_query_region_constraints<'tcx>(
 }
 
 struct QueryTypeRelatingDelegate<'a, 'tcx> {
-    infcx: &'a InferCtxt<'a, 'tcx>,
+    infcx: &'a InferCtxt<'tcx>,
     obligations: &'a mut Vec<PredicateObligation<'tcx>>,
     param_env: ty::ParamEnv<'tcx>,
     cause: &'a ObligationCause<'tcx>,
@@ -721,16 +720,12 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         self.obligations.push(Obligation {
             cause: self.cause.clone(),
             param_env: self.param_env,
-            predicate: ty::Binder::dummy(ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(
-                sup, sub,
+            predicate: ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::RegionOutlives(
+                ty::OutlivesPredicate(sup, sub),
             )))
             .to_predicate(self.infcx.tcx),
             recursion_depth: 0,
         });
-    }
-
-    fn const_equate(&mut self, _a: Const<'tcx>, _b: Const<'tcx>) {
-        span_bug!(self.cause.span(), "generic_const_exprs: unreachable `const_equate`");
     }
 
     fn normalization() -> NormalizationStrategy {
@@ -741,17 +736,7 @@ impl<'tcx> TypeRelatingDelegate<'tcx> for QueryTypeRelatingDelegate<'_, 'tcx> {
         true
     }
 
-    fn register_opaque_type(
-        &mut self,
-        a: Ty<'tcx>,
-        b: Ty<'tcx>,
-        a_is_expected: bool,
-    ) -> Result<(), TypeError<'tcx>> {
-        self.obligations.extend(
-            self.infcx
-                .handle_opaque_type(a, b, a_is_expected, &self.cause, self.param_env)?
-                .obligations,
-        );
-        Ok(())
+    fn register_obligations(&mut self, obligations: PredicateObligations<'tcx>) {
+        self.obligations.extend(obligations);
     }
 }

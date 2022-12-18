@@ -1,6 +1,7 @@
 // run-pass
 // ignore-emscripten no processes
 // ignore-sgx no processes
+// ignore-fuchsia Child I/O swaps not privileged
 
 // Previously libstd would set stdio descriptors of a child process
 // by `dup`ing the requested descriptors to inherit directly into the
@@ -9,7 +10,7 @@
 // This test checks to avoid that regression.
 
 #![cfg_attr(unix, feature(rustc_private))]
-#![cfg_attr(windows, allow(unused_imports))]
+#![cfg_attr(not(unix), allow(unused_imports))]
 
 #[cfg(unix)]
 extern crate libc;

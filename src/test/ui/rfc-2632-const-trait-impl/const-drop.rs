@@ -60,7 +60,7 @@ mod t {
         fn foo() {}
     }
 
-    pub struct ConstDropWithBound<T: SomeTrait>(pub core::marker::PhantomData<T>);
+    pub struct ConstDropWithBound<T: ~const SomeTrait>(pub core::marker::PhantomData<T>);
 
     impl<T: ~const SomeTrait> const Drop for ConstDropWithBound<T> {
         fn drop(&mut self) {

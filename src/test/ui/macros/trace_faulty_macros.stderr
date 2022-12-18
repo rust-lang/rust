@@ -10,6 +10,7 @@ LL |         my_faulty_macro!(bcd);
 LL |     my_faulty_macro!();
    |     ------------------ in this macro invocation
    |
+   = note: while trying to match end of macro
    = note: this error originates in the macro `my_faulty_macro` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 note: trace_macro

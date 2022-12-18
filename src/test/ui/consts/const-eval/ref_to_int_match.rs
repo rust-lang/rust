@@ -23,5 +23,4 @@ type Int = u64;
 type Int = u32;
 
 const BAR: Int = unsafe { Foo { r: &42 }.f };
-//~^ ERROR any use of this value will cause an error
-//~| WARN this was previously accepted by the compiler but is being phased out
+//~^ ERROR constant

@@ -8,7 +8,9 @@ use rustc_hir::def_id::DefId;
 use rustc_middle::ty::{self, ImplSubject, ToPredicate, Ty, TyCtxt, TypeVisitable};
 use rustc_middle::ty::{GenericArg, SubstsRef};
 
-use super::{Normalized, Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use super::NormalizeExt;
+use super::{Obligation, ObligationCause, PredicateObligation, SelectionContext};
+use rustc_infer::infer::InferOk;
 pub use rustc_infer::traits::{self, util::*};
 
 ///////////////////////////////////////////////////////////////////////////
@@ -200,13 +202,13 @@ pub fn impl_subject_and_oblig<'a, 'tcx>(
 ) -> (ImplSubject<'tcx>, impl Iterator<Item = PredicateObligation<'tcx>>) {
     let subject = selcx.tcx().bound_impl_subject(impl_def_id);
     let subject = subject.subst(selcx.tcx(), impl_substs);
-    let Normalized { value: subject, obligations: normalization_obligations1 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), subject);
+    let InferOk { value: subject, obligations: normalization_obligations1 } =
+        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(subject);
 
     let predicates = selcx.tcx().predicates_of(impl_def_id);
     let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
-    let Normalized { value: predicates, obligations: normalization_obligations2 } =
-        super::normalize(selcx, param_env, ObligationCause::dummy(), predicates);
+    let InferOk { value: predicates, obligations: normalization_obligations2 } =
+        selcx.infcx.at(&ObligationCause::dummy(), param_env).normalize(predicates);
     let impl_obligations =
         super::predicates_for_generics(|_, _| ObligationCause::dummy(), param_env, predicates);
 
@@ -238,11 +240,9 @@ pub fn predicate_for_trait_def<'tcx>(
     cause: ObligationCause<'tcx>,
     trait_def_id: DefId,
     recursion_depth: usize,
-    self_ty: Ty<'tcx>,
-    params: &[GenericArg<'tcx>],
+    params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
 ) -> PredicateObligation<'tcx> {
-    let trait_ref =
-        ty::TraitRef { def_id: trait_def_id, substs: tcx.mk_substs_trait(self_ty, params) };
+    let trait_ref = tcx.mk_trait_ref(trait_def_id, params);
     predicate_for_trait_ref(tcx, cause, param_env, trait_ref, recursion_depth)
 }
 
@@ -261,19 +261,6 @@ pub fn upcast_choices<'tcx>(
     supertraits(tcx, source_trait_ref).filter(|r| r.def_id() == target_trait_def_id).collect()
 }
 
-/// Given a trait `trait_ref`, returns the number of vtable entries
-/// that come from `trait_ref`, excluding its supertraits. Used in
-/// computing the vtable base for an upcast trait of a trait object.
-pub fn count_own_vtable_entries<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    trait_ref: ty::PolyTraitRef<'tcx>,
-) -> usize {
-    let existential_trait_ref =
-        trait_ref.map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
-    tcx.own_existential_vtable_entries(existential_trait_ref).len()
-}
-
 /// Given an upcast trait object described by `object`, returns the
 /// index of the method `method_def_id` (which should be part of
 /// `object.upcast_trait_ref`) within the vtable for `object`.
@@ -282,15 +269,10 @@ pub fn get_vtable_index_of_object_method<'tcx, N>(
     object: &super::ImplSourceObjectData<'tcx, N>,
     method_def_id: DefId,
 ) -> Option<usize> {
-    let existential_trait_ref = object
-        .upcast_trait_ref
-        .map_bound(|trait_ref| ty::ExistentialTraitRef::erase_self_ty(tcx, trait_ref));
-    let existential_trait_ref = tcx.erase_regions(existential_trait_ref);
-
     // Count number of methods preceding the one we are selecting and
     // add them to the total offset.
     if let Some(index) = tcx
-        .own_existential_vtable_entries(existential_trait_ref)
+        .own_existential_vtable_entries(object.upcast_trait_ref.def_id())
         .iter()
         .copied()
         .position(|def_id| def_id == method_def_id)
@@ -308,15 +290,12 @@ pub fn closure_trait_ref_and_return_type<'tcx>(
     sig: ty::PolyFnSig<'tcx>,
     tuple_arguments: TupleArgumentsFlag,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    assert!(!self_ty.has_escaping_bound_vars());
     let arguments_tuple = match tuple_arguments {
         TupleArgumentsFlag::No => sig.skip_binder().inputs()[0],
         TupleArgumentsFlag::Yes => tcx.intern_tup(sig.skip_binder().inputs()),
     };
-    debug_assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = ty::TraitRef {
-        def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait(self_ty, &[arguments_tuple.into()]),
-    };
+    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, arguments_tuple]);
     sig.map_bound(|sig| (trait_ref, sig.output()))
 }
 
@@ -326,12 +305,20 @@ pub fn generator_trait_ref_and_outputs<'tcx>(
     self_ty: Ty<'tcx>,
     sig: ty::PolyGenSig<'tcx>,
 ) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>, Ty<'tcx>)> {
-    debug_assert!(!self_ty.has_escaping_bound_vars());
-    let trait_ref = ty::TraitRef {
-        def_id: fn_trait_def_id,
-        substs: tcx.mk_substs_trait(self_ty, &[sig.skip_binder().resume_ty.into()]),
-    };
+    assert!(!self_ty.has_escaping_bound_vars());
+    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty, sig.skip_binder().resume_ty]);
     sig.map_bound(|sig| (trait_ref, sig.yield_ty, sig.return_ty))
+}
+
+pub fn future_trait_ref_and_outputs<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_trait_def_id: DefId,
+    self_ty: Ty<'tcx>,
+    sig: ty::PolyGenSig<'tcx>,
+) -> ty::Binder<'tcx, (ty::TraitRef<'tcx>, Ty<'tcx>)> {
+    assert!(!self_ty.has_escaping_bound_vars());
+    let trait_ref = tcx.mk_trait_ref(fn_trait_def_id, [self_ty]);
+    sig.map_bound(|sig| (trait_ref, sig.return_ty))
 }
 
 pub fn impl_item_is_final(tcx: TyCtxt<'_>, assoc_item: &ty::AssocItem) -> bool {

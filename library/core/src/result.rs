@@ -209,11 +209,10 @@
 //!
 //! *It's much nicer!*
 //!
-//! Ending the expression with [`?`] will result in the unwrapped
-//! success ([`Ok`]) value, unless the result is [`Err`], in which case
-//! [`Err`] is returned early from the enclosing function.
+//! Ending the expression with [`?`] will result in the [`Ok`]'s unwrapped value, unless the result
+//! is [`Err`], in which case [`Err`] is returned early from the enclosing function.
 //!
-//! [`?`] can only be used in functions that return [`Result`] because of the
+//! [`?`] can be used in functions that return [`Result`] because of the
 //! early return of [`Err`] that it provides.
 //!
 //! [`expect`]: Result::expect

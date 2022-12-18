@@ -49,7 +49,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.def_id.to_stable_hash_key(hcx)
+        self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -58,7 +58,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for TraitItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.def_id.to_stable_hash_key(hcx)
+        self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -67,7 +67,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ImplItemId {
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.def_id.to_stable_hash_key(hcx)
+        self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 
@@ -76,7 +76,7 @@ impl<HirCtx: crate::HashStableContext> ToStableHashKey<HirCtx> for ForeignItemId
 
     #[inline]
     fn to_stable_hash_key(&self, hcx: &HirCtx) -> DefPathHash {
-        self.def_id.def_id.to_stable_hash_key(hcx)
+        self.owner_id.def_id.to_stable_hash_key(hcx)
     }
 }
 

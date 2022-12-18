@@ -1,9 +1,13 @@
 error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown field `foobar`, expected one of
            allow-dbg-in-tests
            allow-expect-in-tests
+           allow-mixed-uninlined-format-args
+           allow-print-in-tests
            allow-unwrap-in-tests
            allowed-scripts
            arithmetic-side-effects-allowed
+           arithmetic-side-effects-allowed-binary
+           arithmetic-side-effects-allowed-unary
            array-size-threshold
            avoid-breaking-exported-api
            await-holding-invalid-types
@@ -11,6 +15,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            cargo-ignore-publish
            cognitive-complexity-threshold
            cyclomatic-complexity-threshold
+           disallowed-macros
            disallowed-methods
            disallowed-names
            disallowed-types
@@ -19,8 +24,10 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            enforced-import-renames
            enum-variant-name-threshold
            enum-variant-size-threshold
+           ignore-interior-mutability
            large-error-threshold
            literal-representation-threshold
+           matches-for-let-else
            max-fn-params-bools
            max-include-file-size
            max-struct-bools
@@ -30,6 +37,7 @@ error: error reading Clippy's configuration file `$DIR/clippy.toml`: unknown fie
            pass-by-value-size-limit
            single-char-binding-names-threshold
            standard-macro-braces
+           suppress-restriction-lint-in-const
            third-party
            too-large-for-stack
            too-many-arguments-threshold

@@ -1,13 +1,13 @@
 // run-rustfix
-
-#![allow(
-    unused_variables,
-    clippy::clone_double_ref,
-    clippy::needless_borrow,
-    clippy::borrow_deref_ref,
-    clippy::explicit_auto_deref
-)]
 #![warn(clippy::explicit_deref_methods)]
+#![allow(unused_variables)]
+#![allow(
+    clippy::borrow_deref_ref,
+    clippy::clone_double_ref,
+    clippy::explicit_auto_deref,
+    clippy::needless_borrow,
+    clippy::uninlined_format_args
+)]
 
 use std::ops::{Deref, DerefMut};
 

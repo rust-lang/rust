@@ -72,8 +72,8 @@ pub fn add_constraints_from_crate<'a, 'tcx>(
 
                 let adt = tcx.adt_def(def_id);
                 for variant in adt.variants() {
-                    if let Some(ctor) = variant.ctor_def_id {
-                        constraint_cx.build_constraints_for_item(ctor.expect_local());
+                    if let Some(ctor_def_id) = variant.ctor_def_id() {
+                        constraint_cx.build_constraints_for_item(ctor_def_id.expect_local());
                     }
                 }
             }
@@ -249,12 +249,8 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_substs(current, def.did(), substs, variance);
             }
 
-            ty::Projection(ref data) => {
+            ty::Alias(_, ref data) => {
                 self.add_constraints_from_invariant_substs(current, data.substs, variance);
-            }
-
-            ty::Opaque(_, substs) => {
-                self.add_constraints_from_invariant_substs(current, substs, variance);
             }
 
             ty::Dynamic(data, r, _) => {

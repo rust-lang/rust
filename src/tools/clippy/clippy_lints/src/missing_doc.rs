@@ -103,7 +103,7 @@ impl MissingDoc {
                 cx,
                 MISSING_DOCS_IN_PRIVATE_ITEMS,
                 sp,
-                &format!("missing documentation for {} {}", article, desc),
+                &format!("missing documentation for {article} {desc}"),
             );
         }
     }
@@ -131,7 +131,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             hir::ItemKind::Fn(..) => {
                 // ignore main()
                 if it.ident.name == sym::main {
-                    let at_root = cx.tcx.local_parent(it.def_id.def_id) == CRATE_DEF_ID;
+                    let at_root = cx.tcx.local_parent(it.owner_id.def_id) == CRATE_DEF_ID;
                     if at_root {
                         return;
                     }
@@ -155,7 +155,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             | hir::ItemKind::Use(..) => return,
         };
 
-        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(it.hir_id());
         if !is_from_proc_macro(cx, it) {
@@ -164,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, trait_item: &'tcx hir::TraitItem<'_>) {
-        let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(trait_item.owner_id.to_def_id());
 
         let attrs = cx.tcx.hir().attrs(trait_item.hir_id());
         if !is_from_proc_macro(cx, trait_item) {
@@ -174,7 +174,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, impl_item: &'tcx hir::ImplItem<'_>) {
         // If the method is an impl for a trait, don't doc.
-        if let Some(cid) = cx.tcx.associated_item(impl_item.def_id).impl_container(cx.tcx) {
+        if let Some(cid) = cx.tcx.associated_item(impl_item.owner_id).impl_container(cx.tcx) {
             if cx.tcx.impl_trait_ref(cid).is_some() {
                 return;
             }
@@ -182,7 +182,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             return;
         }
 
-        let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());
         let attrs = cx.tcx.hir().attrs(impl_item.hir_id());
         if !is_from_proc_macro(cx, impl_item) {
             self.check_missing_docs_attrs(cx, attrs, impl_item.span, article, desc);
@@ -199,7 +199,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
     }
 
     fn check_variant(&mut self, cx: &LateContext<'tcx>, v: &'tcx hir::Variant<'_>) {
-        let attrs = cx.tcx.hir().attrs(v.id);
+        let attrs = cx.tcx.hir().attrs(v.hir_id);
         if !is_from_proc_macro(cx, v) {
             self.check_missing_docs_attrs(cx, attrs, v.span, "a", "variant");
         }

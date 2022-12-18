@@ -1,5 +1,6 @@
 #![feature(const_trait_impl)]
 
+#[const_trait]
 trait Tr {}
 impl Tr for () {}
 

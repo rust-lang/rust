@@ -1,5 +1,13 @@
 //! NOTE: Keep these constants in sync with `library/std/src/sys/unix/mod.rs`!
 
+/// The default value if `#[unix_sigpipe]` is not specified. This resolves
+/// to `SIG_IGN` in `library/std/src/sys/unix/mod.rs`.
+///
+/// Note that `SIG_IGN` has been the Rust default since 2014. See
+/// <https://github.com/rust-lang/rust/issues/62569>.
+#[allow(dead_code)]
+pub const DEFAULT: u8 = 0;
+
 /// Do not touch `SIGPIPE`. Use whatever the parent process uses.
 #[allow(dead_code)]
 pub const INHERIT: u8 = 1;
@@ -15,8 +23,3 @@ pub const SIG_IGN: u8 = 2;
 /// such as `head -n 1`.
 #[allow(dead_code)]
 pub const SIG_DFL: u8 = 3;
-
-/// `SIG_IGN` has been the Rust default since 2014. See
-/// <https://github.com/rust-lang/rust/issues/62569>.
-#[allow(dead_code)]
-pub const DEFAULT: u8 = SIG_IGN;

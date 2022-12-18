@@ -3,9 +3,9 @@
 use std::env;
 use std::path::PathBuf;
 
-use super::helpers::isatty;
 use super::options::{ColorConfig, Options, OutputFormat, RunIgnored};
 use super::time::TestTimeOptions;
+use std::io::{self, IsTerminal};
 
 #[derive(Debug)]
 pub struct TestOpts {
@@ -26,13 +26,17 @@ pub struct TestOpts {
     pub test_threads: Option<usize>,
     pub skip: Vec<String>,
     pub time_options: Option<TestTimeOptions>,
+    /// Stop at first failing test.
+    /// May run a few more tests due to threading, but will
+    /// abort as soon as possible.
+    pub fail_fast: bool,
     pub options: Options,
 }
 
 impl TestOpts {
     pub fn use_color(&self) -> bool {
         match self.color {
-            ColorConfig::AutoColor => !self.nocapture && isatty::stdout_isatty(),
+            ColorConfig::AutoColor => !self.nocapture && io::stdout().is_terminal(),
             ColorConfig::AlwaysColor => true,
             ColorConfig::NeverColor => false,
         }
@@ -296,6 +300,7 @@ fn parse_opts_impl(matches: getopts::Matches) -> OptRes {
         skip,
         time_options,
         options,
+        fail_fast: false,
     };
 
     Ok(test_opts)

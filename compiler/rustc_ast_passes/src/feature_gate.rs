@@ -1,7 +1,7 @@
 use rustc_ast as ast;
 use rustc_ast::visit::{self, AssocCtxt, FnCtxt, FnKind, Visitor};
 use rustc_ast::{AssocConstraint, AssocConstraintKind, NodeId};
-use rustc_ast::{PatKind, RangeEnd, VariantData};
+use rustc_ast::{PatKind, RangeEnd};
 use rustc_errors::{struct_span_err, Applicability, StashKey};
 use rustc_feature::{AttributeGate, BuiltinAttribute, Features, GateIssue, BUILTIN_ATTRIBUTE_MAP};
 use rustc_session::parse::{feature_err, feature_err_issue, feature_warn};
@@ -116,46 +116,6 @@ impl<'a> PostExpansionVisitor<'a> {
         }
     }
 
-    fn maybe_report_invalid_custom_discriminants(&self, variants: &[ast::Variant]) {
-        let has_fields = variants.iter().any(|variant| match variant.data {
-            VariantData::Tuple(..) | VariantData::Struct(..) => true,
-            VariantData::Unit(..) => false,
-        });
-
-        let discriminant_spans = variants
-            .iter()
-            .filter(|variant| match variant.data {
-                VariantData::Tuple(..) | VariantData::Struct(..) => false,
-                VariantData::Unit(..) => true,
-            })
-            .filter_map(|variant| variant.disr_expr.as_ref().map(|c| c.value.span))
-            .collect::<Vec<_>>();
-
-        if !discriminant_spans.is_empty() && has_fields {
-            let mut err = feature_err(
-                &self.sess.parse_sess,
-                sym::arbitrary_enum_discriminant,
-                discriminant_spans.clone(),
-                "custom discriminant values are not allowed in enums with tuple or struct variants",
-            );
-            for sp in discriminant_spans {
-                err.span_label(sp, "disallowed custom discriminant");
-            }
-            for variant in variants.iter() {
-                match &variant.data {
-                    VariantData::Struct(..) => {
-                        err.span_label(variant.span, "struct variant defined here");
-                    }
-                    VariantData::Tuple(..) => {
-                        err.span_label(variant.span, "tuple variant defined here");
-                    }
-                    VariantData::Unit(..) => {}
-                }
-            }
-            err.emit();
-        }
-    }
-
     /// Feature gate `impl Trait` inside `type Alias = $type_expr;`.
     fn check_impl_trait(&self, ty: &ast::Ty) {
         struct ImplTraitVisitor<'a> {
@@ -238,8 +198,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &'a ast::Item) {
-        match i.kind {
-            ast::ItemKind::ForeignMod(ref foreign_module) => {
+        match &i.kind {
+            ast::ItemKind::ForeignMod(foreign_module) => {
                 if let Some(abi) = foreign_module.abi {
                     self.check_abi(abi, ast::Const::No);
                 }
@@ -273,28 +233,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 }
             }
 
-            ast::ItemKind::Enum(ast::EnumDef { ref variants, .. }, ..) => {
-                for variant in variants {
-                    match (&variant.data, &variant.disr_expr) {
-                        (ast::VariantData::Unit(..), _) => {}
-                        (_, Some(disr_expr)) => gate_feature_post!(
-                            &self,
-                            arbitrary_enum_discriminant,
-                            disr_expr.value.span,
-                            "discriminants on non-unit variants are experimental"
-                        ),
-                        _ => {}
-                    }
-                }
-
-                let has_feature = self.features.arbitrary_enum_discriminant;
-                if !has_feature && !i.span.allows_unstable(sym::arbitrary_enum_discriminant) {
-                    self.maybe_report_invalid_custom_discriminants(&variants);
-                }
-            }
-
-            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, ref of_trait, .. }) => {
-                if let ast::ImplPolarity::Negative(span) = polarity {
+            ast::ItemKind::Impl(box ast::Impl { polarity, defaultness, of_trait, .. }) => {
+                if let &ast::ImplPolarity::Negative(span) = polarity {
                     gate_feature_post!(
                         &self,
                         negative_impls,
@@ -327,7 +267,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                 gate_feature_post!(&self, decl_macro, i.span, msg);
             }
 
-            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ref ty), .. }) => {
+            ast::ItemKind::TyAlias(box ast::TyAlias { ty: Some(ty), .. }) => {
                 self.check_impl_trait(&ty)
             }
 
@@ -362,8 +302,8 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_ty(&mut self, ty: &'a ast::Ty) {
-        match ty.kind {
-            ast::TyKind::BareFn(ref bare_fn_ty) => {
+        match &ty.kind {
+            ast::TyKind::BareFn(bare_fn_ty) => {
                 // Function pointers cannot be `const`
                 self.check_extern(bare_fn_ty.ext, ast::Const::No);
             }
@@ -379,7 +319,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_fn_ret_ty(&mut self, ret_ty: &'a ast::FnRetTy) {
-        if let ast::FnRetTy::Ty(ref output_ty) = *ret_ty {
+        if let ast::FnRetTy::Ty(output_ty) = ret_ty {
             if let ast::TyKind::Never = output_ty.kind {
                 // Do nothing.
             } else {
@@ -461,7 +401,7 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
                     if let PatKind::Range(Some(_), None, Spanned { .. }) = inner_pat.kind {
                         gate_feature_post!(
                             &self,
-                            half_open_range_patterns,
+                            half_open_range_patterns_in_slices,
                             pat.span,
                             "`X..` patterns in slices are experimental"
                         );
@@ -515,9 +455,9 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
     }
 
     fn visit_assoc_item(&mut self, i: &'a ast::AssocItem, ctxt: AssocCtxt) {
-        let is_fn = match i.kind {
+        let is_fn = match &i.kind {
             ast::AssocItemKind::Fn(_) => true,
-            ast::AssocItemKind::TyAlias(box ast::TyAlias { ref ty, .. }) => {
+            ast::AssocItemKind::Type(box ast::TyAlias { ty, .. }) => {
                 if let (Some(_), AssocCtxt::Trait) = (ty, ctxt) {
                     gate_feature_post!(
                         &self,
@@ -589,7 +529,10 @@ pub fn check_crate(krate: &ast::Crate, sess: &Session) {
     gate_all!(generators, "yield syntax is experimental");
     gate_all!(raw_ref_op, "raw address of syntax is experimental");
     gate_all!(const_trait_impl, "const trait impls are experimental");
-    gate_all!(half_open_range_patterns, "half-open range patterns are unstable");
+    gate_all!(
+        half_open_range_patterns_in_slices,
+        "half-open range patterns in slices are unstable"
+    );
     gate_all!(inline_const, "inline-const is experimental");
     gate_all!(inline_const_pat, "inline-const in pattern position is experimental");
     gate_all!(associated_const_equality, "associated const equality is incomplete");
@@ -687,7 +630,7 @@ fn check_incompatible_features(sess: &Session) {
             {
                 let spans = vec![f1_span, f2_span];
                 sess.struct_span_err(
-                    spans.clone(),
+                    spans,
                     &format!(
                         "features `{}` and `{}` are incompatible, using them at the same time \
                         is not allowed",

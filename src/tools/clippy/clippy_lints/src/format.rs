@@ -62,7 +62,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 [_] => {
                     // Simulate macro expansion, converting {{ and }} to { and }.
                     let s_expand = format_args.format_string.snippet.replace("{{", "{").replace("}}", "}");
-                    let sugg = format!("{}.to_string()", s_expand);
+                    let sugg = format!("{s_expand}.to_string()");
                     span_useless_format(cx, call_site, sugg, applicability);
                 },
                 [..] => {},
@@ -73,7 +73,7 @@ impl<'tcx> LateLintPass<'tcx> for UselessFormat {
                 if format_args.format_string.parts == [kw::Empty];
                 if arg.format.is_default();
                 if match cx.typeck_results().expr_ty(value).peel_refs().kind() {
-                    ty::Adt(adt, _) => cx.tcx.is_diagnostic_item(sym::String, adt.did()),
+                    ty::Adt(adt, _) => Some(adt.did()) == cx.tcx.lang_items().string(),
                     ty::Str => true,
                     _ => false,
                 };

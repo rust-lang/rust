@@ -13,14 +13,14 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::{
     BodyId, Expr, ExprKind, HirId, Impl, ImplItem, ImplItemKind, Item, ItemKind, Node, TraitItem, TraitItemKind, UnOp,
 };
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_lint::{LateContext, LateLintPass, Lint};
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{ConstValue, ErrorHandled};
 use rustc_middle::ty::adjustment::Adjust;
 use rustc_middle::ty::{self, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
-use rustc_span::{sym, InnerSpan, Span, DUMMY_SP};
-use rustc_hir_analysis::hir_ty_to_ty;
+use rustc_span::{sym, InnerSpan, Span};
 
 // FIXME: this is a correctness problem but there's no suitable
 // warn-by-default category.
@@ -136,7 +136,7 @@ fn is_unfrozen<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     // since it works when a pointer indirection involves (`Cell<*const T>`).
     // Making up a `ParamEnv` where every generic params and assoc types are `Freeze`is another option;
     // but I'm not sure whether it's a decent way, if possible.
-    cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
+    cx.tcx.layout_of(cx.param_env.and(ty)).is_ok() && !ty.is_freeze(cx.tcx, cx.param_env)
 }
 
 fn is_value_unfrozen_raw<'tcx>(
@@ -149,6 +149,9 @@ fn is_value_unfrozen_raw<'tcx>(
             // the fact that we have to dig into every structs to search enums
             // leads us to the point checking `UnsafeCell` directly is the only option.
             ty::Adt(ty_def, ..) if ty_def.is_unsafe_cell() => true,
+            // As of 2022-09-08 miri doesn't track which union field is active so there's no safe way to check the
+            // contained value.
+            ty::Adt(def, ..) if def.is_union() => false,
             ty::Array(..) | ty::Adt(..) | ty::Tuple(..) => {
                 let val = cx.tcx.destructure_mir_constant(cx.param_env, val);
                 val.fields.iter().any(|field| inner(cx, *field))
@@ -300,7 +303,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
                         if let Some(of_trait_def_id) = of_trait_ref.trait_def_id();
                         if let Some(of_assoc_item) = cx
                             .tcx
-                            .associated_item(impl_item.def_id)
+                            .associated_item(impl_item.owner_id)
                             .trait_item_def_id;
                         if cx
                             .tcx
@@ -354,9 +357,8 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             }
 
             // Make sure it is a const item.
-            let item_def_id = match cx.qpath_res(qpath, expr.hir_id) {
-                Res::Def(DefKind::Const | DefKind::AssocConst, did) => did,
-                _ => return,
+            let Res::Def(DefKind::Const | DefKind::AssocConst, item_def_id) = cx.qpath_res(qpath, expr.hir_id) else {
+                return
             };
 
             // Climb up to resolve any field access and explicit referencing.

@@ -124,7 +124,7 @@ fn add_assist(
 ) -> Option<()> {
     let target = attr.syntax().text_range();
     let annotated_name = adt.name()?;
-    let label = format!("Convert to manual `impl {} for {}`", replace_trait_path, annotated_name);
+    let label = format!("Convert to manual `impl {replace_trait_path} for {annotated_name}`");
 
     acc.add(
         AssistId("replace_derive_with_manual_impl", AssistKind::Refactor),
@@ -158,11 +158,8 @@ fn add_assist(
                         }
                     }
 
-                    builder.insert_snippet(
-                        cap,
-                        insert_pos,
-                        format!("\n\n{}", render_snippet(cap, impl_def.syntax(), cursor)),
-                    )
+                    let rendered = render_snippet(cap, impl_def.syntax(), cursor);
+                    builder.insert_snippet(cap, insert_pos, format!("\n\n{rendered}"))
                 }
             };
         },
@@ -1021,8 +1018,6 @@ struct Foo {
 
 impl foo::Bar for Foo {
     $0type Qux;
-
-    const Baz: usize = 42;
 
     const Fez: usize;
 

@@ -7,7 +7,7 @@ LL |     let _x = 1_u64 << 64;
 note: the lint level is defined here
   --> $DIR/overflowing-lsh-3.rs:4:9
    |
-LL | #![deny(arithmetic_overflow, const_err)]
+LL | #![deny(arithmetic_overflow)]
    |         ^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error

@@ -12,7 +12,6 @@
 // edition:2018
 
 fn main() {
-    let _ = foo(true);
 }
 
 fn foo(x: bool) -> Result<f64, i32> {
@@ -29,4 +28,20 @@ async fn bar(x: bool) -> Result<f64, i32> {
                 //| HELP you might have meant to return this value
     }
     Ok(42.0)
+}
+
+trait Identity {
+    type Out;
+}
+
+impl<T> Identity for T {
+    type Out = T;
+}
+
+async fn foo2() -> i32 {
+    if true {
+        1i32 //~ ERROR mismatched types
+            //| HELP you might have meant to return this value
+    }
+    0
 }

@@ -15,5 +15,14 @@ fn main() {
     let me = env::current_exe().unwrap();
     let output = Command::new(&me).arg("next").output().unwrap();
     assert!(!output.status.success(), "{:?} is a success", output.status);
-    assert_eq!(str::from_utf8(&output.stderr).unwrap(), "memory allocation of 42 bytes failed\n");
+
+    let mut stderr = str::from_utf8(&output.stderr).unwrap();
+
+    // When running inside QEMU user-mode emulation, there will be an extra message printed by QEMU
+    // in the stderr whenever a core dump happens. Remove it before the check.
+    stderr = stderr
+        .strip_suffix("qemu: uncaught target signal 6 (Aborted) - core dumped\n")
+        .unwrap_or(stderr);
+
+    assert_eq!(stderr, "memory allocation of 42 bytes failed\n");
 }

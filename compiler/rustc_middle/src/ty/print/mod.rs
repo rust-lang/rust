@@ -3,7 +3,7 @@ use crate::ty::{self, DefIdTree, Ty, TyCtxt};
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sso::SsoHashSet;
-use rustc_hir::def_id::{CrateNum, DefId};
+use rustc_hir::def_id::{CrateNum, DefId, LocalDefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
 
 // `pretty` is a separate module only for organization.
@@ -63,7 +63,7 @@ pub trait Printer<'tcx>: Sized {
 
     fn print_dyn_existential(
         self,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Result<Self::DynExistential, Self::Error>;
 
     fn print_const(self, ct: ty::Const<'tcx>) -> Result<Self::Const, Self::Error>;
@@ -169,10 +169,8 @@ pub trait Printer<'tcx>: Sized {
                 self.path_append(
                     |cx: Self| {
                         if trait_qualify_parent {
-                            let trait_ref = ty::TraitRef::new(
-                                parent_def_id,
-                                cx.tcx().intern_substs(parent_substs),
-                            );
+                            let trait_ref =
+                                cx.tcx().mk_trait_ref(parent_def_id, parent_substs.iter().copied());
                             cx.path_qualified(trait_ref.self_ty(), Some(trait_ref))
                         } else {
                             cx.print_def_path(parent_def_id, parent_substs)
@@ -275,10 +273,9 @@ fn characteristic_def_id_of_type_cached<'a>(
         | ty::Uint(_)
         | ty::Str
         | ty::FnPtr(_)
-        | ty::Projection(_)
+        | ty::Alias(..)
         | ty::Placeholder(..)
         | ty::Param(_)
-        | ty::Opaque(..)
         | ty::Infer(_)
         | ty::Bound(..)
         | ty::Error(_)
@@ -308,9 +305,7 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for Ty<'tcx> {
     }
 }
 
-impl<'tcx, P: Printer<'tcx>> Print<'tcx, P>
-    for &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>
-{
+impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>> {
     type Output = P::DynExistential;
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
@@ -323,5 +318,14 @@ impl<'tcx, P: Printer<'tcx>> Print<'tcx, P> for ty::Const<'tcx> {
     type Error = P::Error;
     fn print(&self, cx: P) -> Result<Self::Output, Self::Error> {
         cx.print_const(*self)
+    }
+}
+
+// This is only used by query descriptions
+pub fn describe_as_module(def_id: LocalDefId, tcx: TyCtxt<'_>) -> String {
+    if def_id.is_top_level_module() {
+        "top-level module".to_string()
+    } else {
+        format!("module `{}`", tcx.def_path_str(def_id.to_def_id()))
     }
 }

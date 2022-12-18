@@ -546,7 +546,7 @@ impl Span {
     /// Note: The observable result of a macro should only rely on the tokens and
     /// not on this source text. The result of this function is a best effort to
     /// be used for diagnostics only.
-    #[unstable(feature = "proc_macro_span", issue = "54725")]
+    #[stable(feature = "proc_macro_source_text", since = "1.66.0")]
     pub fn source_text(&self) -> Option<String> {
         self.0.source_text()
     }
@@ -1493,7 +1493,7 @@ pub mod tracked_env {
     use std::ffi::OsStr;
 
     /// Retrieve an environment variable and add it to build dependency info.
-    /// Build system executing the compiler will know that the variable was accessed during
+    /// The build system executing the compiler will know that the variable was accessed during
     /// compilation, and will be able to rerun the build when the value of that variable changes.
     /// Besides the dependency tracking this function should be equivalent to `env::var` from the
     /// standard library, except that the argument must be UTF-8.

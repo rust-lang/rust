@@ -4,10 +4,10 @@ use rustc_hir::intravisit::FnKind;
 use rustc_hir::{Body, FnDecl, HirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::ty::{EarlyBinder, Opaque, PredicateKind::Trait};
+use rustc_middle::ty::{self, AliasTy, Clause, EarlyBinder, PredicateKind};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::{sym, Span};
-use rustc_trait_selection::traits::error_reporting::suggestions::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::{self, FulfillmentError};
 
 declare_clippy_lint! {
@@ -62,11 +62,11 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             return;
         }
         let ret_ty = return_ty(cx, hir_id);
-        if let Opaque(id, subst) = *ret_ty.kind() {
-            let preds = cx.tcx.explicit_item_bounds(id);
+        if let ty::Alias(ty::Opaque, AliasTy { def_id, substs, .. }) = *ret_ty.kind() {
+            let preds = cx.tcx.explicit_item_bounds(def_id);
             let mut is_future = false;
             for &(p, _span) in preds {
-                let p = EarlyBinder(p).subst(cx.tcx, subst);
+                let p = EarlyBinder(p).subst(cx.tcx, substs);
                 if let Some(trait_pred) = p.to_opt_poly_trait_pred() {
                     if Some(trait_pred.skip_binder().trait_ref.def_id) == cx.tcx.lang_items().future_trait() {
                         is_future = true;
@@ -77,10 +77,9 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
             if is_future {
                 let send_trait = cx.tcx.get_diagnostic_item(sym::Send).unwrap();
                 let span = decl.output.span();
-                let send_errors = cx.tcx.infer_ctxt().enter(|infcx| {
-                    let cause = traits::ObligationCause::misc(span, hir_id);
-                    traits::fully_solve_bound(&infcx, cause, cx.param_env, ret_ty, send_trait)
-                });
+                let infcx = cx.tcx.infer_ctxt().build();
+                let cause = traits::ObligationCause::misc(span, hir_id);
+                let send_errors = traits::fully_solve_bound(&infcx, cause, cx.param_env, ret_ty, send_trait);
                 if !send_errors.is_empty() {
                     span_lint_and_then(
                         cx,
@@ -88,18 +87,20 @@ impl<'tcx> LateLintPass<'tcx> for FutureNotSend {
                         span,
                         "future cannot be sent between threads safely",
                         |db| {
-                            cx.tcx.infer_ctxt().enter(|infcx| {
-                                for FulfillmentError { obligation, .. } in send_errors {
-                                    infcx.maybe_note_obligation_cause_for_async_await(db, &obligation);
-                                    if let Trait(trait_pred) = obligation.predicate.kind().skip_binder() {
-                                        db.note(&format!(
-                                            "`{}` doesn't implement `{}`",
-                                            trait_pred.self_ty(),
-                                            trait_pred.trait_ref.print_only_trait_path(),
-                                        ));
-                                    }
+                            for FulfillmentError { obligation, .. } in send_errors {
+                                infcx
+                                    .err_ctxt()
+                                    .maybe_note_obligation_cause_for_async_await(db, &obligation);
+                                if let PredicateKind::Clause(Clause::Trait(trait_pred)) =
+                                    obligation.predicate.kind().skip_binder()
+                                {
+                                    db.note(&format!(
+                                        "`{}` doesn't implement `{}`",
+                                        trait_pred.self_ty(),
+                                        trait_pred.trait_ref.print_only_trait_path(),
+                                    ));
                                 }
-                            });
+                            }
                         },
                     );
                 }

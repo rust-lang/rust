@@ -1,3 +1,4 @@
+// compile-flags: -Zdeduplicate-diagnostics=yes
 use std::mem::size_of;
 
 fn test<const N: usize>() {}

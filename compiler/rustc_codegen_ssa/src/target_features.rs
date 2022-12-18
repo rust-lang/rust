@@ -1,8 +1,19 @@
+use rustc_ast::ast;
+use rustc_attr::InstructionSetAttr;
+use rustc_data_structures::fx::FxHashMap;
+use rustc_data_structures::fx::FxHashSet;
+use rustc_errors::Applicability;
+use rustc_hir as hir;
+use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::def_id::LOCAL_CRATE;
 use rustc_middle::ty::query::Providers;
+use rustc_middle::ty::TyCtxt;
+use rustc_session::parse::feature_err;
 use rustc_session::Session;
 use rustc_span::symbol::sym;
 use rustc_span::symbol::Symbol;
+use rustc_span::Span;
 
 /// Features that control behaviour of rustc, rather than the codegen.
 pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
@@ -13,17 +24,25 @@ pub const RUSTC_SPECIFIC_FEATURES: &[&str] = &["crt-static"];
 // if it doesn't, to_llvm_feature in llvm_util in rustc_codegen_llvm needs to be adapted
 
 const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("aclass", Some(sym::arm_target_feature)),
-    ("mclass", Some(sym::arm_target_feature)),
-    ("rclass", Some(sym::arm_target_feature)),
-    ("dsp", Some(sym::arm_target_feature)),
-    ("neon", Some(sym::arm_target_feature)),
+    ("aes", Some(sym::arm_target_feature)),
     ("crc", Some(sym::arm_target_feature)),
     ("crypto", Some(sym::arm_target_feature)),
-    ("aes", Some(sym::arm_target_feature)),
-    ("sha2", Some(sym::arm_target_feature)),
-    ("i8mm", Some(sym::arm_target_feature)),
+    ("d32", Some(sym::arm_target_feature)),
     ("dotprod", Some(sym::arm_target_feature)),
+    ("dsp", Some(sym::arm_target_feature)),
+    ("fp-armv8", Some(sym::arm_target_feature)),
+    ("i8mm", Some(sym::arm_target_feature)),
+    ("mclass", Some(sym::arm_target_feature)),
+    ("neon", Some(sym::arm_target_feature)),
+    ("rclass", Some(sym::arm_target_feature)),
+    ("sha2", Some(sym::arm_target_feature)),
+    // This is needed for inline assembly, but shouldn't be stabilized as-is
+    // since it should be enabled per-function using #[instruction_set], not
+    // #[target_feature].
+    ("thumb-mode", Some(sym::arm_target_feature)),
+    ("thumb2", Some(sym::arm_target_feature)),
     ("v5te", Some(sym::arm_target_feature)),
     ("v6", Some(sym::arm_target_feature)),
     ("v6k", Some(sym::arm_target_feature)),
@@ -33,104 +52,97 @@ const ARM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("vfp2", Some(sym::arm_target_feature)),
     ("vfp3", Some(sym::arm_target_feature)),
     ("vfp4", Some(sym::arm_target_feature)),
-    ("fp-armv8", Some(sym::arm_target_feature)),
-    // This is needed for inline assembly, but shouldn't be stabilized as-is
-    // since it should be enabled per-function using #[instruction_set], not
-    // #[target_feature].
-    ("thumb-mode", Some(sym::arm_target_feature)),
-    ("thumb2", Some(sym::arm_target_feature)),
-    ("d32", Some(sym::arm_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    // FEAT_AdvSimd & FEAT_FP
-    ("neon", None),
-    // FEAT_FP16
-    ("fp16", None),
-    // FEAT_SVE
-    ("sve", None),
+    // tidy-alphabetical-start
+    // FEAT_AES
+    ("aes", None),
+    // FEAT_BF16
+    ("bf16", None),
+    // FEAT_BTI
+    ("bti", None),
     // FEAT_CRC
     ("crc", None),
-    // FEAT_RAS
-    ("ras", None),
-    // FEAT_LSE
-    ("lse", None),
-    // FEAT_RDM
-    ("rdm", None),
-    // FEAT_RCPC
-    ("rcpc", None),
-    // FEAT_RCPC2
-    ("rcpc2", None),
-    // FEAT_DotProd
-    ("dotprod", None),
-    // FEAT_TME
-    ("tme", None),
-    // FEAT_FHM
-    ("fhm", None),
     // FEAT_DIT
     ("dit", None),
-    // FEAT_FLAGM
-    ("flagm", None),
-    // FEAT_SSBS
-    ("ssbs", None),
-    // FEAT_SB
-    ("sb", None),
-    // FEAT_PAUTH (address authentication)
-    ("paca", None),
-    // FEAT_PAUTH (generic authentication)
-    ("pacg", None),
+    // FEAT_DotProd
+    ("dotprod", None),
     // FEAT_DPB
     ("dpb", None),
     // FEAT_DPB2
     ("dpb2", None),
-    // FEAT_SVE2
-    ("sve2", None),
-    // FEAT_SVE2_AES
-    ("sve2-aes", None),
-    // FEAT_SVE2_SM4
-    ("sve2-sm4", None),
-    // FEAT_SVE2_SHA3
-    ("sve2-sha3", None),
-    // FEAT_SVE2_BitPerm
-    ("sve2-bitperm", None),
-    // FEAT_FRINTTS
-    ("frintts", None),
-    // FEAT_I8MM
-    ("i8mm", None),
     // FEAT_F32MM
     ("f32mm", None),
     // FEAT_F64MM
     ("f64mm", None),
-    // FEAT_BF16
-    ("bf16", None),
-    // FEAT_RAND
-    ("rand", None),
-    // FEAT_BTI
-    ("bti", None),
-    // FEAT_MTE
-    ("mte", None),
-    // FEAT_JSCVT
-    ("jsconv", None),
     // FEAT_FCMA
     ("fcma", None),
-    // FEAT_AES
-    ("aes", None),
+    // FEAT_FHM
+    ("fhm", None),
+    // FEAT_FLAGM
+    ("flagm", None),
+    // FEAT_FP16
+    ("fp16", None),
+    // FEAT_FRINTTS
+    ("frintts", None),
+    // FEAT_I8MM
+    ("i8mm", None),
+    // FEAT_JSCVT
+    ("jsconv", None),
+    // FEAT_LOR
+    ("lor", None),
+    // FEAT_LSE
+    ("lse", None),
+    // FEAT_MTE
+    ("mte", None),
+    // FEAT_AdvSimd & FEAT_FP
+    ("neon", None),
+    // FEAT_PAUTH (address authentication)
+    ("paca", None),
+    // FEAT_PAUTH (generic authentication)
+    ("pacg", None),
+    // FEAT_PAN
+    ("pan", None),
+    // FEAT_PMUv3
+    ("pmuv3", None),
+    // FEAT_RAND
+    ("rand", None),
+    // FEAT_RAS
+    ("ras", None),
+    // FEAT_RCPC
+    ("rcpc", None),
+    // FEAT_RCPC2
+    ("rcpc2", None),
+    // FEAT_RDM
+    ("rdm", None),
+    // FEAT_SB
+    ("sb", None),
     // FEAT_SHA1 & FEAT_SHA256
     ("sha2", None),
     // FEAT_SHA512 & FEAT_SHA3
     ("sha3", None),
     // FEAT_SM3 & FEAT_SM4
     ("sm4", None),
-    // FEAT_PAN
-    ("pan", None),
-    // FEAT_LOR
-    ("lor", None),
-    // FEAT_VHE
-    ("vh", None),
-    // FEAT_PMUv3
-    ("pmuv3", None),
     // FEAT_SPE
     ("spe", None),
+    // FEAT_SSBS
+    ("ssbs", None),
+    // FEAT_SVE
+    ("sve", None),
+    // FEAT_SVE2
+    ("sve2", None),
+    // FEAT_SVE2_AES
+    ("sve2-aes", None),
+    // FEAT_SVE2_BitPerm
+    ("sve2-bitperm", None),
+    // FEAT_SVE2_SHA3
+    ("sve2-sha3", None),
+    // FEAT_SVE2_SM4
+    ("sve2-sm4", None),
+    // FEAT_TME
+    ("tme", None),
     ("v8.1a", Some(sym::aarch64_ver_target_feature)),
     ("v8.2a", Some(sym::aarch64_ver_target_feature)),
     ("v8.3a", Some(sym::aarch64_ver_target_feature)),
@@ -138,6 +150,9 @@ const AARCH64_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("v8.5a", Some(sym::aarch64_ver_target_feature)),
     ("v8.6a", Some(sym::aarch64_ver_target_feature)),
     ("v8.7a", Some(sym::aarch64_ver_target_feature)),
+    // FEAT_VHE
+    ("vh", None),
+    // tidy-alphabetical-end
 ];
 
 const AARCH64_TIED_FEATURES: &[&[&str]] = &[
@@ -145,6 +160,7 @@ const AARCH64_TIED_FEATURES: &[&[&str]] = &[
 ];
 
 const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("adx", None),
     ("aes", None),
     ("avx", None),
@@ -174,6 +190,7 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("f16c", Some(sym::f16c_target_feature)),
     ("fma", None),
     ("fxsr", None),
+    ("gfni", Some(sym::avx512_target_feature)),
     ("lzcnt", None),
     ("movbe", Some(sym::movbe_target_feature)),
     ("pclmulqdq", None),
@@ -190,73 +207,88 @@ const X86_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
     ("sse4a", Some(sym::sse4a_target_feature)),
     ("ssse3", None),
     ("tbm", Some(sym::tbm_target_feature)),
+    ("vaes", Some(sym::avx512_target_feature)),
+    ("vpclmulqdq", Some(sym::avx512_target_feature)),
     ("xsave", None),
     ("xsavec", None),
     ("xsaveopt", None),
     ("xsaves", None),
+    // tidy-alphabetical-end
 ];
 
 const HEXAGON_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("hvx", Some(sym::hexagon_target_feature)),
     ("hvx-length128b", Some(sym::hexagon_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const POWERPC_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("altivec", Some(sym::powerpc_target_feature)),
+    ("power10-vector", Some(sym::powerpc_target_feature)),
     ("power8-altivec", Some(sym::powerpc_target_feature)),
-    ("power9-altivec", Some(sym::powerpc_target_feature)),
     ("power8-vector", Some(sym::powerpc_target_feature)),
+    ("power9-altivec", Some(sym::powerpc_target_feature)),
     ("power9-vector", Some(sym::powerpc_target_feature)),
     ("vsx", Some(sym::powerpc_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const MIPS_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
+    // tidy-alphabetical-start
     ("fp64", Some(sym::mips_target_feature)),
     ("msa", Some(sym::mips_target_feature)),
     ("virt", Some(sym::mips_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const RISCV_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("m", Some(sym::riscv_target_feature)),
+    // tidy-alphabetical-start
     ("a", Some(sym::riscv_target_feature)),
     ("c", Some(sym::riscv_target_feature)),
-    ("f", Some(sym::riscv_target_feature)),
     ("d", Some(sym::riscv_target_feature)),
     ("e", Some(sym::riscv_target_feature)),
+    ("f", Some(sym::riscv_target_feature)),
+    ("m", Some(sym::riscv_target_feature)),
     ("v", Some(sym::riscv_target_feature)),
-    ("zfinx", Some(sym::riscv_target_feature)),
-    ("zdinx", Some(sym::riscv_target_feature)),
-    ("zhinx", Some(sym::riscv_target_feature)),
-    ("zhinxmin", Some(sym::riscv_target_feature)),
-    ("zfh", Some(sym::riscv_target_feature)),
-    ("zfhmin", Some(sym::riscv_target_feature)),
     ("zba", Some(sym::riscv_target_feature)),
     ("zbb", Some(sym::riscv_target_feature)),
     ("zbc", Some(sym::riscv_target_feature)),
-    ("zbs", Some(sym::riscv_target_feature)),
     ("zbkb", Some(sym::riscv_target_feature)),
     ("zbkc", Some(sym::riscv_target_feature)),
     ("zbkx", Some(sym::riscv_target_feature)),
+    ("zbs", Some(sym::riscv_target_feature)),
+    ("zdinx", Some(sym::riscv_target_feature)),
+    ("zfh", Some(sym::riscv_target_feature)),
+    ("zfhmin", Some(sym::riscv_target_feature)),
+    ("zfinx", Some(sym::riscv_target_feature)),
+    ("zhinx", Some(sym::riscv_target_feature)),
+    ("zhinxmin", Some(sym::riscv_target_feature)),
+    ("zk", Some(sym::riscv_target_feature)),
+    ("zkn", Some(sym::riscv_target_feature)),
     ("zknd", Some(sym::riscv_target_feature)),
     ("zkne", Some(sym::riscv_target_feature)),
     ("zknh", Some(sym::riscv_target_feature)),
+    ("zkr", Some(sym::riscv_target_feature)),
+    ("zks", Some(sym::riscv_target_feature)),
     ("zksed", Some(sym::riscv_target_feature)),
     ("zksh", Some(sym::riscv_target_feature)),
-    ("zkr", Some(sym::riscv_target_feature)),
-    ("zkn", Some(sym::riscv_target_feature)),
-    ("zks", Some(sym::riscv_target_feature)),
-    ("zk", Some(sym::riscv_target_feature)),
     ("zkt", Some(sym::riscv_target_feature)),
+    // tidy-alphabetical-end
 ];
 
 const WASM_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[
-    ("simd128", None),
+    // tidy-alphabetical-start
     ("atomics", Some(sym::wasm_target_feature)),
-    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("bulk-memory", Some(sym::wasm_target_feature)),
+    ("multivalue", Some(sym::wasm_target_feature)),
     ("mutable-globals", Some(sym::wasm_target_feature)),
+    ("nontrapping-fptoint", Some(sym::wasm_target_feature)),
     ("reference-types", Some(sym::wasm_target_feature)),
     ("sign-ext", Some(sym::wasm_target_feature)),
+    ("simd128", None),
+    // tidy-alphabetical-end
 ];
 
 const BPF_ALLOWED_FEATURES: &[(&str, Option<Symbol>)] = &[("alu32", Some(sym::bpf_target_feature))];
@@ -301,15 +333,148 @@ pub fn tied_target_features(sess: &Session) -> &'static [&'static [&'static str]
     }
 }
 
-pub(crate) fn provide(providers: &mut Providers) {
-    providers.supported_target_features = |tcx, cnum| {
-        assert_eq!(cnum, LOCAL_CRATE);
-        if tcx.sess.opts.actually_rustdoc {
-            // rustdoc needs to be able to document functions that use all the features, so
-            // whitelist them all
-            all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
-        } else {
-            supported_target_features(tcx.sess).iter().map(|&(a, b)| (a.to_string(), b)).collect()
-        }
+pub fn from_target_feature(
+    tcx: TyCtxt<'_>,
+    attr: &ast::Attribute,
+    supported_target_features: &FxHashMap<String, Option<Symbol>>,
+    target_features: &mut Vec<Symbol>,
+) {
+    let Some(list) = attr.meta_item_list() else { return };
+    let bad_item = |span| {
+        let msg = "malformed `target_feature` attribute input";
+        let code = "enable = \"..\"";
+        tcx.sess
+            .struct_span_err(span, msg)
+            .span_suggestion(span, "must be of the form", code, Applicability::HasPlaceholders)
+            .emit();
     };
+    let rust_features = tcx.features();
+    for item in list {
+        // Only `enable = ...` is accepted in the meta-item list.
+        if !item.has_name(sym::enable) {
+            bad_item(item.span());
+            continue;
+        }
+
+        // Must be of the form `enable = "..."` (a string).
+        let Some(value) = item.value_str() else {
+            bad_item(item.span());
+            continue;
+        };
+
+        // We allow comma separation to enable multiple features.
+        target_features.extend(value.as_str().split(',').filter_map(|feature| {
+            let Some(feature_gate) = supported_target_features.get(feature) else {
+                let msg =
+                    format!("the feature named `{}` is not valid for this target", feature);
+                let mut err = tcx.sess.struct_span_err(item.span(), &msg);
+                err.span_label(
+                    item.span(),
+                    format!("`{}` is not valid for this target", feature),
+                );
+                if let Some(stripped) = feature.strip_prefix('+') {
+                    let valid = supported_target_features.contains_key(stripped);
+                    if valid {
+                        err.help("consider removing the leading `+` in the feature name");
+                    }
+                }
+                err.emit();
+                return None;
+            };
+
+            // Only allow features whose feature gates have been enabled.
+            let allowed = match feature_gate.as_ref().copied() {
+                Some(sym::arm_target_feature) => rust_features.arm_target_feature,
+                Some(sym::hexagon_target_feature) => rust_features.hexagon_target_feature,
+                Some(sym::powerpc_target_feature) => rust_features.powerpc_target_feature,
+                Some(sym::mips_target_feature) => rust_features.mips_target_feature,
+                Some(sym::riscv_target_feature) => rust_features.riscv_target_feature,
+                Some(sym::avx512_target_feature) => rust_features.avx512_target_feature,
+                Some(sym::sse4a_target_feature) => rust_features.sse4a_target_feature,
+                Some(sym::tbm_target_feature) => rust_features.tbm_target_feature,
+                Some(sym::wasm_target_feature) => rust_features.wasm_target_feature,
+                Some(sym::cmpxchg16b_target_feature) => rust_features.cmpxchg16b_target_feature,
+                Some(sym::movbe_target_feature) => rust_features.movbe_target_feature,
+                Some(sym::rtm_target_feature) => rust_features.rtm_target_feature,
+                Some(sym::f16c_target_feature) => rust_features.f16c_target_feature,
+                Some(sym::ermsb_target_feature) => rust_features.ermsb_target_feature,
+                Some(sym::bpf_target_feature) => rust_features.bpf_target_feature,
+                Some(sym::aarch64_ver_target_feature) => rust_features.aarch64_ver_target_feature,
+                Some(name) => bug!("unknown target feature gate {}", name),
+                None => true,
+            };
+            if !allowed {
+                feature_err(
+                    &tcx.sess.parse_sess,
+                    feature_gate.unwrap(),
+                    item.span(),
+                    &format!("the target feature `{}` is currently unstable", feature),
+                )
+                .emit();
+            }
+            Some(Symbol::intern(feature))
+        }));
+    }
+}
+
+/// Computes the set of target features used in a function for the purposes of
+/// inline assembly.
+fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
+    let mut target_features = tcx.sess.unstable_target_features.clone();
+    if tcx.def_kind(did).has_codegen_attrs() {
+        let attrs = tcx.codegen_fn_attrs(did);
+        target_features.extend(&attrs.target_features);
+        match attrs.instruction_set {
+            None => {}
+            Some(InstructionSetAttr::ArmA32) => {
+                target_features.remove(&sym::thumb_mode);
+            }
+            Some(InstructionSetAttr::ArmT32) => {
+                target_features.insert(sym::thumb_mode);
+            }
+        }
+    }
+
+    tcx.arena.alloc(target_features)
+}
+
+/// Checks the function annotated with `#[target_feature]` is not a safe
+/// trait method implementation, reporting an error if it is.
+pub fn check_target_feature_trait_unsafe(tcx: TyCtxt<'_>, id: LocalDefId, attr_span: Span) {
+    let hir_id = tcx.hir().local_def_id_to_hir_id(id);
+    let node = tcx.hir().get(hir_id);
+    if let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), .. }) = node {
+        let parent_id = tcx.hir().get_parent_item(hir_id);
+        let parent_item = tcx.hir().expect_item(parent_id.def_id);
+        if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }) = parent_item.kind {
+            tcx.sess
+                .struct_span_err(
+                    attr_span,
+                    "`#[target_feature(..)]` cannot be applied to safe trait method",
+                )
+                .span_label(attr_span, "cannot be applied to safe trait method")
+                .span_label(tcx.def_span(id), "not an `unsafe` function")
+                .emit();
+        }
+    }
+}
+
+pub(crate) fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        supported_target_features: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            if tcx.sess.opts.actually_rustdoc {
+                // rustdoc needs to be able to document functions that use all the features, so
+                // whitelist them all
+                all_known_features().map(|(a, b)| (a.to_string(), b)).collect()
+            } else {
+                supported_target_features(tcx.sess)
+                    .iter()
+                    .map(|&(a, b)| (a.to_string(), b))
+                    .collect()
+            }
+        },
+        asm_target_features,
+        ..*providers
+    }
 }

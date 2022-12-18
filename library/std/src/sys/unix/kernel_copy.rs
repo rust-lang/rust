@@ -20,7 +20,7 @@
 //! Since those syscalls have requirements that cannot be fully checked in advance and
 //! gathering additional information about file descriptors would require additional syscalls
 //! anyway it simply attempts to use them one after another (guided by inaccurate hints) to
-//! figure out which one works and and falls back to the generic read-write copy loop if none of them
+//! figure out which one works and falls back to the generic read-write copy loop if none of them
 //! does.
 //! Once a working syscall is found for a pair of file descriptors it will be called in a loop
 //! until the copy operation is completed.
@@ -61,6 +61,10 @@ use crate::ptr;
 use crate::sync::atomic::{AtomicBool, AtomicU8, Ordering};
 use crate::sys::cvt;
 use crate::sys::weak::syscall;
+#[cfg(not(target_os = "linux"))]
+use libc::sendfile as sendfile64;
+#[cfg(target_os = "linux")]
+use libc::sendfile64;
 use libc::{EBADF, EINVAL, ENOSYS, EOPNOTSUPP, EOVERFLOW, EPERM, EXDEV};
 
 #[cfg(test)]
@@ -647,7 +651,7 @@ fn sendfile_splice(mode: SpliceMode, reader: RawFd, writer: RawFd, len: u64) -> 
 
         let result = match mode {
             SpliceMode::Sendfile => {
-                cvt(unsafe { libc::sendfile(writer, reader, ptr::null_mut(), chunk_size) })
+                cvt(unsafe { sendfile64(writer, reader, ptr::null_mut(), chunk_size) })
             }
             SpliceMode::Splice => cvt(unsafe {
                 splice(reader, ptr::null_mut(), writer, ptr::null_mut(), chunk_size, 0)

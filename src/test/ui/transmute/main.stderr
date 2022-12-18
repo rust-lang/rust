@@ -1,12 +1,4 @@
 error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
-  --> $DIR/main.rs:13:5
-   |
-LL |     transmute(x)
-   |     ^^^^^^^^^
-   |
-   = note: `<C as TypeConstructor<'_>>::T` does not have a fixed size
-
-error[E0512]: cannot transmute between types of different sizes, or dependently-sized types
   --> $DIR/main.rs:17:17
    |
 LL |     let x: u8 = transmute(10u16);
@@ -33,6 +25,6 @@ LL |     let x: Foo = transmute(10);
    = note: source type: `i32` (32 bits)
    = note: target type: `Foo` (0 bits)
 
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0512`.

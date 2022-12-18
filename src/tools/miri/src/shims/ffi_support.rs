@@ -183,9 +183,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // from: https://docs.rs/libloading/0.7.3/src/libloading/os/unix/mod.rs.html#411
         // using the `libc` crate where this interface is public.
         // No `libc::dladdr` on windows.
-        #[cfg(unix)]
         let mut info = std::mem::MaybeUninit::<libc::Dl_info>::uninit();
-        #[cfg(unix)]
         unsafe {
             if libc::dladdr(*func.deref() as *const _, info.as_mut_ptr()) != 0 {
                 if std::ffi::CStr::from_ptr(info.assume_init().dli_fname).to_str().unwrap()

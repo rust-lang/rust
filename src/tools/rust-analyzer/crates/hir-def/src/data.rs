@@ -219,7 +219,7 @@ impl TraitData {
     pub(crate) fn trait_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         tr: TraitId,
-    ) -> (Arc<TraitData>, Arc<Vec<DefDiagnostic>>) {
+    ) -> (Arc<TraitData>, Arc<[DefDiagnostic]>) {
         let tr_loc @ ItemLoc { container: module_id, id: tree_id } = tr.lookup(db);
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
@@ -236,11 +236,19 @@ impl TraitData {
             .by_key("rustc_skip_array_during_method_dispatch")
             .exists();
 
-        let mut collector =
-            AssocItemCollector::new(db, module_id, tree_id.file_id(), ItemContainerId::TraitId(tr));
-        collector.collect(&item_tree, tree_id.tree_id(), &tr_def.items);
-        let (items, attribute_calls, diagnostics) = collector.finish();
-
+        let (items, attribute_calls, diagnostics) = match &tr_def.items {
+            Some(items) => {
+                let mut collector = AssocItemCollector::new(
+                    db,
+                    module_id,
+                    tree_id.file_id(),
+                    ItemContainerId::TraitId(tr),
+                );
+                collector.collect(&item_tree, tree_id.tree_id(), items);
+                collector.finish()
+            }
+            None => Default::default(),
+        };
         (
             Arc::new(TraitData {
                 name,
@@ -251,7 +259,7 @@ impl TraitData {
                 visibility,
                 skip_array_during_method_dispatch,
             }),
-            Arc::new(diagnostics),
+            diagnostics.into(),
         )
     }
 
@@ -299,7 +307,7 @@ impl ImplData {
     pub(crate) fn impl_data_with_diagnostics_query(
         db: &dyn DefDatabase,
         id: ImplId,
-    ) -> (Arc<ImplData>, Arc<Vec<DefDiagnostic>>) {
+    ) -> (Arc<ImplData>, Arc<[DefDiagnostic]>) {
         let _p = profile::span("impl_data_with_diagnostics_query");
         let ItemLoc { container: module_id, id: tree_id } = id.lookup(db);
 
@@ -318,7 +326,7 @@ impl ImplData {
 
         (
             Arc::new(ImplData { target_trait, self_ty, items, is_negative, attribute_calls }),
-            Arc::new(diagnostics),
+            diagnostics.into(),
         )
     }
 

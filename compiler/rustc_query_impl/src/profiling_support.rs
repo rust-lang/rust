@@ -19,18 +19,18 @@ impl QueryKeyStringCache {
     }
 }
 
-struct QueryKeyStringBuilder<'p, 'c, 'tcx> {
+struct QueryKeyStringBuilder<'p, 'tcx> {
     profiler: &'p SelfProfiler,
     tcx: TyCtxt<'tcx>,
-    string_cache: &'c mut QueryKeyStringCache,
+    string_cache: &'p mut QueryKeyStringCache,
 }
 
-impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
+impl<'p, 'tcx> QueryKeyStringBuilder<'p, 'tcx> {
     fn new(
         profiler: &'p SelfProfiler,
         tcx: TyCtxt<'tcx>,
-        string_cache: &'c mut QueryKeyStringCache,
-    ) -> QueryKeyStringBuilder<'p, 'c, 'tcx> {
+        string_cache: &'p mut QueryKeyStringCache,
+    ) -> QueryKeyStringBuilder<'p, 'tcx> {
         QueryKeyStringBuilder { profiler, tcx, string_cache }
     }
 
@@ -99,7 +99,7 @@ impl<'p, 'c, 'tcx> QueryKeyStringBuilder<'p, 'c, 'tcx> {
 }
 
 trait IntoSelfProfilingString {
-    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_, '_>) -> StringId;
+    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId;
 }
 
 // The default implementation of `IntoSelfProfilingString` just uses `Debug`
@@ -109,7 +109,7 @@ trait IntoSelfProfilingString {
 impl<T: Debug> IntoSelfProfilingString for T {
     default fn to_self_profile_string(
         &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
+        builder: &mut QueryKeyStringBuilder<'_, '_>,
     ) -> StringId {
         let s = format!("{:?}", self);
         builder.profiler.alloc_string(&s[..])
@@ -117,60 +117,42 @@ impl<T: Debug> IntoSelfProfilingString for T {
 }
 
 impl<T: SpecIntoSelfProfilingString> IntoSelfProfilingString for T {
-    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_, '_>) -> StringId {
+    fn to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         self.spec_to_self_profile_string(builder)
     }
 }
 
 #[rustc_specialization_trait]
 trait SpecIntoSelfProfilingString: Debug {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId;
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId;
 }
 
 impl SpecIntoSelfProfilingString for DefId {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(*self)
     }
 }
 
 impl SpecIntoSelfProfilingString for CrateNum {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(self.as_def_id())
     }
 }
 
 impl SpecIntoSelfProfilingString for DefIndex {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: *self })
     }
 }
 
 impl SpecIntoSelfProfilingString for LocalDefId {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         builder.def_id_to_string_id(DefId { krate: LOCAL_CRATE, index: self.local_def_index })
     }
 }
 
 impl<T: SpecIntoSelfProfilingString> SpecIntoSelfProfilingString for WithOptConstParam<T> {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         // We print `WithOptConstParam` values as tuples to make them shorter
         // and more readable, without losing information:
         //
@@ -205,10 +187,7 @@ where
     T0: SpecIntoSelfProfilingString,
     T1: SpecIntoSelfProfilingString,
 {
-    fn spec_to_self_profile_string(
-        &self,
-        builder: &mut QueryKeyStringBuilder<'_, '_, '_>,
-    ) -> StringId {
+    fn spec_to_self_profile_string(&self, builder: &mut QueryKeyStringBuilder<'_, '_>) -> StringId {
         let val0 = self.0.to_self_profile_string(builder);
         let val1 = self.1.to_self_profile_string(builder);
 

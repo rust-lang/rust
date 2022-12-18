@@ -1,10 +1,11 @@
 // revisions: edition2018 edition2021
-// [edition2018] edition:2018
-// [edition2021] edition:2021
+//[edition2018] edition:2018
+//[edition2021] edition:2021
 // run-rustfix
 
 #![warn(clippy::manual_assert)]
-#![allow(clippy::nonminimal_bool)]
+#![allow(dead_code, unused_doc_comments)]
+#![allow(clippy::nonminimal_bool, clippy::uninlined_format_args)]
 
 macro_rules! one {
     () => {
@@ -64,5 +65,22 @@ fn main() {
     }
     if a.is_empty() {
         panic!("with expansion {}", one!())
+    }
+    if a.is_empty() {
+        let _ = 0;
+    } else if a.len() == 1 {
+        panic!("panic6");
+    }
+}
+
+fn issue7730(a: u8) {
+    // Suggestion should preserve comment
+    if a > 2 {
+        // comment
+        /* this is a
+        multiline
+        comment */
+        /// Doc comment
+        panic!("panic with comment") // comment after `panic!`
     }
 }

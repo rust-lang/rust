@@ -59,7 +59,7 @@ struct ParameterCollector {
 impl<'tcx> TypeVisitor<'tcx> for ParameterCollector {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
         match *t.kind() {
-            ty::Projection(..) if !self.include_nonconstraining => {
+            ty::Alias(ty::Projection, ..) if !self.include_nonconstraining => {
                 // projections are not injective
                 return ControlFlow::CONTINUE;
             }
@@ -114,9 +114,9 @@ pub fn identify_constrained_generic_params<'tcx>(
 /// ```
 /// The impl's predicates are collected from left to right. Ignoring
 /// the implicit `Sized` bounds, these are
-///   * T: Debug
-///   * U: Iterator
-///   * <U as Iterator>::Item = T -- a desugared ProjectionPredicate
+///   * `T: Debug`
+///   * `U: Iterator`
+///   * `<U as Iterator>::Item = T` -- a desugared ProjectionPredicate
 ///
 /// When we, for example, try to go over the trait-reference
 /// `IntoIter<u32> as Trait`, we substitute the impl parameters with fresh
@@ -132,12 +132,16 @@ pub fn identify_constrained_generic_params<'tcx>(
 ///
 /// We *do* have to be somewhat careful when projection targets contain
 /// projections themselves, for example in
+///
+/// ```ignore (illustrative)
 ///     impl<S,U,V,W> Trait for U where
 /// /* 0 */   S: Iterator<Item = U>,
 /// /* - */   U: Iterator,
 /// /* 1 */   <U as Iterator>::Item: ToOwned<Owned=(W,<V as Iterator>::Item)>
 /// /* 2 */   W: Iterator<Item = V>
 /// /* 3 */   V: Debug
+/// ```
+///
 /// we have to evaluate the projections in the order I wrote them:
 /// `V: Debug` requires `V` to be evaluated. The only projection that
 /// *determines* `V` is 2 (1 contains it, but *does not determine it*,
@@ -183,7 +187,8 @@ pub fn setup_constraining_predicates<'tcx>(
         for j in i..predicates.len() {
             // Note that we don't have to care about binders here,
             // as the impl trait ref never contains any late-bound regions.
-            if let ty::PredicateKind::Projection(projection) = predicates[j].0.kind().skip_binder()
+            if let ty::PredicateKind::Clause(ty::Clause::Projection(projection)) =
+                predicates[j].0.kind().skip_binder()
             {
                 // Special case: watch out for some kind of sneaky attempt
                 // to project out an associated type defined by this very

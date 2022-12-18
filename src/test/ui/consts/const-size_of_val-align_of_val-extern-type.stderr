@@ -1,43 +1,15 @@
-error: any use of this value will cause an error
+error[E0080]: evaluation of constant value failed
   --> $DIR/const-size_of_val-align_of_val-extern-type.rs:11:31
    |
 LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
-   | ------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
+   |                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
 
-error: any use of this value will cause an error
-  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:13:32
+error[E0080]: evaluation of constant value failed
+  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:12:32
    |
 LL | const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
-   | -------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
 
 error: aborting due to 2 previous errors
 
-Future incompatibility report: Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:11:31
-   |
-LL | const _SIZE: usize = unsafe { size_of_val(&4 as *const i32 as *const Opaque) };
-   | ------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
-Future breakage diagnostic:
-error: any use of this value will cause an error
-  --> $DIR/const-size_of_val-align_of_val-extern-type.rs:13:32
-   |
-LL | const _ALIGN: usize = unsafe { min_align_of_val(&4 as *const i32 as *const Opaque) };
-   | -------------------            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ `extern type` does not have known layout
-   |
-   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-   = note: for more information, see issue #71800 <https://github.com/rust-lang/rust/issues/71800>
-   = note: `#[deny(const_err)]` on by default
-
+For more information about this error, try `rustc --explain E0080`.

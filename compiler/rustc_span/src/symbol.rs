@@ -9,7 +9,6 @@ use rustc_data_structures::sync::Lock;
 use rustc_macros::HashStable_Generic;
 use rustc_serialize::{Decodable, Decoder, Encodable, Encoder};
 
-use std::cmp::{Ord, PartialEq, PartialOrd};
 use std::fmt;
 use std::hash::{Hash, Hasher};
 use std::str;
@@ -165,13 +164,12 @@ symbols! {
         Capture,
         Center,
         Clone,
+        Context,
         Continue,
         Copy,
         Count,
         Cow,
         Debug,
-        DebugStruct,
-        DebugTuple,
         Decodable,
         Decoder,
         DecorateLint,
@@ -190,9 +188,6 @@ symbols! {
         Error,
         File,
         FileType,
-        Fn,
-        FnMut,
-        FnOnce,
         FormatSpec,
         Formatter,
         From,
@@ -211,7 +206,6 @@ symbols! {
         Input,
         Into,
         IntoDiagnostic,
-        IntoFuture,
         IntoIterator,
         IoRead,
         IoWrite,
@@ -256,7 +250,6 @@ symbols! {
         Pointer,
         Poll,
         ProcMacro,
-        ProcMacroHack,
         ProceduralMasqueradeDummyType,
         Range,
         RangeFrom,
@@ -332,7 +325,6 @@ symbols! {
         abi_vectorcall,
         abi_x86_interrupt,
         abort,
-        aborts,
         add,
         add_assign,
         add_with_overflow,
@@ -344,7 +336,6 @@ symbols! {
         align,
         align_offset,
         alignment,
-        alignstack,
         all,
         alloc,
         alloc_error_handler,
@@ -433,7 +424,6 @@ symbols! {
         bool,
         borrowck_graphviz_format,
         borrowck_graphviz_postflow,
-        borrowck_graphviz_preflow,
         box_free,
         box_patterns,
         box_syntax,
@@ -451,6 +441,7 @@ symbols! {
         call_once,
         caller_location,
         capture_disjoint_fields,
+        cause,
         cdylib,
         ceilf32,
         ceilf64,
@@ -461,7 +452,6 @@ symbols! {
         cfg_doctest,
         cfg_eval,
         cfg_hide,
-        cfg_macro,
         cfg_panic,
         cfg_sanitize,
         cfg_target_abi,
@@ -469,7 +459,6 @@ symbols! {
         cfg_target_feature,
         cfg_target_has_atomic,
         cfg_target_has_atomic_equal_alignment,
-        cfg_target_has_atomic_load_store,
         cfg_target_thread_local,
         cfg_target_vendor,
         cfg_version,
@@ -494,19 +483,15 @@ symbols! {
         cold,
         collapse_debuginfo,
         column,
-        column_macro,
-        compare_and_swap,
         compare_exchange,
         compare_exchange_weak,
         compile_error,
-        compile_error_macro,
         compiler,
         compiler_builtins,
         compiler_fence,
         concat,
         concat_bytes,
         concat_idents,
-        concat_macro,
         conservative_impl_trait,
         console,
         const_allocate,
@@ -527,7 +512,6 @@ symbols! {
         const_fn_unsize,
         const_for,
         const_format_args,
-        const_generic_defaults,
         const_generics,
         const_generics_defaults,
         const_if_match,
@@ -546,22 +530,19 @@ symbols! {
         const_trait,
         const_trait_bound_opt_out,
         const_trait_impl,
-        const_transmute,
         const_try,
         constant,
         constructor,
-        contents,
         context,
-        convert,
         copy,
         copy_closures,
         copy_nonoverlapping,
         copysignf32,
         copysignf64,
         core,
-        core_intrinsics,
         core_panic,
         core_panic_2015_macro,
+        core_panic_2021_macro,
         core_panic_macro,
         cosf32,
         cosf64,
@@ -583,6 +564,7 @@ symbols! {
         custom_attribute,
         custom_derive,
         custom_inner_attributes,
+        custom_mir,
         custom_test_frameworks,
         d,
         d32,
@@ -596,7 +578,6 @@ symbols! {
         debug_assertions,
         debug_struct,
         debug_struct_fields_finish,
-        debug_trait_builder,
         debug_tuple,
         debug_tuple_fields_finish,
         debugger_visualizer,
@@ -618,6 +599,7 @@ symbols! {
         deref_mut,
         deref_target,
         derive,
+        derive_const,
         derive_default_enum,
         destruct,
         destructuring_assignment,
@@ -627,7 +609,6 @@ symbols! {
         discriminant_type,
         discriminant_value,
         dispatch_from_dyn,
-        display_trait,
         div,
         div_assign,
         doc,
@@ -658,7 +639,6 @@ symbols! {
         dyn_star,
         dyn_trait,
         e,
-        edition_macro_pats,
         edition_panic,
         eh_catch_typeinfo,
         eh_personality,
@@ -671,7 +651,6 @@ symbols! {
         encode,
         end,
         env,
-        env_macro,
         eprint_macro,
         eprintln_macro,
         eq,
@@ -693,6 +672,7 @@ symbols! {
         export_name,
         expr,
         extended_key_value_attributes,
+        extended_varargs_abi_support,
         extern_absolute_paths,
         extern_crate_item_prelude,
         extern_crate_self,
@@ -720,9 +700,7 @@ symbols! {
         field,
         field_init_shorthand,
         file,
-        file_macro,
         fill,
-        finish,
         flags,
         float,
         float_to_int_unchecked,
@@ -731,8 +709,6 @@ symbols! {
         fmaf32,
         fmaf64,
         fmt,
-        fmt_as_str,
-        fmt_internals,
         fmul_fast,
         fn_align,
         fn_must_use,
@@ -747,13 +723,11 @@ symbols! {
         format_args_macro,
         format_args_nl,
         format_macro,
-        fp,
         freeze,
         freg,
         frem_fast,
         from,
         from_desugaring,
-        from_generator,
         from_iter,
         from_method,
         from_output,
@@ -779,12 +753,12 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_param_attrs,
-        get_context,
         global_allocator,
         global_asm,
         globs,
         gt,
         half_open_range_patterns,
+        half_open_range_patterns_in_slices,
         hash,
         hexagon_target_feature,
         hidden,
@@ -803,14 +777,16 @@ symbols! {
         i64,
         i8,
         ident,
+        identity_future,
         if_let,
         if_let_guard,
         if_while_or_patterns,
         ignore,
         impl_header_lifetime_elision,
         impl_lint_pass,
-        impl_macros,
         impl_trait_in_bindings,
+        impl_trait_in_fn_trait_return,
+        impl_trait_projections,
         implied_by,
         import,
         import_name_type,
@@ -820,7 +796,6 @@ symbols! {
         include,
         include_bytes,
         include_bytes_macro,
-        include_macro,
         include_str,
         include_str_macro,
         inclusive_range_syntax,
@@ -838,7 +813,6 @@ symbols! {
         instruction_set,
         integer_: "integer",
         integral,
-        intel,
         into_future,
         into_iter,
         intra_doc_pointers,
@@ -853,6 +827,8 @@ symbols! {
         item_like_imports,
         iter,
         iter_repeat,
+        iterator_collect_fn,
+        kcfi,
         keyword,
         kind,
         kreg,
@@ -875,7 +851,6 @@ symbols! {
         lifetimes,
         likely,
         line,
-        line_macro,
         link,
         link_args,
         link_cfg,
@@ -959,7 +934,6 @@ symbols! {
         modifiers,
         module,
         module_path,
-        module_path_macro,
         more_qualified_paths,
         more_struct_aliases,
         movbe_target_feature,
@@ -1029,7 +1003,6 @@ symbols! {
         non_exhaustive,
         non_exhaustive_omitted_patterns_lint,
         non_modrs_mods,
-        none_error,
         nontemporal_store,
         noop_method_borrow,
         noop_method_clone,
@@ -1054,7 +1027,6 @@ symbols! {
         optin_builtin_traits,
         option,
         option_env,
-        option_env_macro,
         options,
         or,
         or_patterns,
@@ -1097,7 +1069,7 @@ symbols! {
         plugins,
         pointee_trait,
         pointer,
-        pointer_trait_fmt,
+        pointer_sized,
         poll,
         position,
         post_dash_lto: "post-lto",
@@ -1124,7 +1096,6 @@ symbols! {
         proc_dash_macro: "proc-macro",
         proc_macro,
         proc_macro_attribute,
-        proc_macro_def_site,
         proc_macro_derive,
         proc_macro_expr,
         proc_macro_gen,
@@ -1225,12 +1196,8 @@ symbols! {
         rust_cold_cc,
         rust_eh_catch_typeinfo,
         rust_eh_personality,
-        rust_eh_register_frames,
-        rust_eh_unregister_frames,
-        rust_oom,
         rustc,
         rustc_allocator,
-        rustc_allocator_nounwind,
         rustc_allocator_zeroed,
         rustc_allow_const_fn_unstable,
         rustc_allow_incoherent_impl,
@@ -1247,6 +1214,7 @@ symbols! {
         rustc_deallocator,
         rustc_def_path,
         rustc_default_body_unstable,
+        rustc_deny_explicit_impl,
         rustc_diagnostic_item,
         rustc_diagnostic_macros,
         rustc_dirty,
@@ -1277,6 +1245,7 @@ symbols! {
         rustc_mir,
         rustc_must_implement_one_of,
         rustc_nonnull_optimization_guaranteed,
+        rustc_nounwind,
         rustc_object_lifetime_default,
         rustc_on_unimplemented,
         rustc_outlives,
@@ -1300,7 +1269,6 @@ symbols! {
         rustc_serialize,
         rustc_skip_array_during_method_dispatch,
         rustc_specialization_trait,
-        rustc_stable,
         rustc_std_internal_symbol,
         rustc_strict_coherence,
         rustc_symbol_name,
@@ -1428,7 +1396,6 @@ symbols! {
         static_recursion,
         staticlib,
         std,
-        std_inject,
         std_panic,
         std_panic_2015_macro,
         std_panic_macro,
@@ -1442,8 +1409,8 @@ symbols! {
         str_trim_end,
         str_trim_start,
         strict_provenance,
+        string_deref_patterns,
         stringify,
-        stringify_macro,
         struct_field_attributes,
         struct_inherit,
         struct_variant,
@@ -1471,10 +1438,8 @@ symbols! {
         target_has_atomic_load_store,
         target_os,
         target_pointer_width,
-        target_target_vendor,
         target_thread_local,
         target_vendor,
-        task,
         tbm_target_feature,
         termination,
         termination_trait,
@@ -1486,7 +1451,6 @@ symbols! {
         test_removed_feature,
         test_runner,
         test_unstable_lint,
-        then_with,
         thread,
         thread_local,
         thread_local_macro,
@@ -1518,13 +1482,13 @@ symbols! {
         try_trait_v2,
         tt,
         tuple,
-        tuple_from_req,
         tuple_indexing,
         tuple_trait,
         two_phase,
         ty,
         type_alias_enum_variants,
         type_alias_impl_trait,
+        type_ascribe,
         type_ascription,
         type_changing_struct_update,
         type_id,
@@ -1562,7 +1526,6 @@ symbols! {
         unreachable_2015,
         unreachable_2015_macro,
         unreachable_2021,
-        unreachable_2021_macro,
         unreachable_code,
         unreachable_display,
         unreachable_macro,
@@ -1581,7 +1544,6 @@ symbols! {
                           from crates.io via `Cargo.toml` instead?",
         untagged_unions,
         unused_imports,
-        unused_qualifications,
         unwind,
         unwind_attributes,
         unwind_safe_trait,
@@ -1749,7 +1711,8 @@ impl fmt::Display for Ident {
     }
 }
 
-/// This is the most general way to print identifiers.
+/// The most general type to print identifiers.
+///
 /// AST pretty-printer is used as a fallback for turning AST structures into token streams for
 /// proc macros. Additionally, proc macros may stringify their input and expect it survive the
 /// stringification (especially true for proc macro derives written between Rust 1.15 and 1.30).
@@ -1899,6 +1862,13 @@ impl fmt::Display for Symbol {
     }
 }
 
+// takes advantage of `str::to_string` specialization
+impl ToString for Symbol {
+    fn to_string(&self) -> String {
+        self.as_str().to_string()
+    }
+}
+
 impl<S: Encoder> Encodable<S> for Symbol {
     default fn encode(&self, s: &mut S) {
         s.emit_str(self.as_str());
@@ -1908,7 +1878,7 @@ impl<S: Encoder> Encodable<S> for Symbol {
 impl<D: Decoder> Decodable<D> for Symbol {
     #[inline]
     default fn decode(d: &mut D) -> Symbol {
-        Symbol::intern(&d.read_str())
+        Symbol::intern(d.read_str())
     }
 }
 
@@ -2005,7 +1975,6 @@ pub mod kw {
 /// For example `sym::rustfmt` or `sym::u8`.
 pub mod sym {
     use super::Symbol;
-    use std::convert::TryInto;
 
     #[doc(inline)]
     pub use super::sym_generated::*;
@@ -2083,8 +2052,8 @@ impl Symbol {
 }
 
 impl Ident {
-    // Returns `true` for reserved identifiers used internally for elided lifetimes,
-    // unnamed method parameters, crate root module, error recovery etc.
+    /// Returns `true` for reserved identifiers used internally for elided lifetimes,
+    /// unnamed method parameters, crate root module, error recovery etc.
     pub fn is_special(self) -> bool {
         self.name.is_special()
     }

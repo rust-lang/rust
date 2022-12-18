@@ -1,5 +1,6 @@
 use crate::common::CodegenCx;
 use crate::coverageinfo;
+use crate::errors::InstrumentCoverageRequiresLLVM12;
 use crate::llvm;
 
 use llvm::coverageinfo::CounterMappingRegion;
@@ -37,7 +38,7 @@ pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
     // LLVM 12.
     let version = coverageinfo::mapping_version();
     if version < 4 {
-        tcx.sess.fatal("rustc option `-C instrument-coverage` requires LLVM 12 or higher.");
+        tcx.sess.emit_fatal(InstrumentCoverageRequiresLLVM12);
     }
 
     debug!("Generating coverage map for CodegenUnit: `{}`", cx.codegen_unit.name());
@@ -129,7 +130,7 @@ impl CoverageMapGenerator {
             // LLVM Coverage Mapping Format version 6 (zero-based encoded as 5)
             // requires setting the first filename to the compilation directory.
             // Since rustc generates coverage maps with relative paths, the
-            // compilation directory can be combined with the the relative paths
+            // compilation directory can be combined with the relative paths
             // to get absolute paths, if needed.
             let working_dir = tcx
                 .sess
@@ -173,7 +174,7 @@ impl CoverageMapGenerator {
         counter_regions.sort_unstable_by_key(|(_counter, region)| *region);
         for (counter, region) in counter_regions {
             let CodeRegion { file_name, start_line, start_col, end_line, end_col } = *region;
-            let same_file = current_file_name.as_ref().map_or(false, |p| *p == file_name);
+            let same_file = current_file_name.map_or(false, |p| p == file_name);
             if !same_file {
                 if current_file_name.is_some() {
                     current_file_id += 1;

@@ -1,5 +1,5 @@
 error[E0308]: mismatched types
-  --> $DIR/pat-tuple-5.rs:8:10
+  --> $DIR/pat-tuple-5.rs:7:10
    |
 LL |     match (0, 1) {
    |           ------ this expression has type `({integer}, {integer})`

@@ -1,0 +1,30 @@
+error[E0425]: cannot find value `not_found` in this scope
+  --> $DIR/issue-104287.rs:5:13
+   |
+LL |     let x = not_found;
+   |             ^^^^^^^^^ not found in this scope
+
+error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
+  --> $DIR/issue-104287.rs:6:5
+   |
+LL |     simd_gt::<()>(x);
+   |     ^^^^^^^------ help: remove these generics
+   |     |
+   |     expected 0 generic arguments
+
+error[E0425]: cannot find function `simd_gt` in this scope
+  --> $DIR/issue-104287.rs:6:5
+   |
+LL |     simd_gt::<()>(x);
+   |     ^^^^^^^ not found in this scope
+   |
+help: use the `.` operator to call the method `SimdPartialOrd::simd_gt` on `[type error]`
+   |
+LL -     simd_gt::<()>(x);
+LL +     x.simd_gt();
+   |
+
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0107, E0425.
+For more information about an error, try `rustc --explain E0107`.

@@ -1,9 +1,3 @@
-error[E0423]: cannot initialize a tuple struct which contains private fields
-  --> $DIR/struct.rs:20:14
-   |
-LL |     let ts = TupleStruct(640, 480);
-   |              ^^^^^^^^^^^
-
 error[E0423]: expected value, found struct `UnitStruct`
   --> $DIR/struct.rs:29:14
    |
@@ -67,6 +61,12 @@ help: add `..` at the end of the field list to ignore all other fields
    |
 LL |     let NormalStruct { first_field, second_field , .. } = ns;
    |                                                  ~~~~~~
+
+error[E0423]: cannot initialize a tuple struct which contains private fields
+  --> $DIR/struct.rs:20:14
+   |
+LL |     let ts = TupleStruct(640, 480);
+   |              ^^^^^^^^^^^
 
 error[E0638]: `..` required with struct marked as non-exhaustive
   --> $DIR/struct.rs:26:9

@@ -20,7 +20,7 @@ use crate::type_::Type;
 use crate::value::Value;
 use rustc_codegen_ssa::traits::TypeMembershipMethods;
 use rustc_middle::ty::Ty;
-use rustc_symbol_mangling::typeid::typeid_for_fnabi;
+use rustc_symbol_mangling::typeid::{kcfi_typeid_for_fnabi, typeid_for_fnabi};
 use smallvec::SmallVec;
 
 /// Declare a function.
@@ -90,6 +90,28 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         declare_raw_fn(self, name, llvm::CCallConv, unnamed, visibility, fn_type)
     }
 
+    /// Declare an entry Function
+    ///
+    /// The ABI of this function can change depending on the target (although for now the same as
+    /// `declare_cfn`)
+    ///
+    /// If there’s a value with the same name already declared, the function will
+    /// update the declaration and return existing Value instead.
+    pub fn declare_entry_fn(
+        &self,
+        name: &str,
+        callconv: llvm::CallConv,
+        unnamed: llvm::UnnamedAddr,
+        fn_type: &'ll Type,
+    ) -> &'ll Value {
+        let visibility = if self.tcx.sess.target.default_hidden_visibility {
+            llvm::Visibility::Hidden
+        } else {
+            llvm::Visibility::Default
+        };
+        declare_raw_fn(self, name, callconv, unnamed, visibility, fn_type)
+    }
+
     /// Declare a Rust function.
     ///
     /// If there’s a value with the same name already declared, the function will
@@ -112,6 +134,11 @@ impl<'ll, 'tcx> CodegenCx<'ll, 'tcx> {
         if self.tcx.sess.is_sanitizer_cfi_enabled() {
             let typeid = typeid_for_fnabi(self.tcx, fn_abi);
             self.set_type_metadata(llfn, typeid);
+        }
+
+        if self.tcx.sess.is_sanitizer_kcfi_enabled() {
+            let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi);
+            self.set_kcfi_type_metadata(llfn, kcfi_typeid);
         }
 
         llfn

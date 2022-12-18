@@ -66,7 +66,7 @@ impl CaptureCollector<'_, '_> {
 }
 
 impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
-    fn visit_path(&mut self, path: &'tcx hir::Path<'tcx>, _: hir::HirId) {
+    fn visit_path(&mut self, path: &hir::Path<'tcx>, _: hir::HirId) {
         if let Res::Local(var_id) = path.res {
             self.visit_local_use(var_id, path.span);
         }
@@ -75,9 +75,8 @@ impl<'tcx> Visitor<'tcx> for CaptureCollector<'_, 'tcx> {
     }
 
     fn visit_expr(&mut self, expr: &'tcx hir::Expr<'tcx>) {
-        if let hir::ExprKind::Closure { .. } = expr.kind {
-            let closure_def_id = self.tcx.hir().local_def_id(expr.hir_id);
-            if let Some(upvars) = self.tcx.upvars_mentioned(closure_def_id) {
+        if let hir::ExprKind::Closure(closure) = expr.kind {
+            if let Some(upvars) = self.tcx.upvars_mentioned(closure.def_id) {
                 // Every capture of a closure expression is a local in scope,
                 // that is moved/copied/borrowed into the closure value, and
                 // for this analysis they are like any other access to a local.

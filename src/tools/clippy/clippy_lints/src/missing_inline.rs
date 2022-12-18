@@ -65,7 +65,7 @@ fn check_missing_inline_attrs(cx: &LateContext<'_>, attrs: &[ast::Attribute], sp
             cx,
             MISSING_INLINE_IN_PUBLIC_ITEMS,
             sp,
-            &format!("missing `#[inline]` for {}", desc),
+            &format!("missing `#[inline]` for {desc}"),
         );
     }
 }
@@ -88,7 +88,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
             return;
         }
 
-        if !cx.access_levels.is_exported(it.def_id.def_id) {
+        if !cx.effective_visibilities.is_exported(it.owner_id.def_id) {
             return;
         }
         match it.kind {
@@ -105,7 +105,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
                     match tit_.kind {
                         hir::TraitItemKind::Const(..) | hir::TraitItemKind::Type(..) => {},
                         hir::TraitItemKind::Fn(..) => {
-                            if cx.tcx.impl_defaultness(tit.id.def_id).has_value() {
+                            if cx.tcx.impl_defaultness(tit.id.owner_id).has_value() {
                                 // trait method with default body needs inline in case
                                 // an impl is not provided
                                 let desc = "a default trait method";
@@ -142,16 +142,16 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         }
 
         // If the item being implemented is not exported, then we don't need #[inline]
-        if !cx.access_levels.is_exported(impl_item.def_id.def_id) {
+        if !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
             return;
         }
 
         let desc = match impl_item.kind {
             hir::ImplItemKind::Fn(..) => "a method",
-            hir::ImplItemKind::Const(..) | hir::ImplItemKind::TyAlias(_) => return,
+            hir::ImplItemKind::Const(..) | hir::ImplItemKind::Type(_) => return,
         };
 
-        let assoc_item = cx.tcx.associated_item(impl_item.def_id);
+        let assoc_item = cx.tcx.associated_item(impl_item.owner_id);
         let container_id = assoc_item.container_id(cx.tcx);
         let trait_def_id = match assoc_item.container {
             TraitContainer => Some(container_id),
@@ -159,7 +159,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingInline {
         };
 
         if let Some(trait_def_id) = trait_def_id {
-            if trait_def_id.is_local() && !cx.access_levels.is_exported(impl_item.def_id.def_id) {
+            if trait_def_id.is_local() && !cx.effective_visibilities.is_exported(impl_item.owner_id.def_id) {
                 // If a trait is being implemented for an item, and the
                 // trait is not exported, we don't need #[inline]
                 return;

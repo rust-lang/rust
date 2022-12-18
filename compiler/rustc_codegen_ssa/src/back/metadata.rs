@@ -60,7 +60,7 @@ impl MetadataLoader for DefaultMetadataLoader {
                     let data = entry
                         .data(data)
                         .map_err(|e| format!("failed to parse rlib '{}': {}", path.display(), e))?;
-                    return search_for_metadata(path, data, ".rmeta");
+                    return search_for_section(path, data, ".rmeta");
                 }
             }
 
@@ -69,11 +69,11 @@ impl MetadataLoader for DefaultMetadataLoader {
     }
 
     fn get_dylib_metadata(&self, _target: &Target, path: &Path) -> Result<MetadataRef, String> {
-        load_metadata_with(path, |data| search_for_metadata(path, data, ".rustc"))
+        load_metadata_with(path, |data| search_for_section(path, data, ".rustc"))
     }
 }
 
-fn search_for_metadata<'a>(
+pub(super) fn search_for_section<'a>(
     path: &Path,
     bytes: &'a [u8],
     section: &str,
@@ -117,6 +117,10 @@ pub(crate) fn create_object_file(sess: &Session) -> Option<write::Object<'static
         "riscv32" => Architecture::Riscv32,
         "riscv64" => Architecture::Riscv64,
         "sparc64" => Architecture::Sparc64,
+        "avr" => Architecture::Avr,
+        "msp430" => Architecture::Msp430,
+        "hexagon" => Architecture::Hexagon,
+        "bpf" => Architecture::Bpf,
         // Unsupported architecture.
         _ => return None,
     };
@@ -187,39 +191,43 @@ pub enum MetadataPosition {
     Last,
 }
 
-// For rlibs we "pack" rustc metadata into a dummy object file.
-//
-// Historically it was needed because rustc linked rlibs as whole-archive in some cases.
-// In that case linkers try to include all files located in an archive, so if metadata is stored
-// in an archive then it needs to be of a form that the linker is able to process.
-// Now it's not clear whether metadata still needs to be wrapped into an object file or not.
-//
-// Note, though, that we don't actually want this metadata to show up in any
-// final output of the compiler. Instead this is purely for rustc's own
-// metadata tracking purposes.
-//
-// With the above in mind, each "flavor" of object format gets special
-// handling here depending on the target:
-//
-// * MachO - macos-like targets will insert the metadata into a section that
-//   is sort of fake dwarf debug info. Inspecting the source of the macos
-//   linker this causes these sections to be skipped automatically because
-//   it's not in an allowlist of otherwise well known dwarf section names to
-//   go into the final artifact.
-//
-// * WebAssembly - we actually don't have any container format for this
-//   target. WebAssembly doesn't support the `dylib` crate type anyway so
-//   there's no need for us to support this at this time. Consequently the
-//   metadata bytes are simply stored as-is into an rlib.
-//
-// * COFF - Windows-like targets create an object with a section that has
-//   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
-//   ever sees the section it doesn't process it and it's removed.
-//
-// * ELF - All other targets are similar to Windows in that there's a
-//   `SHF_EXCLUDE` flag we can set on sections in an object file to get
-//   automatically removed from the final output.
-pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataPosition) {
+/// For rlibs we "pack" rustc metadata into a dummy object file.
+///
+/// Historically it was needed because rustc linked rlibs as whole-archive in some cases.
+/// In that case linkers try to include all files located in an archive, so if metadata is stored
+/// in an archive then it needs to be of a form that the linker is able to process.
+/// Now it's not clear whether metadata still needs to be wrapped into an object file or not.
+///
+/// Note, though, that we don't actually want this metadata to show up in any
+/// final output of the compiler. Instead this is purely for rustc's own
+/// metadata tracking purposes.
+///
+/// With the above in mind, each "flavor" of object format gets special
+/// handling here depending on the target:
+///
+/// * MachO - macos-like targets will insert the metadata into a section that
+///   is sort of fake dwarf debug info. Inspecting the source of the macos
+///   linker this causes these sections to be skipped automatically because
+///   it's not in an allowlist of otherwise well known dwarf section names to
+///   go into the final artifact.
+///
+/// * WebAssembly - we actually don't have any container format for this
+///   target. WebAssembly doesn't support the `dylib` crate type anyway so
+///   there's no need for us to support this at this time. Consequently the
+///   metadata bytes are simply stored as-is into an rlib.
+///
+/// * COFF - Windows-like targets create an object with a section that has
+///   the `IMAGE_SCN_LNK_REMOVE` flag set which ensures that if the linker
+///   ever sees the section it doesn't process it and it's removed.
+///
+/// * ELF - All other targets are similar to Windows in that there's a
+///   `SHF_EXCLUDE` flag we can set on sections in an object file to get
+///   automatically removed from the final output.
+pub fn create_wrapper_file(
+    sess: &Session,
+    section_name: Vec<u8>,
+    data: &[u8],
+) -> (Vec<u8>, MetadataPosition) {
     let Some(mut file) = create_object_file(sess) else {
         // This is used to handle all "other" targets. This includes targets
         // in two categories:
@@ -237,11 +245,11 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataP
         // WebAssembly and for targets not supported by the `object` crate
         // yet it means that work will need to be done in the `object` crate
         // to add a case above.
-        return (metadata.to_vec(), MetadataPosition::Last);
+        return (data.to_vec(), MetadataPosition::Last);
     };
     let section = file.add_section(
         file.segment_name(StandardSegment::Debug).to_vec(),
-        b".rmeta".to_vec(),
+        section_name,
         SectionKind::Debug,
     );
     match file.format() {
@@ -255,7 +263,7 @@ pub fn create_rmeta_file(sess: &Session, metadata: &[u8]) -> (Vec<u8>, MetadataP
         }
         _ => {}
     };
-    file.append_section_data(section, metadata, 1);
+    file.append_section_data(section, data, 1);
     (file.write().unwrap(), MetadataPosition::First)
 }
 

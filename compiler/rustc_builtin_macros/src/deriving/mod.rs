@@ -38,9 +38,10 @@ pub mod partial_ord;
 
 pub mod generic;
 
-pub(crate) struct BuiltinDerive(
-    pub(crate) fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable)),
-);
+pub(crate) type BuiltinDeriveFn =
+    fn(&mut ExtCtxt<'_>, Span, &MetaItem, &Annotatable, &mut dyn FnMut(Annotatable), bool);
+
+pub(crate) struct BuiltinDerive(pub(crate) BuiltinDeriveFn);
 
 impl MultiItemModifier for BuiltinDerive {
     fn expand(
@@ -49,6 +50,7 @@ impl MultiItemModifier for BuiltinDerive {
         span: Span,
         meta_item: &MetaItem,
         item: Annotatable,
+        is_derive_const: bool,
     ) -> ExpandResult<Vec<Annotatable>, Annotatable> {
         // FIXME: Built-in derives often forget to give spans contexts,
         // so we are doing it here in a centralized way.
@@ -57,21 +59,28 @@ impl MultiItemModifier for BuiltinDerive {
         match item {
             Annotatable::Stmt(stmt) => {
                 if let ast::StmtKind::Item(item) = stmt.into_inner().kind {
-                    (self.0)(ecx, span, meta_item, &Annotatable::Item(item), &mut |a| {
-                        // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
-                        // to the function
-                        items.push(Annotatable::Stmt(P(ast::Stmt {
-                            id: ast::DUMMY_NODE_ID,
-                            kind: ast::StmtKind::Item(a.expect_item()),
-                            span,
-                        })));
-                    });
+                    (self.0)(
+                        ecx,
+                        span,
+                        meta_item,
+                        &Annotatable::Item(item),
+                        &mut |a| {
+                            // Cannot use 'ecx.stmt_item' here, because we need to pass 'ecx'
+                            // to the function
+                            items.push(Annotatable::Stmt(P(ast::Stmt {
+                                id: ast::DUMMY_NODE_ID,
+                                kind: ast::StmtKind::Item(a.expect_item()),
+                                span,
+                            })));
+                        },
+                        is_derive_const,
+                    );
                 } else {
                     unreachable!("should have already errored on non-item statement")
                 }
             }
             _ => {
-                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a));
+                (self.0)(ecx, span, meta_item, &item, &mut |a| items.push(a), is_derive_const);
             }
         }
         ExpandResult::Ready(items)
@@ -116,12 +125,12 @@ fn inject_impl_of_structural_trait(
     structural_path: generic::ty::Path,
     push: &mut dyn FnMut(Annotatable),
 ) {
-    let Annotatable::Item(ref item) = *item else {
+    let Annotatable::Item(item) = item else {
         unreachable!();
     };
 
-    let generics = match item.kind {
-        ItemKind::Struct(_, ref generics) | ItemKind::Enum(_, ref generics) => generics,
+    let generics = match &item.kind {
+        ItemKind::Struct(_, generics) | ItemKind::Enum(_, generics) => generics,
         // Do not inject `impl Structural for Union`. (`PartialEq` does not
         // support unions, so we will see error downstream.)
         ItemKind::Union(..) => return,
@@ -131,6 +140,8 @@ fn inject_impl_of_structural_trait(
     // Create generics param list for where clauses and impl headers
     let mut generics = generics.clone();
 
+    let ctxt = span.ctxt();
+
     // Create the type of `self`.
     //
     // in addition, remove defaults from generic params (impls cannot have them).
@@ -138,16 +149,18 @@ fn inject_impl_of_structural_trait(
         .params
         .iter_mut()
         .map(|param| match &mut param.kind {
-            ast::GenericParamKind::Lifetime => {
-                ast::GenericArg::Lifetime(cx.lifetime(span, param.ident))
-            }
+            ast::GenericParamKind::Lifetime => ast::GenericArg::Lifetime(
+                cx.lifetime(param.ident.span.with_ctxt(ctxt), param.ident),
+            ),
             ast::GenericParamKind::Type { default } => {
                 *default = None;
-                ast::GenericArg::Type(cx.ty_ident(span, param.ident))
+                ast::GenericArg::Type(cx.ty_ident(param.ident.span.with_ctxt(ctxt), param.ident))
             }
             ast::GenericParamKind::Const { ty: _, kw_span: _, default } => {
                 *default = None;
-                ast::GenericArg::Const(cx.const_ident(span, param.ident))
+                ast::GenericArg::Const(
+                    cx.const_ident(param.ident.span.with_ctxt(ctxt), param.ident),
+                )
             }
         })
         .collect();
@@ -174,6 +187,8 @@ fn inject_impl_of_structural_trait(
             })
             .cloned(),
     );
+    // Mark as `automatically_derived` to avoid some silly lints.
+    attrs.push(cx.attr_word(sym::automatically_derived, span));
 
     let newitem = cx.item(
         span,

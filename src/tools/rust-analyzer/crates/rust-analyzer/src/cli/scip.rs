@@ -5,11 +5,11 @@ use std::{
     time::Instant,
 };
 
-use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
+use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
 use hir::Name;
 use ide::{
-    LineCol, MonikerDescriptorKind, MonikerResult, StaticIndex, StaticIndexedFile, TextRange,
-    TokenId,
+    LineCol, MonikerDescriptorKind, StaticIndex, StaticIndexedFile, TextRange, TokenId,
+    TokenStaticData,
 };
 use ide_db::LineIndexDatabase;
 use project_model::{CargoConfig, ProjectManifest, ProjectWorkspace};
@@ -40,41 +40,39 @@ impl flags::Scip {
 
         let workspace = ProjectWorkspace::load(manifest, &cargo_config, no_progress)?;
 
-        let (host, vfs, _) = load_workspace(workspace, &cargo_config, &load_cargo_config)?;
+        let (host, vfs, _) =
+            load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
         let db = host.raw_database();
         let analysis = host.analysis();
 
         let si = StaticIndex::compute(&analysis);
 
-        let mut index = scip_types::Index {
-            metadata: Some(scip_types::Metadata {
-                version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
-                tool_info: Some(scip_types::ToolInfo {
-                    name: "rust-analyzer".to_owned(),
-                    version: "0.1".to_owned(),
-                    arguments: vec![],
-                    ..Default::default()
-                })
-                .into(),
-                project_root: format!(
-                    "file://{}",
-                    path.normalize()
-                        .as_os_str()
-                        .to_str()
-                        .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
-                        .to_string()
-                ),
-                text_document_encoding: scip_types::TextEncoding::UTF8.into(),
-                ..Default::default()
+        let metadata = scip_types::Metadata {
+            version: scip_types::ProtocolVersion::UnspecifiedProtocolVersion.into(),
+            tool_info: Some(scip_types::ToolInfo {
+                name: "rust-analyzer".to_owned(),
+                version: "0.1".to_owned(),
+                arguments: vec![],
+                special_fields: Default::default(),
             })
             .into(),
-            ..Default::default()
+            project_root: format!(
+                "file://{}",
+                path.normalize()
+                    .as_os_str()
+                    .to_str()
+                    .ok_or(anyhow::anyhow!("Unable to normalize project_root path"))?
+                    .to_string()
+            ),
+            text_document_encoding: scip_types::TextEncoding::UTF8.into(),
+            special_fields: Default::default(),
         };
+        let mut documents = Vec::new();
 
         let mut symbols_emitted: HashSet<TokenId> = HashSet::default();
         let mut tokens_to_symbol: HashMap<TokenId, String> = HashMap::new();
 
-        for file in si.files {
+        for StaticIndexedFile { file_id, tokens, .. } in si.files {
             let mut local_count = 0;
             let mut new_local_symbol = || {
                 let new_symbol = scip::types::Symbol::new_local(local_count);
@@ -83,7 +81,6 @@ impl flags::Scip {
                 new_symbol
             };
 
-            let StaticIndexedFile { file_id, tokens, .. } = file;
             let relative_path = match get_relative_filepath(&vfs, &rootpath, file_id) {
                 Some(relative_path) => relative_path,
                 None => continue,
@@ -91,64 +88,80 @@ impl flags::Scip {
 
             let line_index = LineIndex {
                 index: db.line_index(file_id),
-                encoding: OffsetEncoding::Utf8,
+                encoding: PositionEncoding::Utf8,
                 endings: LineEndings::Unix,
             };
 
-            let mut doc = scip_types::Document {
-                relative_path,
-                language: "rust".to_string(),
-                ..Default::default()
-            };
+            let mut occurrences = Vec::new();
+            let mut symbols = Vec::new();
 
-            tokens.into_iter().for_each(|(range, id)| {
+            tokens.into_iter().for_each(|(text_range, id)| {
                 let token = si.tokens.get(id).unwrap();
 
-                let mut occurrence = scip_types::Occurrence::default();
-                occurrence.range = text_range_to_scip_range(&line_index, range);
-                occurrence.symbol = match tokens_to_symbol.get(&id) {
-                    Some(symbol) => symbol.clone(),
-                    None => {
-                        let symbol = match &token.moniker {
-                            Some(moniker) => moniker_to_symbol(&moniker),
-                            None => new_local_symbol(),
-                        };
+                let range = text_range_to_scip_range(&line_index, text_range);
+                let symbol = tokens_to_symbol
+                    .entry(id)
+                    .or_insert_with(|| {
+                        let symbol = token_to_symbol(&token).unwrap_or_else(&mut new_local_symbol);
+                        scip::symbol::format_symbol(symbol)
+                    })
+                    .clone();
 
-                        let symbol = scip::symbol::format_symbol(symbol);
-                        tokens_to_symbol.insert(id, symbol.clone());
-                        symbol
-                    }
-                };
+                let mut symbol_roles = Default::default();
 
                 if let Some(def) = token.definition {
-                    if def.range == range {
-                        occurrence.symbol_roles |= scip_types::SymbolRole::Definition as i32;
+                    if def.range == text_range {
+                        symbol_roles |= scip_types::SymbolRole::Definition as i32;
                     }
 
-                    if !symbols_emitted.contains(&id) {
-                        symbols_emitted.insert(id);
+                    if symbols_emitted.insert(id) {
+                        let documentation = token
+                            .hover
+                            .as_ref()
+                            .map(|hover| hover.markup.as_str())
+                            .filter(|it| !it.is_empty())
+                            .map(|it| vec![it.to_owned()]);
+                        let symbol_info = scip_types::SymbolInformation {
+                            symbol: symbol.clone(),
+                            documentation: documentation.unwrap_or_default(),
+                            relationships: Vec::new(),
+                            special_fields: Default::default(),
+                        };
 
-                        let mut symbol_info = scip_types::SymbolInformation::default();
-                        symbol_info.symbol = occurrence.symbol.clone();
-                        if let Some(hover) = &token.hover {
-                            if !hover.markup.as_str().is_empty() {
-                                symbol_info.documentation = vec![hover.markup.as_str().to_string()];
-                            }
-                        }
-
-                        doc.symbols.push(symbol_info)
+                        symbols.push(symbol_info)
                     }
                 }
 
-                doc.occurrences.push(occurrence);
+                occurrences.push(scip_types::Occurrence {
+                    range,
+                    symbol,
+                    symbol_roles,
+                    override_documentation: Vec::new(),
+                    syntax_kind: Default::default(),
+                    diagnostics: Vec::new(),
+                    special_fields: Default::default(),
+                });
             });
 
-            if doc.occurrences.is_empty() {
+            if occurrences.is_empty() {
                 continue;
             }
 
-            index.documents.push(doc);
+            documents.push(scip_types::Document {
+                relative_path,
+                language: "rust".to_string(),
+                occurrences,
+                symbols,
+                special_fields: Default::default(),
+            });
         }
+
+        let index = scip_types::Index {
+            metadata: Some(metadata).into(),
+            documents,
+            external_symbols: Vec::new(),
+            special_fields: Default::default(),
+        };
 
         scip::write_message_to_file("index.scip", index)
             .map_err(|err| anyhow::anyhow!("Failed to write scip to file: {}", err))?;
@@ -189,7 +202,7 @@ fn new_descriptor_str(
         name: name.to_string(),
         disambiguator: "".to_string(),
         suffix: suffix.into(),
-        ..Default::default()
+        special_fields: Default::default(),
     }
 }
 
@@ -206,8 +219,10 @@ fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_ty
 ///
 /// Only returns a Symbol when it's a non-local symbol.
 ///     So if the visibility isn't outside of a document, then it will return None
-fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
+fn token_to_symbol(token: &TokenStaticData) -> Option<scip_types::Symbol> {
     use scip_types::descriptor::Suffix::*;
+
+    let moniker = token.moniker.as_ref()?;
 
     let package_name = moniker.package_information.name.clone();
     let version = moniker.package_information.version.clone();
@@ -232,30 +247,26 @@ fn moniker_to_symbol(moniker: &MonikerResult) -> scip_types::Symbol {
         })
         .collect();
 
-    scip_types::Symbol {
+    Some(scip_types::Symbol {
         scheme: "rust-analyzer".into(),
         package: Some(scip_types::Package {
             manager: "cargo".to_string(),
             name: package_name,
-            version,
-            ..Default::default()
+            version: version.unwrap_or_else(|| ".".to_string()),
+            special_fields: Default::default(),
         })
         .into(),
         descriptors,
-        ..Default::default()
-    }
+        special_fields: Default::default(),
+    })
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use hir::Semantics;
-    use ide::{AnalysisHost, FilePosition};
-    use ide_db::defs::IdentClass;
-    use ide_db::{base_db::fixture::ChangeFixture, helpers::pick_best_token};
+    use ide::{AnalysisHost, FilePosition, StaticIndex, TextSize};
+    use ide_db::base_db::fixture::ChangeFixture;
     use scip::symbol::format_symbol;
-    use syntax::SyntaxKind::*;
-    use syntax::{AstNode, T};
 
     fn position(ra_fixture: &str) -> (AnalysisHost, FilePosition) {
         let mut host = AnalysisHost::default();
@@ -272,53 +283,33 @@ mod test {
     fn check_symbol(ra_fixture: &str, expected: &str) {
         let (host, position) = position(ra_fixture);
 
+        let analysis = host.analysis();
+        let si = StaticIndex::compute(&analysis);
+
         let FilePosition { file_id, offset } = position;
 
-        let db = host.raw_database();
-        let sema = &Semantics::new(db);
-        let file = sema.parse(file_id).syntax().clone();
-        let original_token = pick_best_token(file.token_at_offset(offset), |kind| match kind {
-            IDENT
-            | INT_NUMBER
-            | LIFETIME_IDENT
-            | T![self]
-            | T![super]
-            | T![crate]
-            | T![Self]
-            | COMMENT => 2,
-            kind if kind.is_trivia() => 0,
-            _ => 1,
-        })
-        .expect("OK OK");
-
-        let navs = sema
-            .descend_into_macros(original_token.clone())
-            .into_iter()
-            .filter_map(|token| {
-                IdentClass::classify_token(sema, &token).map(IdentClass::definitions).map(|it| {
-                    it.into_iter().flat_map(|def| {
-                        let module = def.module(db).unwrap();
-                        let current_crate = module.krate();
-
-                        match MonikerResult::from_def(sema.db, def, current_crate) {
-                            Some(moniker_result) => Some(moniker_to_symbol(&moniker_result)),
-                            None => None,
-                        }
-                    })
-                })
-            })
-            .flatten()
-            .collect::<Vec<_>>();
+        let mut found_symbol = None;
+        for file in &si.files {
+            if file.file_id != file_id {
+                continue;
+            }
+            for &(range, id) in &file.tokens {
+                if range.contains(offset - TextSize::from(1)) {
+                    let token = si.tokens.get(id).unwrap();
+                    found_symbol = token_to_symbol(token);
+                    break;
+                }
+            }
+        }
 
         if expected == "" {
-            assert_eq!(0, navs.len(), "must have no symbols {:?}", navs);
+            assert!(found_symbol.is_none(), "must have no symbols {:?}", found_symbol);
             return;
         }
 
-        assert_eq!(1, navs.len(), "must have one symbol {:?}", navs);
-
-        let res = navs.get(0).unwrap();
-        let formatted = format_symbol(res.clone());
+        assert!(found_symbol.is_some(), "must have one symbol {:?}", found_symbol);
+        let res = found_symbol.unwrap();
+        let formatted = format_symbol(res);
         assert_eq!(formatted, expected);
     }
 
@@ -443,6 +434,44 @@ pub mod module {
     }
     "#,
             "",
+        );
+    }
+
+    #[test]
+    fn global_symbol_for_pub_struct() {
+        check_symbol(
+            r#"
+    //- /lib.rs crate:main
+    mod foo;
+
+    fn main() {
+        let _bar = foo::Bar { i: 0 };
+    }
+    //- /foo.rs
+    pub struct Bar$0 {
+        pub i: i32,
+    }
+    "#,
+            "rust-analyzer cargo main . foo/Bar#",
+        );
+    }
+
+    #[test]
+    fn global_symbol_for_pub_struct_reference() {
+        check_symbol(
+            r#"
+    //- /lib.rs crate:main
+    mod foo;
+
+    fn main() {
+        let _bar = foo::Bar$0 { i: 0 };
+    }
+    //- /foo.rs
+    pub struct Bar {
+        pub i: i32,
+    }
+    "#,
+            "rust-analyzer cargo main . foo/Bar#",
         );
     }
 }

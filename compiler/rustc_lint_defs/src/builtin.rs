@@ -264,37 +264,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `const_err` lint detects an erroneous expression while doing
-    /// constant evaluation.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![allow(unconditional_panic)]
-    /// const C: i32 = 1/0;
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// This lint detects constants that fail to evaluate. Allowing the lint will accept the
-    /// constant declaration, but any use of this constant will still lead to a hard error. This is
-    /// a future incompatibility lint; the plan is to eventually entirely forbid even declaring
-    /// constants that cannot be evaluated.  See [issue #71800] for more details.
-    ///
-    /// [issue #71800]: https://github.com/rust-lang/rust/issues/71800
-    pub CONST_ERR,
-    Deny,
-    "constant evaluation encountered erroneous expression",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #71800 <https://github.com/rust-lang/rust/issues/71800>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
-    };
-    report_in_external_macro
-}
-
-declare_lint! {
     /// The `unused_imports` lint detects imports that are never used.
     ///
     /// ### Example
@@ -636,7 +605,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #[warn(unused_tuple_struct_fields)]
     /// struct S(i32, i32, i32);
     /// let s = S(1, 2, 3);
@@ -942,8 +911,7 @@ declare_lint! {
 
 declare_lint! {
     /// The `trivial_casts` lint detects trivial casts which could be replaced
-    /// with coercion, which may require [type ascription] or a temporary
-    /// variable.
+    /// with coercion, which may require a temporary variable.
     ///
     /// ### Example
     ///
@@ -965,12 +933,14 @@ declare_lint! {
     /// with FFI interfaces or complex type aliases, where it triggers
     /// incorrectly, or in situations where it will be more difficult to
     /// clearly express the intent. It may be possible that this will become a
-    /// warning in the future, possibly with [type ascription] providing a
-    /// convenient way to work around the current issues. See [RFC 401] for
-    /// historical context.
+    /// warning in the future, possibly with an explicit syntax for coercions
+    /// providing a convenient way to work around the current issues.
+    /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
+    /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [type ascription]: https://github.com/rust-lang/rust/issues/23416
-    /// [RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
+    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
     pub TRIVIAL_CASTS,
     Allow,
     "detects trivial casts which could be removed"
@@ -998,12 +968,14 @@ declare_lint! {
     /// with FFI interfaces or complex type aliases, where it triggers
     /// incorrectly, or in situations where it will be more difficult to
     /// clearly express the intent. It may be possible that this will become a
-    /// warning in the future, possibly with [type ascription] providing a
-    /// convenient way to work around the current issues. See [RFC 401] for
-    /// historical context.
+    /// warning in the future, possibly with an explicit syntax for coercions
+    /// providing a convenient way to work around the current issues.
+    /// See [RFC 401 (coercions)][rfc-401], [RFC 803 (type ascription)][rfc-803] and
+    /// [RFC 3307 (remove type ascription)][rfc-3307] for historical context.
     ///
-    /// [type ascription]: https://github.com/rust-lang/rust/issues/23416
-    /// [RFC 401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-401]: https://github.com/rust-lang/rfcs/blob/master/text/0401-coercions.md
+    /// [rfc-803]: https://github.com/rust-lang/rfcs/blob/master/text/0803-type-ascription.md
+    /// [rfc-3307]: https://github.com/rust-lang/rfcs/blob/master/text/3307-de-rfc-type-ascription.md
     pub TRIVIAL_NUMERIC_CASTS,
     Allow,
     "detects trivial casts of numeric types which could be removed"
@@ -1044,6 +1016,44 @@ declare_lint! {
     "detect private items in public interfaces not caught by the old implementation",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #34537 <https://github.com/rust-lang/rust/issues/34537>",
+    };
+}
+
+declare_lint! {
+    /// The `invalid_alignment` lint detects dereferences of misaligned pointers during
+    /// constant evluation.
+    ///
+    /// ### Example
+    ///
+    /// ```rust,compile_fail
+    /// #![feature(const_ptr_read)]
+    /// const FOO: () = unsafe {
+    ///     let x = &[0_u8; 4];
+    ///     let y = x.as_ptr().cast::<u32>();
+    ///     y.read(); // the address of a `u8` array is unknown and thus we don't know if
+    ///     // it is aligned enough for reading a `u32`.
+    /// };
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The compiler allowed dereferencing raw pointers irrespective of alignment
+    /// during const eval due to the const evaluator at the time not making it easy
+    /// or cheap to check. Now that it is both, this is not accepted anymore.
+    ///
+    /// Since it was undefined behaviour to begin with, this breakage does not violate
+    /// Rust's stability guarantees. Using undefined behaviour can cause arbitrary
+    /// behaviour, including failure to build.
+    ///
+    /// [future-incompatible]: ../index.md#future-incompatible-lints
+    pub INVALID_ALIGNMENT,
+    Deny,
+    "raw pointers must be aligned before dereferencing",
+    @future_incompatible = FutureIncompatibleInfo {
+        reference: "issue #68585 <https://github.com/rust-lang/rust/issues/104616>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
@@ -1185,7 +1195,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// #[repr(packed)]
     /// pub struct Foo {
     ///     field1: u64,
@@ -1458,6 +1468,7 @@ declare_lint! {
     "trait-object types were treated as different depending on marker-trait order",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #56484 <https://github.com/rust-lang/rust/issues/56484>",
+        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
@@ -2009,73 +2020,6 @@ declare_lint! {
     "checks the object safety of where clauses",
     @future_incompatible = FutureIncompatibleInfo {
         reference: "issue #51443 <https://github.com/rust-lang/rust/issues/51443>",
-    };
-}
-
-declare_lint! {
-    /// The `proc_macro_derive_resolution_fallback` lint detects proc macro
-    /// derives using inaccessible names from parent modules.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,ignore (proc-macro)
-    /// // foo.rs
-    /// #![crate_type = "proc-macro"]
-    ///
-    /// extern crate proc_macro;
-    ///
-    /// use proc_macro::*;
-    ///
-    /// #[proc_macro_derive(Foo)]
-    /// pub fn foo1(a: TokenStream) -> TokenStream {
-    ///     drop(a);
-    ///     "mod __bar { static mut BAR: Option<Something> = None; }".parse().unwrap()
-    /// }
-    /// ```
-    ///
-    /// ```rust,ignore (needs-dependency)
-    /// // bar.rs
-    /// #[macro_use]
-    /// extern crate foo;
-    ///
-    /// struct Something;
-    ///
-    /// #[derive(Foo)]
-    /// struct Another;
-    ///
-    /// fn main() {}
-    /// ```
-    ///
-    /// This will produce:
-    ///
-    /// ```text
-    /// warning: cannot find type `Something` in this scope
-    ///  --> src/main.rs:8:10
-    ///   |
-    /// 8 | #[derive(Foo)]
-    ///   |          ^^^ names from parent modules are not accessible without an explicit import
-    ///   |
-    ///   = note: `#[warn(proc_macro_derive_resolution_fallback)]` on by default
-    ///   = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
-    ///   = note: for more information, see issue #50504 <https://github.com/rust-lang/rust/issues/50504>
-    /// ```
-    ///
-    /// ### Explanation
-    ///
-    /// If a proc-macro generates a module, the compiler unintentionally
-    /// allowed items in that module to refer to items in the crate root
-    /// without importing them. This is a [future-incompatible] lint to
-    /// transition this to a hard error in the future. See [issue #50504] for
-    /// more details.
-    ///
-    /// [issue #50504]: https://github.com/rust-lang/rust/issues/50504
-    /// [future-incompatible]: ../index.md#future-incompatible-lints
-    pub PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
-    Deny,
-    "detects proc macro derives using inaccessible names from parent modules",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #83583 <https://github.com/rust-lang/rust/issues/83583>",
-        reason: FutureIncompatibilityReason::FutureReleaseErrorReportNow,
     };
 }
 
@@ -2645,7 +2589,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```compile_fail
+    /// ```rust,compile_fail
     /// # #![allow(unused)]
     /// enum E {
     ///     A,
@@ -2909,7 +2853,7 @@ declare_lint! {
     /// ### Example
     ///
     /// ```rust
-    /// #![feature(naked_functions)]
+    /// #![feature(asm_experimental_arch, naked_functions)]
     ///
     /// use std::arch::asm;
     ///
@@ -3295,7 +3239,6 @@ declare_lint_pass! {
         EXPORTED_PRIVATE_DEPENDENCIES,
         PUB_USE_OF_PRIVATE_EXTERN_CRATE,
         INVALID_TYPE_PARAM_DEFAULT,
-        CONST_ERR,
         RENAMED_AND_REMOVED_LINTS,
         UNALIGNED_REFERENCES,
         CONST_ITEM_MUTATION,
@@ -3318,7 +3261,6 @@ declare_lint_pass! {
         UNSTABLE_NAME_COLLISIONS,
         IRREFUTABLE_LET_PATTERNS,
         WHERE_CLAUSES_OBJECT_SAFETY,
-        PROC_MACRO_DERIVE_RESOLUTION_FALLBACK,
         MACRO_USE_EXTERN_CRATE,
         MACRO_EXPANDED_MACRO_EXPORTS_ACCESSED_BY_ABSOLUTE_PATHS,
         ILL_FORMED_ATTRIBUTE_INPUT,
@@ -3361,7 +3303,6 @@ declare_lint_pass! {
         UNUSED_TUPLE_STRUCT_FIELDS,
         NON_EXHAUSTIVE_OMITTED_PATTERNS,
         TEXT_DIRECTION_CODEPOINT_IN_COMMENT,
-        DEREF_INTO_DYN_SUPERTRAIT,
         DEPRECATED_CFG_ATTR_CRATE_TYPE_NAME,
         DUPLICATE_MACRO_ATTRIBUTES,
         SUSPICIOUS_AUTO_TRAIT_IMPLS,
@@ -3864,51 +3805,6 @@ declare_lint! {
 }
 
 declare_lint! {
-    /// The `deref_into_dyn_supertrait` lint is output whenever there is a use of the
-    /// `Deref` implementation with a `dyn SuperTrait` type as `Output`.
-    ///
-    /// These implementations will become shadowed when the `trait_upcasting` feature is stabilized.
-    /// The `deref` functions will no longer be called implicitly, so there might be behavior change.
-    ///
-    /// ### Example
-    ///
-    /// ```rust,compile_fail
-    /// #![deny(deref_into_dyn_supertrait)]
-    /// #![allow(dead_code)]
-    ///
-    /// use core::ops::Deref;
-    ///
-    /// trait A {}
-    /// trait B: A {}
-    /// impl<'a> Deref for dyn 'a + B {
-    ///     type Target = dyn A;
-    ///     fn deref(&self) -> &Self::Target {
-    ///         todo!()
-    ///     }
-    /// }
-    ///
-    /// fn take_a(_: &dyn A) { }
-    ///
-    /// fn take_b(b: &dyn B) {
-    ///     take_a(b);
-    /// }
-    /// ```
-    ///
-    /// {{produces}}
-    ///
-    /// ### Explanation
-    ///
-    /// The dyn upcasting coercion feature adds new coercion rules, taking priority
-    /// over certain other coercion rules, which will cause some behavior change.
-    pub DEREF_INTO_DYN_SUPERTRAIT,
-    Warn,
-    "`Deref` implementation usage with a supertrait trait object for output might be shadowed in the future",
-    @future_incompatible = FutureIncompatibleInfo {
-        reference: "issue #89460 <https://github.com/rust-lang/rust/issues/89460>",
-    };
-}
-
-declare_lint! {
     /// The `duplicate_macro_attributes` lint detects when a `#[test]`-like built-in macro
     /// attribute is duplicated on an item. This lint may trigger on `bench`, `cfg_eval`, `test`
     /// and `test_case`.
@@ -3969,7 +3865,7 @@ declare_lint! {
     ///
     /// The compiler disables the automatic implementation if an explicit one
     /// exists for given type constructor. The exact rules governing this
-    /// are currently unsound and quite subtle and and will be modified in the future.
+    /// are currently unsound, quite subtle, and will be modified in the future.
     /// This change will cause the automatic implementation to be disabled in more
     /// cases, potentially breaking some code.
     pub SUSPICIOUS_AUTO_TRAIT_IMPLS,
@@ -4017,7 +3913,7 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
     /// #![allow(test_unstable_lint)]
     /// ```
     ///

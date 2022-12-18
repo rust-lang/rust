@@ -3,7 +3,7 @@ use crate::ty::{EarlyBinder, SubstsRef};
 use rustc_ast as ast;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_hir::def_id::DefId;
-use rustc_span::symbol::Symbol;
+use rustc_span::symbol::{kw, Symbol};
 use rustc_span::Span;
 
 use super::{EarlyBoundRegion, InstantiatedPredicates, ParamConst, ParamTy, Predicate, TyCtxt};
@@ -78,6 +78,15 @@ impl GenericParamDef {
         }
     }
 
+    pub fn is_anonymous_lifetime(&self) -> bool {
+        match self.kind {
+            GenericParamDefKind::Lifetime => {
+                self.name == kw::UnderscoreLifetime || self.name == kw::Empty
+            }
+            _ => false,
+        }
+    }
+
     pub fn default_value<'tcx>(
         &self,
         tcx: TyCtxt<'tcx>,
@@ -90,6 +99,20 @@ impl GenericParamDef {
                 Some(tcx.bound_const_param_default(self.def_id).map_bound(|c| c.into()))
             }
             _ => None,
+        }
+    }
+
+    pub fn to_error<'tcx>(
+        &self,
+        tcx: TyCtxt<'tcx>,
+        preceding_substs: &[ty::GenericArg<'tcx>],
+    ) -> ty::GenericArg<'tcx> {
+        match &self.kind {
+            ty::GenericParamDefKind::Lifetime => tcx.lifetimes.re_static.into(),
+            ty::GenericParamDefKind::Type { .. } => tcx.ty_error().into(),
+            ty::GenericParamDefKind::Const { .. } => {
+                tcx.const_error(tcx.bound_type_of(self.def_id).subst(tcx, preceding_substs)).into()
+            }
         }
     }
 }
@@ -208,6 +231,15 @@ impl<'tcx> Generics {
         } else {
             tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
                 .param_at(param_index, tcx)
+        }
+    }
+
+    pub fn params_to(&'tcx self, param_index: usize, tcx: TyCtxt<'tcx>) -> &'tcx [GenericParamDef] {
+        if let Some(index) = param_index.checked_sub(self.parent_count) {
+            &self.params[..index]
+        } else {
+            tcx.generics_of(self.parent.expect("parent_count > 0 but no parent?"))
+                .params_to(param_index, tcx)
         }
     }
 

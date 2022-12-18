@@ -78,10 +78,10 @@ use sha2::Sha256;
 #[cfg(test)]
 mod tests;
 
-// Per-session global variables: this struct is stored in thread-local storage
-// in such a way that it is accessible without any kind of handle to all
-// threads within the compilation session, but is not accessible outside the
-// session.
+/// Per-session global variables: this struct is stored in thread-local storage
+/// in such a way that it is accessible without any kind of handle to all
+/// threads within the compilation session, but is not accessible outside the
+/// session.
 pub struct SessionGlobals {
     symbol_interner: symbol::Interner,
     span_interner: Lock<span_encoding::SpanInterner>,
@@ -217,9 +217,7 @@ impl RealFileName {
     pub fn local_path(&self) -> Option<&Path> {
         match self {
             RealFileName::LocalPath(p) => Some(p),
-            RealFileName::Remapped { local_path: p, virtual_name: _ } => {
-                p.as_ref().map(PathBuf::as_path)
-            }
+            RealFileName::Remapped { local_path, virtual_name: _ } => local_path.as_deref(),
         }
     }
 
@@ -240,7 +238,7 @@ impl RealFileName {
     pub fn remapped_path_if_available(&self) -> &Path {
         match self {
             RealFileName::LocalPath(p)
-            | RealFileName::Remapped { local_path: _, virtual_name: p } => &p,
+            | RealFileName::Remapped { local_path: _, virtual_name: p } => p,
         }
     }
 
@@ -261,6 +259,10 @@ impl RealFileName {
             FileNameDisplayPreference::Remapped => {
                 self.remapped_path_if_available().to_string_lossy()
             }
+            FileNameDisplayPreference::Short => self
+                .local_path_if_available()
+                .file_name()
+                .map_or_else(|| "".into(), |f| f.to_string_lossy()),
         }
     }
 }
@@ -298,8 +300,15 @@ impl From<PathBuf> for FileName {
 
 #[derive(Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum FileNameDisplayPreference {
+    /// Display the path after the application of rewrite rules provided via `--remap-path-prefix`.
+    /// This is appropriate for paths that get embedded into files produced by the compiler.
     Remapped,
+    /// Display the path before the application of rewrite rules provided via `--remap-path-prefix`.
+    /// This is appropriate for use in user-facing output (such as diagnostics).
     Local,
+    /// Display only the filename, as a way to reduce the verbosity of the output.
+    /// This is appropriate for use in user-facing output (such as diagnostics).
+    Short,
 }
 
 pub struct FileNameDisplay<'a> {
@@ -357,8 +366,8 @@ impl FileName {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Remapped }
     }
 
-    // This may include transient local filesystem information.
-    // Must not be embedded in build outputs.
+    /// This may include transient local filesystem information.
+    /// Must not be embedded in build outputs.
     pub fn prefer_local(&self) -> FileNameDisplay<'_> {
         FileNameDisplay { inner: self, display_pref: FileNameDisplayPreference::Local }
     }
@@ -489,6 +498,10 @@ impl SpanData {
     pub fn is_dummy(self) -> bool {
         self.lo.0 == 0 && self.hi.0 == 0
     }
+    #[inline]
+    pub fn is_visible(self, sm: &SourceMap) -> bool {
+        !self.is_dummy() && sm.is_span_accessible(self.span())
+    }
     /// Returns `true` if `self` fully encloses `other`.
     pub fn contains(self, other: Self) -> bool {
         self.lo <= other.lo && other.hi <= self.hi
@@ -554,7 +567,12 @@ impl Span {
         self.data_untracked().is_dummy()
     }
 
-    /// Returns `true` if this span comes from a macro or desugaring.
+    #[inline]
+    pub fn is_visible(self, sm: &SourceMap) -> bool {
+        self.data_untracked().is_visible(sm)
+    }
+
+    /// Returns `true` if this span comes from any kind of macro, desugaring or inlining.
     #[inline]
     pub fn from_expansion(self) -> bool {
         self.ctxt() != SyntaxContext::root()
@@ -565,6 +583,12 @@ impl Span {
     pub fn in_macro_expansion_with_collapse_debuginfo(self) -> bool {
         let outer_expn = self.ctxt().outer_expn_data();
         matches!(outer_expn.kind, ExpnKind::Macro(..)) && outer_expn.collapse_debuginfo
+    }
+
+    /// Returns `true` if this span comes from MIR inlining.
+    pub fn is_inlined(self) -> bool {
+        let outer_expn = self.ctxt().outer_expn_data();
+        matches!(outer_expn.kind, ExpnKind::Inlined)
     }
 
     /// Returns `true` if `span` originates in a derive-macro's expansion.
@@ -743,7 +767,7 @@ impl Span {
 
     /// Checks if a span is "internal" to a macro in which `unsafe`
     /// can be used without triggering the `unsafe_code` lint.
-    //  (that is, a macro marked with `#[allow_internal_unsafe]`).
+    /// (that is, a macro marked with `#[allow_internal_unsafe]`).
     pub fn allows_unsafe(self) -> bool {
         self.ctxt().outer_expn_data().allow_internal_unsafe
     }
@@ -1364,7 +1388,7 @@ impl<S: Encoder> Encodable<S> for SourceFile {
                     4 => {
                         raw_diffs = Vec::with_capacity(bytes_per_diff * num_diffs);
                         for diff in diff_iter {
-                            raw_diffs.extend_from_slice(&(diff.0 as u32).to_le_bytes());
+                            raw_diffs.extend_from_slice(&(diff.0).to_le_bytes());
                         }
                     }
                     _ => unreachable!(),
@@ -1627,10 +1651,7 @@ impl SourceFile {
     /// number. If the source_file is empty or the position is located before the
     /// first line, `None` is returned.
     pub fn lookup_line(&self, pos: BytePos) -> Option<usize> {
-        self.lines(|lines| match lines.partition_point(|x| x <= &pos) {
-            0 => None,
-            i => Some(i - 1),
-        })
+        self.lines(|lines| lines.partition_point(|x| x <= &pos).checked_sub(1))
     }
 
     pub fn line_bounds(&self, line_index: usize) -> Range<BytePos> {

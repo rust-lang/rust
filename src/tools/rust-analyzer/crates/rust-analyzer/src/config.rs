@@ -7,7 +7,7 @@
 //! configure the server itself, feature flags are passed into analysis, and
 //! tweak things like automatic insertion of `()` in completions.
 
-use std::{ffi::OsString, fmt, iter, path::PathBuf};
+use std::{fmt, iter, path::PathBuf};
 
 use flycheck::FlycheckConfig;
 use ide::{
@@ -22,7 +22,8 @@ use ide_db::{
 use itertools::Itertools;
 use lsp_types::{ClientCapabilities, MarkupKind};
 use project_model::{
-    CargoConfig, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource, UnsetTestCrates,
+    CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
+    UnsetTestCrates,
 };
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::{de::DeserializeOwned, Deserialize};
@@ -31,7 +32,7 @@ use vfs::AbsPathBuf;
 use crate::{
     caps::completion_item_edit_resolve,
     diagnostics::DiagnosticsMapConfig,
-    line_index::OffsetEncoding,
+    line_index::PositionEncoding,
     lsp_ext::{self, supports_utf8, WorkspaceSymbolSearchKind, WorkspaceSymbolSearchScope},
 };
 
@@ -55,6 +56,9 @@ mod patch_old_style;
 // parsing the old name.
 config_data! {
     struct ConfigData {
+        /// Whether to insert #[must_use] when generating `as_` methods
+        /// for enum variants.
+        assist_emitMustUse: bool               = "false",
         /// Placeholder expression to use for missing expressions in assists.
         assist_expressionFillDefault: ExprFillDefaultDef              = "\"todo\"",
 
@@ -68,6 +72,19 @@ config_data! {
         cargo_autoreload: bool           = "true",
         /// Run build scripts (`build.rs`) for more precise code analysis.
         cargo_buildScripts_enable: bool  = "true",
+        /// Specifies the working directory for running build scripts.
+        /// - "workspace": run build scripts for a workspace in the workspace's root directory.
+        ///   This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
+        /// - "root": run build scripts in the project's root directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationLocation: InvocationLocation = "\"workspace\"",
+        /// Specifies the invocation strategy to use when running the build scripts command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        cargo_buildScripts_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Override the command rust-analyzer uses to run build scripts and
         /// build procedural macros. The command is required to output json
         /// and should therefore include `--message-format=json` or a similar
@@ -90,15 +107,22 @@ config_data! {
         /// List of features to activate.
         ///
         /// Set this to `"all"` to pass `--all-features` to cargo.
-        cargo_features: CargoFeatures      = "[]",
+        cargo_features: CargoFeaturesDef      = "[]",
         /// Whether to pass `--no-default-features` to cargo.
         cargo_noDefaultFeatures: bool    = "false",
-        /// Internal config for debugging, disables loading of sysroot crates.
-        cargo_noSysroot: bool            = "false",
+        /// Relative path to the sysroot, or "discover" to try to automatically find it via
+        /// "rustc --print sysroot".
+        ///
+        /// Unsetting this disables sysroot loading.
+        ///
+        /// This option does not take effect until rust-analyzer is restarted.
+        cargo_sysroot: Option<String>    = "\"discover\"",
         /// Compilation target override (target triple).
+        // FIXME(@poliorcetics): move to multiple targets here too, but this will need more work
+        // than `checkOnSave_target`
         cargo_target: Option<String>     = "null",
         /// Unsets `#[cfg(test)]` for the specified crates.
-        cargo_unsetTest: Vec<String>   = "[\"core\"]",
+        cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
         /// Check all targets and tests (`--all-targets`).
         checkOnSave_allTargets: bool                     = "true",
@@ -109,18 +133,33 @@ config_data! {
         /// Extra arguments for `cargo check`.
         checkOnSave_extraArgs: Vec<String>               = "[]",
         /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
         checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
         /// List of features to activate. Defaults to
         /// `#rust-analyzer.cargo.features#`.
         ///
         /// Set to `"all"` to pass `--all-features` to Cargo.
-        checkOnSave_features: Option<CargoFeatures>      = "null",
+        checkOnSave_features: Option<CargoFeaturesDef>      = "null",
+        /// Specifies the working directory for running checks.
+        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+        // FIXME: Ideally we would support this in some way
+        ///   This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+        /// - "root": run checks in the project's root directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
+        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
         /// Whether to pass `--no-default-features` to Cargo. Defaults to
         /// `#rust-analyzer.cargo.noDefaultFeatures#`.
         checkOnSave_noDefaultFeatures: Option<bool>      = "null",
         /// Override the command rust-analyzer uses instead of `cargo check` for
         /// diagnostics on save. The command is required to output json and
-        /// should therefor include `--message-format=json` or a similar option.
+        /// should therefore include `--message-format=json` or a similar option.
         ///
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
@@ -137,9 +176,13 @@ config_data! {
         /// ```
         /// .
         checkOnSave_overrideCommand: Option<Vec<String>> = "null",
-        /// Check for a specific target. Defaults to
-        /// `#rust-analyzer.cargo.target#`.
-        checkOnSave_target: Option<String>               = "null",
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        checkOnSave_target | checkOnSave_targets: CheckOnSaveTargets           = "[]",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -224,6 +267,7 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
+
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
         /// Enables highlighting of all exit points while the cursor is on any `return`, `?`, `fn`, or return type arrow (`->`).
@@ -283,6 +327,8 @@ config_data! {
         inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
+        /// Whether to show inlay hints for type adjustments.
+        inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef = "\"never\"",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -292,7 +338,8 @@ config_data! {
         /// Whether to show function parameter name inlay hints at the call
         /// site.
         inlayHints_parameterHints_enable: bool                     = "true",
-        /// Whether to show inlay type hints for compiler inserted reborrows.
+        /// Whether to show inlay hints for compiler inserted reborrows.
+        /// This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
         inlayHints_reborrowHints_enable: ReborrowHintsDef          = "\"never\"",
         /// Whether to render leading colons for type hints, and trailing colons for parameter hints.
         inlayHints_renderColons: bool                              = "true",
@@ -914,11 +961,11 @@ impl Config {
         .is_some()
     }
 
-    pub fn offset_encoding(&self) -> OffsetEncoding {
+    pub fn position_encoding(&self) -> PositionEncoding {
         if supports_utf8(&self.caps) {
-            OffsetEncoding::Utf8
+            PositionEncoding::Utf8
         } else {
-            OffsetEncoding::Utf16
+            PositionEncoding::Utf16
         }
     }
 
@@ -975,15 +1022,17 @@ impl Config {
         self.data.lru_capacity
     }
 
-    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, Vec<OsString>)> {
+    pub fn proc_macro_srv(&self) -> Option<(AbsPathBuf, /* is path explicitly set */ bool)> {
         if !self.data.procMacro_enable {
             return None;
         }
-        let path = match &self.data.procMacro_server {
-            Some(it) => self.root_path.join(it),
-            None => AbsPathBuf::assert(std::env::current_exe().ok()?),
-        };
-        Some((path, vec!["proc-macro".into()]))
+        Some(match &self.data.procMacro_server {
+            Some(it) => (
+                AbsPathBuf::try_from(it.clone()).unwrap_or_else(|path| self.root_path.join(path)),
+                true,
+            ),
+            None => (AbsPathBuf::assert(std::env::current_exe().ok()?), false),
+        })
     }
 
     pub fn dummy_replacements(&self) -> &FxHashMap<Box<str>, Box<[Box<str>]>> {
@@ -1026,19 +1075,37 @@ impl Config {
                 RustcSource::Path(self.root_path.join(rustc_src))
             }
         });
+        let sysroot = self.data.cargo_sysroot.as_ref().map(|sysroot| {
+            if sysroot == "discover" {
+                RustcSource::Discover
+            } else {
+                RustcSource::Path(self.root_path.join(sysroot))
+            }
+        });
 
         CargoConfig {
-            no_default_features: self.data.cargo_noDefaultFeatures,
-            all_features: matches!(self.data.cargo_features, CargoFeatures::All),
             features: match &self.data.cargo_features {
-                CargoFeatures::All => vec![],
-                CargoFeatures::Listed(it) => it.clone(),
+                CargoFeaturesDef::All => CargoFeatures::All,
+                CargoFeaturesDef::Selected(features) => CargoFeatures::Selected {
+                    features: features.clone(),
+                    no_default_features: self.data.cargo_noDefaultFeatures,
+                },
             },
             target: self.data.cargo_target.clone(),
-            no_sysroot: self.data.cargo_noSysroot,
+            sysroot,
             rustc_source,
             unset_test_crates: UnsetTestCrates::Only(self.data.cargo_unsetTest.clone()),
             wrap_rustc_in_build_scripts: self.data.cargo_buildScripts_useRustcWrapper,
+            invocation_strategy: match self.data.cargo_buildScripts_invocationStrategy {
+                InvocationStrategy::Once => project_model::InvocationStrategy::Once,
+                InvocationStrategy::PerWorkspace => project_model::InvocationStrategy::PerWorkspace,
+            },
+            invocation_location: match self.data.cargo_buildScripts_invocationLocation {
+                InvocationLocation::Root => {
+                    project_model::InvocationLocation::Root(self.root_path.clone())
+                }
+                InvocationLocation::Workspace => project_model::InvocationLocation::Workspace,
+            },
             run_build_script_command: self.data.cargo_buildScripts_overrideCommand.clone(),
             extra_env: self.data.cargo_extraEnv.clone(),
         }
@@ -1070,15 +1137,26 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_on_save_extra_env(),
+                    invocation_strategy: match self.data.checkOnSave_invocationStrategy {
+                        InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
+                        InvocationStrategy::PerWorkspace => {
+                            flycheck::InvocationStrategy::PerWorkspace
+                        }
+                    },
+                    invocation_location: match self.data.checkOnSave_invocationLocation {
+                        InvocationLocation::Root => {
+                            flycheck::InvocationLocation::Root(self.root_path.clone())
+                        }
+                        InvocationLocation::Workspace => flycheck::InvocationLocation::Workspace,
+                    },
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
                 command: self.data.checkOnSave_command.clone(),
-                target_triple: self
-                    .data
-                    .checkOnSave_target
-                    .clone()
-                    .or_else(|| self.data.cargo_target.clone()),
+                target_triples: match &self.data.checkOnSave_target.0[..] {
+                    [] => self.data.cargo_target.clone().into_iter().collect(),
+                    targets => targets.into(),
+                },
                 all_targets: self.data.checkOnSave_allTargets,
                 no_default_features: self
                     .data
@@ -1086,7 +1164,7 @@ impl Config {
                     .unwrap_or(self.data.cargo_noDefaultFeatures),
                 all_features: matches!(
                     self.data.checkOnSave_features.as_ref().unwrap_or(&self.data.cargo_features),
-                    CargoFeatures::All
+                    CargoFeaturesDef::All
                 ),
                 features: match self
                     .data
@@ -1094,8 +1172,8 @@ impl Config {
                     .clone()
                     .unwrap_or_else(|| self.data.cargo_features.clone())
                 {
-                    CargoFeatures::All => vec![],
-                    CargoFeatures::Listed(it) => it,
+                    CargoFeaturesDef::All => vec![],
+                    CargoFeaturesDef::Selected(it) => it,
                 },
                 extra_args: self.data.checkOnSave_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
@@ -1131,10 +1209,15 @@ impl Config {
             hide_closure_initialization_hints: self
                 .data
                 .inlayHints_typeHints_hideClosureInitialization,
-            reborrow_hints: match self.data.inlayHints_reborrowHints_enable {
-                ReborrowHintsDef::Always => ide::ReborrowHints::Always,
-                ReborrowHintsDef::Never => ide::ReborrowHints::Never,
-                ReborrowHintsDef::Mutable => ide::ReborrowHints::MutableOnly,
+            adjustment_hints: match self.data.inlayHints_expressionAdjustmentHints_enable {
+                AdjustmentHintsDef::Always => ide::AdjustmentHints::Always,
+                AdjustmentHintsDef::Never => match self.data.inlayHints_reborrowHints_enable {
+                    ReborrowHintsDef::Always | ReborrowHintsDef::Mutable => {
+                        ide::AdjustmentHints::ReborrowOnly
+                    }
+                    ReborrowHintsDef::Never => ide::AdjustmentHints::Never,
+                },
+                AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
             },
             binding_mode_hints: self.data.inlayHints_bindingModeHints_enable,
             param_names_for_lifetime_elision_hints: self
@@ -1210,6 +1293,7 @@ impl Config {
             allowed: None,
             insert_use: self.insert_use_config(),
             prefer_no_std: self.data.imports_prefer_no_std,
+            assist_emit_must_use: self.data.assist_emitMustUse,
         }
     }
 
@@ -1468,6 +1552,7 @@ mod de_unit_v {
     named_unit_variant!(all);
     named_unit_variant!(skip_trivial);
     named_unit_variant!(mutable);
+    named_unit_variant!(reborrow);
     named_unit_variant!(with_block);
 }
 
@@ -1564,10 +1649,27 @@ enum CallableCompletionDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(untagged)]
-enum CargoFeatures {
+enum CargoFeaturesDef {
     #[serde(deserialize_with = "de_unit_v::all")]
     All,
-    Listed(Vec<String>),
+    Selected(Vec<String>),
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationStrategy {
+    Once,
+    PerWorkspace,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+struct CheckOnSaveTargets(#[serde(deserialize_with = "single_or_array")] Vec<String>);
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
+enum InvocationLocation {
+    Root,
+    Workspace,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1601,6 +1703,17 @@ enum ReborrowHintsDef {
     Never,
     #[serde(deserialize_with = "de_unit_v::mutable")]
     Mutable,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum AdjustmentHintsDef {
+    #[serde(deserialize_with = "true_or_always")]
+    Always,
+    #[serde(deserialize_with = "false_or_never")]
+    Never,
+    #[serde(deserialize_with = "de_unit_v::reborrow")]
+    Reborrow,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -1912,7 +2025,20 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Only show mutable reborrow hints."
             ]
         },
-        "CargoFeatures" => set! {
+        "AdjustmentHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "reborrow"
+            ],
+            "enumDescriptions": [
+                "Always show all adjustment hints.",
+                "Never show adjustment hints.",
+                "Only show auto borrow and dereference adjustment hints."
+            ]
+        },
+        "CargoFeaturesDef" => set! {
             "anyOf": [
                 {
                     "type": "string",
@@ -1929,7 +2055,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 }
             ],
         },
-        "Option<CargoFeatures>" => set! {
+        "Option<CargoFeaturesDef>" => set! {
             "anyOf": [
                 {
                     "type": "string",
@@ -1982,6 +2108,33 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
             "enumDescriptions": [
                 "Render annotations above the name of the item.",
                 "Render annotations above the whole item, including documentation comments and attributes."
+            ],
+        },
+        "InvocationStrategy" => set! {
+            "type": "string",
+            "enum": ["per_workspace", "once"],
+            "enumDescriptions": [
+                "The command will be executed for each workspace.",
+                "The command will be executed once."
+            ],
+        },
+        "InvocationLocation" => set! {
+            "type": "string",
+            "enum": ["workspace", "root"],
+            "enumDescriptions": [
+                "The command will be executed in the corresponding workspace root.",
+                "The command will be executed in the project root."
+            ],
+        },
+        "CheckOnSaveTargets" => set! {
+            "anyOf": [
+                {
+                    "type": "string",
+                },
+                {
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
             ],
         },
         _ => panic!("missing entry for {}: {}", ty, default),

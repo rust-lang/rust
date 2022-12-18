@@ -1,31 +1,27 @@
-error[E0072]: recursive type `ObjectType` has infinite size
+error[E0072]: recursive types `ObjectType` and `TypeSignature` have infinite size
   --> $DIR/issue-57271.rs:7:1
    |
 LL | pub enum ObjectType {
-   | ^^^^^^^^^^^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^^^^^^^^^^^
 LL |     Class(ClassTypeSignature),
 LL |     Array(TypeSignature),
    |           ------------- recursive without indirection
-   |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `ObjectType` representable
-   |
-LL |     Array(Box<TypeSignature>),
-   |           ++++             +
-
-error[E0072]: recursive type `TypeSignature` has infinite size
-  --> $DIR/issue-57271.rs:19:1
-   |
+...
 LL | pub enum TypeSignature {
-   | ^^^^^^^^^^^^^^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^^^^^^^^^^^^^^
 LL |     Base(BaseType),
 LL |     Object(ObjectType),
    |            ---------- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `TypeSignature` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     Object(Box<ObjectType>),
-   |            ++++          +
+LL ~     Array(Box<TypeSignature>),
+LL |     TypeVariable(()),
+ ...
+LL |     Base(BaseType),
+LL ~     Object(Box<ObjectType>),
+   |
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0072`.

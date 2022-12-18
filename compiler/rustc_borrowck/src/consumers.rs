@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 //! This file provides API for compiler consumers.
 
 use rustc_hir::def_id::LocalDefId;
@@ -31,9 +33,8 @@ pub fn get_body_with_borrowck_facts<'tcx>(
     def: ty::WithOptConstParam<LocalDefId>,
 ) -> BodyWithBorrowckFacts<'tcx> {
     let (input_body, promoted) = tcx.mir_promoted(def);
-    tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).enter(|infcx| {
-        let input_body: &Body<'_> = &input_body.borrow();
-        let promoted: &IndexVec<_, _> = &promoted.borrow();
-        *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
-    })
+    let infcx = tcx.infer_ctxt().with_opaque_type_inference(DefiningAnchor::Bind(def.did)).build();
+    let input_body: &Body<'_> = &input_body.borrow();
+    let promoted: &IndexVec<_, _> = &promoted.borrow();
+    *super::do_mir_borrowck(&infcx, input_body, promoted, true).1.unwrap()
 }

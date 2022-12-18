@@ -73,7 +73,7 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
             .flat_map(|v| v.fields.iter())
             .any(|x| matches!(cx.tcx.type_of(x.did).peel_refs().kind(), ty::Param(_)))
             && all_predicates_of(cx.tcx, fn_id).all(|(pred, _)| match pred.kind().skip_binder() {
-                PredicateKind::Trait(pred) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
+                PredicateKind::Clause(ty::Clause::Trait(pred)) => cx.tcx.trait_def(pred.trait_ref.def_id).is_marker,
                 _ => true,
             })
             && subs.types().all(|x| matches!(x.peel_refs().kind(), ty::Param(_)))
@@ -88,6 +88,16 @@ fn fn_eagerness(cx: &LateContext<'_>, fn_id: DefId, name: Symbol, have_one_arg: 
         }
     } else {
         Lazy
+    }
+}
+
+fn res_has_significant_drop(res: Res, cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
+    if let Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) = res {
+        cx.typeck_results()
+            .expr_ty(e)
+            .has_significant_drop(cx.tcx, cx.param_env)
+    } else {
+        false
     }
 }
 
@@ -113,7 +123,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                     },
                     args,
                 ) => match self.cx.qpath_res(path, hir_id) {
-                    Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_) => (),
+                    res @ (Res::Def(DefKind::Ctor(..) | DefKind::Variant, _) | Res::SelfCtor(_)) => {
+                        if res_has_significant_drop(res, self.cx, e) {
+                            self.eagerness = ForceNoChange;
+                            return;
+                        }
+                    },
                     Res::Def(_, id) if self.cx.tcx.is_promotable_const_fn(id) => (),
                     // No need to walk the arguments here, `is_const_evaluatable` already did
                     Res::Def(..) if is_const_evaluatable(self.cx, e) => {
@@ -136,6 +151,12 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 ExprKind::MethodCall(..) if is_const_evaluatable(self.cx, e) => {
                     self.eagerness |= NoChange;
                     return;
+                },
+                ExprKind::Path(ref path) => {
+                    if res_has_significant_drop(self.cx.qpath_res(path, e.hir_id), self.cx, e) {
+                        self.eagerness = ForceNoChange;
+                        return;
+                    }
                 },
                 ExprKind::MethodCall(name, ..) => {
                     self.eagerness |= self
@@ -196,7 +217,6 @@ fn expr_eagerness<'tcx>(cx: &LateContext<'tcx>, e: &'tcx Expr<'_>) -> EagernessS
                 | ExprKind::Match(..)
                 | ExprKind::Closure { .. }
                 | ExprKind::Field(..)
-                | ExprKind::Path(_)
                 | ExprKind::AddrOf(..)
                 | ExprKind::Struct(..)
                 | ExprKind::Repeat(..)

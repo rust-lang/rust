@@ -1,8 +1,9 @@
 use clippy_utils::diagnostics::span_lint;
+use clippy_utils::visitors::for_each_expr;
 use clippy_utils::{binop_traits, trait_ref_of_method, BINOP_TRAITS, OP_ASSIGN_TRAITS};
+use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_hir as hir;
-use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 
@@ -59,8 +60,8 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
         if_chain! {
             if let hir::ExprKind::Binary(binop, _, _) | hir::ExprKind::AssignOp(binop, ..) = expr.kind;
             if let Some((binop_trait_lang, op_assign_trait_lang)) = binop_traits(binop.node);
-            if let Ok(binop_trait_id) = cx.tcx.lang_items().require(binop_trait_lang);
-            if let Ok(op_assign_trait_id) = cx.tcx.lang_items().require(op_assign_trait_lang);
+            if let Some(binop_trait_id) = cx.tcx.lang_items().get(binop_trait_lang);
+            if let Some(op_assign_trait_id) = cx.tcx.lang_items().get(op_assign_trait_lang);
 
             // Check for more than one binary operation in the implemented function
             // Linting when multiple operations are involved can result in false positives
@@ -77,7 +78,7 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
                 (&OP_ASSIGN_TRAITS, SUSPICIOUS_OP_ASSIGN_IMPL),
             ]
                 .iter()
-                .find(|&(ts, _)| ts.iter().any(|&t| Ok(trait_id) == cx.tcx.lang_items().require(t)));
+                .find(|&(ts, _)| ts.iter().any(|&t| Some(trait_id) == cx.tcx.lang_items().get(t)));
             if count_binops(body.value) == 1;
             then {
                 span_lint(
@@ -92,25 +93,17 @@ impl<'tcx> LateLintPass<'tcx> for SuspiciousImpl {
 }
 
 fn count_binops(expr: &hir::Expr<'_>) -> u32 {
-    let mut visitor = BinaryExprVisitor::default();
-    visitor.visit_expr(expr);
-    visitor.nb_binops
-}
-
-#[derive(Default)]
-struct BinaryExprVisitor {
-    nb_binops: u32,
-}
-
-impl<'tcx> Visitor<'tcx> for BinaryExprVisitor {
-    fn visit_expr(&mut self, expr: &'tcx hir::Expr<'_>) {
-        match expr.kind {
+    let mut count = 0u32;
+    let _: Option<!> = for_each_expr(expr, |e| {
+        if matches!(
+            e.kind,
             hir::ExprKind::Binary(..)
-            | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
-            | hir::ExprKind::AssignOp(..) => self.nb_binops += 1,
-            _ => {},
+                | hir::ExprKind::Unary(hir::UnOp::Not | hir::UnOp::Neg, _)
+                | hir::ExprKind::AssignOp(..)
+        ) {
+            count += 1;
         }
-
-        walk_expr(self, expr);
-    }
+        ControlFlow::Continue(())
+    });
+    count
 }

@@ -2,6 +2,7 @@
 
 #![feature(const_trait_impl, generic_const_exprs)]
 
+#[const_trait]
 pub trait Tr {
     fn a() -> usize;
 }

@@ -42,4 +42,4 @@ edition of the [Android NDK].  Supported Android targets are:
 [Android NDK]: https://developer.android.com/ndk/downloads
 
 A list of all supported targets can be found
-[here](https://doc.rust-lang.org/rustc/platform-support.html)
+[here](../platform-support.html)

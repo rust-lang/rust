@@ -3,7 +3,6 @@
 // Inlining changes the error location
 //@compile-flags: -Zmir-opt-level=0
 #![feature(never_type)]
-#![warn(warnings, const_err)]
 
 struct PrintName<T>(T);
 impl<T> PrintName<T> {
@@ -12,7 +11,7 @@ impl<T> PrintName<T> {
 
 fn no_codegen<T>() {
     if false {
-        let _ = PrintName::<T>::VOID; //~ERROR: post-monomorphization error
+        let _ = PrintName::<T>::VOID; //~NOTE: constant
     }
 }
 fn main() {

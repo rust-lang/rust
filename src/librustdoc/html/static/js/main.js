@@ -47,15 +47,13 @@ function blurHandler(event, parentElem, hideCallback) {
     }
 }
 
-(function() {
-    window.rootPath = getVar("root-path");
-    window.currentCrate = getVar("current-crate");
-}());
+window.rootPath = getVar("root-path");
+window.currentCrate = getVar("current-crate");
 
 function setMobileTopbar() {
     // FIXME: It would be nicer to generate this text content directly in HTML,
     // but with the current code it's hard to get the right information in the right place.
-    const mobileLocationTitle = document.querySelector(".mobile-topbar h2.location");
+    const mobileLocationTitle = document.querySelector(".mobile-topbar h2");
     const locationTitle = document.querySelector(".sidebar h2.location");
     if (mobileLocationTitle && locationTitle) {
         mobileLocationTitle.innerHTML = locationTitle.innerHTML;
@@ -183,15 +181,16 @@ function browserSupportsHistoryApi() {
 }
 
 // eslint-disable-next-line no-unused-vars
-function loadCss(cssFileName) {
+function loadCss(cssUrl) {
     const link = document.createElement("link");
-    link.href = resourcePath(cssFileName, ".css");
-    link.type = "text/css";
+    link.href = cssUrl;
     link.rel = "stylesheet";
     document.getElementsByTagName("head")[0].appendChild(link);
 }
 
 (function() {
+    const isHelpPage = window.location.pathname.endsWith("/help.html");
+
     function loadScript(url) {
         const script = document.createElement("script");
         script.src = url;
@@ -199,12 +198,16 @@ function loadCss(cssFileName) {
     }
 
     getSettingsButton().onclick = event => {
+        if (event.ctrlKey || event.altKey || event.metaKey) {
+            return;
+        }
+        window.hideAllModals(false);
         addClass(getSettingsButton(), "rotate");
         event.preventDefault();
         // Sending request for the CSS and the JS files at the same time so it will
         // hopefully be loaded when the JS will generate the settings content.
-        loadCss("settings");
-        loadScript(resourcePath("settings", ".js"));
+        loadCss(getVar("static-root-path") + getVar("settings-css"));
+        loadScript(getVar("static-root-path") + getVar("settings-js"));
     };
 
     window.searchState = {
@@ -281,7 +284,7 @@ function loadCss(cssFileName) {
             function loadSearch() {
                 if (!searchLoaded) {
                     searchLoaded = true;
-                    loadScript(resourcePath("search", ".js"));
+                    loadScript(getVar("static-root-path") + getVar("search-js"));
                     loadScript(resourcePath("search-index", ".js"));
                 }
             }
@@ -298,12 +301,14 @@ function loadCss(cssFileName) {
 
             const params = searchState.getQueryStringParams();
             if (params.search !== undefined) {
-                const search = searchState.outputElement();
-                search.innerHTML = "<h3 class=\"search-loading\">" +
-                    searchState.loadingText + "</h3>";
-                searchState.showResults(search);
+                searchState.setLoadingSearch();
                 loadSearch();
             }
+        },
+        setLoadingSearch: () => {
+            const search = searchState.outputElement();
+            search.innerHTML = "<h3 class=\"search-loading\">" + searchState.loadingText + "</h3>";
+            searchState.showResults(search);
         },
     };
 
@@ -374,7 +379,7 @@ function loadCss(cssFileName) {
         }
         ev.preventDefault();
         searchState.defocus();
-        window.hidePopoverMenus();
+        window.hideAllModals(true); // true = reset focus for notable traits
     }
 
     function handleShortcut(ev) {
@@ -404,9 +409,12 @@ function loadCss(cssFileName) {
                 break;
 
             case "+":
+                ev.preventDefault();
+                expandAllDocs();
+                break;
             case "-":
                 ev.preventDefault();
-                toggleAllDocs();
+                collapseAllDocs();
                 break;
 
             case "?":
@@ -442,18 +450,15 @@ function loadCss(cssFileName) {
                 return;
             }
 
-            const div = document.createElement("div");
-            div.className = "block " + shortty;
             const h3 = document.createElement("h3");
             h3.innerHTML = `<a href="index.html#${id}">${longty}</a>`;
-            div.appendChild(h3);
             const ul = document.createElement("ul");
+            ul.className = "block " + shortty;
 
             for (const item of filtered) {
                 const name = item[0];
                 const desc = item[1]; // can be null
 
-                let klass = shortty;
                 let path;
                 if (shortty === "mod") {
                     path = name + "/index.html";
@@ -461,20 +466,19 @@ function loadCss(cssFileName) {
                     path = shortty + "." + name + ".html";
                 }
                 const current_page = document.location.href.split("/").pop();
-                if (path === current_page) {
-                    klass += " current";
-                }
                 const link = document.createElement("a");
                 link.href = path;
                 link.title = desc;
-                link.className = klass;
+                if (path === current_page) {
+                    link.className = "current";
+                }
                 link.textContent = name;
                 const li = document.createElement("li");
                 li.appendChild(link);
                 ul.appendChild(li);
             }
-            div.appendChild(ul);
-            sidebar.appendChild(div);
+            sidebar.appendChild(h3);
+            sidebar.appendChild(ul);
         }
 
         if (sidebar) {
@@ -522,7 +526,7 @@ function loadCss(cssFileName) {
         }
 
         let currentNbImpls = implementors.getElementsByClassName("impl").length;
-        const traitName = document.querySelector("h1.fqn > .in-band > .trait").textContent;
+        const traitName = document.querySelector("h1.fqn > .trait").textContent;
         const baseIdName = "impl-" + traitName + "-";
         const libs = Object.getOwnPropertyNames(imp);
         // We don't want to include impls from this JS file, when the HTML already has them.
@@ -592,38 +596,52 @@ function loadCss(cssFileName) {
             return;
         }
         // Draw a convenient sidebar of known crates if we have a listing
-        const div = document.createElement("div");
-        div.className = "block crate";
-        div.innerHTML = "<h3>Crates</h3>";
+        const h3 = document.createElement("h3");
+        h3.innerHTML = "Crates";
         const ul = document.createElement("ul");
-        div.appendChild(ul);
+        ul.className = "block crate";
 
         for (const crate of window.ALL_CRATES) {
-            let klass = "crate";
-            if (window.rootPath !== "./" && crate === window.currentCrate) {
-                klass += " current";
-            }
             const link = document.createElement("a");
             link.href = window.rootPath + crate + "/index.html";
-            link.className = klass;
+            if (window.rootPath !== "./" && crate === window.currentCrate) {
+                link.className = "current";
+            }
             link.textContent = crate;
 
             const li = document.createElement("li");
             li.appendChild(link);
             ul.appendChild(li);
         }
-        sidebarElems.appendChild(div);
+        sidebarElems.appendChild(h3);
+        sidebarElems.appendChild(ul);
     }
 
+    function expandAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        removeClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (!hasClass(e, "type-contents-toggle") && !hasClass(e, "more-examples-toggle")) {
+                e.open = true;
+            }
+        });
+        innerToggle.title = "collapse all docs";
+        innerToggle.children[0].innerText = "\u2212"; // "\u2212" is "−" minus sign
+    }
 
-    function labelForToggleButton(sectionIsCollapsed) {
-        if (sectionIsCollapsed) {
-            // button will expand the section
-            return "+";
-        }
-        // button will collapse the section
-        // note that this text is also set in the HTML template in ../render/mod.rs
-        return "\u2212"; // "\u2212" is "−" minus sign
+    function collapseAllDocs() {
+        const innerToggle = document.getElementById(toggleAllDocsId);
+        addClass(innerToggle, "will-expand");
+        onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
+            if (e.parentNode.id !== "implementations-list" ||
+                (!hasClass(e, "implementors-toggle") &&
+                 !hasClass(e, "type-contents-toggle"))
+            ) {
+                e.open = false;
+            }
+        });
+        innerToggle.title = "expand all docs";
+        innerToggle.children[0].innerText = "+";
     }
 
     function toggleAllDocs() {
@@ -631,29 +649,11 @@ function loadCss(cssFileName) {
         if (!innerToggle) {
             return;
         }
-        let sectionIsCollapsed = false;
         if (hasClass(innerToggle, "will-expand")) {
-            removeClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (!hasClass(e, "type-contents-toggle")) {
-                    e.open = true;
-                }
-            });
-            innerToggle.title = "collapse all docs";
+            expandAllDocs();
         } else {
-            addClass(innerToggle, "will-expand");
-            onEachLazy(document.getElementsByClassName("rustdoc-toggle"), e => {
-                if (e.parentNode.id !== "implementations-list" ||
-                    (!hasClass(e, "implementors-toggle") &&
-                     !hasClass(e, "type-contents-toggle"))
-                ) {
-                    e.open = false;
-                }
-            });
-            sectionIsCollapsed = true;
-            innerToggle.title = "expand all docs";
+            collapseAllDocs();
         }
-        innerToggle.children[0].innerText = labelForToggleButton(sectionIsCollapsed);
     }
 
     (function() {
@@ -725,54 +725,81 @@ function loadCss(cssFileName) {
         });
     };
 
-    (function() {
-        // To avoid checking on "rustdoc-line-numbers" value on every loop...
-        if (getSettingValue("line-numbers") === "true") {
-            window.rustdoc_add_line_numbers_to_examples();
-        }
-    }());
+    if (getSettingValue("line-numbers") === "true") {
+        window.rustdoc_add_line_numbers_to_examples();
+    }
 
     let oldSidebarScrollPosition = null;
 
-    function showSidebar() {
-        if (window.innerWidth < window.RUSTDOC_MOBILE_BREAKPOINT) {
+    // Scroll locking used both here and in source-script.js
+
+    window.rustdocMobileScrollLock = function() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
+        if (window.innerWidth <= window.RUSTDOC_MOBILE_BREAKPOINT) {
             // This is to keep the scroll position on mobile.
             oldSidebarScrollPosition = window.scrollY;
             document.body.style.width = `${document.body.offsetWidth}px`;
             document.body.style.position = "fixed";
             document.body.style.top = `-${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.top = `${oldSidebarScrollPosition}px`;
-            document.querySelector(".mobile-topbar").style.position = "relative";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = `${oldSidebarScrollPosition}px`;
+                mobile_topbar.style.position = "relative";
+            }
         } else {
             oldSidebarScrollPosition = null;
         }
-        const sidebar = document.getElementsByClassName("sidebar")[0];
-        addClass(sidebar, "shown");
-    }
+    };
 
-    function hideSidebar() {
+    window.rustdocMobileScrollUnlock = function() {
+        const mobile_topbar = document.querySelector(".mobile-topbar");
         if (oldSidebarScrollPosition !== null) {
             // This is to keep the scroll position on mobile.
             document.body.style.width = "";
             document.body.style.position = "";
             document.body.style.top = "";
-            document.querySelector(".mobile-topbar").style.top = "";
-            document.querySelector(".mobile-topbar").style.position = "";
+            if (mobile_topbar) {
+                mobile_topbar.style.top = "";
+                mobile_topbar.style.position = "";
+            }
             // The scroll position is lost when resetting the style, hence why we store it in
             // `oldSidebarScrollPosition`.
             window.scrollTo(0, oldSidebarScrollPosition);
             oldSidebarScrollPosition = null;
         }
+    };
+
+    function showSidebar() {
+        window.hideAllModals(false);
+        window.rustdocMobileScrollLock();
+        const sidebar = document.getElementsByClassName("sidebar")[0];
+        addClass(sidebar, "shown");
+    }
+
+    function hideSidebar() {
+        window.rustdocMobileScrollUnlock();
         const sidebar = document.getElementsByClassName("sidebar")[0];
         removeClass(sidebar, "shown");
     }
 
     window.addEventListener("resize", () => {
-        if (window.innerWidth >= window.RUSTDOC_MOBILE_BREAKPOINT &&
+        if (window.innerWidth > window.RUSTDOC_MOBILE_BREAKPOINT &&
             oldSidebarScrollPosition !== null) {
             // If the user opens the sidebar in "mobile" mode, and then grows the browser window,
             // we need to switch away from mobile mode and make the main content area scrollable.
             hideSidebar();
+        }
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            // As a workaround to the behavior of `contains: layout` used in doc togglers, the
+            // notable traits popup is positioned using javascript.
+            //
+            // This means when the window is resized, we need to redo the layout.
+            const base = window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE;
+            const force_visible = base.NOTABLE_FORCE_VISIBLE;
+            hideNotable(false);
+            if (force_visible) {
+                showNotable(base);
+                base.NOTABLE_FORCE_VISIBLE = true;
+            }
         }
     });
 
@@ -806,10 +833,123 @@ function loadCss(cssFileName) {
         });
     });
 
+    function showNotable(e) {
+        if (!window.NOTABLE_TRAITS) {
+            const data = document.getElementById("notable-traits-data");
+            if (data) {
+                window.NOTABLE_TRAITS = JSON.parse(data.innerText);
+            } else {
+                throw new Error("showNotable() called on page without any notable traits!");
+            }
+        }
+        if (window.CURRENT_NOTABLE_ELEMENT && window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE === e) {
+            // Make this function idempotent.
+            return;
+        }
+        window.hideAllModals(false);
+        const ty = e.getAttribute("data-ty");
+        const wrapper = document.createElement("div");
+        wrapper.innerHTML = "<div class=\"docblock\">" + window.NOTABLE_TRAITS[ty] + "</div>";
+        wrapper.className = "notable popover";
+        const focusCatcher = document.createElement("div");
+        focusCatcher.setAttribute("tabindex", "0");
+        focusCatcher.onfocus = hideNotable;
+        wrapper.appendChild(focusCatcher);
+        const pos = e.getBoundingClientRect();
+        // 5px overlap so that the mouse can easily travel from place to place
+        wrapper.style.top = (pos.top + window.scrollY + pos.height) + "px";
+        wrapper.style.left = 0;
+        wrapper.style.right = "auto";
+        wrapper.style.visibility = "hidden";
+        const body = document.getElementsByTagName("body")[0];
+        body.appendChild(wrapper);
+        const wrapperPos = wrapper.getBoundingClientRect();
+        // offset so that the arrow points at the center of the "(i)"
+        const finalPos = pos.left + window.scrollX - wrapperPos.width + 24;
+        if (finalPos > 0) {
+            wrapper.style.left = finalPos + "px";
+        } else {
+            wrapper.style.setProperty(
+                "--popover-arrow-offset",
+                (wrapperPos.right - pos.right + 4) + "px"
+            );
+        }
+        wrapper.style.visibility = "";
+        window.CURRENT_NOTABLE_ELEMENT = wrapper;
+        window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE = e;
+        wrapper.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!e.NOTABLE_FORCE_VISIBLE && !elemIsInParent(event.relatedTarget, e)) {
+                hideNotable(true);
+            }
+        };
+    }
+
+    function notableBlurHandler(event) {
+        if (window.CURRENT_NOTABLE_ELEMENT &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT) &&
+            !elemIsInParent(document.activeElement, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE) &&
+            !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE)
+        ) {
+            // Work around a difference in the focus behaviour between Firefox, Chrome, and Safari.
+            // When I click the button on an already-opened notable trait popover, Safari
+            // hides the popover and then immediately shows it again, while everyone else hides it
+            // and it stays hidden.
+            //
+            // To work around this, make sure the click finishes being dispatched before
+            // hiding the popover. Since `hideNotable()` is idempotent, this makes Safari behave
+            // consistently with the other two.
+            setTimeout(() => hideNotable(false), 0);
+        }
+    }
+
+    function hideNotable(focus) {
+        if (window.CURRENT_NOTABLE_ELEMENT) {
+            if (window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE) {
+                if (focus) {
+                    window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.focus();
+                }
+                window.CURRENT_NOTABLE_ELEMENT.NOTABLE_BASE.NOTABLE_FORCE_VISIBLE = false;
+            }
+            const body = document.getElementsByTagName("body")[0];
+            body.removeChild(window.CURRENT_NOTABLE_ELEMENT);
+            window.CURRENT_NOTABLE_ELEMENT = null;
+        }
+    }
+
     onEachLazy(document.getElementsByClassName("notable-traits"), e => {
         e.onclick = function() {
-            this.getElementsByClassName("notable-traits-tooltiptext")[0]
-                .classList.toggle("force-tooltip");
+            this.NOTABLE_FORCE_VISIBLE = this.NOTABLE_FORCE_VISIBLE ? false : true;
+            if (window.CURRENT_NOTABLE_ELEMENT && !this.NOTABLE_FORCE_VISIBLE) {
+                hideNotable(true);
+            } else {
+                showNotable(this);
+                window.CURRENT_NOTABLE_ELEMENT.setAttribute("tabindex", "0");
+                window.CURRENT_NOTABLE_ELEMENT.focus();
+                window.CURRENT_NOTABLE_ELEMENT.onblur = notableBlurHandler;
+            }
+            return false;
+        };
+        e.onpointerenter = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            showNotable(this);
+        };
+        e.onpointerleave = function(ev) {
+            // If this is a synthetic touch event, ignore it. A click event will be along shortly.
+            if (ev.pointerType !== "mouse") {
+                return;
+            }
+            if (!this.NOTABLE_FORCE_VISIBLE &&
+                !elemIsInParent(event.relatedTarget, window.CURRENT_NOTABLE_ELEMENT)) {
+                hideNotable(true);
+            }
         };
     });
 
@@ -877,7 +1017,10 @@ function loadCss(cssFileName) {
         rustdoc_version.appendChild(rustdoc_version_code);
 
         const container = document.createElement("div");
-        container.className = "popover";
+        if (!isHelpPage) {
+            container.className = "popover";
+        }
+        container.id = "help";
         container.style.display = "none";
 
         const side_by_side = document.createElement("div");
@@ -889,24 +1032,42 @@ function loadCss(cssFileName) {
         container.appendChild(side_by_side);
         container.appendChild(rustdoc_version);
 
-        const help_button = getHelpButton();
-        help_button.appendChild(container);
+        if (isHelpPage) {
+            const help_section = document.createElement("section");
+            help_section.appendChild(container);
+            document.getElementById("main-content").appendChild(help_section);
+            container.style.display = "block";
+        } else {
+            const help_button = getHelpButton();
+            help_button.appendChild(container);
 
-        container.onblur = helpBlurHandler;
-        container.onclick = event => {
-            event.preventDefault();
-        };
-        help_button.onblur = helpBlurHandler;
-        help_button.children[0].onblur = helpBlurHandler;
+            container.onblur = helpBlurHandler;
+            container.onclick = event => {
+                event.preventDefault();
+            };
+            help_button.onblur = helpBlurHandler;
+            help_button.children[0].onblur = helpBlurHandler;
+        }
 
         return container;
     }
 
     /**
+     * Hide popover menus, notable trait tooltips, and the sidebar (if applicable).
+     *
+     * Pass "true" to reset focus for notable traits.
+     */
+    window.hideAllModals = function(switchFocus) {
+        hideSidebar();
+        window.hidePopoverMenus();
+        hideNotable(switchFocus);
+    };
+
+    /**
      * Hide all the popover menus.
      */
     window.hidePopoverMenus = function() {
-        onEachLazy(document.querySelectorAll(".search-container .popover"), elem => {
+        onEachLazy(document.querySelectorAll(".search-form .popover"), elem => {
             elem.style.display = "none";
         });
     };
@@ -933,24 +1094,48 @@ function loadCss(cssFileName) {
     function showHelp() {
         const menu = getHelpMenu(true);
         if (menu.style.display === "none") {
-            window.hidePopoverMenus();
+            window.hideAllModals();
             menu.style.display = "";
         }
     }
 
-    document.querySelector(`#${HELP_BUTTON_ID} > button`).addEventListener("click", event => {
-        const target = event.target;
-        if (target.tagName !== "BUTTON" || target.parentElement.id !== HELP_BUTTON_ID) {
-            return;
-        }
-        const menu = getHelpMenu(true);
-        const shouldShowHelp = menu.style.display === "none";
-        if (shouldShowHelp) {
-            showHelp();
-        } else {
-            window.hidePopoverMenus();
-        }
-    });
+    if (isHelpPage) {
+        showHelp();
+        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // Already on the help page, make help button a no-op.
+            const target = event.target;
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
+                return;
+            }
+            event.preventDefault();
+        });
+    } else {
+        document.querySelector(`#${HELP_BUTTON_ID} > a`).addEventListener("click", event => {
+            // By default, have help button open docs in a popover.
+            // If user clicks with a moderator, though, use default browser behavior,
+            // probably opening in a new window or tab.
+            const target = event.target;
+            if (target.tagName !== "A" ||
+                target.parentElement.id !== HELP_BUTTON_ID ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey) {
+                return;
+            }
+            event.preventDefault();
+            const menu = getHelpMenu(true);
+            const shouldShowHelp = menu.style.display === "none";
+            if (shouldShowHelp) {
+                showHelp();
+            } else {
+                window.hidePopoverMenus();
+            }
+        });
+    }
 
     setMobileTopbar();
     addSidebarItems();

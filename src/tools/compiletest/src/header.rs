@@ -4,6 +4,7 @@ use std::fs::File;
 use std::io::prelude::*;
 use std::io::BufReader;
 use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use tracing::*;
 
@@ -259,9 +260,9 @@ impl TestProps {
         props.load_from(testfile, cfg, config);
 
         match (props.pass_mode, props.fail_mode) {
-            (None, None) => props.fail_mode = Some(FailMode::Check),
-            (Some(_), None) | (None, Some(_)) => {}
+            (None, None) if config.mode == Mode::Ui => props.fail_mode = Some(FailMode::Check),
             (Some(_), Some(_)) => panic!("cannot use a *-fail and *-pass mode together"),
+            _ => {}
         }
 
         props
@@ -521,8 +522,8 @@ impl TestProps {
     }
 
     pub fn pass_mode(&self, config: &Config) -> Option<PassMode> {
-        if !self.ignore_pass && self.fail_mode.is_none() && config.mode == Mode::Ui {
-            if let (mode @ Some(_), Some(_)) = (config.force_pass_mode, self.pass_mode) {
+        if !self.ignore_pass && self.fail_mode.is_none() {
+            if let mode @ Some(_) = config.force_pass_mode {
                 return mode;
             }
         }
@@ -843,6 +844,20 @@ pub fn extract_llvm_version(version: &str) -> Option<u32> {
     Some(version)
 }
 
+pub fn extract_llvm_version_from_binary(binary_path: &str) -> Option<u32> {
+    let output = Command::new(binary_path).arg("--version").output().ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let version = String::from_utf8(output.stdout).ok()?;
+    for line in version.lines() {
+        if let Some(version) = line.split("LLVM version ").skip(1).next() {
+            return extract_llvm_version(version);
+        }
+    }
+    None
+}
+
 /// Takes a directive of the form "<version1> [- <version2>]",
 /// returns the numeric representation of <version1> and <version2> as
 /// tuple: (<version1> as u32, <version2> as u32)
@@ -891,6 +906,7 @@ pub fn make_test_description<R: Read>(
     let has_asm_support = config.has_asm_support();
     let has_asan = util::ASAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_cfi = util::CFI_SUPPORTED_TARGETS.contains(&&*config.target);
+    let has_kcfi = util::KCFI_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_lsan = util::LSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_msan = util::MSAN_SUPPORTED_TARGETS.contains(&&*config.target);
     let has_tsan = util::TSAN_SUPPORTED_TARGETS.contains(&&*config.target);
@@ -942,6 +958,7 @@ pub fn make_test_description<R: Read>(
             && config.parse_name_directive(ln, "needs-sanitizer-support");
         ignore |= !has_asan && config.parse_name_directive(ln, "needs-sanitizer-address");
         ignore |= !has_cfi && config.parse_name_directive(ln, "needs-sanitizer-cfi");
+        ignore |= !has_kcfi && config.parse_name_directive(ln, "needs-sanitizer-kcfi");
         ignore |= !has_lsan && config.parse_name_directive(ln, "needs-sanitizer-leak");
         ignore |= !has_msan && config.parse_name_directive(ln, "needs-sanitizer-memory");
         ignore |= !has_tsan && config.parse_name_directive(ln, "needs-sanitizer-thread");

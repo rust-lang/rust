@@ -13,8 +13,8 @@ use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, infer::unify::InferenceTable, AliasEq, AliasTy, Canonical, DomainGoal, Goal,
-    Guidance, InEnvironment, Interner, ProjectionTy, Solution, TraitRefExt, Ty, TyKind,
-    WhereClause,
+    Guidance, InEnvironment, Interner, ProjectionTy, ProjectionTyExt, Solution, TraitRefExt, Ty,
+    TyKind, WhereClause,
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
@@ -95,7 +95,7 @@ pub(crate) fn trait_solve_query(
         ..
     }))) = &goal.value.goal.data(Interner)
     {
-        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(Interner).kind(Interner) {
+        if let TyKind::BoundVar(_) = projection_ty.self_type_parameter(db).kind(Interner) {
             // Hack: don't ask Chalk to normalize with an unknown self type, it'll say that's impossible
             return Some(Solution::Ambig(Guidance::Unknown));
         }

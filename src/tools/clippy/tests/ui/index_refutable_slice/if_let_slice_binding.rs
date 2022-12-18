@@ -1,4 +1,5 @@
 #![deny(clippy::index_refutable_slice)]
+#![allow(clippy::uninlined_format_args)]
 
 enum SomeEnum<T> {
     One(T),

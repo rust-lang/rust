@@ -5,7 +5,7 @@ extern crate call_deprecated;
 
 // These first two `#[allow(deprecated)]` attributes
 // do nothing, since the AST nodes for `First` and `Second`
-// haven't been been assigned a `NodeId`.
+// haven't been assigned a `NodeId`.
 // See #63221 for a discussion about how we should
 // handle the interaction of 'inert' attributes and
 // proc-macro attributes.

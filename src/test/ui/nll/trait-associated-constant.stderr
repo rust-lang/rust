@@ -2,7 +2,7 @@ error[E0308]: const not compatible with trait
   --> $DIR/trait-associated-constant.rs:21:5
    |
 LL |     const AC: Option<&'c str> = None;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
    = note: expected enum `Option<&'b str>`
               found enum `Option<&'c str>`

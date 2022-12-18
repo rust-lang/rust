@@ -1,4 +1,4 @@
-use crate::spec::{FramePointer, LinkerFlavor, Target};
+use crate::spec::{Cc, FramePointer, LinkerFlavor, Lld, Target};
 
 pub fn target() -> Target {
     let mut base = super::windows_gnu_base::opts();
@@ -9,8 +9,11 @@ pub fn target() -> Target {
 
     // Mark all dynamic libraries and executables as compatible with the larger 4GiB address
     // space available to x86 Windows binaries on x86_64.
-    base.add_pre_link_args(LinkerFlavor::Ld, &["-m", "i386pe", "--large-address-aware"]);
-    base.add_pre_link_args(LinkerFlavor::Gcc, &["-Wl,--large-address-aware"]);
+    base.add_pre_link_args(
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
+        &["-m", "i386pe", "--large-address-aware"],
+    );
+    base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-Wl,--large-address-aware"]);
 
     Target {
         llvm_target: "i686-pc-windows-gnu".into(),

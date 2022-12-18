@@ -1,7 +1,7 @@
 //! Parsing and validation of builtin attributes
 
 use rustc_ast as ast;
-use rustc_ast::{Attribute, Lit, LitKind, MetaItem, MetaItemKind, NestedMetaItem, NodeId};
+use rustc_ast::{Attribute, LitKind, MetaItem, MetaItemKind, MetaItemLit, NestedMetaItem, NodeId};
 use rustc_ast_pretty::pprust;
 use rustc_feature::{find_gated_cfg, is_builtin_attr_name, Features, GatedCfg};
 use rustc_macros::HashStable_Generic;
@@ -277,8 +277,7 @@ where
             allowed_through_unstable_modules = true;
         }
         // attributes with data
-        else if let Some(MetaItem { kind: MetaItemKind::List(ref metas), .. }) = meta {
-            let meta = meta.as_ref().unwrap();
+        else if let Some(meta @ MetaItem { kind: MetaItemKind::List(metas), .. }) = &meta {
             let get = |meta: &MetaItem, item: &mut Option<Symbol>| {
                 if item.is_some() {
                     handle_errors(
@@ -486,7 +485,7 @@ where
                                     continue 'outer;
                                 }
                             },
-                            NestedMetaItem::Literal(lit) => {
+                            NestedMetaItem::Lit(lit) => {
                                 handle_errors(
                                     &sess.parse_sess,
                                     lit.span,
@@ -533,25 +532,24 @@ where
 
     // Merge the const-unstable info into the stability info
     if promotable {
-        if let Some((ref mut stab, _)) = const_stab {
-            stab.promotable = promotable;
-        } else {
-            sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp });
+        match &mut const_stab {
+            Some((stab, _)) => stab.promotable = promotable,
+            _ => _ = sess.emit_err(session_diagnostics::RustcPromotablePairing { span: item_sp }),
         }
     }
 
     if allowed_through_unstable_modules {
-        if let Some((
-            Stability {
-                level: StabilityLevel::Stable { ref mut allowed_through_unstable_modules, .. },
-                ..
-            },
-            _,
-        )) = stab
-        {
-            *allowed_through_unstable_modules = true;
-        } else {
-            sess.emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
+        match &mut stab {
+            Some((
+                Stability {
+                    level: StabilityLevel::Stable { allowed_through_unstable_modules, .. },
+                    ..
+                },
+                _,
+            )) => *allowed_through_unstable_modules = true,
+            _ => {
+                sess.emit_err(session_diagnostics::RustcAllowedUnstablePairing { span: item_sp });
+            }
         }
     }
 
@@ -654,15 +652,15 @@ pub fn eval_condition(
     features: Option<&Features>,
     eval: &mut impl FnMut(Condition) -> bool,
 ) -> bool {
-    match cfg.kind {
-        ast::MetaItemKind::List(ref mis) if cfg.name_or_empty() == sym::version => {
+    match &cfg.kind {
+        ast::MetaItemKind::List(mis) if cfg.name_or_empty() == sym::version => {
             try_gate_cfg(sym::version, cfg.span, sess, features);
             let (min_version, span) = match &mis[..] {
-                [NestedMetaItem::Literal(Lit { kind: LitKind::Str(sym, ..), span, .. })] => {
+                [NestedMetaItem::Lit(MetaItemLit { kind: LitKind::Str(sym, ..), span, .. })] => {
                     (sym, span)
                 }
                 [
-                    NestedMetaItem::Literal(Lit { span, .. })
+                    NestedMetaItem::Lit(MetaItemLit { span, .. })
                     | NestedMetaItem::MetaItem(MetaItem { span, .. }),
                 ] => {
                     sess.emit_err(session_diagnostics::ExpectedVersionLiteral { span: *span });
@@ -688,7 +686,7 @@ pub fn eval_condition(
                 rustc_version >= min_version
             }
         }
-        ast::MetaItemKind::List(ref mis) => {
+        ast::MetaItemKind::List(mis) => {
             for mi in mis.iter() {
                 if !mi.is_meta_item() {
                     handle_errors(
@@ -759,7 +757,7 @@ pub fn eval_condition(
             sess.emit_err(session_diagnostics::CfgPredicateIdentifier { span: cfg.path.span });
             true
         }
-        MetaItemKind::NameValue(ref lit) if !lit.kind.is_str() => {
+        MetaItemKind::NameValue(lit) if !lit.kind.is_str() => {
             handle_errors(
                 sess,
                 lit.span,
@@ -899,7 +897,7 @@ where
                                 continue 'outer;
                             }
                         },
-                        NestedMetaItem::Literal(lit) => {
+                        NestedMetaItem::Lit(lit) => {
                             handle_errors(
                                 &sess.parse_sess,
                                 lit.span,
@@ -1036,52 +1034,58 @@ pub fn parse_repr_attr(sess: &Session, attr: &Attribute) -> Vec<ReprAttr> {
                     });
                 }
             } else if let Some(meta_item) = item.meta_item() {
-                if let MetaItemKind::NameValue(ref value) = meta_item.kind {
-                    if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
-                        let name = meta_item.name_or_empty().to_ident_string();
-                        recognised = true;
-                        sess.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
-                            span: item.span(),
-                            repr_arg: &name,
-                            cause: IncorrectReprFormatGenericCause::from_lit_kind(
-                                item.span(),
-                                &value.kind,
-                                &name,
-                            ),
-                        });
-                    } else if matches!(
-                        meta_item.name_or_empty(),
-                        sym::C | sym::simd | sym::transparent
-                    ) || int_type_of_word(meta_item.name_or_empty()).is_some()
-                    {
-                        recognised = true;
-                        sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
-                            span: meta_item.span,
-                            name: meta_item.name_or_empty().to_ident_string(),
-                        });
+                match &meta_item.kind {
+                    MetaItemKind::NameValue(value) => {
+                        if meta_item.has_name(sym::align) || meta_item.has_name(sym::packed) {
+                            let name = meta_item.name_or_empty().to_ident_string();
+                            recognised = true;
+                            sess.emit_err(session_diagnostics::IncorrectReprFormatGeneric {
+                                span: item.span(),
+                                repr_arg: &name,
+                                cause: IncorrectReprFormatGenericCause::from_lit_kind(
+                                    item.span(),
+                                    &value.kind,
+                                    &name,
+                                ),
+                            });
+                        } else if matches!(
+                            meta_item.name_or_empty(),
+                            sym::C | sym::simd | sym::transparent
+                        ) || int_type_of_word(meta_item.name_or_empty()).is_some()
+                        {
+                            recognised = true;
+                            sess.emit_err(session_diagnostics::InvalidReprHintNoValue {
+                                span: meta_item.span,
+                                name: meta_item.name_or_empty().to_ident_string(),
+                            });
+                        }
                     }
-                } else if let MetaItemKind::List(_) = meta_item.kind {
-                    if meta_item.has_name(sym::align) {
-                        recognised = true;
-                        sess.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
-                            span: meta_item.span,
-                        });
-                    } else if meta_item.has_name(sym::packed) {
-                        recognised = true;
-                        sess.emit_err(session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
-                            span: meta_item.span,
-                        });
-                    } else if matches!(
-                        meta_item.name_or_empty(),
-                        sym::C | sym::simd | sym::transparent
-                    ) || int_type_of_word(meta_item.name_or_empty()).is_some()
-                    {
-                        recognised = true;
-                        sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
-                            span: meta_item.span,
-                            name: meta_item.name_or_empty().to_ident_string(),
-                        });
+                    MetaItemKind::List(_) => {
+                        if meta_item.has_name(sym::align) {
+                            recognised = true;
+                            sess.emit_err(session_diagnostics::IncorrectReprFormatAlignOneArg {
+                                span: meta_item.span,
+                            });
+                        } else if meta_item.has_name(sym::packed) {
+                            recognised = true;
+                            sess.emit_err(
+                                session_diagnostics::IncorrectReprFormatPackedOneOrZeroArg {
+                                    span: meta_item.span,
+                                },
+                            );
+                        } else if matches!(
+                            meta_item.name_or_empty(),
+                            sym::C | sym::simd | sym::transparent
+                        ) || int_type_of_word(meta_item.name_or_empty()).is_some()
+                        {
+                            recognised = true;
+                            sess.emit_err(session_diagnostics::InvalidReprHintNoParen {
+                                span: meta_item.span,
+                                name: meta_item.name_or_empty().to_ident_string(),
+                            });
+                        }
                     }
+                    _ => (),
                 }
             }
             if !recognised {

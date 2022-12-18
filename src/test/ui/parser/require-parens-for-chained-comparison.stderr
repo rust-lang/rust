@@ -58,6 +58,11 @@ error: expected `while`, `for`, `loop` or `{` after a label
    |
 LL |     let _ = f<'_, i8>();
    |                 ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     let _ = f<'_', i8>();
+   |                 +
 
 error: expected one of `.`, `:`, `;`, `?`, `else`, `for`, `loop`, `while`, or an operator, found `,`
   --> $DIR/require-parens-for-chained-comparison.rs:22:17
@@ -71,13 +76,18 @@ LL |     let _ = f::<'_, i8>();
    |              ++
 
 error: expected `while`, `for`, `loop` or `{` after a label
-  --> $DIR/require-parens-for-chained-comparison.rs:27:9
+  --> $DIR/require-parens-for-chained-comparison.rs:28:9
    |
 LL |     f<'_>();
    |         ^ expected `while`, `for`, `loop` or `{` after a label
+   |
+help: add `'` to close the char literal
+   |
+LL |     f<'_'>();
+   |         +
 
 error: comparison operators cannot be chained
-  --> $DIR/require-parens-for-chained-comparison.rs:27:6
+  --> $DIR/require-parens-for-chained-comparison.rs:28:6
    |
 LL |     f<'_>();
    |      ^  ^
@@ -88,7 +98,7 @@ LL |     f::<'_>();
    |      ++
 
 error: comparison operators cannot be chained
-  --> $DIR/require-parens-for-chained-comparison.rs:32:14
+  --> $DIR/require-parens-for-chained-comparison.rs:34:14
    |
 LL |     let _ = f<u8>;
    |              ^  ^

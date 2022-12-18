@@ -210,8 +210,8 @@ metrics.
 
 ## link-self-contained
 
-On targets that support it this flag controls whether the linker will use libraries and objects
-shipped with Rust instead or those in the system.
+On `windows-gnu`, `linux-musl`, and `wasi` targets, this flag controls whether the
+linker will use libraries and objects shipped with Rust instead or those in the system.
 It takes one of the following values:
 
 * no value: rustc will use heuristic to disable self-contained mode if system has necessary tools.
@@ -531,8 +531,10 @@ platforms. Possible values are:
   debug information. On other Unix platforms this means that `*.dwo` files will
   contain debug information.
 
-Note that `packed` and `unpacked` are gated behind `-Z unstable-options` on
-non-macOS platforms at this time.
+Note that all three options are supported on Linux and Apple platforms,
+`packed` is supported on Windows-MSVC, and all other platforms support `off`.
+Attempting to use an unsupported option requires using the nightly channel
+with the `-Z unstable-options` flag.
 
 ## strip
 

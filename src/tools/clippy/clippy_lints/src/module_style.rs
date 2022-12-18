@@ -118,13 +118,7 @@ impl EarlyLintPass for ModStyle {
                         SELF_NAMED_MODULE_FILES,
                         Span::new(file.start_pos, file.start_pos, SyntaxContext::root(), None),
                         format!("`mod.rs` files are required, found `{}`", path.display()),
-                        |lint| {
-                            lint.help(format!(
-                                "move `{}` to `{}`",
-                                path.display(),
-                                correct.display(),
-                            ))
-                        },
+                        |lint| lint.help(format!("move `{}` to `{}`", path.display(), correct.display(),)),
                     );
                 }
             }

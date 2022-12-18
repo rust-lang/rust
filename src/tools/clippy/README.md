@@ -1,6 +1,6 @@
 # Clippy
 
-[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test%22+event%3Apush+branch%3Aauto)
+[![Clippy Test](https://github.com/rust-lang/rust-clippy/workflows/Clippy%20Test%20(bors)/badge.svg?branch=auto&event=push)](https://github.com/rust-lang/rust-clippy/actions?query=workflow%3A%22Clippy+Test+(bors)%22+event%3Apush+branch%3Aauto)
 [![License: MIT OR Apache-2.0](https://img.shields.io/crates/l/clippy.svg)](#license)
 
 A collection of lints to catch common mistakes and improve your [Rust](https://github.com/rust-lang/rust) code.
@@ -139,25 +139,6 @@ line. (You can swap `clippy::all` with the specific lint category you are target
 
 ## Configuration
 
-Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
-value` mapping e.g.
-
-```toml
-avoid-breaking-exported-api = false
-disallowed-names = ["toto", "tata", "titi"]
-cognitive-complexity-threshold = 30
-```
-
-See the [list of lints](https://rust-lang.github.io/rust-clippy/master/index.html) for more information about which
-lints can be configured and the meaning of the variables.
-
-Note that configuration changes will not apply for code that has already been compiled and cached under `./target/`;
-for example, adding a new string to `doc-valid-idents` may still result in Clippy flagging that string. To be sure that
-any configuration changes are applied, you may want to run `cargo clean` and re-compile your crate from scratch.
-
-To deactivate the “for further information visit *lint-link*” message you can
-define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
-
 ### Allowing/denying lints
 
 You can add options to your code to `allow`/`warn`/`deny` Clippy lints:
@@ -205,6 +186,27 @@ the lint(s) you are interested in:
 cargo clippy -- -A clippy::all -W clippy::useless_format -W clippy::...
 ```
 
+### Configure the behavior of some lints
+
+Some lints can be configured in a TOML file named `clippy.toml` or `.clippy.toml`. It contains a basic `variable =
+value` mapping e.g.
+
+```toml
+avoid-breaking-exported-api = false
+disallowed-names = ["toto", "tata", "titi"]
+cognitive-complexity-threshold = 30
+```
+
+See the [list of configurable lints](https://rust-lang.github.io/rust-clippy/master/index.html#Configuration),
+the lint descriptions contain the names and meanings of these configuration variables.
+
+> **Note**
+>
+> `clippy.toml` or `.clippy.toml` cannot be used to allow/deny lints.
+
+To deactivate the “for further information visit *lint-link*” message you can
+define the `CLIPPY_DISABLE_DOCS_LINKS` environment variable.
+
 ### Specifying the minimum supported Rust version
 
 Projects that intend to support old versions of Rust can disable lints pertaining to newer features by
@@ -222,7 +224,7 @@ in the `Cargo.toml` can be used.
 rust-version = "1.30"
 ```
 
-The MSRV can also be specified as an inner attribute, like below.
+The MSRV can also be specified as an attribute, like below.
 
 ```rust
 #![feature(custom_inner_attributes)]

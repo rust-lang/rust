@@ -115,7 +115,7 @@ pub(super) struct SourceToDefCtx<'a, 'b> {
 }
 
 impl SourceToDefCtx<'_, '_> {
-    pub(super) fn file_to_def(&mut self, file: FileId) -> SmallVec<[ModuleId; 1]> {
+    pub(super) fn file_to_def(&self, file: FileId) -> SmallVec<[ModuleId; 1]> {
         let _p = profile::span("SourceBinder::to_module_def");
         let mut mods = SmallVec::new();
         for &crate_id in self.db.relevant_crates(file).iter() {
@@ -130,7 +130,7 @@ impl SourceToDefCtx<'_, '_> {
         mods
     }
 
-    pub(super) fn module_to_def(&mut self, src: InFile<ast::Module>) -> Option<ModuleId> {
+    pub(super) fn module_to_def(&self, src: InFile<ast::Module>) -> Option<ModuleId> {
         let _p = profile::span("module_to_def");
         let parent_declaration = src
             .syntax()
@@ -151,7 +151,7 @@ impl SourceToDefCtx<'_, '_> {
         Some(def_map.module_id(child_id))
     }
 
-    pub(super) fn source_file_to_def(&mut self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
+    pub(super) fn source_file_to_def(&self, src: InFile<ast::SourceFile>) -> Option<ModuleId> {
         let _p = profile::span("source_file_to_def");
         let file_id = src.file_id.original_file(self.db.upcast());
         self.file_to_def(file_id).get(0).copied()
@@ -384,7 +384,7 @@ impl SourceToDefCtx<'_, '_> {
         } else {
             let it = ast::Variant::cast(container.value)?;
             let def = self.enum_variant_to_def(InFile::new(container.file_id, it))?;
-            VariantId::from(def).into()
+            DefWithBodyId::from(def).into()
         };
         Some(cont)
     }

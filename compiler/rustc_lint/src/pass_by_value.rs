@@ -10,7 +10,7 @@ declare_tool_lint! {
     /// The `rustc_pass_by_value` lint marks a type with `#[rustc_pass_by_value]` requiring it to
     /// always be passed by value. This is usually used for types that are thin wrappers around
     /// references, so there is no benefit to an extra layer of indirection. (Example: `Ty` which
-    /// is a reference to an `Interned<TyS>`)
+    /// is a reference to an `Interned<TyKind>`)
     pub rustc::PASS_BY_VALUE,
     Warn,
     "pass by reference of a type flagged as `#[rustc_pass_by_value]`",
@@ -32,11 +32,11 @@ impl<'tcx> LateLintPass<'tcx> for PassByValue {
                     cx.struct_span_lint(
                         PASS_BY_VALUE,
                         ty.span,
-                        fluent::lint::pass_by_value,
+                        fluent::lint_pass_by_value,
                         |lint| {
                             lint.set_arg("ty", t.clone()).span_suggestion(
                                 ty.span,
-                                fluent::lint::suggestion,
+                                fluent::suggestion,
                                 t,
                                 // Changing type of function argument
                                 Applicability::MaybeIncorrect,
@@ -78,7 +78,7 @@ fn gen_args(cx: &LateContext<'_>, segment: &PathSegment<'_>) -> String {
             .args
             .iter()
             .map(|arg| match arg {
-                GenericArg::Lifetime(lt) => lt.name.ident().to_string(),
+                GenericArg::Lifetime(lt) => lt.to_string(),
                 GenericArg::Type(ty) => {
                     cx.tcx.sess.source_map().span_to_snippet(ty.span).unwrap_or_else(|_| "_".into())
                 }

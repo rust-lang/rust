@@ -35,7 +35,7 @@ pub enum LLVMRustResult {
 pub struct LLVMRustCOFFShortExport {
     pub name: *const c_char,
     pub ordinal_present: bool,
-    // value of `ordinal` only important when `ordinal_present` is true
+    /// value of `ordinal` only important when `ordinal_present` is true
     pub ordinal: u16,
 }
 
@@ -183,7 +183,6 @@ pub enum AttributeKind {
     OptimizeNone = 24,
     ReturnsTwice = 25,
     ReadNone = 26,
-    InaccessibleMemOnly = 27,
     SanitizeHWAddress = 28,
     WillReturn = 29,
     StackProtectReq = 30,
@@ -428,6 +427,7 @@ pub enum MetadataType {
     MD_type = 19,
     MD_vcall_visibility = 28,
     MD_noundef = 29,
+    MD_kcfi_type = 36,
 }
 
 /// LLVMRustAsmDialect
@@ -588,6 +588,15 @@ pub enum ChecksumKind {
     MD5,
     SHA1,
     SHA256,
+}
+
+/// LLVMRustMemoryEffects
+#[derive(Copy, Clone)]
+#[repr(C)]
+pub enum MemoryEffects {
+    None,
+    ReadOnly,
+    InaccessibleMemOnly,
 }
 
 extern "C" {
@@ -975,6 +984,9 @@ pub type SelfProfileBeforePassCallback =
     unsafe extern "C" fn(*mut c_void, *const c_char, *const c_char);
 pub type SelfProfileAfterPassCallback = unsafe extern "C" fn(*mut c_void);
 
+pub type GetSymbolsCallback = unsafe extern "C" fn(*mut c_void, *const c_char) -> *mut c_void;
+pub type GetSymbolsErrorCallback = unsafe extern "C" fn(*const c_char) -> *mut c_void;
+
 extern "C" {
     pub fn LLVMRustInstallFatalErrorHandler();
     pub fn LLVMRustDisableSystemDialogsOnCrash();
@@ -1052,6 +1064,7 @@ extern "C" {
     pub fn LLVMGlobalSetMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMRustGlobalAddMetadata<'a>(Val: &'a Value, KindID: c_uint, Metadata: &'a Metadata);
     pub fn LLVMValueAsMetadata(Node: &Value) -> &Metadata;
+    pub fn LLVMIsAFunction(Val: &Value) -> Option<&Value>;
 
     // Operations on constants of any type
     pub fn LLVMConstNull(Ty: &Type) -> &Value;
@@ -1175,6 +1188,7 @@ extern "C" {
     pub fn LLVMRustCreateUWTableAttr(C: &Context, async_: bool) -> &Attribute;
     pub fn LLVMRustCreateAllocSizeAttr(C: &Context, size_arg: u32) -> &Attribute;
     pub fn LLVMRustCreateAllocKindAttr(C: &Context, size_arg: u64) -> &Attribute;
+    pub fn LLVMRustCreateMemoryEffectsAttr(C: &Context, effects: MemoryEffects) -> &Attribute;
 
     // Operations on functions
     pub fn LLVMRustGetOrInsertFunction<'a>(
@@ -1261,7 +1275,8 @@ extern "C" {
         NumArgs: c_uint,
         Then: &'a BasicBlock,
         Catch: &'a BasicBlock,
-        Bundle: Option<&OperandBundleDef<'a>>,
+        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        NumOpBundles: c_uint,
         Name: *const c_char,
     ) -> &'a Value;
     pub fn LLVMBuildLandingPad<'a>(
@@ -1631,7 +1646,8 @@ extern "C" {
         Fn: &'a Value,
         Args: *const &'a Value,
         NumArgs: c_uint,
-        Bundle: Option<&OperandBundleDef<'a>>,
+        OpBundles: *const Option<&OperandBundleDef<'a>>,
+        NumOpBundles: c_uint,
     ) -> &'a Value;
     pub fn LLVMRustBuildMemCpy<'a>(
         B: &Builder<'a>,
@@ -2118,7 +2134,8 @@ extern "C" {
         Builder: &DIBuilder<'a>,
         Name: *const c_char,
         NameLen: size_t,
-        Value: i64,
+        Value: *const u64,
+        SizeInBits: c_uint,
         IsUnsigned: bool,
     ) -> &'a DIEnumerator;
 
@@ -2201,6 +2218,7 @@ extern "C" {
     ) -> &'a DILocation;
     pub fn LLVMRustDIBuilderCreateOpDeref() -> u64;
     pub fn LLVMRustDIBuilderCreateOpPlusUconst() -> u64;
+    pub fn LLVMRustDIBuilderCreateOpLLVMFragment() -> u64;
 
     #[allow(improper_ctypes)]
     pub fn LLVMRustWriteTypeToString(Type: &Type, s: &RustString);
@@ -2463,4 +2481,14 @@ extern "C" {
     pub fn LLVMRustGetMangledName(V: &Value, out: &RustString);
 
     pub fn LLVMRustGetElementTypeArgIndex(CallSite: &Value) -> i32;
+
+    pub fn LLVMRustIsBitcode(ptr: *const u8, len: usize) -> bool;
+
+    pub fn LLVMRustGetSymbols(
+        buf_ptr: *const u8,
+        buf_len: usize,
+        state: *mut c_void,
+        callback: GetSymbolsCallback,
+        error_callback: GetSymbolsErrorCallback,
+    ) -> *mut c_void;
 }

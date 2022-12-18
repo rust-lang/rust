@@ -15,11 +15,10 @@ pub use crate::*;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::stable_hasher::StableHasher;
 use rustc_data_structures::sync::{AtomicU32, Lrc, MappedReadGuard, ReadGuard, RwLock};
+use std::cmp;
 use std::hash::Hash;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::Ordering;
-use std::{clone::Clone, cmp};
-use std::{convert::TryFrom, unreachable};
 
 use std::fs;
 use std::io;
@@ -130,14 +129,14 @@ impl FileLoader for RealFileLoader {
 /// different has no real downsides.
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Encodable, Decodable, Debug)]
 pub struct StableSourceFileId {
-    // A hash of the source file's FileName. This is hash so that it's size
-    // is more predictable than if we included the actual FileName value.
+    /// A hash of the source file's [`FileName`]. This is hash so that it's size
+    /// is more predictable than if we included the actual [`FileName`] value.
     pub file_name_hash: u64,
 
-    // The CrateNum of the crate this source file was originally parsed for.
-    // We cannot include this information in the hash because at the time
-    // of hashing we don't have the context to map from the CrateNum's numeric
-    // value to a StableCrateId.
+    /// The [`CrateNum`] of the crate this source file was originally parsed for.
+    /// We cannot include this information in the hash because at the time
+    /// of hashing we don't have the context to map from the [`CrateNum`]'s numeric
+    /// value to a `StableCrateId`.
     pub cnum: CrateNum,
 }
 
@@ -402,7 +401,7 @@ impl SourceMap {
         source_file
     }
 
-    // If there is a doctest offset, applies it to the line.
+    /// If there is a doctest offset, applies it to the line.
     pub fn doctest_offset_line(&self, file: &FileName, orig: usize) -> usize {
         match file {
             FileName::DocTest(_, offset) => {
@@ -429,7 +428,7 @@ impl SourceMap {
         Loc { file: sf, line, col, col_display }
     }
 
-    // If the corresponding `SourceFile` is empty, does not return a line number.
+    /// If the corresponding `SourceFile` is empty, does not return a line number.
     pub fn lookup_line(&self, pos: BytePos) -> Result<SourceFileAndLine, Lrc<SourceFile>> {
         let f = self.lookup_source_file(pos);
 
@@ -439,7 +438,11 @@ impl SourceMap {
         }
     }
 
-    fn span_to_string(&self, sp: Span, filename_display_pref: FileNameDisplayPreference) -> String {
+    pub fn span_to_string(
+        &self,
+        sp: Span,
+        filename_display_pref: FileNameDisplayPreference,
+    ) -> String {
         if self.files.borrow().source_files.is_empty() || sp.is_dummy() {
             return "no-location".to_string();
         }
@@ -447,12 +450,15 @@ impl SourceMap {
         let lo = self.lookup_char_pos(sp.lo());
         let hi = self.lookup_char_pos(sp.hi());
         format!(
-            "{}:{}:{}: {}:{}",
+            "{}:{}:{}{}",
             lo.file.name.display(filename_display_pref),
             lo.line,
             lo.col.to_usize() + 1,
-            hi.line,
-            hi.col.to_usize() + 1,
+            if let FileNameDisplayPreference::Short = filename_display_pref {
+                String::new()
+            } else {
+                format!(": {}:{}", hi.line, hi.col.to_usize() + 1)
+            }
         )
     }
 
@@ -753,6 +759,67 @@ impl SourceMap {
         }
     }
 
+    /// Given a 'Span', tries to tell if it's wrapped by "<>" or "()"
+    /// the algorithm searches if the next character is '>' or ')' after skipping white space
+    /// then searches the previous charactoer to match '<' or '(' after skipping white space
+    /// return true if wrapped by '<>' or '()'
+    pub fn span_wrapped_by_angle_or_parentheses(&self, span: Span) -> bool {
+        self.span_to_source(span, |src, start_index, end_index| {
+            if src.get(start_index..end_index).is_none() {
+                return Ok(false);
+            }
+            // test the right side to match '>' after skipping white space
+            let end_src = &src[end_index..];
+            let mut i = 0;
+            let mut found_right_parentheses = false;
+            let mut found_right_angle = false;
+            while let Some(cc) = end_src.chars().nth(i) {
+                if cc == ' ' {
+                    i = i + 1;
+                } else if cc == '>' {
+                    // found > in the right;
+                    found_right_angle = true;
+                    break;
+                } else if cc == ')' {
+                    found_right_parentheses = true;
+                    break;
+                } else {
+                    // failed to find '>' return false immediately
+                    return Ok(false);
+                }
+            }
+            // test the left side to match '<' after skipping white space
+            i = start_index;
+            let start_src = &src[0..start_index];
+            while let Some(cc) = start_src.chars().nth(i) {
+                if cc == ' ' {
+                    if i == 0 {
+                        return Ok(false);
+                    }
+                    i = i - 1;
+                } else if cc == '<' {
+                    // found < in the left
+                    if !found_right_angle {
+                        // skip something like "(< )>"
+                        return Ok(false);
+                    }
+                    break;
+                } else if cc == '(' {
+                    if !found_right_parentheses {
+                        // skip something like "<(>)"
+                        return Ok(false);
+                    }
+                    break;
+                } else {
+                    // failed to find '<' return false immediately
+                    return Ok(false);
+                }
+            }
+            return Ok(true);
+        })
+        .map_or(false, |is_accessible| is_accessible)
+    }
+
     /// Given a `Span`, tries to get a shorter span ending just after the first occurrence of `char`
     /// `c`.
     pub fn span_through_char(&self, sp: Span, c: char) -> Span {
@@ -853,28 +920,54 @@ impl SourceMap {
     }
 
     /// Returns a new span representing the next character after the end-point of this span.
+    /// Special cases:
+    /// - if span is a dummy one, returns the same span
+    /// - if next_point reached the end of source, return a span exceeding the end of source,
+    ///   which means sm.span_to_snippet(next_point) will get `Err`
+    /// - respect multi-byte characters
     pub fn next_point(&self, sp: Span) -> Span {
         if sp.is_dummy() {
             return sp;
         }
         let start_of_next_point = sp.hi().0;
 
-        let width = self.find_width_of_character_at_span(sp.shrink_to_hi(), true);
-        // If the width is 1, then the next span should point to the same `lo` and `hi`. However,
-        // in the case of a multibyte character, where the width != 1, the next span should
+        let width = self.find_width_of_character_at_span(sp, true);
+        // If the width is 1, then the next span should only contain the next char besides current ending.
+        // However, in the case of a multibyte character, where the width != 1, the next span should
         // span multiple bytes to include the whole character.
         let end_of_next_point =
-            start_of_next_point.checked_add(width - 1).unwrap_or(start_of_next_point);
+            start_of_next_point.checked_add(width).unwrap_or(start_of_next_point);
 
-        let end_of_next_point = BytePos(cmp::max(sp.lo().0 + 1, end_of_next_point));
+        let end_of_next_point = BytePos(cmp::max(start_of_next_point + 1, end_of_next_point));
         Span::new(BytePos(start_of_next_point), end_of_next_point, sp.ctxt(), None)
+    }
+
+    /// Returns a new span to check next none-whitespace character or some specified expected character
+    /// If `expect` is none, the first span of non-whitespace character is returned.
+    /// If `expect` presented, the first span of the character `expect` is returned
+    /// Otherwise, the span reached to limit is returned.
+    pub fn span_look_ahead(&self, span: Span, expect: Option<&str>, limit: Option<usize>) -> Span {
+        let mut sp = span;
+        for _ in 0..limit.unwrap_or(100_usize) {
+            sp = self.next_point(sp);
+            if let Ok(ref snippet) = self.span_to_snippet(sp) {
+                if expect.map_or(false, |es| snippet == es) {
+                    break;
+                }
+                if expect.is_none() && snippet.chars().any(|c| !c.is_whitespace()) {
+                    break;
+                }
+            }
+        }
+        sp
     }
 
     /// Finds the width of the character, either before or after the end of provided span,
     /// depending on the `forwards` parameter.
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         let sp = sp.data();
-        if sp.lo == sp.hi {
+
+        if sp.lo == sp.hi && !forwards {
             debug!("find_width_of_character_at_span: early return empty span");
             return 1;
         }
@@ -908,7 +1001,7 @@ impl SourceMap {
         let source_len = (local_begin.sf.end_pos - local_begin.sf.start_pos).to_usize();
         debug!("find_width_of_character_at_span: source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
-        if start_index > end_index || end_index > source_len {
+        if start_index > end_index || end_index > source_len - 1 {
             debug!("find_width_of_character_at_span: source indexes are malformed");
             return 1;
         }
@@ -966,9 +1059,9 @@ impl SourceMap {
         SourceFileAndBytePos { sf, pos: offset }
     }
 
-    // Returns the index of the `SourceFile` (in `self.files`) that contains `pos`.
-    // This index is guaranteed to be valid for the lifetime of this `SourceMap`,
-    // since `source_files` is a `MonotonicVec`
+    /// Returns the index of the [`SourceFile`] (in `self.files`) that contains `pos`.
+    /// This index is guaranteed to be valid for the lifetime of this `SourceMap`,
+    /// since `source_files` is a `MonotonicVec`
     pub fn lookup_source_file_idx(&self, pos: BytePos) -> usize {
         self.files
             .borrow()
@@ -1064,7 +1157,7 @@ impl FilePathMapping {
             // NOTE: We are iterating over the mapping entries from last to first
             //       because entries specified later on the command line should
             //       take precedence.
-            for &(ref from, ref to) in mapping.iter().rev() {
+            for (from, to) in mapping.iter().rev() {
                 debug!("Trying to apply {from:?} => {to:?}");
 
                 if let Ok(rest) = path.strip_prefix(from) {

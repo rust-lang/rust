@@ -12,7 +12,7 @@ use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Node;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
-use rustc_middle::middle::privacy::{self, AccessLevel};
+use rustc_middle::middle::privacy::{self, Level};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{self, DefIdTree, TyCtxt};
 use rustc_session::config::CrateType;
@@ -29,7 +29,7 @@ fn item_might_be_inlined(tcx: TyCtxt<'_>, item: &hir::Item<'_>, attrs: &CodegenF
     match item.kind {
         hir::ItemKind::Fn(ref sig, ..) if sig.header.is_const() => true,
         hir::ItemKind::Impl { .. } | hir::ItemKind::Fn(..) => {
-            let generics = tcx.generics_of(item.def_id);
+            let generics = tcx.generics_of(item.owner_id);
             generics.requires_monomorphization(tcx)
         }
         _ => false,
@@ -42,7 +42,7 @@ fn method_might_be_inlined(
     impl_src: LocalDefId,
 ) -> bool {
     let codegen_fn_attrs = tcx.codegen_fn_attrs(impl_item.hir_id().owner.to_def_id());
-    let generics = tcx.generics_of(impl_item.def_id);
+    let generics = tcx.generics_of(impl_item.owner_id);
     if codegen_fn_attrs.requests_inline() || generics.requires_monomorphization(tcx) {
         return true;
     }
@@ -116,6 +116,17 @@ impl<'tcx> Visitor<'tcx> for ReachableContext<'tcx> {
 
         intravisit::walk_expr(self, expr)
     }
+
+    fn visit_inline_asm(&mut self, asm: &'tcx hir::InlineAsm<'tcx>, id: hir::HirId) {
+        for (op, _) in asm.operands {
+            if let hir::InlineAsmOperand::SymStatic { def_id, .. } = op {
+                if let Some(def_id) = def_id.as_local() {
+                    self.reachable_symbols.insert(def_id);
+                }
+            }
+        }
+        intravisit::walk_inline_asm(self, asm, id);
+    }
 }
 
 impl<'tcx> ReachableContext<'tcx> {
@@ -155,7 +166,7 @@ impl<'tcx> ReachableContext<'tcx> {
                     let impl_did = self.tcx.hir().get_parent_item(hir_id);
                     method_might_be_inlined(self.tcx, impl_item, impl_did.def_id)
                 }
-                hir::ImplItemKind::TyAlias(_) => false,
+                hir::ImplItemKind::Type(_) => false,
             },
             Some(_) => false,
             None => false, // This will happen for default methods.
@@ -216,7 +227,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         if item_might_be_inlined(
                             self.tcx,
                             &item,
-                            self.tcx.codegen_fn_attrs(item.def_id),
+                            self.tcx.codegen_fn_attrs(item.owner_id),
                         ) {
                             self.visit_nested_body(body);
                         }
@@ -271,7 +282,7 @@ impl<'tcx> ReachableContext<'tcx> {
                         self.visit_nested_body(body)
                     }
                 }
-                hir::ImplItemKind::TyAlias(_) => {}
+                hir::ImplItemKind::Type(_) => {}
             },
             Node::Expr(&hir::Expr {
                 kind: hir::ExprKind::Closure(&hir::Closure { body, .. }),
@@ -303,13 +314,13 @@ fn check_item<'tcx>(
     tcx: TyCtxt<'tcx>,
     id: hir::ItemId,
     worklist: &mut Vec<LocalDefId>,
-    access_levels: &privacy::AccessLevels,
+    effective_visibilities: &privacy::EffectiveVisibilities,
 ) {
-    if has_custom_linkage(tcx, id.def_id.def_id) {
-        worklist.push(id.def_id.def_id);
+    if has_custom_linkage(tcx, id.owner_id.def_id) {
+        worklist.push(id.owner_id.def_id);
     }
 
-    if !matches!(tcx.def_kind(id.def_id), DefKind::Impl) {
+    if !matches!(tcx.def_kind(id.owner_id), DefKind::Impl) {
         return;
     }
 
@@ -318,8 +329,8 @@ fn check_item<'tcx>(
     if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(ref trait_ref), ref items, .. }) =
         item.kind
     {
-        if !access_levels.is_reachable(item.def_id.def_id) {
-            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.def_id.def_id));
+        if !effective_visibilities.is_reachable(item.owner_id.def_id) {
+            worklist.extend(items.iter().map(|ii_ref| ii_ref.id.owner_id.def_id));
 
             let Res::Def(DefKind::Trait, trait_def_id) = trait_ref.path.res else {
                 unreachable!();
@@ -354,7 +365,7 @@ fn has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
 }
 
 fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
-    let access_levels = &tcx.privacy_access_levels(());
+    let effective_visibilities = &tcx.effective_visibilities(());
 
     let any_library =
         tcx.sess.crate_types().iter().any(|ty| {
@@ -373,18 +384,16 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
     //         If other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    reachable_context.worklist = access_levels
+    reachable_context.worklist = effective_visibilities
         .iter()
         .filter_map(|(&id, effective_vis)| {
-            effective_vis.is_public_at_level(AccessLevel::ReachableFromImplTrait).then_some(id)
+            effective_vis.is_public_at_level(Level::ReachableThroughImplTrait).then_some(id)
         })
         .collect::<Vec<_>>();
 
-    for item in tcx.lang_items().items().iter() {
-        if let Some(def_id) = *item {
-            if let Some(def_id) = def_id.as_local() {
-                reachable_context.worklist.push(def_id);
-            }
+    for (_, def_id) in tcx.lang_items().iter() {
+        if let Some(def_id) = def_id.as_local() {
+            reachable_context.worklist.push(def_id);
         }
     }
     {
@@ -399,12 +408,12 @@ fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            check_item(tcx, id, &mut reachable_context.worklist, access_levels);
+            check_item(tcx, id, &mut reachable_context.worklist, effective_visibilities);
         }
 
         for id in crate_items.impl_items() {
-            if has_custom_linkage(tcx, id.def_id.def_id) {
-                reachable_context.worklist.push(id.def_id.def_id);
+            if has_custom_linkage(tcx, id.owner_id.def_id) {
+                reachable_context.worklist.push(id.owner_id.def_id);
             }
         }
     }

@@ -107,10 +107,6 @@ impl Buffer {
         self.buffer
     }
 
-    pub(crate) fn insert_str(&mut self, idx: usize, s: &str) {
-        self.buffer.insert_str(idx, s);
-    }
-
     pub(crate) fn push_str(&mut self, s: &str) {
         self.buffer.push_str(s);
     }
@@ -331,7 +327,8 @@ pub(crate) fn print_where_clause<'a, 'tcx: 'a>(
                         bounds_display.truncate(bounds_display.len() - " + ".len());
                         write!(f, "{}: {bounds_display}", lifetime.print())
                     }
-                    clean::WherePredicate::EqPredicate { lhs, rhs } => {
+                    // FIXME(fmease): Render bound params.
+                    clean::WherePredicate::EqPredicate { lhs, rhs, bound_params: _ } => {
                         if f.alternate() {
                             write!(f, "{:#} == {:#}", lhs.print(cx), rhs.print(cx))
                         } else {
@@ -611,7 +608,7 @@ fn generate_macro_def_id_path(
     };
     if path.len() < 2 {
         // The minimum we can have is the crate name followed by the macro name. If shorter, then
-        // it means that that `relative` was empty, which is an error.
+        // it means that `relative` was empty, which is an error.
         debug!("macro path cannot be empty!");
         return Err(HrefError::NotInExternalCache);
     }
@@ -658,7 +655,7 @@ pub(crate) fn href_with_root_path(
     }
 
     if !did.is_local()
-        && !cache.access_levels.is_public(did)
+        && !cache.effective_visibilities.is_directly_public(tcx, did)
         && !cache.document_private
         && !cache.primitive_locations.values().any(|&id| id == did)
     {
@@ -1231,9 +1228,8 @@ impl clean::Arguments {
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| {
             for (i, input) in self.values.iter().enumerate() {
-                if !input.name.is_empty() {
-                    write!(f, "{}: ", input.name)?;
-                }
+                write!(f, "{}: ", input.name)?;
+
                 if f.alternate() {
                     write!(f, "{:#}", input.type_.print(cx))?;
                 } else {
@@ -1366,10 +1362,8 @@ impl clean::FnDecl {
                     args.push_str("const ");
                     args_plain.push_str("const ");
                 }
-                if !input.name.is_empty() {
-                    write!(args, "{}: ", input.name);
-                    write!(args_plain, "{}: ", input.name);
-                }
+                write!(args, "{}: ", input.name);
+                write!(args_plain, "{}: ", input.name);
 
                 if f.alternate() {
                     write!(args, "{:#}", input.type_.print(cx));
@@ -1419,87 +1413,84 @@ impl clean::FnDecl {
     }
 }
 
-impl clean::Visibility {
-    pub(crate) fn print_with_space<'a, 'tcx: 'a>(
-        self,
-        item_did: ItemId,
-        cx: &'a Context<'tcx>,
-    ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        use std::fmt::Write as _;
+pub(crate) fn visibility_print_with_space<'a, 'tcx: 'a>(
+    visibility: Option<ty::Visibility<DefId>>,
+    item_did: ItemId,
+    cx: &'a Context<'tcx>,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    use std::fmt::Write as _;
 
-        let to_print: Cow<'static, str> = match self {
-            clean::Public => "pub ".into(),
-            clean::Inherited => "".into(),
-            clean::Visibility::Restricted(vis_did) => {
-                // FIXME(camelid): This may not work correctly if `item_did` is a module.
-                //                 However, rustdoc currently never displays a module's
-                //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
+    let to_print: Cow<'static, str> = match visibility {
+        None => "".into(),
+        Some(ty::Visibility::Public) => "pub ".into(),
+        Some(ty::Visibility::Restricted(vis_did)) => {
+            // FIXME(camelid): This may not work correctly if `item_did` is a module.
+            //                 However, rustdoc currently never displays a module's
+            //                 visibility, so it shouldn't matter.
+            let parent_module = find_nearest_parent_module(cx.tcx(), item_did.expect_def_id());
 
-                if vis_did.is_crate_root() {
-                    "pub(crate) ".into()
-                } else if parent_module == Some(vis_did) {
-                    // `pub(in foo)` where `foo` is the parent module
-                    // is the same as no visibility modifier
-                    "".into()
-                } else if parent_module
-                    .and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
-                    == Some(vis_did)
-                {
-                    "pub(super) ".into()
-                } else {
-                    let path = cx.tcx().def_path(vis_did);
-                    debug!("path={:?}", path);
-                    // modified from `resolved_path()` to work with `DefPathData`
-                    let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
-                    let anchor = anchor(vis_did, last_name, cx).to_string();
+            if vis_did.is_crate_root() {
+                "pub(crate) ".into()
+            } else if parent_module == Some(vis_did) {
+                // `pub(in foo)` where `foo` is the parent module
+                // is the same as no visibility modifier
+                "".into()
+            } else if parent_module.and_then(|parent| find_nearest_parent_module(cx.tcx(), parent))
+                == Some(vis_did)
+            {
+                "pub(super) ".into()
+            } else {
+                let path = cx.tcx().def_path(vis_did);
+                debug!("path={:?}", path);
+                // modified from `resolved_path()` to work with `DefPathData`
+                let last_name = path.data.last().unwrap().data.get_opt_name().unwrap();
+                let anchor = anchor(vis_did, last_name, cx).to_string();
 
-                    let mut s = "pub(in ".to_owned();
-                    for seg in &path.data[..path.data.len() - 1] {
-                        let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
-                    }
-                    let _ = write!(s, "{}) ", anchor);
-                    s.into()
+                let mut s = "pub(in ".to_owned();
+                for seg in &path.data[..path.data.len() - 1] {
+                    let _ = write!(s, "{}::", seg.data.get_opt_name().unwrap());
                 }
+                let _ = write!(s, "{}) ", anchor);
+                s.into()
             }
-        };
-        display_fn(move |f| write!(f, "{}", to_print))
-    }
+        }
+    };
+    display_fn(move |f| write!(f, "{}", to_print))
+}
 
-    /// This function is the same as print_with_space, except that it renders no links.
-    /// It's used for macros' rendered source view, which is syntax highlighted and cannot have
-    /// any HTML in it.
-    pub(crate) fn to_src_with_space<'a, 'tcx: 'a>(
-        self,
-        tcx: TyCtxt<'tcx>,
-        item_did: DefId,
-    ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        let to_print = match self {
-            clean::Public => "pub ".to_owned(),
-            clean::Inherited => String::new(),
-            clean::Visibility::Restricted(vis_did) => {
-                // FIXME(camelid): This may not work correctly if `item_did` is a module.
-                //                 However, rustdoc currently never displays a module's
-                //                 visibility, so it shouldn't matter.
-                let parent_module = find_nearest_parent_module(tcx, item_did);
+/// This function is the same as print_with_space, except that it renders no links.
+/// It's used for macros' rendered source view, which is syntax highlighted and cannot have
+/// any HTML in it.
+pub(crate) fn visibility_to_src_with_space<'a, 'tcx: 'a>(
+    visibility: Option<ty::Visibility<DefId>>,
+    tcx: TyCtxt<'tcx>,
+    item_did: DefId,
+) -> impl fmt::Display + 'a + Captures<'tcx> {
+    let to_print = match visibility {
+        None => String::new(),
+        Some(ty::Visibility::Public) => "pub ".to_owned(),
+        Some(ty::Visibility::Restricted(vis_did)) => {
+            // FIXME(camelid): This may not work correctly if `item_did` is a module.
+            //                 However, rustdoc currently never displays a module's
+            //                 visibility, so it shouldn't matter.
+            let parent_module = find_nearest_parent_module(tcx, item_did);
 
-                if vis_did.is_crate_root() {
-                    "pub(crate) ".to_owned()
-                } else if parent_module == Some(vis_did) {
-                    // `pub(in foo)` where `foo` is the parent module
-                    // is the same as no visibility modifier
-                    String::new()
-                } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
-                    == Some(vis_did)
-                {
-                    "pub(super) ".to_owned()
-                } else {
-                    format!("pub(in {}) ", tcx.def_path_str(vis_did))
-                }
+            if vis_did.is_crate_root() {
+                "pub(crate) ".to_owned()
+            } else if parent_module == Some(vis_did) {
+                // `pub(in foo)` where `foo` is the parent module
+                // is the same as no visibility modifier
+                String::new()
+            } else if parent_module.and_then(|parent| find_nearest_parent_module(tcx, parent))
+                == Some(vis_did)
+            {
+                "pub(super) ".to_owned()
+            } else {
+                format!("pub(in {}) ", tcx.def_path_str(vis_did))
             }
-        };
-        display_fn(move |f| f.write_str(&to_print))
-    }
+        }
+    };
+    display_fn(move |f| f.write_str(&to_print))
 }
 
 pub(crate) trait PrintWithSpace {

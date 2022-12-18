@@ -133,16 +133,16 @@ pub(crate) fn move_arm_cond_to_match_guard(
             };
             let then_arm_end = match_arm.syntax().text_range().end();
             let indent_level = match_arm.indent_level();
-            let spaces = "    ".repeat(indent_level.0 as _);
+            let spaces = indent_level;
 
             let mut first = true;
             for (cond, block) in conds_blocks {
                 if !first {
-                    edit.insert(then_arm_end, format!("\n{}", spaces));
+                    edit.insert(then_arm_end, format!("\n{spaces}"));
                 } else {
                     first = false;
                 }
-                let guard = format!("{} if {} => ", match_pat, cond.syntax().text());
+                let guard = format!("{match_pat} if {cond} => ");
                 edit.insert(then_arm_end, guard);
                 let only_expr = block.statements().next().is_none();
                 match &block.tail_expr() {
@@ -158,7 +158,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
             }
             if let Some(e) = tail {
                 cov_mark::hit!(move_guard_ifelse_else_tail);
-                let guard = format!("\n{}{} => ", spaces, match_pat);
+                let guard = format!("\n{spaces}{match_pat} => ");
                 edit.insert(then_arm_end, guard);
                 let only_expr = e.statements().next().is_none();
                 match &e.tail_expr() {
@@ -183,7 +183,7 @@ pub(crate) fn move_arm_cond_to_match_guard(
                     {
                         cov_mark::hit!(move_guard_ifelse_has_wildcard);
                     }
-                    _ => edit.insert(then_arm_end, format!("\n{}{} => {{}}", spaces, match_pat)),
+                    _ => edit.insert(then_arm_end, format!("\n{spaces}{match_pat} => {{}}")),
                 }
             }
         },

@@ -220,6 +220,7 @@
 #![allow(explicit_outlives_requirements)]
 #![allow(unused_lifetimes)]
 #![deny(rustc::existing_doc_keyword)]
+#![deny(fuzzy_provenance_casts)]
 // Ensure that std can be linked against panic_abort despite compiled with `-C panic=unwind`
 #![deny(ffi_unwind_calls)]
 // std may use features in a platform-specific way
@@ -253,6 +254,7 @@
 #![feature(exhaustive_patterns)]
 #![feature(if_let_guard)]
 #![feature(intra_doc_pointers)]
+#![feature(is_terminal)]
 #![feature(lang_items)]
 #![feature(let_chains)]
 #![feature(linkage)]
@@ -279,7 +281,6 @@
 #![feature(core_intrinsics)]
 #![feature(cstr_from_bytes_until_nul)]
 #![feature(cstr_internals)]
-#![feature(duration_checked_float)]
 #![feature(duration_constants)]
 #![feature(error_generic_member_access)]
 #![feature(error_in_core)]
@@ -347,10 +348,13 @@
 #![feature(stdsimd)]
 #![feature(test)]
 #![feature(trace_macros)]
+#![feature(get_many_mut)]
 //
 // Only used in tests/benchmarks:
 //
 // Only for const-ness:
+#![feature(const_collections_with_hasher)]
+#![feature(const_hash)]
 #![feature(const_io_structs)]
 #![feature(const_ip)]
 #![feature(const_ipv4)]
@@ -528,9 +532,6 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy;
-
 // Pull in `std_float` crate  into libstd. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.
 #[path = "../../portable-simd/crates/std_float/src/lib.rs"]
@@ -598,7 +599,7 @@ mod panicking;
 mod personality;
 
 #[path = "../../backtrace/src/lib.rs"]
-#[allow(dead_code, unused_attributes)]
+#[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;
 
 // Re-export macros defined in libcore.

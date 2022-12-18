@@ -111,6 +111,7 @@ impl Tls {
             rtabort!("TLS limit exceeded")
         };
         TLS_DESTRUCTOR[index].store(dtor.map_or(0, |f| f as usize), Ordering::Relaxed);
+        unsafe { Self::current() }.data[index].set(ptr::null_mut());
         Key::from_index(index)
     }
 

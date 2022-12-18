@@ -120,14 +120,14 @@ impl LateLintPass<'_> for WildcardImports {
         if is_test_module_or_function(cx.tcx, item) {
             self.test_modules_deep = self.test_modules_deep.saturating_add(1);
         }
-        let module = cx.tcx.parent_module_from_def_id(item.def_id.def_id);
-        if cx.tcx.visibility(item.def_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
+        let module = cx.tcx.parent_module_from_def_id(item.owner_id.def_id);
+        if cx.tcx.visibility(item.owner_id.def_id) != ty::Visibility::Restricted(module.to_def_id()) {
             return;
         }
         if_chain! {
             if let ItemKind::Use(use_path, UseKind::Glob) = &item.kind;
             if self.warn_on_all || !self.check_exceptions(item, use_path.segments);
-            let used_imports = cx.tcx.names_imported_by_glob_use(item.def_id.def_id);
+            let used_imports = cx.tcx.names_imported_by_glob_use(item.owner_id.def_id);
             if !used_imports.is_empty(); // Already handled by `unused_imports`
             then {
                 let mut applicability = Applicability::MachineApplicable;
@@ -173,10 +173,11 @@ impl LateLintPass<'_> for WildcardImports {
                 let sugg = if braced_glob {
                     imports_string
                 } else {
-                    format!("{}::{}", import_source_snippet, imports_string)
+                    format!("{import_source_snippet}::{imports_string}")
                 };
 
-                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res {
+                // Glob imports always have a single resolution.
+                let (lint, message) = if let Res::Def(DefKind::Enum, _) = use_path.res[0] {
                     (ENUM_GLOB_USE, "usage of wildcard import for enum variants")
                 } else {
                     (WILDCARD_IMPORTS, "usage of wildcard import")

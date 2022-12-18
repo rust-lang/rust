@@ -1,7 +1,6 @@
 //! A variant of `SortedMap` that preserves insertion order.
 
 use std::hash::{Hash, Hasher};
-use std::iter::FromIterator;
 
 use crate::stable_hasher::{HashStable, StableHasher};
 use rustc_index::vec::{Idx, IndexVec};
@@ -120,13 +119,20 @@ where
         self.items.hash(hasher)
     }
 }
+
 impl<I: Idx, K, V, C> HashStable<C> for SortedIndexMultiMap<I, K, V>
 where
     K: HashStable<C>,
     V: HashStable<C>,
 {
     fn hash_stable(&self, ctx: &mut C, hasher: &mut StableHasher) {
-        self.items.hash_stable(ctx, hasher)
+        let SortedIndexMultiMap {
+            items,
+            // We can ignore this field because it is not observable from the outside.
+            idx_sorted_by_item_key: _,
+        } = self;
+
+        items.hash_stable(ctx, hasher)
     }
 }
 

@@ -21,8 +21,3 @@ pub unsafe fn get(key: Key) -> *mut u8 {
 pub unsafe fn destroy(key: Key) {
     Tls::destroy(AbiKey::from_usize(key))
 }
-
-#[inline]
-pub fn requires_synchronized_create() -> bool {
-    false
-}

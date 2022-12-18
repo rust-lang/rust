@@ -1,6 +1,7 @@
 use crate::attributes;
 use crate::base;
 use crate::context::CodegenCx;
+use crate::errors::SymbolAlreadyDefined;
 use crate::llvm;
 use crate::type_of::LayoutLlvmExt;
 use rustc_codegen_ssa::traits::*;
@@ -25,10 +26,8 @@ impl<'tcx> PreDefineMethods<'tcx> for CodegenCx<'_, 'tcx> {
         let llty = self.layout_of(ty).llvm_type(self);
 
         let g = self.define_global(symbol_name, llty).unwrap_or_else(|| {
-            self.sess().span_fatal(
-                self.tcx.def_span(def_id),
-                &format!("symbol `{}` is already defined", symbol_name),
-            )
+            self.sess()
+                .emit_fatal(SymbolAlreadyDefined { span: self.tcx.def_span(def_id), symbol_name })
         });
 
         unsafe {

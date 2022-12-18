@@ -24,15 +24,15 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   zlib1g-dev \
   xz-utils \
-  nodejs
-
+  nodejs \
+  \
 # Install powershell so we can test x.ps1 on Linux
-RUN apt-get update && \
-    apt-get install -y apt-transport-https software-properties-common && \
+    apt-transport-https software-properties-common && \
     curl -s "https://packages.microsoft.com/config/ubuntu/$(lsb_release -rs)/packages-microsoft-prod.deb" > packages-microsoft-prod.deb && \
     dpkg -i packages-microsoft-prod.deb && \
     apt-get update && \
-    apt-get install -y powershell
+    apt-get install -y powershell \
+    && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh
@@ -40,7 +40,6 @@ RUN sh /scripts/sccache.sh
 # We are disabling CI LLVM since this builder is intentionally using a host
 # LLVM, rather than the typical src/llvm-project LLVM.
 ENV NO_DOWNLOAD_CI_LLVM 1
-ENV EXTERNAL_LLVM 1
 
 # Using llvm-link-shared due to libffi issues -- see #34486
 ENV RUST_CONFIGURE_ARGS \

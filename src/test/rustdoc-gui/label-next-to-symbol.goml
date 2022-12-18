@@ -1,6 +1,6 @@
 // These tests verify that labels like "UNIX" and "Deprecated" stay on the same line as their symbol.
 // It also verifies the staggered layout on mobile.
-goto: file://|DOC_PATH|/test_docs/index.html
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 
 // Desktop view
 size: (1080, 600)

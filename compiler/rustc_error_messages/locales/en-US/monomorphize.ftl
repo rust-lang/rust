@@ -22,5 +22,5 @@ monomorphize_large_assignments =
     .label = value moved from here
     .note = The current maximum size is {$limit}, but it can be customized with the move_size_limit attribute: `#![move_size_limit = "..."]`
 
-monomorphize_requires_lang_item =
-    requires `{$lang_item}` lang_item
+monomorphize_couldnt_dump_mono_stats =
+    unexpected error occurred while dumping monomorphization stats: {$error}

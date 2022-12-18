@@ -159,11 +159,7 @@ fn main()
     assert!(foo as usize != bar as usize);
 
     // Taking a few bits of a function's address is totally pointless and we detect that
-    // Disabling the lint to ensure that the assertion can still be run
-    #[allow(const_err)]
-    {
-        assert_eq!(foo as i16, foo as usize as i16);
-    }
+    assert_eq!(foo as i16, foo as usize as i16);
 
     // fptr-ptr-cast
 

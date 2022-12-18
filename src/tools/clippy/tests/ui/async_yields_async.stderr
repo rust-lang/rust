@@ -2,14 +2,14 @@ error: an async construct yields a type which is itself awaitable
   --> $DIR/async_yields_async.rs:39:9
    |
 LL |        let _h = async {
-   |   ____________________-
-LL |  |         async {
-   |  |_________^
+   |  _____________________-
+LL | |          async {
+   | | _________^
 LL | ||             3
 LL | ||         }
    | ||_________^ awaitable value not awaited
-LL |  |     };
-   |  |_____- outer async construct
+LL | |      };
+   | |______- outer async construct
    |
    = note: `-D clippy::async-yields-async` implied by `-D warnings`
 help: consider awaiting this value
@@ -36,14 +36,14 @@ error: an async construct yields a type which is itself awaitable
   --> $DIR/async_yields_async.rs:50:9
    |
 LL |        let _j = async || {
-   |   _______________________-
-LL |  |         async {
-   |  |_________^
+   |  ________________________-
+LL | |          async {
+   | | _________^
 LL | ||             3
 LL | ||         }
    | ||_________^ awaitable value not awaited
-LL |  |     };
-   |  |_____- outer async construct
+LL | |      };
+   | |______- outer async construct
    |
 help: consider awaiting this value
    |

@@ -13,13 +13,13 @@ pub fn expand_deriving_partial_ord(
     mitem: &MetaItem,
     item: &Annotatable,
     push: &mut dyn FnMut(Annotatable),
+    is_const: bool,
 ) {
     let ordering_ty = Path(path_std!(cmp::Ordering));
     let ret_ty =
         Path(Path::new_(pathvec_std!(option::Option), vec![Box::new(ordering_ty)], PathKind::Std));
 
-    let inline = cx.meta_word(span, sym::inline);
-    let attrs = thin_vec![cx.attribute(inline)];
+    let attrs = thin_vec![cx.attr_word(sym::inline, span)];
 
     let partial_cmp_def = MethodDef {
         name: sym::partial_cmp,
@@ -37,11 +37,12 @@ pub fn expand_deriving_partial_ord(
     let trait_def = TraitDef {
         span,
         path: path_std!(cmp::PartialOrd),
+        skip_path_as_bound: false,
         additional_bounds: vec![],
-        generics: Bounds::empty(),
         supports_unions: false,
         methods: vec![partial_cmp_def],
         associated_types: Vec::new(),
+        is_const,
     };
     trait_def.expand(cx, mitem, item, push)
 }

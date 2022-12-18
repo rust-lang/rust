@@ -15,7 +15,7 @@ macro_rules! boxit {
 }
 
 fn test_macro() {
-    boxit!(Vec::new(), Vec<u8>);
+    boxit!(vec![1], Vec<u8>);
 }
 
 fn test1(foo: Box<Vec<bool>>) {}
@@ -50,7 +50,7 @@ fn test_local_not_linted() {
 pub fn pub_test(foo: Box<Vec<bool>>) {}
 
 pub fn pub_test_ret() -> Box<Vec<bool>> {
-    Box::new(Vec::new())
+    Box::default()
 }
 
 fn main() {}

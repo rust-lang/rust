@@ -1,6 +1,7 @@
 use crate::base;
 use crate::common::{self, CodegenCx};
 use crate::debuginfo;
+use crate::errors::{InvalidMinimumAlignment, SymbolAlreadyDefined};
 use crate::llvm::{self, True};
 use crate::llvm_util;
 use crate::type_::Type;
@@ -19,6 +20,7 @@ use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::ty::layout::LayoutOf;
 use rustc_middle::ty::{self, Instance, Ty};
 use rustc_middle::{bug, span_bug};
+use rustc_session::config::Lto;
 use rustc_target::abi::{
     AddressSpace, Align, HasDataLayout, Primitive, Scalar, Size, WrappingRange,
 };
@@ -26,7 +28,7 @@ use std::ops::Range;
 
 pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<'_>) -> &'ll Value {
     let alloc = alloc.inner();
-    let mut llvals = Vec::with_capacity(alloc.provenance().len() + 1);
+    let mut llvals = Vec::with_capacity(alloc.provenance().ptrs().len() + 1);
     let dl = cx.data_layout();
     let pointer_size = dl.pointer_size.bytes() as usize;
 
@@ -38,9 +40,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
         alloc: &'a Allocation,
         range: Range<usize>,
     ) {
-        let chunks = alloc
-            .init_mask()
-            .range_as_init_chunks(Size::from_bytes(range.start), Size::from_bytes(range.end));
+        let chunks = alloc.init_mask().range_as_init_chunks(range.clone().into());
 
         let chunk_to_llval = move |chunk| match chunk {
             InitChunk::Init(range) => {
@@ -78,7 +78,7 @@ pub fn const_alloc_to_llvm<'ll>(cx: &CodegenCx<'ll, '_>, alloc: ConstAllocation<
     }
 
     let mut next_offset = 0;
-    for &(offset, alloc_id) in alloc.provenance().iter() {
+    for &(offset, alloc_id) in alloc.provenance().ptrs().iter() {
         let offset = offset.bytes();
         assert_eq!(offset as usize as u64, offset);
         let offset = offset as usize;
@@ -145,7 +145,7 @@ fn set_global_alignment<'ll>(cx: &CodegenCx<'ll, '_>, gv: &'ll Value, mut align:
         match Align::from_bits(min) {
             Ok(min) => align = align.max(min),
             Err(err) => {
-                cx.sess().err(&format!("invalid minimum global alignment: {}", err));
+                cx.sess().emit_err(InvalidMinimumAlignment { err });
             }
         }
     }
@@ -162,25 +162,12 @@ fn check_and_apply_linkage<'ll, 'tcx>(
     def_id: DefId,
 ) -> &'ll Value {
     let llty = cx.layout_of(ty).llvm_type(cx);
-    if let Some(linkage) = attrs.linkage {
+    if let Some(linkage) = attrs.import_linkage {
         debug!("get_static: sym={} linkage={:?}", sym, linkage);
 
-        // If this is a static with a linkage specified, then we need to handle
-        // it a little specially. The typesystem prevents things like &T and
-        // extern "C" fn() from being non-null, so we can't just declare a
-        // static and call it a day. Some linkages (like weak) will make it such
-        // that the static actually has a null value.
-        let llty2 = if let ty::RawPtr(ref mt) = ty.kind() {
-            cx.layout_of(mt.ty).llvm_type(cx)
-        } else {
-            cx.sess().span_fatal(
-                cx.tcx.def_span(def_id),
-                "must have type `*const T` or `*mut T` due to `#[linkage]` attribute",
-            )
-        };
         unsafe {
             // Declare a symbol `foo` with the desired linkage.
-            let g1 = cx.declare_global(sym, llty2);
+            let g1 = cx.declare_global(sym, cx.type_i8());
             llvm::LLVMRustSetLinkage(g1, base::linkage_to_llvm(linkage));
 
             // Declare an internal global `extern_with_linkage_foo` which
@@ -192,13 +179,13 @@ fn check_and_apply_linkage<'ll, 'tcx>(
             let mut real_name = "_rust_extern_with_linkage_".to_string();
             real_name.push_str(sym);
             let g2 = cx.define_global(&real_name, llty).unwrap_or_else(|| {
-                cx.sess().span_fatal(
-                    cx.tcx.def_span(def_id),
-                    &format!("symbol `{}` is already defined", &sym),
-                )
+                cx.sess().emit_fatal(SymbolAlreadyDefined {
+                    span: cx.tcx.def_span(def_id),
+                    symbol_name: sym,
+                })
             });
             llvm::LLVMRustSetLinkage(g2, llvm::Linkage::InternalLinkage);
-            llvm::LLVMSetInitializer(g2, g1);
+            llvm::LLVMSetInitializer(g2, cx.const_ptrcast(g1, llty));
             g2
         }
     } else if cx.tcx.sess.target.arch == "x86" &&
@@ -298,12 +285,23 @@ impl<'ll> CodegenCx<'ll, '_> {
             llvm::set_thread_local_mode(g, self.tls_model);
         }
 
+        let dso_local = unsafe { self.should_assume_dso_local(g, true) };
+        if dso_local {
+            unsafe {
+                llvm::LLVMRustSetDSOLocal(g, true);
+            }
+        }
+
         if !def_id.is_local() {
             let needs_dll_storage_attr = self.use_dll_storage_attrs && !self.tcx.is_foreign_item(def_id) &&
+                // Local definitions can never be imported, so we must not apply
+                // the DLLImport annotation.
+                !dso_local &&
                 // ThinLTO can't handle this workaround in all cases, so we don't
                 // emit the attrs. Instead we make them unnecessary by disallowing
                 // dynamic linking when linker plugin based LTO is enabled.
-                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled();
+                !self.tcx.sess.opts.cg.linker_plugin_lto.enabled() &&
+                self.tcx.sess.lto() != Lto::Thin;
 
             // If this assertion triggers, there's something wrong with commandline
             // argument validation.
@@ -332,16 +330,13 @@ impl<'ll> CodegenCx<'ll, '_> {
             }
         }
 
-        if self.use_dll_storage_attrs && self.tcx.is_dllimport_foreign_item(def_id) {
+        if self.use_dll_storage_attrs
+            && let Some(library) = self.tcx.native_library(def_id)
+            && library.kind.is_dllimport()
+        {
             // For foreign (native) libs we know the exact storage type to use.
             unsafe {
                 llvm::LLVMSetDLLStorageClass(g, llvm::DLLStorageClass::DllImport);
-            }
-        }
-
-        unsafe {
-            if self.should_assume_dso_local(g, true) {
-                llvm::LLVMRustSetDSOLocal(g, true);
             }
         }
 
@@ -486,7 +481,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                     // happens to be zero. Instead, we should only check the value of defined bytes
                     // and set all undefined bytes to zero if this allocation is headed for the
                     // BSS.
-                    let all_bytes_are_zero = alloc.provenance().is_empty()
+                    let all_bytes_are_zero = alloc.provenance().ptrs().is_empty()
                         && alloc
                             .inspect_with_uninit_and_ptr_outside_interpreter(0..alloc.len())
                             .iter()
@@ -510,7 +505,7 @@ impl<'ll> StaticMethods for CodegenCx<'ll, '_> {
                         section.as_str().as_ptr().cast(),
                         section.as_str().len() as c_uint,
                     );
-                    assert!(alloc.provenance().is_empty());
+                    assert!(alloc.provenance().ptrs().is_empty());
 
                     // The `inspect` method is okay here because we checked for provenance, and
                     // because we are doing this access to inspect the final interpreter state (not

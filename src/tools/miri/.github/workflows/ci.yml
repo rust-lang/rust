@@ -10,7 +10,10 @@ on:
     branches:
       - 'master'
   schedule:
-    - cron: '5 15 * * *' # At 15:05 UTC every day.
+    - cron: '6 6 * * *' # At 6:06 UTC every day.
+
+env:
+  CARGO_UNSTABLE_SPARSE_REGISTRY: 'true'
 
 jobs:
   build:
@@ -19,17 +22,14 @@ jobs:
       RUST_BACKTRACE: 1
       HOST_TARGET: ${{ matrix.host_target }}
     strategy:
+      fail-fast: false
       matrix:
-        build: [linux64, macos, win32]
         include:
-          - build: linux64
-            os: ubuntu-latest
+          - os: ubuntu-latest
             host_target: x86_64-unknown-linux-gnu
-          - build: macos
-            os: macos-latest
+          - os: macos-latest
             host_target: x86_64-apple-darwin
-          - build: win32
-            os: windows-latest
+          - os: windows-latest
             host_target: i686-pc-windows-msvc
     steps:
       - uses: actions/checkout@v3
@@ -37,14 +37,6 @@ jobs:
       - name: Set the tag GC interval to 1 on linux
         if: runner.os == 'Linux'
         run: echo "MIRIFLAGS=-Zmiri-tag-gc=1" >> $GITHUB_ENV
-
-      # We install gnu-tar because BSD tar is buggy on macOS builders of GHA.
-      # See <https://github.com/actions/cache/issues/403>.
-      - name: Install GNU tar
-        if: runner.os == 'macOS'
-        run: |
-          brew install gnu-tar
-          echo "/usr/local/opt/gnu-tar/libexec/gnubin" >> $GITHUB_PATH
 
       # Cache the global cargo directory, but NOT the local `target` directory which
       # we cannot reuse anyway when the nightly changes (and it grows quite large
@@ -62,24 +54,23 @@ jobs:
             # contains package information of crates installed via `cargo install`.
             ~/.cargo/.crates.toml
             ~/.cargo/.crates2.json
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock', 'cargo-miri/src/version.rs') }}
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: ${{ runner.os }}-cargo
 
-      - name: Install rustup-toolchain-install-master and xargo
-        if: ${{ steps.cache.outputs.cache-hit == 'false' }}
+      - name: Install rustup-toolchain-install-master
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
         shell: bash
         run: |
-          cargo install rustup-toolchain-install-master
-          cargo install xargo
+          cargo install -f rustup-toolchain-install-master
 
       - name: Install "master" toolchain
         shell: bash
         run: |
           if [[ ${{ github.event_name }} == 'schedule' ]]; then
-            ./rustup-toolchain HEAD --host ${{ matrix.host_target }}
-          else
-            ./rustup-toolchain "" --host ${{ matrix.host_target }}
+            echo "Building against latest rustc git version"
+            git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1 > rust-version
           fi
+          ./miri toolchain --host ${{ matrix.host_target }}
 
       - name: Show Rust version
         run: |
@@ -95,11 +86,46 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Install required toolchain
-        # We need a toolchain that can actually build Miri, just a nightly won't do.
+
+      # This is exactly duplicated from above. GHA is pretty terrible when it comes
+      # to avoiding code duplication.
+
+      # Cache the global cargo directory, but NOT the local `target` directory which
+      # we cannot reuse anyway when the nightly changes (and it grows quite large
+      # over time).
+      - name: Add cache for cargo
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            # Taken from <https://doc.rust-lang.org/nightly/cargo/guide/cargo-home.html#caching-the-cargo-home-in-ci>.
+            ~/.cargo/bin
+            ~/.cargo/registry/index
+            ~/.cargo/registry/cache
+            ~/.cargo/git/db
+            # contains package information of crates installed via `cargo install`.
+            ~/.cargo/.crates.toml
+            ~/.cargo/.crates2.json
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo
+
+      - name: Install rustup-toolchain-install-master
+        if: ${{ steps.cache.outputs.cache-hit != 'true' }}
+        shell: bash
         run: |
-          cargo install rustup-toolchain-install-master # TODO: cache this?
-          ./rustup-toolchain "" -c clippy
+          cargo install -f rustup-toolchain-install-master
+
+      - name: Install "master" toolchain
+        shell: bash
+        run: |
+          ./miri toolchain
+
+      - name: Show Rust version
+        run: |
+          rustup show
+          rustc -Vv
+          cargo -V
+
       - name: rustfmt
         run: ./miri fmt --check
       - name: clippy

@@ -1,18 +1,11 @@
 // aux-build:test-macros.rs
+// check-pass
 
 #[macro_use]
 extern crate test_macros;
 
 #[derive(Print)]
 enum ProceduralMasqueradeDummyType {
-//~^ ERROR using
-//~| WARN this was previously
-//~| ERROR using
-//~| WARN this was previously
-//~| ERROR using
-//~| WARN this was previously
-//~| ERROR using
-//~| WARN this was previously
     Input
 }
 

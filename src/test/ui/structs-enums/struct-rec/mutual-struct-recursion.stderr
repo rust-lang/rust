@@ -1,59 +1,49 @@
-error[E0072]: recursive type `A` has infinite size
+error[E0072]: recursive types `A` and `B` have infinite size
   --> $DIR/mutual-struct-recursion.rs:1:1
    |
 LL | struct A<T> {
-   | ^^^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^^^
 ...
 LL |     y: B<T>,
    |        ---- recursive without indirection
-   |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `A` representable
-   |
-LL |     y: Box<B<T>>,
-   |        ++++    +
-
-error[E0072]: recursive type `B` has infinite size
-  --> $DIR/mutual-struct-recursion.rs:7:1
-   |
+...
 LL | struct B<T> {
-   | ^^^^^^^^^^^ recursive type has infinite size
-LL |
+   | ^^^^^^^^^^^
 LL |     z: A<T>
    |        ---- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `B` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     z: Box<A<T>>
-   |        ++++    +
+LL ~     y: Box<B<T>>,
+LL | }
+LL | 
+LL | struct B<T> {
+LL ~     z: Box<A<T>>
+   |
 
-error[E0072]: recursive type `C` has infinite size
-  --> $DIR/mutual-struct-recursion.rs:12:1
+error[E0072]: recursive types `C` and `D` have infinite size
+  --> $DIR/mutual-struct-recursion.rs:11:1
    |
 LL | struct C<T> {
-   | ^^^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^^^
 ...
 LL |     y: Option<Option<D<T>>>,
-   |        -------------------- recursive without indirection
-   |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `C` representable
-   |
-LL |     y: Option<Box<Option<D<T>>>>,
-   |               ++++            +
-
-error[E0072]: recursive type `D` has infinite size
-  --> $DIR/mutual-struct-recursion.rs:18:1
-   |
+   |                      ---- recursive without indirection
+...
 LL | struct D<T> {
-   | ^^^^^^^^^^^ recursive type has infinite size
-LL |
+   | ^^^^^^^^^^^
 LL |     z: Option<Option<C<T>>>,
-   |        -------------------- recursive without indirection
+   |                      ---- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `D` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     z: Option<Box<Option<C<T>>>>,
-   |               ++++            +
+LL ~     y: Option<Option<Box<D<T>>>>,
+LL | }
+LL | 
+LL | struct D<T> {
+LL ~     z: Option<Option<Box<C<T>>>>,
+   |
 
-error: aborting due to 4 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0072`.

@@ -9,9 +9,9 @@
 use rustc_middle::traits::ChalkRustInterner as RustInterner;
 use rustc_middle::ty::{self, AssocKind, EarlyBinder, Ty, TyCtxt, TypeFoldable, TypeSuperFoldable};
 use rustc_middle::ty::{InternalSubsts, SubstsRef};
+use rustc_target::abi::{Integer, IntegerType};
 
 use rustc_ast::ast;
-use rustc_attr as attr;
 
 use rustc_hir::def_id::DefId;
 
@@ -142,6 +142,8 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             Some(CoerceUnsized)
         } else if lang_items.dispatch_from_dyn_trait() == Some(def_id) {
             Some(DispatchFromDyn)
+        } else if lang_items.tuple_trait() == Some(def_id) {
+            Some(Tuple)
         } else {
             None
         };
@@ -216,21 +218,21 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             c: adt_def.repr().c(),
             packed: adt_def.repr().packed(),
             int: adt_def.repr().int.map(|i| match i {
-                attr::IntType::SignedInt(ty) => match ty {
-                    ast::IntTy::Isize => int(chalk_ir::IntTy::Isize),
-                    ast::IntTy::I8 => int(chalk_ir::IntTy::I8),
-                    ast::IntTy::I16 => int(chalk_ir::IntTy::I16),
-                    ast::IntTy::I32 => int(chalk_ir::IntTy::I32),
-                    ast::IntTy::I64 => int(chalk_ir::IntTy::I64),
-                    ast::IntTy::I128 => int(chalk_ir::IntTy::I128),
+                IntegerType::Pointer(true) => int(chalk_ir::IntTy::Isize),
+                IntegerType::Pointer(false) => uint(chalk_ir::UintTy::Usize),
+                IntegerType::Fixed(i, true) => match i {
+                    Integer::I8 => int(chalk_ir::IntTy::I8),
+                    Integer::I16 => int(chalk_ir::IntTy::I16),
+                    Integer::I32 => int(chalk_ir::IntTy::I32),
+                    Integer::I64 => int(chalk_ir::IntTy::I64),
+                    Integer::I128 => int(chalk_ir::IntTy::I128),
                 },
-                attr::IntType::UnsignedInt(ty) => match ty {
-                    ast::UintTy::Usize => uint(chalk_ir::UintTy::Usize),
-                    ast::UintTy::U8 => uint(chalk_ir::UintTy::U8),
-                    ast::UintTy::U16 => uint(chalk_ir::UintTy::U16),
-                    ast::UintTy::U32 => uint(chalk_ir::UintTy::U32),
-                    ast::UintTy::U64 => uint(chalk_ir::UintTy::U64),
-                    ast::UintTy::U128 => uint(chalk_ir::UintTy::U128),
+                IntegerType::Fixed(i, false) => match i {
+                    Integer::I8 => uint(chalk_ir::UintTy::U8),
+                    Integer::I16 => uint(chalk_ir::UintTy::U16),
+                    Integer::I32 => uint(chalk_ir::UintTy::U32),
+                    Integer::I64 => uint(chalk_ir::UintTy::U64),
+                    Integer::I128 => uint(chalk_ir::UintTy::U128),
                 },
             }),
         })
@@ -430,7 +432,10 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
                         (ast::Mutability::Not, chalk_ir::Mutability::Not) => true,
                     }
                 }
-                (&ty::Opaque(def_id, ..), OpaqueType(opaque_ty_id, ..)) => def_id == opaque_ty_id.0,
+                (
+                    &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
+                    OpaqueType(opaque_ty_id, ..),
+                ) => def_id == opaque_ty_id.0,
                 (&ty::FnDef(def_id, ..), FnDef(fn_def_id, ..)) => def_id == fn_def_id.0,
                 (&ty::Str, Str) => true,
                 (&ty::Never, Never) => true,
@@ -570,6 +575,7 @@ impl<'tcx> chalk_solve::RustIrDatabase<RustInterner<'tcx>> for RustIrDatabase<'t
             CoerceUnsized => lang_items.coerce_unsized_trait(),
             DiscriminantKind => lang_items.discriminant_kind_trait(),
             DispatchFromDyn => lang_items.dispatch_from_dyn_trait(),
+            Tuple => lang_items.tuple_trait(),
         };
         def_id.map(chalk_ir::TraitId)
     }
@@ -728,16 +734,16 @@ fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx
         ty::GenericParamDefKind::Lifetime => {
             let br = ty::BoundRegion {
                 var: ty::BoundVar::from_usize(substs.len()),
-                kind: ty::BrAnon(substs.len() as u32),
+                kind: ty::BrAnon(substs.len() as u32, None),
             };
             tcx.mk_region(ty::ReLateBound(ty::INNERMOST, br)).into()
         }
 
         ty::GenericParamDefKind::Const { .. } => tcx
-            .mk_const(ty::ConstS {
-                kind: ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
-                ty: tcx.type_of(param.def_id),
-            })
+            .mk_const(
+                ty::ConstKind::Bound(ty::INNERMOST, ty::BoundVar::from(param.index)),
+                tcx.type_of(param.def_id),
+            )
             .into(),
     })
 }
@@ -783,7 +789,7 @@ impl<'tcx> ty::TypeFolder<'tcx> for ReplaceOpaqueTyFolder<'tcx> {
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
-        if let ty::Opaque(def_id, substs) = *ty.kind() {
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = *ty.kind() {
             if def_id == self.opaque_ty_id.0 && substs == self.identity_substs {
                 return self.tcx.mk_ty(ty::Bound(
                     self.binder_index,

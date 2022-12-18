@@ -1,7 +1,6 @@
 // compile-flags: -O
 
 #![deny(overflowing_literals)]
-#![deny(const_err)]
 
 fn main() {
     let x2: i8 = --128; //~ ERROR literal out of range for `i8`

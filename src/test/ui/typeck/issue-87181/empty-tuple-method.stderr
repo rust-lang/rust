@@ -4,7 +4,7 @@ error[E0599]: no method named `foo` found for fn item `fn() -> Foo {Foo}` in the
 LL |     thing.bar.foo();
    |               ^^^ method not found in `fn() -> Foo {Foo}`
    |
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL |     (thing.bar)().foo();
    |     +         +++

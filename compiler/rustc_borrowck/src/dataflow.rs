@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::{self, BasicBlock, Body, Location, Place};
@@ -356,9 +358,9 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
         stmt: &mir::Statement<'tcx>,
         location: Location,
     ) {
-        match stmt.kind {
-            mir::StatementKind::Assign(box (lhs, ref rhs)) => {
-                if let mir::Rvalue::Ref(_, _, place) = *rhs {
+        match &stmt.kind {
+            mir::StatementKind::Assign(box (lhs, rhs)) => {
+                if let mir::Rvalue::Ref(_, _, place) = rhs {
                     if place.ignore_borrow(
                         self.tcx,
                         self.body,
@@ -375,13 +377,13 @@ impl<'tcx> rustc_mir_dataflow::GenKillAnalysis<'tcx> for Borrows<'_, 'tcx> {
 
                 // Make sure there are no remaining borrows for variables
                 // that are assigned over.
-                self.kill_borrows_on_place(trans, lhs);
+                self.kill_borrows_on_place(trans, *lhs);
             }
 
             mir::StatementKind::StorageDead(local) => {
                 // Make sure there are no remaining borrows for locals that
                 // are gone out of scope.
-                self.kill_borrows_on_place(trans, Place::from(local));
+                self.kill_borrows_on_place(trans, Place::from(*local));
             }
 
             mir::StatementKind::FakeRead(..)

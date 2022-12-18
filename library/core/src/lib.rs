@@ -89,6 +89,7 @@
 // Lints:
 #![deny(rust_2021_incompatible_or_patterns)]
 #![deny(unsafe_op_in_unsafe_fn)]
+#![deny(fuzzy_provenance_casts)]
 #![warn(deprecated_in_future)]
 #![warn(missing_debug_implementations)]
 #![warn(missing_docs)]
@@ -98,20 +99,24 @@
 // Library features:
 #![feature(const_align_offset)]
 #![feature(const_align_of_val)]
+#![feature(const_align_of_val_raw)]
+#![feature(const_alloc_layout)]
 #![feature(const_arguments_as_str)]
 #![feature(const_array_into_iter_constructors)]
 #![feature(const_bigint_helper_methods)]
 #![feature(const_black_box)]
 #![feature(const_caller_location)]
 #![feature(const_cell_into_inner)]
-#![feature(const_char_convert)]
+#![feature(const_char_from_u32_unchecked)]
 #![feature(const_clone)]
 #![feature(const_cmp)]
 #![feature(const_discriminant)]
 #![feature(const_eval_select)]
+#![feature(const_exact_div)]
 #![feature(const_float_bits_conv)]
 #![feature(const_float_classify)]
 #![feature(const_fmt_arguments_new)]
+#![feature(const_hash)]
 #![feature(const_heap)]
 #![feature(const_convert)]
 #![feature(const_index_range_slice_index)]
@@ -128,14 +133,17 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
+#![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
+#![feature(const_result_drop)]
 #![feature(const_ptr_as_ref)]
 #![feature(const_ptr_is_null)]
 #![feature(const_ptr_read)]
 #![feature(const_ptr_write)]
 #![feature(const_raw_ptr_comparison)]
 #![feature(const_size_of_val)]
+#![feature(const_size_of_val_raw)]
 #![feature(const_slice_from_raw_parts_mut)]
 #![feature(const_slice_ptr_len)]
 #![feature(const_slice_split_at_mut)]
@@ -152,10 +160,13 @@
 #![feature(core_panic)]
 #![feature(duration_consts_float)]
 #![feature(maybe_uninit_uninit_array)]
+#![feature(ptr_alignment_type)]
 #![feature(ptr_metadata)]
+#![feature(set_ptr_value)]
 #![feature(slice_ptr_get)]
 #![feature(slice_split_at_unchecked)]
 #![feature(str_internals)]
+#![feature(strict_provenance)]
 #![feature(utf16_extra)]
 #![feature(utf16_extra_const)]
 #![feature(variant_count)]
@@ -164,6 +175,7 @@
 #![feature(const_slice_index)]
 #![feature(const_is_char_boundary)]
 #![feature(const_cstr_methods)]
+#![feature(is_ascii_octdigit)]
 //
 // Language features:
 #![feature(abi_unadjusted)]
@@ -172,6 +184,7 @@
 #![feature(allow_internal_unstable)]
 #![feature(associated_type_bounds)]
 #![feature(auto_traits)]
+#![feature(c_unwind)]
 #![feature(cfg_sanitize)]
 #![feature(cfg_target_has_atomic)]
 #![feature(cfg_target_has_atomic_equal_alignment)]
@@ -181,6 +194,7 @@
 #![feature(const_refs_to_cell)]
 #![feature(decl_macro)]
 #![feature(deprecated_suggestion)]
+#![cfg_attr(not(bootstrap), feature(derive_const))]
 #![feature(doc_cfg)]
 #![feature(doc_notable_trait)]
 #![feature(rustdoc_internals)]
@@ -189,6 +203,7 @@
 #![feature(extern_types)]
 #![feature(fundamental)]
 #![feature(if_let_guard)]
+#![feature(inline_const)]
 #![feature(intra_doc_pointers)]
 #![feature(intrinsics)]
 #![feature(lang_items)]
@@ -208,12 +223,14 @@
 #![feature(simd_ffi)]
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
+#![feature(target_feature_11)]
 #![feature(trait_alias)]
 #![feature(transparent_unions)]
 #![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(asm_const)]
+#![feature(const_transmute_copy)]
 //
 // Target features:
 #![feature(arm_target_feature)]
@@ -223,6 +240,7 @@
 #![feature(hexagon_target_feature)]
 #![feature(mips_target_feature)]
 #![feature(powerpc_target_feature)]
+#![feature(riscv_target_feature)]
 #![feature(rtm_target_feature)]
 #![feature(sse4a_target_feature)]
 #![feature(tbm_target_feature)]
@@ -325,8 +343,6 @@ pub mod cell;
 pub mod char;
 pub mod ffi;
 pub mod iter;
-#[unstable(feature = "once_cell", issue = "74465")]
-pub mod lazy;
 pub mod option;
 pub mod panic;
 pub mod panicking;
@@ -381,38 +397,8 @@ pub mod primitive;
 #[unstable(feature = "stdsimd", issue = "48556")]
 mod core_arch;
 
-#[doc = include_str!("../../stdarch/crates/core_arch/src/core_arch_docs.md")]
 #[stable(feature = "simd_arch", since = "1.27.0")]
-pub mod arch {
-    #[stable(feature = "simd_arch", since = "1.27.0")]
-    pub use crate::core_arch::arch::*;
-
-    /// Inline assembly.
-    ///
-    /// Refer to [rust by example] for a usage guide and the [reference] for
-    /// detailed information about the syntax and available options.
-    ///
-    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
-    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-    #[stable(feature = "asm", since = "1.59.0")]
-    #[rustc_builtin_macro]
-    pub macro asm("assembly template", $(operands,)* $(options($(option),*))?) {
-        /* compiler built-in */
-    }
-
-    /// Module-level inline assembly.
-    ///
-    /// Refer to [rust by example] for a usage guide and the [reference] for
-    /// detailed information about the syntax and available options.
-    ///
-    /// [rust by example]: https://doc.rust-lang.org/nightly/rust-by-example/unsafe/asm.html
-    /// [reference]: https://doc.rust-lang.org/nightly/reference/inline-assembly.html
-    #[stable(feature = "global_asm", since = "1.59.0")]
-    #[rustc_builtin_macro]
-    pub macro global_asm("assembly template", $(operands,)* $(options($(option),*))?) {
-        /* compiler built-in */
-    }
-}
+pub mod arch;
 
 // Pull in the `core_simd` crate directly into libcore. The contents of
 // `core_simd` are in a different repository: rust-lang/portable-simd.

@@ -226,13 +226,11 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
             false
         };
 
-        let expected_trait_ref = self.infcx.resolve_vars_if_possible(ty::TraitRef {
-            def_id: trait_def_id,
-            substs: expected_substs,
-        });
-        let actual_trait_ref = self
-            .infcx
-            .resolve_vars_if_possible(ty::TraitRef { def_id: trait_def_id, substs: actual_substs });
+        let expected_trait_ref = self
+            .cx
+            .resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, expected_substs));
+        let actual_trait_ref =
+            self.cx.resolve_vars_if_possible(self.cx.tcx.mk_trait_ref(trait_def_id, actual_substs));
 
         // Search the expected and actual trait references to see (a)
         // whether the sub/sup placeholders appear in them (sometimes
@@ -399,10 +397,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                 self_ty.highlight.maybe_highlighting_region(vid, actual_has_vid);
 
                 if self_ty.value.is_closure()
-                    && self
-                        .tcx()
-                        .fn_trait_kind_from_lang_item(expected_trait_ref.value.def_id)
-                        .is_some()
+                    && self.tcx().is_fn_trait(expected_trait_ref.value.def_id)
                 {
                     let closure_sig = self_ty.map(|closure| {
                         if let ty::Closure(_, substs) = closure.kind() {

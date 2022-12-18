@@ -1,6 +1,8 @@
 #[cfg(not(no_global_oom_handling))]
 use super::AsVecIntoIter;
 use crate::alloc::{Allocator, Global};
+#[cfg(not(no_global_oom_handling))]
+use crate::collections::VecDeque;
 use crate::raw_vec::RawVec;
 use core::array;
 use core::fmt;
@@ -95,13 +97,16 @@ impl<T, A: Allocator> IntoIter<T, A> {
     }
 
     /// Drops remaining elements and relinquishes the backing allocation.
+    /// This method guarantees it won't panic before relinquishing
+    /// the backing allocation.
     ///
     /// This is roughly equivalent to the following, but more efficient
     ///
     /// ```
     /// # let mut into_iter = Vec::<u8>::with_capacity(10).into_iter();
+    /// let mut into_iter = std::mem::replace(&mut into_iter, Vec::new().into_iter());
     /// (&mut into_iter).for_each(core::mem::drop);
-    /// unsafe { core::ptr::write(&mut into_iter, Vec::new().into_iter()); }
+    /// std::mem::forget(into_iter);
     /// ```
     ///
     /// This method is used by in-place iteration, refer to the vec::in_place_collect
@@ -118,6 +123,8 @@ impl<T, A: Allocator> IntoIter<T, A> {
         self.ptr = self.buf.as_ptr();
         self.end = self.buf.as_ptr();
 
+        // Dropping the remaining elements can panic, so this needs to be
+        // done only after updating the other fields.
         unsafe {
             ptr::drop_in_place(remaining);
         }
@@ -126,6 +133,33 @@ impl<T, A: Allocator> IntoIter<T, A> {
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
     pub(crate) fn forget_remaining_elements(&mut self) {
         self.ptr = self.end;
+    }
+
+    #[cfg(not(no_global_oom_handling))]
+    #[inline]
+    pub(crate) fn into_vecdeque(self) -> VecDeque<T, A> {
+        // Keep our `Drop` impl from dropping the elements and the allocator
+        let mut this = ManuallyDrop::new(self);
+
+        // SAFETY: This allocation originally came from a `Vec`, so it passes
+        // all those checks.  We have `this.buf` ≤ `this.ptr` ≤ `this.end`,
+        // so the `sub_ptr`s below cannot wrap, and will produce a well-formed
+        // range.  `end` ≤ `buf + cap`, so the range will be in-bounds.
+        // Taking `alloc` is ok because nothing else is going to look at it,
+        // since our `Drop` impl isn't going to run so there's no more code.
+        unsafe {
+            let buf = this.buf.as_ptr();
+            let initialized = if T::IS_ZST {
+                // All the pointers are the same for ZSTs, so it's fine to
+                // say that they're all at the beginning of the "allocation".
+                0..this.len()
+            } else {
+                this.ptr.sub_ptr(buf)..this.end.sub_ptr(buf)
+            };
+            let cap = this.cap;
+            let alloc = ManuallyDrop::take(&mut this.alloc);
+            VecDeque::from_contiguous_raw_parts_in(buf, initialized, cap, alloc)
+        }
     }
 }
 
@@ -218,7 +252,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
 
             self.ptr = self.ptr.wrapping_byte_add(N);
             // Safety: ditto
-            return Ok(unsafe { MaybeUninit::array_assume_init(raw_ary) });
+            return Ok(unsafe { raw_ary.transpose().assume_init() });
         }
 
         if len < N {
@@ -236,7 +270,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         return unsafe {
             ptr::copy_nonoverlapping(self.ptr, raw_ary.as_mut_ptr() as *mut T, N);
             self.ptr = self.ptr.add(N);
-            Ok(MaybeUninit::array_assume_init(raw_ary))
+            Ok(raw_ary.transpose().assume_init())
         };
     }
 

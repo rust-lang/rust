@@ -4,11 +4,11 @@ use clippy_utils::{get_enclosing_block, higher, path_to_local};
 use if_chain::if_chain;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, Node, PatKind};
+use rustc_hir_typeck::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::{mir::FakeReadCause, ty};
 use rustc_span::source_map::Span;
-use rustc_hir_analysis::expr_use_visitor::{Delegate, ExprUseVisitor, PlaceBase, PlaceWithHirId};
 
 pub(super) fn check(cx: &LateContext<'_>, arg: &Expr<'_>, body: &Expr<'_>) {
     if_chain! {
@@ -52,8 +52,8 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
     None
 }
 
-fn check_for_mutation<'tcx>(
-    cx: &LateContext<'tcx>,
+fn check_for_mutation(
+    cx: &LateContext<'_>,
     body: &Expr<'_>,
     bound_id_start: Option<HirId>,
     bound_id_end: Option<HirId>,
@@ -65,16 +65,15 @@ fn check_for_mutation<'tcx>(
         span_low: None,
         span_high: None,
     };
-    cx.tcx.infer_ctxt().enter(|infcx| {
-        ExprUseVisitor::new(
-            &mut delegate,
-            &infcx,
-            body.hir_id.owner.def_id,
-            cx.param_env,
-            cx.typeck_results(),
-        )
-        .walk_expr(body);
-    });
+    let infcx = cx.tcx.infer_ctxt().build();
+    ExprUseVisitor::new(
+        &mut delegate,
+        &infcx,
+        body.hir_id.owner.def_id,
+        cx.param_env,
+        cx.typeck_results(),
+    )
+    .walk_expr(body);
 
     delegate.mutation_span()
 }
@@ -114,7 +113,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(&mut self, _: &rustc_hir_analysis::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
+    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {

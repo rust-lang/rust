@@ -20,14 +20,14 @@ error: called `map(f)` on an `Result` value where `f` is a closure that returns 
   --> $DIR/result_map_unit_fn_unfixable.rs:29:5
    |
 LL |        x.field.map(|value| {
-   |   _____^
-   |  |_____|
+   |  ______^
+   | | _____|
    | ||
 LL | ||         do_nothing(value);
 LL | ||         do_nothing(value)
 LL | ||     });
    | ||______^- help: try this: `if let Ok(value) = x.field { ... }`
-   | |_______|
+   |  |______|
    | 
 
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`

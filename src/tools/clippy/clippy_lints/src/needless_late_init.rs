@@ -2,9 +2,9 @@ use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::path_to_local;
 use clippy_utils::source::snippet_opt;
 use clippy_utils::ty::needs_ordered_drop;
-use clippy_utils::visitors::{expr_visitor, expr_visitor_no_bodies, is_local_used};
+use clippy_utils::visitors::{for_each_expr, for_each_expr_with_closures, is_local_used};
+use core::ops::ControlFlow;
 use rustc_errors::{Applicability, MultiSpan};
-use rustc_hir::intravisit::Visitor;
 use rustc_hir::{
     BindingAnnotation, Block, Expr, ExprKind, HirId, Local, LocalSource, MatchSource, Node, Pat, PatKind, Stmt,
     StmtKind,
@@ -64,31 +64,25 @@ declare_clippy_lint! {
 declare_lint_pass!(NeedlessLateInit => [NEEDLESS_LATE_INIT]);
 
 fn contains_assign_expr<'tcx>(cx: &LateContext<'tcx>, stmt: &'tcx Stmt<'tcx>) -> bool {
-    let mut seen = false;
-    expr_visitor(cx, |expr| {
-        if let ExprKind::Assign(..) = expr.kind {
-            seen = true;
+    for_each_expr_with_closures(cx, stmt, |e| {
+        if matches!(e.kind, ExprKind::Assign(..)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
-
-        !seen
     })
-    .visit_stmt(stmt);
-
-    seen
+    .is_some()
 }
 
 fn contains_let(cond: &Expr<'_>) -> bool {
-    let mut seen = false;
-    expr_visitor_no_bodies(|expr| {
-        if let ExprKind::Let(_) = expr.kind {
-            seen = true;
+    for_each_expr(cond, |e| {
+        if matches!(e.kind, ExprKind::Let(_)) {
+            ControlFlow::Break(())
+        } else {
+            ControlFlow::Continue(())
         }
-
-        !seen
     })
-    .visit_expr(cond);
-
-    seen
+    .is_some()
 }
 
 fn stmt_needs_ordered_drop(cx: &LateContext<'_>, stmt: &Stmt<'_>) -> bool {
@@ -186,10 +180,13 @@ fn assignment_suggestions<'tcx>(
     let suggestions = assignments
         .iter()
         .flat_map(|assignment| {
-            [
-                assignment.span.until(assignment.rhs_span),
-                assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()),
-            ]
+            let mut spans = vec![assignment.span.until(assignment.rhs_span)];
+
+            if assignment.rhs_span.hi() != assignment.span.hi() {
+                spans.push(assignment.rhs_span.shrink_to_hi().with_hi(assignment.span.hi()));
+            }
+
+            spans
         })
         .map(|span| (span, String::new()))
         .collect::<Vec<(Span, String)>>();
@@ -287,7 +284,7 @@ fn check<'tcx>(
 
                     diag.span_suggestion(
                         assign.lhs_span,
-                        &format!("declare `{}` here", binding_name),
+                        &format!("declare `{binding_name}` here"),
                         let_snippet,
                         Applicability::MachineApplicable,
                     );
@@ -307,8 +304,8 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        &format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 
@@ -338,8 +335,8 @@ fn check<'tcx>(
 
                     diag.span_suggestion_verbose(
                         usage.stmt.span.shrink_to_lo(),
-                        &format!("declare `{}` here", binding_name),
-                        format!("{} = ", let_snippet),
+                        &format!("declare `{binding_name}` here"),
+                        format!("{let_snippet} = "),
                         applicability,
                     );
 

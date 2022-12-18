@@ -1,15 +1,9 @@
 //! utils used in proc-macro tests
 
-use crate::dylib;
-use crate::ProcMacroSrv;
 use expect_test::Expect;
 use std::str::FromStr;
 
-pub mod fixtures {
-    pub fn proc_macro_test_dylib_path() -> std::path::PathBuf {
-        proc_macro_test::PROC_MACRO_TEST_LOCATION.into()
-    }
-}
+use crate::{dylib, proc_macro_test_dylib_path, ProcMacroSrv};
 
 fn parse_string(code: &str) -> Option<crate::abis::TestTokenStream> {
     // This is a bit strange. We need to parse a string into a token stream into
@@ -30,7 +24,7 @@ pub fn assert_expand_attr(macro_name: &str, ra_fixture: &str, attr_args: &str, e
 }
 
 fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect: Expect) {
-    let path = fixtures::proc_macro_test_dylib_path();
+    let path = proc_macro_test_dylib_path();
     let expander = dylib::Expander::new(&path).unwrap();
     let fixture = parse_string(input).unwrap();
     let attr = attr.map(|attr| parse_string(attr).unwrap().into_subtree());
@@ -40,7 +34,7 @@ fn assert_expand_impl(macro_name: &str, input: &str, attr: Option<&str>, expect:
 }
 
 pub(crate) fn list() -> Vec<String> {
-    let dylib_path = fixtures::proc_macro_test_dylib_path();
+    let dylib_path = proc_macro_test_dylib_path();
     let mut srv = ProcMacroSrv::default();
     let res = srv.list_macros(&dylib_path).unwrap();
     res.into_iter().map(|(name, kind)| format!("{} [{:?}]", name, kind)).collect()

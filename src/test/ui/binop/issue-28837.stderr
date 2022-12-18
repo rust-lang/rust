@@ -11,11 +11,8 @@ note: an implementation of `Add<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Add<_>`
-note: the following trait must be implemented
+note: the trait `Add` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Add<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot subtract `A` from `A`
   --> $DIR/issue-28837.rs:8:7
@@ -30,11 +27,8 @@ note: an implementation of `Sub<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Sub<_>`
-note: the following trait must be implemented
+note: the trait `Sub` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Sub<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot multiply `A` by `A`
   --> $DIR/issue-28837.rs:10:7
@@ -49,11 +43,8 @@ note: an implementation of `Mul<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Mul<_>`
-note: the following trait must be implemented
+note: the trait `Mul` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Mul<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot divide `A` by `A`
   --> $DIR/issue-28837.rs:12:7
@@ -68,11 +59,8 @@ note: an implementation of `Div<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Div<_>`
-note: the following trait must be implemented
+note: the trait `Div` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Div<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: cannot mod `A` by `A`
   --> $DIR/issue-28837.rs:14:7
@@ -87,11 +75,8 @@ note: an implementation of `Rem<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Rem<_>`
-note: the following trait must be implemented
+note: the trait `Rem` must be implemented
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL | pub trait Rem<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: no implementation for `A & A`
   --> $DIR/issue-28837.rs:16:7
@@ -106,11 +91,8 @@ note: an implementation of `BitAnd<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `BitAnd<_>`
-note: the following trait must be implemented
+note: the trait `BitAnd` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait BitAnd<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: no implementation for `A | A`
   --> $DIR/issue-28837.rs:18:7
@@ -125,11 +107,8 @@ note: an implementation of `BitOr<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `BitOr<_>`
-note: the following trait must be implemented
+note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait BitOr<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: no implementation for `A << A`
   --> $DIR/issue-28837.rs:20:7
@@ -144,11 +123,8 @@ note: an implementation of `Shl<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Shl<_>`
-note: the following trait must be implemented
+note: the trait `Shl` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait Shl<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: no implementation for `A >> A`
   --> $DIR/issue-28837.rs:22:7
@@ -163,11 +139,8 @@ note: an implementation of `Shr<_>` might be missing for `A`
    |
 LL | struct A;
    | ^^^^^^^^ must implement `Shr<_>`
-note: the following trait must be implemented
+note: the trait `Shr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait Shr<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error[E0369]: binary operation `==` cannot be applied to type `A`
   --> $DIR/issue-28837.rs:24:7

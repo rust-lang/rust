@@ -9,7 +9,7 @@ RUN apt-get update -y && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-
       curl \
       file \
       g++ \
-      gcc-arm-linux-gnueabihf \
+      g++-arm-linux-gnueabihf \
       git \
       libc6-dev \
       libc6-dev-armhf-cross \

@@ -261,12 +261,12 @@ fn main() {
 }
 
 //- /foo.rs
-enum Foo {
+pub enum Foo {
     Bar,
 }
 ",
             r"
-enum Foo {
+pub enum Foo {
     Bar,
     Baz,
 }
@@ -310,7 +310,7 @@ fn main() {
             generate_enum_variant,
             r"
 mod m {
-    enum Foo {
+    pub enum Foo {
         Bar,
     }
 }
@@ -320,7 +320,7 @@ fn main() {
 ",
             r"
 mod m {
-    enum Foo {
+    pub enum Foo {
         Bar,
         Baz,
     }
@@ -516,10 +516,10 @@ mod foo;
 use foo::Foo::Bar$0;
 
 //- /foo.rs
-enum Foo {}
+pub enum Foo {}
 ",
             r"
-enum Foo {
+pub enum Foo {
     Bar,
 }
 ",

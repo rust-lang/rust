@@ -7,6 +7,7 @@ mod tests;
 
 use crate::os::unix::prelude::*;
 
+use crate::convert::TryFrom;
 use crate::error::Error as StdError;
 use crate::ffi::{CStr, CString, OsStr, OsString};
 use crate::fmt;
@@ -18,6 +19,7 @@ use crate::ptr;
 use crate::slice;
 use crate::str;
 use crate::sync::{PoisonError, RwLock};
+use crate::sys::common::small_c_string::{run_path_with_cstr, run_with_cstr};
 use crate::sys::cvt;
 use crate::sys::fd;
 use crate::sys::memchr;
@@ -170,12 +172,8 @@ pub fn chdir(p: &path::Path) -> io::Result<()> {
 
 #[cfg(not(target_os = "espidf"))]
 pub fn chdir(p: &path::Path) -> io::Result<()> {
-    let p: &OsStr = p.as_ref();
-    let p = CString::new(p.as_bytes())?;
-    if unsafe { libc::chdir(p.as_ptr()) } != 0 {
-        return Err(io::Error::last_os_error());
-    }
-    Ok(())
+    let result = run_path_with_cstr(p, |p| unsafe { Ok(libc::chdir(p.as_ptr())) })?;
+    if result == 0 { Ok(()) } else { Err(io::Error::last_os_error()) }
 }
 
 pub struct SplitPaths<'a> {
@@ -548,35 +546,32 @@ pub fn env() -> Env {
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     // environment variables with a nul byte can't be set, so their value is
     // always None as well
-    let k = CString::new(k.as_bytes()).ok()?;
-    unsafe {
+    let s = run_with_cstr(k.as_bytes(), |k| {
         let _guard = env_read_lock();
-        let s = libc::getenv(k.as_ptr()) as *const libc::c_char;
-        if s.is_null() {
-            None
-        } else {
-            Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
-        }
+        Ok(unsafe { libc::getenv(k.as_ptr()) } as *const libc::c_char)
+    })
+    .ok()?;
+    if s.is_null() {
+        None
+    } else {
+        Some(OsStringExt::from_vec(unsafe { CStr::from_ptr(s) }.to_bytes().to_vec()))
     }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) -> io::Result<()> {
-    let k = CString::new(k.as_bytes())?;
-    let v = CString::new(v.as_bytes())?;
-
-    unsafe {
-        let _guard = ENV_LOCK.write();
-        cvt(libc::setenv(k.as_ptr(), v.as_ptr(), 1)).map(drop)
-    }
+    run_with_cstr(k.as_bytes(), |k| {
+        run_with_cstr(v.as_bytes(), |v| {
+            let _guard = ENV_LOCK.write();
+            cvt(unsafe { libc::setenv(k.as_ptr(), v.as_ptr(), 1) }).map(drop)
+        })
+    })
 }
 
 pub fn unsetenv(n: &OsStr) -> io::Result<()> {
-    let nbuf = CString::new(n.as_bytes())?;
-
-    unsafe {
+    run_with_cstr(n.as_bytes(), |nbuf| {
         let _guard = ENV_LOCK.write();
-        cvt(libc::unsetenv(nbuf.as_ptr())).map(drop)
-    }
+        cvt(unsafe { libc::unsetenv(nbuf.as_ptr()) }).map(drop)
+    })
 }
 
 #[cfg(not(target_os = "espidf"))]

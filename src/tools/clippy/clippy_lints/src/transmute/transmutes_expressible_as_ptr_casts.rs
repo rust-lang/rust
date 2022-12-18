@@ -21,10 +21,7 @@ pub(super) fn check<'tcx>(
             cx,
             TRANSMUTES_EXPRESSIBLE_AS_PTR_CASTS,
             e.span,
-            &format!(
-                "transmute from `{}` to `{}` which could be expressed as a pointer cast instead",
-                from_ty, to_ty
-            ),
+            &format!("transmute from `{from_ty}` to `{to_ty}` which could be expressed as a pointer cast instead"),
             |diag| {
                 if let Some(arg) = sugg::Sugg::hir_opt(cx, arg) {
                     let sugg = arg.as_ty(&to_ty.to_string()).to_string();

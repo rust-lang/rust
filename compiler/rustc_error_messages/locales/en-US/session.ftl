@@ -39,21 +39,9 @@ session_unstable_virtual_function_elimination = `-Zvirtual-function-elimination`
 
 session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is greater than 5
 
-session_target_invalid_address_space = invalid address space `{$addr_space}` for `{$cause}` in "data-layout": {$err}
-
-session_target_invalid_bits = invalid {$kind} `{$bit}` for `{$cause}` in "data-layout": {$err}
-
-session_target_missing_alignment = missing alignment for `{$cause}` in "data-layout"
-
-session_target_invalid_alignment = invalid alignment for `{$cause}` in "data-layout": {$err}
-
-session_target_inconsistent_architecture = inconsistent target specification: "data-layout" claims architecture is {$dl}-endian, while "target-endian" is `{$target}`
-
-session_target_inconsistent_pointer_width = inconsistent target specification: "data-layout" claims pointers are {$pointer_size}-bit, while "target-pointer-width" is `{$target}`
-
-session_target_invalid_bits_size = {$err}
-
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
+
+session_branch_protection_requires_aarch64 = `-Zbranch-protection` is only supported on aarch64
 
 session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform
 
@@ -68,3 +56,35 @@ session_crate_name_empty = crate name must not be empty
 session_invalid_character_in_create_name = invalid character `{$character}` in crate name: `{$crate_name}`
 
 session_expr_parentheses_needed = parentheses are required to parse this as an expression
+
+session_skipping_const_checks = skipping const checks
+session_unleashed_feature_help_named = skipping check for `{$gate}` feature
+session_unleashed_feature_help_unnamed = skipping check that does not even have a feature gate
+
+session_hexadecimal_float_literal_not_supported = hexadecimal float literal is not supported
+session_octal_float_literal_not_supported = octal float literal is not supported
+session_binary_float_literal_not_supported = binary float literal is not supported
+session_not_supported = not supported
+
+session_invalid_literal_suffix = suffixes on {$kind} literals are invalid
+    .label = invalid suffix `{$suffix}`
+
+session_invalid_num_literal_base_prefix = invalid base prefix for number literal
+    .note = base prefixes (`0xff`, `0b1010`, `0o755`) are lowercase
+    .suggestion = try making the prefix lowercase
+
+session_invalid_num_literal_suffix = invalid suffix `{$suffix}` for number literal
+    .label = invalid suffix `{$suffix}`
+    .help = the suffix must be one of the numeric types (`u32`, `isize`, `f32`, etc.)
+
+session_invalid_float_literal_width = invalid width `{$width}` for float literal
+    .help = valid widths are 32 and 64
+
+session_invalid_float_literal_suffix = invalid suffix `{$suffix}` for float literal
+    .label = invalid suffix `{$suffix}`
+    .help = valid suffixes are `f32` and `f64`
+
+session_int_literal_too_large = integer literal is too large
+
+session_invalid_int_literal_width = invalid width `{$width}` for integer literal
+    .help = valid widths are 8, 16, 32, 64 and 128

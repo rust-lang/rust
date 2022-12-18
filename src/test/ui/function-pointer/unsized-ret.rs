@@ -1,7 +1,8 @@
 #![feature(fn_traits)]
 #![feature(unboxed_closures)]
+#![feature(tuple_trait)]
 
-fn foo<F: Fn<T>, T>(f: Option<F>, t: T) {
+fn foo<F: Fn<T>, T:std::marker::Tuple>(f: Option<F>, t: T) {
     let y = (f.unwrap()).call(t);
 }
 

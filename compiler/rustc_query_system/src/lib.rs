@@ -4,7 +4,7 @@
 #![feature(min_specialization)]
 #![feature(extern_types)]
 #![allow(rustc::potential_query_instability)]
-// #![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::untranslatable_diagnostic)]
 #![deny(rustc::diagnostic_outside_of_impl)]
 
 #[macro_use]

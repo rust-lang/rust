@@ -113,8 +113,7 @@ impl<T: Write + Send + 'static> WinConsole<T> {
         }
     }
 
-    /// Returns `None` whenever the terminal cannot be created for some reason.
-    pub(crate) fn new(out: T) -> io::Result<WinConsole<T>> {
+    pub(crate) fn new(out: T) -> WinConsole<T> {
         use std::mem::MaybeUninit;
 
         let fg;
@@ -132,13 +131,13 @@ impl<T: Write + Send + 'static> WinConsole<T> {
                 bg = color::BLACK;
             }
         }
-        Ok(WinConsole {
+        WinConsole {
             buf: out,
             def_foreground: fg,
             def_background: bg,
             foreground: fg,
             background: bg,
-        })
+        }
     }
 }
 

@@ -114,6 +114,9 @@ struct QueryModifiers {
 
     /// Always remap the ParamEnv's constness before hashing.
     remap_env_constness: Option<Ident>,
+
+    /// Generate a `feed` method to set the query's value from another query.
+    feedable: Option<Ident>,
 }
 
 fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
@@ -128,6 +131,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
     let mut depth_limit = None;
     let mut separate_provide_extern = None;
     let mut remap_env_constness = None;
+    let mut feedable = None;
 
     while !input.is_empty() {
         let modifier: Ident = input.parse()?;
@@ -187,6 +191,8 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
             try_insert!(separate_provide_extern = modifier);
         } else if modifier == "remap_env_constness" {
             try_insert!(remap_env_constness = modifier);
+        } else if modifier == "feedable" {
+            try_insert!(feedable = modifier);
         } else {
             return Err(Error::new(modifier.span(), "unknown query modifier"));
         }
@@ -206,6 +212,7 @@ fn parse_query_modifiers(input: ParseStream<'_>) -> Result<QueryModifiers> {
         depth_limit,
         separate_provide_extern,
         remap_env_constness,
+        feedable,
     })
 }
 
@@ -237,27 +244,32 @@ fn doc_comment_from_desc(list: &Punctuated<Expr, token::Comma>) -> Result<Attrib
 }
 
 /// Add the impl of QueryDescription for the query to `impls` if one is requested
-fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStream) {
-    let name = &query.name;
-    let key = &query.key;
-    let modifiers = &query.modifiers;
+fn add_query_desc_cached_impl(
+    query: &Query,
+    descs: &mut proc_macro2::TokenStream,
+    cached: &mut proc_macro2::TokenStream,
+) {
+    let Query { name, key, modifiers, .. } = &query;
 
     // Find out if we should cache the query on disk
     let cache = if let Some((args, expr)) = modifiers.cache.as_ref() {
         let tcx = args.as_ref().map(|t| quote! { #t }).unwrap_or_else(|| quote! { _ });
         // expr is a `Block`, meaning that `{ #expr }` gets expanded
         // to `{ { stmts... } }`, which triggers the `unused_braces` lint.
+        // we're taking `key` by reference, but some rustc types usually prefer being passed by value
         quote! {
-            #[allow(unused_variables, unused_braces)]
+            #[allow(unused_variables, unused_braces, rustc::pass_by_value)]
             #[inline]
-            fn cache_on_disk(#tcx: TyCtxt<'tcx>, #key: &Self::Key) -> bool {
+            pub fn #name<'tcx>(#tcx: TyCtxt<'tcx>, #key: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
                 #expr
             }
         }
     } else {
         quote! {
+            // we're taking `key` by reference, but some rustc types usually prefer being passed by value
+            #[allow(rustc::pass_by_value)]
             #[inline]
-            fn cache_on_disk(_: TyCtxt<'tcx>, _: &Self::Key) -> bool {
+            pub fn #name<'tcx>(_: TyCtxt<'tcx>, _: &crate::ty::query::query_keys::#name<'tcx>) -> bool {
                 false
             }
         }
@@ -268,19 +280,20 @@ fn add_query_description_impl(query: &Query, impls: &mut proc_macro2::TokenStrea
 
     let desc = quote! {
         #[allow(unused_variables)]
-        fn describe(tcx: QueryCtxt<'tcx>, key: Self::Key) -> String {
-            let (#tcx, #key) = (*tcx, key);
+        pub fn #name<'tcx>(tcx: TyCtxt<'tcx>, key: crate::ty::query::query_keys::#name<'tcx>) -> String {
+            let (#tcx, #key) = (tcx, key);
             ::rustc_middle::ty::print::with_no_trimmed_paths!(
                 format!(#desc)
             )
         }
     };
 
-    impls.extend(quote! {
-        (#name) => {
-            #desc
-            #cache
-        };
+    descs.extend(quote! {
+        #desc
+    });
+
+    cached.extend(quote! {
+        #cache
     });
 }
 
@@ -289,7 +302,8 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
 
     let mut query_stream = quote! {};
     let mut query_description_stream = quote! {};
-    let mut cached_queries = quote! {};
+    let mut query_cached_stream = quote! {};
+    let mut feedable_queries = quote! {};
 
     for query in queries.0 {
         let Query { name, arg, modifiers, .. } = &query;
@@ -298,12 +312,6 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             ReturnType::Default => quote! { -> () },
             _ => quote! { #result_full },
         };
-
-        if modifiers.cache.is_some() {
-            cached_queries.extend(quote! {
-                #name,
-            });
-        }
 
         let mut attributes = Vec::new();
 
@@ -350,7 +358,19 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
             [#attribute_stream] fn #name(#arg) #result,
         });
 
-        add_query_description_impl(&query, &mut query_description_stream);
+        if modifiers.feedable.is_some() {
+            assert!(modifiers.anon.is_none(), "Query {name} cannot be both `feedable` and `anon`.");
+            assert!(
+                modifiers.eval_always.is_none(),
+                "Query {name} cannot be both `feedable` and `eval_always`."
+            );
+            feedable_queries.extend(quote! {
+                #(#doc_comments)*
+                [#attribute_stream] fn #name(#arg) #result,
+            });
+        }
+
+        add_query_desc_cached_impl(&query, &mut query_description_stream, &mut query_cached_stream);
     }
 
     TokenStream::from(quote! {
@@ -363,10 +383,18 @@ pub fn rustc_queries(input: TokenStream) -> TokenStream {
                 }
             }
         }
-
-        #[macro_export]
-        macro_rules! rustc_query_description {
+        macro_rules! rustc_feedable_queries {
+            ( $macro:ident! ) => {
+                $macro!(#feedable_queries);
+            }
+        }
+        pub mod descs {
+            use super::*;
             #query_description_stream
+        }
+        pub mod cached {
+            use super::*;
+            #query_cached_stream
         }
     })
 }

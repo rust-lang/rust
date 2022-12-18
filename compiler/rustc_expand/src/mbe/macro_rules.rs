@@ -2,6 +2,7 @@ use crate::base::{DummyResult, ExtCtxt, MacResult, TTMacroExpander};
 use crate::base::{SyntaxExtension, SyntaxExtensionKind};
 use crate::expand::{ensure_complete_parse, parse_ast_fragment, AstFragment, AstFragmentKind};
 use crate::mbe;
+use crate::mbe::diagnostics::{annotate_doc_comment, parse_failure_msg};
 use crate::mbe::macro_check;
 use crate::mbe::macro_parser::{Error, ErrorReported, Failure, Success, TtParser};
 use crate::mbe::macro_parser::{MatchedSeq, MatchedTokenTree, MatcherLoc};
@@ -14,24 +15,26 @@ use rustc_ast::{NodeId, DUMMY_NODE_ID};
 use rustc_ast_pretty::pprust;
 use rustc_attr::{self as attr, TransparencyError};
 use rustc_data_structures::fx::{FxHashMap, FxIndexMap};
-use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder};
+use rustc_errors::{Applicability, ErrorGuaranteed};
 use rustc_feature::Features;
 use rustc_lint_defs::builtin::{
     RUST_2021_INCOMPATIBLE_OR_PATTERNS, SEMICOLON_IN_EXPRESSIONS_FROM_MACROS,
 };
 use rustc_lint_defs::BuiltinLintDiagnostics;
-use rustc_parse::parser::Parser;
+use rustc_parse::parser::{Parser, Recovery};
 use rustc_session::parse::ParseSess;
 use rustc_session::Session;
 use rustc_span::edition::Edition;
 use rustc_span::hygiene::Transparency;
-use rustc_span::source_map::SourceMap;
 use rustc_span::symbol::{kw, sym, Ident, MacroRulesNormalizedIdent};
 use rustc_span::Span;
 
 use std::borrow::Cow;
 use std::collections::hash_map::Entry;
 use std::{mem, slice};
+
+use super::diagnostics;
+use super::macro_parser::{NamedMatches, NamedParseResult};
 
 pub(crate) struct ParserAnyMacro<'a> {
     parser: Parser<'a>,
@@ -45,71 +48,6 @@ pub(crate) struct ParserAnyMacro<'a> {
     arm_span: Span,
     /// Whether or not this macro is defined in the current crate
     is_local: bool,
-}
-
-pub(crate) fn annotate_err_with_kind(err: &mut Diagnostic, kind: AstFragmentKind, span: Span) {
-    match kind {
-        AstFragmentKind::Ty => {
-            err.span_label(span, "this macro call doesn't expand to a type");
-        }
-        AstFragmentKind::Pat => {
-            err.span_label(span, "this macro call doesn't expand to a pattern");
-        }
-        _ => {}
-    };
-}
-
-fn emit_frag_parse_err(
-    mut e: DiagnosticBuilder<'_, rustc_errors::ErrorGuaranteed>,
-    parser: &Parser<'_>,
-    orig_parser: &mut Parser<'_>,
-    site_span: Span,
-    arm_span: Span,
-    kind: AstFragmentKind,
-) {
-    // FIXME(davidtwco): avoid depending on the error message text
-    if parser.token == token::Eof && e.message[0].0.expect_str().ends_with(", found `<eof>`") {
-        if !e.span.is_dummy() {
-            // early end of macro arm (#52866)
-            e.replace_span_with(parser.sess.source_map().next_point(parser.token.span));
-        }
-        let msg = &e.message[0];
-        e.message[0] = (
-            rustc_errors::DiagnosticMessage::Str(format!(
-                "macro expansion ends with an incomplete expression: {}",
-                msg.0.expect_str().replace(", found `<eof>`", ""),
-            )),
-            msg.1,
-        );
-    }
-    if e.span.is_dummy() {
-        // Get around lack of span in error (#30128)
-        e.replace_span_with(site_span);
-        if !parser.sess.source_map().is_imported(arm_span) {
-            e.span_label(arm_span, "in this macro arm");
-        }
-    } else if parser.sess.source_map().is_imported(parser.token.span) {
-        e.span_label(site_span, "in this macro invocation");
-    }
-    match kind {
-        // Try a statement if an expression is wanted but failed and suggest adding `;` to call.
-        AstFragmentKind::Expr => match parse_ast_fragment(orig_parser, AstFragmentKind::Stmts) {
-            Err(err) => err.cancel(),
-            Ok(_) => {
-                e.note(
-                    "the macro call doesn't expand to an expression, but it can expand to a statement",
-                );
-                e.span_suggestion_verbose(
-                    site_span.shrink_to_hi(),
-                    "add `;` to interpret the expansion as a statement",
-                    ";",
-                    Applicability::MaybeIncorrect,
-                );
-            }
-        },
-        _ => annotate_err_with_kind(&mut e, kind, site_span),
-    };
-    e.emit();
 }
 
 impl<'a> ParserAnyMacro<'a> {
@@ -127,7 +65,7 @@ impl<'a> ParserAnyMacro<'a> {
         let fragment = match parse_ast_fragment(parser, kind) {
             Ok(f) => f,
             Err(err) => {
-                emit_frag_parse_err(err, parser, snapshot, site_span, arm_span, kind);
+                diagnostics::emit_frag_parse_err(err, parser, snapshot, site_span, arm_span, kind);
                 return kind.dummy(site_span);
             }
         };
@@ -202,8 +140,37 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
     cx_expansions.entry(sp).or_default().push(message);
 }
 
+pub(super) trait Tracker<'matcher> {
+    /// This is called before trying to match next MatcherLoc on the current token.
+    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+
+    /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
+    /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
+    fn after_arm(&mut self, result: &NamedParseResult);
+
+    /// For tracing.
+    fn description() -> &'static str;
+
+    fn recovery() -> Recovery;
+}
+
+/// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
+pub(super) struct NoopTracker;
+
+impl<'matcher> Tracker<'matcher> for NoopTracker {
+    fn before_match_loc(&mut self, _: &TtParser, _: &'matcher MatcherLoc) {}
+    fn after_arm(&mut self, _: &NamedParseResult) {}
+    fn description() -> &'static str {
+        "none"
+    }
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
+    }
+}
+
 /// Expands the rules based macro defined by `lhses` and `rhses` for a given
 /// input `arg`.
+#[instrument(skip(cx, transparency, arg, lhses, rhses))]
 fn expand_macro<'cx>(
     cx: &'cx mut ExtCtxt<'_>,
     sp: Span,
@@ -225,9 +192,96 @@ fn expand_macro<'cx>(
         trace_macros_note(&mut cx.expansions, sp, msg);
     }
 
-    // Which arm's failure should we report? (the one furthest along)
-    let mut best_failure: Option<(Token, &str)> = None;
+    // Track nothing for the best performance.
+    let try_success_result = try_match_macro(sess, name, &arg, lhses, &mut NoopTracker);
 
+    match try_success_result {
+        Ok((i, named_matches)) => {
+            let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
+                mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
+                _ => cx.span_bug(sp, "malformed macro rhs"),
+            };
+            let arm_span = rhses[i].span();
+
+            let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
+            // rhs has holes ( `$id` and `$(...)` that need filled)
+            let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
+                Ok(tts) => tts,
+                Err(mut err) => {
+                    err.emit();
+                    return DummyResult::any(arm_span);
+                }
+            };
+
+            // Replace all the tokens for the corresponding positions in the macro, to maintain
+            // proper positions in error reporting, while maintaining the macro_backtrace.
+            if rhs_spans.len() == tts.len() {
+                tts = tts.map_enumerated(|i, tt| {
+                    let mut tt = tt.clone();
+                    let mut sp = rhs_spans[i];
+                    sp = sp.with_ctxt(tt.span().ctxt());
+                    tt.set_span(sp);
+                    tt
+                });
+            }
+
+            if cx.trace_macros() {
+                let msg = format!("to `{}`", pprust::tts_to_string(&tts));
+                trace_macros_note(&mut cx.expansions, sp, msg);
+            }
+
+            let mut p = Parser::new(sess, tts, false, None);
+            p.last_type_ascription = cx.current_expansion.prior_type_ascription;
+
+            if is_local {
+                cx.resolver.record_macro_rule_usage(node_id, i);
+            }
+
+            // Let the context choose how to interpret the result.
+            // Weird, but useful for X-macros.
+            return Box::new(ParserAnyMacro {
+                parser: p,
+
+                // Pass along the original expansion site and the name of the macro
+                // so we can print a useful error message if the parse of the expanded
+                // macro leaves unparsed tokens.
+                site_span: sp,
+                macro_ident: name,
+                lint_node_id: cx.current_expansion.lint_node_id,
+                is_trailing_mac: cx.current_expansion.is_trailing_mac,
+                arm_span,
+                is_local,
+            });
+        }
+        Err(CanRetry::No(_)) => {
+            debug!("Will not retry matching as an error was emitted already");
+            return DummyResult::any(sp);
+        }
+        Err(CanRetry::Yes) => {
+            // Retry and emit a better error below.
+        }
+    }
+
+    diagnostics::failed_to_match_macro(cx, sp, def_span, name, arg, lhses)
+}
+
+pub(super) enum CanRetry {
+    Yes,
+    /// We are not allowed to retry macro expansion as a fatal error has been emitted already.
+    No(ErrorGuaranteed),
+}
+
+/// Try expanding the macro. Returns the index of the successful arm and its named_matches if it was successful,
+/// and nothing if it failed. On failure, it's the callers job to use `track` accordingly to record all errors
+/// correctly.
+#[instrument(level = "debug", skip(sess, arg, lhses, track), fields(tracking = %T::description()))]
+pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
+    sess: &ParseSess,
+    name: Ident,
+    arg: &TokenStream,
+    lhses: &'matcher [Vec<MatcherLoc>],
+    track: &mut T,
+) -> Result<(usize, NamedMatches), CanRetry> {
     // We create a base parser that can be used for the "black box" parts.
     // Every iteration needs a fresh copy of that parser. However, the parser
     // is not mutated on many of the iterations, particularly when dealing with
@@ -247,126 +301,53 @@ fn expand_macro<'cx>(
     // hacky, but speeds up the `html5ever` benchmark significantly. (Issue
     // 68836 suggests a more comprehensive but more complex change to deal with
     // this situation.)
-    let parser = parser_from_cx(sess, arg.clone());
-
+    let parser = parser_from_cx(sess, arg.clone(), T::recovery());
     // Try each arm's matchers.
     let mut tt_parser = TtParser::new(name);
     for (i, lhs) in lhses.iter().enumerate() {
+        let _tracing_span = trace_span!("Matching arm", %i);
+
         // Take a snapshot of the state of pre-expansion gating at this point.
         // This is used so that if a matcher is not `Success(..)`ful,
         // then the spans which became gated when parsing the unsuccessful matcher
         // are not recorded. On the first `Success(..)`ful matcher, the spans are merged.
         let mut gated_spans_snapshot = mem::take(&mut *sess.gated_spans.spans.borrow_mut());
 
-        match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
+        let result = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs, track);
+
+        track.after_arm(&result);
+
+        match result {
             Success(named_matches) => {
+                debug!("Parsed arm successfully");
                 // The matcher was `Success(..)`ful.
                 // Merge the gated spans from parsing the matcher with the pre-existing ones.
                 sess.gated_spans.merge(gated_spans_snapshot);
 
-                let (rhs, rhs_span): (&mbe::Delimited, DelimSpan) = match &rhses[i] {
-                    mbe::TokenTree::Delimited(span, delimited) => (&delimited, *span),
-                    _ => cx.span_bug(sp, "malformed macro rhs"),
-                };
-                let arm_span = rhses[i].span();
-
-                let rhs_spans = rhs.tts.iter().map(|t| t.span()).collect::<Vec<_>>();
-                // rhs has holes ( `$id` and `$(...)` that need filled)
-                let mut tts = match transcribe(cx, &named_matches, &rhs, rhs_span, transparency) {
-                    Ok(tts) => tts,
-                    Err(mut err) => {
-                        err.emit();
-                        return DummyResult::any(arm_span);
-                    }
-                };
-
-                // Replace all the tokens for the corresponding positions in the macro, to maintain
-                // proper positions in error reporting, while maintaining the macro_backtrace.
-                if rhs_spans.len() == tts.len() {
-                    tts = tts.map_enumerated(|i, tt| {
-                        let mut tt = tt.clone();
-                        let mut sp = rhs_spans[i];
-                        sp = sp.with_ctxt(tt.span().ctxt());
-                        tt.set_span(sp);
-                        tt
-                    });
-                }
-
-                if cx.trace_macros() {
-                    let msg = format!("to `{}`", pprust::tts_to_string(&tts));
-                    trace_macros_note(&mut cx.expansions, sp, msg);
-                }
-
-                let mut p = Parser::new(sess, tts, false, None);
-                p.last_type_ascription = cx.current_expansion.prior_type_ascription;
-
-                if is_local {
-                    cx.resolver.record_macro_rule_usage(node_id, i);
-                }
-
-                // Let the context choose how to interpret the result.
-                // Weird, but useful for X-macros.
-                return Box::new(ParserAnyMacro {
-                    parser: p,
-
-                    // Pass along the original expansion site and the name of the macro
-                    // so we can print a useful error message if the parse of the expanded
-                    // macro leaves unparsed tokens.
-                    site_span: sp,
-                    macro_ident: name,
-                    lint_node_id: cx.current_expansion.lint_node_id,
-                    is_trailing_mac: cx.current_expansion.is_trailing_mac,
-                    arm_span,
-                    is_local,
-                });
+                return Ok((i, named_matches));
             }
-            Failure(token, msg) => match best_failure {
-                Some((ref best_token, _)) if best_token.span.lo() >= token.span.lo() => {}
-                _ => best_failure = Some((token, msg)),
-            },
-            Error(err_sp, ref msg) => {
-                let span = err_sp.substitute_dummy(sp);
-                cx.struct_span_err(span, &msg).emit();
-                return DummyResult::any(span);
+            Failure(_, _) => {
+                trace!("Failed to match arm, trying the next one");
+                // Try the next arm.
             }
-            ErrorReported => return DummyResult::any(sp),
+            Error(_, _) => {
+                debug!("Fatal error occurred during matching");
+                // We haven't emitted an error yet, so we can retry.
+                return Err(CanRetry::Yes);
+            }
+            ErrorReported(guarantee) => {
+                debug!("Fatal error occurred and was reported during matching");
+                // An error has been reported already, we cannot retry as that would cause duplicate errors.
+                return Err(CanRetry::No(guarantee));
+            }
         }
 
         // The matcher was not `Success(..)`ful.
         // Restore to the state before snapshotting and maybe try again.
         mem::swap(&mut gated_spans_snapshot, &mut sess.gated_spans.spans.borrow_mut());
     }
-    drop(parser);
 
-    let (token, label) = best_failure.expect("ran no matchers");
-    let span = token.span.substitute_dummy(sp);
-    let mut err = cx.struct_span_err(span, &parse_failure_msg(&token));
-    err.span_label(span, label);
-    if !def_span.is_dummy() && !cx.source_map().is_imported(def_span) {
-        err.span_label(cx.source_map().guess_head_span(def_span), "when calling this macro");
-    }
-    annotate_doc_comment(&mut err, sess.source_map(), span);
-    // Check whether there's a missing comma in this macro call, like `println!("{}" a);`
-    if let Some((arg, comma_span)) = arg.add_comma() {
-        for lhs in lhses {
-            let parser = parser_from_cx(sess, arg.clone());
-            if let Success(_) = tt_parser.parse_tt(&mut Cow::Borrowed(&parser), lhs) {
-                if comma_span.is_dummy() {
-                    err.note("you might be missing a comma");
-                } else {
-                    err.span_suggestion_short(
-                        comma_span,
-                        "missing comma here",
-                        ", ",
-                        Applicability::MachineApplicable,
-                    );
-                }
-            }
-        }
-    }
-    err.emit();
-    cx.trace_macros_diag();
-    DummyResult::any(sp)
+    Err(CanRetry::Yes)
 }
 
 // Note that macro-by-example's input is also matched against a token tree:
@@ -402,7 +383,7 @@ pub fn compile_declarative_macro(
 
     // Parse the macro_rules! invocation
     let (macro_rules, body) = match &def.kind {
-        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.inner_tokens()),
+        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.tokens.clone()),
         _ => unreachable!(),
     };
 
@@ -448,28 +429,29 @@ pub fn compile_declarative_macro(
     let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
     let mut tt_parser =
         TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
-    let argument_map = match tt_parser.parse_tt(&mut Cow::Borrowed(&parser), &argument_gram) {
-        Success(m) => m,
-        Failure(token, msg) => {
-            let s = parse_failure_msg(&token);
-            let sp = token.span.substitute_dummy(def.span);
-            let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
-            err.span_label(sp, msg);
-            annotate_doc_comment(&mut err, sess.source_map(), sp);
-            err.emit();
-            return dummy_syn_ext();
-        }
-        Error(sp, msg) => {
-            sess.parse_sess
-                .span_diagnostic
-                .struct_span_err(sp.substitute_dummy(def.span), &msg)
-                .emit();
-            return dummy_syn_ext();
-        }
-        ErrorReported => {
-            return dummy_syn_ext();
-        }
-    };
+    let argument_map =
+        match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
+            Success(m) => m,
+            Failure(token, msg) => {
+                let s = parse_failure_msg(&token);
+                let sp = token.span.substitute_dummy(def.span);
+                let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);
+                err.span_label(sp, msg);
+                annotate_doc_comment(&mut err, sess.source_map(), sp);
+                err.emit();
+                return dummy_syn_ext();
+            }
+            Error(sp, msg) => {
+                sess.parse_sess
+                    .span_diagnostic
+                    .struct_span_err(sp.substitute_dummy(def.span), &msg)
+                    .emit();
+                return dummy_syn_ext();
+            }
+            ErrorReported(_) => {
+                return dummy_syn_ext();
+            }
+        };
 
     let mut valid = true;
 
@@ -591,30 +573,6 @@ pub fn compile_declarative_macro(
         valid,
     });
     (mk_syn_ext(expander), rule_spans)
-}
-
-#[derive(Subdiagnostic)]
-enum ExplainDocComment {
-    #[label(expand::explain_doc_comment_inner)]
-    Inner {
-        #[primary_span]
-        span: Span,
-    },
-    #[label(expand::explain_doc_comment_outer)]
-    Outer {
-        #[primary_span]
-        span: Span,
-    },
-}
-
-fn annotate_doc_comment(err: &mut Diagnostic, sm: &SourceMap, span: Span) {
-    if let Ok(src) = sm.span_to_snippet(span) {
-        if src.starts_with("///") || src.starts_with("/**") {
-            err.subdiagnostic(ExplainDocComment::Outer { span });
-        } else if src.starts_with("//!") || src.starts_with("/*!") {
-            err.subdiagnostic(ExplainDocComment::Inner { span });
-        }
-    }
 }
 
 fn check_lhs_nt_follows(sess: &ParseSess, def: &ast::Item, lhs: &mbe::TokenTree) -> bool {
@@ -834,7 +792,7 @@ impl<'tt> FirstSets<'tt> {
                 TokenTree::Sequence(sp, ref seq_rep) => {
                     let subfirst_owned;
                     let subfirst = match self.first.get(&sp.entire()) {
-                        Some(&Some(ref subfirst)) => subfirst,
+                        Some(Some(subfirst)) => subfirst,
                         Some(&None) => {
                             subfirst_owned = self.first(&seq_rep.tts);
                             &subfirst_owned
@@ -1401,15 +1359,6 @@ fn quoted_tt_to_string(tt: &mbe::TokenTree) -> String {
     }
 }
 
-fn parser_from_cx(sess: &ParseSess, tts: TokenStream) -> Parser<'_> {
-    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS)
-}
-
-/// Generates an appropriate parsing failure message. For EOF, this is "unexpected end...". For
-/// other tokens, this is "unexpected token...".
-fn parse_failure_msg(tok: &Token) -> String {
-    match tok.kind {
-        token::Eof => "unexpected end of macro invocation".to_string(),
-        _ => format!("no rules expected the token `{}`", pprust::token_to_string(tok),),
-    }
+pub(super) fn parser_from_cx(sess: &ParseSess, tts: TokenStream, recovery: Recovery) -> Parser<'_> {
+    Parser::new(sess, tts, true, rustc_parse::MACRO_ARGUMENTS).recovery(recovery)
 }

@@ -30,8 +30,6 @@ use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::TyCtxt;
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::Span;
-use std::iter::FromIterator;
-use std::vec::Vec;
 
 const LOADED_FROM_DISK: Symbol = sym::loaded_from_disk;
 const EXCEPT: Symbol = sym::except;
@@ -149,19 +147,19 @@ pub fn check_dirty_clean_annotations(tcx: TyCtxt<'_>) {
         let crate_items = tcx.hir_crate_items(());
 
         for id in crate_items.items() {
-            dirty_clean_visitor.check_item(id.def_id.def_id);
+            dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.trait_items() {
-            dirty_clean_visitor.check_item(id.def_id.def_id);
+            dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.impl_items() {
-            dirty_clean_visitor.check_item(id.def_id.def_id);
+            dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 
         for id in crate_items.foreign_items() {
-            dirty_clean_visitor.check_item(id.def_id.def_id);
+            dirty_clean_visitor.check_item(id.owner_id.def_id);
         }
 
         let mut all_attrs = FindAllAttrs { tcx, found_attrs: vec![] };
@@ -302,7 +300,7 @@ impl<'tcx> DirtyCleanVisitor<'tcx> {
             HirNode::ImplItem(item) => match item.kind {
                 ImplItemKind::Fn(..) => ("Node::ImplItem", LABELS_FN_IN_IMPL),
                 ImplItemKind::Const(..) => ("NodeImplConst", LABELS_CONST_IN_IMPL),
-                ImplItemKind::TyAlias(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
+                ImplItemKind::Type(..) => ("NodeImplType", LABELS_CONST_IN_IMPL),
             },
             _ => self.tcx.sess.span_fatal(
                 attr.span,
@@ -438,9 +436,9 @@ fn expect_associated_value(tcx: TyCtxt<'_>, item: &NestedMetaItem) -> Symbol {
     }
 }
 
-// A visitor that collects all #[rustc_clean] attributes from
-// the HIR. It is used to verify that we really ran checks for all annotated
-// nodes.
+/// A visitor that collects all `#[rustc_clean]` attributes from
+/// the HIR. It is used to verify that we really ran checks for all annotated
+/// nodes.
 pub struct FindAllAttrs<'tcx> {
     tcx: TyCtxt<'tcx>,
     found_attrs: Vec<&'tcx Attribute>,

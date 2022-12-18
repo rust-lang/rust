@@ -69,6 +69,8 @@ pub(crate) struct Options {
     pub(crate) input: PathBuf,
     /// The name of the crate being documented.
     pub(crate) crate_name: Option<String>,
+    /// Whether or not this is a bin crate
+    pub(crate) bin_crate: bool,
     /// Whether or not this is a proc-macro crate
     pub(crate) proc_macro_crate: bool,
     /// How to format errors and warnings.
@@ -142,8 +144,6 @@ pub(crate) struct Options {
     // Options that alter generated documentation pages
     /// Crate version to note on the sidebar of generated docs.
     pub(crate) crate_version: Option<String>,
-    /// Collected options specific to outputting final pages.
-    pub(crate) render_options: RenderOptions,
     /// The format that we output when rendering.
     ///
     /// Currently used only for the `--show-coverage` option.
@@ -159,6 +159,10 @@ pub(crate) struct Options {
     /// Configuration for scraping examples from the current crate. If this option is Some(..) then
     /// the compiler will scrape examples and not generate documentation.
     pub(crate) scrape_examples_options: Option<ScrapeExamplesOptions>,
+
+    /// Note: this field is duplicated in `RenderOptions` because it's useful
+    /// to have it in both places.
+    pub(crate) unstable_features: rustc_feature::UnstableFeatures,
 }
 
 impl fmt::Debug for Options {
@@ -174,6 +178,7 @@ impl fmt::Debug for Options {
         f.debug_struct("Options")
             .field("input", &self.input)
             .field("crate_name", &self.crate_name)
+            .field("bin_crate", &self.bin_crate)
             .field("proc_macro_crate", &self.proc_macro_crate)
             .field("error_format", &self.error_format)
             .field("libs", &self.libs)
@@ -194,7 +199,6 @@ impl fmt::Debug for Options {
             .field("persist_doctests", &self.persist_doctests)
             .field("show_coverage", &self.show_coverage)
             .field("crate_version", &self.crate_version)
-            .field("render_options", &self.render_options)
             .field("runtool", &self.runtool)
             .field("runtool_args", &self.runtool_args)
             .field("enable-per-target-ignores", &self.enable_per_target_ignores)
@@ -202,6 +206,7 @@ impl fmt::Debug for Options {
             .field("no_run", &self.no_run)
             .field("nocapture", &self.nocapture)
             .field("scrape_examples_options", &self.scrape_examples_options)
+            .field("unstable_features", &self.unstable_features)
             .finish()
     }
 }
@@ -237,9 +242,6 @@ pub(crate) struct RenderOptions {
     pub(crate) default_settings: FxHashMap<String, String>,
     /// If present, suffix added to CSS/JavaScript files when referencing them in generated pages.
     pub(crate) resource_suffix: String,
-    /// Whether to run the static CSS/JavaScript through a minifier when outputting them. `true` by
-    /// default.
-    pub(crate) enable_minification: bool,
     /// Whether to create an index page in the root of the output directory. If this is true but
     /// `enable_index_page` is None, generate a static listing of crates instead.
     pub(crate) enable_index_page: bool,
@@ -267,6 +269,8 @@ pub(crate) struct RenderOptions {
     pub(crate) generate_redirect_map: bool,
     /// Show the memory layout of types in the docs.
     pub(crate) show_type_layout: bool,
+    /// Note: this field is duplicated in `Options` because it's useful to have
+    /// it in both places.
     pub(crate) unstable_features: rustc_feature::UnstableFeatures,
     pub(crate) emit: Vec<EmitType>,
     /// If `true`, HTML source pages will generate links for items to their definition.
@@ -316,7 +320,7 @@ impl Options {
     pub(crate) fn from_matches(
         matches: &getopts::Matches,
         args: Vec<String>,
-    ) -> Result<Options, i32> {
+    ) -> Result<(Options, RenderOptions), i32> {
         let args = &args[1..];
         // Check for unstable options.
         nightly_options::check_nightly_options(matches, &opts());
@@ -325,7 +329,7 @@ impl Options {
             crate::usage("rustdoc");
             return Err(0);
         } else if matches.opt_present("version") {
-            rustc_driver::version("rustdoc", matches);
+            rustc_driver::version!("rustdoc", matches);
             return Err(0);
         }
 
@@ -412,10 +416,12 @@ impl Options {
 
         let to_check = matches.opt_strs("check-theme");
         if !to_check.is_empty() {
-            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+            let paths = match theme::load_css_paths(
+                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
+            ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -553,10 +559,12 @@ impl Options {
 
         let mut themes = Vec::new();
         if matches.opt_present("theme") {
-            let paths = match theme::load_css_paths(static_files::themes::LIGHT) {
+            let paths = match theme::load_css_paths(
+                std::str::from_utf8(static_files::STATIC_FILES.theme_light_css.bytes).unwrap(),
+            ) {
                 Ok(p) => p,
                 Err(e) => {
-                    diag.struct_err(&e.to_string()).emit();
+                    diag.struct_err(e).emit();
                     return Err(1);
                 }
             };
@@ -662,6 +670,7 @@ impl Options {
             None => OutputFormat::default(),
         };
         let crate_name = matches.opt_str("crate-name");
+        let bin_crate = crate_types.contains(&CrateType::Executable);
         let proc_macro_crate = crate_types.contains(&CrateType::ProcMacro);
         let playground_url = matches.opt_str("playground-url");
         let maybe_sysroot = matches.opt_str("sysroot").map(PathBuf::from);
@@ -671,7 +680,6 @@ impl Options {
             ModuleSorting::Alphabetical
         };
         let resource_suffix = matches.opt_str("resource-suffix").unwrap_or_default();
-        let enable_minification = !matches.opt_present("disable-minification");
         let markdown_no_toc = matches.opt_present("markdown-no-toc");
         let markdown_css = matches.opt_strs("markdown-css");
         let markdown_playground_url = matches.opt_str("markdown-playground-url");
@@ -710,8 +718,11 @@ impl Options {
         let with_examples = matches.opt_strs("with-examples");
         let call_locations = crate::scrape_examples::load_call_locations(with_examples, &diag)?;
 
-        Ok(Options {
+        let unstable_features =
+            rustc_feature::UnstableFeatures::from_environment(crate_name.as_deref());
+        let options = Options {
             input,
+            bin_crate,
             proc_macro_crate,
             error_format,
             diagnostic_width,
@@ -744,42 +755,41 @@ impl Options {
             run_check,
             no_run,
             nocapture,
-            render_options: RenderOptions {
-                output,
-                external_html,
-                id_map,
-                playground_url,
-                module_sorting,
-                themes,
-                extension_css,
-                extern_html_root_urls,
-                extern_html_root_takes_precedence,
-                default_settings,
-                resource_suffix,
-                enable_minification,
-                enable_index_page,
-                index_page,
-                static_root_path,
-                markdown_no_toc,
-                markdown_css,
-                markdown_playground_url,
-                document_private,
-                document_hidden,
-                generate_redirect_map,
-                show_type_layout,
-                unstable_features: rustc_feature::UnstableFeatures::from_environment(
-                    crate_name.as_deref(),
-                ),
-                emit,
-                generate_link_to_definition,
-                call_locations,
-                no_emit_shared: false,
-            },
             crate_name,
             output_format,
             json_unused_externs,
             scrape_examples_options,
-        })
+            unstable_features,
+        };
+        let render_options = RenderOptions {
+            output,
+            external_html,
+            id_map,
+            playground_url,
+            module_sorting,
+            themes,
+            extension_css,
+            extern_html_root_urls,
+            extern_html_root_takes_precedence,
+            default_settings,
+            resource_suffix,
+            enable_index_page,
+            index_page,
+            static_root_path,
+            markdown_no_toc,
+            markdown_css,
+            markdown_playground_url,
+            document_private,
+            document_hidden,
+            generate_redirect_map,
+            show_type_layout,
+            unstable_features,
+            emit,
+            generate_link_to_definition,
+            call_locations,
+            no_emit_shared: false,
+        };
+        Ok((options, render_options))
     }
 
     /// Returns `true` if the file given as `self.input` is a Markdown file.

@@ -1,4 +1,4 @@
-use crate::spec::{crt_objects, cvs, LinkOutputKind, LinkerFlavor, LldFlavor, TargetOptions};
+use crate::spec::{crt_objects, cvs, Cc, LinkOutputKind, LinkerFlavor, Lld, TargetOptions};
 
 pub fn opts() -> TargetOptions {
     // This mirrors the linker options provided by clang. We presume lld for
@@ -7,7 +7,7 @@ pub fn opts() -> TargetOptions {
     //
     // https://github.com/llvm/llvm-project/blob/db9322b2066c55254e7691efeab863f43bfcc084/clang/lib/Driver/ToolChains/Fuchsia.cpp#L31
     let pre_link_args = TargetOptions::link_args(
-        LinkerFlavor::Ld,
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
         &[
             "--build-id",
             "--hash-style=gnu",
@@ -25,7 +25,7 @@ pub fn opts() -> TargetOptions {
 
     TargetOptions {
         os: "fuchsia".into(),
-        linker_flavor: LinkerFlavor::Lld(LldFlavor::Ld),
+        linker_flavor: LinkerFlavor::Gnu(Cc::No, Lld::Yes),
         linker: Some("rust-lld".into()),
         dynamic_linking: true,
         families: cvs!["unix"],

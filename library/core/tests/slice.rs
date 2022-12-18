@@ -1284,7 +1284,6 @@ fn test_windows_zip() {
 }
 
 #[test]
-#[allow(const_err)]
 fn test_iter_ref_consistency() {
     use std::fmt::Debug;
 
@@ -2595,4 +2594,64 @@ fn test_flatten_size_overflow() {
 fn test_flatten_mut_size_overflow() {
     let x = &mut [[(); usize::MAX]; 2][..];
     let _ = x.flatten_mut();
+}
+
+#[test]
+fn test_get_many_mut_normal_2() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a, b] = v.get_many_mut([3, 0]).unwrap();
+    *a += 10;
+    *b += 100;
+    assert_eq!(v, vec![101, 2, 3, 14, 5]);
+}
+
+#[test]
+fn test_get_many_mut_normal_3() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a, b, c] = v.get_many_mut([0, 4, 2]).unwrap();
+    *a += 10;
+    *b += 100;
+    *c += 1000;
+    assert_eq!(v, vec![11, 2, 1003, 4, 105]);
+}
+
+#[test]
+fn test_get_many_mut_empty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [] = v.get_many_mut([]).unwrap();
+    assert_eq!(v, vec![1, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_first() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([0]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![11, 2, 3, 4, 5]);
+}
+
+#[test]
+fn test_get_many_mut_single_last() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    let [a] = v.get_many_mut([4]).unwrap();
+    *a += 10;
+    assert_eq!(v, vec![1, 2, 3, 4, 15]);
+}
+
+#[test]
+fn test_get_many_mut_oob_nonempty() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([5]).is_err());
+}
+
+#[test]
+fn test_get_many_mut_oob_empty() {
+    let mut v: Vec<i32> = vec![];
+    assert!(v.get_many_mut([0]).is_err());
+}
+
+#[test]
+fn test_get_many_mut_duplicate() {
+    let mut v = vec![1, 2, 3, 4, 5];
+    assert!(v.get_many_mut([1, 3, 3, 4]).is_err());
 }

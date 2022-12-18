@@ -12,8 +12,8 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_hir as hir;
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    self, Binder, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind,
-    TermKind, Ty, TyCtxt, UintTy,
+    self, Const, ExistentialPredicate, FloatTy, FnSig, IntTy, List, Region, RegionKind, TermKind,
+    Ty, TyCtxt, UintTy,
 };
 use rustc_span::def_id::DefId;
 use rustc_span::symbol::sym;
@@ -226,7 +226,7 @@ fn encode_fnsig<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicate<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicate: Binder<'tcx, ExistentialPredicate<'tcx>>,
+    predicate: ty::PolyExistentialPredicate<'tcx>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
@@ -240,7 +240,7 @@ fn encode_predicate<'tcx>(
             s.push_str(&encode_substs(tcx, trait_ref.substs, dict, options));
         }
         ty::ExistentialPredicate::Projection(projection) => {
-            let name = encode_ty_name(tcx, projection.item_def_id);
+            let name = encode_ty_name(tcx, projection.def_id);
             let _ = write!(s, "u{}{}", name.len(), &name);
             s.push_str(&encode_substs(tcx, projection.substs, dict, options));
             match projection.term.unpack() {
@@ -261,13 +261,13 @@ fn encode_predicate<'tcx>(
 /// Rust types that are not used at the FFI boundary.
 fn encode_predicates<'tcx>(
     tcx: TyCtxt<'tcx>,
-    predicates: &List<Binder<'tcx, ExistentialPredicate<'tcx>>>,
+    predicates: &List<ty::PolyExistentialPredicate<'tcx>>,
     dict: &mut FxHashMap<DictKey<'tcx>, usize>,
     options: EncodeTyOptions,
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
     let mut s = String::new();
-    let predicates: Vec<Binder<'tcx, ExistentialPredicate<'tcx>>> =
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> =
         predicates.iter().map(|predicate| predicate).collect();
     for predicate in predicates {
         s.push_str(&encode_predicate(tcx, predicate, dict, options));
@@ -540,7 +540,7 @@ fn encode_ty<'tcx>(
             let mut s = String::new();
             let def_id = adt_def.0.did;
             if options.contains(EncodeTyOptions::GENERALIZE_REPR_C) && adt_def.repr().c() {
-                // For for cross-language CFI support, the encoding must be compatible at the FFI
+                // For cross-language CFI support, the encoding must be compatible at the FFI
                 // boundary. For instance:
                 //
                 //     struct type1 {};
@@ -646,10 +646,9 @@ fn encode_ty<'tcx>(
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("encode_ty: unexpected `{:?}`", ty.kind());
         }
     };
@@ -799,10 +798,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
         | ty::Error(..)
         | ty::GeneratorWitness(..)
         | ty::Infer(..)
-        | ty::Opaque(..)
+        | ty::Alias(..)
         | ty::Param(..)
-        | ty::Placeholder(..)
-        | ty::Projection(..) => {
+        | ty::Placeholder(..) => {
             bug!("transform_ty: unexpected `{:?}`", ty.kind());
         }
     }

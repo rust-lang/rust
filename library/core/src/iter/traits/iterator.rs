@@ -14,7 +14,7 @@ use super::super::{
 
 fn _assert_is_object_safe(_: &dyn Iterator<Item = ()>) {}
 
-/// An interface for dealing with iterators.
+/// A trait for dealing with iterators.
 ///
 /// This is the main iterator trait. For more about the concept of iterators
 /// generally, please see the [module-level documentation]. In particular, you
@@ -692,7 +692,7 @@ pub trait Iterator {
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
     /// assert_eq!(it.next(), Some(NotClone(1)));  // The next element from `v`.
     /// assert_eq!(it.next(), Some(NotClone(99))); // The separator.
-    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from from `v`.
+    /// assert_eq!(it.next(), Some(NotClone(2)));  // The last element from `v`.
     /// assert_eq!(it.next(), None);               // The iterator is finished.
     /// ```
     ///
@@ -1829,6 +1829,7 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[must_use = "if you really need to exhaust the iterator, consider `.for_each(drop)` instead"]
+    #[cfg_attr(not(test), rustc_diagnostic_item = "iterator_collect_fn")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B
     where
         Self: Sized,
@@ -2733,7 +2734,7 @@ pub trait Iterator {
     /// the first true result or the first error.
     ///
     /// The return type of this method depends on the return type of the closure.
-    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>; E>`.
+    /// If you return `Result<bool, E>` from the closure, you'll get a `Result<Option<Self::Item>, E>`.
     /// If you return `Option<bool>` from the closure, you'll get an `Option<Option<Self::Item>>`.
     ///
     /// # Examples

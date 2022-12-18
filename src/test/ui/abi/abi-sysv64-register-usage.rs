@@ -6,20 +6,30 @@
 // ignore-arm
 // ignore-aarch64
 // needs-asm-support
-#![feature(asm_sym)]
 
 #[cfg(target_arch = "x86_64")]
-pub extern "sysv64" fn all_the_registers(rdi: i64, rsi: i64, rdx: i64,
-                                         rcx: i64, r8 : i64, r9 : i64,
-                                         xmm0: f32, xmm1: f32, xmm2: f32,
-                                         xmm3: f32, xmm4: f32, xmm5: f32,
-                                         xmm6: f32, xmm7: f32) -> i64 {
+pub extern "sysv64" fn all_the_registers(
+    rdi: i64,
+    rsi: i64,
+    rdx: i64,
+    rcx: i64,
+    r8: i64,
+    r9: i64,
+    xmm0: f32,
+    xmm1: f32,
+    xmm2: f32,
+    xmm3: f32,
+    xmm4: f32,
+    xmm5: f32,
+    xmm6: f32,
+    xmm7: f32,
+) -> i64 {
     assert_eq!(rdi, 1);
     assert_eq!(rsi, 2);
     assert_eq!(rdx, 3);
     assert_eq!(rcx, 4);
-    assert_eq!(r8,  5);
-    assert_eq!(r9,  6);
+    assert_eq!(r8, 5);
+    assert_eq!(r9, 6);
     assert_eq!(xmm0, 1.0f32);
     assert_eq!(xmm1, 2.0f32);
     assert_eq!(xmm2, 4.0f32);

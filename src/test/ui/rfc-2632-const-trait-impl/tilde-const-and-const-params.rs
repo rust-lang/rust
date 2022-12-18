@@ -1,4 +1,3 @@
-// check-pass
 #![feature(const_trait_impl)]
 #![feature(generic_arg_infer)]
 #![feature(generic_const_exprs)]
@@ -24,6 +23,7 @@ impl const Add42 for () {
 }
 
 fn bar<A: ~const Add42, const N: usize>(_: Foo<N>) -> Foo<{ A::add(N) }> {
+    //~^ ERROR `~const` is not allowed here
     Foo
 }
 

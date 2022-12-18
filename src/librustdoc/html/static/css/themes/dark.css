@@ -2,6 +2,8 @@
 	--main-background-color: #353535;
 	--main-color: #ddd;
 	--settings-input-color: #2196f3;
+	--settings-button-color: #000;
+	--settings-button-border-focus: #ffb900;
 	--sidebar-background-color: #505050;
 	--sidebar-background-color-hover: #676767;
 	--code-block-background-color: #2A2A2A;
@@ -14,6 +16,7 @@
 	--right-side-color: grey;
 	--code-attribute-color: #999;
 	--toggles-color: #999;
+	--toggle-filter: invert(100%);
 	--search-input-focused-border-color: #008dfd;
 	--copy-path-button-color: #999;
 	--copy-path-img-filter: invert(50%);
@@ -32,143 +35,55 @@
 	--link-color: #d2991d;
 	--sidebar-link-color: #fdbf35;
 	--sidebar-current-link-background-color: #444;
-}
-
-.slider {
-	background-color: #ccc;
-}
-.slider:before {
-	background-color: white;
-}
-input:focus + .slider {
-	box-shadow: 0 0 0 2px #0a84ff, 0 0 0 6px rgba(10, 132, 255, 0.3);
-}
-
-.rust-logo {
-	filter: drop-shadow(1px 0 0px #fff)
+	--search-result-link-focus-background-color: #616161;
+	--search-result-border-color: #aaa3;
+	--search-color: #111;
+	--search-results-alias-color: #fff;
+	--search-results-grey-color: #ccc;
+	--stab-background-color: #314559;
+	--stab-code-color: #e6e1cf;
+	--code-highlight-kw-color: #ab8ac1;
+	--code-highlight-kw-2-color: #769acb;
+	--code-highlight-lifetime-color: #d97f26;
+	--code-highlight-prelude-color: #769acb;
+	--code-highlight-prelude-val-color: #ee6868;
+	--code-highlight-number-color: #83a300;
+	--code-highlight-string-color: #83a300;
+	--code-highlight-literal-color: #ee6868;
+	--code-highlight-attribute-color: #ee6868;
+	--code-highlight-self-color: #ee6868;
+	--code-highlight-macro-color: #3e999f;
+	--code-highlight-question-mark-color: #ff9011;
+	--code-highlight-comment-color: #8d8d8b;
+	--code-highlight-doc-comment-color: #8ca375;
+	--example-line-numbers-border-color: #4a4949;
+	--src-line-numbers-span-color: #3b91e2;
+	--src-line-number-highlighted-background-color: #0a042f;
+	--test-arrow-color: #dedede;
+	--test-arrow-background-color: rgba(78, 139, 202, 0.2);
+	--test-arrow-hover-color: #dedede;
+	--test-arrow-hover-background-color: #4e8bca;
+	--target-background-color: #494a3d;
+	--target-border-color: #bb7410;
+	--tooltip-background-color: #000;
+	--tooltip-color: #fff;
+	--kbd-color: #000;
+	--kbd-background: #fafbfc;
+	--kbd-box-shadow-color: #c6cbd1;
+	--rust-logo-filter: drop-shadow(1px 0 0px #fff)
 		drop-shadow(0 1px 0 #fff)
 		drop-shadow(-1px 0 0 #fff)
-		drop-shadow(0 -1px 0 #fff)
-}
-
-.src-line-numbers span { color: #3B91E2; }
-.src-line-numbers .line-highlighted {
-	background-color: #0a042f !important;
-}
-
-.search-results a:hover {
-	background-color: #777;
-}
-
-.search-results a:focus {
-	color: #eee !important;
-	background-color: #616161;
-}
-.search-results a:focus span { color: #eee !important; }
-a.result-trait:focus { background-color: #013191; }
-a.result-traitalias:focus { background-color: #013191; }
-a.result-mod:focus,
-a.result-externcrate:focus { background-color: #884719; }
-a.result-enum:focus { background-color: #194e9f; }
-a.result-struct:focus { background-color: #194e9f; }
-a.result-union:focus { background-color: #194e9f; }
-a.result-fn:focus,
-a.result-method:focus,
-a.result-tymethod:focus { background-color: #4950ed; }
-a.result-type:focus { background-color: #194e9f; }
-a.result-associatedtype:focus { background-color: #884719; }
-a.result-foreigntype:focus { background-color: #194e9f; }
-a.result-attr:focus,
-a.result-derive:focus,
-a.result-macro:focus { background-color: #217d1c; }
-a.result-constant:focus,
-a.result-static:focus { background-color: #884719; }
-a.result-primitive:focus { background-color: #194e9f; }
-a.result-keyword:focus { background-color: #884719; }
-
-.content .item-info::before { color: #ccc; }
-
-pre.rust .comment { color: #8d8d8b; }
-pre.rust .doccomment { color: #8ca375; }
-
-body.source .example-wrap pre.rust a {
-	background: #333;
-}
-
-details.rustdoc-toggle > summary::before {
-	filter: invert(100%);
-}
-
-.search-input {
-	color: #111;
-}
-
-#crate-search-div::after {
+		drop-shadow(0 -1px 0 #fff);
 	/* match border-color; uses https://codepen.io/sosuke/pen/Pjoqqp */
-	filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg) brightness(90%) contrast(90%);
-}
-#crate-search:hover, #crate-search:focus {
-	border-color: #2196f3 !important;
-}
-#crate-search-div:hover::after, #crate-search-div:focus-within::after {
-	filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg) brightness(100%) contrast(91%);
-}
-
-.stab { background: #314559; }
-
-.stab.portability > code {
-	color: #e6e1cf;
-	background: none;
-}
-
-.src-line-numbers :target { background-color: transparent; }
-
-/* Code highlighting */
-pre.rust .kw { color: #ab8ac1; }
-pre.rust .kw-2, pre.rust .prelude-ty { color: #769acb; }
-pre.rust .number, pre.rust .string { color: #83a300; }
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val,
-pre.rust .attribute { color: #ee6868; }
-pre.rust .macro, pre.rust .macro-nonterminal { color: #3E999F; }
-pre.rust .lifetime { color: #d97f26; }
-pre.rust .question-mark {
-	color: #ff9011;
-}
-
-pre.example-line-numbers {
-	border-color: #4a4949;
-}
-
-a.test-arrow {
-	color: #dedede;
-	background-color: rgba(78, 139, 202, 0.2);
-}
-
-a.test-arrow:hover{
-	background-color: #4e8bca;
-}
-
-:target {
-	background-color: #494a3d;
-	border-right: 3px solid #bb7410;
-}
-
-.search-failed a {
-	color: #0089ff;
-}
-
-.tooltip::after {
-	background-color: #000;
-	color: #fff;
-	border-color: #000;
-}
-
-.tooltip::before {
-	border-color: transparent black transparent transparent;
-}
-
-.notable-traits-tooltiptext {
-	background-color: #111;
+	--crate-search-div-filter: invert(94%) sepia(0%) saturate(721%) hue-rotate(255deg)
+		brightness(90%) contrast(90%);
+	--crate-search-div-hover-filter: invert(69%) sepia(60%) saturate(6613%) hue-rotate(184deg)
+		brightness(100%) contrast(91%);
+	--crate-search-hover-border: #2196f3;
+	--source-sidebar-background-selected: #333;
+	--source-sidebar-background-hover: #444;
+	--table-alt-row-background-color: #2A2A2A;
+	--codeblock-link-background: #333;
 }
 
 #titles > button:not(.selected) {
@@ -183,36 +98,6 @@ a.test-arrow:hover{
 
 #titles > button > div.count {
 	color: #888;
-}
-
-kbd {
-	color: #000;
-	background-color: #fafbfc;
-	box-shadow: inset 0 -1px 0 #c6cbd1;
-}
-
-#settings-menu > a, #help-button > button {
-	color: #000;
-}
-
-#settings-menu > a:hover, #settings-menu > a:focus,
-#help-button > button:hover, #help-button > button:focus {
-	border-color: #ffb900;
-}
-
-.search-results .result-name span.alias {
-	color: #fff;
-}
-.search-results .result-name span.grey {
-	color: #ccc;
-}
-
-#source-sidebar div.files > a:hover, details.dir-entry summary:hover,
-#source-sidebar div.files > a:focus, details.dir-entry summary:focus {
-	background-color: #444;
-}
-#source-sidebar div.files > a.selected {
-	background-color: #333;
 }
 
 .scraped-example-list .scrape-help {

@@ -35,11 +35,8 @@ note: an implementation of `BitOr<_>` might be missing for `E`
    |
 LL | enum E { A, B }
    | ^^^^^^ must implement `BitOr<_>`
-note: the following trait must be implemented
+note: the trait `BitOr` must be implemented
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL | pub trait BitOr<Rhs = Self> {
-   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to 5 previous errors
 

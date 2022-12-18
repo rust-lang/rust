@@ -50,7 +50,7 @@ impl MetaTemplate {
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Op {
-    Var { name: SmolStr, kind: Option<SmolStr>, id: tt::TokenId },
+    Var { name: SmolStr, kind: Option<MetaVarKind>, id: tt::TokenId },
     Ignore { name: SmolStr, id: tt::TokenId },
     Index { depth: u32 },
     Repeat { tokens: MetaTemplate, kind: RepeatKind, separator: Option<Separator> },
@@ -63,6 +63,24 @@ pub(crate) enum RepeatKind {
     ZeroOrMore,
     OneOrMore,
     ZeroOrOne,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub(crate) enum MetaVarKind {
+    Path,
+    Ty,
+    Pat,
+    PatParam,
+    Stmt,
+    Block,
+    Meta,
+    Item,
+    Vis,
+    Expr,
+    Ident,
+    Tt,
+    Lifetime,
+    Literal,
 }
 
 #[derive(Clone, Debug, Eq)]
@@ -179,13 +197,30 @@ fn next_op<'a>(first: &tt::TokenTree, src: &mut TtIter<'a>, mode: Mode) -> Resul
     Ok(res)
 }
 
-fn eat_fragment_kind(src: &mut TtIter<'_>, mode: Mode) -> Result<Option<SmolStr>, ParseError> {
+fn eat_fragment_kind(src: &mut TtIter<'_>, mode: Mode) -> Result<Option<MetaVarKind>, ParseError> {
     if let Mode::Pattern = mode {
         src.expect_char(':').map_err(|()| ParseError::unexpected("missing fragment specifier"))?;
         let ident = src
             .expect_ident()
             .map_err(|()| ParseError::unexpected("missing fragment specifier"))?;
-        return Ok(Some(ident.text.clone()));
+        let kind = match ident.text.as_str() {
+            "path" => MetaVarKind::Path,
+            "ty" => MetaVarKind::Ty,
+            "pat" => MetaVarKind::Pat,
+            "pat_param" => MetaVarKind::PatParam,
+            "stmt" => MetaVarKind::Stmt,
+            "block" => MetaVarKind::Block,
+            "meta" => MetaVarKind::Meta,
+            "item" => MetaVarKind::Item,
+            "vis" => MetaVarKind::Vis,
+            "expr" => MetaVarKind::Expr,
+            "ident" => MetaVarKind::Ident,
+            "tt" => MetaVarKind::Tt,
+            "lifetime" => MetaVarKind::Lifetime,
+            "literal" => MetaVarKind::Literal,
+            _ => return Ok(None),
+        };
+        return Ok(Some(kind));
     };
     Ok(None)
 }

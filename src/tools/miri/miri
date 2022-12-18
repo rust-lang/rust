@@ -36,11 +36,28 @@ Mainly meant to be invoked by rust-analyzer.
 ./miri many-seeds <command>:
 Runs <command> over and over again with different seeds for Miri. The MIRIFLAGS
 variable is set to its original value appended with ` -Zmiri-seed=$SEED` for
-many different seeds.
+many different seeds. The MIRI_SEEDS variable controls how many seeds are being
+tried; MIRI_SEED_START controls the first seed to try.
 
 ./miri bench <benches>:
 Runs the benchmarks from bench-cargo-miri in hyperfine. hyperfine needs to be installed.
 <benches> can explicitly list the benchmarks to run; by default, all of them are run.
+
+./miri toolchain <flags>:
+Update and activate the rustup toolchain 'miri' to the commit given in the
+`rust-version` file.
+`rustup-toolchain-install-master` must be installed for this to work. Any extra
+flags are passed to `rustup-toolchain-install-master`.
+
+./miri rustc-pull <commit>:
+Pull and merge Miri changes from the rustc repo. Defaults to fetching the latest
+rustc commit. The fetched commit is stored in the `rust-version` file, so the
+next `./miri toolchain` will install the rustc that just got pulled.
+
+./miri rustc-push <github user> <branch>:
+Push Miri changes back to the rustc repo. This will pull a copy of the rustc
+history into the Miri repo, unless you set the RUSTC_GIT env var to an existing
+clone of the rustc repo.
 
   ENVIRONMENT VARIABLES
 
@@ -52,41 +69,117 @@ Pass extra flags to all cargo invocations. (Ignored by `./miri cargo`.)
 EOF
 )
 
-## We need to know where we are.
+## We need to know which command to run and some global constants.
+COMMAND="$1"
+if [ -z "$COMMAND" ]; then
+    echo "$USAGE"
+    exit 1
+fi
+shift
 # macOS does not have a useful readlink/realpath so we have to use Python instead...
 MIRIDIR=$(python3 -c 'import os, sys; print(os.path.dirname(os.path.realpath(sys.argv[1])))' "$0")
-
-## Run the auto-things.
-if [ -z "$MIRI_AUTO_OPS" ]; then
-    export MIRI_AUTO_OPS=42
-
-    # Run this first, so that the toolchain doesn't change after
-    # other code has run.
-    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-toolchain" ] ; then
-        (cd "$MIRIDIR" && ./rustup-toolchain)
-    fi
-
-    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-fmt" ] ; then
-        $0 fmt
-    fi
-
-    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-clippy" ] ; then
-        $0 clippy -- -D warnings
-    fi
-fi
-
-## Determine command and toolchain.
-COMMAND="$1"
-[ $# -gt 0 ] && shift
-# Doing this *after* auto-toolchain logic above, since that might change the toolchain.
+# Used for rustc syncs.
+JOSH_FILTER=":rev(75dd959a3a40eb5b4574f8d2e23aa6efbeb33573:prefix=src/tools/miri):/src/tools/miri"
+# Needed for `./miri bench`.
 TOOLCHAIN=$(cd "$MIRIDIR"; rustup show active-toolchain | head -n 1 | cut -d ' ' -f 1)
 
-## Handle some commands early, since they should *not* alter the environment.
+## Early commands, that don't do auto-things and don't want the environment-altering things happening below.
 case "$COMMAND" in
+toolchain)
+    cd "$MIRIDIR"
+    NEW_COMMIT=$(cat rust-version)
+    # Make sure rustup-toolchain-install-master is installed.
+    if ! which rustup-toolchain-install-master >/dev/null; then
+        echo "Please install rustup-toolchain-install-master by running 'cargo install rustup-toolchain-install-master'"
+        exit 1
+    fi
+    # Check if we already are at that commit.
+    CUR_COMMIT=$(rustc +miri --version -v 2>/dev/null | grep "^commit-hash: " | cut -d " " -f 2)
+    if [[ "$CUR_COMMIT" == "$NEW_COMMIT" ]]; then
+        echo "miri toolchain is already at commit $CUR_COMMIT."
+        rustup override set miri
+        exit 0
+    fi
+    # Install and setup new toolchain.
+    rustup toolchain uninstall miri
+    rustup-toolchain-install-master -n miri -c cargo -c rust-src -c rustc-dev -c llvm-tools -c rustfmt -c clippy "$@" -- "$NEW_COMMIT"
+    rustup override set miri
+    # Cleanup.
+    cargo clean
+    # Call 'cargo metadata' on the sources in case that changes the lockfile
+    # (which fails under some setups when it is done from inside vscode).
+    cargo metadata --format-version 1 --manifest-path "$(rustc --print sysroot)/lib/rustlib/rustc-src/rust/compiler/rustc/Cargo.toml" >/dev/null
+    # Done!
+    exit 0
+    ;;
+rustc-pull)
+    cd "$MIRIDIR"
+    FETCH_COMMIT="$1"
+    if [ -z "$FETCH_COMMIT" ]; then
+        FETCH_COMMIT=$(git ls-remote https://github.com/rust-lang/rust/ HEAD | cut -f 1)
+    fi
+    # Update rust-version file. As a separate commit, since making it part of
+    # the merge has confused the heck out of josh in the past.
+    echo "$FETCH_COMMIT" > rust-version
+    git commit rust-version -m "Preparing for merge from rustc"
+    # Fetch given rustc commit and note down which one that was
+    git fetch http://localhost:8000/rust-lang/rust.git@$FETCH_COMMIT$JOSH_FILTER.git
+    git merge FETCH_HEAD --no-ff -m "Merge from rustc"
+    exit 0
+    ;;
+rustc-push)
+    USER="$1"
+    BRANCH="$2"
+    if [ -z "$USER" ] || [ -z "$BRANCH" ]; then
+        echo "Usage: $0 rustc-push <github user> <branch>"
+        exit 1
+    fi
+    if [ -n "$RUSTC_GIT" ]; then
+        # Use an existing fork for the branch updates.
+        cd "$RUSTC_GIT"
+    else
+        # Do this in the local Miri repo.
+        echo "This will pull a copy of the rust-lang/rust history into this Miri checkout, growing it by about 1GB."
+        read -r -p "To avoid that, abort now and set the RUSTC_GIT environment variable to an existing rustc checkout. Proceed? [y/N] "
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
+        cd "$MIRIDIR"
+    fi
+    # Prepare the branch. Pushing works much better if we use as base exactly
+    # the commit that we pulled from last time, so we use the `rust-version`
+    # file as a good approximation of that.
+    BASE=$(cat "$MIRIDIR/rust-version")
+    echo "Preparing $USER/rust (base: $BASE)..."
+    if git fetch "https://github.com/$USER/rust" "$BRANCH" &>/dev/null; then
+        echo "The branch '$BRANCH' seems to already exist in 'https://github.com/$USER/rust'. Please delete it and try again."
+        exit 1
+    fi
+    git fetch https://github.com/rust-lang/rust $BASE
+    git push https://github.com/$USER/rust $BASE:refs/heads/$BRANCH -f
+    echo
+    # Do the actual push.
+    cd "$MIRIDIR"
+    echo "Pushing Miri changes..."
+    git push http://localhost:8000/$USER/rust.git$JOSH_FILTER.git HEAD:$BRANCH
+    # Do a round-trip check to make sure the push worked as expected.
+    echo
+    git fetch http://localhost:8000/$USER/rust.git@$JOSH_FILTER.git $BRANCH &>/dev/null
+    if [[ $(git rev-parse HEAD) != $(git rev-parse FETCH_HEAD) ]]; then
+        echo "ERROR: Josh created a non-roundtrip push! Do NOT merge this into rustc!"
+        exit 1
+    else
+        echo "Confirmed that the push round-trips back to Miri properly. Please create a rustc PR:"
+        echo "    https://github.com/$USER/rust/pull/new/$BRANCH"
+        exit 0
+    fi
+    ;;
 many-seeds)
-    for SEED in $({ echo obase=16; seq 0 255; } | bc); do
+    MIRI_SEED_START=${MIRI_SEED_START:-0} # default to 0
+    MIRI_SEEDS=${MIRI_SEEDS:-256} # default to 256
+    for SEED in $(seq $MIRI_SEED_START $(( $MIRI_SEED_START + $MIRI_SEEDS - 1 )) ); do
         echo "Trying seed: $SEED"
-        MIRIFLAGS="$MIRIFLAGS -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
+        MIRIFLAGS="$MIRIFLAGS -Zlayout-seed=$SEED -Zmiri-seed=$SEED" $@ || { echo "Failing seed: $SEED"; break; }
     done
     exit 0
     ;;
@@ -106,9 +199,29 @@ bench)
     ;;
 esac
 
+## Run the auto-things.
+if [ -z "$MIRI_AUTO_OPS" ]; then
+    export MIRI_AUTO_OPS=42
+
+    # Run this first, so that the toolchain doesn't change after
+    # other code has run.
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-toolchain" ] ; then
+        $0 toolchain
+        # Let's make sure to actually use that toolchain, too.
+        TOOLCHAIN=miri
+    fi
+
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-fmt" ] ; then
+        $0 fmt
+    fi
+
+    if [ -f "$MIRIDIR/.auto-everything" ] || [ -f "$MIRIDIR/.auto-clippy" ] ; then
+        $0 clippy -- -D warnings
+    fi
+fi
+
 ## Prepare the environment
 # Determine some toolchain properties
-# export the target so its available in miri
 TARGET=$(rustc +$TOOLCHAIN --version --verbose | grep "^host:" | cut -d ' ' -f 2)
 SYSROOT=$(rustc +$TOOLCHAIN --print sysroot)
 LIBDIR=$SYSROOT/lib/rustlib/$TARGET/lib
@@ -138,7 +251,9 @@ export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 
 # Build a sysroot and set MIRI_SYSROOT to use it. Arguments are passed to `cargo miri setup`.
 build_sysroot() {
-    if ! MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -q -- miri setup --print-sysroot "$@")"; then
+    if ! MIRI_SYSROOT="$($CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup --print-sysroot "$@")"; then
+        # Run it again so the user can see the error.
+        $CARGO run $CARGO_EXTRA_FLAGS --manifest-path "$MIRIDIR"/cargo-miri/Cargo.toml -- miri setup "$@"
         echo "'cargo miri setup' failed"
         exit 1
     fi
@@ -227,10 +342,7 @@ cargo)
     $CARGO "$@"
     ;;
 *)
-    if [ -n "$COMMAND" ]; then
-      echo "Unknown command: $COMMAND"
-      echo
-    fi
-    echo "$USAGE"
+    echo "Unknown command: $COMMAND"
     exit 1
+    ;;
 esac

@@ -5,6 +5,7 @@
 #![crate_name = "test_docs"]
 #![feature(rustdoc_internals)]
 #![feature(doc_cfg)]
+#![feature(associated_type_defaults)]
 
 /*!
 Enable the feature <span class="stab portability"><code>some-feature</code></span> to enjoy
@@ -75,6 +76,7 @@ impl AsRef<str> for Foo {
 ///
 /// # title!
 #[doc(alias = "ThisIsAnAlias")]
+#[non_exhaustive]
 pub enum WhoLetTheDogOut {
     /// Woof!
     Woof,
@@ -151,6 +153,11 @@ pub mod huge_amount_of_consts {
 
 /// Very long code text `hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`.
 pub mod long_code_block {}
+
+/// Very long code text [`hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`][lnk].
+///
+/// [lnk]: crate::long_code_block_link
+pub mod long_code_block_link {}
 
 #[macro_export]
 macro_rules! repro {
@@ -316,6 +323,18 @@ pub mod details {
     /// <div>I'm the content of the details!</div>
     /// </details>
     pub struct Details;
+
+    impl Details {
+        /// We check the appearance of the `<details>`/`<summary>` in here.
+        ///
+        /// ## Hello
+        ///
+        /// <details>
+        /// <summary><h4>I'm a summary</h4></summary>
+        /// <div>I'm the content of the details!</div>
+        /// </details>
+        pub fn method() {}
+    }
 }
 
 pub mod doc_block_table {
@@ -328,6 +347,9 @@ pub mod doc_block_table {
     ///
     /// | header1                  | header2                  |
     /// |--------------------------|--------------------------|
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
     /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
     pub struct DocBlockTable {}
 
@@ -364,6 +386,72 @@ pub trait TraitWithNoDocblocks {
 pub struct TypeWithNoDocblocks;
 
 impl TypeWithNoDocblocks {
+    fn x() -> Option<Self> {
+        Some(Self)
+    }
+    fn y() -> Option<u32> {
+        // code comment
+        let t = Self::x()?;
+        Some(0)
+    }
+}
+
+impl TypeWithNoDocblocks {
     pub fn first_fn(&self) {}
-    pub fn second_fn(&self) {}
+    pub fn second_fn<'a>(&'a self) {
+        let x = 12;
+        let y = "a";
+        let z = false;
+    }
+}
+
+pub unsafe fn unsafe_fn() {}
+
+pub fn safe_fn() {}
+
+#[repr(C)]
+pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut, P = i8> {
+    s: S,
+    t: T,
+    e: E,
+    p: P,
+}
+
+pub struct StructWithPublicUndocumentedFields {
+    pub first: u32,
+    pub second: u32,
+}
+
+pub const CONST: u8 = 0;
+
+pub trait TraitWithoutGenerics {
+    const C: u8 = CONST;
+    type T = SomeType;
+
+    fn foo();
+}
+
+pub mod trait_members {
+    pub trait TraitMembers {
+        /// Some type
+        type Type;
+        /// Some function
+        fn function();
+        /// Some other function
+        fn function2();
+    }
+    pub struct HasTrait;
+    impl TraitMembers for HasTrait {
+        type Type = u8;
+        fn function() {}
+        fn function2() {}
+    }
+}
+
+pub struct TypeWithImplDoc;
+
+/// impl doc
+impl TypeWithImplDoc {
+    /// fn doc
+    pub fn test_fn() {}
 }

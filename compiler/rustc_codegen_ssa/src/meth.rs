@@ -31,8 +31,7 @@ impl<'a, 'tcx> VirtualIndex {
             let typeid =
                 bx.typeid_metadata(typeid_for_trait_ref(bx.tcx(), expect_dyn_trait_in_self(ty)));
             let vtable_byte_offset = self.0 * bx.data_layout().pointer_size.bytes();
-            let type_checked_load = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
-            let func = bx.extract_value(type_checked_load, 0);
+            let func = bx.type_checked_load(llvtable, vtable_byte_offset, typeid);
             bx.pointercast(func, llty)
         } else {
             let ptr_align = bx.tcx().data_layout.pointer_align.abi;

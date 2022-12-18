@@ -20,6 +20,7 @@ use rustc_middle::ty::layout::{
 };
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::Span;
+use rustc_symbol_mangling::typeid::kcfi_typeid_for_fnabi;
 use rustc_target::abi::{self, call::FnAbi, Align, Size, WrappingRange};
 use rustc_target::spec::{HasTargetSpec, Target};
 use std::borrow::Cow;
@@ -225,9 +226,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("invoke {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("invoke", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
         let invoke = unsafe {
             llvm::LLVMRustBuildInvoke(
                 self.llbuilder,
@@ -237,7 +254,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 args.len() as c_uint,
                 then,
                 catch,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
                 UNNAMED,
             )
         };
@@ -365,11 +383,14 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 Int(I64) => "llvm.ssub.with.overflow.i64",
                 Int(I128) => "llvm.ssub.with.overflow.i128",
 
-                Uint(U8) => "llvm.usub.with.overflow.i8",
-                Uint(U16) => "llvm.usub.with.overflow.i16",
-                Uint(U32) => "llvm.usub.with.overflow.i32",
-                Uint(U64) => "llvm.usub.with.overflow.i64",
-                Uint(U128) => "llvm.usub.with.overflow.i128",
+                Uint(_) => {
+                    // Emit sub and icmp instead of llvm.usub.with.overflow. LLVM considers these
+                    // to be the canonical form. It will attempt to reform llvm.usub.with.overflow
+                    // in the backend if profitable.
+                    let sub = self.sub(lhs, rhs);
+                    let cmp = self.icmp(IntPredicate::IntULT, lhs, rhs);
+                    return (sub, cmp);
+                }
 
                 _ => unreachable!(),
             },
@@ -553,15 +574,15 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
     }
 
     fn write_operand_repeatedly(
-        mut self,
+        &mut self,
         cg_elem: OperandRef<'tcx, &'ll Value>,
         count: u64,
         dest: PlaceRef<'tcx, &'ll Value>,
-    ) -> Self {
+    ) {
         let zero = self.const_usize(0);
         let count = self.const_usize(count);
-        let start = dest.project_index(&mut self, zero).llval;
-        let end = dest.project_index(&mut self, count).llval;
+        let start = dest.project_index(self, zero).llval;
+        let end = dest.project_index(self, count).llval;
 
         let header_bb = self.append_sibling_block("repeat_loop_header");
         let body_bb = self.append_sibling_block("repeat_loop_body");
@@ -589,7 +610,7 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         body_bx.br(header_bb);
         header_bx.add_incoming_to_phi(current, next, body_bb);
 
-        Self::build(self.cx, next_bb)
+        *self = Self::build(self.cx, next_bb);
     }
 
     fn range_metadata(&mut self, load: &'ll Value, range: WrappingRange) {
@@ -958,15 +979,20 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         }
     }
 
-    fn cleanup_landing_pad(&mut self, ty: &'ll Type, pers_fn: &'ll Value) -> &'ll Value {
+    fn cleanup_landing_pad(&mut self, pers_fn: &'ll Value) -> (&'ll Value, &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
         let landing_pad = self.landing_pad(ty, pers_fn, 1 /* FIXME should this be 0? */);
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
         }
-        landing_pad
+        (self.extract_value(landing_pad, 0), self.extract_value(landing_pad, 1))
     }
 
-    fn resume(&mut self, exn: &'ll Value) {
+    fn resume(&mut self, exn0: &'ll Value, exn1: &'ll Value) {
+        let ty = self.type_struct(&[self.type_i8p(), self.type_i32()], false);
+        let mut exn = self.const_undef(ty);
+        exn = self.insert_value(exn, exn0, 0);
+        exn = self.insert_value(exn, exn1, 1);
         unsafe {
             llvm::LLVMBuildResume(self.llbuilder, exn);
         }
@@ -1140,7 +1166,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                None,
+                [].as_ptr(),
+                0 as c_uint,
             );
         }
     }
@@ -1156,9 +1183,25 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
         debug!("call {:?} with args ({:?})", llfn, args);
 
         let args = self.check_call("call", llty, llfn, args);
-        let bundle = funclet.map(|funclet| funclet.bundle());
-        let bundle = bundle.as_ref().map(|b| &*b.raw);
+        let funclet_bundle = funclet.map(|funclet| funclet.bundle());
+        let funclet_bundle = funclet_bundle.as_ref().map(|b| &*b.raw);
+        let mut bundles = vec![funclet_bundle];
 
+        // Set KCFI operand bundle
+        let is_indirect_call = unsafe { llvm::LLVMIsAFunction(llfn).is_none() };
+        let kcfi_bundle =
+            if self.tcx.sess.is_sanitizer_kcfi_enabled() && fn_abi.is_some() && is_indirect_call {
+                let kcfi_typeid = kcfi_typeid_for_fnabi(self.tcx, fn_abi.unwrap());
+                Some(llvm::OperandBundleDef::new("kcfi", &[self.const_u32(kcfi_typeid)]))
+            } else {
+                None
+            };
+        if kcfi_bundle.is_some() {
+            let kcfi_bundle = kcfi_bundle.as_ref().map(|b| &*b.raw);
+            bundles.push(kcfi_bundle);
+        }
+
+        bundles.retain(|bundle| bundle.is_some());
         let call = unsafe {
             llvm::LLVMRustBuildCall(
                 self.llbuilder,
@@ -1166,7 +1209,8 @@ impl<'a, 'll, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'll, 'tcx> {
                 llfn,
                 args.as_ptr() as *const &llvm::Value,
                 args.len() as c_uint,
-                bundle,
+                bundles.as_ptr(),
+                bundles.len() as c_uint,
             )
         };
         if let Some(fn_abi) = fn_abi {

@@ -15,14 +15,12 @@ use rustc_middle::ty::fast_reject::SimplifiedType;
 use rustc_middle::ty::query::{ExternProviders, Providers};
 use rustc_middle::ty::{self, TyCtxt, Visibility};
 use rustc_session::cstore::{CrateSource, CrateStore};
-use rustc_session::utils::NativeLibKind;
 use rustc_session::{Session, StableCrateId};
 use rustc_span::hygiene::{ExpnHash, ExpnId};
 use rustc_span::source_map::{Span, Spanned};
 use rustc_span::symbol::{kw, Symbol};
 
 use rustc_data_structures::sync::Lrc;
-use smallvec::SmallVec;
 use std::any::Any;
 
 use super::{Decodable, DecodeContext, DecodeIterator};
@@ -210,6 +208,7 @@ provide! { tcx, def_id, other, cdata,
     lookup_const_stability => { table }
     lookup_default_body_stability => { table }
     lookup_deprecation_entry => { table }
+    params_in_repr => { table }
     unused_generic_params => { table }
     opt_def_kind => { table_direct }
     impl_parent => { table }
@@ -223,6 +222,7 @@ provide! { tcx, def_id, other, cdata,
     fn_arg_names => { table }
     generator_kind => { table }
     trait_def => { table }
+    deduced_param_attrs => { table }
     collect_trait_impl_trait_tys => {
         Ok(cdata
             .root
@@ -254,6 +254,7 @@ provide! { tcx, def_id, other, cdata,
     is_panic_runtime => { cdata.root.panic_runtime }
     is_compiler_builtins => { cdata.root.compiler_builtins }
     has_global_allocator => { cdata.root.has_global_allocator }
+    has_alloc_error_handler => { cdata.root.has_alloc_error_handler }
     has_panic_handler => { cdata.root.has_panic_handler }
     is_profiler_runtime => { cdata.root.profiler_runtime }
     required_panic_strategy => { cdata.root.required_panic_strategy }
@@ -296,9 +297,7 @@ provide! { tcx, def_id, other, cdata,
         r
     }
     module_children => {
-        let mut result = SmallVec::<[_; 8]>::new();
-        cdata.for_each_module_child(def_id.index, |child| result.push(child), tcx.sess);
-        tcx.arena.alloc_slice(&result)
+        tcx.arena.alloc_from_iter(cdata.get_module_children(def_id.index, tcx.sess))
     }
     defined_lib_features => { cdata.get_lib_features(tcx) }
     stability_implications => {
@@ -338,20 +337,11 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
     // resolve! Does this work? Unsure! That's what the issue is about
     *providers = Providers {
         allocator_kind: |tcx, ()| CStore::from_tcx(tcx).allocator_kind(),
-        is_dllimport_foreign_item: |tcx, id| match tcx.native_library_kind(id) {
-            Some(
-                NativeLibKind::Dylib { .. } | NativeLibKind::RawDylib | NativeLibKind::Unspecified,
-            ) => true,
-            _ => false,
-        },
-        is_statically_included_foreign_item: |tcx, id| {
-            matches!(tcx.native_library_kind(id), Some(NativeLibKind::Static { .. }))
-        },
+        alloc_error_handler_kind: |tcx, ()| CStore::from_tcx(tcx).alloc_error_handler_kind(),
         is_private_dep: |_tcx, cnum| {
             assert_eq!(cnum, LOCAL_CRATE);
             false
         },
-        native_library_kind: |tcx, id| tcx.native_library(id).map(|l| l.kind),
         native_library: |tcx, id| {
             tcx.native_libraries(id.krate)
                 .iter()
@@ -473,6 +463,10 @@ pub(in crate::rmeta) fn provide(providers: &mut Providers) {
             assert_eq!(cnum, LOCAL_CRATE);
             CStore::from_tcx(tcx).has_global_allocator()
         },
+        has_alloc_error_handler: |tcx, cnum| {
+            assert_eq!(cnum, LOCAL_CRATE);
+            CStore::from_tcx(tcx).has_alloc_error_handler()
+        },
         postorder_cnums: |tcx, ()| {
             tcx.arena
                 .alloc_slice(&CStore::from_tcx(tcx).crate_dependencies_in_postorder(LOCAL_CRATE))
@@ -498,22 +492,20 @@ impl CStore {
         self.get_crate_data(def.krate).get_struct_field_visibilities(def.index)
     }
 
-    pub fn ctor_def_id_and_kind_untracked(&self, def: DefId) -> Option<(DefId, CtorKind)> {
-        self.get_crate_data(def.krate).get_ctor_def_id_and_kind(def.index)
+    pub fn ctor_untracked(&self, def: DefId) -> Option<(CtorKind, DefId)> {
+        self.get_crate_data(def.krate).get_ctor(def.index)
     }
 
     pub fn visibility_untracked(&self, def: DefId) -> Visibility<DefId> {
         self.get_crate_data(def.krate).get_visibility(def.index)
     }
 
-    pub fn module_children_untracked(&self, def_id: DefId, sess: &Session) -> Vec<ModChild> {
-        let mut result = vec![];
-        self.get_crate_data(def_id.krate).for_each_module_child(
-            def_id.index,
-            |child| result.push(child),
-            sess,
-        );
-        result
+    pub fn module_children_untracked<'a>(
+        &'a self,
+        def_id: DefId,
+        sess: &'a Session,
+    ) -> impl Iterator<Item = ModChild> + 'a {
+        self.get_crate_data(def_id.krate).get_module_children(def_id.index, sess)
     }
 
     pub fn load_macro_untracked(&self, id: DefId, sess: &Session) -> LoadedMacro {
@@ -596,11 +588,6 @@ impl CStore {
         self.get_crate_data(cnum).get_proc_macro_quoted_span(id, sess)
     }
 
-    /// Decodes all traits in the crate (for rustdoc).
-    pub fn traits_in_crate_untracked(&self, cnum: CrateNum) -> impl Iterator<Item = DefId> + '_ {
-        self.get_crate_data(cnum).get_traits()
-    }
-
     /// Decodes all trait impls in the crate (for rustdoc).
     pub fn trait_impls_in_crate_untracked(
         &self,
@@ -640,6 +627,9 @@ impl CStore {
 
 impl CrateStore for CStore {
     fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn untracked_as_any(&mut self) -> &mut dyn Any {
         self
     }
 

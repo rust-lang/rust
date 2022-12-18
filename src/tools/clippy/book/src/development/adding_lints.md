@@ -443,27 +443,27 @@ value is passed to the constructor in `clippy_lints/lib.rs`.
 
 ```rust
 pub struct ManualStrip {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl ManualStrip {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
 ```
 
 The project's MSRV can then be matched against the feature MSRV in the LintPass
-using the `meets_msrv` utility function.
+using the `Msrv::meets` method.
 
 ``` rust
-if !meets_msrv(self.msrv, msrvs::STR_STRIP_PREFIX) {
+if !self.msrv.meets(msrvs::STR_STRIP_PREFIX) {
     return;
 }
 ```
 
-The project's MSRV can also be specified as an inner attribute, which overrides
+The project's MSRV can also be specified as an attribute, which overrides
 the value from `clippy.toml`. This can be accounted for using the
 `extract_msrv_attr!(LintContext)` macro and passing
 `LateContext`/`EarlyContext`.
@@ -478,8 +478,23 @@ impl<'tcx> LateLintPass<'tcx> for ManualStrip {
 ```
 
 Once the `msrv` is added to the lint, a relevant test case should be added to
-`tests/ui/min_rust_version_attr.rs` which verifies that the lint isn't emitted
-if the project's MSRV is lower.
+the lint's test file, `tests/ui/manual_strip.rs` in this example. It should
+have a case for the version below the MSRV and one with the same contents but
+for the MSRV version itself.
+
+```rust
+...
+
+#[clippy::msrv = "1.44"]
+fn msrv_1_44() {
+    /* something that would trigger the lint */
+}
+
+#[clippy::msrv = "1.45"]
+fn msrv_1_45() {
+    /* something that would trigger the lint */
+}
+```
 
 As a last step, the lint should be added to the lint documentation. This is done
 in `clippy_lints/src/utils/conf.rs`:

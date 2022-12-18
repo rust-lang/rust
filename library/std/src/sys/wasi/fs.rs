@@ -1,7 +1,7 @@
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use super::fd::WasiFd;
-use crate::ffi::{CStr, CString, OsStr, OsString};
+use crate::ffi::{CStr, OsStr, OsString};
 use crate::fmt;
 use crate::io::{self, BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
 use crate::iter;
@@ -12,6 +12,7 @@ use crate::os::wasi::io::{AsFd, AsRawFd, BorrowedFd, FromRawFd, IntoRawFd, RawFd
 use crate::path::{Path, PathBuf};
 use crate::ptr;
 use crate::sync::Arc;
+use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::time::SystemTime;
 use crate::sys::unsupported;
 use crate::sys_common::{AsInner, FromInner, IntoInner};
@@ -694,51 +695,52 @@ fn open_at(fd: &WasiFd, path: &Path, opts: &OpenOptions) -> io::Result<File> {
 /// Note that this can fail if `p` doesn't look like it can be opened relative
 /// to any pre-opened file descriptor.
 fn open_parent(p: &Path) -> io::Result<(ManuallyDrop<WasiFd>, PathBuf)> {
-    let p = CString::new(p.as_os_str().as_bytes())?;
-    let mut buf = Vec::<u8>::with_capacity(512);
-    loop {
-        unsafe {
-            let mut relative_path = buf.as_ptr().cast();
-            let mut abs_prefix = ptr::null();
-            let fd = __wasilibc_find_relpath(
-                p.as_ptr(),
-                &mut abs_prefix,
-                &mut relative_path,
-                buf.capacity(),
-            );
-            if fd == -1 {
-                if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
-                    // Trigger the internal buffer resizing logic of `Vec` by requiring
-                    // more space than the current capacity.
-                    let cap = buf.capacity();
-                    buf.set_len(cap);
-                    buf.reserve(1);
-                    continue;
-                }
-                let msg = format!(
-                    "failed to find a pre-opened file descriptor \
-                     through which {:?} could be opened",
-                    p
+    run_path_with_cstr(p, |p| {
+        let mut buf = Vec::<u8>::with_capacity(512);
+        loop {
+            unsafe {
+                let mut relative_path = buf.as_ptr().cast();
+                let mut abs_prefix = ptr::null();
+                let fd = __wasilibc_find_relpath(
+                    p.as_ptr(),
+                    &mut abs_prefix,
+                    &mut relative_path,
+                    buf.capacity(),
                 );
-                return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
+                if fd == -1 {
+                    if io::Error::last_os_error().raw_os_error() == Some(libc::ENOMEM) {
+                        // Trigger the internal buffer resizing logic of `Vec` by requiring
+                        // more space than the current capacity.
+                        let cap = buf.capacity();
+                        buf.set_len(cap);
+                        buf.reserve(1);
+                        continue;
+                    }
+                    let msg = format!(
+                        "failed to find a pre-opened file descriptor \
+                     through which {:?} could be opened",
+                        p
+                    );
+                    return Err(io::Error::new(io::ErrorKind::Uncategorized, msg));
+                }
+                let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
+
+                return Ok((
+                    ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
+                    PathBuf::from(OsString::from_vec(relative)),
+                ));
             }
-            let relative = CStr::from_ptr(relative_path).to_bytes().to_vec();
-
-            return Ok((
-                ManuallyDrop::new(WasiFd::from_raw_fd(fd as c_int)),
-                PathBuf::from(OsString::from_vec(relative)),
-            ));
         }
-    }
 
-    extern "C" {
-        pub fn __wasilibc_find_relpath(
-            path: *const libc::c_char,
-            abs_prefix: *mut *const libc::c_char,
-            relative_path: *mut *const libc::c_char,
-            relative_path_len: libc::size_t,
-        ) -> libc::c_int;
-    }
+        extern "C" {
+            pub fn __wasilibc_find_relpath(
+                path: *const libc::c_char,
+                abs_prefix: *mut *const libc::c_char,
+                relative_path: *mut *const libc::c_char,
+                relative_path_len: libc::size_t,
+            ) -> libc::c_int;
+        }
+    })
 }
 
 pub fn osstr2str(f: &OsStr) -> io::Result<&str> {

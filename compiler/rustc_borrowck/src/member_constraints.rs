@@ -1,3 +1,5 @@
+#![deny(rustc::untranslatable_diagnostic)]
+#![deny(rustc::diagnostic_outside_of_impl)]
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::IndexVec;
@@ -9,6 +11,7 @@ use std::ops::Index;
 
 /// Compactly stores a set of `R0 member of [R1...Rn]` constraints,
 /// indexed by the region `R0`.
+#[derive(Debug)]
 pub(crate) struct MemberConstraintSet<'tcx, R>
 where
     R: Copy + Eq,
@@ -29,6 +32,7 @@ where
 }
 
 /// Represents a `R0 member of [R1..Rn]` constraint
+#[derive(Debug)]
 pub(crate) struct NllMemberConstraint<'tcx> {
     next_constraint: Option<NllMemberConstraintIndex>,
 

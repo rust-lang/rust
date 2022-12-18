@@ -1,3 +1,9 @@
+[[rust-analyzer.assist.emitMustUse]]rust-analyzer.assist.emitMustUse (default: `false`)::
++
+--
+Whether to insert #[must_use] when generating `as_` methods
+for enum variants.
+--
 [[rust-analyzer.assist.expressionFillDefault]]rust-analyzer.assist.expressionFillDefault (default: `"todo"`)::
 +
 --
@@ -23,6 +29,25 @@ Automatically refresh project info via `cargo metadata` on
 +
 --
 Run build scripts (`build.rs`) for more precise code analysis.
+--
+[[rust-analyzer.cargo.buildScripts.invocationLocation]]rust-analyzer.cargo.buildScripts.invocationLocation (default: `"workspace"`)::
++
+--
+Specifies the working directory for running build scripts.
+- "workspace": run build scripts for a workspace in the workspace's root directory.
+  This is incompatible with `#rust-analyzer.cargo.buildScripts.invocationStrategy#` set to `once`.
+- "root": run build scripts in the project's root directory.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.cargo.buildScripts.invocationStrategy]]rust-analyzer.cargo.buildScripts.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the build scripts command.
+If `per_workspace` is set, the command will be executed for each workspace.
+If `once` is set, the command will be executed once.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
 --
 [[rust-analyzer.cargo.buildScripts.overrideCommand]]rust-analyzer.cargo.buildScripts.overrideCommand (default: `null`)::
 +
@@ -64,10 +89,15 @@ Set this to `"all"` to pass `--all-features` to cargo.
 --
 Whether to pass `--no-default-features` to cargo.
 --
-[[rust-analyzer.cargo.noSysroot]]rust-analyzer.cargo.noSysroot (default: `false`)::
+[[rust-analyzer.cargo.sysroot]]rust-analyzer.cargo.sysroot (default: `"discover"`)::
 +
 --
-Internal config for debugging, disables loading of sysroot crates.
+Relative path to the sysroot, or "discover" to try to automatically find it via
+"rustc --print sysroot".
+
+Unsetting this disables sysroot loading.
+
+This option does not take effect until rust-analyzer is restarted.
 --
 [[rust-analyzer.cargo.target]]rust-analyzer.cargo.target (default: `null`)::
 +
@@ -103,6 +133,7 @@ Extra arguments for `cargo check`.
 +
 --
 Extra environment variables that will be set when running `cargo check`.
+Extends `#rust-analyzer.cargo.extraEnv#`.
 --
 [[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
 +
@@ -111,6 +142,25 @@ List of features to activate. Defaults to
 `#rust-analyzer.cargo.features#`.
 
 Set to `"all"` to pass `--all-features` to Cargo.
+--
+[[rust-analyzer.checkOnSave.invocationLocation]]rust-analyzer.checkOnSave.invocationLocation (default: `"workspace"`)::
++
+--
+Specifies the working directory for running checks.
+- "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+  This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+- "root": run checks in the project's root directory.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.checkOnSave.invocationStrategy]]rust-analyzer.checkOnSave.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the checkOnSave command.
+If `per_workspace` is set, the command will be executed for each workspace.
+If `once` is set, the command will be executed once.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
 --
 [[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
 +
@@ -123,7 +173,7 @@ Whether to pass `--no-default-features` to Cargo. Defaults to
 --
 Override the command rust-analyzer uses instead of `cargo check` for
 diagnostics on save. The command is required to output json and
-should therefor include `--message-format=json` or a similar option.
+should therefore include `--message-format=json` or a similar option.
 
 If you're changing this because you're using some tool wrapping
 Cargo, you might also want to change
@@ -140,11 +190,15 @@ cargo check --workspace --message-format=json --all-targets
 ```
 .
 --
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
+[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `[]`)::
 +
 --
-Check for a specific target. Defaults to
-`#rust-analyzer.cargo.target#`.
+Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+
+Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+`["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+
+Aliased as `"checkOnSave.targets"`.
 --
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
@@ -400,6 +454,11 @@ to always show them).
 --
 Whether to show inlay type hints for return types of closures.
 --
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.enable]]rust-analyzer.inlayHints.expressionAdjustmentHints.enable (default: `"never"`)::
++
+--
+Whether to show inlay hints for type adjustments.
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --
@@ -424,7 +483,8 @@ site.
 [[rust-analyzer.inlayHints.reborrowHints.enable]]rust-analyzer.inlayHints.reborrowHints.enable (default: `"never"`)::
 +
 --
-Whether to show inlay type hints for compiler inserted reborrows.
+Whether to show inlay hints for compiler inserted reborrows.
+This setting is deprecated in favor of #rust-analyzer.inlayHints.expressionAdjustmentHints.enable#.
 --
 [[rust-analyzer.inlayHints.renderColons]]rust-analyzer.inlayHints.renderColons (default: `true`)::
 +

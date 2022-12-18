@@ -9,9 +9,9 @@ use std::{
 
 use anyhow::Context;
 use ide::{
-    AnnotationConfig, AssistKind, AssistResolveStrategy, FileId, FilePosition, FileRange,
-    HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable, RunnableKind,
-    SingleResolve, SourceChange, TextEdit,
+    AnnotationConfig, AssistKind, AssistResolveStrategy, Cancellable, FileId, FilePosition,
+    FileRange, HoverAction, HoverGotoTypeData, Query, RangeInfo, ReferenceCategory, Runnable,
+    RunnableKind, SingleResolve, SourceChange, TextEdit,
 };
 use ide_db::SymbolKind;
 use lsp_server::ErrorCode;
@@ -556,7 +556,7 @@ pub(crate) fn handle_will_rename_files(
     if source_change.source_file_edits.is_empty() {
         Ok(None)
     } else {
-        to_proto::workspace_edit(&snap, source_change).map(Some)
+        Ok(Some(to_proto::workspace_edit(&snap, source_change)?))
     }
 }
 
@@ -658,7 +658,7 @@ pub(crate) fn handle_parent_module(
 
         // check if invoked at the crate root
         let file_id = from_proto::file_id(&snap, &params.text_document.uri)?;
-        let crate_id = match snap.analysis.crate_for(file_id)?.first() {
+        let crate_id = match snap.analysis.crates_for(file_id)?.first() {
             Some(&crate_id) => crate_id,
             None => return Ok(None),
         };
@@ -1313,7 +1313,7 @@ pub(crate) fn handle_ssr(
         position,
         selections,
     )??;
-    to_proto::workspace_edit(&snap, source_change)
+    to_proto::workspace_edit(&snap, source_change).map_err(Into::into)
 }
 
 pub(crate) fn publish_diagnostics(
@@ -1354,13 +1354,12 @@ pub(crate) fn handle_inlay_hints(
 ) -> Result<Option<Vec<InlayHint>>> {
     let _p = profile::span("handle_inlay_hints");
     let document_uri = &params.text_document.uri;
-    let file_id = from_proto::file_id(&snap, document_uri)?;
-    let line_index = snap.file_line_index(file_id)?;
-    let range = from_proto::file_range(
+    let FileRange { file_id, range } = from_proto::file_range(
         &snap,
         TextDocumentIdentifier::new(document_uri.to_owned()),
         params.range,
     )?;
+    let line_index = snap.file_line_index(file_id)?;
     let inlay_hints_config = snap.config.inlay_hints();
     Ok(Some(
         snap.analysis
@@ -1369,7 +1368,7 @@ pub(crate) fn handle_inlay_hints(
             .map(|it| {
                 to_proto::inlay_hint(&snap, &line_index, inlay_hints_config.render_colons, it)
             })
-            .collect::<Result<Vec<_>>>()?,
+            .collect::<Cancellable<Vec<_>>>()?,
     ))
 }
 
@@ -1426,7 +1425,7 @@ pub(crate) fn handle_call_hierarchy_prepare(
         .into_iter()
         .filter(|it| it.kind == Some(SymbolKind::Function))
         .map(|it| to_proto::call_hierarchy_item(&snap, it))
-        .collect::<Result<Vec<_>>>()?;
+        .collect::<Cancellable<Vec<_>>>()?;
 
     Ok(Some(res))
 }
@@ -1782,7 +1781,15 @@ fn run_rustfmt(
 ) -> Result<Option<Vec<lsp_types::TextEdit>>> {
     let file_id = from_proto::file_id(snap, &text_document.uri)?;
     let file = snap.analysis.file_text(file_id)?;
-    let crate_ids = snap.analysis.crate_for(file_id)?;
+
+    // find the edition of the package the file belongs to
+    // (if it belongs to multiple we'll just pick the first one and pray)
+    let edition = snap
+        .analysis
+        .relevant_crates_for(file_id)?
+        .into_iter()
+        .find_map(|crate_id| snap.cargo_target_for_crate_root(crate_id))
+        .map(|(ws, target)| ws[ws[target].package].edition);
 
     let line_index = snap.file_line_index(file_id)?;
 
@@ -1808,9 +1815,7 @@ fn run_rustfmt(
                     );
                 }
             }
-            if let Some(&crate_id) = crate_ids.first() {
-                // Assume all crates are in the same edition
-                let edition = snap.analysis.crate_edition(crate_id)?;
+            if let Some(edition) = edition {
                 cmd.arg("--edition");
                 cmd.arg(edition.to_string());
             }

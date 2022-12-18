@@ -1,5 +1,6 @@
-// This test ensures that the settings menu display is working as expected.
-goto: file://|DOC_PATH|/test_docs/index.html
+// This test ensures that the settings menu display is working as expected and that
+// the settings page is also rendered as expected.
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 show-text: true // needed when we check for colors below.
 // First, we check that the settings page doesn't exist.
 assert-false: "#settings"
@@ -36,8 +37,7 @@ click: "#settings-menu"
 wait-for: "#settings"
 
 // We check that the "Use system theme" is disabled.
-assert-property: ("#use-system-theme", {"checked": "false"})
-assert: "//*[@class='setting-line']//span[text()='Use system theme']"
+assert-property: ("#theme-system-preference", {"checked": "false"})
 // Meaning that only the "theme" menu is showing up.
 assert: ".setting-line:not(.hidden) #theme"
 assert: ".setting-line.hidden #preferred-dark-theme"
@@ -47,7 +47,8 @@ assert: ".setting-line.hidden #preferred-light-theme"
 assert-property: ("#theme .choices #theme-dark", {"checked": "true"})
 
 // Some style checks...
-// First we check the "default" display.
+move-cursor-to: "#settings-menu > a"
+// First we check the "default" display for radio buttons.
 assert-css: (
     "#theme-dark",
     {
@@ -56,7 +57,7 @@ assert-css: (
     },
 )
 assert-css: ("#theme-light", {"border-color": "rgb(221, 221, 221)", "box-shadow": "none"})
-// Let's start with the hover.
+// Let's start with the hover for radio buttons.
 move-cursor-to: "#theme-dark"
 assert-css: (
     "#theme-dark",
@@ -68,7 +69,7 @@ assert-css: (
 move-cursor-to: "#theme-light"
 assert-css: ("#theme-light", {"border-color": "rgb(33, 150, 243)", "box-shadow": "none"})
 move-cursor-to: "#theme-ayu"
-// Let's now check with the focus.
+// Let's now check with the focus for radio buttons.
 focus: "#theme-dark"
 assert-css: (
     "#theme-dark",
@@ -85,7 +86,7 @@ assert-css: (
         "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
     },
 )
-// Now we check we both focus and hover.
+// Now we check we both focus and hover for radio buttons.
 move-cursor-to: "#theme-dark"
 focus: "#theme-dark"
 assert-css: (
@@ -105,19 +106,57 @@ assert-css: (
     },
 )
 
+// First we check the "default" display for toggles.
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "rgb(33, 150, 243)",
+        "border-color": "rgb(221, 221, 221)",
+    },
+)
+// Let's start with the hover for toggles.
+move-cursor-to: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "rgb(33, 150, 243)",
+        "border-color": "rgb(33, 150, 243)",
+    },
+)
+move-cursor-to: "#settings-menu > a"
+// Let's now check with the focus for toggles.
+focus: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "rgb(33, 150, 243)",
+        "border-color": "rgb(221, 221, 221)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
+// Now we check we both focus and hover for toggles.
+move-cursor-to: "#auto-hide-large-items"
+focus: "#auto-hide-large-items"
+assert-css: (
+    "#auto-hide-large-items",
+    {
+        "background-color": "rgb(33, 150, 243)",
+        "border-color": "rgb(33, 150, 243)",
+        "box-shadow": "rgb(33, 150, 243) 0px 0px 1px 1px",
+    },
+)
+
 // We now switch the display.
-click: "#use-system-theme"
+click: "#theme-system-preference"
 // Wait for the hidden element to show up.
 wait-for: ".setting-line:not(.hidden) #preferred-dark-theme"
 assert: ".setting-line:not(.hidden) #preferred-light-theme"
-// Check that the theme picking is hidden.
-assert: ".setting-line.hidden #theme"
 
 // We check their text as well.
 assert-text: ("#preferred-dark-theme .setting-name", "Preferred dark theme")
 assert-text: ("#preferred-light-theme .setting-name", "Preferred light theme")
 
-// We now check that clicking on the "sliders"' text is like clicking on the slider.
+// We now check that clicking on the toggles' text is like clicking on the checkbox.
 // To test it, we use the "Disable keyboard shortcuts".
 local-storage: {"rustdoc-disable-shortcuts": "false"}
 click: ".setting-line:last-child .toggle .label"
@@ -138,9 +177,12 @@ wait-for-css: ("#help-button .popover", {"display": "block"})
 assert-css: ("#settings-menu .popover", {"display": "none"})
 
 // Now we go to the settings page to check that the CSS is loaded as expected.
-goto: file://|DOC_PATH|/settings.html
+goto: "file://" + |DOC_PATH| + "/settings.html"
 wait-for: "#settings"
-assert-css: (".setting-line .toggle .slider", {"width": "45px", "margin-right": "20px"})
+assert-css: (".setting-line", {"position": "relative"})
+
+assert-attribute-false: ("#settings", {"class": "popover"}, CONTAINS)
+compare-elements-position: (".sub form", "#settings", ("x"))
 
 // We now check the display with JS disabled.
 assert-false: "noscript section"
@@ -155,4 +197,4 @@ reload:
 size: (300, 1000)
 click: "#settings-menu"
 wait-for: "#settings"
-assert-css: ("#settings .slider", {"width": "45px"}, ALL)
+assert-css: (".setting-line", {"position": "relative"})

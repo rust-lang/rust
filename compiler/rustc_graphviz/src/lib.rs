@@ -410,7 +410,7 @@ impl<'a> Id<'a> {
     }
 
     pub fn as_slice(&'a self) -> &'a str {
-        &*self.name
+        &self.name
     }
 }
 
@@ -471,7 +471,11 @@ pub trait Labeller<'a> {
 /// Escape tags in such a way that it is suitable for inclusion in a
 /// Graphviz HTML label.
 pub fn escape_html(s: &str) -> String {
-    s.replace('&', "&amp;").replace('\"', "&quot;").replace('<', "&lt;").replace('>', "&gt;")
+    s.replace('&', "&amp;")
+        .replace('\"', "&quot;")
+        .replace('<', "&lt;")
+        .replace('>', "&gt;")
+        .replace('\n', "<br align=\"left\"/>")
 }
 
 impl<'a> LabelText<'a> {
@@ -511,7 +515,7 @@ impl<'a> LabelText<'a> {
     pub fn to_dot_string(&self) -> String {
         match *self {
             LabelStr(ref s) => format!("\"{}\"", s.escape_default()),
-            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(&s)),
+            EscStr(ref s) => format!("\"{}\"", LabelText::escape_str(s)),
             HtmlStr(ref s) => format!("<{}>", s),
         }
     }
@@ -525,7 +529,7 @@ impl<'a> LabelText<'a> {
             EscStr(s) => s,
             LabelStr(s) => {
                 if s.contains('\\') {
-                    (&*s).escape_default().to_string().into()
+                    s.escape_default().to_string().into()
                 } else {
                     s
                 }

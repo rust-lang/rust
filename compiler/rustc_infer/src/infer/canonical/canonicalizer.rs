@@ -20,7 +20,7 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::Idx;
 use smallvec::SmallVec;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Canonicalizes a query value `V`. When we canonicalize a query,
     /// we not only canonicalize unbound inference variables, but we
     /// *also* replace all free regions whatsoever. So for example a
@@ -316,7 +316,7 @@ impl CanonicalizeMode for CanonicalizeFreeRegionsOtherThanStatic {
 }
 
 struct Canonicalizer<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    infcx: &'cx InferCtxt<'tcx>,
     tcx: TyCtxt<'tcx>,
     variables: SmallVec<[CanonicalVarInfo<'tcx>; 8]>,
     query_state: &'cx mut OriginalQueryValues<'tcx>,
@@ -453,10 +453,9 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::Foreign(..)
-            | ty::Param(..)
-            | ty::Opaque(..) => {
+            | ty::Param(..) => {
                 if t.flags().intersects(self.needs_canonical_flags) {
                     t.super_fold_with(self)
                 } else {
@@ -495,7 +494,7 @@ impl<'cx, 'tcx> TypeFolder<'tcx> for Canonicalizer<'cx, 'tcx> {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 if debruijn >= self.binder_index {
-                    bug!("escaping bound type during canonicalization")
+                    bug!("escaping bound const during canonicalization")
                 } else {
                     return ct;
                 }
@@ -521,7 +520,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
     /// `canonicalize_query` and `canonicalize_response`.
     fn canonicalize<V>(
         value: V,
-        infcx: &InferCtxt<'_, 'tcx>,
+        infcx: &InferCtxt<'tcx>,
         tcx: TyCtxt<'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeMode,
         query_state: &mut OriginalQueryValues<'tcx>,
@@ -738,7 +737,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         r: ty::Region<'tcx>,
     ) -> ty::Region<'tcx> {
         let var = self.canonical_var(info, r.into());
-        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32()) };
+        let br = ty::BoundRegion { var, kind: ty::BrAnon(var.as_u32(), None) };
         let region = ty::ReLateBound(self.binder_index, br);
         self.tcx().mk_region(region)
     }
@@ -773,10 +772,10 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
             self.fold_const(bound_to)
         } else {
             let var = self.canonical_var(info, const_var.into());
-            self.tcx().mk_const(ty::ConstS {
-                kind: ty::ConstKind::Bound(self.binder_index, var),
-                ty: self.fold_ty(const_var.ty()),
-            })
+            self.tcx().mk_const(
+                ty::ConstKind::Bound(self.binder_index, var),
+                self.fold_ty(const_var.ty()),
+            )
         }
     }
 }

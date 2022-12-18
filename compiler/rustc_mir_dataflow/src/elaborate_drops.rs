@@ -407,9 +407,8 @@ where
         self.drop_ladder(fields, succ, unwind).0
     }
 
+    #[instrument(level = "debug", ret)]
     fn open_drop_for_box(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
-        debug!("open_drop_for_box({:?}, {:?}, {:?})", self, adt, substs);
-
         // drop glue is sent straight to codegen
         // box cannot be directly dereferenced
         let unique_ty = adt.non_enum_variant().fields[0].ty(self.tcx(), substs);
@@ -431,8 +430,8 @@ where
         self.drop_subpath(interior, interior_path, succ, unwind_succ)
     }
 
+    #[instrument(level = "debug", ret)]
     fn open_drop_for_adt(&mut self, adt: ty::AdtDef<'tcx>, substs: SubstsRef<'tcx>) -> BasicBlock {
-        debug!("open_drop_for_adt({:?}, {:?}, {:?})", self, adt, substs);
         if adt.variants().is_empty() {
             return self.elaborator.patch().new_block(BasicBlockData {
                 statements: vec![],
@@ -597,7 +596,6 @@ where
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
                     discr: Operand::Move(discr),
-                    switch_ty: discr_ty,
                     targets: SwitchTargets::new(
                         values.iter().copied().zip(blocks.iter().copied()),
                         *blocks.last().unwrap(),
@@ -616,7 +614,6 @@ where
         let drop_trait = tcx.require_lang_item(LangItem::Drop, None);
         let drop_fn = tcx.associated_item_def_ids(drop_trait)[0];
         let ty = self.place_ty(self.place);
-        let substs = tcx.mk_substs_trait(ty, &[]);
 
         let ref_ty =
             tcx.mk_ref(tcx.lifetimes.re_erased, ty::TypeAndMut { ty, mutbl: hir::Mutability::Mut });
@@ -634,7 +631,12 @@ where
             )],
             terminator: Some(Terminator {
                 kind: TerminatorKind::Call {
-                    func: Operand::function_handle(tcx, drop_fn, substs, self.source_info.span),
+                    func: Operand::function_handle(
+                        tcx,
+                        drop_fn,
+                        [ty.into()],
+                        self.source_info.span,
+                    ),
                     args: vec![Operand::Move(Place::from(ref_place))],
                     destination: unit_temp,
                     target: Some(succ),
@@ -717,7 +719,7 @@ where
             is_cleanup: unwind.is_cleanup(),
             terminator: Some(Terminator {
                 source_info: self.source_info,
-                kind: TerminatorKind::if_(tcx, move_(can_go), succ, drop_block),
+                kind: TerminatorKind::if_(move_(can_go), succ, drop_block),
             }),
         };
         let loop_block = self.elaborator.patch().new_block(loop_block);
@@ -782,7 +784,6 @@ where
                 source_info: self.source_info,
                 kind: TerminatorKind::SwitchInt {
                     discr: move_(elem_size),
-                    switch_ty: tcx.types.usize,
                     targets: SwitchTargets::static_if(
                         0,
                         self.drop_loop_pair(ety, false, len),
@@ -823,9 +824,10 @@ where
             // tmp = &raw mut P;
             // cur = tmp as *mut T;
             // end = Offset(cur, len);
+            let mir_cast_kind = ty::cast::mir_cast_kind(iter_ty, tmp_ty);
             vec![
                 self.assign(tmp, Rvalue::AddressOf(Mutability::Mut, self.place)),
-                self.assign(cur, Rvalue::Cast(CastKind::Misc, Operand::Move(tmp), iter_ty)),
+                self.assign(cur, Rvalue::Cast(mir_cast_kind, Operand::Move(tmp), iter_ty)),
                 self.assign(
                     length_or_end,
                     Rvalue::BinaryOp(
@@ -1021,7 +1023,7 @@ where
             DropStyle::Static => on_set,
             DropStyle::Conditional | DropStyle::Open => {
                 let flag = self.elaborator.get_drop_flag(self.path).unwrap();
-                let term = TerminatorKind::if_(self.tcx(), flag, on_set, on_unset);
+                let term = TerminatorKind::if_(flag, on_set, on_unset);
                 self.new_block(unwind, term)
             }
         }

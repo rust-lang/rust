@@ -7,7 +7,7 @@ use rustc_span::symbol::sym;
 
 use crate::GccContext;
 
-pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, has_alloc_error_handler: bool) {
+pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_name: &str, kind: AllocatorKind, alloc_error_handler_kind: AllocatorKind) {
     let context = &mods.context;
     let usize =
         match tcx.sess.target.pointer_width {
@@ -90,14 +90,7 @@ pub(crate) unsafe fn codegen(tcx: TyCtxt<'_>, mods: &mut GccContext, _module_nam
         .collect();
     let func = context.new_function(None, FunctionType::Exported, void, &args, name, false);
 
-    let kind =
-        if has_alloc_error_handler {
-            AllocatorKind::Global
-        }
-        else {
-            AllocatorKind::Default
-        };
-    let callee = kind.fn_name(sym::oom);
+    let callee = alloc_error_handler_kind.fn_name(sym::oom);
     let args: Vec<_> = types.iter().enumerate()
         .map(|(index, typ)| context.new_parameter(None, *typ, &format!("param{}", index)))
         .collect();

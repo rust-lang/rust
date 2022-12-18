@@ -64,7 +64,7 @@ pub(crate) struct GlobalState {
     pub(crate) source_root_config: SourceRootConfig,
     pub(crate) proc_macro_clients: Vec<Result<ProcMacroServer, String>>,
 
-    pub(crate) flycheck: Vec<FlycheckHandle>,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
     pub(crate) flycheck_sender: Sender<flycheck::Message>,
     pub(crate) flycheck_receiver: Receiver<flycheck::Message>,
 
@@ -100,7 +100,7 @@ pub(crate) struct GlobalState {
     /// the user just adds comments or whitespace to Cargo.toml, we do not want
     /// to invalidate any salsa caches.
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
-    pub(crate) fetch_workspaces_queue: OpQueue<Vec<anyhow::Result<ProjectWorkspace>>>,
+    pub(crate) fetch_workspaces_queue: OpQueue<Option<Vec<anyhow::Result<ProjectWorkspace>>>>,
     pub(crate) fetch_build_data_queue:
         OpQueue<(Arc<Vec<ProjectWorkspace>>, Vec<anyhow::Result<WorkspaceBuildScripts>>)>,
 
@@ -117,6 +117,7 @@ pub(crate) struct GlobalStateSnapshot {
     vfs: Arc<RwLock<(vfs::Vfs, NoHashHashMap<FileId, LineEndings>)>>,
     pub(crate) workspaces: Arc<Vec<ProjectWorkspace>>,
     pub(crate) proc_macros_loaded: bool,
+    pub(crate) flycheck: Arc<[FlycheckHandle]>,
 }
 
 impl std::panic::UnwindSafe for GlobalStateSnapshot {}
@@ -155,7 +156,7 @@ impl GlobalState {
             source_root_config: SourceRootConfig::default(),
             proc_macro_clients: vec![],
 
-            flycheck: Vec::new(),
+            flycheck: Arc::new([]),
             flycheck_sender,
             flycheck_receiver,
 
@@ -185,10 +186,47 @@ impl GlobalState {
         let (change, changed_files) = {
             let mut change = Change::new();
             let (vfs, line_endings_map) = &mut *self.vfs.write();
-            let changed_files = vfs.take_changes();
+            let mut changed_files = vfs.take_changes();
             if changed_files.is_empty() {
                 return false;
             }
+
+            // important: this needs to be a stable sort, the order between changes is relevant
+            // for the same file ids
+            changed_files.sort_by_key(|file| file.file_id);
+            // We need to fix up the changed events a bit, if we have a create or modify for a file
+            // id that is followed by a delete we actually no longer observe the file text from the
+            // create or modify which may cause problems later on
+            changed_files.dedup_by(|a, b| {
+                use vfs::ChangeKind::*;
+
+                if a.file_id != b.file_id {
+                    return false;
+                }
+
+                match (a.change_kind, b.change_kind) {
+                    // duplicate can be merged
+                    (Create, Create) | (Modify, Modify) | (Delete, Delete) => true,
+                    // just leave the create, modify is irrelevant
+                    (Create, Modify) => {
+                        std::mem::swap(a, b);
+                        true
+                    }
+                    // modify becomes irrelevant if the file is deleted
+                    (Modify, Delete) => true,
+                    // we should fully remove this occurrence,
+                    // but leaving just a delete works as well
+                    (Create, Delete) => true,
+                    // this is equivalent to a modify
+                    (Delete, Create) => {
+                        a.change_kind = Modify;
+                        true
+                    }
+                    // can't really occur
+                    (Modify, Create) => false,
+                    (Delete, Modify) => false,
+                }
+            });
 
             for file in &changed_files {
                 if let Some(path) = vfs.file_path(file.file_id).as_path() {
@@ -258,6 +296,7 @@ impl GlobalState {
             mem_docs: self.mem_docs.clone(),
             semantic_tokens_cache: Arc::clone(&self.semantic_tokens_cache),
             proc_macros_loaded: !self.fetch_build_data_queue.last_op_result().0.is_empty(),
+            flycheck: self.flycheck.clone(),
         }
     }
 
@@ -317,6 +356,10 @@ impl GlobalState {
         }
     }
 
+    pub(crate) fn is_completed(&self, request: &lsp_server::Request) -> bool {
+        self.req_queue.incoming.is_completed(&request.id)
+    }
+
     fn send(&mut self, message: lsp_server::Message) {
         self.sender.send(message).unwrap()
     }
@@ -340,7 +383,7 @@ impl GlobalStateSnapshot {
     pub(crate) fn file_line_index(&self, file_id: FileId) -> Cancellable<LineIndex> {
         let endings = self.vfs.read().1[&file_id];
         let index = self.analysis.file_line_index(file_id)?;
-        let res = LineIndex { index, endings, encoding: self.config.offset_encoding() };
+        let res = LineIndex { index, endings, encoding: self.config.position_encoding() };
         Ok(res)
     }
 
@@ -355,6 +398,10 @@ impl GlobalStateSnapshot {
         let path = base.join(&path.path).unwrap();
         let path = path.as_path().unwrap();
         url_from_abs_path(path)
+    }
+
+    pub(crate) fn file_id_to_file_path(&self, file_id: FileId) -> vfs::VfsPath {
+        self.vfs.read().0.file_path(file_id)
     }
 
     pub(crate) fn cargo_target_for_crate_root(

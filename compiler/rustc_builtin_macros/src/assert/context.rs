@@ -1,10 +1,9 @@
 use rustc_ast::{
-    attr,
     ptr::P,
     token,
     tokenstream::{DelimSpan, TokenStream, TokenTree},
-    BinOpKind, BorrowKind, Expr, ExprKind, ItemKind, MacArgs, MacCall, MacDelimiter, Mutability,
-    Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
+    BinOpKind, BorrowKind, DelimArgs, Expr, ExprKind, ItemKind, MacCall, MacDelimiter, MethodCall,
+    Mutability, Path, PathSegment, Stmt, StructRest, UnOp, UseTree, UseTreeKind, DUMMY_NODE_ID,
 };
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
@@ -58,6 +57,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     /// Builds the whole `assert!` expression. For example, `let elem = 1; assert!(elem == 1);` expands to:
     ///
     /// ```rust
+    /// #![feature(generic_assert_internals)]
     /// let elem = 1;
     /// {
     ///   #[allow(unused_imports)]
@@ -70,7 +70,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///       __local_bind0
     ///     } == 1
     ///   ) {
-    ///     panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {}", __capture0)
+    ///     panic!("Assertion failed: elem == 1\nWith captures:\n  elem = {:?}", __capture0)
     ///   }
     /// }
     /// ```
@@ -106,7 +106,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             (
                 UseTree {
                     prefix: this.cx.path(this.span, vec![Ident::with_dummy_span(sym)]),
-                    kind: UseTreeKind::Simple(None, DUMMY_NODE_ID, DUMMY_NODE_ID),
+                    kind: UseTreeKind::Simple(None),
                     span: this.span,
                 },
                 DUMMY_NODE_ID,
@@ -117,10 +117,7 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.cx.item(
                 self.span,
                 Ident::empty(),
-                thin_vec![self.cx.attribute(attr::mk_list_item(
-                    Ident::new(sym::allow, self.span),
-                    vec![attr::mk_nested_word_item(Ident::new(sym::unused_imports, self.span))],
-                ))],
+                thin_vec![self.cx.attr_nested_word(sym::allow, sym::unused_imports, self.span)],
                 ItemKind::Use(UseTree {
                     prefix: self.cx.path(self.span, self.cx.std_path(&[sym::asserting])),
                     kind: UseTreeKind::Nested(vec![
@@ -180,11 +177,11 @@ impl<'cx, 'a> Context<'cx, 'a> {
             self.span,
             ExprKind::MacCall(P(MacCall {
                 path: panic_path,
-                args: P(MacArgs::Delimited(
-                    DelimSpan::from_single(self.span),
-                    MacDelimiter::Parenthesis,
-                    initial.into_iter().chain(captures).collect::<TokenStream>(),
-                )),
+                args: P(DelimArgs {
+                    dspan: DelimSpan::from_single(self.span),
+                    delim: MacDelimiter::Parenthesis,
+                    tokens: initial.into_iter().chain(captures).collect::<TokenStream>(),
+                }),
                 prior_type_ascription: None,
             })),
         )
@@ -194,19 +191,19 @@ impl<'cx, 'a> Context<'cx, 'a> {
     ///
     /// See [Self::manage_initial_capture] and [Self::manage_try_capture]
     fn manage_cond_expr(&mut self, expr: &mut P<Expr>) {
-        match (*expr).kind {
-            ExprKind::AddrOf(_, mutability, ref mut local_expr) => {
+        match &mut expr.kind {
+            ExprKind::AddrOf(_, mutability, local_expr) => {
                 self.with_is_consumed_management(
                     matches!(mutability, Mutability::Mut),
                     |this| this.manage_cond_expr(local_expr)
                 );
             }
-            ExprKind::Array(ref mut local_exprs) => {
+            ExprKind::Array(local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Binary(ref op, ref mut lhs, ref mut rhs) => {
+            ExprKind::Binary(op, lhs, rhs) => {
                 self.with_is_consumed_management(
                     matches!(
                         op.node,
@@ -229,56 +226,56 @@ impl<'cx, 'a> Context<'cx, 'a> {
                     }
                 );
             }
-            ExprKind::Call(_, ref mut local_exprs) => {
+            ExprKind::Call(_, local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Cast(ref mut local_expr, _) => {
+            ExprKind::Cast(local_expr, _) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Index(ref mut prefix, ref mut suffix) => {
+            ExprKind::Index(prefix, suffix) => {
                 self.manage_cond_expr(prefix);
                 self.manage_cond_expr(suffix);
             }
-            ExprKind::MethodCall(_, _,ref mut local_exprs, _) => {
-                for local_expr in local_exprs.iter_mut() {
-                    self.manage_cond_expr(local_expr);
+            ExprKind::MethodCall(call) => {
+                for arg in &mut call.args {
+                    self.manage_cond_expr(arg);
                 }
             }
-            ExprKind::Path(_, Path { ref segments, .. }) if let &[ref path_segment] = &segments[..] => {
+            ExprKind::Path(_, Path { segments, .. }) if let [path_segment] = &segments[..] => {
                 let path_ident = path_segment.ident;
                 self.manage_initial_capture(expr, path_ident);
             }
-            ExprKind::Paren(ref mut local_expr) => {
+            ExprKind::Paren(local_expr) => {
                 self.manage_cond_expr(local_expr);
             }
-            ExprKind::Range(ref mut prefix, ref mut suffix, _) => {
-                if let Some(ref mut elem) = prefix {
+            ExprKind::Range(prefix, suffix, _) => {
+                if let Some(elem) = prefix {
                     self.manage_cond_expr(elem);
                 }
-                if let Some(ref mut elem) = suffix {
+                if let Some(elem) = suffix {
                     self.manage_cond_expr(elem);
                 }
             }
-            ExprKind::Repeat(ref mut local_expr, ref mut elem) => {
+            ExprKind::Repeat(local_expr, elem) => {
                 self.manage_cond_expr(local_expr);
                 self.manage_cond_expr(&mut elem.value);
             }
-            ExprKind::Struct(ref mut elem) => {
+            ExprKind::Struct(elem) => {
                 for field in &mut elem.fields {
                     self.manage_cond_expr(&mut field.expr);
                 }
-                if let StructRest::Base(ref mut local_expr) = elem.rest {
+                if let StructRest::Base(local_expr) = &mut elem.rest {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Tup(ref mut local_exprs) => {
+            ExprKind::Tup(local_exprs) => {
                 for local_expr in local_exprs {
                     self.manage_cond_expr(local_expr);
                 }
             }
-            ExprKind::Unary(un_op, ref mut local_expr) => {
+            ExprKind::Unary(un_op, local_expr) => {
                 self.with_is_consumed_management(
                     matches!(un_op, UnOp::Neg | UnOp::Not),
                     |this| this.manage_cond_expr(local_expr)
@@ -295,17 +292,18 @@ impl<'cx, 'a> Context<'cx, 'a> {
             | ExprKind::Block(_, _)
             | ExprKind::Box(_)
             | ExprKind::Break(_, _)
-            | ExprKind::Closure(_, _, _, _, _, _, _)
+            | ExprKind::Closure(_)
             | ExprKind::ConstBlock(_)
             | ExprKind::Continue(_)
             | ExprKind::Err
             | ExprKind::Field(_, _)
             | ExprKind::ForLoop(_, _, _, _)
             | ExprKind::If(_, _, _)
+            | ExprKind::IncludedBytes(..)
             | ExprKind::InlineAsm(_)
             | ExprKind::Let(_, _, _)
             | ExprKind::Lit(_)
-            | ExprKind::Loop(_, _)
+            | ExprKind::Loop(_, _, _)
             | ExprKind::MacCall(_)
             | ExprKind::Match(_, _)
             | ExprKind::Path(_, _)
@@ -440,12 +438,12 @@ fn expr_addr_of_mut(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {
 
 fn expr_method_call(
     cx: &ExtCtxt<'_>,
-    path: PathSegment,
+    seg: PathSegment,
     receiver: P<Expr>,
     args: Vec<P<Expr>>,
     span: Span,
 ) -> P<Expr> {
-    cx.expr(span, ExprKind::MethodCall(path, receiver, args, span))
+    cx.expr(span, ExprKind::MethodCall(Box::new(MethodCall { seg, receiver, args, span })))
 }
 
 fn expr_paren(cx: &ExtCtxt<'_>, sp: Span, e: P<Expr>) -> P<Expr> {

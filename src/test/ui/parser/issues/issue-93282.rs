@@ -12,4 +12,5 @@ fn foo() {
     let x = 1;
     bar('y, x);
     //~^ ERROR expected
+    //~| ERROR mismatched types
 }

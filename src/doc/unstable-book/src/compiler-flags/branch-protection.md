@@ -1,7 +1,7 @@
 # `branch-protection`
 
 This option lets you enable branch authentication instructions on AArch64.
-This option is ignored for non-AArch64 architectures.
+This option is only accepted when targeting AArch64 architectures.
 It takes some combination of the following values, separated by a `,`.
 
 - `pac-ret` - Enable pointer authentication for non-leaf functions.
@@ -15,4 +15,4 @@ For example, `-Z branch-protection=bti,pac-ret,leaf` is valid, but
 
 Rust's standard library does not ship with BTI or pointer authentication enabled by default.
 In Cargo projects the standard library can be recompiled with pointer authentication using the nightly
-[build-std](https://doc.rust-lang.org/nightly/cargo/reference/unstable.html#build-std) feature.
+[build-std](../../cargo/reference/unstable.html#build-std) feature.

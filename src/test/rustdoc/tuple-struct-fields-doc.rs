@@ -2,7 +2,7 @@
 
 // @has foo/struct.Foo.html
 // @has - '//h2[@id="fields"]' 'Tuple Fields'
-// @has - '//h3[@class="sidebar-title"]/a[@href="#fields"]' 'Tuple Fields'
+// @has - '//div[@class="sidebar-elems"]//h3/a[@href="#fields"]' 'Tuple Fields'
 // @has - '//*[@id="structfield.0"]' '0: u32'
 // @has - '//*[@id="main-content"]/div[@class="docblock"]' 'hello'
 // @!has - '//*[@id="structfield.1"]' ''

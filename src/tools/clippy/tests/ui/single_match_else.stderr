@@ -1,5 +1,5 @@
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:19:13
+  --> $DIR/single_match_else.rs:17:13
    |
 LL |       let _ = match ExprNode::Butterflies {
    |  _____________^
@@ -21,7 +21,7 @@ LL ~     };
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:84:5
+  --> $DIR/single_match_else.rs:82:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -41,7 +41,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:93:5
+  --> $DIR/single_match_else.rs:91:5
    |
 LL | /     match Some(1) {
 LL | |         Some(a) => println!("${:?}", a),
@@ -61,7 +61,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:103:5
+  --> $DIR/single_match_else.rs:101:5
    |
 LL | /     match Result::<i32, Infallible>::Ok(1) {
 LL | |         Ok(a) => println!("${:?}", a),
@@ -81,7 +81,7 @@ LL +     }
    |
 
 error: you seem to be trying to use `match` for destructuring a single pattern. Consider using `if let`
-  --> $DIR/single_match_else.rs:112:5
+  --> $DIR/single_match_else.rs:110:5
    |
 LL | /     match Cow::from("moo") {
 LL | |         Cow::Owned(a) => println!("${:?}", a),

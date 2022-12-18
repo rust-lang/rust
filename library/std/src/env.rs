@@ -570,6 +570,13 @@ impl Error for JoinPathsError {
 ///
 /// [msdn]: https://docs.microsoft.com/en-us/windows/win32/api/userenv/nf-userenv-getuserprofiledirectorya
 ///
+/// # Deprecation
+///
+/// This function is deprecated because the behaviour on Windows is not correct.
+/// The 'HOME' environment variable is not standard on Windows, and may not produce
+/// desired results; for instance, under Cygwin or Mingw it will return `/home/you`
+/// when it should return `C:\Users\you`.
+///
 /// # Examples
 ///
 /// ```
@@ -582,7 +589,7 @@ impl Error for JoinPathsError {
 /// ```
 #[deprecated(
     since = "1.29.0",
-    note = "This function's behavior is unexpected and probably not what you want. \
+    note = "This function's behavior may be unexpected on Windows. \
             Consider using a crate from crates.io instead."
 )]
 #[must_use]

@@ -1,10 +1,10 @@
 use crate::spec::crt_objects::{self, LinkSelfContainedDefault};
-use crate::spec::{cvs, DebuginfoKind, LinkerFlavor, SplitDebuginfo, TargetOptions};
+use crate::spec::{cvs, Cc, DebuginfoKind, LinkerFlavor, Lld, SplitDebuginfo, TargetOptions};
 use std::borrow::Cow;
 
 pub fn opts() -> TargetOptions {
     let mut pre_link_args = TargetOptions::link_args(
-        LinkerFlavor::Ld,
+        LinkerFlavor::Gnu(Cc::No, Lld::No),
         &[
             // Enable ASLR
             "--dynamicbase",
@@ -14,7 +14,7 @@ pub fn opts() -> TargetOptions {
     );
     super::add_link_args(
         &mut pre_link_args,
-        LinkerFlavor::Gcc,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
         &[
             // Tell GCC to avoid linker plugins, because we are not bundling
             // them with Windows installer, and Rust does its own LTO anyways.
@@ -42,23 +42,33 @@ pub fn opts() -> TargetOptions {
         "-luser32",
         "-lkernel32",
     ];
-    let mut late_link_args = TargetOptions::link_args(LinkerFlavor::Ld, mingw_libs);
-    super::add_link_args(&mut late_link_args, LinkerFlavor::Gcc, mingw_libs);
+    let mut late_link_args =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), mingw_libs);
+    super::add_link_args(&mut late_link_args, LinkerFlavor::Gnu(Cc::Yes, Lld::No), mingw_libs);
     // If any of our crates are dynamically linked then we need to use
     // the shared libgcc_s-dw2-1.dll. This is required to support
     // unwinding across DLL boundaries.
     let dynamic_unwind_libs = &["-lgcc_s"];
     let mut late_link_args_dynamic =
-        TargetOptions::link_args(LinkerFlavor::Ld, dynamic_unwind_libs);
-    super::add_link_args(&mut late_link_args_dynamic, LinkerFlavor::Gcc, dynamic_unwind_libs);
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), dynamic_unwind_libs);
+    super::add_link_args(
+        &mut late_link_args_dynamic,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        dynamic_unwind_libs,
+    );
     // If all of our crates are statically linked then we can get away
     // with statically linking the libgcc unwinding code. This allows
     // binaries to be redistributed without the libgcc_s-dw2-1.dll
     // dependency, but unfortunately break unwinding across DLL
     // boundaries when unwinding across FFI boundaries.
     let static_unwind_libs = &["-lgcc_eh", "-l:libpthread.a"];
-    let mut late_link_args_static = TargetOptions::link_args(LinkerFlavor::Ld, static_unwind_libs);
-    super::add_link_args(&mut late_link_args_static, LinkerFlavor::Gcc, static_unwind_libs);
+    let mut late_link_args_static =
+        TargetOptions::link_args(LinkerFlavor::Gnu(Cc::No, Lld::No), static_unwind_libs);
+    super::add_link_args(
+        &mut late_link_args_static,
+        LinkerFlavor::Gnu(Cc::Yes, Lld::No),
+        static_unwind_libs,
+    );
 
     TargetOptions {
         os: "windows".into(),

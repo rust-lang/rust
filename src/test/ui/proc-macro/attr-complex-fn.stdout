@@ -53,12 +53,12 @@ PRINT-ATTR INPUT (DEBUG): TokenStream [
     Punct {
         ch: '>',
         spacing: Joint,
-        span: $DIR/attr-complex-fn.rs:19:36: 19:38 (#0),
+        span: $DIR/attr-complex-fn.rs:19:36: 19:37 (#0),
     },
     Punct {
         ch: '>',
         spacing: Joint,
-        span: $DIR/attr-complex-fn.rs:19:36: 19:38 (#0),
+        span: $DIR/attr-complex-fn.rs:19:37: 19:38 (#0),
     },
     Punct {
         ch: '>',

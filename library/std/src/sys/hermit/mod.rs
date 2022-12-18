@@ -51,9 +51,9 @@ pub mod locks {
     mod futex_condvar;
     mod futex_mutex;
     mod futex_rwlock;
-    pub(crate) use futex_condvar::MovableCondvar;
-    pub(crate) use futex_mutex::{MovableMutex, Mutex};
-    pub(crate) use futex_rwlock::{MovableRwLock, RwLock};
+    pub(crate) use futex_condvar::Condvar;
+    pub(crate) use futex_mutex::Mutex;
+    pub(crate) use futex_rwlock::RwLock;
 }
 
 use crate::io::ErrorKind;
@@ -106,9 +106,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
 
 // SAFETY: must be called only once during runtime cleanup.
 // NOTE: this is not guaranteed to run, for example when the program aborts.
-pub unsafe fn cleanup() {
-    args::cleanup();
-}
+pub unsafe fn cleanup() {}
 
 #[cfg(not(test))]
 #[no_mangle]

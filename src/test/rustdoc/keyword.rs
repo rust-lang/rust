@@ -7,7 +7,7 @@
 // @has foo/index.html '//div[@class="sidebar-elems"]//li/a' 'Keywords'
 // @has foo/index.html '//div[@class="sidebar-elems"]//li/a/@href' '#keywords'
 // @has foo/keyword.match.html '//a[@class="keyword"]' 'match'
-// @has foo/keyword.match.html '//span[@class="in-band"]' 'Keyword match'
+// @has foo/keyword.match.html '//h1[@class="fqn"]' 'Keyword match'
 // @has foo/keyword.match.html '//section[@id="main-content"]//div[@class="docblock"]//p' 'this is a test!'
 // @has foo/index.html '//a/@href' '../foo/index.html'
 // @!has foo/foo/index.html

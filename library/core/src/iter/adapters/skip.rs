@@ -206,17 +206,7 @@ where
         if n == 0 { try { init } } else { self.iter.try_rfold(init, check(n, fold)).into_try() }
     }
 
-    fn rfold<Acc, Fold>(mut self, init: Acc, fold: Fold) -> Acc
-    where
-        Fold: FnMut(Acc, Self::Item) -> Acc,
-    {
-        #[inline]
-        fn ok<Acc, T>(mut f: impl FnMut(Acc, T) -> Acc) -> impl FnMut(Acc, T) -> Result<Acc, !> {
-            move |acc, x| Ok(f(acc, x))
-        }
-
-        self.try_rfold(init, ok(fold)).unwrap()
-    }
+    impl_fold_via_try_fold! { rfold -> try_rfold }
 
     #[inline]
     fn advance_back_by(&mut self, n: usize) -> Result<(), usize> {

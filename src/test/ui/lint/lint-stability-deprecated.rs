@@ -130,7 +130,7 @@ mod cross_crate {
         let _ = UnstableTupleStruct (1);
         let _ = StableTupleStruct (1);
 
-        // At the moment, the lint checker only checks stability in
+        // At the moment, the lint checker only checks stability
         // in the arguments of macros.
         // Eventually, we will want to lint the contents of the
         // macro in the module *defining* it. Also, stability levels

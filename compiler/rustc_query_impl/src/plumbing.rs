@@ -2,7 +2,6 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::keys::Key;
 use crate::on_disk_cache::{CacheDecoder, CacheEncoder, EncodedDepNodeIndex};
 use crate::profiling_support::QueryKeyStringCache;
 use crate::{on_disk_cache, Queries};
@@ -12,13 +11,13 @@ use rustc_errors::{Diagnostic, Handler};
 use rustc_middle::dep_graph::{
     self, DepKind, DepKindStruct, DepNode, DepNodeIndex, SerializedDepNodeIndex,
 };
+use rustc_middle::query::Key;
 use rustc_middle::ty::tls::{self, ImplicitCtxt};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_query_system::dep_graph::{DepNodeParams, HasDepContext};
 use rustc_query_system::ich::StableHashingContext;
 use rustc_query_system::query::{
-    force_query, QueryConfig, QueryContext, QueryDescription, QueryJobId, QueryMap,
-    QuerySideEffects, QueryStackFrame,
+    force_query, QueryConfig, QueryContext, QueryJobId, QueryMap, QuerySideEffects, QueryStackFrame,
 };
 use rustc_query_system::{LayoutOfDepth, QueryOverflow, Value};
 use rustc_serialize::Decodable;
@@ -253,6 +252,18 @@ macro_rules! depth_limit {
     };
 }
 
+macro_rules! feedable {
+    ([]) => {{
+        false
+    }};
+    ([(feedable) $($rest:tt)*]) => {{
+        true
+    }};
+    ([$other:tt $($modifiers:tt)*]) => {
+        feedable!([$($modifiers)*])
+    };
+}
+
 macro_rules! hash_result {
     ([]) => {{
         Some(dep_graph::hash_result)
@@ -298,7 +309,7 @@ pub(crate) fn create_query_frame<
     K: Copy + Key + for<'a> HashStable<StableHashingContext<'a>>,
 >(
     tcx: QueryCtxt<'tcx>,
-    do_describe: fn(QueryCtxt<'tcx>, K) -> String,
+    do_describe: fn(TyCtxt<'tcx>, K) -> String,
     key: K,
     kind: DepKind,
     name: &'static str,
@@ -307,10 +318,10 @@ pub(crate) fn create_query_frame<
     // Showing visible path instead of any path is not that important in production.
     let description = ty::print::with_no_visible_paths!(
         // Force filename-line mode to avoid invoking `type_of` query.
-        ty::print::with_forced_impl_filename_line!(do_describe(tcx, key))
+        ty::print::with_forced_impl_filename_line!(do_describe(tcx.tcx, key))
     );
     let description =
-        if tcx.sess.verbose() { format!("{} [{}]", description, name) } else { description };
+        if tcx.sess.verbose() { format!("{} [{:?}]", description, name) } else { description };
     let span = if kind == dep_graph::DepKind::def_span {
         // The `def_span` query is used to calculate `default_span`,
         // so exit to avoid infinite recursion.
@@ -318,13 +329,12 @@ pub(crate) fn create_query_frame<
     } else {
         Some(key.default_span(*tcx))
     };
+    let def_id = key.key_as_def_id();
     let def_kind = if kind == dep_graph::DepKind::opt_def_kind {
         // Try to avoid infinite recursion.
         None
     } else {
-        key.key_as_def_id()
-            .and_then(|def_id| def_id.as_local())
-            .and_then(|def_id| tcx.opt_def_kind(def_id))
+        def_id.and_then(|def_id| def_id.as_local()).and_then(|def_id| tcx.opt_def_kind(def_id))
     };
     let hash = || {
         tcx.with_stable_hashing_context(|mut hcx| {
@@ -334,13 +344,14 @@ pub(crate) fn create_query_frame<
             hasher.finish::<u64>()
         })
     };
+    let ty_adt_id = key.ty_adt_id();
 
-    QueryStackFrame::new(name, description, span, def_kind, hash)
+    QueryStackFrame::new(name, description, span, def_id, def_kind, ty_adt_id, hash)
 }
 
 fn try_load_from_on_disk_cache<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode)
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
 {
     debug_assert!(tcx.dep_graph.is_green(&dep_node));
@@ -365,7 +376,7 @@ where
 
 fn force_from_dep_node<'tcx, Q>(tcx: TyCtxt<'tcx>, dep_node: DepNode) -> bool
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
     Q::Value: Value<TyCtxt<'tcx>>,
 {
@@ -398,12 +409,9 @@ where
     }
 }
 
-pub(crate) fn query_callback<'tcx, Q: QueryConfig>(
-    is_anon: bool,
-    is_eval_always: bool,
-) -> DepKindStruct<'tcx>
+pub(crate) fn query_callback<'tcx, Q>(is_anon: bool, is_eval_always: bool) -> DepKindStruct<'tcx>
 where
-    Q: QueryDescription<QueryCtxt<'tcx>>,
+    Q: QueryConfig<QueryCtxt<'tcx>>,
     Q::Key: DepNodeParams<TyCtxt<'tcx>>,
 {
     let fingerprint_style = Q::Key::fingerprint_style();
@@ -458,15 +466,16 @@ macro_rules! define_queries {
             })*
         }
 
-        $(impl<'tcx> QueryConfig for queries::$name<'tcx> {
+        $(impl<'tcx> QueryConfig<QueryCtxt<'tcx>> for queries::$name<'tcx> {
             type Key = query_keys::$name<'tcx>;
             type Value = query_values::$name<'tcx>;
             type Stored = query_stored::$name<'tcx>;
             const NAME: &'static str = stringify!($name);
-        }
 
-        impl<'tcx> QueryDescription<QueryCtxt<'tcx>> for queries::$name<'tcx> {
-            rustc_query_description! { $name }
+            #[inline]
+            fn cache_on_disk(tcx: TyCtxt<'tcx>, key: &Self::Key) -> bool {
+                ::rustc_middle::query::cached::$name(tcx, key)
+            }
 
             type Cache = query_storage::$name<'tcx>;
 
@@ -494,6 +503,7 @@ macro_rules! define_queries {
                     anon: is_anon!([$($modifiers)*]),
                     eval_always: is_eval_always!([$($modifiers)*]),
                     depth_limit: depth_limit!([$($modifiers)*]),
+                    feedable: feedable!([$($modifiers)*]),
                     dep_kind: dep_graph::DepKind::$name,
                     hash_result: hash_result!([$($modifiers)*]),
                     handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
@@ -576,7 +586,7 @@ macro_rules! define_queries {
             use rustc_middle::ty::TyCtxt;
             use $crate::plumbing::{QueryStruct, QueryCtxt};
             use $crate::profiling_support::QueryKeyStringCache;
-            use rustc_query_system::query::{QueryDescription, QueryMap};
+            use rustc_query_system::query::QueryMap;
 
             pub(super) const fn dummy_query_struct<'tcx>() -> QueryStruct<'tcx> {
                 fn noop_try_collect_active_jobs(_: QueryCtxt<'_>, _: &mut QueryMap) -> Option<()> {
@@ -603,7 +613,7 @@ macro_rules! define_queries {
                     let make_query = |tcx, key| {
                         let kind = rustc_middle::dep_graph::DepKind::$name;
                         let name = stringify!($name);
-                        $crate::plumbing::create_query_frame(tcx, super::queries::$name::describe, key, kind, name)
+                        $crate::plumbing::create_query_frame(tcx, rustc_middle::query::descs::$name, key, kind, name)
                     };
                     tcx.queries.$name.try_collect_active_jobs(
                         tcx,
@@ -659,12 +669,15 @@ macro_rules! define_queries_struct {
             local_providers: Box<Providers>,
             extern_providers: Box<ExternProviders>,
             query_structs: Vec<$crate::plumbing::QueryStruct<'tcx>>,
-
             pub on_disk_cache: Option<OnDiskCache<'tcx>>,
-
             jobs: AtomicU64,
 
-            $($(#[$attr])*  $name: QueryState<<queries::$name<'tcx> as QueryConfig>::Key>,)*
+            $(
+                $(#[$attr])*
+                $name: QueryState<
+                    <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key
+                >,
+            )*
         }
 
         impl<'tcx> Queries<'tcx> {
@@ -701,7 +714,7 @@ macro_rules! define_queries_struct {
                 &'tcx self,
                 tcx: TyCtxt<'tcx>,
                 span: Span,
-                key: <queries::$name<'tcx> as QueryConfig>::Key,
+                key: <queries::$name<'tcx> as QueryConfig<QueryCtxt<'tcx>>>::Key,
                 mode: QueryMode,
             ) -> Option<query_stored::$name<'tcx>> {
                 let qcx = QueryCtxt { tcx, queries: self };

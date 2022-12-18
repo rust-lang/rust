@@ -109,8 +109,6 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
             let params =
                 body.extracted_function_params(ctx, &container_info, locals_used.iter().copied());
 
-            let extracted_from_trait_impl = body.extracted_from_trait_impl();
-
             let name = make_function_name(&semantics_scope);
 
             let fun = Function {
@@ -129,8 +127,11 @@ pub(crate) fn extract_function(acc: &mut Assists, ctx: &AssistContext<'_>) -> Op
 
             builder.replace(target_range, make_call(ctx, &fun, old_indent));
 
+            let has_impl_wrapper =
+                insert_after.ancestors().any(|a| a.kind() == SyntaxKind::IMPL && a != insert_after);
+
             let fn_def = match fun.self_param_adt(ctx) {
-                Some(adt) if extracted_from_trait_impl => {
+                Some(adt) if anchor == Anchor::Method && !has_impl_wrapper => {
                     let fn_def = format_function(ctx, module, &fun, old_indent, new_indent + 1);
                     generate_impl_text(&adt, &fn_def).replace("{\n\n", "{")
                 }
@@ -181,7 +182,7 @@ fn make_function_name(semantics_scope: &hir::SemanticsScope<'_>) -> ast::NameRef
     let mut counter = 0;
     while names_in_scope.contains(&name) {
         counter += 1;
-        name = format!("{}{}", &default_name, counter)
+        name = format!("{default_name}{counter}")
     }
     make::name_ref(&name)
 }
@@ -272,7 +273,7 @@ enum FunType {
 }
 
 /// Where to put extracted function definition
-#[derive(Debug)]
+#[derive(Debug, Eq, PartialEq, Clone, Copy)]
 enum Anchor {
     /// Extract free function and put right after current top-level function
     Freestanding,
@@ -1245,6 +1246,14 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
     while let Some(next_ancestor) = ancestors.next() {
         match next_ancestor.kind() {
             SyntaxKind::SOURCE_FILE => break,
+            SyntaxKind::IMPL => {
+                if body.extracted_from_trait_impl() && matches!(anchor, Anchor::Method) {
+                    let impl_node = find_non_trait_impl(&next_ancestor);
+                    if let target_node @ Some(_) = impl_node.as_ref().and_then(last_impl_member) {
+                        return target_node;
+                    }
+                }
+            }
             SyntaxKind::ITEM_LIST if !matches!(anchor, Anchor::Freestanding) => continue,
             SyntaxKind::ITEM_LIST => {
                 if ancestors.peek().map(SyntaxNode::kind) == Some(SyntaxKind::MODULE) {
@@ -1263,6 +1272,29 @@ fn node_to_insert_after(body: &FunctionBody, anchor: Anchor) -> Option<SyntaxNod
         last_ancestor = Some(next_ancestor);
     }
     last_ancestor
+}
+
+fn find_non_trait_impl(trait_impl: &SyntaxNode) -> Option<ast::Impl> {
+    let as_impl = ast::Impl::cast(trait_impl.clone())?;
+    let impl_type = Some(impl_type_name(&as_impl)?);
+
+    let sibblings = trait_impl.parent()?.children();
+    sibblings
+        .filter_map(ast::Impl::cast)
+        .find(|s| impl_type_name(s) == impl_type && !is_trait_impl(s))
+}
+
+fn last_impl_member(impl_node: &ast::Impl) -> Option<SyntaxNode> {
+    let last_child = impl_node.assoc_item_list()?.assoc_items().last()?;
+    Some(last_child.syntax().clone())
+}
+
+fn is_trait_impl(node: &ast::Impl) -> bool {
+    node.trait_().is_some()
+}
+
+fn impl_type_name(impl_node: &ast::Impl) -> Option<String> {
+    Some(impl_node.self_ty()?.to_string())
 }
 
 fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> String {
@@ -1291,19 +1323,23 @@ fn make_call(ctx: &AssistContext<'_>, fun: &Function, indent: IndentLevel) -> St
     match fun.outliving_locals.as_slice() {
         [] => {}
         [var] => {
-            format_to!(buf, "let {}{} = ", mut_modifier(var), var.local.name(ctx.db()))
+            let modifier = mut_modifier(var);
+            let name = var.local.name(ctx.db());
+            format_to!(buf, "let {modifier}{name} = ")
         }
         vars => {
             buf.push_str("let (");
             let bindings = vars.iter().format_with(", ", |local, f| {
-                f(&format_args!("{}{}", mut_modifier(local), local.local.name(ctx.db())))
+                let modifier = mut_modifier(local);
+                let name = local.local.name(ctx.db());
+                f(&format_args!("{modifier}{name}"))
             });
-            format_to!(buf, "{}", bindings);
+            format_to!(buf, "{bindings}");
             buf.push_str(") = ");
         }
     }
 
-    format_to!(buf, "{}", expr);
+    format_to!(buf, "{expr}");
     let insert_comma = fun
         .body
         .parent()
@@ -1447,6 +1483,8 @@ fn format_function(
     new_indent: IndentLevel,
 ) -> String {
     let mut fn_def = String::new();
+
+    let fun_name = &fun.name;
     let params = fun.make_param_list(ctx, module);
     let ret_ty = fun.make_ret_ty(ctx, module);
     let body = make_body(ctx, old_indent, new_indent, fun);
@@ -1454,42 +1492,28 @@ fn format_function(
     let async_kw = if fun.control_flow.is_async { "async " } else { "" };
     let unsafe_kw = if fun.control_flow.is_unsafe { "unsafe " } else { "" };
     let (generic_params, where_clause) = make_generic_params_and_where_clause(ctx, fun);
+
+    format_to!(fn_def, "\n\n{new_indent}{const_kw}{async_kw}{unsafe_kw}");
     match ctx.config.snippet_cap {
-        Some(_) => format_to!(
-            fn_def,
-            "\n\n{}{}{}{}fn $0{}",
-            new_indent,
-            const_kw,
-            async_kw,
-            unsafe_kw,
-            fun.name,
-        ),
-        None => format_to!(
-            fn_def,
-            "\n\n{}{}{}{}fn {}",
-            new_indent,
-            const_kw,
-            async_kw,
-            unsafe_kw,
-            fun.name,
-        ),
+        Some(_) => format_to!(fn_def, "fn $0{fun_name}"),
+        None => format_to!(fn_def, "fn {fun_name}"),
     }
 
     if let Some(generic_params) = generic_params {
-        format_to!(fn_def, "{}", generic_params);
+        format_to!(fn_def, "{generic_params}");
     }
 
-    format_to!(fn_def, "{}", params);
+    format_to!(fn_def, "{params}");
 
     if let Some(ret_ty) = ret_ty {
-        format_to!(fn_def, " {}", ret_ty);
+        format_to!(fn_def, " {ret_ty}");
     }
 
     if let Some(where_clause) = where_clause {
-        format_to!(fn_def, " {}", where_clause);
+        format_to!(fn_def, " {where_clause}");
     }
 
-    format_to!(fn_def, " {}", body);
+    format_to!(fn_def, " {body}");
 
     fn_def
 }
@@ -5057,6 +5081,236 @@ impl Struct {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn extract_method_from_trait_with_existing_non_empty_impl_block() {
+        check_assist(
+            extract_function,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl Struct {
+    fn foo() {}
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        $0self.0 + 2$0
+    }
+}
+"#,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl Struct {
+    fn foo() {}
+
+    fn $0fun_name(&self) -> i32 {
+        self.0 + 2
+    }
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        self.fun_name()
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_function_from_trait_with_existing_non_empty_impl_block() {
+        check_assist(
+            extract_function,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl Struct {
+    fn foo() {}
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        let three_squared = $03 * 3$0;
+        self.0 + three_squared
+    }
+}
+"#,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl Struct {
+    fn foo() {}
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        let three_squared = fun_name();
+        self.0 + three_squared
+    }
+}
+
+fn $0fun_name() -> i32 {
+    3 * 3
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_method_from_trait_with_multiple_existing_impl_blocks() {
+        check_assist(
+            extract_function,
+            r#"
+struct Struct(i32);
+struct StructBefore(i32);
+struct StructAfter(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl StructBefore {
+    fn foo(){}
+}
+
+impl Struct {
+    fn foo(){}
+}
+
+impl StructAfter {
+    fn foo(){}
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        $0self.0 + 2$0
+    }
+}
+"#,
+            r#"
+struct Struct(i32);
+struct StructBefore(i32);
+struct StructAfter(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+
+impl StructBefore {
+    fn foo(){}
+}
+
+impl Struct {
+    fn foo(){}
+
+    fn $0fun_name(&self) -> i32 {
+        self.0 + 2
+    }
+}
+
+impl StructAfter {
+    fn foo(){}
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        self.fun_name()
+    }
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn extract_method_from_trait_with_multiple_existing_trait_impl_blocks() {
+        check_assist(
+            extract_function,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+trait TraitBefore {
+    fn before(&self) -> i32;
+}
+trait TraitAfter {
+    fn after(&self) -> i32;
+}
+
+impl TraitBefore for Struct {
+    fn before(&self) -> i32 {
+        42
+    }
+}
+
+impl Struct {
+    fn foo(){}
+}
+
+impl TraitAfter for Struct {
+    fn after(&self) -> i32 {
+        42
+    }
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        $0self.0 + 2$0
+    }
+}
+"#,
+            r#"
+struct Struct(i32);
+trait Trait {
+    fn bar(&self) -> i32;
+}
+trait TraitBefore {
+    fn before(&self) -> i32;
+}
+trait TraitAfter {
+    fn after(&self) -> i32;
+}
+
+impl TraitBefore for Struct {
+    fn before(&self) -> i32 {
+        42
+    }
+}
+
+impl Struct {
+    fn foo(){}
+
+    fn $0fun_name(&self) -> i32 {
+        self.0 + 2
+    }
+}
+
+impl TraitAfter for Struct {
+    fn after(&self) -> i32 {
+        42
+    }
+}
+
+impl Trait for Struct {
+    fn bar(&self) -> i32 {
+        self.fun_name()
+    }
+}
+"#,
+        )
     }
 
     #[test]

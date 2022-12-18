@@ -1,15 +1,13 @@
 use crate::traits::query::evaluate_obligation::InferCtxtExt as _;
-use crate::traits::{self, TraitEngine, TraitEngineExt};
+use crate::traits::{self, ObligationCtxt};
 
 use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
-use rustc_infer::traits::ObligationCause;
 use rustc_middle::arena::ArenaAllocatable;
 use rustc_middle::infer::canonical::{Canonical, CanonicalizedQueryResponse, QueryResponse};
 use rustc_middle::traits::query::Fallible;
-use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::{self, Ty, TypeFoldable, TypeVisitable};
+use rustc_middle::ty::{GenericArg, ToPredicate};
 use rustc_span::{Span, DUMMY_SP};
 
 use std::fmt::Debug;
@@ -31,21 +29,11 @@ pub trait InferCtxtExt<'tcx> {
         span: Span,
     ) -> bool;
 
-    fn partially_normalize_associated_types_in<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>;
-
     /// Check whether a `ty` implements given trait(trait_def_id).
     /// The inputs are:
     ///
     /// - the def-id of the trait
-    /// - the self type
-    /// - the *other* type parameters of the trait, excluding the self-type
+    /// - the type parameters of the trait, including the self-type
     /// - the parameter environment
     ///
     /// Invokes `evaluate_obligation`, so in the event that evaluating
@@ -54,12 +42,11 @@ pub trait InferCtxtExt<'tcx> {
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
-        ty: Ty<'tcx>,
-        params: SubstsRef<'tcx>,
+        params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult;
 }
-impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
     fn type_is_copy_modulo_regions(
         &self,
         param_env: ty::ParamEnv<'tcx>,
@@ -69,7 +56,7 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         let ty = self.resolve_vars_if_possible(ty);
 
         if !(param_env, ty).needs_infer() {
-            return ty.is_copy_modulo_regions(self.tcx.at(span), param_env);
+            return ty.is_copy_modulo_regions(self.tcx, param_env);
         }
 
         let copy_def_id = self.tcx.require_lang_item(LangItem::Copy, None);
@@ -91,42 +78,14 @@ impl<'cx, 'tcx> InferCtxtExt<'tcx> for InferCtxt<'cx, 'tcx> {
         traits::type_known_to_meet_bound_modulo_regions(self, param_env, ty, lang_item, span)
     }
 
-    /// Normalizes associated types in `value`, potentially returning
-    /// new obligations that must further be processed.
-    fn partially_normalize_associated_types_in<T>(
-        &self,
-        cause: ObligationCause<'tcx>,
-        param_env: ty::ParamEnv<'tcx>,
-        value: T,
-    ) -> InferOk<'tcx, T>
-    where
-        T: TypeFoldable<'tcx>,
-    {
-        debug!("partially_normalize_associated_types_in(value={:?})", value);
-        let mut selcx = traits::SelectionContext::new(self);
-        let traits::Normalized { value, obligations } =
-            traits::normalize(&mut selcx, param_env, cause, value);
-        debug!(
-            "partially_normalize_associated_types_in: result={:?} predicates={:?}",
-            value, obligations
-        );
-        InferOk { value, obligations }
-    }
-
+    #[instrument(level = "debug", skip(self, params), ret)]
     fn type_implements_trait(
         &self,
         trait_def_id: DefId,
-        ty: Ty<'tcx>,
-        params: SubstsRef<'tcx>,
+        params: impl IntoIterator<Item = impl Into<GenericArg<'tcx>>>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> traits::EvaluationResult {
-        debug!(
-            "type_implements_trait: trait_def_id={:?}, type={:?}, params={:?}, param_env={:?}",
-            trait_def_id, ty, params, param_env
-        );
-
-        let trait_ref =
-            ty::TraitRef { def_id: trait_def_id, substs: self.tcx.mk_substs_trait(ty, params) };
+        let trait_ref = self.tcx.mk_trait_ref(trait_def_id, params);
 
         let obligation = traits::Obligation {
             cause: traits::ObligationCause::dummy(),
@@ -142,7 +101,7 @@ pub trait InferCtxtBuilderExt<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
@@ -170,25 +129,17 @@ impl<'tcx> InferCtxtBuilderExt<'tcx> for InferCtxtBuilder<'tcx> {
     fn enter_canonical_trait_query<K, R>(
         &mut self,
         canonical_key: &Canonical<'tcx, K>,
-        operation: impl FnOnce(&InferCtxt<'_, 'tcx>, &mut dyn TraitEngine<'tcx>, K) -> Fallible<R>,
+        operation: impl FnOnce(&ObligationCtxt<'_, 'tcx>, K) -> Fallible<R>,
     ) -> Fallible<CanonicalizedQueryResponse<'tcx, R>>
     where
         K: TypeFoldable<'tcx>,
         R: Debug + TypeFoldable<'tcx>,
         Canonical<'tcx, QueryResponse<'tcx, R>>: ArenaAllocatable<'tcx>,
     {
-        self.enter_with_canonical(
-            DUMMY_SP,
-            canonical_key,
-            |ref infcx, key, canonical_inference_vars| {
-                let mut fulfill_cx = <dyn TraitEngine<'_>>::new(infcx.tcx);
-                let value = operation(infcx, &mut *fulfill_cx, key)?;
-                infcx.make_canonicalized_query_response(
-                    canonical_inference_vars,
-                    value,
-                    &mut *fulfill_cx,
-                )
-            },
-        )
+        let (infcx, key, canonical_inference_vars) =
+            self.build_with_canonical(DUMMY_SP, canonical_key);
+        let ocx = ObligationCtxt::new(&infcx);
+        let value = operation(&ocx, key)?;
+        ocx.make_canonicalized_query_response(canonical_inference_vars, value)
     }
 }

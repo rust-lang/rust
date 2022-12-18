@@ -3,9 +3,9 @@
 //! context.
 
 use rustc_hir::def_id::DefId;
-use rustc_hir::lang_items::LangItemGroup;
+use rustc_hir::{lang_items, LangItem};
 use rustc_middle::ty::subst::SubstsRef;
-use rustc_middle::ty::{self, AssocItemContainer, DefIdTree, Instance, ParamEnv, Ty, TyCtxt};
+use rustc_middle::ty::{AssocItemContainer, Instance, ParamEnv, Ty, TyCtxt};
 use rustc_span::symbol::Ident;
 use rustc_span::{sym, DesugaringKind, Span};
 
@@ -26,7 +26,7 @@ impl CallDesugaringKind {
         match self {
             Self::ForLoopIntoIter => tcx.get_diagnostic_item(sym::IntoIterator).unwrap(),
             Self::QuestionBranch | Self::TryBlockFromOutput => {
-                tcx.lang_items().try_trait().unwrap()
+                tcx.require_lang_item(LangItem::Try, None)
             }
             Self::QuestionFromResidual => tcx.get_diagnostic_item(sym::FromResidual).unwrap(),
         }
@@ -39,9 +39,7 @@ pub enum CallKind<'tcx> {
     Normal {
         self_arg: Option<Ident>,
         desugaring: Option<(CallDesugaringKind, Ty<'tcx>)>,
-        /// Whether the self type of the method call has an `.as_ref()` method.
-        /// Used for better diagnostics.
-        is_option_or_result: bool,
+        method_did: DefId,
     },
     /// A call to `Fn(..)::call(..)`, desugared from `my_closure(a, b, c)`
     FnCall { fn_trait_id: DefId, self_ty: Ty<'tcx> },
@@ -74,22 +72,24 @@ pub fn call_kind<'tcx>(
         }
     });
 
-    let fn_call = parent
-        .and_then(|p| tcx.lang_items().group(LangItemGroup::Fn).iter().find(|did| **did == p));
+    let fn_call = parent.and_then(|p| {
+        lang_items::FN_TRAITS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)
+    });
 
-    let operator = (!from_hir_call)
-        .then(|| parent)
-        .flatten()
-        .and_then(|p| tcx.lang_items().group(LangItemGroup::Op).iter().find(|did| **did == p));
+    let operator = if !from_hir_call && let Some(p) = parent {
+        lang_items::OPERATORS.iter().filter_map(|&l| tcx.lang_items().get(l)).find(|&id| id == p)
+    } else {
+        None
+    };
 
     let is_deref = !from_hir_call && tcx.is_diagnostic_item(sym::deref_method, method_did);
 
     // Check for a 'special' use of 'self' -
     // an FnOnce call, an operator (e.g. `<<`), or a
     // deref coercion.
-    let kind = if let Some(&trait_id) = fn_call {
+    let kind = if let Some(trait_id) = fn_call {
         Some(CallKind::FnCall { fn_trait_id: trait_id, self_ty: method_substs.type_at(0) })
-    } else if let Some(&trait_id) = operator {
+    } else if let Some(trait_id) = operator {
         Some(CallKind::Operator { self_arg, trait_id, self_ty: method_substs.type_at(0) })
     } else if is_deref {
         let deref_target = tcx.get_diagnostic_item(sym::deref_target).and_then(|deref_target| {
@@ -131,16 +131,6 @@ pub fn call_kind<'tcx>(
         } else {
             None
         };
-        let parent_did = tcx.parent(method_did);
-        let parent_self_ty = (tcx.def_kind(parent_did) == rustc_hir::def::DefKind::Impl)
-            .then_some(parent_did)
-            .and_then(|did| match tcx.type_of(did).kind() {
-                ty::Adt(def, ..) => Some(def.did()),
-                _ => None,
-            });
-        let is_option_or_result = parent_self_ty.map_or(false, |def_id| {
-            matches!(tcx.get_diagnostic_name(def_id), Some(sym::Option | sym::Result))
-        });
-        CallKind::Normal { self_arg, desugaring, is_option_or_result }
+        CallKind::Normal { self_arg, desugaring, method_did }
     })
 }

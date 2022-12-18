@@ -88,9 +88,9 @@ pub struct CodegenCx<'gcc, 'tcx> {
     pub vtables: RefCell<FxHashMap<(Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>), RValue<'gcc>>>,
 
     // TODO(antoyo): improve the SSA API to not require those.
-    // Mapping from function pointer type to indexes of on stack parameters.
+    /// Mapping from function pointer type to indexes of on stack parameters.
     pub on_stack_params: RefCell<FxHashMap<FunctionPtrType<'gcc>, FxHashSet<usize>>>,
-    // Mapping from function to indexes of on stack parameters.
+    /// Mapping from function to indexes of on stack parameters.
     pub on_stack_function_params: RefCell<FxHashMap<Function<'gcc>, FxHashSet<usize>>>,
 
     /// Cache of emitted const globals (value -> global)
@@ -425,8 +425,9 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn declare_c_main(&self, fn_type: Self::Type) -> Option<Self::Function> {
-        if self.get_declared_value("main").is_none() {
-            Some(self.declare_cfn("main", fn_type))
+        let entry_name = self.sess().target.entry_name.as_ref();
+        if self.get_declared_value(entry_name).is_none() {
+            Some(self.declare_entry_fn(entry_name, fn_type, ()))
         }
         else {
             // If the symbol already exists, it is an error: for example, the user wrote

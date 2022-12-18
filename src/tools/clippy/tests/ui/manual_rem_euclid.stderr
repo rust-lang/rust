@@ -53,5 +53,17 @@ error: manual `rem_euclid` implementation
 LL |     ((num % 4) + 4) % 4
    |     ^^^^^^^^^^^^^^^^^^^ help: consider using: `num.rem_euclid(4)`
 
-error: aborting due to 8 previous errors
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:66:18
+   |
+LL |     let _: i32 = ((x % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`
+
+error: manual `rem_euclid` implementation
+  --> $DIR/manual_rem_euclid.rs:79:18
+   |
+LL |     let _: i32 = ((x % 4) + 4) % 4;
+   |                  ^^^^^^^^^^^^^^^^^ help: consider using: `x.rem_euclid(4)`
+
+error: aborting due to 10 previous errors
 

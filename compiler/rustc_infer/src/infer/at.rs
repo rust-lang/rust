@@ -31,7 +31,7 @@ use rustc_middle::ty::relate::{Relate, TypeRelation};
 use rustc_middle::ty::{Const, ImplSubject};
 
 pub struct At<'a, 'tcx> {
-    pub infcx: &'a InferCtxt<'a, 'tcx>,
+    pub infcx: &'a InferCtxt<'tcx>,
     pub cause: &'a ObligationCause<'tcx>,
     pub param_env: ty::ParamEnv<'tcx>,
     /// Whether we should define opaque types
@@ -48,9 +48,9 @@ pub struct Trace<'a, 'tcx> {
     trace: TypeTrace<'tcx>,
 }
 
-impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     #[inline]
-    pub fn at(
+    pub fn at<'a>(
         &'a self,
         cause: &'a ObligationCause<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
@@ -66,7 +66,6 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             tcx: self.tcx,
             defining_use_anchor: self.defining_use_anchor,
             considering_regions: self.considering_regions,
-            in_progress_typeck_results: self.in_progress_typeck_results,
             inner: self.inner.clone(),
             skip_leak_check: self.skip_leak_check.clone(),
             lexical_region_resolutions: self.lexical_region_resolutions.clone(),
@@ -78,10 +77,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             err_count_on_creation: self.err_count_on_creation,
             in_snapshot: self.in_snapshot.clone(),
             universe: self.universe.clone(),
-            normalize_fn_sig_for_diagnostic: self
-                .normalize_fn_sig_for_diagnostic
-                .as_ref()
-                .map(|f| f.clone()),
+            intercrate: self.intercrate,
         }
     }
 }
@@ -415,7 +411,7 @@ impl<'tcx> ToTrace<'tcx> for ty::PolyTraitRef<'tcx> {
     }
 }
 
-impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
+impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
     fn to_trace(
         tcx: TyCtxt<'tcx>,
         cause: &ObligationCause<'tcx>,
@@ -423,8 +419,8 @@ impl<'tcx> ToTrace<'tcx> for ty::ProjectionTy<'tcx> {
         a: Self,
         b: Self,
     ) -> TypeTrace<'tcx> {
-        let a_ty = tcx.mk_projection(a.item_def_id, a.substs);
-        let b_ty = tcx.mk_projection(b.item_def_id, b.substs);
+        let a_ty = tcx.mk_projection(a.def_id, a.substs);
+        let b_ty = tcx.mk_projection(b.def_id, b.substs);
         TypeTrace {
             cause: cause.clone(),
             values: Terms(ExpectedFound::new(a_is_expected, a_ty.into(), b_ty.into())),

@@ -12,16 +12,20 @@ use rustc_hir::hir_id::HirIdMap;
 use rustc_hir::intravisit::{walk_expr, Visitor};
 use rustc_hir::{
     self as hir, AnonConst, BinOpKind, BindingAnnotation, Body, Expr, ExprKind, FnRetTy, FnSig, GenericArg,
-    ImplItemKind, ItemKind, Lifetime, LifetimeName, Mutability, Node, Param, ParamName, PatKind, QPath, TraitFn,
-    TraitItem, TraitItemKind, TyKind, Unsafety,
+    ImplItemKind, ItemKind, Lifetime, Mutability, Node, Param, PatKind, QPath, TraitFn, TraitItem, TraitItemKind,
+    TyKind, Unsafety,
 };
+use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::traits::{Obligation, ObligationCause};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::hir::nested_filter;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Binder, Clause, ExistentialPredicate, List, PredicateKind, Ty};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
 use rustc_span::sym;
 use rustc_span::symbol::Symbol;
+use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
 use std::fmt;
 use std::iter;
 
@@ -160,7 +164,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
             check_mut_from_ref(cx, sig, None);
             for arg in check_fn_args(
                 cx,
-                cx.tcx.fn_sig(item.def_id).skip_binder().inputs(),
+                cx.tcx.fn_sig(item.owner_id).skip_binder().inputs(),
                 sig.decl.inputs,
                 &[],
             )
@@ -184,7 +188,7 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
         let (item_id, sig, is_trait_item) = match parents.next() {
             Some((_, Node::Item(i))) => {
                 if let ItemKind::Fn(sig, ..) = &i.kind {
-                    (i.def_id, sig, false)
+                    (i.owner_id, sig, false)
                 } else {
                     return;
                 }
@@ -196,14 +200,14 @@ impl<'tcx> LateLintPass<'tcx> for Ptr {
                     return;
                 }
                 if let ImplItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig, false)
+                    (i.owner_id, sig, false)
                 } else {
                     return;
                 }
             },
             Some((_, Node::TraitItem(i))) => {
                 if let TraitItemKind::Fn(sig, _) = &i.kind {
-                    (i.def_id, sig, true)
+                    (i.owner_id, sig, true)
                 } else {
                     return;
                 }
@@ -339,21 +343,16 @@ impl PtrArg<'_> {
 }
 
 struct RefPrefix {
-    lt: LifetimeName,
+    lt: Lifetime,
     mutability: Mutability,
 }
 impl fmt::Display for RefPrefix {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use fmt::Write;
         f.write_char('&')?;
-        match self.lt {
-            LifetimeName::Param(_, ParamName::Plain(name)) => {
-                name.fmt(f)?;
-                f.write_char(' ')?;
-            },
-            LifetimeName::Infer => f.write_str("'_ ")?,
-            LifetimeName::Static => f.write_str("'static ")?,
-            _ => (),
+        if !self.lt.is_anonymous() {
+            self.lt.ident.fmt(f)?;
+            f.write_char(' ')?;
         }
         f.write_str(self.mutability.prefix_str())
     }
@@ -384,6 +383,17 @@ enum DerefTy<'tcx> {
     Slice(Option<Span>, Ty<'tcx>),
 }
 impl<'tcx> DerefTy<'tcx> {
+    fn ty(&self, cx: &LateContext<'tcx>) -> Ty<'tcx> {
+        match *self {
+            Self::Str => cx.tcx.types.str_,
+            Self::Path => cx.tcx.mk_adt(
+                cx.tcx.adt_def(cx.tcx.get_diagnostic_item(sym::Path).unwrap()),
+                List::empty(),
+            ),
+            Self::Slice(_, ty) => cx.tcx.mk_slice(ty),
+        }
+    }
+
     fn argless_str(&self) -> &'static str {
         match *self {
             Self::Str => "str",
@@ -435,7 +445,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                 substs.type_at(0),
                             ),
                         ),
-                        Some(sym::String) => (
+                        _ if Some(adt.did()) == cx.tcx.lang_items().string() => (
                             [("clone", ".to_owned()"), ("as_str", "")].as_slice(),
                             DerefTy::Str,
                         ),
@@ -463,7 +473,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                                     diag.span_suggestion(
                                         hir_ty.span,
                                         "change this to",
-                                        format!("&{}{}", mutability.prefix_str(), ty_name),
+                                        format!("&{}{ty_name}", mutability.prefix_str()),
                                         Applicability::Unspecified,
                                     );
                                 }
@@ -480,7 +490,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                         ty_name: name.ident.name,
                         method_renames,
                         ref_prefix: RefPrefix {
-                            lt: lt.name,
+                            lt: *lt,
                             mutability,
                         },
                         deref_ty,
@@ -552,9 +562,8 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
             }
 
             // Check if this is local we care about
-            let args_idx = match path_to_local(e).and_then(|id| self.bindings.get(&id)) {
-                Some(&i) => i,
-                None => return walk_expr(self, e),
+            let Some(&args_idx) = path_to_local(e).and_then(|id| self.bindings.get(&id)) else {
+                return walk_expr(self, e);
             };
             let args = &self.args[args_idx];
             let result = &mut self.results[args_idx];
@@ -582,6 +591,7 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                         let i = expr_args.iter().position(|arg| arg.hir_id == child_id).unwrap_or(0);
                         if expr_sig(self.cx, f).and_then(|sig| sig.input(i)).map_or(true, |ty| {
                             match *ty.skip_binder().peel_refs().kind() {
+                                ty::Dynamic(preds, _, _) => !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds),
                                 ty::Param(_) => true,
                                 ty::Adt(def, _) => def.did() == args.ty_did,
                                 _ => false,
@@ -609,14 +619,15 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
                             }
                         }
 
-                        let id = if let Some(x) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) {
-                            x
-                        } else {
+                        let Some(id) = self.cx.typeck_results().type_dependent_def_id(e.hir_id) else {
                             set_skip_flag();
                             return;
                         };
 
                         match *self.cx.tcx.fn_sig(id).skip_binder().inputs()[i].peel_refs().kind() {
+                            ty::Dynamic(preds, _, _) if !matches_preds(self.cx, args.deref_ty.ty(self.cx), preds) => {
+                                set_skip_flag();
+                            },
                             ty::Param(_) => {
                                 set_skip_flag();
                             },
@@ -668,8 +679,33 @@ fn check_ptr_arg_usage<'tcx>(cx: &LateContext<'tcx>, body: &'tcx Body<'_>, args:
     v.results
 }
 
+fn matches_preds<'tcx>(
+    cx: &LateContext<'tcx>,
+    ty: Ty<'tcx>,
+    preds: &'tcx [ty::PolyExistentialPredicate<'tcx>],
+) -> bool {
+    let infcx = cx.tcx.infer_ctxt().build();
+    preds.iter().all(|&p| match cx.tcx.erase_late_bound_regions(p) {
+        ExistentialPredicate::Trait(p) => infcx
+            .type_implements_trait(p.def_id, [ty.into()].into_iter().chain(p.substs.iter()), cx.param_env)
+            .must_apply_modulo_regions(),
+        ExistentialPredicate::Projection(p) => infcx.predicate_must_hold_modulo_regions(&Obligation::new(
+            cx.tcx,
+            ObligationCause::dummy(),
+            cx.param_env,
+            cx.tcx
+                .mk_predicate(Binder::dummy(PredicateKind::Clause(Clause::Projection(
+                    p.with_self_ty(cx.tcx, ty),
+                )))),
+        )),
+        ExistentialPredicate::AutoTrait(p) => infcx
+            .type_implements_trait(p, [ty], cx.param_env)
+            .must_apply_modulo_regions(),
+    })
+}
+
 fn get_rptr_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Rptr(ref lt, ref m) = ty.kind {
+    if let TyKind::Rptr(lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {
         None

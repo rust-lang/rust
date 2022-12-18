@@ -77,7 +77,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-macos-xl
-    os: macos-latest  # We don't have an XL builder for this
+    os: macos-12-xl
     <<: *base-job
 
   - &job-windows-xl
@@ -151,6 +151,10 @@ x--expand-yaml-anchors--remove:
 
       - name: install sccache
         run: src/ci/scripts/install-sccache.sh
+        <<: *step
+
+      - name: select Xcode
+        run: src/ci/scripts/select-xcode.sh
         <<: *step
 
       - name: install clang
@@ -466,6 +470,7 @@ jobs:
               RUST_CONFIGURE_ARGS: --enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -478,6 +483,7 @@ jobs:
               RUST_CONFIGURE_ARGS: --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -489,6 +495,7 @@ jobs:
               RUST_CONFIGURE_ARGS: --enable-extended --enable-profiler --set rust.jemalloc --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               NO_LLVM_ASSERTIONS: 1
               NO_DEBUG_ASSERTIONS: 1
               NO_OVERFLOW_CHECKS: 1
@@ -527,6 +534,7 @@ jobs:
                 --set rust.jemalloc
                 --set llvm.ninja=false
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
+              SELECT_XCODE: /Applications/Xcode_13.4.1.app
               USE_XCODE_CLANG: 1
               MACOSX_DEPLOYMENT_TARGET: 11.0
               MACOSX_STD_DEPLOYMENT_TARGET: 11.0
@@ -659,6 +667,7 @@ jobs:
                 --target=x86_64-pc-windows-msvc
                 --enable-full-tools
                 --enable-profiler
+                --set rust.lto=thin
               SCRIPT: PGO_HOST=x86_64-pc-windows-msvc src/ci/pgo.sh python x.py dist bootstrap --include-default-paths
               DIST_REQUIRE_ALL_TOOLS: 1
             <<: *job-windows-xl

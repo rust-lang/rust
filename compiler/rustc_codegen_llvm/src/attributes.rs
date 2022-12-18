@@ -12,8 +12,9 @@ use rustc_target::spec::{FramePointer, SanitizerSet, StackProbeType, StackProtec
 use smallvec::SmallVec;
 
 use crate::attributes;
+use crate::errors::{MissingFeatures, SanitizerMemtagRequiresMte, TargetFeatureDisableOrEnable};
 use crate::llvm::AttributePlace::Function;
-use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace};
+use crate::llvm::{self, AllocKindFlags, Attribute, AttributeKind, AttributePlace, MemoryEffects};
 use crate::llvm_util;
 pub use rustc_attr::{InlineAttr, InstructionSetAttr, OptimizeAttr};
 
@@ -82,7 +83,7 @@ pub fn sanitize_attrs<'ll>(
         let mte_feature =
             features.iter().map(|s| &s[..]).rfind(|n| ["+mte", "-mte"].contains(&&n[..]));
         if let None | Some("-mte") = mte_feature {
-            cx.tcx.sess.err("`-Zsanitizer=memtag` requires `-Ctarget-feature=+mte`");
+            cx.tcx.sess.emit_err(SanitizerMemtagRequiresMte);
         }
 
         attrs.push(llvm::AttributeKind::SanitizeMemTag.create_attr(cx.llcx));
@@ -257,13 +258,12 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         OptimizeAttr::Speed => {}
     }
 
-    let inline = if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-        InlineAttr::Never
-    } else if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
-        InlineAttr::Hint
-    } else {
-        codegen_fn_attrs.inline
-    };
+    let inline =
+        if codegen_fn_attrs.inline == InlineAttr::None && instance.def.requires_inline(cx.tcx) {
+            InlineAttr::Hint
+        } else {
+            codegen_fn_attrs.inline
+        };
     to_add.extend(inline_attr(cx, inline));
 
     // The `uwtable` attribute according to LLVM is:
@@ -303,10 +303,10 @@ pub fn from_fn_attrs<'ll, 'tcx>(
         to_add.push(AttributeKind::ReturnsTwice.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_PURE) {
-        to_add.push(AttributeKind::ReadOnly.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::ReadOnly.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::FFI_CONST) {
-        to_add.push(AttributeKind::ReadNone.create_attr(cx.llcx));
+        to_add.push(MemoryEffects::None.create_attr(cx.llcx));
     }
     if codegen_fn_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
         to_add.push(AttributeKind::Naked.create_attr(cx.llcx));
@@ -393,13 +393,14 @@ pub fn from_fn_attrs<'ll, 'tcx>(
             .get_attrs(instance.def_id(), sym::target_feature)
             .next()
             .map_or_else(|| cx.tcx.def_span(instance.def_id()), |a| a.span);
-        let msg = format!(
-            "the target features {} must all be either enabled or disabled together",
-            f.join(", ")
-        );
-        let mut err = cx.tcx.sess.struct_span_err(span, &msg);
-        err.help("add the missing features in a `target_feature` attribute");
-        err.emit();
+        cx.tcx
+            .sess
+            .create_err(TargetFeatureDisableOrEnable {
+                features: f,
+                span: Some(span),
+                missing_features: Some(MissingFeatures),
+            })
+            .emit();
         return;
     }
 

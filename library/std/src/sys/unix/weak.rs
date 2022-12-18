@@ -29,7 +29,21 @@ use crate::ptr;
 use crate::sync::atomic::{self, AtomicPtr, Ordering};
 
 // We can use true weak linkage on ELF targets.
-#[cfg(not(any(target_os = "macos", target_os = "ios")))]
+#[cfg(all(not(any(target_os = "macos", target_os = "ios")), not(bootstrap)))]
+pub(crate) macro weak {
+    (fn $name:ident($($t:ty),*) -> $ret:ty) => (
+        let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
+            extern "C" {
+                #[linkage = "extern_weak"]
+                static $name: Option<unsafe extern "C" fn($($t),*) -> $ret>;
+            }
+            #[allow(unused_unsafe)]
+            ExternWeak::new(unsafe { $name })
+        };
+    )
+}
+
+#[cfg(all(not(any(target_os = "macos", target_os = "ios")), bootstrap))]
 pub(crate) macro weak {
     (fn $name:ident($($t:ty),*) -> $ret:ty) => (
         let ref $name: ExternWeak<unsafe extern "C" fn($($t),*) -> $ret> = {
@@ -47,11 +61,31 @@ pub(crate) macro weak {
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub(crate) use self::dlsym as weak;
 
+#[cfg(not(bootstrap))]
+pub(crate) struct ExternWeak<F: Copy> {
+    weak_ptr: Option<F>,
+}
+
+#[cfg(not(bootstrap))]
+impl<F: Copy> ExternWeak<F> {
+    #[inline]
+    pub(crate) fn new(weak_ptr: Option<F>) -> Self {
+        ExternWeak { weak_ptr }
+    }
+
+    #[inline]
+    pub(crate) fn get(&self) -> Option<F> {
+        self.weak_ptr
+    }
+}
+
+#[cfg(bootstrap)]
 pub(crate) struct ExternWeak<F> {
     weak_ptr: *const libc::c_void,
     _marker: PhantomData<F>,
 }
 
+#[cfg(bootstrap)]
 impl<F> ExternWeak<F> {
     #[inline]
     pub(crate) fn new(weak_ptr: *const libc::c_void) -> Self {
@@ -59,6 +93,7 @@ impl<F> ExternWeak<F> {
     }
 }
 
+#[cfg(bootstrap)]
 impl<F> ExternWeak<F> {
     #[inline]
     pub(crate) fn get(&self) -> Option<F> {

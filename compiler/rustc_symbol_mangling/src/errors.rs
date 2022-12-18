@@ -5,7 +5,7 @@ use rustc_macros::Diagnostic;
 use rustc_span::Span;
 
 #[derive(Diagnostic)]
-#[diag(symbol_mangling::test_output)]
+#[diag(symbol_mangling_test_output)]
 pub struct TestOutput {
     #[primary_span]
     pub span: Span,

@@ -8,35 +8,36 @@
 //! We then strip all the code marked with other flags.
 //!
 //! Available flags:
-//!     sized:
-//!     unsize: sized
-//!     coerce_unsized: unsize
-//!     slice:
-//!     range:
-//!     deref: sized
-//!     deref_mut: deref
-//!     index: sized
-//!     fn:
-//!     try:
-//!     pin:
-//!     future: pin
-//!     option:
-//!     result:
-//!     iterator: option
-//!     iterators: iterator, fn
-//!     default: sized
-//!     hash:
-//!     clone: sized
-//!     copy: clone
-//!     from: sized
-//!     eq: sized
-//!     ord: eq, option
-//!     derive:
-//!     fmt: result
-//!     bool_impl: option, fn
 //!     add:
 //!     as_ref: sized
+//!     bool_impl: option, fn
+//!     clone: sized
+//!     coerce_unsized: unsize
+//!     copy: clone
+//!     default: sized
+//!     deref_mut: deref
+//!     deref: sized
+//!     derive:
 //!     drop:
+//!     eq: sized
+//!     fmt: result
+//!     fn:
+//!     from: sized
+//!     future: pin
+//!     generator: pin
+//!     hash:
+//!     index: sized
+//!     iterator: option
+//!     iterators: iterator, fn
+//!     option:
+//!     ord: eq, option
+//!     pin:
+//!     range:
+//!     result:
+//!     sized:
+//!     slice:
+//!     try:
+//!     unsize: sized
 
 pub mod marker {
     // region:sized
@@ -181,6 +182,19 @@ pub mod ops {
             #[lang = "deref_target"]
             type Target: ?Sized;
             fn deref(&self) -> &Self::Target;
+        }
+
+        impl<T: ?Sized> Deref for &T {
+            type Target = T;
+            fn deref(&self) -> &T {
+                loop {}
+            }
+        }
+        impl<T: ?Sized> Deref for &mut T {
+            type Target = T;
+            fn deref(&self) -> &T {
+                loop {}
+            }
         }
         // region:deref_mut
         #[lang = "deref_mut"]
@@ -347,6 +361,27 @@ pub mod ops {
         fn add(self, rhs: Rhs) -> Self::Output;
     }
     // endregion:add
+
+    // region:generator
+    mod generator {
+        use crate::pin::Pin;
+
+        #[lang = "generator"]
+        pub trait Generator<R = ()> {
+            type Yield;
+            #[lang = "generator_return"]
+            type Return;
+            fn resume(self: Pin<&mut Self>, arg: R) -> GeneratorState<Self::Yield, Self::Return>;
+        }
+
+        #[lang = "generator_state"]
+        pub enum GeneratorState<Y, R> {
+            Yielded(Y),
+            Complete(R),
+        }
+    }
+    pub use self::generator::{Generator, GeneratorState};
+    // endregion:generator
 }
 
 // region:eq
@@ -455,6 +490,19 @@ pub mod pin {
     pub struct Pin<P> {
         pointer: P,
     }
+    impl<P> Pin<P> {
+        pub fn new(pointer: P) -> Pin<P> {
+            loop {}
+        }
+    }
+    // region:deref
+    impl<P: crate::ops::Deref> crate::ops::Deref for Pin<P> {
+        type Target = P::Target;
+        fn deref(&self) -> &P::Target {
+            loop {}
+        }
+    }
+    // endregion:deref
 }
 // endregion:pin
 
@@ -536,7 +584,7 @@ pub mod iter {
             }
         }
     }
-    pub use self::adapters::{Take, FilterMap};
+    pub use self::adapters::{FilterMap, Take};
 
     mod sources {
         mod repeat {

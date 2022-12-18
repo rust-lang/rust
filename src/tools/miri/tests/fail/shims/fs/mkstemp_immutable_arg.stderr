@@ -8,7 +8,7 @@ LL |     let _fd = unsafe { libc::mkstemp(s) };
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `test_mkstemp_immutable_arg` at $DIR/mkstemp_immutable_arg.rs:LL:CC
-note: inside `main` at $DIR/mkstemp_immutable_arg.rs:LL:CC
+note: inside `main`
   --> $DIR/mkstemp_immutable_arg.rs:LL:CC
    |
 LL |     test_mkstemp_immutable_arg();

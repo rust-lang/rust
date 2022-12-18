@@ -398,7 +398,7 @@ impl<'a> State<'a> {
             }
             hir::ForeignItemKind::Static(t, m) => {
                 self.head("static");
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -519,7 +519,7 @@ impl<'a> State<'a> {
             }
             hir::ItemKind::Static(ty, m, expr) => {
                 self.head("static");
-                if m == hir::Mutability::Mut {
+                if m.is_mut() {
                     self.word_space("mut");
                 }
                 self.print_ident(item.ident);
@@ -695,19 +695,8 @@ impl<'a> State<'a> {
                 self.head("trait");
                 self.print_ident(item.ident);
                 self.print_generic_params(generics.params);
-                let mut real_bounds = Vec::with_capacity(bounds.len());
-                // FIXME(durka) this seems to be some quite outdated syntax
-                for b in bounds {
-                    if let GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = b {
-                        self.space();
-                        self.word_space("for ?");
-                        self.print_trait_ref(&ptr.trait_ref);
-                    } else {
-                        real_bounds.push(b);
-                    }
-                }
                 self.nbsp();
-                self.print_bounds("=", real_bounds);
+                self.print_bounds("=", bounds);
                 self.print_where_clause(generics);
                 self.word(";");
                 self.end(); // end inner head-block
@@ -754,7 +743,7 @@ impl<'a> State<'a> {
         for v in variants {
             self.space_if_not_bol();
             self.maybe_print_comment(v.span.lo());
-            self.print_outer_attributes(self.attrs(v.id));
+            self.print_outer_attributes(self.attrs(v.hir_id));
             self.ibox(INDENT_UNIT);
             self.print_variant(v);
             self.word(",");
@@ -887,7 +876,7 @@ impl<'a> State<'a> {
                 self.end(); // need to close a box
                 self.ann.nested(self, Nested::Body(body));
             }
-            hir::ImplItemKind::TyAlias(ty) => {
+            hir::ImplItemKind::Type(ty) => {
                 self.print_associated_type(ii.ident, ii.generics, None, Some(ty));
             }
         }
@@ -1256,7 +1245,7 @@ impl<'a> State<'a> {
 
     fn print_literal(&mut self, lit: &hir::Lit) {
         self.maybe_print_comment(lit.span.lo());
-        self.word(lit.node.to_token_lit().to_string())
+        self.word(lit.node.to_string())
     }
 
     fn print_inline_asm(&mut self, asm: &hir::InlineAsm<'_>) {
@@ -1480,7 +1469,9 @@ impl<'a> State<'a> {
                 fn_decl,
                 body,
                 fn_decl_span: _,
+                fn_arg_span: _,
                 movability: _,
+                def_id: _,
             }) => {
                 self.print_closure_binder(binder, bound_generic_params);
                 self.print_capture_clause(capture_clause);
@@ -1590,7 +1581,7 @@ impl<'a> State<'a> {
         self.print_ident(Ident::with_dummy_span(name))
     }
 
-    pub fn print_path(&mut self, path: &hir::Path<'_>, colons_before_params: bool) {
+    pub fn print_path<R>(&mut self, path: &hir::Path<'_, R>, colons_before_params: bool) {
         self.maybe_print_comment(path.span.lo());
 
         for (i, segment) in path.segments.iter().enumerate() {
@@ -1687,7 +1678,11 @@ impl<'a> State<'a> {
 
             let mut nonelided_generic_args: bool = false;
             let elide_lifetimes = generic_args.args.iter().all(|arg| match arg {
-                GenericArg::Lifetime(lt) => lt.is_elided(),
+                GenericArg::Lifetime(lt) if lt.is_elided() => true,
+                GenericArg::Lifetime(_) => {
+                    nonelided_generic_args = true;
+                    false
+                }
                 _ => {
                     nonelided_generic_args = true;
                     true
@@ -1762,7 +1757,6 @@ impl<'a> State<'a> {
                 self.print_qpath(qpath, true);
                 self.popen();
                 if let Some(ddpos) = ddpos.as_opt_usize() {
-                    let ddpos = ddpos as usize;
                     self.commasep(Inconsistent, &elts[..ddpos], |s, p| s.print_pat(p));
                     if ddpos != 0 {
                         self.word_space(",");
@@ -2154,7 +2148,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_lifetime(&mut self, lifetime: &hir::Lifetime) {
-        self.print_ident(lifetime.name.ident())
+        self.print_ident(lifetime.ident)
     }
 
     pub fn print_where_clause(&mut self, generics: &hir::Generics<'_>) {

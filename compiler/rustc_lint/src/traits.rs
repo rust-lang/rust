@@ -87,11 +87,12 @@ declare_lint_pass!(
 
 impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
+        use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
-        let predicates = cx.tcx.explicit_predicates_of(item.def_id);
+        let predicates = cx.tcx.explicit_predicates_of(item.owner_id);
         for &(predicate, span) in predicates.predicates {
-            let Trait(trait_predicate) = predicate.kind().skip_binder() else {
+            let Clause(Clause::Trait(trait_predicate)) = predicate.kind().skip_binder() else {
                 continue
             };
             let def_id = trait_predicate.trait_ref.def_id;
@@ -106,7 +107,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
                 cx.struct_span_lint(
                     DROP_BOUNDS,
                     span,
-                    fluent::lint::drop_trait_constraints,
+                    fluent::lint_drop_trait_constraints,
                     |lint| {
                         lint.set_arg("predicate", predicate)
                             .set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
@@ -125,7 +126,7 @@ impl<'tcx> LateLintPass<'tcx> for DropTraitConstraints {
             if cx.tcx.lang_items().drop_trait() == def_id
                 && let Some(needs_drop) = cx.tcx.get_diagnostic_item(sym::needs_drop)
             {
-                cx.struct_span_lint(DYN_DROP, bound.span, fluent::lint::drop_glue, |lint| {
+                cx.struct_span_lint(DYN_DROP, bound.span, fluent::lint_drop_glue, |lint| {
                     lint.set_arg("needs_drop", cx.tcx.def_path_str(needs_drop))
                 });
             }

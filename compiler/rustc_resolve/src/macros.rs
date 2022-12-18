@@ -12,7 +12,7 @@ use rustc_attr::StabilityLevel;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::intern::Interned;
 use rustc_data_structures::sync::Lrc;
-use rustc_errors::struct_span_err;
+use rustc_errors::{struct_span_err, Applicability};
 use rustc_expand::base::{Annotatable, DeriveResolutions, Indeterminate, ResolverExpand};
 use rustc_expand::base::{SyntaxExtension, SyntaxExtensionKind};
 use rustc_expand::compile_declarative_macro;
@@ -356,7 +356,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
             has_derive_copy: false,
         });
         let parent_scope = self.invocation_parent_scopes[&expn_id];
-        for (i, (path, _, opt_ext)) in entry.resolutions.iter_mut().enumerate() {
+        for (i, (path, _, opt_ext, _)) in entry.resolutions.iter_mut().enumerate() {
             if opt_ext.is_none() {
                 *opt_ext = Some(
                     match self.resolve_macro_path(
@@ -455,7 +455,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
     }
 
     fn get_proc_macro_quoted_span(&self, krate: CrateNum, id: usize) -> Span {
-        self.crate_loader.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.session)
+        self.cstore().get_proc_macro_quoted_span_untracked(krate, id, self.session)
     }
 
     fn declare_proc_macro(&mut self, id: NodeId) {
@@ -590,9 +590,7 @@ impl<'a> Resolver<'a> {
 
         let res = if path.len() > 1 {
             let res = match self.maybe_resolve_path(&path, Some(MacroNS), parent_scope) {
-                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    Ok(path_res.base_res())
-                }
+                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => Ok(res),
                 PathResult::Indeterminate if !force => return Err(Determinacy::Undetermined),
                 PathResult::NonModule(..)
                 | PathResult::Indeterminate
@@ -692,12 +690,23 @@ impl<'a> Resolver<'a> {
                 Some(Finalize::new(ast::CRATE_NODE_ID, path_span)),
                 None,
             ) {
-                PathResult::NonModule(path_res) if path_res.unresolved_segments() == 0 => {
-                    let res = path_res.base_res();
-                    check_consistency(self, &path, path_span, kind, initial_res, res);
+                PathResult::NonModule(path_res) if let Some(res) = path_res.full_res() => {
+                    check_consistency(self, &path, path_span, kind, initial_res, res)
                 }
                 path_res @ PathResult::NonModule(..) | path_res @ PathResult::Failed { .. } => {
+                    let mut suggestion = None;
                     let (span, label) = if let PathResult::Failed { span, label, .. } = path_res {
+                        // try to suggest if it's not a macro, maybe a function
+                        if let PathResult::NonModule(partial_res) = self.maybe_resolve_path(&path, Some(ValueNS), &parent_scope)
+                            && partial_res.unresolved_segments() == 0 {
+                            let sm = self.session.source_map();
+                            let exclamation_span = sm.next_point(span);
+                            suggestion = Some((
+                                vec![(exclamation_span, "".to_string())],
+                                    format!("{} is not a macro, but a {}, try to remove `!`", Segment::names_to_string(&path), partial_res.base_res().descr()),
+                                    Applicability::MaybeIncorrect
+                                ));
+                        }
                         (span, label)
                     } else {
                         (
@@ -711,7 +720,7 @@ impl<'a> Resolver<'a> {
                     };
                     self.report_error(
                         span,
-                        ResolutionError::FailedToResolve { label, suggestion: None },
+                        ResolutionError::FailedToResolve { label, suggestion },
                     );
                 }
                 PathResult::Module(..) | PathResult::Indeterminate => unreachable!(),

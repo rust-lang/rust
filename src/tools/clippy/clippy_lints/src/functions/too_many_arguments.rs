@@ -59,10 +59,7 @@ fn check_arg_number(cx: &LateContext<'_>, decl: &hir::FnDecl<'_>, fn_span: Span,
             cx,
             TOO_MANY_ARGUMENTS,
             fn_span,
-            &format!(
-                "this function has too many arguments ({}/{})",
-                args, too_many_arguments_threshold
-            ),
+            &format!("this function has too many arguments ({args}/{too_many_arguments_threshold})"),
         );
     }
 }

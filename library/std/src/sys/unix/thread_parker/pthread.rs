@@ -6,6 +6,7 @@ use crate::pin::Pin;
 use crate::ptr::addr_of_mut;
 use crate::sync::atomic::AtomicUsize;
 use crate::sync::atomic::Ordering::SeqCst;
+use crate::sys::time::TIMESPEC_MAX;
 use crate::time::Duration;
 
 const EMPTY: usize = 0;
@@ -31,9 +32,6 @@ unsafe fn wait(cond: *mut libc::pthread_cond_t, lock: *mut libc::pthread_mutex_t
     let r = libc::pthread_cond_wait(cond, lock);
     debug_assert_eq!(r, 0);
 }
-
-const TIMESPEC_MAX: libc::timespec =
-    libc::timespec { tv_sec: <libc::time_t>::MAX, tv_nsec: 1_000_000_000 - 1 };
 
 unsafe fn wait_timeout(
     cond: *mut libc::pthread_cond_t,

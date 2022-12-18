@@ -7,21 +7,34 @@ use rustc_session::{declare_lint_pass, declare_tool_lint};
 
 declare_clippy_lint! {
     /// ### What it does
-    /// `exit()`  terminates the program and doesn't provide a
-    /// stack trace.
+    /// Detects calls to the `exit()` function which terminates the program.
     ///
     /// ### Why is this bad?
-    /// Ideally a program is terminated by finishing
+    /// Exit terminates the program at the location it is called. For unrecoverable
+    /// errors `panics` should be used to provide a stacktrace and potentualy other
+    /// information. A normal termination or one with an error code should happen in
     /// the main function.
     ///
     /// ### Example
-    /// ```ignore
+    /// ```
     /// std::process::exit(0)
+    /// ```
+    ///
+    /// Use instead:
+    ///
+    /// ```ignore
+    /// // To provide a stacktrace and additional information
+    /// panic!("message");
+    ///
+    /// // or a main method with a return
+    /// fn main() -> Result<(), i32> {
+    ///     Ok(())
+    /// }
     /// ```
     #[clippy::version = "1.41.0"]
     pub EXIT,
     restriction,
-    "`std::process::exit` is called, terminating the program"
+    "detects `std::process::exit` calls"
 }
 
 declare_lint_pass!(Exit => [EXIT]);

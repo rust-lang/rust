@@ -112,6 +112,22 @@ impl<'tcx> Ty<'tcx> {
     }
 }
 
+impl<'tcx> ty::Const<'tcx> {
+    /// Iterator that walks `self` and any types reachable from
+    /// `self`, in depth-first order. Note that just walks the types
+    /// that appear in `self`, it does not descend into the fields of
+    /// structs or variants. For example:
+    ///
+    /// ```text
+    /// isize => { isize }
+    /// Foo<Bar<isize>> => { Foo<Bar<isize>>, Bar<isize>, isize }
+    /// [isize] => { [isize], isize }
+    /// ```
+    pub fn walk(self) -> TypeWalker<'tcx> {
+        TypeWalker::new(self.into())
+    }
+}
+
 /// We push `GenericArg`s on the stack in reverse order so as to
 /// maintain a pre-order traversal. As of the time of this
 /// writing, the fact that the traversal is pre-order is not
@@ -149,7 +165,7 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 stack.push(ty.into());
                 stack.push(lt.into());
             }
-            ty::Projection(data) => {
+            ty::Alias(_, data) => {
                 stack.extend(data.substs.iter().rev());
             }
             ty::Dynamic(obj, lt, _) => {
@@ -172,7 +188,6 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 }));
             }
             ty::Adt(_, substs)
-            | ty::Opaque(_, substs)
             | ty::Closure(_, substs)
             | ty::Generator(_, substs, _)
             | ty::FnDef(_, substs) => {
@@ -197,6 +212,24 @@ fn push_inner<'tcx>(stack: &mut TypeWalkerStack<'tcx>, parent: GenericArg<'tcx>)
                 | ty::ConstKind::Bound(..)
                 | ty::ConstKind::Value(_)
                 | ty::ConstKind::Error(_) => {}
+
+                ty::ConstKind::Expr(expr) => match expr {
+                    ty::Expr::UnOp(_, v) => push_inner(stack, v.into()),
+                    ty::Expr::Binop(_, l, r) => {
+                        push_inner(stack, r.into());
+                        push_inner(stack, l.into())
+                    }
+                    ty::Expr::FunctionCall(func, args) => {
+                        for a in args.iter().rev() {
+                            push_inner(stack, a.into());
+                        }
+                        push_inner(stack, func.into());
+                    }
+                    ty::Expr::Cast(_, c, t) => {
+                        push_inner(stack, t.into());
+                        push_inner(stack, c.into());
+                    }
+                },
 
                 ty::ConstKind::Unevaluated(ct) => {
                     stack.extend(ct.substs.iter().rev());

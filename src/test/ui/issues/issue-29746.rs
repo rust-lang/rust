@@ -7,7 +7,7 @@ macro_rules! zip {
         zip!([$($rest),*], $a.zip($b), (x,y), [x,y])
     };
 
-    // Intermediate steps to build the zipped expression, the match pattern, and
+    // Intermediate steps to build the zipped expression, the match pattern
     //  and the output tuple of the closure, using macro hygiene to repeatedly
     //  introduce new variables named 'x'.
     ([$a:expr, $($rest:expr),*], $zip:expr, $pat:pat, [$($flat:expr),*]) => {

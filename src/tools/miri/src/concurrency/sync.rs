@@ -7,8 +7,14 @@ use log::trace;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::vec::{Idx, IndexVec};
 
+use super::init_once::InitOnce;
 use super::vector_clock::VClock;
 use crate::*;
+
+pub trait SyncId {
+    fn from_u32(id: u32) -> Self;
+    fn to_u32(&self) -> u32;
+}
 
 /// We cannot use the `newtype_index!` macro because we have to use 0 as a
 /// sentinel value meaning that the identifier is not assigned. This is because
@@ -21,10 +27,13 @@ macro_rules! declare_id {
         #[derive(Clone, Copy, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
         pub struct $name(NonZeroU32);
 
-        impl $name {
+        impl SyncId for $name {
             // Panics if `id == 0`.
-            pub fn from_u32(id: u32) -> Self {
+            fn from_u32(id: u32) -> Self {
                 Self(NonZeroU32::new(id).unwrap())
+            }
+            fn to_u32(&self) -> u32 {
+                self.0.get()
             }
         }
 
@@ -107,13 +116,25 @@ struct RwLock {
 
 declare_id!(CondvarId);
 
+#[derive(Debug, Copy, Clone)]
+pub enum RwLockMode {
+    Read,
+    Write,
+}
+
+#[derive(Debug)]
+pub enum CondvarLock {
+    Mutex(MutexId),
+    RwLock { id: RwLockId, mode: RwLockMode },
+}
+
 /// A thread waiting on a conditional variable.
 #[derive(Debug)]
 struct CondvarWaiter {
     /// The thread that is waiting on this variable.
     thread: ThreadId,
-    /// The mutex on which the thread is waiting.
-    mutex: MutexId,
+    /// The mutex or rwlock on which the thread is waiting.
+    lock: CondvarLock,
 }
 
 /// The conditional variable state.
@@ -151,16 +172,60 @@ struct FutexWaiter {
 
 /// The state of all synchronization variables.
 #[derive(Default, Debug)]
-pub(crate) struct SynchronizationState {
+pub(crate) struct SynchronizationState<'mir, 'tcx> {
     mutexes: IndexVec<MutexId, Mutex>,
     rwlocks: IndexVec<RwLockId, RwLock>,
     condvars: IndexVec<CondvarId, Condvar>,
     futexes: FxHashMap<u64, Futex>,
+    pub(super) init_onces: IndexVec<InitOnceId, InitOnce<'mir, 'tcx>>,
+}
+
+impl<'mir, 'tcx> VisitTags for SynchronizationState<'mir, 'tcx> {
+    fn visit_tags(&self, visit: &mut dyn FnMut(BorTag)) {
+        for init_once in self.init_onces.iter() {
+            init_once.visit_tags(visit);
+        }
+    }
 }
 
 // Private extension trait for local helper methods
 impl<'mir, 'tcx: 'mir> EvalContextExtPriv<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
-trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
+pub(super) trait EvalContextExtPriv<'mir, 'tcx: 'mir>:
+    crate::MiriInterpCxExt<'mir, 'tcx>
+{
+    /// Lazily initialize the ID of this Miri sync structure.
+    /// ('0' indicates uninit.)
+    #[inline]
+    fn get_or_create_id<Id: SyncId>(
+        &mut self,
+        next_id: Id,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, Option<Id>> {
+        let this = self.eval_context_mut();
+        let value_place =
+            this.deref_operand_and_offset(lock_op, offset, this.machine.layouts.u32)?;
+
+        // Since we are lazy, this update has to be atomic.
+        let (old, success) = this
+            .atomic_compare_exchange_scalar(
+                &value_place,
+                &ImmTy::from_uint(0u32, this.machine.layouts.u32),
+                Scalar::from_u32(next_id.to_u32()),
+                AtomicRwOrd::Relaxed, // deliberately *no* synchronization
+                AtomicReadOrd::Relaxed,
+                false,
+            )?
+            .to_scalar_pair();
+
+        Ok(if success.to_bool().expect("compare_exchange's second return value is a bool") {
+            // Caller of the closure needs to allocate next_id
+            None
+        } else {
+            Some(Id::from_u32(old.to_u32().expect("layout is u32")))
+        })
+    }
+
     /// Take a reader out of the queue waiting for the lock.
     /// Returns `true` if some thread got the rwlock.
     #[inline]
@@ -210,11 +275,31 @@ trait EvalContextExtPriv<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 // situations.
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    #[inline]
-    /// Create state for a new mutex.
-    fn mutex_create(&mut self) -> MutexId {
+    fn mutex_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, MutexId> {
         let this = self.eval_context_mut();
-        this.machine.threads.sync.mutexes.push(Default::default())
+        this.mutex_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+    }
+
+    fn rwlock_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, RwLockId> {
+        let this = self.eval_context_mut();
+        this.rwlock_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
+    }
+
+    fn condvar_get_or_create_id(
+        &mut self,
+        lock_op: &OpTy<'tcx, Provenance>,
+        offset: u64,
+    ) -> InterpResult<'tcx, CondvarId> {
+        let this = self.eval_context_mut();
+        this.condvar_get_or_create(|ecx, next_id| ecx.get_or_create_id(next_id, lock_op, offset))
     }
 
     #[inline]
@@ -301,8 +386,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Put the thread into the queue waiting for the mutex.
+    #[inline]
     fn mutex_enqueue_and_block(&mut self, id: MutexId, thread: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.mutex_is_locked(id), "queing on unlocked mutex");
@@ -310,16 +395,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(thread);
     }
 
-    #[inline]
-    /// Create state for a new read write lock.
-    fn rwlock_create(&mut self) -> RwLockId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.rwlocks.push(Default::default())
-    }
-
-    #[inline]
     /// Provides the closure with the next RwLockId. Creates that RwLock if the closure returns None,
     /// otherwise returns the value from the closure
+    #[inline]
     fn rwlock_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, RwLockId>
     where
         F: FnOnce(&mut MiriInterpCx<'mir, 'tcx>, RwLockId) -> InterpResult<'tcx, Option<RwLockId>>,
@@ -349,8 +427,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         rwlock.writer.is_some() || rwlock.readers.is_empty().not()
     }
 
-    #[inline]
     /// Check if write locked.
+    #[inline]
     fn rwlock_is_write_locked(&self, id: RwLockId) -> bool {
         let this = self.eval_context_ref();
         let rwlock = &this.machine.threads.sync.rwlocks[id];
@@ -407,8 +485,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         true
     }
 
-    #[inline]
     /// Put the reader in the queue waiting for the lock and block it.
+    #[inline]
     fn rwlock_enqueue_and_block_reader(&mut self, id: RwLockId, reader: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_write_locked(id), "read-queueing on not write locked rwlock");
@@ -416,8 +494,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(reader);
     }
 
-    #[inline]
     /// Lock by setting the writer that owns the lock.
+    #[inline]
     fn rwlock_writer_lock(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
         assert!(!this.rwlock_is_locked(id), "the rwlock is already locked");
@@ -429,8 +507,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Try to unlock by removing the writer.
+    #[inline]
     fn rwlock_writer_unlock(&mut self, id: RwLockId, expected_writer: ThreadId) -> bool {
         let this = self.eval_context_mut();
         let rwlock = &mut this.machine.threads.sync.rwlocks[id];
@@ -467,8 +545,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Put the writer in the queue waiting for the lock.
+    #[inline]
     fn rwlock_enqueue_and_block_writer(&mut self, id: RwLockId, writer: ThreadId) {
         let this = self.eval_context_mut();
         assert!(this.rwlock_is_locked(id), "write-queueing on unlocked rwlock");
@@ -476,16 +554,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.block_thread(writer);
     }
 
-    #[inline]
-    /// Create state for a new conditional variable.
-    fn condvar_create(&mut self) -> CondvarId {
-        let this = self.eval_context_mut();
-        this.machine.threads.sync.condvars.push(Default::default())
-    }
-
-    #[inline]
     /// Provides the closure with the next CondvarId. Creates that Condvar if the closure returns None,
     /// otherwise returns the value from the closure
+    #[inline]
     fn condvar_get_or_create<F>(&mut self, existing: F) -> InterpResult<'tcx, CondvarId>
     where
         F: FnOnce(
@@ -504,24 +575,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    #[inline]
     /// Is the conditional variable awaited?
+    #[inline]
     fn condvar_is_awaited(&mut self, id: CondvarId) -> bool {
         let this = self.eval_context_mut();
         !this.machine.threads.sync.condvars[id].waiters.is_empty()
     }
 
     /// Mark that the thread is waiting on the conditional variable.
-    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, mutex: MutexId) {
+    fn condvar_wait(&mut self, id: CondvarId, thread: ThreadId, lock: CondvarLock) {
         let this = self.eval_context_mut();
         let waiters = &mut this.machine.threads.sync.condvars[id].waiters;
         assert!(waiters.iter().all(|waiter| waiter.thread != thread), "thread is already waiting");
-        waiters.push_back(CondvarWaiter { thread, mutex });
+        waiters.push_back(CondvarWaiter { thread, lock });
     }
 
     /// Wake up some thread (if there is any) sleeping on the conditional
     /// variable.
-    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, MutexId)> {
+    fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, CondvarLock)> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
         let condvar = &mut this.machine.threads.sync.condvars[id];
@@ -535,7 +606,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             if let Some(data_race) = data_race {
                 data_race.validate_lock_acquire(&condvar.data_race, waiter.thread);
             }
-            (waiter.thread, waiter.mutex)
+            (waiter.thread, waiter.lock)
         })
     }
 

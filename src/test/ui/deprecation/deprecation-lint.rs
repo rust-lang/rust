@@ -51,7 +51,7 @@ mod cross_crate {
 
         let _ = nested::DeprecatedTupleStruct (1); //~ ERROR use of deprecated tuple struct `deprecation_lint::nested::DeprecatedTupleStruct`: text
 
-        // At the moment, the lint checker only checks stability in
+        // At the moment, the lint checker only checks stability
         // in the arguments of macros.
         // Eventually, we will want to lint the contents of the
         // macro in the module *defining* it. Also, stability levels

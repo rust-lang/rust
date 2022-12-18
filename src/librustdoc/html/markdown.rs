@@ -236,18 +236,16 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             return event;
         };
 
-        let mut origtext = String::new();
+        let mut original_text = String::new();
         for event in &mut self.inner {
             match event {
                 Event::End(Tag::CodeBlock(..)) => break,
                 Event::Text(ref s) => {
-                    origtext.push_str(s);
+                    original_text.push_str(s);
                 }
                 _ => {}
             }
         }
-        let lines = origtext.lines().filter_map(|l| map_line(l).for_html());
-        let text = lines.intersperse("\n".into()).collect::<String>();
 
         let parse_result = match kind {
             CodeBlockKind::Fenced(ref lang) => {
@@ -260,7 +258,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
                                  <pre class=\"language-{}\"><code>{}</code></pre>\
                              </div>",
                             lang,
-                            Escape(&text),
+                            Escape(&original_text),
                         )
                         .into(),
                     ));
@@ -269,6 +267,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             }
             CodeBlockKind::Indented => Default::default(),
         };
+
+        let lines = original_text.lines().filter_map(|l| map_line(l).for_html());
+        let text = lines.intersperse("\n".into()).collect::<String>();
 
         compile_fail = parse_result.compile_fail;
         should_panic = parse_result.should_panic;
@@ -284,7 +285,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for CodeBlocks<'_, 'a, I> {
             if url.is_empty() {
                 return None;
             }
-            let test = origtext
+            let test = original_text
                 .lines()
                 .map(|l| map_line(l).for_code())
                 .intersperse("\n".into())
@@ -566,11 +567,12 @@ struct SummaryLine<'a, I: Iterator<Item = Event<'a>>> {
     inner: I,
     started: bool,
     depth: u32,
+    skipped_tags: u32,
 }
 
 impl<'a, I: Iterator<Item = Event<'a>>> SummaryLine<'a, I> {
     fn new(iter: I) -> Self {
-        SummaryLine { inner: iter, started: false, depth: 0 }
+        SummaryLine { inner: iter, started: false, depth: 0, skipped_tags: 0 }
     }
 }
 
@@ -600,6 +602,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
             let is_allowed_tag = match event {
                 Event::Start(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth += 1;
@@ -607,6 +610,7 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 Event::End(ref c) => {
                     if is_forbidden_tag(c) {
+                        self.skipped_tags += 1;
                         return None;
                     }
                     self.depth -= 1;
@@ -615,6 +619,9 @@ impl<'a, I: Iterator<Item = Event<'a>>> Iterator for SummaryLine<'a, I> {
                 }
                 _ => true,
             };
+            if !is_allowed_tag {
+                self.skipped_tags += 1;
+            }
             return if !is_allowed_tag {
                 if is_start {
                     Some(Event::Start(Tag::Paragraph))
@@ -1095,11 +1102,11 @@ impl MarkdownItemInfo<'_> {
 }
 
 impl MarkdownSummaryLine<'_> {
-    pub(crate) fn into_string(self) -> String {
+    pub(crate) fn into_string_with_has_more_content(self) -> (String, bool) {
         let MarkdownSummaryLine(md, links) = self;
         // This is actually common enough to special-case
         if md.is_empty() {
-            return String::new();
+            return (String::new(), false);
         }
 
         let mut replacer = |broken_link: BrokenLink<'_>| {
@@ -1109,17 +1116,26 @@ impl MarkdownSummaryLine<'_> {
                 .map(|link| (link.href.as_str().into(), link.new_text.as_str().into()))
         };
 
-        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer));
+        let p = Parser::new_with_broken_link_callback(md, summary_opts(), Some(&mut replacer))
+            .peekable();
+        let mut summary = SummaryLine::new(p);
 
         let mut s = String::new();
 
-        let without_paragraphs = LinkReplacer::new(SummaryLine::new(p), links).filter(|event| {
+        let without_paragraphs = LinkReplacer::new(&mut summary, links).filter(|event| {
             !matches!(event, Event::Start(Tag::Paragraph) | Event::End(Tag::Paragraph))
         });
 
         html::push_html(&mut s, without_paragraphs);
 
-        s
+        let has_more_content =
+            matches!(summary.inner.peek(), Some(Event::Start(_))) || summary.skipped_tags > 0;
+
+        (s, has_more_content)
+    }
+
+    pub(crate) fn into_string(self) -> String {
+        self.into_string_with_has_more_content().0
     }
 }
 
@@ -1433,6 +1449,7 @@ static DEFAULT_ID_MAP: Lazy<FxHashMap<Cow<'static, str>, usize>> = Lazy::new(|| 
 fn init_id_map() -> FxHashMap<Cow<'static, str>, usize> {
     let mut map = FxHashMap::default();
     // This is the list of IDs used in Javascript.
+    map.insert("help".into(), 1);
     map.insert("settings".into(), 1);
     map.insert("not-displayed".into(), 1);
     map.insert("alternative-display".into(), 1);

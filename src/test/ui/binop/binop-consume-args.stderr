@@ -10,9 +10,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn add<A: Add<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -46,9 +43,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn sub(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn sub<A: Sub<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -82,9 +76,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn mul(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn mul<A: Mul<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -118,9 +109,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn div(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn div<A: Div<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -154,9 +142,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn rem(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn rem<A: Rem<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -190,9 +175,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn bitand(self, rhs: Rhs) -> Self::Output;
-   |               ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitand<A: BitAnd<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -226,9 +208,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn bitor(self, rhs: Rhs) -> Self::Output;
-   |              ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitor<A: BitOr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -262,9 +241,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn bitxor(self, rhs: Rhs) -> Self::Output;
-   |               ^^^^
 help: consider further restricting this bound
    |
 LL | fn bitxor<A: BitXor<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -298,9 +274,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn shl(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn shl<A: Shl<B, Output=()> + Copy, B>(lhs: A, rhs: B) {
@@ -334,9 +307,6 @@ LL |     drop(lhs);
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn shr(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn shr<A: Shr<B, Output=()> + Copy, B>(lhs: A, rhs: B) {

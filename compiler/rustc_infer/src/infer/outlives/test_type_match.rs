@@ -136,6 +136,11 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
     fn tag(&self) -> &'static str {
         "Match"
     }
+
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.tcx
     }
@@ -146,14 +151,21 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
         true
     } // irrelevant
 
+    fn mark_ambiguous(&mut self) {
+        bug!()
+    }
+
+    #[instrument(level = "trace", skip(self))]
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
-        _: ty::Variance,
+        variance: ty::Variance,
         _: ty::VarianceDiagInfo<'tcx>,
         a: T,
         b: T,
     ) -> RelateResult<'tcx, T> {
-        self.relate(a, b)
+        // Opaque types substs have lifetime parameters.
+        // We must not check them to be equal, as we never insert anything to make them so.
+        if variance != ty::Bivariant { self.relate(a, b) } else { Ok(a) }
     }
 
     #[instrument(skip(self), level = "debug")]

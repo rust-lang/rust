@@ -1,8 +1,8 @@
+// ignore-wasm32
 // revisions: mir thir
 // [thir]compile-flags: -Z thir-unsafeck
 // normalize-stderr-test: "__FastLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
 // normalize-stderr-test: "__OsLocalKeyInner::<T>::get" -> "$$LOCALKEYINNER::<T>::get"
-
 #![feature(thread_local)]
 #![feature(cfg_target_thread_local, thread_local_internals)]
 

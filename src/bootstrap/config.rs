@@ -3,23 +3,26 @@
 //! This module implements parsing `config.toml` configuration files to tweak
 //! how the build runs.
 
+#[cfg(test)]
+mod tests;
+
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::collections::{HashMap, HashSet};
 use std::env;
-use std::ffi::OsStr;
 use std::fmt;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str::FromStr;
 
-use crate::builder::{Builder, TaskPath};
+use crate::builder::TaskPath;
 use crate::cache::{Interned, INTERNER};
-use crate::channel::GitInfo;
+use crate::cc_detect::{ndk_compiler, Language};
+use crate::channel::{self, GitInfo};
 pub use crate::flags::Subcommand;
 use crate::flags::{Color, Flags};
-use crate::util::{exe, output, program_out_of_date, t};
+use crate::util::{exe, output, t};
 use once_cell::sync::OnceCell;
 use serde::{Deserialize, Deserializer};
 
@@ -31,6 +34,17 @@ macro_rules! check_ci_llvm {
             stringify!($name)
         );
     };
+}
+
+#[derive(Clone, Default)]
+pub enum DryRun {
+    /// This isn't a dry run.
+    #[default]
+    Disabled,
+    /// This is a dry run enabled by bootstrap itself, so it can verify that no work is done.
+    SelfCheck,
+    /// This is a dry run enabled by the `--dry-run` flag.
+    UserSelected,
 }
 
 /// Global configuration for the entire build and/or bootstrap.
@@ -73,8 +87,6 @@ pub struct Config {
     pub color: Color,
     pub patch_binaries_for_nix: bool,
     pub stage0_metadata: Stage0Metadata,
-    /// Whether to use the `c` feature of the `compiler_builtins` crate.
-    pub optimized_compiler_builtins: bool,
 
     pub on_fail: Option<String>,
     pub stage: u32,
@@ -82,11 +94,11 @@ pub struct Config {
     pub keep_stage_std: Vec<u32>,
     pub src: PathBuf,
     /// defaults to `config.toml`
-    pub config: PathBuf,
+    pub config: Option<PathBuf>,
     pub jobs: Option<u32>,
     pub cmd: Subcommand,
     pub incremental: bool,
-    pub dry_run: bool,
+    pub dry_run: DryRun,
     /// `None` if we shouldn't download CI compiler artifacts, or the commit to download if we should.
     #[cfg(not(test))]
     download_rustc_commit: Option<String>,
@@ -158,9 +170,12 @@ pub struct Config {
     pub rust_new_symbol_mangling: Option<bool>,
     pub rust_profile_use: Option<String>,
     pub rust_profile_generate: Option<String>,
+    pub rust_lto: RustcLto,
     pub llvm_profile_use: Option<String>,
     pub llvm_profile_generate: bool,
     pub llvm_libunwind_default: Option<LlvmLibunwind>,
+    pub llvm_bolt_profile_generate: bool,
+    pub llvm_bolt_profile_use: Option<String>,
 
     pub build: TargetSelection,
     pub hosts: Vec<TargetSelection>,
@@ -201,6 +216,7 @@ pub struct Config {
     pub npm: Option<PathBuf>,
     pub gdb: Option<PathBuf>,
     pub python: Option<PathBuf>,
+    pub reuse: Option<PathBuf>,
     pub cargo_native_static: bool,
     pub configure_args: Vec<String>,
 
@@ -212,6 +228,7 @@ pub struct Config {
     #[cfg(test)]
     pub initial_rustfmt: RefCell<RustfmtState>,
     pub out: PathBuf,
+    pub rust_info: channel::GitInfo,
 }
 
 #[derive(Default, Deserialize)]
@@ -313,6 +330,28 @@ impl SplitDebuginfo {
             SplitDebuginfo::Packed
         } else {
             SplitDebuginfo::Off
+        }
+    }
+}
+
+/// LTO mode used for compiling rustc itself.
+#[derive(Default, Clone)]
+pub enum RustcLto {
+    #[default]
+    ThinLocal,
+    Thin,
+    Fat,
+}
+
+impl std::str::FromStr for RustcLto {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "thin-local" => Ok(RustcLto::ThinLocal),
+            "thin" => Ok(RustcLto::Thin),
+            "fat" => Ok(RustcLto::Fat),
+            _ => Err(format!("Invalid value for rustc LTO: {}", s)),
         }
     }
 }
@@ -576,6 +615,7 @@ define_config! {
         nodejs: Option<String> = "nodejs",
         npm: Option<String> = "npm",
         python: Option<String> = "python",
+        reuse: Option<String> = "reuse",
         locked_deps: Option<bool> = "locked-deps",
         vendor: Option<bool> = "vendor",
         full_bootstrap: Option<bool> = "full-bootstrap",
@@ -598,8 +638,8 @@ define_config! {
         dist_stage: Option<u32> = "dist-stage",
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
-        optimized_compiler_builtins: Option<bool> = "optimized-compiler-builtins",
     }
 }
 
@@ -660,7 +700,7 @@ define_config! {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 enum StringOrBool {
     String(String),
@@ -724,6 +764,7 @@ define_config! {
         profile_use: Option<String> = "profile-use",
         // ignored; this is set from an env var set by bootstrap.py
         download_rustc: Option<StringOrBool> = "download-rustc",
+        lto: Option<String> = "lto",
     }
 }
 
@@ -758,7 +799,7 @@ impl Config {
         config.llvm_optimize = true;
         config.ninja_in_file = true;
         config.llvm_version_check = true;
-        config.llvm_static_stdcpp = true;
+        config.llvm_static_stdcpp = false;
         config.backtrace = true;
         config.rust_optimize = true;
         config.rust_optimize_tests = true;
@@ -785,6 +826,29 @@ impl Config {
     }
 
     pub fn parse(args: &[String]) -> Config {
+        #[cfg(test)]
+        let get_toml = |_: &_| TomlConfig::default();
+        #[cfg(not(test))]
+        let get_toml = |file: &Path| {
+            let contents =
+                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
+            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
+            // TomlConfig and sub types to be monomorphized 5x by toml.
+            match toml::from_str(&contents)
+                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
+            {
+                Ok(table) => table,
+                Err(err) => {
+                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
+                    crate::detail_exit(2);
+                }
+            }
+        };
+
+        Self::parse_inner(args, get_toml)
+    }
+
+    fn parse_inner<'a>(args: &[String], get_toml: impl 'a + Fn(&Path) -> TomlConfig) -> Config {
         let flags = Flags::parse(&args);
         let mut config = Config::default_opts();
 
@@ -797,7 +861,7 @@ impl Config {
         config.jobs = flags.jobs.map(threads_from_config);
         config.cmd = flags.cmd;
         config.incremental = flags.incremental;
-        config.dry_run = flags.dry_run;
+        config.dry_run = if flags.dry_run { DryRun::UserSelected } else { DryRun::Disabled };
         config.keep_stage = flags.keep_stage;
         config.keep_stage_std = flags.keep_stage_std;
         config.color = flags.color;
@@ -806,6 +870,15 @@ impl Config {
         }
         config.llvm_profile_use = flags.llvm_profile_use;
         config.llvm_profile_generate = flags.llvm_profile_generate;
+        config.llvm_bolt_profile_generate = flags.llvm_bolt_profile_generate;
+        config.llvm_bolt_profile_use = flags.llvm_bolt_profile_use;
+
+        if config.llvm_bolt_profile_generate && config.llvm_bolt_profile_use.is_some() {
+            eprintln!(
+                "Cannot use both `llvm_bolt_profile_generate` and `llvm_bolt_profile_use` at the same time"
+            );
+            crate::detail_exit(1);
+        }
 
         // Infer the rest of the configuration.
 
@@ -829,10 +902,19 @@ impl Config {
             let s = git_root.to_str().unwrap();
 
             // Bootstrap is quite bad at handling /? in front of paths
-            config.src = match s.strip_prefix("\\\\?\\") {
+            let src = match s.strip_prefix("\\\\?\\") {
                 Some(p) => PathBuf::from(p),
                 None => PathBuf::from(git_root),
             };
+            // If this doesn't have at least `stage0.json`, we guessed wrong. This can happen when,
+            // for example, the build directory is inside of another unrelated git directory.
+            // In that case keep the original `CARGO_MANIFEST_DIR` handling.
+            //
+            // NOTE: this implies that downloadable bootstrap isn't supported when the build directory is outside
+            // the source directory. We could fix that by setting a variable from all three of python, ./x, and x.ps1.
+            if src.join("src").join("stage0.json").exists() {
+                config.src = src;
+            }
         } else {
             // We're building from a tarball, not git sources.
             // We don't support pre-downloaded bootstrap in this case.
@@ -852,25 +934,6 @@ impl Config {
 
         config.stage0_metadata = t!(serde_json::from_slice::<Stage0Metadata>(&stage0_json));
 
-        #[cfg(test)]
-        let get_toml = |_| TomlConfig::default();
-        #[cfg(not(test))]
-        let get_toml = |file: &Path| {
-            let contents =
-                t!(fs::read_to_string(file), format!("config file {} not found", file.display()));
-            // Deserialize to Value and then TomlConfig to prevent the Deserialize impl of
-            // TomlConfig and sub types to be monomorphized 5x by toml.
-            match toml::from_str(&contents)
-                .and_then(|table: toml::Value| TomlConfig::deserialize(table))
-            {
-                Ok(table) => table,
-                Err(err) => {
-                    eprintln!("failed to parse TOML configuration '{}': {}", file.display(), err);
-                    crate::detail_exit(2);
-                }
-            }
-        };
-
         // Read from `--config`, then `RUST_BOOTSTRAP_CONFIG`, then `./config.toml`, then `config.toml` in the root directory.
         let toml_path = flags
             .config
@@ -885,8 +948,10 @@ impl Config {
         // Give a hard error if `--config` or `RUST_BOOTSTRAP_CONFIG` are set to a missing path,
         // but not if `config.toml` hasn't been created.
         let mut toml = if !using_default_path || toml_path.exists() {
+            config.config = Some(toml_path.clone());
             get_toml(&toml_path)
         } else {
+            config.config = None;
             TomlConfig::default()
         };
 
@@ -901,7 +966,6 @@ impl Config {
         }
 
         config.changelog_seen = toml.changelog_seen;
-        config.config = toml_path;
 
         let build = toml.build.unwrap_or_default();
 
@@ -923,7 +987,7 @@ impl Config {
             .unwrap_or_else(|| config.out.join(config.build.triple).join("stage0/bin/cargo"));
 
         // NOTE: it's important this comes *after* we set `initial_rustc` just above.
-        if config.dry_run {
+        if config.dry_run() {
             let dir = config.out.join("tmp-dry-run");
             t!(fs::create_dir_all(&dir));
             config.out = dir;
@@ -950,6 +1014,7 @@ impl Config {
         config.npm = build.npm.map(PathBuf::from);
         config.gdb = build.gdb.map(PathBuf::from);
         config.python = build.python.map(PathBuf::from);
+        config.reuse = build.reuse.map(PathBuf::from);
         config.submodules = build.submodules;
         set(&mut config.low_priority, build.low_priority);
         set(&mut config.compiler_docs, build.compiler_docs);
@@ -969,7 +1034,6 @@ impl Config {
         set(&mut config.print_step_timings, build.print_step_timings);
         set(&mut config.print_step_rusage, build.print_step_rusage);
         set(&mut config.patch_binaries_for_nix, build.patch_binaries_for_nix);
-        set(&mut config.optimized_compiler_builtins, build.optimized_compiler_builtins);
 
         config.verbose = cmp::max(config.verbose, flags.verbose);
 
@@ -1006,90 +1070,6 @@ impl Config {
         let mut debuginfo_level_tests = None;
         let mut optimize = None;
         let mut ignore_git = None;
-
-        if let Some(llvm) = toml.llvm {
-            match llvm.ccache {
-                Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
-                Some(StringOrBool::Bool(true)) => {
-                    config.ccache = Some("ccache".to_string());
-                }
-                Some(StringOrBool::Bool(false)) | None => {}
-            }
-            set(&mut config.ninja_in_file, llvm.ninja);
-            llvm_assertions = llvm.assertions;
-            llvm_tests = llvm.tests;
-            llvm_plugins = llvm.plugins;
-            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
-            set(&mut config.llvm_optimize, llvm.optimize);
-            set(&mut config.llvm_thin_lto, llvm.thin_lto);
-            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
-            set(&mut config.llvm_version_check, llvm.version_check);
-            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
-            if let Some(v) = llvm.link_shared {
-                config.llvm_link_shared.set(Some(v));
-            }
-            config.llvm_targets = llvm.targets.clone();
-            config.llvm_experimental_targets = llvm.experimental_targets.clone();
-            config.llvm_link_jobs = llvm.link_jobs;
-            config.llvm_version_suffix = llvm.version_suffix.clone();
-            config.llvm_clang_cl = llvm.clang_cl.clone();
-
-            config.llvm_cflags = llvm.cflags.clone();
-            config.llvm_cxxflags = llvm.cxxflags.clone();
-            config.llvm_ldflags = llvm.ldflags.clone();
-            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
-            config.llvm_use_linker = llvm.use_linker.clone();
-            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
-            config.llvm_polly = llvm.polly.unwrap_or(false);
-            config.llvm_clang = llvm.clang.unwrap_or(false);
-            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
-            config.llvm_from_ci = match llvm.download_ci_llvm {
-                Some(StringOrBool::String(s)) => {
-                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
-                    crate::native::is_ci_llvm_available(&config, llvm_assertions.unwrap_or(false))
-                }
-                Some(StringOrBool::Bool(b)) => b,
-                None => false,
-            };
-
-            if config.llvm_from_ci {
-                // None of the LLVM options, except assertions, are supported
-                // when using downloaded LLVM. We could just ignore these but
-                // that's potentially confusing, so force them to not be
-                // explicitly set. The defaults and CI defaults don't
-                // necessarily match but forcing people to match (somewhat
-                // arbitrary) CI configuration locally seems bad/hard.
-                check_ci_llvm!(llvm.optimize);
-                check_ci_llvm!(llvm.thin_lto);
-                check_ci_llvm!(llvm.release_debuginfo);
-                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
-                check_ci_llvm!(llvm.link_shared);
-                check_ci_llvm!(llvm.static_libstdcpp);
-                check_ci_llvm!(llvm.targets);
-                check_ci_llvm!(llvm.experimental_targets);
-                check_ci_llvm!(llvm.link_jobs);
-                check_ci_llvm!(llvm.clang_cl);
-                check_ci_llvm!(llvm.version_suffix);
-                check_ci_llvm!(llvm.cflags);
-                check_ci_llvm!(llvm.cxxflags);
-                check_ci_llvm!(llvm.ldflags);
-                check_ci_llvm!(llvm.use_libcxx);
-                check_ci_llvm!(llvm.use_linker);
-                check_ci_llvm!(llvm.allow_old_toolchain);
-                check_ci_llvm!(llvm.polly);
-                check_ci_llvm!(llvm.clang);
-                check_ci_llvm!(llvm.build_config);
-                check_ci_llvm!(llvm.plugins);
-            }
-
-            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
-            if config.llvm_thin_lto && llvm.link_shared.is_none() {
-                // If we're building with ThinLTO on, by default we want to link
-                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
-                // the link step) with each stage.
-                config.llvm_link_shared.set(Some(true));
-            }
-        }
 
         if let Some(rust) = toml.rust {
             debug = rust.debug;
@@ -1152,10 +1132,107 @@ impl Config {
             config.rust_codegen_units_std = rust.codegen_units_std.map(threads_from_config);
             config.rust_profile_use = flags.rust_profile_use.or(rust.profile_use);
             config.rust_profile_generate = flags.rust_profile_generate.or(rust.profile_generate);
-            config.download_rustc_commit = download_ci_rustc_commit(&config, rust.download_rustc);
+            config.download_rustc_commit = config.download_ci_rustc_commit(rust.download_rustc);
+
+            config.rust_lto = rust
+                .lto
+                .as_deref()
+                .map(|value| RustcLto::from_str(value).unwrap())
+                .unwrap_or_default();
         } else {
             config.rust_profile_use = flags.rust_profile_use;
             config.rust_profile_generate = flags.rust_profile_generate;
+        }
+
+        if let Some(llvm) = toml.llvm {
+            match llvm.ccache {
+                Some(StringOrBool::String(ref s)) => config.ccache = Some(s.to_string()),
+                Some(StringOrBool::Bool(true)) => {
+                    config.ccache = Some("ccache".to_string());
+                }
+                Some(StringOrBool::Bool(false)) | None => {}
+            }
+            set(&mut config.ninja_in_file, llvm.ninja);
+            llvm_assertions = llvm.assertions;
+            llvm_tests = llvm.tests;
+            llvm_plugins = llvm.plugins;
+            llvm_skip_rebuild = llvm_skip_rebuild.or(llvm.skip_rebuild);
+            set(&mut config.llvm_optimize, llvm.optimize);
+            set(&mut config.llvm_thin_lto, llvm.thin_lto);
+            set(&mut config.llvm_release_debuginfo, llvm.release_debuginfo);
+            set(&mut config.llvm_version_check, llvm.version_check);
+            set(&mut config.llvm_static_stdcpp, llvm.static_libstdcpp);
+            if let Some(v) = llvm.link_shared {
+                config.llvm_link_shared.set(Some(v));
+            }
+            config.llvm_targets = llvm.targets.clone();
+            config.llvm_experimental_targets = llvm.experimental_targets.clone();
+            config.llvm_link_jobs = llvm.link_jobs;
+            config.llvm_version_suffix = llvm.version_suffix.clone();
+            config.llvm_clang_cl = llvm.clang_cl.clone();
+
+            config.llvm_cflags = llvm.cflags.clone();
+            config.llvm_cxxflags = llvm.cxxflags.clone();
+            config.llvm_ldflags = llvm.ldflags.clone();
+            set(&mut config.llvm_use_libcxx, llvm.use_libcxx);
+            config.llvm_use_linker = llvm.use_linker.clone();
+            config.llvm_allow_old_toolchain = llvm.allow_old_toolchain.unwrap_or(false);
+            config.llvm_polly = llvm.polly.unwrap_or(false);
+            config.llvm_clang = llvm.clang.unwrap_or(false);
+            config.llvm_build_config = llvm.build_config.clone().unwrap_or(Default::default());
+
+            let asserts = llvm_assertions.unwrap_or(false);
+            config.llvm_from_ci = match llvm.download_ci_llvm {
+                Some(StringOrBool::String(s)) => {
+                    assert!(s == "if-available", "unknown option `{}` for download-ci-llvm", s);
+                    crate::native::is_ci_llvm_available(&config, asserts)
+                }
+                Some(StringOrBool::Bool(b)) => b,
+                None => {
+                    config.channel == "dev" && crate::native::is_ci_llvm_available(&config, asserts)
+                }
+            };
+
+            if config.llvm_from_ci {
+                // None of the LLVM options, except assertions, are supported
+                // when using downloaded LLVM. We could just ignore these but
+                // that's potentially confusing, so force them to not be
+                // explicitly set. The defaults and CI defaults don't
+                // necessarily match but forcing people to match (somewhat
+                // arbitrary) CI configuration locally seems bad/hard.
+                check_ci_llvm!(llvm.optimize);
+                check_ci_llvm!(llvm.thin_lto);
+                check_ci_llvm!(llvm.release_debuginfo);
+                // CI-built LLVM can be either dynamic or static. We won't know until we download it.
+                check_ci_llvm!(llvm.link_shared);
+                check_ci_llvm!(llvm.static_libstdcpp);
+                check_ci_llvm!(llvm.targets);
+                check_ci_llvm!(llvm.experimental_targets);
+                check_ci_llvm!(llvm.link_jobs);
+                check_ci_llvm!(llvm.clang_cl);
+                check_ci_llvm!(llvm.version_suffix);
+                check_ci_llvm!(llvm.cflags);
+                check_ci_llvm!(llvm.cxxflags);
+                check_ci_llvm!(llvm.ldflags);
+                check_ci_llvm!(llvm.use_libcxx);
+                check_ci_llvm!(llvm.use_linker);
+                check_ci_llvm!(llvm.allow_old_toolchain);
+                check_ci_llvm!(llvm.polly);
+                check_ci_llvm!(llvm.clang);
+                check_ci_llvm!(llvm.build_config);
+                check_ci_llvm!(llvm.plugins);
+            }
+
+            // NOTE: can never be hit when downloading from CI, since we call `check_ci_llvm!(thin_lto)` above.
+            if config.llvm_thin_lto && llvm.link_shared.is_none() {
+                // If we're building with ThinLTO on, by default we want to link
+                // to LLVM shared, to avoid re-doing ThinLTO (which happens in
+                // the link step) with each stage.
+                config.llvm_link_shared.set(Some(true));
+            }
+        } else {
+            config.llvm_from_ci =
+                config.channel == "dev" && crate::native::is_ci_llvm_available(&config, false);
         }
 
         if let Some(t) = toml.target {
@@ -1179,8 +1256,12 @@ impl Config {
                 if let Some(s) = cfg.no_std {
                     target.no_std = s;
                 }
-                target.cc = cfg.cc.map(PathBuf::from);
-                target.cxx = cfg.cxx.map(PathBuf::from);
+                target.cc = cfg.cc.map(PathBuf::from).or_else(|| {
+                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::C, &triple, ndk))
+                });
+                target.cxx = cfg.cxx.map(PathBuf::from).or_else(|| {
+                    target.ndk.as_ref().map(|ndk| ndk_compiler(Language::CPlusPlus, &triple, ndk))
+                });
                 target.ar = cfg.ar.map(PathBuf::from);
                 target.ranlib = cfg.ranlib.map(PathBuf::from);
                 target.linker = cfg.linker.map(PathBuf::from);
@@ -1268,6 +1349,7 @@ impl Config {
 
         let default = config.channel == "dev";
         config.ignore_git = ignore_git.unwrap_or(default);
+        config.rust_info = GitInfo::new(config.ignore_git, &config.src);
 
         let download_rustc = config.download_rustc_commit.is_some();
         // See https://github.com/rust-lang/compiler-team/issues/326
@@ -1325,6 +1407,13 @@ impl Config {
         config
     }
 
+    pub(crate) fn dry_run(&self) -> bool {
+        match self.dry_run {
+            DryRun::Disabled => false,
+            DryRun::SelfCheck | DryRun::UserSelected => true,
+        }
+    }
+
     /// A git invocation which runs inside the source directory.
     ///
     /// Use this rather than `Command::new("git")` in order to support out-of-tree builds.
@@ -1334,21 +1423,46 @@ impl Config {
         git
     }
 
-    pub(crate) fn artifact_channel(&self, builder: &Builder<'_>, commit: &str) -> String {
-        if builder.rust_info.is_managed_git_subrepository() {
+    /// Bootstrap embeds a version number into the name of shared libraries it uploads in CI.
+    /// Return the version it would have used for the given commit.
+    pub(crate) fn artifact_version_part(&self, commit: &str) -> String {
+        let (channel, version) = if self.rust_info.is_managed_git_subrepository() {
             let mut channel = self.git();
             channel.arg("show").arg(format!("{}:src/ci/channel", commit));
             let channel = output(&mut channel);
-            channel.trim().to_owned()
-        } else if let Ok(channel) = fs::read_to_string(builder.src.join("src/ci/channel")) {
-            channel.trim().to_owned()
+            let mut version = self.git();
+            version.arg("show").arg(format!("{}:src/version", commit));
+            let version = output(&mut version);
+            (channel.trim().to_owned(), version.trim().to_owned())
         } else {
-            let src = builder.src.display();
-            eprintln!("error: failed to determine artifact channel");
-            eprintln!(
-                "help: either use git or ensure that {src}/src/ci/channel contains the name of the channel to use"
-            );
-            panic!();
+            let channel = fs::read_to_string(self.src.join("src/ci/channel"));
+            let version = fs::read_to_string(self.src.join("src/version"));
+            match (channel, version) {
+                (Ok(channel), Ok(version)) => {
+                    (channel.trim().to_owned(), version.trim().to_owned())
+                }
+                (channel, version) => {
+                    let src = self.src.display();
+                    eprintln!("error: failed to determine artifact channel and/or version");
+                    eprintln!(
+                        "help: consider using a git checkout or ensure these files are readable"
+                    );
+                    if let Err(channel) = channel {
+                        eprintln!("reading {}/src/ci/channel failed: {:?}", src, channel);
+                    }
+                    if let Err(version) = version {
+                        eprintln!("reading {}/src/version failed: {:?}", src, version);
+                    }
+                    panic!();
+                }
+            }
+        };
+
+        match channel.as_str() {
+            "stable" => version,
+            "beta" => channel,
+            "nightly" => channel,
+            other => unreachable!("{:?} is not recognized as a valid channel", other),
         }
     }
 
@@ -1387,17 +1501,17 @@ impl Config {
     ///
     /// If `false`, llvm should be linked statically.
     /// This is computed on demand since LLVM might have to first be downloaded from CI.
-    pub(crate) fn llvm_link_shared(builder: &Builder<'_>) -> bool {
-        let mut opt = builder.config.llvm_link_shared.get();
-        if opt.is_none() && builder.config.dry_run {
+    pub(crate) fn llvm_link_shared(&self) -> bool {
+        let mut opt = self.llvm_link_shared.get();
+        if opt.is_none() && self.dry_run() {
             // just assume static for now - dynamic linking isn't supported on all platforms
             return false;
         }
 
         let llvm_link_shared = *opt.get_or_insert_with(|| {
-            if builder.config.llvm_from_ci {
-                crate::native::maybe_download_ci_llvm(builder);
-                let ci_llvm = builder.config.ci_llvm_root();
+            if self.llvm_from_ci {
+                self.maybe_download_ci_llvm();
+                let ci_llvm = self.ci_llvm_root();
                 let link_type = t!(
                     std::fs::read_to_string(ci_llvm.join("link-type.txt")),
                     format!("CI llvm missing: {}", ci_llvm.display())
@@ -1409,36 +1523,42 @@ impl Config {
                 false
             }
         });
-        builder.config.llvm_link_shared.set(opt);
+        self.llvm_link_shared.set(opt);
         llvm_link_shared
     }
 
     /// Return whether we will use a downloaded, pre-compiled version of rustc, or just build from source.
-    pub(crate) fn download_rustc(builder: &Builder<'_>) -> bool {
-        static DOWNLOAD_RUSTC: OnceCell<bool> = OnceCell::new();
-        if builder.config.dry_run && DOWNLOAD_RUSTC.get().is_none() {
-            // avoid trying to actually download the commit
-            return false;
-        }
-
-        *DOWNLOAD_RUSTC.get_or_init(|| match &builder.config.download_rustc_commit {
-            None => false,
-            Some(commit) => {
-                download_ci_rustc(builder, commit);
-                true
-            }
-        })
+    pub(crate) fn download_rustc(&self) -> bool {
+        self.download_rustc_commit().is_some()
     }
 
-    pub(crate) fn initial_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
-        match &mut *builder.config.initial_rustfmt.borrow_mut() {
+    pub(crate) fn download_rustc_commit(&self) -> Option<&'static str> {
+        static DOWNLOAD_RUSTC: OnceCell<Option<String>> = OnceCell::new();
+        if self.dry_run() && DOWNLOAD_RUSTC.get().is_none() {
+            // avoid trying to actually download the commit
+            return None;
+        }
+
+        DOWNLOAD_RUSTC
+            .get_or_init(|| match &self.download_rustc_commit {
+                None => None,
+                Some(commit) => {
+                    self.download_ci_rustc(commit);
+                    Some(commit.clone())
+                }
+            })
+            .as_deref()
+    }
+
+    pub(crate) fn initial_rustfmt(&self) -> Option<PathBuf> {
+        match &mut *self.initial_rustfmt.borrow_mut() {
             RustfmtState::SystemToolchain(p) | RustfmtState::Downloaded(p) => Some(p.clone()),
             RustfmtState::Unavailable => None,
             r @ RustfmtState::LazyEvaluated => {
-                if builder.config.dry_run {
+                if self.dry_run() {
                     return Some(PathBuf::new());
                 }
-                let path = maybe_download_rustfmt(builder);
+                let path = self.maybe_download_rustfmt();
                 *r = if let Some(p) = &path {
                     RustfmtState::Downloaded(p.clone())
                 } else {
@@ -1449,8 +1569,10 @@ impl Config {
         }
     }
 
-    pub fn verbose(&self) -> bool {
-        self.verbose > 0
+    pub fn verbose(&self, msg: &str) {
+        if self.verbose > 0 {
+            println!("{}", msg);
+        }
     }
 
     pub fn sanitizers_enabled(&self, target: TargetSelection) -> bool {
@@ -1488,6 +1610,66 @@ impl Config {
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
+
+    /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
+    fn download_ci_rustc_commit(&self, download_rustc: Option<StringOrBool>) -> Option<String> {
+        // If `download-rustc` is not set, default to rebuilding.
+        let if_unchanged = match download_rustc {
+            None | Some(StringOrBool::Bool(false)) => return None,
+            Some(StringOrBool::Bool(true)) => false,
+            Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
+            Some(StringOrBool::String(other)) => {
+                panic!("unrecognized option for download-rustc: {}", other)
+            }
+        };
+
+        // Handle running from a directory other than the top level
+        let top_level = output(self.git().args(&["rev-parse", "--show-toplevel"]));
+        let top_level = top_level.trim_end();
+        let compiler = format!("{top_level}/compiler/");
+        let library = format!("{top_level}/library/");
+
+        // Look for a version to compare to based on the current commit.
+        // Only commits merged by bors will have CI artifacts.
+        let merge_base = output(
+            self.git()
+                .arg("rev-list")
+                .arg(format!("--author={}", self.stage0_metadata.config.git_merge_commit_email))
+                .args(&["-n1", "--first-parent", "HEAD"]),
+        );
+        let commit = merge_base.trim_end();
+        if commit.is_empty() {
+            println!("error: could not find commit hash for downloading rustc");
+            println!("help: maybe your repository history is too shallow?");
+            println!("help: consider disabling `download-rustc`");
+            println!("help: or fetch enough history to include one upstream commit");
+            crate::detail_exit(1);
+        }
+
+        // Warn if there were changes to the compiler or standard library since the ancestor commit.
+        let has_changes = !t!(self
+            .git()
+            .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
+            .status())
+        .success();
+        if has_changes {
+            if if_unchanged {
+                if self.verbose > 0 {
+                    println!(
+                        "warning: saw changes to compiler/ or library/ since {commit}; \
+                            ignoring `download-rustc`"
+                    );
+                }
+                return None;
+            }
+            println!(
+                "warning: `download-rustc` is enabled, but there are changes to \
+                    compiler/ or library/"
+            );
+        }
+
+        Some(commit.to_string())
+    }
 }
 
 fn set<T>(field: &mut T, val: Option<T>) {
@@ -1501,205 +1683,4 @@ fn threads_from_config(v: u32) -> u32 {
         0 => std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) as u32,
         n => n,
     }
-}
-
-/// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
-fn download_ci_rustc_commit(
-    config: &Config,
-    download_rustc: Option<StringOrBool>,
-) -> Option<String> {
-    // If `download-rustc` is not set, default to rebuilding.
-    let if_unchanged = match download_rustc {
-        None | Some(StringOrBool::Bool(false)) => return None,
-        Some(StringOrBool::Bool(true)) => false,
-        Some(StringOrBool::String(s)) if s == "if-unchanged" => true,
-        Some(StringOrBool::String(other)) => {
-            panic!("unrecognized option for download-rustc: {}", other)
-        }
-    };
-
-    // Handle running from a directory other than the top level
-    let top_level = output(config.git().args(&["rev-parse", "--show-toplevel"]));
-    let top_level = top_level.trim_end();
-    let compiler = format!("{top_level}/compiler/");
-    let library = format!("{top_level}/library/");
-
-    // Look for a version to compare to based on the current commit.
-    // Only commits merged by bors will have CI artifacts.
-    let merge_base = output(
-        config
-            .git()
-            .arg("rev-list")
-            .arg(format!("--author={}", config.stage0_metadata.config.git_merge_commit_email))
-            .args(&["-n1", "--first-parent", "HEAD"]),
-    );
-    let commit = merge_base.trim_end();
-    if commit.is_empty() {
-        println!("error: could not find commit hash for downloading rustc");
-        println!("help: maybe your repository history is too shallow?");
-        println!("help: consider disabling `download-rustc`");
-        println!("help: or fetch enough history to include one upstream commit");
-        crate::detail_exit(1);
-    }
-
-    // Warn if there were changes to the compiler or standard library since the ancestor commit.
-    let has_changes = !t!(config
-        .git()
-        .args(&["diff-index", "--quiet", &commit, "--", &compiler, &library])
-        .status())
-    .success();
-    if has_changes {
-        if if_unchanged {
-            if config.verbose > 0 {
-                println!(
-                    "warning: saw changes to compiler/ or library/ since {commit}; \
-                          ignoring `download-rustc`"
-                );
-            }
-            return None;
-        }
-        println!(
-            "warning: `download-rustc` is enabled, but there are changes to \
-                  compiler/ or library/"
-        );
-    }
-
-    Some(commit.to_string())
-}
-
-fn maybe_download_rustfmt(builder: &Builder<'_>) -> Option<PathBuf> {
-    let RustfmtMetadata { date, version } = builder.config.stage0_metadata.rustfmt.as_ref()?;
-    let channel = format!("{version}-{date}");
-
-    let host = builder.config.build;
-    let rustfmt_path = builder.config.initial_rustc.with_file_name(exe("rustfmt", host));
-    let bin_root = builder.config.out.join(host.triple).join("stage0");
-    let rustfmt_stamp = bin_root.join(".rustfmt-stamp");
-    if rustfmt_path.exists() && !program_out_of_date(&rustfmt_stamp, &channel) {
-        return Some(rustfmt_path);
-    }
-
-    let filename = format!("rustfmt-{version}-{build}.tar.xz", build = host.triple);
-    download_component(builder, DownloadSource::Dist, filename, "rustfmt-preview", &date, "stage0");
-
-    builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustfmt"));
-    builder.fix_bin_or_dylib(&bin_root.join("bin").join("cargo-fmt"));
-
-    builder.create(&rustfmt_stamp, &channel);
-    Some(rustfmt_path)
-}
-
-fn download_ci_rustc(builder: &Builder<'_>, commit: &str) {
-    builder.verbose(&format!("using downloaded stage2 artifacts from CI (commit {commit})"));
-    let channel = builder.config.artifact_channel(builder, commit);
-    let host = builder.config.build.triple;
-    let bin_root = builder.out.join(host).join("ci-rustc");
-    let rustc_stamp = bin_root.join(".rustc-stamp");
-
-    if !bin_root.join("bin").join("rustc").exists() || program_out_of_date(&rustc_stamp, commit) {
-        if bin_root.exists() {
-            t!(fs::remove_dir_all(&bin_root));
-        }
-        let filename = format!("rust-std-{channel}-{host}.tar.xz");
-        let pattern = format!("rust-std-{host}");
-        download_ci_component(builder, filename, &pattern, commit);
-        let filename = format!("rustc-{channel}-{host}.tar.xz");
-        download_ci_component(builder, filename, "rustc", commit);
-        // download-rustc doesn't need its own cargo, it can just use beta's.
-        let filename = format!("rustc-dev-{channel}-{host}.tar.xz");
-        download_ci_component(builder, filename, "rustc-dev", commit);
-
-        builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustc"));
-        builder.fix_bin_or_dylib(&bin_root.join("bin").join("rustdoc"));
-        let lib_dir = bin_root.join("lib");
-        for lib in t!(fs::read_dir(&lib_dir), lib_dir.display().to_string()) {
-            let lib = t!(lib);
-            if lib.path().extension() == Some(OsStr::new("so")) {
-                builder.fix_bin_or_dylib(&lib.path());
-            }
-        }
-        t!(fs::write(rustc_stamp, commit));
-    }
-}
-
-pub(crate) enum DownloadSource {
-    CI,
-    Dist,
-}
-
-/// Download a single component of a CI-built toolchain (not necessarily a published nightly).
-// NOTE: intentionally takes an owned string to avoid downloading multiple times by accident
-fn download_ci_component(builder: &Builder<'_>, filename: String, prefix: &str, commit: &str) {
-    download_component(builder, DownloadSource::CI, filename, prefix, commit, "ci-rustc")
-}
-
-fn download_component(
-    builder: &Builder<'_>,
-    mode: DownloadSource,
-    filename: String,
-    prefix: &str,
-    key: &str,
-    destination: &str,
-) {
-    let cache_dst = builder.out.join("cache");
-    let cache_dir = cache_dst.join(key);
-    if !cache_dir.exists() {
-        t!(fs::create_dir_all(&cache_dir));
-    }
-
-    let bin_root = builder.out.join(builder.config.build.triple).join(destination);
-    let tarball = cache_dir.join(&filename);
-    let (base_url, url, should_verify) = match mode {
-        DownloadSource::CI => (
-            builder.config.stage0_metadata.config.artifacts_server.clone(),
-            format!("{key}/{filename}"),
-            false,
-        ),
-        DownloadSource::Dist => {
-            let dist_server = env::var("RUSTUP_DIST_SERVER")
-                .unwrap_or(builder.config.stage0_metadata.config.dist_server.to_string());
-            // NOTE: make `dist` part of the URL because that's how it's stored in src/stage0.json
-            (dist_server, format!("dist/{key}/{filename}"), true)
-        }
-    };
-
-    // For the beta compiler, put special effort into ensuring the checksums are valid.
-    // FIXME: maybe we should do this for download-rustc as well? but it would be a pain to update
-    // this on each and every nightly ...
-    let checksum = if should_verify {
-        let error = format!(
-            "src/stage0.json doesn't contain a checksum for {url}. \
-            Pre-built artifacts might not be available for this \
-            target at this time, see https://doc.rust-lang.org/nightly\
-            /rustc/platform-support.html for more information."
-        );
-        let sha256 = builder.config.stage0_metadata.checksums_sha256.get(&url).expect(&error);
-        if tarball.exists() {
-            if builder.verify(&tarball, sha256) {
-                builder.unpack(&tarball, &bin_root, prefix);
-                return;
-            } else {
-                builder.verbose(&format!(
-                    "ignoring cached file {} due to failed verification",
-                    tarball.display()
-                ));
-                builder.remove(&tarball);
-            }
-        }
-        Some(sha256)
-    } else if tarball.exists() {
-        builder.unpack(&tarball, &bin_root, prefix);
-        return;
-    } else {
-        None
-    };
-
-    builder.download_component(&format!("{base_url}/{url}"), &tarball, "");
-    if let Some(sha256) = checksum {
-        if !builder.verify(&tarball, sha256) {
-            panic!("failed to verify {}", tarball.display());
-        }
-    }
-
-    builder.unpack(&tarball, &bin_root, prefix);
 }

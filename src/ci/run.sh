@@ -56,6 +56,7 @@ fi
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
+    HAS_METRICS=1
 fi
 
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --enable-sccache"
@@ -68,11 +69,6 @@ RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set rust.codegen-units-std=1"
 # process by recompressing the existing xz ones. This decreases the storage
 # space required for CI artifacts.
 RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --dist-compression-formats=xz"
-
-# Enable the `c` feature for compiler_builtins, but only when the `compiler-rt` source is available.
-if [ "$EXTERNAL_LLVM" = "" ]; then
-  RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.optimized-compiler-builtins"
-fi
 
 if [ "$DIST_SRC" = "" ]; then
   RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --disable-dist-src"
@@ -128,6 +124,10 @@ else
   # (And PGO is its own can of worms).
   if [ "$NO_DOWNLOAD_CI_LLVM" = "" ]; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.download-ci-llvm=if-available"
+  else
+    # When building for CI we want to use the static C++ Standard library
+    # included with LLVM, since a dynamic libstdcpp may not be available.
+    RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set llvm.static-libstdcpp"
   fi
 fi
 
@@ -158,13 +158,6 @@ trap datecheck EXIT
 # sccache server at the start of the build, but no need to worry if this fails.
 SCCACHE_IDLE_TIMEOUT=10800 sccache --start-server || true
 
-if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
-  $SRC/configure --set rust.parallel-compiler
-  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
-  rm -f config.toml
-  rm -rf build
-fi
-
 $SRC/configure $RUST_CONFIGURE_ARGS
 
 retry make prepare
@@ -192,6 +185,23 @@ else
   }
 
   do_make "$RUST_CHECK_TARGET"
+fi
+
+if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
+  rm -f config.toml
+  $SRC/configure --set rust.parallel-compiler
+
+  # Save the build metrics before we wipe the directory
+  if [ $HAS_METRICS = 1 ]; then
+    mv build/metrics.json .
+  fi
+  rm -rf build
+  if [ $HAS_METRICS = 1 ]; then
+    mkdir build
+    mv metrics.json build
+  fi
+
+  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
 fi
 
 sccache --show-stats || true

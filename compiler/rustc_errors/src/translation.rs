@@ -1,8 +1,32 @@
 use crate::snippet::Style;
 use crate::{DiagnosticArg, DiagnosticMessage, FluentBundle};
 use rustc_data_structures::sync::Lrc;
-use rustc_error_messages::FluentArgs;
+use rustc_error_messages::{
+    fluent_bundle::resolver::errors::{ReferenceKind, ResolverError},
+    FluentArgs, FluentError,
+};
 use std::borrow::Cow;
+
+/// Convert diagnostic arguments (a rustc internal type that exists to implement
+/// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
+///
+/// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
+/// passed around as a reference thereafter.
+pub fn to_fluent_args<'iter, 'arg: 'iter>(
+    iter: impl Iterator<Item = DiagnosticArg<'iter, 'arg>>,
+) -> FluentArgs<'arg> {
+    let mut args = if let Some(size) = iter.size_hint().1 {
+        FluentArgs::with_capacity(size)
+    } else {
+        FluentArgs::new()
+    };
+
+    for (k, v) in iter {
+        args.set(k.clone(), v.clone());
+    }
+
+    args
+}
 
 pub trait Translate {
     /// Return `FluentBundle` with localized diagnostics for the locale requested by the user. If no
@@ -14,15 +38,6 @@ pub trait Translate {
     /// Used when the user has not requested a specific language or when a localized diagnostic is
     /// unavailable for the requested locale.
     fn fallback_fluent_bundle(&self) -> &FluentBundle;
-
-    /// Convert diagnostic arguments (a rustc internal type that exists to implement
-    /// `Encodable`/`Decodable`) into `FluentArgs` which is necessary to perform translation.
-    ///
-    /// Typically performed once for each diagnostic at the start of `emit_diagnostic` and then
-    /// passed around as a reference thereafter.
-    fn to_fluent_args<'arg>(&self, args: &[DiagnosticArg<'arg>]) -> FluentArgs<'arg> {
-        FromIterator::from_iter(args.iter().cloned())
-    }
 
     /// Convert `DiagnosticMessage`s to a string, performing translation if necessary.
     fn translate_messages(
@@ -43,12 +58,14 @@ pub trait Translate {
     ) -> Cow<'_, str> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
-            DiagnosticMessage::Str(msg) => return Cow::Borrowed(&msg),
+            DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
+                return Cow::Borrowed(msg);
+            }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
 
         let translate_with_bundle = |bundle: &'a FluentBundle| -> Option<(Cow<'_, str>, Vec<_>)> {
-            let message = bundle.get_message(&identifier)?;
+            let message = bundle.get_message(identifier)?;
             let value = match attr {
                 Some(attr) => message.get_attribute(attr)?.value(),
                 None => message.value()?,
@@ -56,7 +73,7 @@ pub trait Translate {
             debug!(?message, ?value);
 
             let mut errs = vec![];
-            let translated = bundle.format_pattern(value, Some(&args), &mut errs);
+            let translated = bundle.format_pattern(value, Some(args), &mut errs);
             debug!(?translated, ?errs);
             Some((translated, errs))
         };
@@ -88,14 +105,31 @@ pub trait Translate {
             .or_else(|| translate_with_bundle(self.fallback_fluent_bundle()))
             .map(|(translated, errs)| {
                 // Always bail out for errors with the fallback bundle.
-                assert!(
-                    errs.is_empty(),
-                    "identifier: {:?}, attr: {:?}, args: {:?}, errors: {:?}",
-                    identifier,
-                    attr,
-                    args,
-                    errs
-                );
+
+                let mut help_messages = vec![];
+
+                if !errs.is_empty() {
+                    for error in &errs {
+                        match error {
+                            FluentError::ResolverError(ResolverError::Reference(
+                                ReferenceKind::Message { id, .. },
+                            )) if args.iter().any(|(arg_id, _)| arg_id == id) => {
+                                help_messages.push(format!("Argument `{id}` exists but was not referenced correctly. Try using `{{${id}}}` instead"));
+                            }
+                            _ => {}
+                        }
+                    }
+
+                    panic!(
+                        "Encountered errors while formatting message for `{identifier}`\n\
+                        help: {}\n\
+                        attr: `{attr:?}`\n\
+                        args: `{args:?}`\n\
+                        errors: `{errs:?}`",
+                        help_messages.join("\nhelp: ")
+                    );
+                }
+
                 translated
             })
             .expect("failed to find message in primary or fallback fluent bundles")

@@ -51,11 +51,11 @@ fn maybe_lint_redundant_semis(cx: &EarlyContext<'_>, seq: &mut Option<(Span, boo
         cx.struct_span_lint(
             REDUNDANT_SEMICOLONS,
             span,
-            fluent::lint::redundant_semicolons,
+            fluent::lint_redundant_semicolons,
             |lint| {
                 lint.set_arg("multiple", multiple).span_suggestion(
                     span,
-                    fluent::lint::suggestion,
+                    fluent::suggestion,
                     "",
                     Applicability::MaybeIncorrect,
                 )

@@ -184,7 +184,8 @@ impl<'a> Ctx<'a> {
         let name = field.name()?.as_name();
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref_opt(field.ty());
-        let res = Field { name, type_ref, visibility };
+        let ast_id = FieldAstId::Record(self.source_ast_id_map.ast_id(field));
+        let res = Field { name, type_ref, visibility, ast_id };
         Some(res)
     }
 
@@ -203,7 +204,8 @@ impl<'a> Ctx<'a> {
         let name = Name::new_tuple_field(idx);
         let visibility = self.lower_visibility(field);
         let type_ref = self.lower_type_ref_opt(field.ty());
-        Field { name, type_ref, visibility }
+        let ast_id = FieldAstId::Tuple(self.source_ast_id_map.ast_id(field));
+        Field { name, type_ref, visibility, ast_id }
     }
 
     fn lower_union(&mut self, union: &ast::Union) -> Option<FileItemTreeId<Union>> {
@@ -247,7 +249,8 @@ impl<'a> Ctx<'a> {
     fn lower_variant(&mut self, variant: &ast::Variant) -> Option<Variant> {
         let name = variant.name()?.as_name();
         let fields = self.lower_fields(&variant.kind());
-        let res = Variant { name, fields };
+        let ast_id = self.source_ast_id_map.ast_id(variant);
+        let res = Variant { name, fields, ast_id };
         Some(res)
     }
 
@@ -448,15 +451,7 @@ impl<'a> Ctx<'a> {
                 .collect()
         });
         let ast_id = self.source_ast_id_map.ast_id(trait_def);
-        let res = Trait {
-            name,
-            visibility,
-            generic_params,
-            is_auto,
-            is_unsafe,
-            items: items.unwrap_or_default(),
-            ast_id,
-        };
+        let res = Trait { name, visibility, generic_params, is_auto, is_unsafe, items, ast_id };
         Some(id(self.data().traits.alloc(res)))
     }
 
@@ -659,8 +654,12 @@ fn desugar_future_path(orig: TypeRef) -> Path {
     let mut generic_args: Vec<_> =
         std::iter::repeat(None).take(path.segments().len() - 1).collect();
     let mut last = GenericArgs::empty();
-    let binding =
-        AssociatedTypeBinding { name: name![Output], type_ref: Some(orig), bounds: Vec::new() };
+    let binding = AssociatedTypeBinding {
+        name: name![Output],
+        args: None,
+        type_ref: Some(orig),
+        bounds: Vec::new(),
+    };
     last.bindings.push(binding);
     generic_args.push(Some(Interned::new(last)));
 

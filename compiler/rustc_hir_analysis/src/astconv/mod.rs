@@ -23,7 +23,6 @@ use rustc_hir as hir;
 use rustc_hir::def::{CtorOf, DefKind, Namespace, Res};
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{walk_generics, Visitor as _};
-use rustc_hir::lang_items::LangItem;
 use rustc_hir::{GenericArg, GenericArgs, OpaqueTyOrigin};
 use rustc_middle::middle::stability::AllowUnstable;
 use rustc_middle::ty::subst::{self, GenericArgKind, InternalSubsts, SubstsRef};
@@ -36,7 +35,7 @@ use rustc_session::lint::builtin::{AMBIGUOUS_ASSOCIATED_ITEMS, BARE_TRAIT_OBJECT
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::symbol::{kw, Ident, Symbol};
-use rustc_span::Span;
+use rustc_span::{sym, Span};
 use rustc_target::spec::abi;
 use rustc_trait_selection::traits;
 use rustc_trait_selection::traits::astconv_object_safety_violations;
@@ -55,7 +54,7 @@ pub struct PathSeg(pub DefId, pub usize);
 pub trait AstConv<'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx>;
 
-    fn item_def_id(&self) -> Option<DefId>;
+    fn item_def_id(&self) -> DefId;
 
     /// Returns predicates in scope of the form `X: Foo<T>`, where `X`
     /// is a type parameter `X` with the given id `def_id` and T
@@ -110,13 +109,16 @@ pub trait AstConv<'tcx> {
     ) -> Ty<'tcx>;
 
     /// Normalize an associated type coming from the user.
+    ///
+    /// This should only be used by astconv. Use `FnCtxt::normalize`
+    /// or `ObligationCtxt::normalize` in downstream crates.
     fn normalize_ty(&self, span: Span, ty: Ty<'tcx>) -> Ty<'tcx>;
 
     /// Invoked when we encounter an error from some prior pass
     /// (e.g., resolve) that is translated into a ty-error. This is
     /// used to help suppress derived errors typeck might otherwise
     /// report.
-    fn set_tainted_by_errors(&self);
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed);
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, span: Span);
 }
@@ -242,14 +244,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
 
             None => {
-                self.re_infer(def, lifetime.span).unwrap_or_else(|| {
+                self.re_infer(def, lifetime.ident.span).unwrap_or_else(|| {
                     debug!(?lifetime, "unelided lifetime in signature");
 
                     // This indicates an illegal lifetime
                     // elision. `resolve_lifetime` should have
                     // reported an error in this case -- but if
                     // not, let's error out.
-                    tcx.sess.delay_span_bug(lifetime.span, "unelided lifetime in signature");
+                    tcx.sess.delay_span_bug(lifetime.ident.span, "unelided lifetime in signature");
 
                     // Supply some dummy value. We don't have an
                     // `re_error`, annoyingly, so use `'static`.
@@ -275,6 +277,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_segment.args(),
             item_segment.infer_args,
             None,
+            ty::BoundConstness::NotConst,
         );
         if let Some(b) = item_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
@@ -324,6 +327,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generic_args: &'a hir::GenericArgs<'_>,
         infer_args: bool,
         self_ty: Option<Ty<'tcx>>,
+        constness: ty::BoundConstness,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
         // If the type is parameterized by this region, then replace this
         // region with the current anon region binding (in other words,
@@ -343,7 +347,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 assert!(self_ty.is_some());
             }
         } else {
-            assert!(self_ty.is_none() && parent_substs.is_empty());
+            assert!(self_ty.is_none());
         }
 
         let arg_count = Self::check_generic_arg_count(
@@ -431,7 +435,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         ty::Const::from_opt_const_arg_anon_const(
                             tcx,
                             ty::WithOptConstParam {
-                                did: tcx.hir().local_def_id(ct.value.hir_id),
+                                did: ct.value.def_id,
                                 const_param_did: Some(param.def_id),
                             },
                         )
@@ -499,6 +503,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                     GenericParamDefKind::Const { has_default } => {
                         let ty = tcx.at(self.span).type_of(param.def_id);
+                        if ty.references_error() {
+                            return tcx.const_error(ty).into();
+                        }
                         if !infer_args && has_default {
                             tcx.bound_const_param_default(param.def_id)
                                 .subst(tcx, substs.unwrap())
@@ -534,6 +541,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             &mut substs_ctx,
         );
 
+        if let ty::BoundConstness::ConstIfConst = constness
+            && generics.has_self && !tcx.has_attr(def_id, sym::const_trait)
+        {
+            tcx.sess.emit_err(crate::errors::ConstBoundForNonConstTrait { span } );
+        }
+
         (substs, arg_count)
     }
 
@@ -560,8 +573,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             ConvertedBindingKind::Equality(self.ast_ty_to_ty(ty).into())
                         }
                         hir::Term::Const(ref c) => {
-                            let local_did = self.tcx().hir().local_def_id(c.hir_id);
-                            let c = Const::from_anon_const(self.tcx(), local_did);
+                            let c = Const::from_anon_const(self.tcx(), c.def_id);
                             ConvertedBindingKind::Equality(c.into())
                         }
                     },
@@ -582,7 +594,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         assoc_bindings
     }
 
-    pub(crate) fn create_substs_for_associated_item(
+    pub fn create_substs_for_associated_item(
         &self,
         span: Span,
         item_def_id: DefId,
@@ -601,6 +613,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             item_segment.args(),
             item_segment.infer_args,
             None,
+            ty::BoundConstness::NotConst,
         );
 
         if let Some(b) = item_segment.args().bindings.first() {
@@ -620,6 +633,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         &self,
         trait_ref: &hir::TraitRef<'_>,
         self_ty: Ty<'tcx>,
+        constness: ty::BoundConstness,
     ) -> ty::TraitRef<'tcx> {
         self.prohibit_generics(trait_ref.path.segments.split_last().unwrap().1.iter(), |_| {});
 
@@ -629,6 +643,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_ref.path.segments.last().unwrap(),
             true,
+            constness,
         )
     }
 
@@ -655,6 +670,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             args,
             infer_args,
             Some(self_ty),
+            constness,
         );
 
         let tcx = self.tcx();
@@ -664,7 +680,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let assoc_bindings = self.create_assoc_bindings_for_generic_args(args);
 
         let poly_trait_ref =
-            ty::Binder::bind_with_vars(ty::TraitRef::new(trait_def_id, substs), bound_vars);
+            ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
         bounds.trait_bounds.push((poly_trait_ref, span, constness));
@@ -680,6 +696,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 speculative,
                 &mut dup_bindings,
                 binding_span.unwrap_or(binding.span),
+                constness,
             );
             // Okay to ignore `Err` because of `ErrorGuaranteed` (see above).
         }
@@ -783,6 +800,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         trait_segment: &hir::PathSegment<'_>,
         is_impl: bool,
+        constness: ty::BoundConstness,
     ) -> ty::TraitRef<'tcx> {
         let (substs, _) = self.create_substs_for_ast_trait_ref(
             span,
@@ -790,11 +808,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             self_ty,
             trait_segment,
             is_impl,
+            constness,
         );
         if let Some(b) = trait_segment.args().bindings.first() {
             Self::prohibit_assoc_ty_binding(self.tcx(), b.span);
         }
-        ty::TraitRef::new(trait_def_id, substs)
+        self.tcx().mk_trait_ref(trait_def_id, substs)
     }
 
     #[instrument(level = "debug", skip(self, span))]
@@ -805,6 +824,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self_ty: Ty<'tcx>,
         trait_segment: &'a hir::PathSegment<'a>,
         is_impl: bool,
+        constness: ty::BoundConstness,
     ) -> (SubstsRef<'tcx>, GenericArgCountResult) {
         self.complain_about_internal_fn_trait(span, trait_def_id, trait_segment, is_impl);
 
@@ -816,6 +836,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             trait_segment.args(),
             trait_segment.infer_args,
             Some(self_ty),
+            constness,
         )
     }
 
@@ -832,12 +853,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             .is_some()
     }
 
-    // Sets `implicitly_sized` to true on `Bounds` if necessary
+    /// Sets `implicitly_sized` to true on `Bounds` if necessary
     pub(crate) fn add_implicitly_sized<'hir>(
         &self,
         bounds: &mut Bounds<'hir>,
         ast_bounds: &'hir [hir::GenericBound<'hir>],
-        self_ty_where_predicates: Option<(hir::HirId, &'hir [hir::WherePredicate<'hir>])>,
+        self_ty_where_predicates: Option<(LocalDefId, &'hir [hir::WherePredicate<'hir>])>,
         span: Span,
     ) {
         let tcx = self.tcx();
@@ -857,19 +878,18 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
         search_bounds(ast_bounds);
         if let Some((self_ty, where_clause)) = self_ty_where_predicates {
-            let self_ty_def_id = tcx.hir().local_def_id(self_ty).to_def_id();
             for clause in where_clause {
                 if let hir::WherePredicate::BoundPredicate(pred) = clause {
-                    if pred.is_param_bound(self_ty_def_id) {
+                    if pred.is_param_bound(self_ty.to_def_id()) {
                         search_bounds(pred.bounds);
                     }
                 }
             }
         }
 
-        let sized_def_id = tcx.lang_items().require(LangItem::Sized);
+        let sized_def_id = tcx.lang_items().sized_trait();
         match (&sized_def_id, unbound) {
-            (Ok(sized_def_id), Some(tpb))
+            (Some(sized_def_id), Some(tpb))
                 if tpb.path.res == Res::Def(DefKind::Trait, *sized_def_id) =>
             {
                 // There was in fact a `?Sized` bound, return without doing anything
@@ -889,7 +909,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // There was no `?Sized` bound; add implicitly sized if `Sized` is available.
             }
         }
-        if sized_def_id.is_err() {
+        if sized_def_id.is_none() {
             // No lang item for `Sized`, so we can't add it as a bound.
             return;
         }
@@ -944,9 +964,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 hir::GenericBound::Outlives(lifetime) => {
                     let region = self.ast_region_to_region(lifetime, None);
-                    bounds
-                        .region_bounds
-                        .push((ty::Binder::bind_with_vars(region, bound_vars), lifetime.span));
+                    bounds.region_bounds.push((
+                        ty::Binder::bind_with_vars(region, bound_vars),
+                        lifetime.ident.span,
+                    ));
                 }
             }
         }
@@ -1027,6 +1048,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         speculative: bool,
         dup_bindings: &mut FxHashMap<DefId, Span>,
         path_span: Span,
+        constness: ty::BoundConstness,
     ) -> Result<(), ErrorGuaranteed> {
         // Given something like `U: SomeTrait<T = X>`, we want to produce a
         // predicate like `<U as SomeTrait>::T = X`. This is somewhat
@@ -1122,15 +1144,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 trait_ref.substs,
             );
 
-            debug!(
-                "add_predicates_for_ast_type_binding: substs for trait-ref and assoc_item: {:?}",
-                substs_trait_ref_and_assoc_item
-            );
+            debug!(?substs_trait_ref_and_assoc_item);
 
-            ty::ProjectionTy {
-                item_def_id: assoc_item.def_id,
-                substs: substs_trait_ref_and_assoc_item,
-            }
+            self.tcx().mk_alias_ty(assoc_item.def_id, substs_trait_ref_and_assoc_item)
         });
 
         if !speculative {
@@ -1146,8 +1162,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     tcx.collect_constrained_late_bound_regions(&projection_ty);
                 let late_bound_in_ty =
                     tcx.collect_referenced_late_bound_regions(&trait_ref.rebind(ty));
-                debug!("late_bound_in_trait_ref = {:?}", late_bound_in_trait_ref);
-                debug!("late_bound_in_ty = {:?}", late_bound_in_ty);
+                debug!(?late_bound_in_trait_ref);
+                debug!(?late_bound_in_ty);
 
                 // FIXME: point at the type params that don't have appropriate lifetimes:
                 // struct S1<F: for<'a> Fn(&i32, &i32) -> &'a i32>(F);
@@ -1176,7 +1192,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 // the "projection predicate" for:
                 //
                 // `<T as Iterator>::Item = u32`
-                let assoc_item_def_id = projection_ty.skip_binder().item_def_id;
+                let assoc_item_def_id = projection_ty.skip_binder().def_id;
                 let def_kind = tcx.def_kind(assoc_item_def_id);
                 match (def_kind, term.unpack()) {
                     (hir::def::DefKind::AssocTy, ty::TermKind::Ty(_))
@@ -1184,7 +1200,8 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (_, _) => {
                         let got = if let Some(_) = term.ty() { "type" } else { "constant" };
                         let expected = def_kind.descr(assoc_item_def_id);
-                        tcx.sess
+                        let reported = tcx
+                            .sess
                             .struct_span_err(
                                 binding.span,
                                 &format!("expected {expected} bound, found {got}"),
@@ -1195,11 +1212,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             )
                             .emit();
                         term = match def_kind {
-                            hir::def::DefKind::AssocTy => tcx.ty_error().into(),
+                            hir::def::DefKind::AssocTy => {
+                                tcx.ty_error_with_guaranteed(reported).into()
+                            }
                             hir::def::DefKind::AssocConst => tcx
-                                .const_error(
+                                .const_error_with_guaranteed(
                                     tcx.bound_type_of(assoc_item_def_id)
                                         .subst(tcx, projection_ty.skip_binder().substs),
+                                    reported,
                                 )
                                 .into(),
                             _ => unreachable!(),
@@ -1221,7 +1241,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 //
                 // Calling `skip_binder` is okay, because `add_bounds` expects the `param_ty`
                 // parameter to have a skipped binder.
-                let param_ty = tcx.mk_ty(ty::Projection(projection_ty.skip_binder()));
+                let param_ty = tcx.mk_ty(ty::Alias(ty::Projection, projection_ty.skip_binder()));
                 self.add_bounds(param_ty, ast_bounds.iter(), bounds, candidate.bound_vars());
             }
         }
@@ -1317,8 +1337,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 .map(|&(trait_ref, _, _)| trait_ref.def_id())
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
                 .map(|trait_ref| tcx.def_span(trait_ref));
-            tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
-            return tcx.ty_error();
+            let reported =
+                tcx.sess.emit_err(TraitObjectDeclaredWithNoTraits { span, trait_alias_span });
+            return tcx.ty_error_with_guaranteed(reported);
         }
 
         // Check that there are no gross object safety violations;
@@ -1328,14 +1349,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             let object_safety_violations =
                 astconv_object_safety_violations(tcx, item.trait_ref().def_id());
             if !object_safety_violations.is_empty() {
-                report_object_safety_error(
+                let reported = report_object_safety_error(
                     tcx,
                     span,
                     item.trait_ref().def_id(),
                     &object_safety_violations,
                 )
                 .emit();
-                return tcx.ty_error();
+                return tcx.ty_error_with_guaranteed(reported);
             }
         }
 
@@ -1358,7 +1379,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
                 let bound_predicate = obligation.predicate.kind();
                 match bound_predicate.skip_binder() {
-                    ty::PredicateKind::Trait(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         associated_types.entry(span).or_default().extend(
                             tcx.associated_items(pred.def_id())
@@ -1367,7 +1388,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .map(|item| item.def_id),
                         );
                     }
-                    ty::PredicateKind::Projection(pred) => {
+                    ty::PredicateKind::Clause(ty::Clause::Projection(pred)) => {
                         let pred = bound_predicate.rebind(pred);
                         // A `Self` within the original bound will be substituted with a
                         // `trait_object_dummy_self`, so check for that.
@@ -1648,6 +1669,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
     // Checks that `bounds` contains exactly one element and reports appropriate
     // errors otherwise.
+    #[instrument(level = "debug", skip(self, all_candidates, ty_param_name, is_equality), ret)]
     fn one_bound_for_assoc_type<I>(
         &self,
         all_candidates: impl Fn() -> I,
@@ -1677,10 +1699,10 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 return Err(reported);
             }
         };
-        debug!("one_bound_for_assoc_type: bound = {:?}", bound);
+        debug!(?bound);
 
         if let Some(bound2) = next_cand {
-            debug!("one_bound_for_assoc_type: bound2 = {:?}", bound2);
+            debug!(?bound2);
 
             let is_equality = is_equality();
             let bounds = IntoIterator::into_iter([bound, bound2]).chain(matching_candidates);
@@ -1776,6 +1798,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     // parameter or `Self`.
     // NOTE: When this function starts resolving `Trait::AssocTy` successfully
     // it should also start reporting the `BARE_TRAIT_OBJECTS` lint.
+    #[instrument(level = "debug", skip(self, hir_ref_id, span, qself, assoc_segment), fields(assoc_ident=?assoc_segment.ident), ret)]
     pub fn associated_path_to_ty(
         &self,
         hir_ref_id: hir::HirId,
@@ -1793,11 +1816,9 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             Res::Err
         };
 
-        debug!("associated_path_to_ty: {:?}::{}", qself_ty, assoc_ident);
-
         // Check if we have an enum variant.
         let mut variant_resolution = None;
-        if let ty::Adt(adt_def, _) = qself_ty.kind() {
+        if let ty::Adt(adt_def, adt_substs) = qself_ty.kind() {
             if adt_def.is_enum() {
                 let variant_def = adt_def
                     .variants()
@@ -1893,6 +1914,22 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
                 }
             }
+
+            // see if we can satisfy using an inherent associated type
+            for &impl_ in tcx.inherent_impls(adt_def.did()) {
+                let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, impl_) else {
+                    continue;
+                };
+                let item_substs = self.create_substs_for_associated_item(
+                    span,
+                    assoc_ty_did,
+                    assoc_segment,
+                    adt_substs,
+                );
+                let ty = tcx.bound_type_of(assoc_ty_did).subst(tcx, item_substs);
+                let ty = self.normalize_ty(span, ty);
+                return Ok((ty, DefKind::AssocTy, assoc_ty_did));
+            }
         }
 
         // Find the type of the associated item, and the trait where the associated
@@ -1962,7 +1999,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     }
 
                     err.emit()
-                } else if let Some(reported) = qself_ty.error_reported() {
+                } else if let Err(reported) = qself_ty.error_reported() {
                     reported
                 } else {
                     // Don't print `TyErr` to the user.
@@ -1978,36 +2015,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         };
 
         let trait_did = bound.def_id();
-        let (assoc_ident, def_scope) =
-            tcx.adjust_ident_and_get_scope(assoc_ident, trait_did, hir_ref_id);
-
-        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
-        // of calling `filter_by_name_and_kind`.
-        let item = tcx.associated_items(trait_did).in_definition_order().find(|i| {
-            i.kind.namespace() == Namespace::TypeNS
-                && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
-        });
-        // Assume that if it's not matched, there must be a const defined with the same name
-        // but it was used in a type position.
-        let Some(item) = item else {
+        let Some(assoc_ty_did) = self.lookup_assoc_ty(assoc_ident, hir_ref_id, span, trait_did) else {
+            // Assume that if it's not matched, there must be a const defined with the same name
+            // but it was used in a type position.
             let msg = format!("found associated const `{assoc_ident}` when type was expected");
             let guar = tcx.sess.struct_span_err(span, &msg).emit();
             return Err(guar);
         };
 
-        let ty = self.projected_ty_from_poly_trait_ref(span, item.def_id, assoc_segment, bound);
+        let ty = self.projected_ty_from_poly_trait_ref(span, assoc_ty_did, assoc_segment, bound);
         let ty = self.normalize_ty(span, ty);
-
-        let kind = DefKind::AssocTy;
-        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
-            let kind = kind.descr(item.def_id);
-            let msg = format!("{} `{}` is private", kind, assoc_ident);
-            tcx.sess
-                .struct_span_err(span, &msg)
-                .span_label(span, &format!("private {}", kind))
-                .emit();
-        }
-        tcx.check_stability(item.def_id, Some(hir_ref_id), span, None);
 
         if let Some(variant_def_id) = variant_resolution {
             tcx.struct_span_lint_hir(
@@ -2027,7 +2044,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     };
 
                     could_refer_to(DefKind::Variant, variant_def_id, "");
-                    could_refer_to(kind, item.def_id, " also");
+                    could_refer_to(DefKind::AssocTy, assoc_ty_did, " also");
 
                     lint.span_suggestion(
                         span,
@@ -2040,7 +2057,40 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 },
             );
         }
-        Ok((ty, kind, item.def_id))
+        Ok((ty, DefKind::AssocTy, assoc_ty_did))
+    }
+
+    fn lookup_assoc_ty(
+        &self,
+        ident: Ident,
+        block: hir::HirId,
+        span: Span,
+        scope: DefId,
+    ) -> Option<DefId> {
+        let tcx = self.tcx();
+        let (ident, def_scope) = tcx.adjust_ident_and_get_scope(ident, scope, block);
+
+        // We have already adjusted the item name above, so compare with `ident.normalize_to_macros_2_0()` instead
+        // of calling `find_by_name_and_kind`.
+        let item = tcx.associated_items(scope).in_definition_order().find(|i| {
+            i.kind.namespace() == Namespace::TypeNS
+                && i.ident(tcx).normalize_to_macros_2_0() == ident
+        })?;
+
+        let kind = DefKind::AssocTy;
+        if !item.visibility(tcx).is_accessible_from(def_scope, tcx) {
+            let kind = kind.descr(item.def_id);
+            let msg = format!("{kind} `{ident}` is private");
+            let def_span = self.tcx().def_span(item.def_id);
+            tcx.sess
+                .struct_span_err_with_code(span, &msg, rustc_errors::error_code!(E0624))
+                .span_label(span, &format!("private {kind}"))
+                .span_label(def_span, &format!("{kind} defined here"))
+                .emit();
+        }
+        tcx.check_stability(item.def_id, Some(block), span, None);
+
+        Some(item.def_id)
     }
 
     fn qpath_to_ty(
@@ -2050,6 +2100,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         item_def_id: DefId,
         trait_segment: &hir::PathSegment<'_>,
         item_segment: &hir::PathSegment<'_>,
+        constness: ty::BoundConstness,
     ) -> Ty<'tcx> {
         let tcx = self.tcx();
 
@@ -2064,17 +2115,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             debug!("qpath_to_ty: self.item_def_id()={:?}", def_id);
 
-            let parent_def_id = def_id
-                .and_then(|def_id| {
-                    def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
-                })
+            let parent_def_id = def_id.as_local().map(|def_id| tcx.hir().local_def_id_to_hir_id(def_id))
                 .map(|hir_id| tcx.hir().get_parent_item(hir_id).to_def_id());
 
             debug!("qpath_to_ty: parent_def_id={:?}", parent_def_id);
 
             // If the trait in segment is the same as the trait defining the item,
             // use the `<Self as ..>` syntax in the error.
-            let is_part_of_self_trait_constraints = def_id == Some(trait_def_id);
+            let is_part_of_self_trait_constraints = def_id == trait_def_id;
             let is_part_of_fn_in_self_trait = parent_def_id == Some(trait_def_id);
 
             let type_name = if is_part_of_self_trait_constraints || is_part_of_fn_in_self_trait {
@@ -2083,19 +2131,25 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 "Type"
             };
 
-            self.report_ambiguous_associated_type(
+            let reported = self.report_ambiguous_associated_type(
                 span,
                 type_name,
                 &path_str,
                 item_segment.ident.name,
             );
-            return tcx.ty_error();
+            return tcx.ty_error_with_guaranteed(reported)
         };
 
         debug!("qpath_to_ty: self_type={:?}", self_ty);
 
-        let trait_ref =
-            self.ast_path_to_mono_trait_ref(span, trait_def_id, self_ty, trait_segment, false);
+        let trait_ref = self.ast_path_to_mono_trait_ref(
+            span,
+            trait_def_id,
+            self_ty,
+            trait_segment,
+            false,
+            constness,
+        );
 
         let item_substs = self.create_substs_for_associated_item(
             span,
@@ -2343,7 +2397,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         path_segs
     }
 
-    // Check a type `Path` and convert it to a `Ty`.
+    /// Check a type `Path` and convert it to a `Ty`.
     pub fn res_to_ty(
         &self,
         opt_self_ty: Option<Ty<'tcx>>,
@@ -2525,8 +2579,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     {
                         err.span_note(impl_.self_ty.span, "not a concrete type");
                     }
-                    err.emit();
-                    tcx.ty_error()
+                    tcx.ty_error_with_guaranteed(err.emit())
                 } else {
                     self.normalize_ty(span, ty)
                 }
@@ -2534,12 +2587,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             Res::Def(DefKind::AssocTy, def_id) => {
                 debug_assert!(path.segments.len() >= 2);
                 self.prohibit_generics(path.segments[..path.segments.len() - 2].iter(), |_| {});
+                // HACK: until we support `<Type as ~const Trait>`, assume all of them are.
+                let constness = if tcx.has_attr(tcx.parent(def_id), sym::const_trait) {
+                    ty::BoundConstness::ConstIfConst
+                } else {
+                    ty::BoundConstness::NotConst
+                };
                 self.qpath_to_ty(
                     span,
                     opt_self_ty,
                     def_id,
                     &path.segments[path.segments.len() - 2],
                     path.segments.last().unwrap(),
+                    constness,
                 )
             }
             Res::PrimTy(prim_ty) => {
@@ -2567,8 +2627,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
             }
             Res::Err => {
-                self.set_tainted_by_errors();
-                self.tcx().ty_error()
+                let e = self
+                    .tcx()
+                    .sess
+                    .delay_span_bug(path.span, "path with `Res:Err` but no error emitted");
+                self.set_tainted_by_errors(e);
+                self.tcx().ty_error_with_guaranteed(e)
             }
             _ => span_bug!(span, "unexpected resolution: {:?}", path.res),
         }
@@ -2632,7 +2696,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
             hir::TyKind::OpaqueDef(item_id, lifetimes, in_trait) => {
                 let opaque_ty = tcx.hir().item(item_id);
-                let def_id = item_id.def_id.to_def_id();
+                let def_id = item_id.owner_id.to_def_id();
 
                 match opaque_ty.kind {
                     hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) => {
@@ -2658,6 +2722,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     &GenericArgs::none(),
                     true,
                     None,
+                    ty::BoundConstness::NotConst,
                 );
                 EarlyBinder(self.normalize_ty(span, tcx.at(span).type_of(def_id)))
                     .subst(tcx, substs)
@@ -2666,8 +2731,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let length = match length {
                     &hir::ArrayLen::Infer(_, span) => self.ct_infer(tcx.types.usize, None, span),
                     hir::ArrayLen::Body(constant) => {
-                        let length_def_id = tcx.hir().local_def_id(constant.hir_id);
-                        ty::Const::from_anon_const(tcx, length_def_id)
+                        ty::Const::from_anon_const(tcx, constant.def_id)
                     }
                 };
 
@@ -2675,7 +2739,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 self.normalize_ty(ast_ty.span, array_ty)
             }
             hir::TyKind::Typeof(ref e) => {
-                let ty_erased = tcx.type_of(tcx.hir().local_def_id(e.hir_id));
+                let ty_erased = tcx.type_of(e.def_id);
                 let ty = tcx.fold_regions(ty_erased, |r, _| {
                     if r.is_erased() { tcx.lifetimes.re_static } else { r }
                 });
@@ -2720,35 +2784,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let substs = InternalSubsts::for_item(tcx, def_id, |param, _| {
             if let Some(i) = (param.index as usize).checked_sub(generics.parent_count) {
                 // Our own parameters are the resolved lifetimes.
-                if let GenericParamDefKind::Lifetime = param.kind {
-                    if let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] {
-                        self.ast_region_to_region(lifetime, None).into()
-                    } else {
-                        bug!()
-                    }
-                } else {
-                    bug!()
-                }
+                let GenericParamDefKind::Lifetime { .. } = param.kind else { bug!() };
+                let hir::GenericArg::Lifetime(lifetime) = &lifetimes[i] else { bug!() };
+                self.ast_region_to_region(lifetime, None).into()
             } else {
-                match param.kind {
-                    // For RPIT (return position impl trait), only lifetimes
-                    // mentioned in the impl Trait predicate are captured by
-                    // the opaque type, so the lifetime parameters from the
-                    // parent item need to be replaced with `'static`.
-                    //
-                    // For `impl Trait` in the types of statics, constants,
-                    // locals and type aliases. These capture all parent
-                    // lifetimes, so they can use their identity subst.
-                    GenericParamDefKind::Lifetime
-                        if matches!(
-                            origin,
-                            hir::OpaqueTyOrigin::FnReturn(..) | hir::OpaqueTyOrigin::AsyncFn(..)
-                        ) =>
-                    {
-                        tcx.lifetimes.re_static.into()
-                    }
-                    _ => tcx.mk_param_from_def(param),
-                }
+                tcx.mk_param_from_def(param)
             }
         });
         debug!("impl_trait_ty_to_ty: substs={:?}", substs);
@@ -2766,6 +2806,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
     }
 
+    #[instrument(level = "debug", skip(self, hir_id, unsafety, abi, decl, generics, hir_ty), ret)]
     pub fn ty_of_fn(
         &self,
         hir_id: hir::HirId,
@@ -2775,8 +2816,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         generics: Option<&hir::Generics<'_>>,
         hir_ty: Option<&hir::Ty<'_>>,
     ) -> ty::PolyFnSig<'tcx> {
-        debug!("ty_of_fn");
-
         let tcx = self.tcx();
         let bound_vars = tcx.late_bound_vars(hir_id);
         debug!(?bound_vars);
@@ -2826,7 +2865,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             hir::FnRetTy::DefaultReturn(..) => tcx.mk_unit(),
         };
 
-        debug!("ty_of_fn: output_ty={:?}", output_ty);
+        debug!(?output_ty);
 
         let fn_ty = tcx.mk_fn_sig(input_tys.into_iter(), output_ty, decl.c_variadic, unsafety, abi);
         let bare_fn_ty = ty::Binder::bind_with_vars(fn_ty, bound_vars);
@@ -2903,8 +2942,11 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
                 hir.get(hir.get_parent_node(fn_hir_id)) else { bug!("ImplItem should have Impl parent") };
 
-        let trait_ref =
-            self.instantiate_mono_trait_ref(i.of_trait.as_ref()?, self.ast_ty_to_ty(i.self_ty));
+        let trait_ref = self.instantiate_mono_trait_ref(
+            i.of_trait.as_ref()?,
+            self.ast_ty_to_ty(i.self_ty),
+            ty::BoundConstness::NotConst,
+        );
 
         let assoc = tcx.associated_items(trait_ref.def_id).find_by_name_and_kind(
             tcx,
@@ -2923,6 +2965,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         Some(tcx.liberate_late_bound_regions(fn_hir_id.expect_owner().to_def_id(), ty))
     }
 
+    #[instrument(level = "trace", skip(self, generate_err))]
     fn validate_late_bound_regions(
         &self,
         constrained_regions: FxHashSet<ty::BoundRegionKind>,
@@ -2931,7 +2974,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     ) {
         for br in referenced_regions.difference(&constrained_regions) {
             let br_name = match *br {
-                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(_) | ty::BrEnv => {
+                ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) | ty::BrEnv => {
                     "an anonymous lifetime".to_string()
                 }
                 ty::BrNamed(_, name) => format!("lifetime `{}`", name),
@@ -2939,7 +2982,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
 
             let mut err = generate_err(&br_name);
 
-            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(_) = *br {
+            if let ty::BrNamed(_, kw::UnderscoreLifetime) | ty::BrAnon(..) = *br {
                 // The only way for an anonymous lifetime to wind up
                 // in the return type but **also** be unconstrained is
                 // if it only appears in "associated types" in the
@@ -2964,7 +3007,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn compute_object_lifetime_bound(
         &self,
         span: Span,
-        existential_predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        existential_predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     ) -> Option<ty::Region<'tcx>> // if None, use the default
     {
         let tcx = self.tcx();
@@ -3051,24 +3094,27 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .map_or(false, |s| s.trim_end().ends_with('<'));
 
             let is_global = poly_trait_ref.trait_ref.path.is_global();
-            let sugg = Vec::from_iter([
-                (
-                    self_ty.span.shrink_to_lo(),
-                    format!(
-                        "{}dyn {}",
-                        if needs_bracket { "<" } else { "" },
-                        if is_global { "(" } else { "" },
-                    ),
+
+            let mut sugg = Vec::from_iter([(
+                self_ty.span.shrink_to_lo(),
+                format!(
+                    "{}dyn {}",
+                    if needs_bracket { "<" } else { "" },
+                    if is_global { "(" } else { "" },
                 ),
-                (
+            )]);
+
+            if is_global || needs_bracket {
+                sugg.push((
                     self_ty.span.shrink_to_hi(),
                     format!(
                         "{}{}",
                         if is_global { ")" } else { "" },
                         if needs_bracket { ">" } else { "" },
                     ),
-                ),
-            ]);
+                ));
+            }
+
             if self_ty.span.edition() >= Edition::Edition2021 {
                 let msg = "trait objects must include the `dyn` keyword";
                 let label = "add `dyn` keyword before this trait";

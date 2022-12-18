@@ -166,14 +166,7 @@ fn set_compiler(
         // compiler already takes into account the triple in question.
         t if t.contains("android") => {
             if let Some(ndk) = config.and_then(|c| c.ndk.as_ref()) {
-                let target = target
-                    .triple
-                    .replace("armv7neon", "arm")
-                    .replace("armv7", "arm")
-                    .replace("thumbv7neon", "arm")
-                    .replace("thumbv7", "arm");
-                let compiler = format!("{}-{}", target, compiler.clang());
-                cfg.compiler(ndk.join("bin").join(compiler));
+                cfg.compiler(ndk_compiler(compiler, &*target.triple, ndk));
             }
         }
 
@@ -225,8 +218,18 @@ fn set_compiler(
     }
 }
 
+pub(crate) fn ndk_compiler(compiler: Language, triple: &str, ndk: &Path) -> PathBuf {
+    let triple_translated = triple
+        .replace("armv7neon", "arm")
+        .replace("armv7", "arm")
+        .replace("thumbv7neon", "arm")
+        .replace("thumbv7", "arm");
+    let compiler = format!("{}-{}", triple_translated, compiler.clang());
+    ndk.join("bin").join(compiler)
+}
+
 /// The target programming language for a native compiler.
-enum Language {
+pub(crate) enum Language {
     /// The compiler is targeting C.
     C,
     /// The compiler is targeting C++.

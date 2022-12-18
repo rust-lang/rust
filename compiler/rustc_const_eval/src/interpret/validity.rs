@@ -4,9 +4,10 @@
 //! That's useful because it means other passes (e.g. promotion) can rely on `const`s
 //! to be const-safe.
 
-use std::convert::TryFrom;
 use std::fmt::{Display, Write};
 use std::num::NonZeroUsize;
+
+use either::{Left, Right};
 
 use rustc_ast::Mutability;
 use rustc_data_structures::fx::FxHashSet;
@@ -15,7 +16,6 @@ use rustc_middle::mir::interpret::InterpError;
 use rustc_middle::ty;
 use rustc_middle::ty::layout::{LayoutOf, TyAndLayout};
 use rustc_span::symbol::{sym, Symbol};
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Abi, Scalar as ScalarAbi, Size, VariantIdx, Variants, WrappingRange};
 
 use std::hash::Hash;
@@ -56,7 +56,7 @@ macro_rules! throw_validation_failure {
 /// This lets you use the patterns as a kind of validation list, asserting which errors
 /// can possibly happen:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" },
 /// });
@@ -65,7 +65,7 @@ macro_rules! throw_validation_failure {
 /// The patterns must be of type `UndefinedBehaviorInfo`.
 /// An additional expected parameter can also be added to the failure message:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "some failure" } expected { "something that wasn't a failure" },
 /// });
@@ -74,7 +74,7 @@ macro_rules! throw_validation_failure {
 /// An additional nicety is that both parameters actually take format args, so you can just write
 /// the format string in directly:
 ///
-/// ```
+/// ```ignore(illustrative)
 /// let v = try_validation!(some_fn(), some_path, {
 ///     Foo | Bar | Baz => { "{:?}", some_failure } expected { "{}", expected_value },
 /// });
@@ -601,8 +601,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             | ty::Placeholder(..)
             | ty::Bound(..)
             | ty::Param(..)
-            | ty::Opaque(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::GeneratorWitness(..) => bug!("Encountered invalid type {:?}", ty),
         }
     }
@@ -726,7 +725,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
     ) -> InterpResult<'tcx> {
         // Special check preventing `UnsafeCell` inside unions in the inner part of constants.
         if matches!(self.ctfe_mode, Some(CtfeValidationMode::Const { inner: true, .. })) {
-            if !op.layout.ty.is_freeze(self.ecx.tcx.at(DUMMY_SP), self.ecx.param_env) {
+            if !op.layout.ty.is_freeze(*self.ecx.tcx, self.ecx.param_env) {
                 throw_validation_failure!(self.path, { "`UnsafeCell` in a `const`" });
             }
         }
@@ -784,18 +783,10 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                 }
             }
             Abi::ScalarPair(a_layout, b_layout) => {
-                // There is no `rustc_layout_scalar_valid_range_start` for pairs, so
-                // we would validate these things as we descend into the fields,
-                // but that can miss bugs in layout computation. Layout computation
-                // is subtle due to enums having ScalarPair layout, where one field
-                // is the discriminant.
-                if cfg!(debug_assertions)
-                    && !a_layout.is_uninit_valid()
-                    && !b_layout.is_uninit_valid()
-                {
-                    // We can only proceed if *both* scalars need to be initialized.
-                    // FIXME: find a way to also check ScalarPair when one side can be uninit but
-                    // the other must be init.
+                // We can only proceed if *both* scalars need to be initialized.
+                // FIXME: find a way to also check ScalarPair when one side can be uninit but
+                // the other must be init.
+                if !a_layout.is_uninit_valid() && !b_layout.is_uninit_valid() {
                     let (a, b) =
                         self.read_immediate(op, "initiailized scalar value")?.to_scalar_pair();
                     self.visit_scalar(a, a_layout)?;
@@ -853,9 +844,9 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueVisitor<'mir, 'tcx, M>
                     return Ok(());
                 }
                 // Now that we definitely have a non-ZST array, we know it lives in memory.
-                let mplace = match op.try_as_mplace() {
-                    Ok(mplace) => mplace,
-                    Err(imm) => match *imm {
+                let mplace = match op.as_mplace_or_imm() {
+                    Left(mplace) => mplace,
+                    Right(imm) => match *imm {
                         Immediate::Uninit =>
                             throw_validation_failure!(self.path, { "uninitialized bytes" }),
                         Immediate::Scalar(..) | Immediate::ScalarPair(..) =>

@@ -3,9 +3,9 @@ use std::hash::Hash;
 
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
-    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Method, Module, OpaqueTy,
-    Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type,
-    TypeBinding, TypeBindingKind, Typedef, Union, Variant, WherePredicate,
+    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Module, OpaqueTy, Path,
+    Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
+    TypeBindingKind, Typedef, Union, Variant, WherePredicate,
 };
 
 use crate::{item_kind::Kind, Error, ErrorKind};
@@ -32,7 +32,10 @@ pub struct Validator<'a> {
 
 enum PathKind {
     Trait,
-    StructEnumUnion,
+    /// Structs, Enums, Unions and Typedefs.
+    ///
+    /// This doesn't include trait's because traits are not types.
+    Type,
 }
 
 impl<'a> Validator<'a> {
@@ -57,6 +60,8 @@ impl<'a> Validator<'a> {
 
     fn check_item(&mut self, id: &'a Id) {
         if let Some(item) = &self.krate.index.get(id) {
+            item.links.values().for_each(|id| self.add_any_id(id));
+
             match &item.inner {
                 ItemEnum::Import(x) => self.check_import(x),
                 ItemEnum::Union(x) => self.check_union(x),
@@ -67,7 +72,6 @@ impl<'a> Validator<'a> {
                 ItemEnum::Function(x) => self.check_function(x),
                 ItemEnum::Trait(x) => self.check_trait(x),
                 ItemEnum::TraitAlias(x) => self.check_trait_alias(x),
-                ItemEnum::Method(x) => self.check_method(x),
                 ItemEnum::Impl(x) => self.check_impl(x),
                 ItemEnum::Typedef(x) => self.check_typedef(x),
                 ItemEnum::OpaqueTy(x) => self.check_opaque_ty(x),
@@ -101,9 +105,9 @@ impl<'a> Validator<'a> {
 
     fn check_import(&mut self, x: &'a Import) {
         if x.glob {
-            self.add_mod_id(x.id.as_ref().unwrap());
+            self.add_glob_import_item_id(x.id.as_ref().unwrap());
         } else if let Some(id) = &x.id {
-            self.add_mod_item_id(id);
+            self.add_import_item_id(id);
         }
     }
 
@@ -176,11 +180,6 @@ impl<'a> Validator<'a> {
         x.params.iter().for_each(|i| self.check_generic_bound(i));
     }
 
-    fn check_method(&mut self, x: &'a Method) {
-        self.check_fn_decl(&x.decl);
-        self.check_generics(&x.generics);
-    }
-
     fn check_impl(&mut self, x: &'a Impl) {
         self.check_generics(&x.generics);
         if let Some(path) = &x.trait_ {
@@ -230,7 +229,7 @@ impl<'a> Validator<'a> {
 
     fn check_type(&mut self, x: &'a Type) {
         match x {
-            Type::ResolvedPath(path) => self.check_path(path, PathKind::StructEnumUnion),
+            Type::ResolvedPath(path) => self.check_path(path, PathKind::Type),
             Type::DynTrait(dyn_trait) => self.check_dyn_trait(dyn_trait),
             Type::Generic(_) => {}
             Type::Primitive(_) => {}
@@ -269,8 +268,8 @@ impl<'a> Validator<'a> {
 
     fn check_path(&mut self, x: &'a Path, kind: PathKind) {
         match kind {
-            PathKind::Trait => self.add_trait_id(&x.id),
-            PathKind::StructEnumUnion => self.add_struct_enum_union_id(&x.id),
+            PathKind::Trait => self.add_trait_or_alias_id(&x.id),
+            PathKind::Type => self.add_type_id(&x.id),
         }
         if let Some(args) = &x.args {
             self.check_generic_args(&**args);
@@ -379,6 +378,10 @@ impl<'a> Validator<'a> {
         }
     }
 
+    fn add_any_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, |_| true, "any kind of item");
+    }
+
     fn add_field_id(&mut self, id: &'a Id) {
         self.add_id_checked(id, Kind::is_struct_field, "StructField");
     }
@@ -394,17 +397,26 @@ impl<'a> Validator<'a> {
         self.add_id_checked(id, Kind::is_variant, "Variant");
     }
 
-    fn add_trait_id(&mut self, id: &'a Id) {
-        self.add_id_checked(id, Kind::is_trait, "Trait");
+    fn add_trait_or_alias_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_trait_or_alias, "Trait (or TraitAlias)");
     }
 
-    fn add_struct_enum_union_id(&mut self, id: &'a Id) {
-        self.add_id_checked(id, Kind::is_struct_enum_union, "Struct or Enum or Union");
+    fn add_type_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::is_type, "Type (Struct, Enum, Union or Typedef)");
     }
 
     /// Add an Id that appeared in a trait
     fn add_trait_item_id(&mut self, id: &'a Id) {
         self.add_id_checked(id, Kind::can_appear_in_trait, "Trait inner item");
+    }
+
+    /// Add an Id that can be `use`d
+    fn add_import_item_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::can_appear_in_import, "Import inner item");
+    }
+
+    fn add_glob_import_item_id(&mut self, id: &'a Id) {
+        self.add_id_checked(id, Kind::can_appear_in_glob_import, "Glob import inner item");
     }
 
     /// Add an Id that appeared in a mod
@@ -440,3 +452,6 @@ fn set_remove<T: Hash + Eq + Clone>(set: &mut HashSet<T>) -> Option<T> {
         None
     }
 }
+
+#[cfg(test)]
+mod tests;

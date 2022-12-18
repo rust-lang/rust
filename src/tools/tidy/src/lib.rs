@@ -38,6 +38,7 @@ macro_rules! tidy_error {
     });
 }
 
+pub mod alphabetical;
 pub mod bins;
 pub mod debug_artifacts;
 pub mod deps;
@@ -46,6 +47,7 @@ pub mod error_codes_check;
 pub mod errors;
 pub mod extdeps;
 pub mod features;
+pub mod mir_opt_tests;
 pub mod pal;
 pub mod primitive_docs;
 pub mod style;

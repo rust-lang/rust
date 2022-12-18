@@ -3,10 +3,11 @@
 #![cfg(not(target_os = "android"))]
 #![feature(btree_drain_filter)]
 #![feature(iter_next_chunk)]
-#![feature(map_first_last)]
 #![feature(repr_simd)]
 #![feature(slice_partition_dedup)]
+#![feature(strict_provenance)]
 #![feature(test)]
+#![deny(fuzzy_provenance_casts)]
 
 extern crate test;
 

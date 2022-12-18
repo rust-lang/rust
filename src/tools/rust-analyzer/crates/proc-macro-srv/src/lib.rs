@@ -20,6 +20,8 @@
 mod dylib;
 mod abis;
 
+pub mod cli;
+
 use std::{
     collections::{hash_map::Entry, HashMap},
     env,
@@ -111,12 +113,12 @@ impl ProcMacroSrv {
 
     fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {
         let time = fs::metadata(path).and_then(|it| it.modified()).map_err(|err| {
-            format!("Failed to get file metadata for {}: {:?}", path.display(), err)
+            format!("Failed to get file metadata for {}: {}", path.display(), err)
         })?;
 
         Ok(match self.expanders.entry((path.to_path_buf(), time)) {
             Entry::Vacant(v) => v.insert(dylib::Expander::new(path).map_err(|err| {
-                format!("Cannot create expander for {}: {:?}", path.display(), err)
+                format!("Cannot create expander for {}: {}", path.display(), err)
             })?),
             Entry::Occupied(e) => e.into_mut(),
         })
@@ -149,7 +151,10 @@ impl EnvSnapshot {
     }
 }
 
-pub mod cli;
+#[cfg(all(feature = "sysroot-abi", test))]
+mod tests;
 
 #[cfg(test)]
-mod tests;
+pub fn proc_macro_test_dylib_path() -> std::path::PathBuf {
+    proc_macro_test::PROC_MACRO_TEST_LOCATION.into()
+}

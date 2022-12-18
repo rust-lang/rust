@@ -11,9 +11,9 @@ use syntax::SmolStr;
 
 use crate::{
     db::HirDatabase, from_assoc_type_id, from_chalk_trait_id, from_foreign_def_id,
-    from_placeholder_idx, to_chalk_trait_id, AdtId, AliasEq, AliasTy, Binders, CallableDefId,
-    CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy, QuantifiedWhereClause,
-    Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
+    from_placeholder_idx, to_chalk_trait_id, utils::generics, AdtId, AliasEq, AliasTy, Binders,
+    CallableDefId, CallableSig, FnPointer, ImplTraitId, Interner, Lifetime, ProjectionTy,
+    QuantifiedWhereClause, Substitution, TraitRef, Ty, TyBuilder, TyKind, WhereClause,
 };
 
 pub trait TyExt {
@@ -152,7 +152,7 @@ impl TyExt for Ty {
             TyKind::FnDef(def, parameters) => {
                 let callable_def = db.lookup_intern_callable_def((*def).into());
                 let sig = db.callable_item_signature(callable_def);
-                Some(sig.substitute(Interner, &parameters))
+                Some(sig.substitute(Interner, parameters))
             }
             TyKind::Closure(.., substs) => {
                 let sig_param = substs.at(Interner, 0).assert_ty_ref(Interner);
@@ -166,6 +166,8 @@ impl TyExt for Ty {
         let trait_ref = match self.kind(Interner) {
             // The principal trait bound should be the first element of the bounds. This is an
             // invariant ensured by `TyLoweringContext::lower_dyn_trait()`.
+            // FIXME: dyn types may not have principal trait and we don't want to return auto trait
+            // here.
             TyKind::Dyn(dyn_ty) => dyn_ty.bounds.skip_binders().interned().get(0).and_then(|b| {
                 match b.skip_binders() {
                     WhereClause::Implemented(trait_ref) => Some(trait_ref),
@@ -260,7 +262,7 @@ impl TyExt for Ty {
                                     WhereClause::AliasEq(AliasEq {
                                         alias: AliasTy::Projection(proj),
                                         ty: _,
-                                    }) => &proj.self_type_parameter(Interner) == self,
+                                    }) => &proj.self_type_parameter(db) == self,
                                     _ => false,
                                 })
                                 .collect::<Vec<_>>();
@@ -331,14 +333,18 @@ impl TyExt for Ty {
 pub trait ProjectionTyExt {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef;
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId;
+    fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty;
 }
 
 impl ProjectionTyExt for ProjectionTy {
     fn trait_ref(&self, db: &dyn HirDatabase) -> TraitRef {
-        TraitRef {
-            trait_id: to_chalk_trait_id(self.trait_(db)),
-            substitution: self.substitution.clone(),
-        }
+        // FIXME: something like `Split` trait from chalk-solve might be nice.
+        let generics = generics(db.upcast(), from_assoc_type_id(self.associated_ty_id).into());
+        let substitution = Substitution::from_iter(
+            Interner,
+            self.substitution.iter(Interner).skip(generics.len_self()),
+        );
+        TraitRef { trait_id: to_chalk_trait_id(self.trait_(db)), substitution }
     }
 
     fn trait_(&self, db: &dyn HirDatabase) -> TraitId {
@@ -346,6 +352,10 @@ impl ProjectionTyExt for ProjectionTy {
             ItemContainerId::TraitId(it) => it,
             _ => panic!("projection ty without parent trait"),
         }
+    }
+
+    fn self_type_parameter(&self, db: &dyn HirDatabase) -> Ty {
+        self.trait_ref(db).self_type_parameter(Interner)
     }
 }
 

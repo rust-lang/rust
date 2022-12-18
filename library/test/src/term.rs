@@ -39,7 +39,7 @@ pub(crate) fn stdout() -> Option<Box<StdoutTerminal>> {
 pub(crate) fn stdout() -> Option<Box<StdoutTerminal>> {
     TerminfoTerminal::new(io::stdout())
         .map(|t| Box::new(t) as Box<StdoutTerminal>)
-        .or_else(|| WinConsole::new(io::stdout()).ok().map(|t| Box::new(t) as Box<StdoutTerminal>))
+        .or_else(|| Some(Box::new(WinConsole::new(io::stdout())) as Box<StdoutTerminal>))
 }
 
 /// Terminal color definitions

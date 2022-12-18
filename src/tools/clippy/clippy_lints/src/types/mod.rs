@@ -319,7 +319,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
                 false
             };
 
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(id));
+        let is_exported = cx.effective_visibilities.is_exported(cx.tcx.hir().local_def_id(id));
 
         self.check_fn_decl(
             cx,
@@ -333,7 +333,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         match item.kind {
             ItemKind::Static(ty, _, _) | ItemKind::Const(ty, _) => self.check_ty(
@@ -352,8 +352,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
-                let is_in_trait_impl = if let Some(hir::Node::Item(item)) =
-                    cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
+                    .tcx
+                    .hir()
+                    .find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {
@@ -372,12 +374,14 @@ impl<'tcx> LateLintPass<'tcx> for Types {
             // Methods are covered by check_fn.
             // Type aliases are ignored because oftentimes it's impossible to
             // make type alias declaration in trait simpler, see #1013
-            ImplItemKind::Fn(..) | ImplItemKind::TyAlias(..) => (),
+            ImplItemKind::Fn(..) | ImplItemKind::Type(..) => (),
         }
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let is_exported = cx.access_levels.is_exported(cx.tcx.hir().local_def_id(field.hir_id));
+        let is_exported = cx
+            .effective_visibilities
+            .is_exported(cx.tcx.hir().local_def_id(field.hir_id));
 
         self.check_ty(
             cx,
@@ -390,7 +394,7 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &TraitItem<'_>) {
-        let is_exported = cx.access_levels.is_exported(item.def_id.def_id);
+        let is_exported = cx.effective_visibilities.is_exported(item.owner_id.def_id);
 
         let context = CheckTyContext {
             is_exported,
@@ -535,7 +539,7 @@ impl Types {
                     QPath::LangItem(..) => {},
                 }
             },
-            TyKind::Rptr(ref lt, ref mut_ty) => {
+            TyKind::Rptr(lt, ref mut_ty) => {
                 context.is_nested_call = true;
                 if !borrowed_box::check(cx, hir_ty, lt, mut_ty) {
                     self.check_ty(cx, mut_ty.ty, context);

@@ -50,7 +50,7 @@ error[E0425]: cannot find value `method` in this scope
   --> $DIR/resolve-assoc-suggestions.rs:34:9
    |
 LL |         method;
-   |         ^^^^^^ help: you might have meant to call the method: `self.method`
+   |         ^^^^^^ help: you might have meant to refer to the method: `self.method`
 
 error: aborting due to 9 previous errors
 

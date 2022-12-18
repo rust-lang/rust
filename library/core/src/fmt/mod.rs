@@ -405,7 +405,7 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
     ///    valid index of `args`.
-    /// 3. Every [`Count::Param`] within `fmt` must contain a valid index of
+    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
     #[doc(hidden)]
     #[inline]
@@ -510,7 +510,7 @@ impl<'a> Arguments<'a> {
     /// assert_eq!(format_args!("{}", 1).as_str(), None);
     /// ```
     #[stable(feature = "fmt_as_str", since = "1.52.0")]
-    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "none")]
+    #[rustc_const_unstable(feature = "const_arguments_as_str", issue = "103900")]
     #[must_use]
     #[inline]
     pub const fn as_str(&self) -> Option<&'static str> {
@@ -1054,7 +1054,6 @@ pub trait UpperHex {
 pub trait Pointer {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_diagnostic_item = "pointer_trait_fmt"]
     fn fmt(&self, f: &mut Formatter<'_>) -> Result;
 }
 
@@ -2610,7 +2609,7 @@ impl Debug for () {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Debug for PhantomData<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        f.debug_struct("PhantomData").finish()
+        write!(f, "PhantomData<{}>", crate::any::type_name::<T>())
     }
 }
 

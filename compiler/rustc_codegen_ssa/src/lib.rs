@@ -1,11 +1,13 @@
 #![doc(html_root_url = "https://doc.rust-lang.org/nightly/nightly-rustc/")]
-#![feature(box_patterns)]
-#![feature(try_blocks)]
-#![feature(once_cell)]
 #![feature(associated_type_bounds)]
-#![feature(strict_provenance)]
-#![feature(int_roundings)]
+#![feature(box_patterns)]
 #![feature(if_let_guard)]
+#![feature(int_roundings)]
+#![feature(let_chains)]
+#![feature(never_type)]
+#![feature(once_cell)]
+#![feature(strict_provenance)]
+#![feature(try_blocks)]
 #![recursion_limit = "256"]
 #![allow(rustc::potential_query_instability)]
 
@@ -40,9 +42,11 @@ use std::path::{Path, PathBuf};
 
 pub mod back;
 pub mod base;
+pub mod codegen_attrs;
 pub mod common;
 pub mod coverageinfo;
 pub mod debuginfo;
+pub mod errors;
 pub mod glue;
 pub mod meth;
 pub mod mir;
@@ -113,7 +117,7 @@ pub struct NativeLib {
     pub name: Option<Symbol>,
     pub filename: Option<Symbol>,
     pub cfg: Option<ast::MetaItem>,
-    pub verbatim: Option<bool>,
+    pub verbatim: bool,
     pub dll_imports: Vec<cstore::DllImport>,
 }
 
@@ -124,7 +128,7 @@ impl From<&cstore::NativeLib> for NativeLib {
             filename: lib.filename,
             name: lib.name,
             cfg: lib.cfg.clone(),
-            verbatim: lib.verbatim,
+            verbatim: lib.verbatim.unwrap_or(false),
             dll_imports: lib.dll_imports.clone(),
         }
     }
@@ -177,6 +181,7 @@ pub fn provide(providers: &mut Providers) {
     crate::back::symbol_export::provide(providers);
     crate::base::provide(providers);
     crate::target_features::provide(providers);
+    crate::codegen_attrs::provide(providers);
 }
 
 pub fn provide_extern(providers: &mut ExternProviders) {

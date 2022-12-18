@@ -13,7 +13,16 @@ rustc_hir = { path = "../rustc_hir" }
 rustc_target = { path = "../rustc_target" }
 rustc_serialize = { path = "../rustc_serialize" }
 rustc_data_structures = { path = "../rustc_data_structures" }
+rustc_index = { path = "../rustc_index" }
 rustc_span = { path = "../rustc_span" }
 rustc_fs_util = { path = "../rustc_fs_util" }
 rustc_ast = { path = "../rustc_ast" }
 rustc_lint_defs = { path = "../rustc_lint_defs" }
+smallvec = "1.8.1"
+termize = "0.1.1"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["libloaderapi"] }

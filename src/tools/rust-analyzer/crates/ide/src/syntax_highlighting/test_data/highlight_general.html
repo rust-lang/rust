@@ -61,11 +61,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
 <span class="brace">}</span>
 
 <span class="keyword">trait</span> <span class="trait declaration">Bar</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span><span class="semicolon">;</span>
 <span class="brace">}</span>
 
 <span class="keyword">impl</span> <span class="trait">Bar</span> <span class="keyword">for</span> <span class="struct">Foo</span> <span class="brace">{</span>
-    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference trait">bar</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
@@ -75,11 +75,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="value_param">f</span><span class="operator">.</span><span class="function associated consuming">baz</span><span class="parenthesis">(</span><span class="self_keyword consuming mutable">self</span><span class="parenthesis">)</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
         <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">i32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>
@@ -96,11 +96,11 @@ pre                 { color: #DCDCCC; background: #3F3F3F; font-size: 22px; padd
         <span class="value_param">f</span><span class="operator">.</span><span class="function associated">baz</span><span class="parenthesis">(</span><span class="self_keyword">self</span><span class="parenthesis">)</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="operator">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="function associated declaration mutable reference">qux</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="keyword">mut</span> <span class="self_keyword declaration mutable reference">self</span><span class="parenthesis">)</span> <span class="brace">{</span>
         <span class="self_keyword mutable reference">self</span><span class="operator">.</span><span class="field">x</span> <span class="operator">=</span> <span class="numeric_literal">0</span><span class="semicolon">;</span>
     <span class="brace">}</span>
 
-    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="operator">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
+    <span class="keyword">fn</span> <span class="function associated declaration reference">quop</span><span class="parenthesis">(</span><span class="punctuation">&</span><span class="self_keyword declaration reference">self</span><span class="parenthesis">)</span> <span class="operator">-&gt;</span> <span class="builtin_type">u32</span> <span class="brace">{</span>
         <span class="self_keyword reference">self</span><span class="operator">.</span><span class="field">x</span>
     <span class="brace">}</span>
 <span class="brace">}</span>

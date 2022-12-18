@@ -30,7 +30,7 @@ pub(super) fn check(
                 MAP_IDENTITY,
                 sugg_span,
                 "unnecessary map of the identity function",
-                &format!("remove the call to `{}`", name),
+                &format!("remove the call to `{name}`"),
                 String::new(),
                 Applicability::MachineApplicable,
             )

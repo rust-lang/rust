@@ -7,6 +7,7 @@ LL |     let _ = dbg!(a);
    |             ------- value moved here
 LL |     let _ = dbg!(a);
    |                  ^ value used here after move
+   |
 
 error: aborting due to previous error
 

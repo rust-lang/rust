@@ -106,7 +106,7 @@ impl OngoingCodegen {
             }
         }
 
-        drop(self.concurrency_limiter);
+        self.concurrency_limiter.finished();
 
         (
             CodegenResults {

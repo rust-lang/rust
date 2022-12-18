@@ -1,17 +1,34 @@
 //! Code related to parsing literals.
 
-use crate::ast::{self, Lit, LitKind};
+use crate::ast::{self, LitKind, MetaItemLit, StrStyle};
 use crate::token::{self, Token};
-
-use rustc_lexer::unescape::{unescape_byte, unescape_char};
-use rustc_lexer::unescape::{unescape_byte_literal, unescape_literal, Mode};
+use rustc_lexer::unescape::{byte_from_char, unescape_byte, unescape_char, unescape_literal, Mode};
 use rustc_span::symbol::{kw, sym, Symbol};
 use rustc_span::Span;
+use std::{ascii, fmt, str};
 
-use std::ascii;
+// Escapes a string, represented as a symbol. Reuses the original symbol,
+// avoiding interning, if no changes are required.
+pub fn escape_string_symbol(symbol: Symbol) -> Symbol {
+    let s = symbol.as_str();
+    let escaped = s.escape_default().to_string();
+    if s == escaped { symbol } else { Symbol::intern(&escaped) }
+}
 
+// Escapes a char.
+pub fn escape_char_symbol(ch: char) -> Symbol {
+    let s: String = ch.escape_default().map(Into::<char>::into).collect();
+    Symbol::intern(&s)
+}
+
+// Escapes a byte string.
+pub fn escape_byte_str_symbol(bytes: &[u8]) -> Symbol {
+    let s = bytes.escape_ascii().to_string();
+    Symbol::intern(&s)
+}
+
+#[derive(Debug)]
 pub enum LitError {
-    NotLiteral,
     LexerError,
     InvalidSuffix,
     InvalidIntSuffix,
@@ -55,14 +72,14 @@ impl LitKind {
                 // new symbol because the string in the LitKind is different to the
                 // string in the token.
                 let s = symbol.as_str();
-                let symbol = if s.contains(&['\\', '\r']) {
+                let symbol = if s.contains(['\\', '\r']) {
                     let mut buf = String::with_capacity(s.len());
                     let mut error = Ok(());
                     // Force-inlining here is aggressive but the closure is
                     // called on every char in the string, so it can be
                     // hot in programs with many long strings.
                     unescape_literal(
-                        &s,
+                        s,
                         Mode::Str,
                         &mut #[inline(always)]
                         |_, unescaped_char| match unescaped_char {
@@ -88,7 +105,7 @@ impl LitKind {
                     if s.contains('\r') {
                         let mut buf = String::with_capacity(s.len());
                         let mut error = Ok(());
-                        unescape_literal(&s, Mode::RawStr, &mut |_, unescaped_char| {
+                        unescape_literal(s, Mode::RawStr, &mut |_, unescaped_char| {
                             match unescaped_char {
                                 Ok(c) => buf.push(c),
                                 Err(err) => {
@@ -109,31 +126,27 @@ impl LitKind {
                 let s = symbol.as_str();
                 let mut buf = Vec::with_capacity(s.len());
                 let mut error = Ok(());
-                unescape_byte_literal(&s, Mode::ByteStr, &mut |_, unescaped_byte| {
-                    match unescaped_byte {
-                        Ok(c) => buf.push(c),
-                        Err(err) => {
-                            if err.is_fatal() {
-                                error = Err(LitError::LexerError);
-                            }
+                unescape_literal(s, Mode::ByteStr, &mut |_, c| match c {
+                    Ok(c) => buf.push(byte_from_char(c)),
+                    Err(err) => {
+                        if err.is_fatal() {
+                            error = Err(LitError::LexerError);
                         }
                     }
                 });
                 error?;
-                LitKind::ByteStr(buf.into())
+                LitKind::ByteStr(buf.into(), StrStyle::Cooked)
             }
-            token::ByteStrRaw(_) => {
+            token::ByteStrRaw(n) => {
                 let s = symbol.as_str();
                 let bytes = if s.contains('\r') {
                     let mut buf = Vec::with_capacity(s.len());
                     let mut error = Ok(());
-                    unescape_byte_literal(&s, Mode::RawByteStr, &mut |_, unescaped_byte| {
-                        match unescaped_byte {
-                            Ok(c) => buf.push(c),
-                            Err(err) => {
-                                if err.is_fatal() {
-                                    error = Err(LitError::LexerError);
-                                }
+                    unescape_literal(s, Mode::RawByteStr, &mut |_, c| match c {
+                        Ok(c) => buf.push(byte_from_char(c)),
+                        Err(err) => {
+                            if err.is_fatal() {
+                                error = Err(LitError::LexerError);
                             }
                         }
                     });
@@ -143,108 +156,101 @@ impl LitKind {
                     symbol.to_string().into_bytes()
                 };
 
-                LitKind::ByteStr(bytes.into())
+                LitKind::ByteStr(bytes.into(), StrStyle::Raw(n))
             }
             token::Err => LitKind::Err,
         })
     }
+}
 
-    /// Attempts to recover a token from semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn to_token_lit(&self) -> token::Lit {
-        let (kind, symbol, suffix) = match *self {
-            LitKind::Str(symbol, ast::StrStyle::Cooked) => {
-                // Don't re-intern unless the escaped string is different.
-                let s = symbol.as_str();
-                let escaped = s.escape_default().to_string();
-                let symbol = if s == escaped { symbol } else { Symbol::intern(&escaped) };
-                (token::Str, symbol, None)
+impl fmt::Display for LitKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            LitKind::Byte(b) => {
+                let b: String = ascii::escape_default(b).map(Into::<char>::into).collect();
+                write!(f, "b'{}'", b)?;
             }
-            LitKind::Str(symbol, ast::StrStyle::Raw(n)) => (token::StrRaw(n), symbol, None),
-            LitKind::ByteStr(ref bytes) => {
-                let string = bytes.escape_ascii().to_string();
-                (token::ByteStr, Symbol::intern(&string), None)
+            LitKind::Char(ch) => write!(f, "'{}'", escape_char_symbol(ch))?,
+            LitKind::Str(sym, StrStyle::Cooked) => write!(f, "\"{}\"", escape_string_symbol(sym))?,
+            LitKind::Str(sym, StrStyle::Raw(n)) => write!(
+                f,
+                "r{delim}\"{string}\"{delim}",
+                delim = "#".repeat(n as usize),
+                string = sym
+            )?,
+            LitKind::ByteStr(ref bytes, StrStyle::Cooked) => {
+                write!(f, "b\"{}\"", escape_byte_str_symbol(bytes))?
             }
-            LitKind::Byte(byte) => {
-                let string: String = ascii::escape_default(byte).map(Into::<char>::into).collect();
-                (token::Byte, Symbol::intern(&string), None)
-            }
-            LitKind::Char(ch) => {
-                let string: String = ch.escape_default().map(Into::<char>::into).collect();
-                (token::Char, Symbol::intern(&string), None)
+            LitKind::ByteStr(ref bytes, StrStyle::Raw(n)) => {
+                // Unwrap because raw byte string literals can only contain ASCII.
+                let symbol = str::from_utf8(bytes).unwrap();
+                write!(
+                    f,
+                    "br{delim}\"{string}\"{delim}",
+                    delim = "#".repeat(n as usize),
+                    string = symbol
+                )?;
             }
             LitKind::Int(n, ty) => {
-                let suffix = match ty {
-                    ast::LitIntType::Unsigned(ty) => Some(ty.name()),
-                    ast::LitIntType::Signed(ty) => Some(ty.name()),
-                    ast::LitIntType::Unsuffixed => None,
-                };
-                (token::Integer, sym::integer(n), suffix)
+                write!(f, "{}", n)?;
+                match ty {
+                    ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitIntType::Unsuffixed => {}
+                }
             }
             LitKind::Float(symbol, ty) => {
-                let suffix = match ty {
-                    ast::LitFloatType::Suffixed(ty) => Some(ty.name()),
-                    ast::LitFloatType::Unsuffixed => None,
-                };
-                (token::Float, symbol, suffix)
+                write!(f, "{}", symbol)?;
+                match ty {
+                    ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
+                    ast::LitFloatType::Unsuffixed => {}
+                }
             }
-            LitKind::Bool(value) => {
-                let symbol = if value { kw::True } else { kw::False };
-                (token::Bool, symbol, None)
+            LitKind::Bool(b) => write!(f, "{}", if b { "true" } else { "false" })?,
+            LitKind::Err => {
+                // This only shows up in places like `-Zunpretty=hir` output, so we
+                // don't bother to produce something useful.
+                write!(f, "<bad-literal>")?;
             }
-            // This only shows up in places like `-Zunpretty=hir` output, so we
-            // don't bother to produce something useful.
-            LitKind::Err => (token::Err, Symbol::intern("<bad-literal>"), None),
-        };
+        }
 
-        token::Lit::new(kind, symbol, suffix)
+        Ok(())
     }
 }
 
-impl Lit {
-    /// Converts literal token into an AST literal.
-    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<Lit, LitError> {
-        Ok(Lit { token_lit, kind: LitKind::from_token_lit(token_lit)?, span })
+impl MetaItemLit {
+    /// Converts a token literal into a meta item literal.
+    pub fn from_token_lit(token_lit: token::Lit, span: Span) -> Result<MetaItemLit, LitError> {
+        Ok(MetaItemLit {
+            symbol: token_lit.symbol,
+            suffix: token_lit.suffix,
+            kind: LitKind::from_token_lit(token_lit)?,
+            span,
+        })
     }
 
-    /// Converts arbitrary token into an AST literal.
-    ///
-    /// Keep this in sync with `Token::can_begin_literal_or_bool` excluding unary negation.
-    pub fn from_token(token: &Token) -> Result<Lit, LitError> {
-        let lit = match token.uninterpolate().kind {
-            token::Ident(name, false) if name.is_bool_lit() => {
-                token::Lit::new(token::Bool, name, None)
-            }
-            token::Literal(lit) => lit,
-            token::Interpolated(ref nt) => {
-                if let token::NtExpr(expr) | token::NtLiteral(expr) = &**nt
-                    && let ast::ExprKind::Lit(lit) = &expr.kind
-                {
-                    return Ok(lit.clone());
-                }
-                return Err(LitError::NotLiteral);
-            }
-            _ => return Err(LitError::NotLiteral),
+    /// Cheaply converts a meta item literal into a token literal.
+    pub fn as_token_lit(&self) -> token::Lit {
+        let kind = match self.kind {
+            LitKind::Bool(_) => token::Bool,
+            LitKind::Str(_, ast::StrStyle::Cooked) => token::Str,
+            LitKind::Str(_, ast::StrStyle::Raw(n)) => token::StrRaw(n),
+            LitKind::ByteStr(_, ast::StrStyle::Cooked) => token::ByteStr,
+            LitKind::ByteStr(_, ast::StrStyle::Raw(n)) => token::ByteStrRaw(n),
+            LitKind::Byte(_) => token::Byte,
+            LitKind::Char(_) => token::Char,
+            LitKind::Int(..) => token::Integer,
+            LitKind::Float(..) => token::Float,
+            LitKind::Err => token::Err,
         };
 
-        Lit::from_token_lit(lit, token.span)
+        token::Lit::new(kind, self.symbol, self.suffix)
     }
 
-    /// Attempts to recover an AST literal from semantic literal.
-    /// This function is used when the original token doesn't exist (e.g. the literal is created
-    /// by an AST-based macro) or unavailable (e.g. from HIR pretty-printing).
-    pub fn from_lit_kind(kind: LitKind, span: Span) -> Lit {
-        Lit { token_lit: kind.to_token_lit(), kind, span }
-    }
-
-    /// Losslessly convert an AST literal into a token.
-    pub fn to_token(&self) -> Token {
-        let kind = match self.token_lit.kind {
-            token::Bool => token::Ident(self.token_lit.symbol, false),
-            _ => token::Literal(self.token_lit),
-        };
-        Token::new(kind, self.span)
+    /// Converts an arbitrary token into meta item literal.
+    pub fn from_token(token: &Token) -> Option<MetaItemLit> {
+        token::Lit::from_token(token)
+            .and_then(|token_lit| MetaItemLit::from_token_lit(token_lit, token.span).ok())
     }
 }
 

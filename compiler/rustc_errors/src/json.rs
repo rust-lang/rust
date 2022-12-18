@@ -13,7 +13,7 @@ use rustc_span::source_map::{FilePathMapping, SourceMap};
 
 use crate::emitter::{Emitter, HumanReadableErrorType};
 use crate::registry::Registry;
-use crate::translation::Translate;
+use crate::translation::{to_fluent_args, Translate};
 use crate::DiagnosticId;
 use crate::{
     CodeSuggestion, FluentBundle, LazyFallbackBundle, MultiSpan, SpanLabel, SubDiagnostic,
@@ -45,6 +45,7 @@ pub struct JsonEmitter {
     json_rendered: HumanReadableErrorType,
     diagnostic_width: Option<usize>,
     macro_backtrace: bool,
+    track_diagnostics: bool,
 }
 
 impl JsonEmitter {
@@ -57,6 +58,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst: Box::new(io::BufWriter::new(io::stderr())),
@@ -69,6 +71,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -79,6 +82,7 @@ impl JsonEmitter {
         fallback_bundle: LazyFallbackBundle,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         let file_path_mapping = FilePathMapping::empty();
         JsonEmitter::stderr(
@@ -90,6 +94,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         )
     }
 
@@ -103,6 +108,7 @@ impl JsonEmitter {
         json_rendered: HumanReadableErrorType,
         diagnostic_width: Option<usize>,
         macro_backtrace: bool,
+        track_diagnostics: bool,
     ) -> JsonEmitter {
         JsonEmitter {
             dst,
@@ -115,6 +121,7 @@ impl JsonEmitter {
             json_rendered,
             diagnostic_width,
             macro_backtrace,
+            track_diagnostics,
         }
     }
 
@@ -129,7 +136,7 @@ impl Translate for JsonEmitter {
     }
 
     fn fallback_fluent_bundle(&self) -> &FluentBundle {
-        &**self.fallback_bundle
+        &self.fallback_bundle
     }
 }
 
@@ -312,7 +319,7 @@ struct UnusedExterns<'a, 'b, 'c> {
 
 impl Diagnostic {
     fn from_errors_diagnostic(diag: &crate::Diagnostic, je: &JsonEmitter) -> Diagnostic {
-        let args = je.to_fluent_args(diag.args());
+        let args = to_fluent_args(diag.args());
         let sugg = diag.suggestions.iter().flatten().map(|sugg| {
             let translated_message = je.translate_message(&sugg.msg, &args);
             Diagnostic {
@@ -350,6 +357,7 @@ impl Diagnostic {
                 false,
                 je.diagnostic_width,
                 je.macro_backtrace,
+                je.track_diagnostics,
             )
             .ui_testing(je.ui_testing)
             .emit_diagnostic(diag);

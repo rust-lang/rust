@@ -91,44 +91,36 @@ error[E0405]: cannot find trait `r#fn` in this scope
    |
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |          ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
-   |
-LL | pub trait Fn<Args>: FnMut<Args> {
-   | ------------------------------- similarly named trait `Fn` defined here
+   = note: similarly named trait `Fn` defined here
 
 error[E0405]: cannot find trait `r#fn` in this scope
   --> $DIR/kw-in-trait-bounds.rs:17:4
    |
 LL | G: fn(),
    |    ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
-   |
-LL | pub trait Fn<Args>: FnMut<Args> {
-   | ------------------------------- similarly named trait `Fn` defined here
+   = note: similarly named trait `Fn` defined here
 
 error[E0405]: cannot find trait `r#fn` in this scope
   --> $DIR/kw-in-trait-bounds.rs:3:27
    |
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |                           ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
-   |
-LL | pub trait Fn<Args>: FnMut<Args> {
-   | ------------------------------- similarly named trait `Fn` defined here
+   = note: similarly named trait `Fn` defined here
 
 error[E0405]: cannot find trait `r#fn` in this scope
   --> $DIR/kw-in-trait-bounds.rs:3:41
    |
 LL | fn _f<F: fn(), G>(_: impl fn(), _: &dyn fn())
    |                                         ^^ help: a trait with a similar name exists (notice the capitalization): `Fn`
+  --> $SRC_DIR/core/src/ops/function.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/ops/function.rs:LL:COL
-   |
-LL | pub trait Fn<Args>: FnMut<Args> {
-   | ------------------------------- similarly named trait `Fn` defined here
+   = note: similarly named trait `Fn` defined here
 
 error[E0405]: cannot find trait `r#struct` in this scope
   --> $DIR/kw-in-trait-bounds.rs:24:10

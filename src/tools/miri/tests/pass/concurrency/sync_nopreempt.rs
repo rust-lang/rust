@@ -1,4 +1,3 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
 // We are making scheduler assumptions here.
 //@compile-flags: -Zmiri-strict-provenance -Zmiri-preemption-rate=0
 

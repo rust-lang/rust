@@ -132,6 +132,10 @@ impl<T> RangeObjectMap<T> {
     pub fn remove_from_pos(&mut self, pos: Position) {
         self.v.remove(pos);
     }
+
+    pub fn iter(&self) -> impl Iterator<Item = &T> {
+        self.v.iter().map(|e| &e.data)
+    }
 }
 
 impl<T> Index<Position> for RangeObjectMap<T> {

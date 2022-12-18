@@ -105,6 +105,12 @@ pub type EvaluationCache<'tcx> = Cache<
 /// parameter environment.
 #[derive(PartialEq, Eq, Debug, Clone, TypeFoldable, TypeVisitable)]
 pub enum SelectionCandidate<'tcx> {
+    /// A builtin implementation for some specific traits, used in cases
+    /// where we cannot rely an ordinary library implementations.
+    ///
+    /// The most notable examples are `sized`, `Copy` and `Clone`. This is also
+    /// used for the `DiscriminantKind` and `Pointee` trait, both of which have
+    /// an associated type.
     BuiltinCandidate {
         /// `false` if there are no *further* obligations.
         has_nested: bool,
@@ -115,7 +121,7 @@ pub enum SelectionCandidate<'tcx> {
 
     ParamCandidate(ty::PolyTraitPredicate<'tcx>),
     ImplCandidate(DefId),
-    AutoImplCandidate(DefId),
+    AutoImplCandidate,
 
     /// This is a trait matching with a projected type as `Self`, and we found
     /// an applicable bound in the trait definition. The `usize` is an index
@@ -131,19 +137,17 @@ pub enum SelectionCandidate<'tcx> {
     /// generated for a generator.
     GeneratorCandidate,
 
+    /// Implementation of a `Future` trait by one of the generator types
+    /// generated for an async construct.
+    FutureCandidate,
+
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int) -> int`)
     FnPointerCandidate {
         is_const: bool,
     },
 
-    /// Builtin implementation of `DiscriminantKind`.
-    DiscriminantKindCandidate,
-
-    /// Builtin implementation of `Pointee`.
-    PointeeCandidate,
-
-    TraitAliasCandidate(DefId),
+    TraitAliasCandidate,
 
     /// Matching `dyn Trait` with a supertrait of `Trait`. The index is the
     /// position in the iterator returned by
@@ -161,9 +165,6 @@ pub enum SelectionCandidate<'tcx> {
 
     /// Implementation of `const Destruct`, optionally from a custom `impl const Drop`.
     ConstDestructCandidate(Option<DefId>),
-
-    /// Witnesses the fact that a type is a tuple.
-    TupleCandidate,
 }
 
 /// The result of trait evaluation. The order is important

@@ -2,16 +2,14 @@ error[E0072]: recursive type `Expr` has infinite size
   --> $DIR/issue-32326.rs:5:1
    |
 LL | enum Expr {
-   | ^^^^^^^^^ recursive type has infinite size
+   | ^^^^^^^^^
 LL |     Plus(Expr, Expr),
-   |          ----  ---- recursive without indirection
-   |          |
-   |          recursive without indirection
+   |          ---- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Expr` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL |     Plus(Box<Expr>, Box<Expr>),
-   |          ++++    +  ++++    +
+LL |     Plus(Box<Expr>, Expr),
+   |          ++++    +
 
 error: aborting due to previous error
 

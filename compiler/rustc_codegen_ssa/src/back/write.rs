@@ -2,11 +2,11 @@ use super::link::{self, ensure_removed};
 use super::lto::{self, SerializedModule};
 use super::symbol_export::symbol_name_for_instance_in_crate;
 
+use crate::errors;
+use crate::traits::*;
 use crate::{
     CachedModuleCodegen, CodegenResults, CompiledModule, CrateInfo, ModuleCodegen, ModuleKind,
 };
-
-use crate::traits::*;
 use jobserver::{Acquired, Client};
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::memmap::Mmap;
@@ -16,6 +16,7 @@ use rustc_data_structures::profiling::VerboseTimingGuard;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::Emitter;
 use rustc_errors::{translation::Translate, DiagnosticId, FatalError, Handler, Level};
+use rustc_errors::{DiagnosticMessage, Style};
 use rustc_fs_util::link_or_copy;
 use rustc_hir::def_id::{CrateNum, LOCAL_CRATE};
 use rustc_incremental::{
@@ -35,6 +36,7 @@ use rustc_span::{BytePos, FileName, InnerSpan, Pos, Span};
 use rustc_target::spec::{MergeFunctions, SanitizerSet};
 
 use std::any::Any;
+use std::borrow::Cow;
 use std::fs;
 use std::io;
 use std::marker::PhantomData;
@@ -338,20 +340,20 @@ pub struct CodegenContext<B: WriteBackendMethods> {
     pub split_debuginfo: rustc_target::spec::SplitDebuginfo,
     pub split_dwarf_kind: rustc_session::config::SplitDwarfKind,
 
-    // Number of cgus excluding the allocator/metadata modules
+    /// Number of cgus excluding the allocator/metadata modules
     pub total_cgus: usize,
-    // Handler to use for diagnostics produced during codegen.
+    /// Handler to use for diagnostics produced during codegen.
     pub diag_emitter: SharedEmitter,
-    // LLVM optimizations for which we want to print remarks.
+    /// LLVM optimizations for which we want to print remarks.
     pub remark: Passes,
-    // Worker thread number
+    /// Worker thread number
     pub worker: usize,
-    // The incremental compilation session directory, or None if we are not
-    // compiling incrementally
+    /// The incremental compilation session directory, or None if we are not
+    /// compiling incrementally
     pub incr_comp_session_dir: Option<PathBuf>,
-    // Used to update CGU re-use information during the thinlto phase.
+    /// Used to update CGU re-use information during the thinlto phase.
     pub cgu_reuse_tracker: CguReuseTracker,
-    // Channel back to the main control thread to send messages to
+    /// Channel back to the main control thread to send messages to
     pub coordinator_send: Sender<Box<dyn Any + Send>>,
 }
 
@@ -530,7 +532,7 @@ fn produce_final_output_artifacts(
     // Produce final compile outputs.
     let copy_gracefully = |from: &Path, to: &Path| {
         if let Err(e) = fs::copy(from, to) {
-            sess.err(&format!("could not copy {:?} to {:?}: {}", from, to, e));
+            sess.emit_err(errors::CopyPath::new(from, to, e));
         }
     };
 
@@ -546,7 +548,7 @@ fn produce_final_output_artifacts(
                 ensure_removed(sess.diagnostic(), &path);
             }
         } else {
-            let ext = crate_output
+            let extension = crate_output
                 .temp_path(output_type, None)
                 .extension()
                 .unwrap()
@@ -557,19 +559,11 @@ fn produce_final_output_artifacts(
             if crate_output.outputs.contains_key(&output_type) {
                 // 2) Multiple codegen units, with `--emit foo=some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!(
-                    "ignoring emit path because multiple .{} files \
-                                    were produced",
-                    ext
-                ));
+                sess.emit_warning(errors::IgnoringEmitPath { extension });
             } else if crate_output.single_output_file.is_some() {
                 // 3) Multiple codegen units, with `-o some_name`.  We have
                 //    no good solution for this case, so warn the user.
-                sess.warn(&format!(
-                    "ignoring -o because multiple .{} files \
-                                    were produced",
-                    ext
-                ));
+                sess.emit_warning(errors::IgnoringOutput { extension });
             } else {
                 // 4) Multiple codegen units, but no explicit name.  We
                 //    just leave the `foo.0.x` files in place.
@@ -762,7 +756,7 @@ fn execute_work_item<B: ExtraBackendMethods>(
     }
 }
 
-// Actual LTO type we end up choosing based on multiple factors.
+/// Actual LTO type we end up choosing based on multiple factors.
 pub enum ComputedLtoType {
     No,
     Thin,
@@ -880,14 +874,12 @@ fn execute_copy_from_cache_work_item<B: ExtraBackendMethods>(
         );
         match link_or_copy(&source_file, &output_path) {
             Ok(_) => Some(output_path),
-            Err(err) => {
-                let diag_handler = cgcx.create_diag_handler();
-                diag_handler.err(&format!(
-                    "unable to copy {} to {}: {}",
-                    source_file.display(),
-                    output_path.display(),
-                    err
-                ));
+            Err(error) => {
+                cgcx.create_diag_handler().emit_err(errors::CopyPathBuf {
+                    source_file,
+                    output_path,
+                    error,
+                });
                 None
             }
         }
@@ -976,8 +968,11 @@ pub enum Message<B: WriteBackendMethods> {
     CodegenAborted,
 }
 
+type DiagnosticArgName<'source> = Cow<'source, str>;
+
 struct Diagnostic {
-    msg: String,
+    msg: Vec<(DiagnosticMessage, Style)>,
+    args: FxHashMap<DiagnosticArgName<'static>, rustc_errors::DiagnosticArgValue<'static>>,
     code: Option<DiagnosticId>,
     lvl: Level,
 }
@@ -1006,6 +1001,14 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let coordinator_send = tx_to_llvm_workers;
     let sess = tcx.sess;
 
+    let mut each_linked_rlib_for_lto = Vec::new();
+    drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
+        if link::ignored_for_lto(sess, crate_info, cnum) {
+            return;
+        }
+        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
+    }));
+
     // Compute the set of symbols we need to retain when doing LTO (if we need to)
     let exported_symbols = {
         let mut exported_symbols = FxHashMap::default();
@@ -1027,7 +1030,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
             }
             Lto::Fat | Lto::Thin => {
                 exported_symbols.insert(LOCAL_CRATE, copy_symbols(LOCAL_CRATE));
-                for &cnum in tcx.crates(()).iter() {
+                for &(cnum, ref _path) in &each_linked_rlib_for_lto {
                     exported_symbols.insert(cnum, copy_symbols(cnum));
                 }
                 Some(Arc::new(exported_symbols))
@@ -1046,14 +1049,6 @@ fn start_executing_work<B: ExtraBackendMethods>(
             drop(coordinator_send2.send(Box::new(Message::Token::<B>(token))));
         })
         .expect("failed to spawn helper thread");
-
-    let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(crate_info, &mut |cnum, path| {
-        if link::ignored_for_lto(sess, crate_info, cnum) {
-            return;
-        }
-        each_linked_rlib_for_lto.push((cnum, path.to_path_buf()));
-    }));
 
     let ol =
         if tcx.sess.opts.unstable_opts.no_codegen || !tcx.sess.opts.output_types.should_codegen() {
@@ -1637,7 +1632,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
         llvm_start_time: &mut Option<VerboseTimingGuard<'a>>,
     ) {
         if config.time_module && llvm_start_time.is_none() {
-            *llvm_start_time = Some(prof.extra_verbose_generic_activity("LLVM_passes", "crate"));
+            *llvm_start_time = Some(prof.verbose_generic_activity("LLVM_passes"));
         }
     }
 }
@@ -1750,15 +1745,18 @@ impl Translate for SharedEmitter {
 
 impl Emitter for SharedEmitter {
     fn emit_diagnostic(&mut self, diag: &rustc_errors::Diagnostic) {
-        let fluent_args = self.to_fluent_args(diag.args());
+        let args: FxHashMap<Cow<'_, str>, rustc_errors::DiagnosticArgValue<'_>> =
+            diag.args().map(|(name, arg)| (name.clone(), arg.clone())).collect();
         drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-            msg: self.translate_messages(&diag.message, &fluent_args).to_string(),
+            msg: diag.message.clone(),
+            args: args.clone(),
             code: diag.code.clone(),
             lvl: diag.level(),
         })));
         for child in &diag.children {
             drop(self.sender.send(SharedEmitterMessage::Diagnostic(Diagnostic {
-                msg: self.translate_messages(&child.message, &fluent_args).to_string(),
+                msg: child.message.clone(),
+                args: args.clone(),
                 code: None,
                 lvl: child.level,
             })));
@@ -1789,10 +1787,11 @@ impl SharedEmitterMain {
             match message {
                 Ok(SharedEmitterMessage::Diagnostic(diag)) => {
                     let handler = sess.diagnostic();
-                    let mut d = rustc_errors::Diagnostic::new(diag.lvl, &diag.msg);
+                    let mut d = rustc_errors::Diagnostic::new_with_messages(diag.lvl, diag.msg);
                     if let Some(code) = diag.code {
                         d.code(code);
                     }
+                    d.replace_args(diag.args);
                     handler.emit_diagnostic(&mut d);
                 }
                 Ok(SharedEmitterMessage::InlineAsmError(cookie, msg, level, source)) => {

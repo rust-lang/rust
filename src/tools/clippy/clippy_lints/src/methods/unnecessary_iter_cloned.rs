@@ -2,10 +2,10 @@ use super::utils::clone_or_copy_needed;
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::higher::ForLoop;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait};
 use clippy_utils::{fn_def_id, get_parent_expr};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, Expr, ExprKind, LangItem};
+use rustc_hir::{def_id::DefId, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, Symbol};
 
@@ -54,7 +54,7 @@ pub fn check_for_loop_iter(
                 if let Some(into_iterator_trait_id) = cx.tcx.get_diagnostic_item(sym::IntoIterator);
                 let collection_ty = cx.typeck_results().expr_ty(collection);
                 if implements_trait(cx, collection_ty, into_iterator_trait_id, &[]);
-                if let Some(into_iter_item_ty) = get_associated_type(cx, collection_ty, into_iterator_trait_id, "Item");
+                if let Some(into_iter_item_ty) = cx.get_associated_type(collection_ty, into_iterator_trait_id, "Item");
 
                 if iter_item_ty == into_iter_item_ty;
                 if let Some(collection_snippet) = snippet_opt(cx, collection.span);
@@ -68,7 +68,7 @@ pub fn check_for_loop_iter(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 expr.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 |diag| {
                     // If `check_into_iter_call_arg` called `check_for_loop_iter` because a call to
                     // a `to_owned`-like function was removed, then the next suggestion may be
@@ -100,5 +100,5 @@ pub fn check_for_loop_iter(
 
 /// Returns true if the named method is `IntoIterator::into_iter`.
 pub fn is_into_iter(cx: &LateContext<'_>, callee_def_id: DefId) -> bool {
-    cx.tcx.lang_items().require(LangItem::IntoIterIntoIter) == Ok(callee_def_id)
+    Some(callee_def_id) == cx.tcx.lang_items().into_iter_fn()
 }

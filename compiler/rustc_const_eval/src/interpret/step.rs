@@ -2,11 +2,13 @@
 //!
 //! The main entry point is the `step` method.
 
+use either::Either;
+
 use rustc_middle::mir;
 use rustc_middle::mir::interpret::{InterpResult, Scalar};
 use rustc_middle::ty::layout::LayoutOf;
 
-use super::{InterpCx, Machine};
+use super::{ImmTy, InterpCx, Machine};
 
 /// Classify whether an operator is "left-homogeneous", i.e., the LHS has the
 /// same type as the result.
@@ -30,11 +32,6 @@ fn binop_right_homogeneous(op: mir::BinOp) -> bool {
 }
 
 impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
-    pub fn run(&mut self) -> InterpResult<'tcx> {
-        while self.step()? {}
-        Ok(())
-    }
-
     /// Returns `true` as long as there are more things to do.
     ///
     /// This is used by [priroda](https://github.com/oli-obk/priroda)
@@ -46,7 +43,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(false);
         }
 
-        let Ok(loc) = self.frame().loc else {
+        let Either::Left(loc) = self.frame().loc else {
             // We are unwinding and this fn has no cleanup code.
             // Just go on unwinding.
             trace!("unwinding: skipping frame");
@@ -61,7 +58,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Make sure we are not updating `statement_index` of the wrong frame.
             assert_eq!(old_frames, self.frame_idx());
             // Advance the program counter.
-            self.frame_mut().loc.as_mut().unwrap().statement_index += 1;
+            self.frame_mut().loc.as_mut().left().unwrap().statement_index += 1;
             return Ok(true);
         }
 
@@ -111,7 +108,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             // Stacked Borrows.
             Retag(kind, place) => {
                 let dest = self.eval_place(**place)?;
-                M::retag(self, *kind, &dest)?;
+                M::retag_place_contents(self, *kind, &dest)?;
             }
 
             Intrinsic(box ref intrinsic) => self.emulate_nondiverging_intrinsic(intrinsic)?,
@@ -209,7 +206,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
             Repeat(ref operand, _) => {
                 let src = self.eval_operand(operand, None)?;
-                assert!(!src.layout.is_unsized());
+                assert!(src.layout.is_sized());
                 let dest = self.force_allocation(&dest)?;
                 let length = dest.len(self)?;
 
@@ -250,10 +247,41 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 self.write_scalar(Scalar::from_machine_usize(len, self), &dest)?;
             }
 
-            AddressOf(_, place) | Ref(_, _, place) => {
+            Ref(_, borrow_kind, place) => {
                 let src = self.eval_place(place)?;
                 let place = self.force_allocation(&src)?;
-                self.write_immediate(place.to_ref(self), &dest)?;
+                let val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                // A fresh reference was created, make sure it gets retagged.
+                let val = M::retag_ptr_value(
+                    self,
+                    if borrow_kind.allows_two_phase_borrow() {
+                        mir::RetagKind::TwoPhase
+                    } else {
+                        mir::RetagKind::Default
+                    },
+                    &val,
+                )?;
+                self.write_immediate(*val, &dest)?;
+            }
+
+            AddressOf(_, place) => {
+                // Figure out whether this is an addr_of of an already raw place.
+                let place_base_raw = if place.has_deref() {
+                    let ty = self.frame().body.local_decls[place.local].ty;
+                    ty.is_unsafe_ptr()
+                } else {
+                    // Not a deref, and thus not raw.
+                    false
+                };
+
+                let src = self.eval_place(place)?;
+                let place = self.force_allocation(&src)?;
+                let mut val = ImmTy::from_immediate(place.to_ref(self), dest.layout);
+                if !place_base_raw {
+                    // If this was not already raw, it needs retagging.
+                    val = M::retag_ptr_value(self, mir::RetagKind::Raw, &val)?;
+                }
+                self.write_immediate(*val, &dest)?;
             }
 
             NullaryOp(null_op, ty) => {
@@ -305,7 +333,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
         self.eval_terminator(terminator)?;
         if !self.stack().is_empty() {
-            if let Ok(loc) = self.frame().loc {
+            if let Either::Left(loc) = self.frame().loc {
                 info!("// executing {:?}", loc.block);
             }
         }

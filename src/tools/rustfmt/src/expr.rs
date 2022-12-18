@@ -3,7 +3,7 @@ use std::cmp::min;
 
 use itertools::Itertools;
 use rustc_ast::token::{Delimiter, LitKind};
-use rustc_ast::{ast, ptr};
+use rustc_ast::{ast, ptr, token};
 use rustc_span::{BytePos, Span};
 
 use crate::chains::rewrite_chain;
@@ -75,12 +75,12 @@ pub(crate) fn format_expr(
             choose_separator_tactic(context, expr.span),
             None,
         ),
-        ast::ExprKind::Lit(ref l) => {
-            if let Some(expr_rw) = rewrite_literal(context, l, shape) {
+        ast::ExprKind::Lit(token_lit) => {
+            if let Some(expr_rw) = rewrite_literal(context, token_lit, expr.span, shape) {
                 Some(expr_rw)
             } else {
-                if let LitKind::StrRaw(_) = l.token_lit.kind {
-                    Some(context.snippet(l.span).trim().into())
+                if let LitKind::StrRaw(_) = token_lit.kind {
+                    Some(context.snippet(expr.span).trim().into())
                 } else {
                     None
                 }
@@ -116,7 +116,7 @@ pub(crate) fn format_expr(
             rewrite_struct_lit(
                 context,
                 path,
-                qself.as_ref(),
+                qself,
                 fields,
                 rest,
                 &expr.attrs,
@@ -169,7 +169,7 @@ pub(crate) fn format_expr(
             rewrite_match(context, cond, arms, shape, expr.span, &expr.attrs)
         }
         ast::ExprKind::Path(ref qself, ref path) => {
-            rewrite_path(context, PathContext::Expr, qself.as_ref(), path, shape)
+            rewrite_path(context, PathContext::Expr, qself, path, shape)
         }
         ast::ExprKind::Assign(ref lhs, ref rhs, _) => {
             rewrite_assignment(context, lhs, rhs, None, shape)
@@ -203,16 +203,16 @@ pub(crate) fn format_expr(
                 Some("yield".to_string())
             }
         }
-        ast::ExprKind::Closure(
-            ref binder,
-            capture,
-            ref is_async,
-            movability,
-            ref fn_decl,
-            ref body,
-            _,
-        ) => closures::rewrite_closure(
-            binder, capture, is_async, movability, fn_decl, body, expr.span, context, shape,
+        ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
+            &cl.binder,
+            cl.capture_clause,
+            &cl.asyncness,
+            cl.movability,
+            &cl.fn_decl,
+            &cl.body,
+            expr.span,
+            context,
+            shape,
         ),
         ast::ExprKind::Try(..)
         | ast::ExprKind::Field(..)
@@ -274,9 +274,9 @@ pub(crate) fn format_expr(
 
             fn needs_space_before_range(context: &RewriteContext<'_>, lhs: &ast::Expr) -> bool {
                 match lhs.kind {
-                    ast::ExprKind::Lit(ref lit) => match lit.kind {
-                        ast::LitKind::Float(_, ast::LitFloatType::Unsuffixed) => {
-                            context.snippet(lit.span).ends_with('.')
+                    ast::ExprKind::Lit(token_lit) => match token_lit.kind {
+                        token::LitKind::Float if token_lit.suffix.is_none() => {
+                            context.snippet(lhs.span).ends_with('.')
                         }
                         _ => false,
                     },
@@ -399,6 +399,7 @@ pub(crate) fn format_expr(
             }
         }
         ast::ExprKind::Underscore => Some("_".to_owned()),
+        ast::ExprKind::IncludedBytes(..) => unreachable!(),
         ast::ExprKind::Err => None,
     };
 
@@ -659,7 +660,7 @@ fn to_control_flow(expr: &ast::Expr, expr_type: ExprType) -> Option<ControlFlow<
         ast::ExprKind::ForLoop(ref pat, ref cond, ref block, label) => {
             Some(ControlFlow::new_for(pat, cond, block, label, expr.span))
         }
-        ast::ExprKind::Loop(ref block, label) => {
+        ast::ExprKind::Loop(ref block, label, _) => {
             Some(ControlFlow::new_loop(block, label, expr.span))
         }
         ast::ExprKind::While(ref cond, ref block, label) => {
@@ -1184,14 +1185,15 @@ pub(crate) fn is_unsafe_block(block: &ast::Block) -> bool {
 
 pub(crate) fn rewrite_literal(
     context: &RewriteContext<'_>,
-    l: &ast::Lit,
+    token_lit: token::Lit,
+    span: Span,
     shape: Shape,
 ) -> Option<String> {
-    match l.kind {
-        ast::LitKind::Str(_, ast::StrStyle::Cooked) => rewrite_string_lit(context, l.span, shape),
-        ast::LitKind::Int(..) => rewrite_int_lit(context, l, shape),
+    match token_lit.kind {
+        token::LitKind::Str => rewrite_string_lit(context, span, shape),
+        token::LitKind::Integer => rewrite_int_lit(context, token_lit, span, shape),
         _ => wrap_str(
-            context.snippet(l.span).to_owned(),
+            context.snippet(span).to_owned(),
             context.config.max_width(),
             shape,
         ),
@@ -1224,9 +1226,13 @@ fn rewrite_string_lit(context: &RewriteContext<'_>, span: Span, shape: Shape) ->
     )
 }
 
-fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -> Option<String> {
-    let span = lit.span;
-    let symbol = lit.token_lit.symbol.as_str();
+fn rewrite_int_lit(
+    context: &RewriteContext<'_>,
+    token_lit: token::Lit,
+    span: Span,
+    shape: Shape,
+) -> Option<String> {
+    let symbol = token_lit.symbol.as_str();
 
     if let Some(symbol_stripped) = symbol.strip_prefix("0x") {
         let hex_lit = match context.config.hex_literal_case() {
@@ -1239,9 +1245,7 @@ fn rewrite_int_lit(context: &RewriteContext<'_>, lit: &ast::Lit, shape: Shape) -
                 format!(
                     "0x{}{}",
                     hex_lit,
-                    lit.token_lit
-                        .suffix
-                        .map_or(String::new(), |s| s.to_string())
+                    token_lit.suffix.map_or(String::new(), |s| s.to_string())
                 ),
                 context.config.max_width(),
                 shape,
@@ -1337,7 +1341,7 @@ pub(crate) fn can_be_overflowed_expr(
         }
         ast::ExprKind::MacCall(ref mac) => {
             match (
-                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim().unwrap()),
+                rustc_ast::ast::MacDelimiter::from_token(mac.args.delim.to_token()),
                 context.config.overflow_delimited_expr(),
             ) {
                 (Some(ast::MacDelimiter::Bracket), true)
@@ -1533,7 +1537,7 @@ fn struct_lit_can_be_aligned(fields: &[ast::ExprField], has_base: bool) -> bool 
 fn rewrite_struct_lit<'a>(
     context: &RewriteContext<'_>,
     path: &ast::Path,
-    qself: Option<&ast::QSelf>,
+    qself: &Option<ptr::P<ast::QSelf>>,
     fields: &'a [ast::ExprField],
     struct_rest: &ast::StructRest,
     attrs: &[ast::Attribute],

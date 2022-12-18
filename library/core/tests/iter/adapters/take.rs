@@ -146,3 +146,23 @@ fn test_take_try_folds() {
     assert_eq!(iter.try_for_each(Err), Err(2));
     assert_eq!(iter.try_for_each(Err), Ok(()));
 }
+
+#[test]
+fn test_byref_take_consumed_items() {
+    let mut inner = 10..90;
+
+    let mut count = 0;
+    inner.by_ref().take(0).for_each(|_| count += 1);
+    assert_eq!(count, 0);
+    assert_eq!(inner, 10..90);
+
+    let mut count = 0;
+    inner.by_ref().take(10).for_each(|_| count += 1);
+    assert_eq!(count, 10);
+    assert_eq!(inner, 20..90);
+
+    let mut count = 0;
+    inner.by_ref().take(100).for_each(|_| count += 1);
+    assert_eq!(count, 70);
+    assert_eq!(inner, 90..90);
+}

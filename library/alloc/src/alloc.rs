@@ -28,16 +28,16 @@ extern "Rust" {
     // The rustc fork of LLVM 14 and earlier also special-cases these function names to be able to optimize them
     // like `malloc`, `realloc`, and `free`, respectively.
     #[rustc_allocator]
-    #[rustc_allocator_nounwind]
+    #[rustc_nounwind]
     fn __rust_alloc(size: usize, align: usize) -> *mut u8;
     #[rustc_deallocator]
-    #[rustc_allocator_nounwind]
+    #[rustc_nounwind]
     fn __rust_dealloc(ptr: *mut u8, size: usize, align: usize);
     #[rustc_reallocator]
-    #[rustc_allocator_nounwind]
+    #[rustc_nounwind]
     fn __rust_realloc(ptr: *mut u8, old_size: usize, align: usize, new_size: usize) -> *mut u8;
     #[rustc_allocator_zeroed]
-    #[rustc_allocator_nounwind]
+    #[rustc_nounwind]
     fn __rust_alloc_zeroed(size: usize, align: usize) -> *mut u8;
 }
 
@@ -398,19 +398,18 @@ pub use std::alloc::handle_alloc_error;
 #[allow(unused_attributes)]
 #[unstable(feature = "alloc_internals", issue = "none")]
 pub mod __alloc_error_handler {
-    use crate::alloc::Layout;
-
-    // called via generated `__rust_alloc_error_handler`
-
-    // if there is no `#[alloc_error_handler]`
+    // called via generated `__rust_alloc_error_handler` if there is no
+    // `#[alloc_error_handler]`.
     #[rustc_std_internal_symbol]
     pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
         panic!("memory allocation of {size} bytes failed")
     }
 
-    // if there is an `#[alloc_error_handler]`
+    #[cfg(bootstrap)]
     #[rustc_std_internal_symbol]
     pub unsafe fn __rg_oom(size: usize, align: usize) -> ! {
+        use crate::alloc::Layout;
+
         let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
         extern "Rust" {
             #[lang = "oom"]

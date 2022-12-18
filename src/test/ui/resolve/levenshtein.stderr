@@ -18,11 +18,9 @@ error[E0412]: cannot find type `Opiton` in this scope
    |
 LL | type B = Opiton<u8>; // Misspelled type name from the prelude.
    |          ^^^^^^ help: an enum with a similar name exists: `Option`
+  --> $SRC_DIR/core/src/option.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL | pub enum Option<T> {
-   | ------------------ similarly named enum `Option` defined here
+   = note: similarly named enum `Option` defined here
 
 error[E0412]: cannot find type `Baz` in this scope
   --> $DIR/levenshtein.rs:16:14
@@ -38,15 +36,6 @@ LL | const MAX_ITEM: usize = 10;
 ...
 LL |     let v = [0u32; MAXITEM]; // Misspelled constant name.
    |                    ^^^^^^^ help: a constant with a similar name exists: `MAX_ITEM`
-
-error[E0425]: cannot find function `foobar` in this scope
-  --> $DIR/levenshtein.rs:26:5
-   |
-LL | fn foo_bar() {}
-   | ------------ similarly named function `foo_bar` defined here
-...
-LL |     foobar(); // Misspelled function name.
-   |     ^^^^^^ help: a function with a similar name exists: `foo_bar`
 
 error[E0412]: cannot find type `first` in module `m`
   --> $DIR/levenshtein.rs:28:15
@@ -65,6 +54,15 @@ LL |     pub struct Second;
 ...
 LL |     let b: m::first = m::second; // Misspelled item in module.
    |                          ^^^^^^ help: a unit struct with a similar name exists (notice the capitalization): `Second`
+
+error[E0425]: cannot find function `foobar` in this scope
+  --> $DIR/levenshtein.rs:26:5
+   |
+LL | fn foo_bar() {}
+   | ------------ similarly named function `foo_bar` defined here
+...
+LL |     foobar(); // Misspelled function name.
+   |     ^^^^^^ help: a function with a similar name exists: `foo_bar`
 
 error: aborting due to 8 previous errors
 

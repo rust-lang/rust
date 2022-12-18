@@ -19,14 +19,8 @@ LL |     semitransparent;
 error[E0423]: expected value, found macro `opaque`
   --> $DIR/rustc-macro-transparency.rs:30:5
    |
-LL |     struct Opaque;
-   |     -------------- similarly named unit struct `Opaque` defined here
-...
 LL |     opaque;
-   |     ^^^^^^
-   |     |
-   |     not a value
-   |     help: a unit struct with a similar name exists (notice the capitalization): `Opaque`
+   |     ^^^^^^ not a value
 
 error: aborting due to 3 previous errors
 

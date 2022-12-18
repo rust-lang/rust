@@ -1,6 +1,6 @@
+use crate::infer::error_reporting::TypeErrCtxt;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError::*;
-use crate::infer::InferCtxt;
 use rustc_errors::{DiagnosticBuilder, ErrorGuaranteed};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::source_map::Span;
@@ -10,6 +10,7 @@ pub mod find_anon_type;
 mod mismatched_static_lifetime;
 mod named_anon_conflict;
 mod placeholder_error;
+mod placeholder_relation;
 mod static_impl_trait;
 mod trait_impl_difference;
 mod util;
@@ -19,40 +20,42 @@ pub use find_anon_type::find_anon_type;
 pub use static_impl_trait::{suggest_new_region_bound, HirTraitObjectVisitor, TraitObjectVisitor};
 pub use util::find_param_with_region;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
-    pub fn try_report_nice_region_error(&self, error: &RegionResolutionError<'tcx>) -> bool {
+impl<'cx, 'tcx> TypeErrCtxt<'cx, 'tcx> {
+    pub fn try_report_nice_region_error(&'cx self, error: &RegionResolutionError<'tcx>) -> bool {
         NiceRegionError::new(self, error.clone()).try_report().is_some()
     }
 }
 
 pub struct NiceRegionError<'cx, 'tcx> {
-    infcx: &'cx InferCtxt<'cx, 'tcx>,
+    cx: &'cx TypeErrCtxt<'cx, 'tcx>,
     error: Option<RegionResolutionError<'tcx>>,
     regions: Option<(Span, ty::Region<'tcx>, ty::Region<'tcx>)>,
 }
 
 impl<'cx, 'tcx> NiceRegionError<'cx, 'tcx> {
-    pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>, error: RegionResolutionError<'tcx>) -> Self {
-        Self { infcx, error: Some(error), regions: None }
+    pub fn new(cx: &'cx TypeErrCtxt<'cx, 'tcx>, error: RegionResolutionError<'tcx>) -> Self {
+        Self { cx, error: Some(error), regions: None }
     }
 
     pub fn new_from_span(
-        infcx: &'cx InferCtxt<'cx, 'tcx>,
+        cx: &'cx TypeErrCtxt<'cx, 'tcx>,
         span: Span,
         sub: ty::Region<'tcx>,
         sup: ty::Region<'tcx>,
     ) -> Self {
-        Self { infcx, error: None, regions: Some((span, sub, sup)) }
+        Self { cx, error: None, regions: Some((span, sub, sup)) }
     }
 
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.infcx.tcx
+        self.cx.tcx
     }
 
     pub fn try_report_from_nll(&self) -> Option<DiagnosticBuilder<'tcx, ErrorGuaranteed>> {
         // Due to the improved diagnostics returned by the MIR borrow checker, only a subset of
         // the nice region errors are required when running under the MIR borrow checker.
-        self.try_report_named_anon_conflict().or_else(|| self.try_report_placeholder_conflict())
+        self.try_report_named_anon_conflict()
+            .or_else(|| self.try_report_placeholder_conflict())
+            .or_else(|| self.try_report_placeholder_relation())
     }
 
     pub fn try_report(&self) -> Option<ErrorGuaranteed> {

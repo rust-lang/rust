@@ -6,9 +6,6 @@ LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^
 help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
@@ -22,9 +19,6 @@ LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^^^
 help: wrap these arguments in parentheses to construct a tuple
    |
 LL |     let _: Option<(i32, i8, &'static str)> = Some((1, 2, "hi"));
@@ -38,9 +32,6 @@ LL |     let _: Option<()> = Some();
    |
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^^^
 help: provide the argument
    |
 LL |     let _: Option<()> = Some(());
@@ -58,9 +49,6 @@ LL |     let _: Option<(i32,)> = Some(3);
                found type `{integer}`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^^^
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _: Option<(i32,)> = Some((3,));
@@ -78,9 +66,6 @@ LL |     let _: Option<(i32,)> = Some((3));
                found type `{integer}`
 note: tuple variant defined here
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     Some(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     ^^^^
 help: use a trailing comma to create a tuple with one element
    |
 LL |     let _: Option<(i32,)> = Some((3,));

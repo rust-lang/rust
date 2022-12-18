@@ -10,12 +10,12 @@ LL | |         }
 LL | |     }
    | |_____^
    |
-   = note: `-D clippy::if-chain-style` implied by `-D warnings`
 help: this `let` statement can also be in the `if_chain!`
   --> $DIR/if_chain_style.rs:10:9
    |
 LL |         let x = "";
    |         ^^^^^^^^^^^
+   = note: `-D clippy::if-chain-style` implied by `-D warnings`
 
 error: `if a && b;` should be `if a; if b;`
   --> $DIR/if_chain_style.rs:19:12

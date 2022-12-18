@@ -24,12 +24,12 @@
 
 use crate::const_closure::ConstFnMutClosure;
 use crate::marker::Destruct;
+#[cfg(bootstrap)]
 use crate::marker::StructuralPartialEq;
 
 use self::Ordering::*;
 
-/// Trait for equality comparisons which are [partial equivalence
-/// relations](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
+/// Trait for equality comparisons.
 ///
 /// `x.eq(y)` can also be written `x == y`, and `x.ne(y)` can be written `x != y`.
 /// We use the easier-to-read infix notation in the remainder of this documentation.
@@ -37,6 +37,8 @@ use self::Ordering::*;
 /// This trait allows for partial equality, for types that do not have a full
 /// equivalence relation. For example, in floating point numbers `NaN != NaN`,
 /// so floating point types implement `PartialEq` but not [`trait@Eq`].
+/// Formally speaking, when `Rhs == Self`, this trait corresponds to a [partial equivalence
+/// relation](https://en.wikipedia.org/wiki/Partial_equivalence_relation).
 ///
 /// Implementations must ensure that `eq` and `ne` are consistent with each other:
 ///
@@ -331,6 +333,7 @@ pub struct AssertParamIsEq<T: Eq + ?Sized> {
 /// assert_eq!(Ordering::Greater, result);
 /// ```
 #[derive(Clone, Copy, Eq, Debug, Hash)]
+#[cfg_attr(not(bootstrap), derive_const(PartialOrd, Ord, PartialEq))]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[repr(i8)]
 pub enum Ordering {
@@ -877,10 +880,12 @@ pub macro Ord($item:item) {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(bootstrap)]
 impl StructuralPartialEq for Ordering {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+#[cfg(bootstrap)]
 impl const PartialEq for Ordering {
     #[inline]
     fn eq(&self, other: &Self) -> bool {
@@ -890,6 +895,7 @@ impl const PartialEq for Ordering {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+#[cfg(bootstrap)]
 impl const Ord for Ordering {
     #[inline]
     fn cmp(&self, other: &Ordering) -> Ordering {
@@ -899,6 +905,7 @@ impl const Ord for Ordering {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_cmp", issue = "92391")]
+#[cfg(bootstrap)]
 impl const PartialOrd for Ordering {
     #[inline]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {

@@ -49,6 +49,7 @@ mod duplicate {
     use super::fluent_messages;
 
     fluent_messages! {
+//~^ ERROR the name `a_b_key` is defined multiple times
         a => "./duplicate-a.ftl",
         a_b => "./duplicate-a-b.ftl",
 //~^ ERROR overrides existing message: `a_b_key`
@@ -80,7 +81,7 @@ mod valid {
         valid => "./valid.ftl",
     }
 
-    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, valid::key};
+    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, valid_key};
 }
 
 mod missing_crate_name {
@@ -93,5 +94,5 @@ mod missing_crate_name {
 //~| ERROR name `with-hyphens` does not start with the crate name
     }
 
-    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, test_crate::{foo, with_hyphens}};
+    use self::fluent_generated::{DEFAULT_LOCALE_RESOURCES, test_crate_foo, with_hyphens};
 }

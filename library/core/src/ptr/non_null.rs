@@ -2,6 +2,7 @@ use crate::cmp::Ordering;
 use crate::convert::From;
 use crate::fmt;
 use crate::hash;
+use crate::intrinsics::assert_unsafe_precondition;
 use crate::marker::Unsize;
 use crate::mem::{self, MaybeUninit};
 use crate::num::NonZeroUsize;
@@ -195,7 +196,10 @@ impl<T: ?Sized> NonNull<T> {
     #[inline]
     pub const unsafe fn new_unchecked(ptr: *mut T) -> Self {
         // SAFETY: the caller must guarantee that `ptr` is non-null.
-        unsafe { NonNull { pointer: ptr as _ } }
+        unsafe {
+            assert_unsafe_precondition!("NonNull::new_unchecked requires that the pointer is non-null", [T: ?Sized](ptr: *mut T) => !ptr.is_null());
+            NonNull { pointer: ptr as _ }
+        }
     }
 
     /// Creates a new `NonNull` if `ptr` is non-null.
@@ -326,7 +330,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_stable(feature = "const_nonnull_as_ptr", since = "1.32.0")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const fn as_ptr(self) -> *mut T {
         self.pointer as *mut T
     }
@@ -374,7 +378,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_ref<'a>(&self) -> &'a T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a reference.
@@ -425,7 +429,7 @@ impl<T: ?Sized> NonNull<T> {
     #[stable(feature = "nonnull", since = "1.25.0")]
     #[rustc_const_unstable(feature = "const_ptr_as_ref", issue = "91822")]
     #[must_use]
-    #[inline]
+    #[inline(always)]
     pub const unsafe fn as_mut<'a>(&mut self) -> &'a mut T {
         // SAFETY: the caller must guarantee that `self` meets all the
         // requirements for a mutable reference.
@@ -699,7 +703,7 @@ impl<T> NonNull<[T]> {
 #[stable(feature = "nonnull", since = "1.25.0")]
 #[rustc_const_unstable(feature = "const_clone", issue = "91805")]
 impl<T: ?Sized> const Clone for NonNull<T> {
-    #[inline]
+    #[inline(always)]
     fn clone(&self) -> Self {
         *self
     }

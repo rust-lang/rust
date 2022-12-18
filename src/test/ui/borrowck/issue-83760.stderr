@@ -8,6 +8,10 @@ LL |             val = None;
    |             ---------- this reinitialization might get skipped
    |
    = note: move occurs because value has type `Struct`, which does not implement the `Copy` trait
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |     while let Some(ref foo) = val {
+   |                    +++
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/issue-83760.rs:21:14
@@ -23,11 +27,8 @@ LL |         foo = Some(Struct);
 LL |     let _y = foo;
    |              ^^^ value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `foo`
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     pub const fn unwrap(self) -> T {
-   |                         ^^^^
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/issue-83760.rs:37:14
@@ -51,11 +52,8 @@ LL |         foo = Some(Struct);
 LL |     } else if true {
 LL |         foo = Some(Struct);
    |         ^^^^^^^^^^^^^^^^^^
-note: this function takes ownership of the receiver `self`, which moves `foo`
+note: `Option::<T>::unwrap` takes ownership of the receiver `self`, which moves `foo`
   --> $SRC_DIR/core/src/option.rs:LL:COL
-   |
-LL |     pub const fn unwrap(self) -> T {
-   |                         ^^^^
 
 error: aborting due to 3 previous errors
 

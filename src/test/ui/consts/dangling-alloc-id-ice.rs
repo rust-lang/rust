@@ -1,5 +1,4 @@
 // https://github.com/rust-lang/rust/issues/55223
-#![allow(const_err)]
 
 union Foo<'a> {
     y: &'a (),

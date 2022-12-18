@@ -51,8 +51,8 @@ pub enum Constant {
 impl PartialEq for Constant {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
-            (&Self::Str(ref ls), &Self::Str(ref rs)) => ls == rs,
-            (&Self::Binary(ref l), &Self::Binary(ref r)) => l == r,
+            (Self::Str(ls), Self::Str(rs)) => ls == rs,
+            (Self::Binary(l), Self::Binary(r)) => l == r,
             (&Self::Char(l), &Self::Char(r)) => l == r,
             (&Self::Int(l), &Self::Int(r)) => l == r,
             (&Self::F64(l), &Self::F64(r)) => {
@@ -69,8 +69,8 @@ impl PartialEq for Constant {
             },
             (&Self::Bool(l), &Self::Bool(r)) => l == r,
             (&Self::Vec(ref l), &Self::Vec(ref r)) | (&Self::Tuple(ref l), &Self::Tuple(ref r)) => l == r,
-            (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => ls == rs && lv == rv,
-            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => *lb == *rb,
+            (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => ls == rs && lv == rv,
+            (Self::Ref(lb), Self::Ref(rb)) => *lb == *rb,
             // TODO: are there inter-type equalities?
             _ => false,
         }
@@ -126,8 +126,8 @@ impl Hash for Constant {
 impl Constant {
     pub fn partial_cmp(tcx: TyCtxt<'_>, cmp_type: Ty<'_>, left: &Self, right: &Self) -> Option<Ordering> {
         match (left, right) {
-            (&Self::Str(ref ls), &Self::Str(ref rs)) => Some(ls.cmp(rs)),
-            (&Self::Char(ref l), &Self::Char(ref r)) => Some(l.cmp(r)),
+            (Self::Str(ls), Self::Str(rs)) => Some(ls.cmp(rs)),
+            (Self::Char(l), Self::Char(r)) => Some(l.cmp(r)),
             (&Self::Int(l), &Self::Int(r)) => match *cmp_type.kind() {
                 ty::Int(int_ty) => Some(sext(tcx, l, int_ty).cmp(&sext(tcx, r, int_ty))),
                 ty::Uint(_) => Some(l.cmp(&r)),
@@ -135,18 +135,49 @@ impl Constant {
             },
             (&Self::F64(l), &Self::F64(r)) => l.partial_cmp(&r),
             (&Self::F32(l), &Self::F32(r)) => l.partial_cmp(&r),
-            (&Self::Bool(ref l), &Self::Bool(ref r)) => Some(l.cmp(r)),
-            (&Self::Tuple(ref l), &Self::Tuple(ref r)) | (&Self::Vec(ref l), &Self::Vec(ref r)) => iter::zip(l, r)
-                .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
-                .find(|r| r.map_or(true, |o| o != Ordering::Equal))
-                .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
-            (&Self::Repeat(ref lv, ref ls), &Self::Repeat(ref rv, ref rs)) => {
-                match Self::partial_cmp(tcx, cmp_type, lv, rv) {
+            (Self::Bool(l), Self::Bool(r)) => Some(l.cmp(r)),
+            (Self::Tuple(l), Self::Tuple(r)) if l.len() == r.len() => match *cmp_type.kind() {
+                ty::Tuple(tys) if tys.len() == l.len() => l
+                    .iter()
+                    .zip(r)
+                    .zip(tys)
+                    .map(|((li, ri), cmp_type)| Self::partial_cmp(tcx, cmp_type, li, ri))
+                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .unwrap_or_else(|| Some(l.len().cmp(&r.len()))),
+                _ => None,
+            },
+            (Self::Vec(l), Self::Vec(r)) => {
+                let (ty::Array(cmp_type, _) | ty::Slice(cmp_type)) = *cmp_type.kind() else {
+                    return None
+                };
+                iter::zip(l, r)
+                    .map(|(li, ri)| Self::partial_cmp(tcx, cmp_type, li, ri))
+                    .find(|r| r.map_or(true, |o| o != Ordering::Equal))
+                    .unwrap_or_else(|| Some(l.len().cmp(&r.len())))
+            },
+            (Self::Repeat(lv, ls), Self::Repeat(rv, rs)) => {
+                match Self::partial_cmp(
+                    tcx,
+                    match *cmp_type.kind() {
+                        ty::Array(ty, _) => ty,
+                        _ => return None,
+                    },
+                    lv,
+                    rv,
+                ) {
                     Some(Equal) => Some(ls.cmp(rs)),
                     x => x,
                 }
             },
-            (&Self::Ref(ref lb), &Self::Ref(ref rb)) => Self::partial_cmp(tcx, cmp_type, lb, rb),
+            (Self::Ref(lb), Self::Ref(rb)) => Self::partial_cmp(
+                tcx,
+                match *cmp_type.kind() {
+                    ty::Ref(_, ty, _) => ty,
+                    _ => return None,
+                },
+                lb,
+                rb,
+            ),
             // TODO: are there any useful inter-type orderings?
             _ => None,
         }
@@ -179,7 +210,7 @@ pub fn lit_to_mir_constant(lit: &LitKind, ty: Option<Ty<'_>>) -> Constant {
     match *lit {
         LitKind::Str(ref is, _) => Constant::Str(is.to_string()),
         LitKind::Byte(b) => Constant::Int(u128::from(b)),
-        LitKind::ByteStr(ref s) => Constant::Binary(Lrc::clone(s)),
+        LitKind::ByteStr(ref s, _) => Constant::Binary(Lrc::clone(s)),
         LitKind::Char(c) => Constant::Char(c),
         LitKind::Int(n, _) => Constant::Int(n),
         LitKind::Float(ref is, LitFloatType::Suffixed(fty)) => match fty {
@@ -369,10 +400,7 @@ impl<'a, 'tcx> ConstEvalLateContext<'a, 'tcx> {
         use self::Constant::{Int, F32, F64};
         match *o {
             Int(value) => {
-                let ity = match *ty.kind() {
-                    ty::Int(ity) => ity,
-                    _ => return None,
-                };
+                let ty::Int(ity) = *ty.kind() else { return None };
                 // sign extend
                 let value = sext(self.lcx.tcx, value, ity);
                 let value = value.checked_neg()?;

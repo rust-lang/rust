@@ -21,12 +21,6 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-mod valid_align;
-// For now this type is left crate-local.  It could potentially make sense to expose
-// it publicly, as it would be a nice parameter type for methods which need to take
-// alignment as a parameter, such as `Layout::padding_needed_for`.
-pub(crate) use valid_align::ValidAlign;
-
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, BikeshedIntrinsicFrom};
@@ -731,10 +725,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // understanding `mem::replace`, `Option::take`, etc. - a better overall
     // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
     // a backend can choose to implement using the block optimization, or not.
-    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
-    // pessimization for it.  Also, if the type contains any unaligned pointers,
-    // copying those over multiple reads is difficult to support.
-    #[cfg(not(any(target_arch = "spirv", miri)))]
+    #[cfg(not(any(target_arch = "spirv")))]
     {
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part
@@ -1005,22 +996,22 @@ pub fn drop<T>(_x: T) {}
 /// ```
 #[inline]
 #[unstable(feature = "mem_copy_fn", issue = "98262")]
-pub fn copy<T: Copy>(x: &T) -> T {
+pub const fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
-/// Interprets `src` as having type `&U`, and then reads `src` without moving
+/// Interprets `src` as having type `&Dst`, and then reads `src` without moving
 /// the contained value.
 ///
-/// This function will unsafely assume the pointer `src` is valid for [`size_of::<U>`][size_of]
-/// bytes by transmuting `&T` to `&U` and then reading the `&U` (except that this is done in a way
-/// that is correct even when `&U` has stricter alignment requirements than `&T`). It will also
-/// unsafely create a copy of the contained value instead of moving out of `src`.
+/// This function will unsafely assume the pointer `src` is valid for [`size_of::<Dst>`][size_of]
+/// bytes by transmuting `&Src` to `&Dst` and then reading the `&Dst` (except that this is done
+/// in a way that is correct even when `&Dst` has stricter alignment requirements than `&Src`).
+/// It will also unsafely create a copy of the contained value instead of moving out of `src`.
 ///
-/// It is not a compile-time error if `T` and `U` have different sizes, but it
-/// is highly encouraged to only invoke this function where `T` and `U` have the
-/// same size. This function triggers [undefined behavior][ub] if `U` is larger than
-/// `T`.
+/// It is not a compile-time error if `Src` and `Dst` have different sizes, but it
+/// is highly encouraged to only invoke this function where `Src` and `Dst` have the
+/// same size. This function triggers [undefined behavior][ub] if `Dst` is larger than
+/// `Src`.
 ///
 /// [ub]: ../../reference/behavior-considered-undefined.html
 ///
@@ -1053,19 +1044,22 @@ pub fn copy<T: Copy>(x: &T) -> T {
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_const_unstable(feature = "const_transmute_copy", issue = "83165")]
-pub const unsafe fn transmute_copy<T, U>(src: &T) -> U {
-    assert!(size_of::<T>() >= size_of::<U>(), "cannot transmute_copy if U is larger than T");
+pub const unsafe fn transmute_copy<Src, Dst>(src: &Src) -> Dst {
+    assert!(
+        size_of::<Src>() >= size_of::<Dst>(),
+        "cannot transmute_copy if Dst is larger than Src"
+    );
 
-    // If U has a higher alignment requirement, src might not be suitably aligned.
-    if align_of::<U>() > align_of::<T>() {
+    // If Dst has a higher alignment requirement, src might not be suitably aligned.
+    if align_of::<Dst>() > align_of::<Src>() {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read_unaligned(src as *const T as *const U) }
+        unsafe { ptr::read_unaligned(src as *const Src as *const Dst) }
     } else {
         // SAFETY: `src` is a reference which is guaranteed to be valid for reads.
-        // We just checked that `src as *const U` was properly aligned.
+        // We just checked that `src as *const Dst` was properly aligned.
         // The caller must guarantee that the actual transmutation is safe.
-        unsafe { ptr::read(src as *const T as *const U) }
+        unsafe { ptr::read(src as *const Src as *const Dst) }
     }
 }
 
@@ -1119,7 +1113,10 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// # Stability
 ///
 /// The discriminant of an enum variant may change if the enum definition changes. A discriminant
-/// of some variant will not change between compilations with the same compiler.
+/// of some variant will not change between compilations with the same compiler. See the [Reference]
+/// for more information.
+///
+/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
 /// # Examples
 ///
@@ -1134,6 +1131,62 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
 /// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
+/// ```
+///
+/// ## Accessing the numeric value of the discriminant
+///
+/// Note that it is *undefined behavior* to [`transmute`] from [`Discriminant`] to a primitive!
+///
+/// If an enum has only unit variants, then the numeric value of the discriminant can be accessed
+/// with an [`as`] cast:
+///
+/// ```
+/// enum Enum {
+///     Foo,
+///     Bar,
+///     Baz,
+/// }
+///
+/// assert_eq!(0, Enum::Foo as isize);
+/// assert_eq!(1, Enum::Bar as isize);
+/// assert_eq!(2, Enum::Baz as isize);
+/// ```
+///
+/// If an enum has opted-in to having a [primitive representation] for its discriminant,
+/// then it's possible to use pointers to read the memory location storing the discriminant.
+/// That **cannot** be done for enums using the [default representation], however, as it's
+/// undefined what layout the discriminant has and where it's stored — it might not even be
+/// stored at all!
+///
+/// [`as`]: ../../std/keyword.as.html
+/// [primitive representation]: ../../reference/type-layout.html#primitive-representations
+/// [default representation]: ../../reference/type-layout.html#the-default-representation
+/// ```
+/// #[repr(u8)]
+/// enum Enum {
+///     Unit,
+///     Tuple(bool),
+///     Struct { a: bool },
+/// }
+///
+/// impl Enum {
+///     fn discriminant(&self) -> u8 {
+///         // SAFETY: Because `Self` is marked `repr(u8)`, its layout is a `repr(C)` `union`
+///         // between `repr(C)` structs, each of which has the `u8` discriminant as its first
+///         // field, so we can read the discriminant without offsetting the pointer.
+///         unsafe { *<*const _>::from(self).cast::<u8>() }
+///     }
+/// }
+///
+/// let unit_like = Enum::Unit;
+/// let tuple_like = Enum::Tuple(true);
+/// let struct_like = Enum::Struct { a: false };
+/// assert_eq!(0, unit_like.discriminant());
+/// assert_eq!(1, tuple_like.discriminant());
+/// assert_eq!(2, struct_like.discriminant());
+///
+/// // ⚠️ This is undefined behavior. Don't do this. ⚠️
+/// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]

@@ -2,6 +2,7 @@
 #![feature(alloc_layout_extra)]
 #![feature(assert_matches)]
 #![feature(box_syntax)]
+#![feature(btree_drain_filter)]
 #![feature(cow_is_borrowed)]
 #![feature(const_box)]
 #![feature(const_convert)]
@@ -14,6 +15,8 @@
 #![feature(core_intrinsics)]
 #![feature(drain_filter)]
 #![feature(exact_size_is_empty)]
+#![feature(linked_list_cursors)]
+#![feature(map_try_insert)]
 #![feature(new_uninit)]
 #![feature(pattern)]
 #![feature(trusted_len)]
@@ -44,11 +47,14 @@
 #![feature(strict_provenance)]
 #![feature(once_cell)]
 #![feature(drain_keep_rest)]
+#![deny(fuzzy_provenance_casts)]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
 mod arc;
+mod autotraits;
 mod borrow;
 mod boxed;
 mod btree_set_hash;

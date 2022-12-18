@@ -95,6 +95,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         'poll: {
             use crate::sys::os::errno;
+            #[cfg(not(target_os = "linux"))]
+            use libc::open as open64;
+            #[cfg(target_os = "linux")]
+            use libc::open64;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
                 libc::pollfd { fd: 1, events: 0, revents: 0 },
@@ -116,7 +120,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                     // If the stream is closed but we failed to reopen it, abort the
                     // process. Otherwise we wouldn't preserve the safety of
                     // operations on the corresponding Rust object Stdin, Stdout, or
@@ -139,9 +143,13 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         {
             use crate::sys::os::errno;
+            #[cfg(not(target_os = "linux"))]
+            use libc::open as open64;
+            #[cfg(target_os = "linux")]
+            use libc::open64;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or
@@ -163,22 +171,52 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
             // See the other file for docs. NOTE: Make sure to keep them in
             // sync!
             mod sigpipe {
+                pub const DEFAULT: u8 = 0;
                 pub const INHERIT: u8 = 1;
                 pub const SIG_IGN: u8 = 2;
                 pub const SIG_DFL: u8 = 3;
             }
 
-            let handler = match sigpipe {
-                sigpipe::INHERIT => None,
-                sigpipe::SIG_IGN => Some(libc::SIG_IGN),
-                sigpipe::SIG_DFL => Some(libc::SIG_DFL),
+            let (sigpipe_attr_specified, handler) = match sigpipe {
+                sigpipe::DEFAULT => (false, Some(libc::SIG_IGN)),
+                sigpipe::INHERIT => (true, None),
+                sigpipe::SIG_IGN => (true, Some(libc::SIG_IGN)),
+                sigpipe::SIG_DFL => (true, Some(libc::SIG_DFL)),
                 _ => unreachable!(),
             };
+            // The bootstrap compiler doesn't know about sigpipe::DEFAULT, and always passes in
+            // SIG_IGN. This causes some tests to fail because they expect SIGPIPE to be reset to
+            // default on process spawning (which doesn't happen if #[unix_sigpipe] is specified).
+            // Since we can't differentiate between the cases here, treat SIG_IGN as DEFAULT
+            // unconditionally.
+            if sigpipe_attr_specified && !(cfg!(bootstrap) && sigpipe == sigpipe::SIG_IGN) {
+                UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
+            }
             if let Some(handler) = handler {
                 rtassert!(signal(libc::SIGPIPE, handler) != libc::SIG_ERR);
             }
         }
     }
+}
+
+// This is set (up to once) in reset_sigpipe.
+#[cfg(not(any(
+    target_os = "espidf",
+    target_os = "emscripten",
+    target_os = "fuchsia",
+    target_os = "horizon"
+)))]
+static UNIX_SIGPIPE_ATTR_SPECIFIED: crate::sync::atomic::AtomicBool =
+    crate::sync::atomic::AtomicBool::new(false);
+
+#[cfg(not(any(
+    target_os = "espidf",
+    target_os = "emscripten",
+    target_os = "fuchsia",
+    target_os = "horizon"
+)))]
+pub(crate) fn unix_sigpipe_attr_specified() -> bool {
+    UNIX_SIGPIPE_ATTR_SPECIFIED.load(crate::sync::atomic::Ordering::Relaxed)
 }
 
 // SAFETY: must be called only once during runtime cleanup.
@@ -352,16 +390,12 @@ cfg_if::cfg_if! {
         extern "C" {}
     } else if #[cfg(target_os = "macos")] {
         #[link(name = "System")]
-        // res_init and friends require -lresolv on macOS/iOS.
-        // See #41582 and https://blog.achernya.com/2013/03/os-x-has-silly-libsystem.html
-        #[link(name = "resolv")]
         extern "C" {}
     } else if #[cfg(any(target_os = "ios", target_os = "watchos"))] {
         #[link(name = "System")]
         #[link(name = "objc")]
         #[link(name = "Security", kind = "framework")]
         #[link(name = "Foundation", kind = "framework")]
-        #[link(name = "resolv")]
         extern "C" {}
     } else if #[cfg(target_os = "fuchsia")] {
         #[link(name = "zircon")]

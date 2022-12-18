@@ -58,7 +58,7 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
 
     let emit_crate = options.should_emit_crate();
     let (mut format_renderer, krate) = prof
-        .extra_verbose_generic_activity("create_renderer", T::descr())
+        .verbose_generic_activity_with_arg("create_renderer", T::descr())
         .run(|| T::init(krate, options, cache, tcx))?;
 
     if !emit_crate {
@@ -92,6 +92,6 @@ pub(crate) fn run_format<'tcx, T: FormatRenderer<'tcx>>(
                 .run(|| cx.item(item))?;
         }
     }
-    prof.extra_verbose_generic_activity("renderer_after_krate", T::descr())
+    prof.verbose_generic_activity_with_arg("renderer_after_krate", T::descr())
         .run(|| format_renderer.after_krate())
 }

@@ -1,5 +1,4 @@
-//@ignore-target-windows: Concurrency on Windows is not supported yet.
-//@compile-flags: -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 use std::thread;
 
 #[derive(Copy, Clone)]

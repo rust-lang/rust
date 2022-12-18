@@ -91,4 +91,10 @@ fn main() {
         vec1.set_len(200);
         vec2.set_len(200);
     }
+
+    // set_len(0) should not be detected
+    let mut vec: Vec<u8> = Vec::with_capacity(1000);
+    unsafe {
+        vec.set_len(0);
+    }
 }

@@ -162,9 +162,12 @@ error[E0223]: ambiguous associated type
 LL |     let _: S::C;
    |            ^^^^ help: use fully-qualified syntax: `<S as Trait>::C`
 
-error: associated type `A` is private
+error[E0624]: associated type `A` is private
   --> $DIR/item-privacy.rs:119:12
    |
+LL |         type A = u8;
+   |         ------ associated type defined here
+...
 LL |     let _: T::A;
    |            ^^^^ private associated type
 

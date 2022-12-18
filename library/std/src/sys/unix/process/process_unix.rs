@@ -2,7 +2,6 @@ use crate::fmt;
 use crate::io::{self, Error, ErrorKind};
 use crate::mem;
 use crate::num::NonZeroI32;
-use crate::ptr;
 use crate::sys;
 use crate::sys::cvt;
 use crate::sys::process::process_common::*;
@@ -67,14 +66,15 @@ impl Command {
         //
         // Note that as soon as we're done with the fork there's no need to hold
         // a lock any more because the parent won't do anything and the child is
-        // in its own process. Thus the parent drops the lock guard while the child
-        // forgets it to avoid unlocking it on a new thread, which would be invalid.
+        // in its own process. Thus the parent drops the lock guard immediately.
+        // The child calls `mem::forget` to leak the lock, which is crucial because
+        // releasing a lock is not async-signal-safe.
         let env_lock = sys::os::env_read_lock();
         let (pid, pidfd) = unsafe { self.do_fork()? };
 
         if pid == 0 {
             crate::panic::always_abort();
-            mem::forget(env_lock);
+            mem::forget(env_lock); // avoid non-async-signal-safe unlocking
             drop(input);
             let Err(err) = unsafe { self.do_exec(theirs, envp.as_ref()) };
             let errno = err.raw_os_error().unwrap_or(libc::EINVAL) as u32;
@@ -131,6 +131,11 @@ impl Command {
                 }
             }
         }
+    }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
     }
 
     // Attempts to fork the process. If successful, returns Ok((0, -1))
@@ -310,7 +315,7 @@ impl Command {
                 //FIXME: Redox kernel does not support setgroups yet
                 #[cfg(not(target_os = "redox"))]
                 if libc::getuid() == 0 && self.get_groups().is_none() {
-                    cvt(libc::setgroups(0, ptr::null()))?;
+                    cvt(libc::setgroups(0, crate::ptr::null()))?;
                 }
                 cvt(libc::setuid(u as uid_t))?;
             }
@@ -326,30 +331,26 @@ impl Command {
         // emscripten has no signal support.
         #[cfg(not(target_os = "emscripten"))]
         {
-            use crate::mem::MaybeUninit;
-            use crate::sys::cvt_nz;
-            // Reset signal handling so the child process starts in a
-            // standardized state. libstd ignores SIGPIPE, and signal-handling
-            // libraries often set a mask. Child processes inherit ignored
-            // signals and the signal mask from their parent, but most
-            // UNIX programs do not reset these things on their own, so we
-            // need to clean things up now to avoid confusing the program
-            // we're about to run.
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt_nz(libc::pthread_sigmask(libc::SIG_SETMASK, set.as_ptr(), ptr::null_mut()))?;
+            // Inherit the signal mask from the parent rather than resetting it (i.e. do not call
+            // pthread_sigmask).
 
-            #[cfg(target_os = "android")] // see issue #88585
-            {
-                let mut action: libc::sigaction = mem::zeroed();
-                action.sa_sigaction = libc::SIG_DFL;
-                cvt(libc::sigaction(libc::SIGPIPE, &action, ptr::null_mut()))?;
-            }
-            #[cfg(not(target_os = "android"))]
-            {
-                let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
-                if ret == libc::SIG_ERR {
-                    return Err(io::Error::last_os_error());
+            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            //
+            // #[unix_sigpipe] is an opportunity to change the default here.
+            if !crate::sys::unix_sigpipe_attr_specified() {
+                #[cfg(target_os = "android")] // see issue #88585
+                {
+                    let mut action: libc::sigaction = mem::zeroed();
+                    action.sa_sigaction = libc::SIG_DFL;
+                    cvt(libc::sigaction(libc::SIGPIPE, &action, crate::ptr::null_mut()))?;
+                }
+                #[cfg(not(target_os = "android"))]
+                {
+                    let ret = sys::signal(libc::SIGPIPE, libc::SIG_DFL);
+                    if ret == libc::SIG_ERR {
+                        return Err(io::Error::last_os_error());
+                    }
                 }
             }
         }
@@ -411,7 +412,7 @@ impl Command {
         envp: Option<&CStringArray>,
     ) -> io::Result<Option<Process>> {
         use crate::mem::MaybeUninit;
-        use crate::sys::{self, cvt_nz};
+        use crate::sys::{self, cvt_nz, unix_sigpipe_attr_specified};
 
         if self.get_gid().is_some()
             || self.get_uid().is_some()
@@ -531,13 +532,24 @@ impl Command {
                 cvt_nz(libc::posix_spawnattr_setpgroup(attrs.0.as_mut_ptr(), pgroup))?;
             }
 
-            let mut set = MaybeUninit::<libc::sigset_t>::uninit();
-            cvt(sigemptyset(set.as_mut_ptr()))?;
-            cvt_nz(libc::posix_spawnattr_setsigmask(attrs.0.as_mut_ptr(), set.as_ptr()))?;
-            cvt(sigaddset(set.as_mut_ptr(), libc::SIGPIPE))?;
-            cvt_nz(libc::posix_spawnattr_setsigdefault(attrs.0.as_mut_ptr(), set.as_ptr()))?;
+            // Inherit the signal mask from this process rather than resetting it (i.e. do not call
+            // posix_spawnattr_setsigmask).
 
-            flags |= libc::POSIX_SPAWN_SETSIGDEF | libc::POSIX_SPAWN_SETSIGMASK;
+            // If #[unix_sigpipe] is specified, don't reset SIGPIPE to SIG_DFL.
+            // If #[unix_sigpipe] is not specified, reset SIGPIPE to SIG_DFL for backward compatibility.
+            //
+            // #[unix_sigpipe] is an opportunity to change the default here.
+            if !unix_sigpipe_attr_specified() {
+                let mut default_set = MaybeUninit::<libc::sigset_t>::uninit();
+                cvt(sigemptyset(default_set.as_mut_ptr()))?;
+                cvt(sigaddset(default_set.as_mut_ptr(), libc::SIGPIPE))?;
+                cvt_nz(libc::posix_spawnattr_setsigdefault(
+                    attrs.0.as_mut_ptr(),
+                    default_set.as_ptr(),
+                ))?;
+                flags |= libc::POSIX_SPAWN_SETSIGDEF;
+            }
+
             cvt_nz(libc::posix_spawnattr_setflags(attrs.0.as_mut_ptr(), flags as _))?;
 
             // Make sure we synchronize access to the global `environ` resource

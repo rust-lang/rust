@@ -1,5 +1,7 @@
 use crate::infer::error_reporting::nice_region_error::find_anon_type;
-use rustc_errors::{self, fluent, AddToDiagnostic, IntoDiagnosticArg};
+use rustc_errors::{
+    self, fluent, AddToDiagnostic, Diagnostic, IntoDiagnosticArg, SubdiagnosticMessage,
+};
 use rustc_middle::ty::{self, TyCtxt};
 use rustc_span::{symbol::kw, Span};
 
@@ -87,10 +89,13 @@ impl<'a> DescriptionCtx<'a> {
                             };
                             me.span = Some(sp);
                         }
-                        ty::BrAnon(idx) => {
+                        ty::BrAnon(idx, span) => {
                             me.kind = "anon_num_here";
                             me.num_arg = idx+1;
-                            me.span = Some(tcx.def_span(scope));
+                            me.span = match span {
+                                Some(_) => span,
+                                None => Some(tcx.def_span(scope)),
+                            }
                         },
                         _ => {
                             me.kind = "defined_here_reg";
@@ -159,11 +164,14 @@ impl RegionExplanation<'_> {
 }
 
 impl AddToDiagnostic for RegionExplanation<'_> {
-    fn add_to_diagnostic(self, diag: &mut rustc_errors::Diagnostic) {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
         if let Some(span) = self.desc.span {
-            diag.span_note(span, fluent::infer::region_explanation);
+            diag.span_note(span, fluent::infer_region_explanation);
         } else {
-            diag.note(fluent::infer::region_explanation);
+            diag.note(fluent::infer_region_explanation);
         }
         self.desc.add_to(diag);
         diag.set_arg("pref_kind", self.prefix);

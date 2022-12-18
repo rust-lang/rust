@@ -102,7 +102,7 @@ fn lint_message_convention() {
             "error: the test '{}' contained the following nonconforming lines :",
             message.path.display()
         );
-        message.bad_lines.iter().for_each(|line| eprintln!("{}", line));
+        message.bad_lines.iter().for_each(|line| eprintln!("{line}"));
         eprintln!("\n\n");
     }
 

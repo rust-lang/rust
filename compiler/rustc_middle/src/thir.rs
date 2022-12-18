@@ -10,7 +10,6 @@
 
 use rustc_ast::{InlineAsmOptions, InlineAsmTemplatePiece};
 use rustc_hir as hir;
-use rustc_hir::def::CtorKind;
 use rustc_hir::def_id::DefId;
 use rustc_hir::RangeEnd;
 use rustc_index::newtype_index;
@@ -203,7 +202,7 @@ pub enum StmtKind<'tcx> {
         /// `let pat: ty = <INIT>`
         initializer: Option<ExprId>,
 
-        /// `let pat: ty = <INIT> else { <ELSE> }
+        /// `let pat: ty = <INIT> else { <ELSE> }`
         else_block: Option<BlockId>,
 
         /// The lint level for this `let` statement.
@@ -751,7 +750,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 
                     // Only for Adt we can have `S {...}`,
                     // which we handle separately here.
-                    if variant.ctor_kind == CtorKind::Fictive {
+                    if variant.ctor.is_none() {
                         write!(f, " {{ ")?;
 
                         let mut printed = 0;
@@ -848,7 +847,7 @@ impl<'tcx> fmt::Display for Pat<'tcx> {
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
 mod size_asserts {
     use super::*;
-    // These are in alphabetical order, which is easy to maintain.
+    // tidy-alphabetical-start
     static_assert_size!(Block, 56);
     static_assert_size!(Expr<'_>, 64);
     static_assert_size!(ExprKind<'_>, 40);
@@ -856,4 +855,5 @@ mod size_asserts {
     static_assert_size!(PatKind<'_>, 56);
     static_assert_size!(Stmt<'_>, 48);
     static_assert_size!(StmtKind<'_>, 40);
+    // tidy-alphabetical-end
 }

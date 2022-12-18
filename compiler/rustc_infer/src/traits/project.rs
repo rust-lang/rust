@@ -77,11 +77,11 @@ pub struct ProjectionCacheStorage<'tcx> {
 
 #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
 pub struct ProjectionCacheKey<'tcx> {
-    ty: ty::ProjectionTy<'tcx>,
+    ty: ty::AliasTy<'tcx>,
 }
 
 impl<'tcx> ProjectionCacheKey<'tcx> {
-    pub fn new(ty: ty::ProjectionTy<'tcx>) -> Self {
+    pub fn new(ty: ty::AliasTy<'tcx>) -> Self {
         Self { ty }
     }
 }
@@ -200,7 +200,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>, result: EvaluationResult) {
         let mut map = self.map();
         match map.get(&key) {
-            Some(&ProjectionCacheEntry::NormalizedTy { ref ty, complete: _ }) => {
+            Some(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
                 if result.must_apply_considering_regions() {

@@ -6,8 +6,8 @@ LL |         |x| x.len()
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |         |x: _| x.len()
-   |           +++
+LL |         |x: /* Type */| x.len()
+   |           ++++++++++++
 
 error[E0282]: type annotations needed
   --> $DIR/closures_in_branches.rs:21:10
@@ -17,8 +17,8 @@ LL |         |x| x.len()
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |         |x: _| x.len()
-   |           +++
+LL |         |x: /* Type */| x.len()
+   |           ++++++++++++
 
 error: aborting due to 2 previous errors
 

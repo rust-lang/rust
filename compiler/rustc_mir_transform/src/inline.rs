@@ -1,7 +1,6 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
-use rustc_const_eval::transform::validate::equal_up_to_regions;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -9,12 +8,12 @@ use rustc_middle::mir::visit::*;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Instance, InstanceDef, ParamEnv, Ty, TyCtxt};
 use rustc_session::config::OptLevel;
-use rustc_span::def_id::DefId;
 use rustc_span::{hygiene::ExpnKind, ExpnData, LocalExpnId, Span};
 use rustc_target::abi::VariantIdx;
 use rustc_target::spec::abi::Abi;
 
-use super::simplify::{remove_dead_blocks, CfgSimplifier};
+use crate::simplify::{remove_dead_blocks, CfgSimplifier};
+use crate::util;
 use crate::MirPass;
 use std::iter;
 use std::ops::{Range, RangeFrom};
@@ -87,13 +86,8 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-    let mut this = Inliner {
-        tcx,
-        param_env,
-        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
-        history: Vec::new(),
-        changed: false,
-    };
+    let mut this =
+        Inliner { tcx, param_env, codegen_fn_attrs: tcx.codegen_fn_attrs(def_id), changed: false };
     let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
@@ -104,12 +98,6 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
-    /// Stack of inlined instances.
-    /// We only check the `DefId` and not the substs because we want to
-    /// avoid inlining cases of polymorphic recursion.
-    /// The number of `DefId`s is finite, so checking history is enough
-    /// to ensure that we do not loop endlessly while inlining.
-    history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
 }
@@ -134,12 +122,12 @@ impl<'tcx> Inliner<'tcx> {
                     debug!("not-inlined {} [{}]", callsite.callee, reason);
                     continue;
                 }
-                Ok(new_blocks) => {
+                Ok(_) => {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
-                    self.history.push(callsite.callee.def_id());
-                    self.process_blocks(caller_body, new_blocks);
-                    self.history.pop();
+                    // We could process the blocks returned by `try_inlining` here. However, that
+                    // leads to exponential compile times due to the top-down nature of this kind
+                    // of inlining.
                 }
             }
         }
@@ -180,7 +168,7 @@ impl<'tcx> Inliner<'tcx> {
         let TerminatorKind::Call { args, destination, .. } = &terminator.kind else { bug!() };
         let destination_ty = destination.ty(&caller_body.local_decls, self.tcx).ty;
         let output_type = callee_body.return_ty();
-        if !equal_up_to_regions(self.tcx, self.param_env, output_type, destination_ty) {
+        if !util::is_subtype(self.tcx, self.param_env, output_type, destination_ty) {
             trace!(?output_type, ?destination_ty);
             return Err("failed to normalize return type");
         }
@@ -200,7 +188,7 @@ impl<'tcx> Inliner<'tcx> {
                 arg_tuple_tys.iter().zip(callee_body.args_iter().skip(skipped_args))
             {
                 let input_type = callee_body.local_decls[input].ty;
-                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize tuple argument type");
                 }
@@ -209,7 +197,7 @@ impl<'tcx> Inliner<'tcx> {
             for (arg, input) in args.iter().zip(callee_body.args_iter()) {
                 let input_type = callee_body.local_decls[input].ty;
                 let arg_ty = arg.ty(&caller_body.local_decls, self.tcx);
-                if !equal_up_to_regions(self.tcx, self.param_env, arg_ty, input_type) {
+                if !util::is_subtype(self.tcx, self.param_env, input_type, arg_ty) {
                     trace!(?arg_ty, ?input_type);
                     return Err("failed to normalize argument type");
                 }
@@ -313,10 +301,6 @@ impl<'tcx> Inliner<'tcx> {
                     return None;
                 }
 
-                if self.history.contains(&callee.def_id()) {
-                    return None;
-                }
-
                 let fn_sig = self.tcx.bound_fn_sig(def_id).subst(self.tcx, substs);
 
                 return Some(CallSite {
@@ -363,10 +347,6 @@ impl<'tcx> Inliner<'tcx> {
             return Err("C variadic");
         }
 
-        if callee_attrs.flags.contains(CodegenFnAttrFlags::NAKED) {
-            return Err("naked");
-        }
-
         if callee_attrs.flags.contains(CodegenFnAttrFlags::COLD) {
             return Err("cold");
         }
@@ -375,7 +355,12 @@ impl<'tcx> Inliner<'tcx> {
             return Err("incompatible sanitizer set");
         }
 
-        if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set {
+        // Two functions are compatible if the callee has no attribute (meaning
+        // that it's codegen agnostic), or sets an attribute that is identical
+        // to this function's attribute.
+        if callee_attrs.instruction_set.is_some()
+            && callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
+        {
             return Err("incompatible instruction set");
         }
 
@@ -453,6 +438,15 @@ impl<'tcx> Inliner<'tcx> {
                 if ty.needs_drop(tcx, self.param_env) && let Some(unwind) = unwind {
                         work_list.push(unwind);
                     }
+            } else if callee_attrs.instruction_set != self.codegen_fn_attrs.instruction_set
+                && matches!(term.kind, TerminatorKind::InlineAsm { .. })
+            {
+                // During the attribute checking stage we allow a callee with no
+                // instruction_set assigned to count as compatible with a function that does
+                // assign one. However, during this stage we require an exact match when any
+                // inline-asm is detected. LLVM will still possibly do an inline later on
+                // if the no-attribute function ends up with the same instruction set anyway.
+                return Err("Cannot move inline-asm across instruction sets");
             } else {
                 work_list.extend(term.successors())
             }
@@ -847,7 +841,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             let parent = Place { local, projection: self.tcx.intern_place_elems(proj_base) };
             let parent_ty = parent.ty(&self.callee_body.local_decls, self.tcx);
             let check_equal = |this: &mut Self, f_ty| {
-                if !equal_up_to_regions(this.tcx, this.param_env, ty, f_ty) {
+                if !util::is_equal_up_to_subtyping(this.tcx, this.param_env, ty, f_ty) {
                     trace!(?ty, ?f_ty);
                     this.validation = Err("failed to normalize projection type");
                     return;
@@ -855,7 +849,7 @@ impl<'tcx> Visitor<'tcx> for CostChecker<'_, 'tcx> {
             };
 
             let kind = match parent_ty.ty.kind() {
-                &ty::Opaque(def_id, substs) => {
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                     self.tcx.bound_type_of(def_id).subst(self.tcx, substs).kind()
                 }
                 kind => kind,
@@ -977,6 +971,21 @@ impl Integrator<'_, '_> {
         trace!("mapping block `{:?}` to `{:?}`", block, new);
         new
     }
+
+    fn map_unwind(&self, unwind: Option<BasicBlock>) -> Option<BasicBlock> {
+        if self.in_cleanup_block {
+            if unwind.is_some() {
+                bug!("cleanup on cleanup block");
+            }
+            return unwind;
+        }
+
+        match unwind {
+            Some(target) => Some(self.map_block(target)),
+            // Add an unwind edge to the original call's cleanup block
+            None => self.cleanup_block,
+        }
+    }
 }
 
 impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
@@ -1085,35 +1094,17 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::Drop { ref mut target, ref mut unwind, .. }
             | TerminatorKind::DropAndReplace { ref mut target, ref mut unwind, .. } => {
                 *target = self.map_block(*target);
-                if let Some(tgt) = *unwind {
-                    *unwind = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this drop is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *unwind = self.cleanup_block;
-                }
+                *unwind = self.map_unwind(*unwind);
             }
             TerminatorKind::Call { ref mut target, ref mut cleanup, .. } => {
                 if let Some(ref mut tgt) = *target {
                     *tgt = self.map_block(*tgt);
                 }
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this call is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
+                *cleanup = self.map_unwind(*cleanup);
             }
             TerminatorKind::Assert { ref mut target, ref mut cleanup, .. } => {
                 *target = self.map_block(*target);
-                if let Some(tgt) = *cleanup {
-                    *cleanup = Some(self.map_block(tgt));
-                } else if !self.in_cleanup_block {
-                    // Unless this assert is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
-                }
+                *cleanup = self.map_unwind(*cleanup);
             }
             TerminatorKind::Return => {
                 terminator.kind = if let Some(tgt) = self.callsite.target {
@@ -1141,11 +1132,8 @@ impl<'tcx> MutVisitor<'tcx> for Integrator<'_, 'tcx> {
             TerminatorKind::InlineAsm { ref mut destination, ref mut cleanup, .. } => {
                 if let Some(ref mut tgt) = *destination {
                     *tgt = self.map_block(*tgt);
-                } else if !self.in_cleanup_block {
-                    // Unless this inline asm is in a cleanup block, add an unwind edge to
-                    // the original call's cleanup block
-                    *cleanup = self.cleanup_block;
                 }
+                *cleanup = self.map_unwind(*cleanup);
             }
         }
     }

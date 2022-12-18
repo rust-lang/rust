@@ -1,25 +1,22 @@
 use super::implicit_clone::is_clone_like;
 use super::unnecessary_iter_cloned::{self, is_into_iter};
 use clippy_utils::diagnostics::span_lint_and_sugg;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_opt;
-use clippy_utils::ty::{get_associated_type, get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
+use clippy_utils::ty::{get_iterator_item_ty, implements_trait, is_copy, peel_mid_ty_refs};
 use clippy_utils::visitors::find_all_ret_expressions;
 use clippy_utils::{fn_def_id, get_parent_expr, is_diag_item_method, is_diag_trait_item, return_ty};
-use clippy_utils::{meets_msrv, msrvs};
 use rustc_errors::Applicability;
-use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, LangItem, Node};
+use rustc_hir::{def_id::DefId, BorrowKind, Expr, ExprKind, ItemKind, Node};
+use rustc_hir_typeck::{FnCtxt, Inherited};
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_lint::LateContext;
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::subst::{GenericArg, GenericArgKind, SubstsRef};
-use rustc_middle::ty::EarlyBinder;
-use rustc_middle::ty::{self, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
-use rustc_semver::RustcVersion;
+use rustc_middle::ty::{self, Clause, EarlyBinder, ParamTy, PredicateKind, ProjectionPredicate, TraitPredicate, Ty};
 use rustc_span::{sym, Symbol};
 use rustc_trait_selection::traits::{query::evaluate_obligation::InferCtxtExt as _, Obligation, ObligationCause};
-use rustc_hir_analysis::check::{FnCtxt, Inherited};
-use std::cmp::max;
 
 use super::UNNECESSARY_TO_OWNED;
 
@@ -29,7 +26,7 @@ pub fn check<'tcx>(
     method_name: Symbol,
     receiver: &'tcx Expr<'_>,
     args: &'tcx [Expr<'_>],
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) {
     if_chain! {
         if let Some(method_def_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
@@ -132,12 +129,11 @@ fn check_addr_of_expr(
                     cx,
                     UNNECESSARY_TO_OWNED,
                     parent.span,
-                    &format!("unnecessary use of `{}`", method_name),
+                    &format!("unnecessary use of `{method_name}`"),
                     "use",
                     format!(
-                        "{:&>width$}{}",
+                        "{:&>width$}{receiver_snippet}",
                         "",
-                        receiver_snippet,
                         width = n_target_refs - n_receiver_refs
                     ),
                     Applicability::MachineApplicable,
@@ -147,14 +143,14 @@ fn check_addr_of_expr(
             if_chain! {
                 if let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref);
                 if implements_trait(cx, receiver_ty, deref_trait_id, &[]);
-                if get_associated_type(cx, receiver_ty, deref_trait_id, "Target") == Some(target_ty);
+                if cx.get_associated_type(receiver_ty, deref_trait_id, "Target") == Some(target_ty);
                 then {
                     if n_receiver_refs > 0 {
                         span_lint_and_sugg(
                             cx,
                             UNNECESSARY_TO_OWNED,
                             parent.span,
-                            &format!("unnecessary use of `{}`", method_name),
+                            &format!("unnecessary use of `{method_name}`"),
                             "use",
                             receiver_snippet,
                             Applicability::MachineApplicable,
@@ -164,7 +160,7 @@ fn check_addr_of_expr(
                             cx,
                             UNNECESSARY_TO_OWNED,
                             expr.span.with_lo(receiver.span.hi()),
-                            &format!("unnecessary use of `{}`", method_name),
+                            &format!("unnecessary use of `{method_name}`"),
                             "remove this",
                             String::new(),
                             Applicability::MachineApplicable,
@@ -181,9 +177,9 @@ fn check_addr_of_expr(
                         cx,
                         UNNECESSARY_TO_OWNED,
                         parent.span,
-                        &format!("unnecessary use of `{}`", method_name),
+                        &format!("unnecessary use of `{method_name}`"),
                         "use",
-                        format!("{}.as_ref()", receiver_snippet),
+                        format!("{receiver_snippet}.as_ref()"),
                         Applicability::MachineApplicable,
                     );
                     return true;
@@ -201,7 +197,7 @@ fn check_into_iter_call_arg(
     expr: &Expr<'_>,
     method_name: Symbol,
     receiver: &Expr<'_>,
-    msrv: Option<RustcVersion>,
+    msrv: &Msrv,
 ) -> bool {
     if_chain! {
         if let Some(parent) = get_parent_expr(cx, expr);
@@ -216,7 +212,7 @@ fn check_into_iter_call_arg(
             if unnecessary_iter_cloned::check_for_loop_iter(cx, parent, method_name, receiver, true) {
                 return true;
             }
-            let cloned_or_copied = if is_copy(cx, item_ty) && meets_msrv(msrv, msrvs::ITERATOR_COPIED) {
+            let cloned_or_copied = if is_copy(cx, item_ty) && msrv.meets(msrvs::ITERATOR_COPIED) {
                 "copied"
             } else {
                 "cloned"
@@ -228,9 +224,9 @@ fn check_into_iter_call_arg(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 parent.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 "use",
-                format!("{}.iter().{}()", receiver_snippet, cloned_or_copied),
+                format!("{receiver_snippet}.iter().{cloned_or_copied}()"),
                 Applicability::MaybeIncorrect,
             );
             return true;
@@ -264,20 +260,31 @@ fn check_other_call_arg<'tcx>(
         if let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef);
         if trait_predicate.def_id() == deref_trait_id || trait_predicate.def_id() == as_ref_trait_id;
         let receiver_ty = cx.typeck_results().expr_ty(receiver);
-        if can_change_type(cx, maybe_arg, receiver_ty);
         // We can't add an `&` when the trait is `Deref` because `Target = &T` won't match
         // `Target = T`.
-        if n_refs > 0 || is_copy(cx, receiver_ty) || trait_predicate.def_id() != deref_trait_id;
-        let n_refs = max(n_refs, usize::from(!is_copy(cx, receiver_ty)));
+        if let Some((n_refs, receiver_ty)) = if n_refs > 0 || is_copy(cx, receiver_ty) {
+            Some((n_refs, receiver_ty))
+        } else if trait_predicate.def_id() != deref_trait_id {
+            Some((1, cx.tcx.mk_ref(
+                cx.tcx.lifetimes.re_erased,
+                ty::TypeAndMut {
+                    ty: receiver_ty,
+                    mutbl: Mutability::Not,
+                },
+            )))
+        } else {
+            None
+        };
+        if can_change_type(cx, maybe_arg, receiver_ty);
         if let Some(receiver_snippet) = snippet_opt(cx, receiver.span);
         then {
             span_lint_and_sugg(
                 cx,
                 UNNECESSARY_TO_OWNED,
                 maybe_arg.span,
-                &format!("unnecessary use of `{}`", method_name),
+                &format!("unnecessary use of `{method_name}`"),
                 "use",
-                format!("{:&>width$}{}", "", receiver_snippet, width = n_refs),
+                format!("{:&>n_refs$}{receiver_snippet}", ""),
                 Applicability::MachineApplicable,
             );
             return true;
@@ -338,12 +345,12 @@ fn get_input_traits_and_projections<'tcx>(
     let mut projection_predicates = Vec::new();
     for predicate in cx.tcx.param_env(callee_def_id).caller_bounds() {
         match predicate.kind().skip_binder() {
-            PredicateKind::Trait(trait_predicate) => {
+            PredicateKind::Clause(Clause::Trait(trait_predicate)) => {
                 if trait_predicate.trait_ref.self_ty() == input {
                     trait_predicates.push(trait_predicate);
                 }
             },
-            PredicateKind::Projection(projection_predicate) => {
+            PredicateKind::Clause(Clause::Projection(projection_predicate)) => {
                 if projection_predicate.projection_ty.self_ty() == input {
                     projection_predicates.push(projection_predicate);
                 }
@@ -364,7 +371,7 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
                 && let output_ty = return_ty(cx, item.hir_id())
                 && let local_def_id = cx.tcx.hir().local_def_id(item.hir_id())
                 && Inherited::build(cx.tcx, local_def_id).enter(|inherited| {
-                    let fn_ctxt = FnCtxt::new(&inherited, cx.param_env, item.hir_id());
+                    let fn_ctxt = FnCtxt::new(inherited, cx.param_env, item.hir_id());
                     fn_ctxt.can_coerce(ty, output_ty)
                 }) {
                     if has_lifetime(output_ty) && has_lifetime(ty) {
@@ -379,14 +386,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
             Node::Expr(parent_expr) => {
                 if let Some((callee_def_id, call_substs, recv, call_args)) = get_callee_substs_and_args(cx, parent_expr)
                 {
-                    if cx.tcx.lang_items().require(LangItem::IntoFutureIntoFuture) == Ok(callee_def_id) {
-                        return false;
-                    }
-
                     let fn_sig = cx.tcx.fn_sig(callee_def_id).skip_binder();
                     if let Some(arg_index) = recv.into_iter().chain(call_args).position(|arg| arg.hir_id == expr.hir_id)
                         && let Some(param_ty) = fn_sig.inputs().get(arg_index)
                         && let ty::Param(ParamTy { index: param_index , ..}) = param_ty.kind()
+                        // https://github.com/rust-lang/rust-clippy/issues/9504 and https://github.com/rust-lang/rust-clippy/issues/10021
+                        && (*param_index as usize) < call_substs.len()
                     {
                         if fn_sig
                             .inputs()
@@ -400,10 +405,12 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         let mut trait_predicates = cx.tcx.param_env(callee_def_id)
                             .caller_bounds().iter().filter(|predicate| {
-                            if let PredicateKind::Trait(trait_predicate) =  predicate.kind().skip_binder()
-                                && trait_predicate.trait_ref.self_ty() == *param_ty {
-                                    true
-                                } else {
+                            if let PredicateKind::Clause(Clause::Trait(trait_predicate))
+                                    = predicate.kind().skip_binder()
+                                && trait_predicate.trait_ref.self_ty() == *param_ty
+                            {
+                                true
+                            } else {
                                 false
                             }
                         });
@@ -420,10 +427,8 @@ fn can_change_type<'a>(cx: &LateContext<'a>, mut expr: &'a Expr<'a>, mut ty: Ty<
 
                         if trait_predicates.any(|predicate| {
                             let predicate = EarlyBinder(predicate).subst(cx.tcx, new_subst);
-                            let obligation = Obligation::new(ObligationCause::dummy(), cx.param_env, predicate);
-                            !cx.tcx
-                                .infer_ctxt()
-                                .enter(|infcx| infcx.predicate_must_hold_modulo_regions(&obligation))
+                            let obligation = Obligation::new(cx.tcx, ObligationCause::dummy(), cx.param_env, predicate);
+                            !cx.tcx.infer_ctxt().build().predicate_must_hold_modulo_regions(&obligation)
                         }) {
                             return false;
                         }
@@ -477,7 +482,7 @@ fn is_cow_into_owned(cx: &LateContext<'_>, method_name: Symbol, method_def_id: D
 }
 
 /// Returns true if the named method is `ToString::to_string` and it's called on a type that
-/// is string-like i.e. implements `AsRef<str>` or `Deref<str>`.
+/// is string-like i.e. implements `AsRef<str>` or `Deref<Target = str>`.
 fn is_to_string_on_string_like<'a>(
     cx: &LateContext<'_>,
     call_expr: &'a Expr<'a>,
@@ -493,7 +498,7 @@ fn is_to_string_on_string_like<'a>(
         && let GenericArgKind::Type(ty) = generic_arg.unpack()
         && let Some(deref_trait_id) = cx.tcx.get_diagnostic_item(sym::Deref)
         && let Some(as_ref_trait_id) = cx.tcx.get_diagnostic_item(sym::AsRef)
-        && (implements_trait(cx, ty, deref_trait_id, &[cx.tcx.types.str_.into()]) ||
+        && (cx.get_associated_type(ty, deref_trait_id, "Target") == Some(cx.tcx.types.str_) ||
             implements_trait(cx, ty, as_ref_trait_id, &[cx.tcx.types.str_.into()])) {
             true
         } else {

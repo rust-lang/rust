@@ -127,10 +127,6 @@ impl<'ll> CodegenCx<'ll, '_> {
     pub(crate) fn type_variadic_func(&self, args: &[&'ll Type], ret: &'ll Type) -> &'ll Type {
         unsafe { llvm::LLVMFunctionType(ret, args.as_ptr(), args.len() as c_uint, True) }
     }
-
-    pub(crate) fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
-        unsafe { llvm::LLVMRustArrayType(ty, len) }
-    }
 }
 
 impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
@@ -231,6 +227,10 @@ impl<'ll, 'tcx> BaseTypeMethods<'tcx> for CodegenCx<'ll, 'tcx> {
     fn val_ty(&self, v: &'ll Value) -> &'ll Type {
         common::val_ty(v)
     }
+
+    fn type_array(&self, ty: &'ll Type, len: u64) -> &'ll Type {
+        unsafe { llvm::LLVMRustArrayType(ty, len) }
+    }
 }
 
 impl Type {
@@ -238,7 +238,7 @@ impl Type {
         unsafe { llvm::LLVMInt8TypeInContext(llcx) }
     }
 
-    // Creates an integer type with the given number of bits, e.g., i24
+    /// Creates an integer type with the given number of bits, e.g., i24
     pub fn ix_llcx(llcx: &llvm::Context, num_bits: u64) -> &Type {
         unsafe { llvm::LLVMIntTypeInContext(llcx, num_bits as c_uint) }
     }
@@ -313,6 +313,21 @@ impl<'ll, 'tcx> TypeMembershipMethods<'tcx> for CodegenCx<'ll, 'tcx> {
                 self.llcx,
                 typeid.as_ptr() as *const c_char,
                 typeid.len() as c_uint,
+            )
+        }
+    }
+
+    fn set_kcfi_type_metadata(&self, function: &'ll Value, kcfi_typeid: u32) {
+        let kcfi_type_metadata = self.const_u32(kcfi_typeid);
+        unsafe {
+            llvm::LLVMGlobalSetMetadata(
+                function,
+                llvm::MD_kcfi_type as c_uint,
+                llvm::LLVMMDNodeInContext2(
+                    self.llcx,
+                    &llvm::LLVMValueAsMetadata(kcfi_type_metadata),
+                    1,
+                ),
             )
         }
     }

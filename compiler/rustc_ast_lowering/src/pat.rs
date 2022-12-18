@@ -22,16 +22,16 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ensure_sufficient_stack(|| {
             // loop here to avoid recursion
             let node = loop {
-                match pattern.kind {
+                match &pattern.kind {
                     PatKind::Wild => break hir::PatKind::Wild,
-                    PatKind::Ident(binding_mode, ident, ref sub) => {
-                        let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(&*s));
-                        break self.lower_pat_ident(pattern, binding_mode, ident, lower_sub);
+                    PatKind::Ident(binding_mode, ident, sub) => {
+                        let lower_sub = |this: &mut Self| sub.as_ref().map(|s| this.lower_pat(s));
+                        break self.lower_pat_ident(pattern, *binding_mode, *ident, lower_sub);
                     }
-                    PatKind::Lit(ref e) => {
+                    PatKind::Lit(e) => {
                         break hir::PatKind::Lit(self.lower_expr_within_pat(e, false));
                     }
-                    PatKind::TupleStruct(ref qself, ref path, ref pats) => {
+                    PatKind::TupleStruct(qself, path, pats) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
                             qself,
@@ -42,12 +42,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple struct");
                         break hir::PatKind::TupleStruct(qpath, pats, ddpos);
                     }
-                    PatKind::Or(ref pats) => {
+                    PatKind::Or(pats) => {
                         break hir::PatKind::Or(
                             self.arena.alloc_from_iter(pats.iter().map(|x| self.lower_pat_mut(x))),
                         );
                     }
-                    PatKind::Path(ref qself, ref path) => {
+                    PatKind::Path(qself, path) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
                             qself,
@@ -57,7 +57,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                         );
                         break hir::PatKind::Path(qpath);
                     }
-                    PatKind::Struct(ref qself, ref path, ref fields, etc) => {
+                    PatKind::Struct(qself, path, fields, etc) => {
                         let qpath = self.lower_qpath(
                             pattern.id,
                             qself,
@@ -78,32 +78,32 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                 span: self.lower_span(f.span),
                             }
                         }));
-                        break hir::PatKind::Struct(qpath, fs, etc);
+                        break hir::PatKind::Struct(qpath, fs, *etc);
                     }
-                    PatKind::Tuple(ref pats) => {
+                    PatKind::Tuple(pats) => {
                         let (pats, ddpos) = self.lower_pat_tuple(pats, "tuple");
                         break hir::PatKind::Tuple(pats, ddpos);
                     }
-                    PatKind::Box(ref inner) => {
+                    PatKind::Box(inner) => {
                         break hir::PatKind::Box(self.lower_pat(inner));
                     }
-                    PatKind::Ref(ref inner, mutbl) => {
-                        break hir::PatKind::Ref(self.lower_pat(inner), mutbl);
+                    PatKind::Ref(inner, mutbl) => {
+                        break hir::PatKind::Ref(self.lower_pat(inner), *mutbl);
                     }
-                    PatKind::Range(ref e1, ref e2, Spanned { node: ref end, .. }) => {
+                    PatKind::Range(e1, e2, Spanned { node: end, .. }) => {
                         break hir::PatKind::Range(
                             e1.as_deref().map(|e| self.lower_expr_within_pat(e, true)),
                             e2.as_deref().map(|e| self.lower_expr_within_pat(e, true)),
                             self.lower_range_end(end, e2.is_some()),
                         );
                     }
-                    PatKind::Slice(ref pats) => break self.lower_pat_slice(pats),
+                    PatKind::Slice(pats) => break self.lower_pat_slice(pats),
                     PatKind::Rest => {
                         // If we reach here the `..` pattern is not semantically allowed.
                         break self.ban_illegal_rest_pat(pattern.span);
                     }
                     // return inner to be processed in next loop
-                    PatKind::Paren(ref inner) => pattern = inner,
+                    PatKind::Paren(inner) => pattern = inner,
                     PatKind::MacCall(_) => panic!("{:?} shouldn't exist here", pattern.span),
                 }
             };
@@ -126,7 +126,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             // Note that unlike for slice patterns,
             // where `xs @ ..` is a legal sub-slice pattern,
             // it is not a legal sub-tuple pattern.
-            match pat.kind {
+            match &pat.kind {
                 // Found a sub-tuple rest pattern
                 PatKind::Rest => {
                     rest = Some((idx, pat.span));
@@ -134,12 +134,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 // Found a sub-tuple pattern `$binding_mode $ident @ ..`.
                 // This is not allowed as a sub-tuple pattern
-                PatKind::Ident(ref _bm, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Ident(_, ident, Some(sub)) if sub.is_rest() => {
                     let sp = pat.span;
                     self.tcx.sess.emit_err(SubTupleBinding {
                         span: sp,
                         ident_name: ident.name,
-                        ident,
+                        ident: *ident,
                         ctx,
                     });
                 }
@@ -176,7 +176,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut prev_rest_span = None;
 
         // Lowers `$bm $ident @ ..` to `$bm $ident @ _`.
-        let lower_rest_sub = |this: &mut Self, pat, ann, ident, sub| {
+        let lower_rest_sub = |this: &mut Self, pat, &ann, &ident, sub| {
             let lower_sub = |this: &mut Self| Some(this.pat_wild_with_node_id_of(sub));
             let node = this.lower_pat_ident(pat, ann, ident, lower_sub);
             this.pat_with_node_id_of(pat, node)
@@ -185,7 +185,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let mut iter = pats.iter();
         // Lower all the patterns until the first occurrence of a sub-slice pattern.
         for pat in iter.by_ref() {
-            match pat.kind {
+            match &pat.kind {
                 // Found a sub-slice pattern `..`. Record, lower it to `_`, and stop here.
                 PatKind::Rest => {
                     prev_rest_span = Some(pat.span);
@@ -194,7 +194,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 }
                 // Found a sub-slice pattern `$binding_mode $ident @ ..`.
                 // Record, lower it to `$binding_mode $ident @ _`, and stop here.
-                PatKind::Ident(ann, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Ident(ann, ident, Some(sub)) if sub.is_rest() => {
                     prev_rest_span = Some(sub.span);
                     slice = Some(self.arena.alloc(lower_rest_sub(self, pat, ann, ident, sub)));
                     break;
@@ -207,9 +207,9 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         // Lower all the patterns after the first sub-slice pattern.
         for pat in iter {
             // There was a previous subslice pattern; make sure we don't allow more.
-            let rest_span = match pat.kind {
+            let rest_span = match &pat.kind {
                 PatKind::Rest => Some(pat.span),
-                PatKind::Ident(ann, ident, Some(ref sub)) if sub.is_rest() => {
+                PatKind::Ident(ann, ident, Some(sub)) if sub.is_rest() => {
                     // #69103: Lower into `binding @ _` as above to avoid ICEs.
                     after.push(lower_rest_sub(self, pat, ann, ident, sub));
                     Some(sub.span)
@@ -239,7 +239,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         ident: Ident,
         lower_sub: impl FnOnce(&mut Self) -> Option<&'hir hir::Pat<'hir>>,
     ) -> hir::PatKind<'hir> {
-        match self.resolver.get_partial_res(p.id).map(|d| d.base_res()) {
+        match self.resolver.get_partial_res(p.id).map(|d| d.expect_full_res()) {
             // `None` can occur in body-less function signatures
             res @ (None | Some(Res::Local(_))) => {
                 let canonical_id = match res {
@@ -322,10 +322,13 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // m!(S);
     // ```
     fn lower_expr_within_pat(&mut self, expr: &Expr, allow_paths: bool) -> &'hir hir::Expr<'hir> {
-        match expr.kind {
-            ExprKind::Lit(..) | ExprKind::ConstBlock(..) | ExprKind::Err => {}
+        match &expr.kind {
+            ExprKind::Lit(..)
+            | ExprKind::ConstBlock(..)
+            | ExprKind::IncludedBytes(..)
+            | ExprKind::Err => {}
             ExprKind::Path(..) if allow_paths => {}
-            ExprKind::Unary(UnOp::Neg, ref inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
+            ExprKind::Unary(UnOp::Neg, inner) if matches!(inner.kind, ExprKind::Lit(_)) => {}
             _ => {
                 self.tcx.sess.emit_err(ArbitraryExpressionInPattern { span: expr.span });
                 return self.arena.alloc(self.expr_err(expr.span));

@@ -4,7 +4,7 @@ error[E0609]: no field `0` on type `fn(char, u16) -> Foo {Foo}`
 LL |     thing.bar.0;
    |               ^
    |
-help: use parentheses to instantiate this tuple struct
+help: use parentheses to construct this tuple struct
    |
 LL |     (thing.bar)(/* char */, /* u16 */).0;
    |     +         ++++++++++++++++++++++++

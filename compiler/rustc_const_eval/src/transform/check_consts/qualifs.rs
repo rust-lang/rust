@@ -8,7 +8,6 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir;
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, subst::SubstsRef, AdtDef, Ty};
-use rustc_span::DUMMY_SP;
 use rustc_trait_selection::traits::{
     self, ImplSource, Obligation, ObligationCause, SelectionContext,
 };
@@ -92,7 +91,7 @@ impl Qualif for HasMutInterior {
     }
 
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
-        !ty.is_freeze(cx.tcx.at(DUMMY_SP), cx.param_env)
+        !ty.is_freeze(cx.tcx, cx.param_env)
     }
 
     fn in_adt_inherently<'tcx>(
@@ -147,51 +146,45 @@ impl Qualif for NeedsNonConstDrop {
         qualifs.needs_non_const_drop
     }
 
+    #[instrument(level = "trace", skip(cx), ret)]
     fn in_any_value_of_ty<'tcx>(cx: &ConstCx<'_, 'tcx>, ty: Ty<'tcx>) -> bool {
         // Avoid selecting for simple cases, such as builtin types.
         if ty::util::is_trivially_const_drop(ty) {
             return false;
         }
 
-        let destruct = cx.tcx.require_lang_item(LangItem::Destruct, None);
-
         let obligation = Obligation::new(
-            ObligationCause::dummy(),
+            cx.tcx,
+            ObligationCause::dummy_with_span(cx.body.span),
             cx.param_env,
-            ty::Binder::dummy(ty::TraitPredicate {
-                trait_ref: ty::TraitRef {
-                    def_id: destruct,
-                    substs: cx.tcx.mk_substs_trait(ty, &[]),
-                },
-                constness: ty::BoundConstness::ConstIfConst,
-                polarity: ty::ImplPolarity::Positive,
-            }),
+            ty::Binder::dummy(cx.tcx.at(cx.body.span).mk_trait_ref(LangItem::Destruct, [ty]))
+                .with_constness(ty::BoundConstness::ConstIfConst),
         );
 
-        cx.tcx.infer_ctxt().enter(|infcx| {
-            let mut selcx = SelectionContext::new(&infcx);
-            let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
-                // If we couldn't select a const destruct candidate, then it's bad
-                return true;
-            };
+        let infcx = cx.tcx.infer_ctxt().build();
+        let mut selcx = SelectionContext::new(&infcx);
+        let Some(impl_src) = selcx.select(&obligation).ok().flatten() else {
+            // If we couldn't select a const destruct candidate, then it's bad
+            return true;
+        };
 
-            if !matches!(
-                impl_src,
-                ImplSource::ConstDestruct(_)
-                    | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
-            ) {
-                // If our const destruct candidate is not ConstDestruct or implied by the param env,
-                // then it's bad
-                return true;
-            }
+        trace!(?impl_src);
 
-            if impl_src.borrow_nested_obligations().is_empty() {
-                return false;
-            }
+        if !matches!(
+            impl_src,
+            ImplSource::ConstDestruct(_) | ImplSource::Param(_, ty::BoundConstness::ConstIfConst)
+        ) {
+            // If our const destruct candidate is not ConstDestruct or implied by the param env,
+            // then it's bad
+            return true;
+        }
 
-            // If we had any errors, then it's bad
-            !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
-        })
+        if impl_src.borrow_nested_obligations().is_empty() {
+            return false;
+        }
+
+        // If we had any errors, then it's bad
+        !traits::fully_solve_obligations(&infcx, impl_src.nested_obligations()).is_empty()
     }
 
     fn in_adt_inherently<'tcx>(
@@ -351,7 +344,11 @@ where
     // FIXME(valtrees): check whether const qualifs should behave the same
     // way for type and mir constants.
     let uneval = match constant.literal {
-        ConstantKind::Ty(ct) if matches!(ct.kind(), ty::ConstKind::Param(_)) => None,
+        ConstantKind::Ty(ct)
+            if matches!(ct.kind(), ty::ConstKind::Param(_) | ty::ConstKind::Error(_)) =>
+        {
+            None
+        }
         ConstantKind::Ty(c) => bug!("expected ConstKind::Param here, found {:?}", c),
         ConstantKind::Unevaluated(uv, _) => Some(uv),
         ConstantKind::Val(..) => None,

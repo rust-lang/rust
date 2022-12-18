@@ -2,10 +2,12 @@ use std::cell::Cell;
 use std::fmt;
 use std::mem;
 
+use either::{Either, Left, Right};
+
 use rustc_hir::{self as hir, def_id::DefId, definitions::DefPathData};
 use rustc_index::vec::IndexVec;
 use rustc_middle::mir;
-use rustc_middle::mir::interpret::{InterpError, InvalidProgramInfo};
+use rustc_middle::mir::interpret::{ErrorHandled, InterpError, InvalidProgramInfo};
 use rustc_middle::ty::layout::{
     self, FnAbiError, FnAbiOfHelpers, FnAbiRequest, LayoutError, LayoutOf, LayoutOfHelpers,
     TyAndLayout,
@@ -15,7 +17,7 @@ use rustc_middle::ty::{
 };
 use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_session::Limit;
-use rustc_span::{Pos, Span};
+use rustc_span::Span;
 use rustc_target::abi::{call::FnAbi, Align, HasDataLayout, Size, TargetDataLayout};
 
 use super::{
@@ -23,7 +25,7 @@ use super::{
     MemPlaceMeta, Memory, MemoryKind, Operand, Place, PlaceTy, PointerArithmetic, Provenance,
     Scalar, StackPopJump,
 };
-use crate::transform::validate::equal_up_to_regions;
+use crate::util;
 
 pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
     /// Stores the `Machine` instance.
@@ -121,13 +123,12 @@ pub struct Frame<'mir, 'tcx, Prov: Provenance = AllocId, Extra = ()> {
     ////////////////////////////////////////////////////////////////////////////////
     // Current position within the function
     ////////////////////////////////////////////////////////////////////////////////
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Right`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Needs to be public because ConstProp does unspeakable things to it.
-    pub loc: Result<mir::Location, Span>,
+    pub loc: Either<mir::Location, Span>,
 }
 
 /// What we store about a frame in an interpreter backtrace.
@@ -227,26 +228,34 @@ impl<'mir, 'tcx, Prov: Provenance> Frame<'mir, 'tcx, Prov> {
 impl<'mir, 'tcx, Prov: Provenance, Extra> Frame<'mir, 'tcx, Prov, Extra> {
     /// Get the current location within the Frame.
     ///
-    /// If this is `Err`, we are not currently executing any particular statement in
+    /// If this is `Left`, we are not currently executing any particular statement in
     /// this frame (can happen e.g. during frame initialization, and during unwinding on
     /// frames without cleanup code).
-    /// We basically abuse `Result` as `Either`.
     ///
     /// Used by priroda.
-    pub fn current_loc(&self) -> Result<mir::Location, Span> {
+    pub fn current_loc(&self) -> Either<mir::Location, Span> {
         self.loc
     }
 
     /// Return the `SourceInfo` of the current instruction.
     pub fn current_source_info(&self) -> Option<&mir::SourceInfo> {
-        self.loc.ok().map(|loc| self.body.source_info(loc))
+        self.loc.left().map(|loc| self.body.source_info(loc))
     }
 
     pub fn current_span(&self) -> Span {
         match self.loc {
-            Ok(loc) => self.body.source_info(loc).span,
-            Err(span) => span,
+            Left(loc) => self.body.source_info(loc).span,
+            Right(span) => span,
         }
+    }
+
+    pub fn lint_root(&self) -> Option<hir::HirId> {
+        self.current_source_info().and_then(|source_info| {
+            match &self.body.source_scopes[source_info.scope].local_data {
+                mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
+                mir::ClearCrossCrate::Clear => None,
+            }
+        })
     }
 }
 
@@ -256,22 +265,13 @@ impl<'tcx> fmt::Display for FrameInfo<'tcx> {
             if tcx.def_key(self.instance.def_id()).disambiguated_data.data
                 == DefPathData::ClosureExpr
             {
-                write!(f, "inside closure")?;
+                write!(f, "inside closure")
             } else {
-                write!(f, "inside `{}`", self.instance)?;
+                // Note: this triggers a `good_path_bug` state, which means that if we ever get here
+                // we must emit a diagnostic. We should never display a `FrameInfo` unless we
+                // actually want to emit a warning or error to the user.
+                write!(f, "inside `{}`", self.instance)
             }
-            if !self.span.is_dummy() {
-                let sm = tcx.sess.source_map();
-                let lo = sm.lookup_char_pos(self.span.lo());
-                write!(
-                    f,
-                    " at {}:{}:{}",
-                    sm.filename_for_diagnostics(&lo.file.name),
-                    lo.line,
-                    lo.col.to_usize() + 1
-                )?;
-            }
-            Ok(())
         })
     }
 }
@@ -351,8 +351,8 @@ pub(super) fn mir_assign_valid_types<'tcx>(
     // Type-changing assignments can happen when subtyping is used. While
     // all normal lifetimes are erased, higher-ranked types with their
     // late-bound lifetimes are still around and can lead to type
-    // differences. So we compare ignoring lifetimes.
-    if equal_up_to_regions(tcx, param_env, src.ty, dest.ty) {
+    // differences.
+    if util::is_subtype(tcx, param_env, src.ty, dest.ty) {
         // Make sure the layout is equal, too -- just to be safe. Miri really
         // needs layout equality. For performance reason we skip this check when
         // the types are equal. Equal types *can* have different layouts when
@@ -465,7 +465,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
     #[inline]
     pub fn type_is_freeze(&self, ty: Ty<'tcx>) -> bool {
-        ty.is_freeze(self.tcx, self.param_env)
+        ty.is_freeze(*self.tcx, self.param_env)
     }
 
     pub fn load_mir(
@@ -569,7 +569,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         metadata: &MemPlaceMeta<M::Provenance>,
         layout: &TyAndLayout<'tcx>,
     ) -> InterpResult<'tcx, Option<(Size, Align)>> {
-        if !layout.is_unsized() {
+        if layout.is_sized() {
             return Ok(Some((layout.size, layout.align.abi)));
         }
         match layout.ty.kind() {
@@ -595,7 +595,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                 // the last field).  Can't have foreign types here, how would we
                 // adjust alignment and size for them?
                 let field = layout.field(self, layout.fields.count() - 1);
-                let Some((unsized_size, unsized_align)) = self.size_and_align_of(metadata, &field)? else {
+                let Some((unsized_size, mut unsized_align)) = self.size_and_align_of(metadata, &field)? else {
                     // A field with an extern type. We don't know the actual dynamic size
                     // or the alignment.
                     return Ok(None);
@@ -610,6 +610,13 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
 
                 // Return the sum of sizes and max of aligns.
                 let size = sized_size + unsized_size; // `Size` addition
+
+                // Packed types ignore the alignment of their fields.
+                if let ty::Adt(def, _) = layout.ty.kind() {
+                    if def.repr().packed() {
+                        unsized_align = sized_align;
+                    }
+                }
 
                 // Choose max of two known alignments (combined value must
                 // be aligned according to more restrictive of the two).
@@ -666,10 +673,14 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         return_to_block: StackPopCleanup,
     ) -> InterpResult<'tcx> {
         trace!("body: {:#?}", body);
+        // Clobber previous return place contents, nobody is supposed to be able to see them any more
+        // This also checks dereferenceable, but not align. We rely on all constructed places being
+        // sufficiently aligned (in particular we rely on `deref_operand` checking alignment).
+        self.write_uninit(return_place)?;
         // first push a stack frame so we have access to the local substs
         let pre_frame = Frame {
             body,
-            loc: Err(body.span), // Span used for errors caused during preamble.
+            loc: Right(body.span), // Span used for errors caused during preamble.
             return_to_block,
             return_place: return_place.clone(),
             // empty local array, we fill it in below, after we are inside the stack frame and
@@ -686,12 +697,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         for ct in &body.required_consts {
             let span = ct.span;
             let ct = self.subst_from_current_frame_and_normalize_erasing_regions(ct.literal)?;
-            self.const_to_op(&ct, None).map_err(|err| {
-                // If there was an error, set the span of the current frame to this constant.
-                // Avoiding doing this when evaluation succeeds.
-                self.frame_mut().loc = Err(span);
-                err
-            })?;
+            self.eval_mir_constant(&ct, Some(span), None)?;
         }
 
         // Most locals are initially dead.
@@ -708,7 +714,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // done
         self.frame_mut().locals = locals;
         M::after_stack_push(self)?;
-        self.frame_mut().loc = Ok(mir::Location::START);
+        self.frame_mut().loc = Left(mir::Location::START);
 
         let span = info_span!("frame", "{}", instance);
         self.frame_mut().tracing_span.enter(span);
@@ -719,7 +725,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// Jump to the given block.
     #[inline]
     pub fn go_to_block(&mut self, target: mir::BasicBlock) {
-        self.frame_mut().loc = Ok(mir::Location { block: target, statement_index: 0 });
+        self.frame_mut().loc = Left(mir::Location { block: target, statement_index: 0 });
     }
 
     /// *Return* to the given `target` basic block.
@@ -745,8 +751,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
     /// unwinding, and doing so is UB.
     pub fn unwind_to_block(&mut self, target: StackPopUnwind) -> InterpResult<'tcx> {
         self.frame_mut().loc = match target {
-            StackPopUnwind::Cleanup(block) => Ok(mir::Location { block, statement_index: 0 }),
-            StackPopUnwind::Skip => Err(self.frame_mut().body.span),
+            StackPopUnwind::Cleanup(block) => Left(mir::Location { block, statement_index: 0 }),
+            StackPopUnwind::Skip => Right(self.frame_mut().body.span),
             StackPopUnwind::NotAllowed => {
                 throw_ub_format!("unwinding past a stack frame that does not allow unwinding")
             }
@@ -778,8 +784,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         assert_eq!(
             unwinding,
             match self.frame().loc {
-                Ok(loc) => self.body().basic_blocks[loc.block].is_cleanup,
-                Err(_) => true,
+                Left(loc) => self.body().basic_blocks[loc.block].is_cleanup,
+                Right(_) => true,
             }
         );
         if unwinding && self.frame_idx() == 0 {
@@ -902,9 +908,32 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(())
     }
 
-    pub fn eval_to_allocation(
+    /// Call a query that can return `ErrorHandled`. If `span` is `Some`, point to that span when an error occurs.
+    pub fn ctfe_query<T>(
+        &self,
+        span: Option<Span>,
+        query: impl FnOnce(TyCtxtAt<'tcx>) -> Result<T, ErrorHandled>,
+    ) -> InterpResult<'tcx, T> {
+        // Use a precise span for better cycle errors.
+        query(self.tcx.at(span.unwrap_or_else(|| self.cur_span()))).map_err(|err| {
+            match err {
+                ErrorHandled::Reported(err) => {
+                    if let Some(span) = span {
+                        // To make it easier to figure out where this error comes from, also add a note at the current location.
+                        self.tcx.sess.span_note_without_error(span, "erroneous constant used");
+                    }
+                    err_inval!(AlreadyReported(err))
+                }
+                ErrorHandled::TooGeneric => err_inval!(TooGeneric),
+            }
+            .into()
+        })
+    }
+
+    pub fn eval_global(
         &self,
         gid: GlobalId<'tcx>,
+        span: Option<Span>,
     ) -> InterpResult<'tcx, MPlaceTy<'tcx, M::Provenance>> {
         // For statics we pick `ParamEnv::reveal_all`, because statics don't have generics
         // and thus don't care about the parameter environment. While we could just use
@@ -917,8 +946,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             self.param_env
         };
         let param_env = param_env.with_const();
-        // Use a precise span for better cycle errors.
-        let val = self.tcx.at(self.cur_span()).eval_to_allocation_raw(param_env.and(gid))?;
+        let val = self.ctfe_query(span, |tcx| tcx.eval_to_allocation_raw(param_env.and(gid)))?;
         self.raw_const_to_mplace(val)
     }
 
@@ -935,12 +963,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         // This deliberately does *not* honor `requires_caller_location` since it is used for much
         // more than just panics.
         for frame in stack.iter().rev() {
-            let lint_root = frame.current_source_info().and_then(|source_info| {
-                match &frame.body.source_scopes[source_info.scope].local_data {
-                    mir::ClearCrossCrate::Set(data) => Some(data.lint_root),
-                    mir::ClearCrossCrate::Clear => None,
-                }
-            });
+            let lint_root = frame.lint_root();
             let span = frame.current_span();
 
             frames.push(FrameInfo { span, instance: frame.instance, lint_root });

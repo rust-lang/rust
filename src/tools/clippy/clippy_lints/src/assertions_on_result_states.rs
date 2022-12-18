@@ -69,9 +69,8 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                         "called `assert!` with `Result::is_ok`",
                         "replace with",
                         format!(
-                            "{}.unwrap(){}",
-                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0,
-                            semicolon
+                            "{}.unwrap(){semicolon}",
+                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0
                         ),
                         app,
                     );
@@ -84,9 +83,8 @@ impl<'tcx> LateLintPass<'tcx> for AssertionsOnResultStates {
                         "called `assert!` with `Result::is_err`",
                         "replace with",
                         format!(
-                            "{}.unwrap_err(){}",
-                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0,
-                            semicolon
+                            "{}.unwrap_err(){semicolon}",
+                            snippet_with_context(cx, recv.span, condition.span.ctxt(), "..", &mut app).0
                         ),
                         app,
                     );

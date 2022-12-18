@@ -15,7 +15,7 @@ impl Drop for Foo {
 }
 
 fn make_dyn_star(i: Foo) {
-    let _dyn_i: dyn* Debug = i as dyn* Debug;
+    let _dyn_i: dyn* Debug = i;
 }
 
 fn main() {

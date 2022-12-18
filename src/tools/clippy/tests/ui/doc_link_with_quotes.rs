@@ -4,9 +4,14 @@ fn main() {
     foo()
 }
 
-/// Calls ['bar']
+/// Calls ['bar'] uselessly
 pub fn foo() {
     bar()
 }
 
+/// # Examples
+/// This demonstrates issue \#8961
+/// ```
+/// let _ = vec!['w', 'a', 't'];
+/// ```
 pub fn bar() {}

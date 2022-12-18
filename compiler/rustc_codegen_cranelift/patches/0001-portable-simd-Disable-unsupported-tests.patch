@@ -1,80 +1,29 @@
-From 97c473937382a5b5858d9cce3c947855d23b2dc5 Mon Sep 17 00:00:00 2001
+From b742f03694b920cc14400727d54424e8e1b60928 Mon Sep 17 00:00:00 2001
 From: bjorn3 <bjorn3@users.noreply.github.com>
 Date: Thu, 18 Nov 2021 19:28:40 +0100
 Subject: [PATCH] Disable unsupported tests
 
 ---
- crates/core_simd/src/math.rs         | 6 ++++++
- crates/core_simd/src/vector.rs       | 2 ++
- crates/core_simd/tests/masks.rs      | 2 ++
- crates/core_simd/tests/ops_macros.rs | 4 ++++
- 4 files changed, 14 insertions(+)
+ crates/core_simd/src/elements/int.rs     | 8 ++++++++
+ crates/core_simd/src/elements/uint.rs    | 4 ++++
+ crates/core_simd/src/masks/full_masks.rs | 6 ++++++
+ crates/core_simd/src/vector.rs           | 2 ++
+ crates/core_simd/tests/masks.rs          | 3 ---
+ 5 files changed, 20 insertions(+), 3 deletions(-)
 
-diff --git a/crates/core_simd/src/math.rs b/crates/core_simd/src/math.rs
-index 2bae414..2f87499 100644
---- a/crates/core_simd/src/math.rs
-+++ b/crates/core_simd/src/math.rs
-@@ -5,6 +5,7 @@ macro_rules! impl_uint_arith {
-     ($($ty:ty),+) => {
-         $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
- 
-+            /*
-             /// Lanewise saturating add.
-             ///
-             /// # Examples
-@@ -43,6 +44,7 @@ macro_rules! impl_uint_arith {
-             pub fn saturating_sub(self, second: Self) -> Self {
-                 unsafe { simd_saturating_sub(self, second) }
-             }
-+            */
-         })+
-     }
- }
-@@ -51,6 +53,7 @@ macro_rules! impl_int_arith {
-     ($($ty:ty),+) => {
-         $( impl<const LANES: usize> Simd<$ty, LANES> where LaneCount<LANES>: SupportedLaneCount {
- 
-+            /*
-             /// Lanewise saturating add.
-             ///
-             /// # Examples
-@@ -89,6 +92,7 @@ macro_rules! impl_int_arith {
-             pub fn saturating_sub(self, second: Self) -> Self {
-                 unsafe { simd_saturating_sub(self, second) }
-             }
-+            */
- 
-             /// Lanewise absolute value, implemented in Rust.
-             /// Every lane becomes its absolute value.
-@@ -109,6 +113,7 @@ macro_rules! impl_int_arith {
-                 (self^m) - m
-             }
- 
-+            /*
-             /// Lanewise saturating absolute value, implemented in Rust.
-             /// As abs(), except the MIN value becomes MAX instead of itself.
-             ///
-@@ -151,6 +156,7 @@ macro_rules! impl_int_arith {
-             pub fn saturating_neg(self) -> Self {
-                 Self::splat(0).saturating_sub(self)
-             }
-+            */
-         })+
-     }
- }
 diff --git a/crates/core_simd/src/vector.rs b/crates/core_simd/src/vector.rs
-index 7c5ec2b..c8631e8 100644
+index e8e8f68..7173c24 100644
 --- a/crates/core_simd/src/vector.rs
 +++ b/crates/core_simd/src/vector.rs
-@@ -75,6 +75,7 @@ where
-         Self(array)
+@@ -250,6 +250,7 @@ where
+         unsafe { intrinsics::simd_cast(self) }
      }
  
 +    /*
      /// Reads from potentially discontiguous indices in `slice` to construct a SIMD vector.
      /// If an index is out-of-bounds, the lane is instead selected from the `or` vector.
      ///
-@@ -297,6 +298,7 @@ where
+@@ -473,6 +474,7 @@ where
              // Cleared ☢️ *mut T Zone
          }
      }
@@ -82,26 +31,5 @@ index 7c5ec2b..c8631e8 100644
  }
  
  impl<T, const LANES: usize> Copy for Simd<T, LANES>
-diff --git a/crates/core_simd/tests/masks.rs b/crates/core_simd/tests/masks.rs
-index 6a8ecd3..68fcb49 100644
---- a/crates/core_simd/tests/masks.rs
-+++ b/crates/core_simd/tests/masks.rs
-@@ -68,6 +68,7 @@ macro_rules! test_mask_api {
-                 assert_eq!(core_simd::Mask::<$type, 8>::from_int(int), mask);
-             }
- 
-+            /*
-             #[cfg(feature = "generic_const_exprs")]
-             #[test]
-             fn roundtrip_bitmask_conversion() {
-@@ -80,6 +81,7 @@ macro_rules! test_mask_api {
-                 assert_eq!(bitmask, [0b01001001, 0b10000011]);
-                 assert_eq!(core_simd::Mask::<$type, 16>::from_bitmask(bitmask), mask);
-             }
-+            */
-         }
-     }
- }
 -- 
-2.26.2.7.g19db9cfb68
-
+2.25.1

@@ -52,8 +52,8 @@ pub fn expand_env<'cx>(
     sp: Span,
     tts: TokenStream,
 ) -> Box<dyn base::MacResult + 'cx> {
-    let mut exprs = match get_exprs_from_tts(cx, sp, tts) {
-        Some(ref exprs) if exprs.is_empty() => {
+    let mut exprs = match get_exprs_from_tts(cx, tts) {
+        Some(exprs) if exprs.is_empty() => {
             cx.span_err(sp, "env! takes 1 or 2 arguments");
             return DummyResult::any(sp);
         }

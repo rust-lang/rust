@@ -150,8 +150,18 @@ metadata_no_multiple_global_alloc =
 metadata_prev_global_alloc =
     previous global allocator defined here
 
+metadata_no_multiple_alloc_error_handler =
+    cannot define multiple allocation error handlers
+    .label = cannot define a new allocation error handler
+
+metadata_prev_alloc_error_handler =
+    previous allocation error handler defined here
+
 metadata_conflicting_global_alloc =
     the `#[global_allocator]` in {$other_crate_name} conflicts with global allocator in: {$crate_name}
+
+metadata_conflicting_alloc_error_handler =
+    the `#[alloc_error_handler]` in {$other_crate_name} conflicts with allocation error handler in: {$crate_name}
 
 metadata_global_alloc_required =
     no global memory allocator found but one is required; link to std or add `#[global_allocator]` to a static item that implements the GlobalAlloc trait
@@ -164,6 +174,8 @@ metadata_failed_write_error =
 
 metadata_missing_native_library =
     could not find native static library `{$libname}`, perhaps an -L flag is missing?
+
+metadata_only_provide_library_name = only provide the library name `{$suggested_name}`, not the full filename
 
 metadata_failed_create_tempdir =
     couldn't create a temp dir: {$err}
@@ -257,7 +269,7 @@ metadata_crate_location_unknown_type =
     extern location for {$crate_name} is of an unknown type: {$path}
 
 metadata_lib_filename_form =
-    file name should be lib*.rlib or {dll_prefix}*.{dll_suffix}
+    file name should be lib*.rlib or {$dll_prefix}*{$dll_suffix}
 
 metadata_multiple_import_name_type =
     multiple `import_name_type` arguments in a single `#[link]` attribute

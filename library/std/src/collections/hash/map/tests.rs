@@ -1115,3 +1115,9 @@ fn from_array() {
     // that's a problem!
     let _must_not_require_type_annotation = HashMap::from([(1, 2)]);
 }
+
+#[test]
+fn const_with_hasher() {
+    const X: HashMap<(), (), ()> = HashMap::with_hasher(());
+    assert_eq!(X.len(), 0);
+}

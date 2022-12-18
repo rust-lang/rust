@@ -1491,6 +1491,7 @@ function initSearch(rawSearchIndex) {
         const target = searchState.focusedByTab[searchState.currentTab] ||
             document.querySelectorAll(".search-results.active a").item(0) ||
             document.querySelectorAll("#titles > button").item(searchState.currentTab);
+        searchState.focusedByTab[searchState.currentTab] = null;
         if (target) {
             target.focus();
         }
@@ -1593,7 +1594,6 @@ function initSearch(rawSearchIndex) {
                 link.className = "result-" + type;
                 link.href = item.href;
 
-                const wrapper = document.createElement("div");
                 const resultName = document.createElement("div");
                 resultName.className = "result-name";
 
@@ -1614,16 +1614,13 @@ function initSearch(rawSearchIndex) {
                 resultName.insertAdjacentHTML(
                     "beforeend",
                     item.displayPath + "<span class=\"" + type + "\">" + name + extra + "</span>");
-                wrapper.appendChild(resultName);
+                link.appendChild(resultName);
 
                 const description = document.createElement("div");
                 description.className = "desc";
-                const spanDesc = document.createElement("span");
-                spanDesc.insertAdjacentHTML("beforeend", item.desc);
+                description.insertAdjacentHTML("beforeend", item.desc);
 
-                description.appendChild(spanDesc);
-                wrapper.appendChild(description);
-                link.appendChild(wrapper);
+                link.appendChild(description);
                 output.appendChild(link);
             });
         } else if (query.error === null) {
@@ -1769,12 +1766,12 @@ function initSearch(rawSearchIndex) {
      * @param {boolean} [forced]
      */
     function search(e, forced) {
-        const params = searchState.getQueryStringParams();
-        const query = parseQuery(searchState.input.value.trim());
-
         if (e) {
             e.preventDefault();
         }
+
+        const query = parseQuery(searchState.input.value.trim());
+        let filterCrates = getFilterCrates();
 
         if (!forced && query.userQuery === currentResults) {
             if (query.userQuery.length > 0) {
@@ -1783,7 +1780,9 @@ function initSearch(rawSearchIndex) {
             return;
         }
 
-        let filterCrates = getFilterCrates();
+        searchState.setLoadingSearch();
+
+        const params = searchState.getQueryStringParams();
 
         // In case we have no information about the saved crate and there is a URL query parameter,
         // we override it with the URL query parameter.

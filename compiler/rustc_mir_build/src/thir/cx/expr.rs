@@ -14,11 +14,10 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AutoBorrow, AutoBorrowMutability, PointerCast,
 };
-use rustc_middle::ty::subst::{InternalSubsts, SubstsRef};
+use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::{
     self, AdtKind, InlineConstSubsts, InlineConstSubstsParts, ScalarInt, Ty, UpvarSubsts, UserType,
 };
-use rustc_span::def_id::DefId;
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 
@@ -51,11 +50,17 @@ impl<'tcx> Cx<'tcx> {
         trace!(?expr.ty);
 
         // Now apply adjustments, if any.
-        for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
-            trace!(?expr, ?adjustment);
-            let span = expr.span;
-            expr =
-                self.apply_adjustment(hir_expr, expr, adjustment, adjustment_span.unwrap_or(span));
+        if self.apply_adjustments {
+            for adjustment in self.typeck_results.expr_adjustments(hir_expr) {
+                trace!(?expr, ?adjustment);
+                let span = expr.span;
+                expr = self.apply_adjustment(
+                    hir_expr,
+                    expr,
+                    adjustment,
+                    adjustment_span.unwrap_or(span),
+                );
+            }
         }
 
         trace!(?expr.ty, "after adjustments");
@@ -159,6 +164,7 @@ impl<'tcx> Cx<'tcx> {
             Adjust::Borrow(AutoBorrow::RawPtr(mutability)) => {
                 ExprKind::AddressOf { mutability, arg: self.thir.exprs.push(expr) }
             }
+            Adjust::DynStar => ExprKind::Cast { source: self.thir.exprs.push(expr) },
         };
 
         Expr { temp_lifetime, ty: adjustment.target, span, kind }
@@ -480,7 +486,7 @@ impl<'tcx> Cx<'tcx> {
                             substs,
                             user_ty,
                             fields: self.field_refs(fields),
-                            base: base.as_ref().map(|base| FruInfo {
+                            base: base.map(|base| FruInfo {
                                 base: self.mirror_expr(base),
                                 field_types: self.typeck_results().fru_field_types()[expr.hir_id]
                                     .iter()
@@ -583,7 +589,7 @@ impl<'tcx> Cx<'tcx> {
                             InlineAsmOperand::Out {
                                 reg,
                                 late,
-                                expr: expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                                expr: expr.map(|expr| self.mirror_expr(expr)),
                             }
                         }
                         hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
@@ -598,27 +604,25 @@ impl<'tcx> Cx<'tcx> {
                             reg,
                             late,
                             in_expr: self.mirror_expr(in_expr),
-                            out_expr: out_expr.as_ref().map(|expr| self.mirror_expr(expr)),
+                            out_expr: out_expr.map(|expr| self.mirror_expr(expr)),
                         },
                         hir::InlineAsmOperand::Const { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::Const { value, span }
                         }
                         hir::InlineAsmOperand::SymFn { ref anon_const } => {
-                            let anon_const_def_id = tcx.hir().local_def_id(anon_const.hir_id);
                             let value = mir::ConstantKind::from_anon_const(
                                 tcx,
-                                anon_const_def_id,
+                                anon_const.def_id,
                                 self.param_env,
                             );
-                            let span = tcx.hir().span(anon_const.hir_id);
+                            let span = tcx.def_span(anon_const.def_id);
 
                             InlineAsmOperand::SymFn { value, span }
                         }
@@ -633,7 +637,7 @@ impl<'tcx> Cx<'tcx> {
 
             hir::ExprKind::ConstBlock(ref anon_const) => {
                 let ty = self.typeck_results().node_type(anon_const.hir_id);
-                let did = tcx.hir().local_def_id(anon_const.hir_id).to_def_id();
+                let did = anon_const.def_id.to_def_id();
                 let typeck_root_def_id = tcx.typeck_root_def_id(did);
                 let parent_substs =
                     tcx.erase_regions(InternalSubsts::identity_for_item(tcx, typeck_root_def_id));
@@ -652,13 +656,11 @@ impl<'tcx> Cx<'tcx> {
 
                 ExprKind::Repeat { value: self.mirror_expr(v), count: *count }
             }
-            hir::ExprKind::Ret(ref v) => {
-                ExprKind::Return { value: v.as_ref().map(|v| self.mirror_expr(v)) }
-            }
+            hir::ExprKind::Ret(ref v) => ExprKind::Return { value: v.map(|v| self.mirror_expr(v)) },
             hir::ExprKind::Break(dest, ref value) => match dest.target_id {
                 Ok(target_id) => ExprKind::Break {
                     label: region::Scope { id: target_id.local_id, data: region::ScopeData::Node },
-                    value: value.as_ref().map(|value| self.mirror_expr(value)),
+                    value: value.map(|value| self.mirror_expr(value)),
                 },
                 Err(err) => bug!("invalid loop id for break: {}", err),
             },
@@ -702,7 +704,7 @@ impl<'tcx> Cx<'tcx> {
             hir::ExprKind::Field(ref source, ..) => ExprKind::Field {
                 lhs: self.mirror_expr(source),
                 variant_index: VariantIdx::new(0),
-                name: Field::new(tcx.field_index(expr.hir_id, self.typeck_results)),
+                name: Field::new(self.typeck_results.field_index(expr.hir_id)),
             },
             hir::ExprKind::Cast(ref source, ref cast_ty) => {
                 // Check for a user-given type annotation on this `cast`
@@ -801,12 +803,12 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         expr: &hir::Expr<'_>,
         span: Span,
-        overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
+        overloaded_callee: Option<Ty<'tcx>>,
     ) -> Expr<'tcx> {
         let temp_lifetime =
             self.rvalue_scopes.temporary_scope(self.region_scope_tree, expr.hir_id.local_id);
-        let (def_id, substs, user_ty) = match overloaded_callee {
-            Some((def_id, substs)) => (def_id, substs, None),
+        let (ty, user_ty) = match overloaded_callee {
+            Some(fn_def) => (fn_def, None),
             None => {
                 let (kind, def_id) =
                     self.typeck_results().type_dependent_def(expr.hir_id).unwrap_or_else(|| {
@@ -814,10 +816,12 @@ impl<'tcx> Cx<'tcx> {
                     });
                 let user_ty = self.user_substs_applied_to_res(expr.hir_id, Res::Def(kind, def_id));
                 debug!("method_callee: user_ty={:?}", user_ty);
-                (def_id, self.typeck_results().node_substs(expr.hir_id), user_ty)
+                (
+                    self.tcx().mk_fn_def(def_id, self.typeck_results().node_substs(expr.hir_id)),
+                    user_ty,
+                )
             }
         };
-        let ty = self.tcx().mk_fn_def(def_id, substs);
         Expr { temp_lifetime, ty, span, kind: ExprKind::ZstLiteral { user_ty } }
     }
 
@@ -852,9 +856,7 @@ impl<'tcx> Cx<'tcx> {
 
             Res::Def(DefKind::ConstParam, def_id) => {
                 let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-                let item_id = self.tcx.hir().get_parent_node(hir_id);
-                let item_def_id = self.tcx.hir().local_def_id(item_id);
-                let generics = self.tcx.generics_of(item_def_id);
+                let generics = self.tcx.generics_of(hir_id.owner);
                 let index = generics.param_def_id_to_index[&def_id];
                 let name = self.tcx.hir().name(hir_id);
                 let param = ty::ParamConst::new(index, name);
@@ -954,7 +956,7 @@ impl<'tcx> Cx<'tcx> {
         &mut self,
         expr: &'tcx hir::Expr<'tcx>,
         place_ty: Ty<'tcx>,
-        overloaded_callee: Option<(DefId, SubstsRef<'tcx>)>,
+        overloaded_callee: Option<Ty<'tcx>>,
         args: Box<[ExprId]>,
         span: Span,
     ) -> ExprKind<'tcx> {
@@ -1077,7 +1079,7 @@ impl<'tcx> Cx<'tcx> {
         fields
             .iter()
             .map(|field| FieldExpr {
-                name: Field::new(self.tcx.field_index(field.hir_id, self.typeck_results)),
+                name: Field::new(self.typeck_results.field_index(field.hir_id)),
                 expr: self.mirror_expr(field.expr),
             })
             .collect()

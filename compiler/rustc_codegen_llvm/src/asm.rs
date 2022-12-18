@@ -130,7 +130,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     op_idx.insert(idx, constraints.len());
                     constraints.push(reg_to_llvm(reg, Some(&value.layout)));
                 }
-                InlineAsmOperandRef::InOut { reg, late: _, in_value, out_place: _ } => {
+                InlineAsmOperandRef::InOut { reg, late, in_value, out_place: _ } => {
                     let value = llvm_fixup_input(
                         self,
                         in_value.immediate(),
@@ -138,7 +138,16 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                         &in_value.layout,
                     );
                     inputs.push(value);
-                    constraints.push(format!("{}", op_idx[&idx]));
+
+                    // In the case of fixed registers, we have the choice of
+                    // either using a tied operand or duplicating the constraint.
+                    // We prefer the latter because it matches the behavior of
+                    // Clang.
+                    if late && matches!(reg, InlineAsmRegOrRegClass::Reg(_)) {
+                        constraints.push(format!("{}", reg_to_llvm(reg, Some(&in_value.layout))));
+                    } else {
+                        constraints.push(format!("{}", op_idx[&idx]));
+                    }
                 }
                 InlineAsmOperandRef::SymFn { instance } => {
                     inputs.push(self.cx.get_fn(instance));
@@ -276,13 +285,13 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
         let mut attrs = SmallVec::<[_; 2]>::new();
         if options.contains(InlineAsmOptions::PURE) {
             if options.contains(InlineAsmOptions::NOMEM) {
-                attrs.push(llvm::AttributeKind::ReadNone.create_attr(self.cx.llcx));
+                attrs.push(llvm::MemoryEffects::None.create_attr(self.cx.llcx));
             } else if options.contains(InlineAsmOptions::READONLY) {
-                attrs.push(llvm::AttributeKind::ReadOnly.create_attr(self.cx.llcx));
+                attrs.push(llvm::MemoryEffects::ReadOnly.create_attr(self.cx.llcx));
             }
             attrs.push(llvm::AttributeKind::WillReturn.create_attr(self.cx.llcx));
         } else if options.contains(InlineAsmOptions::NOMEM) {
-            attrs.push(llvm::AttributeKind::InaccessibleMemOnly.create_attr(self.cx.llcx));
+            attrs.push(llvm::MemoryEffects::InaccessibleMemOnly.create_attr(self.cx.llcx));
         } else {
             // LLVM doesn't have an attribute to represent ReadOnly + SideEffect
         }
@@ -496,6 +505,44 @@ fn xmm_reg_index(reg: InlineAsmReg) -> Option<u32> {
     }
 }
 
+/// If the register is an AArch64 integer register then return its index.
+fn a64_reg_index(reg: InlineAsmReg) -> Option<u32> {
+    match reg {
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x0) => Some(0),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x1) => Some(1),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x2) => Some(2),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x3) => Some(3),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x4) => Some(4),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x5) => Some(5),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x6) => Some(6),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x7) => Some(7),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x8) => Some(8),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x9) => Some(9),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x10) => Some(10),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x11) => Some(11),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x12) => Some(12),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x13) => Some(13),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x14) => Some(14),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x15) => Some(15),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x16) => Some(16),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x17) => Some(17),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x18) => Some(18),
+        // x19 is reserved
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x20) => Some(20),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x21) => Some(21),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x22) => Some(22),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x23) => Some(23),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x24) => Some(24),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x25) => Some(25),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x26) => Some(26),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x27) => Some(27),
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x28) => Some(28),
+        // x29 is reserved
+        InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) => Some(30),
+        _ => None,
+    }
+}
+
 /// If the register is an AArch64 vector register then return its index.
 fn a64_vreg_index(reg: InlineAsmReg) -> Option<u32> {
     match reg {
@@ -526,6 +573,22 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     'x'
                 };
                 format!("{{{}mm{}}}", class, idx)
+            } else if let Some(idx) = a64_reg_index(reg) {
+                let class = if let Some(layout) = layout {
+                    match layout.size.bytes() {
+                        8 => 'x',
+                        _ => 'w',
+                    }
+                } else {
+                    // We use i32 as the type for discarded outputs
+                    'w'
+                };
+                if class == 'x' && reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
+                    // LLVM doesn't recognize x30. use lr instead.
+                    "{lr}".to_string()
+                } else {
+                    format!("{{{}{}}}", class, idx)
+                }
             } else if let Some(idx) = a64_vreg_index(reg) {
                 let class = if let Some(layout) = layout {
                     match layout.size.bytes() {
@@ -541,9 +604,6 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                     'q'
                 };
                 format!("{{{}{}}}", class, idx)
-            } else if reg == InlineAsmReg::AArch64(AArch64InlineAsmReg::x30) {
-                // LLVM doesn't recognize x30
-                "{lr}".to_string()
             } else if reg == InlineAsmReg::Arm(ArmInlineAsmReg::r14) {
                 // LLVM doesn't recognize r14
                 "{lr}".to_string()
@@ -551,6 +611,8 @@ fn reg_to_llvm(reg: InlineAsmRegOrRegClass, layout: Option<&TyAndLayout<'_>>) ->
                 format!("{{{}}}", reg.name())
             }
         }
+        // The constraints can be retrieved from
+        // https://llvm.org/docs/LangRef.html#supported-constraint-code-list
         InlineAsmRegOrRegClass::RegClass(reg) => match reg {
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => "r",
             InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg) => "w",
@@ -624,6 +686,8 @@ fn modifier_to_llvm(
     reg: InlineAsmRegClass,
     modifier: Option<char>,
 ) -> Option<char> {
+    // The modifiers can be retrieved from
+    // https://llvm.org/docs/LangRef.html#asm-template-argument-modifiers
     match reg {
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::reg) => modifier,
         InlineAsmRegClass::AArch64(AArch64InlineAsmRegClass::vreg)

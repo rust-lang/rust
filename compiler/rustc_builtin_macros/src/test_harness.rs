@@ -18,9 +18,11 @@ use thin_vec::thin_vec;
 
 use std::{iter, mem};
 
+#[derive(Clone)]
 struct Test {
     span: Span,
     ident: Ident,
+    name: Symbol,
 }
 
 struct TestCtxt<'a> {
@@ -32,8 +34,8 @@ struct TestCtxt<'a> {
     test_runner: Option<ast::Path>,
 }
 
-// Traverse the crate, collecting all the test functions, eliding any
-// existing main functions, and synthesizing a main test harness
+/// Traverse the crate, collecting all the test functions, eliding any
+/// existing main functions, and synthesizing a main test harness
 pub fn inject(sess: &Session, resolver: &mut dyn ResolverExpand, krate: &mut ast::Crate) {
     let span_diagnostic = sess.diagnostic();
     let panic_strategy = sess.panic_strategy();
@@ -120,17 +122,18 @@ impl<'a> MutVisitor for TestHarnessGenerator<'a> {
 
     fn flat_map_item(&mut self, i: P<ast::Item>) -> SmallVec<[P<ast::Item>; 1]> {
         let mut item = i.into_inner();
-        if is_test_case(&self.cx.ext_cx.sess, &item) {
+        if let Some(name) = get_test_name(&self.cx.ext_cx.sess, &item) {
             debug!("this is a test item");
 
-            let test = Test { span: item.span, ident: item.ident };
+            let test = Test { span: item.span, ident: item.ident, name };
             self.tests.push(test);
         }
 
         // We don't want to recurse into anything other than mods, since
         // mods or tests inside of functions will break things
-        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ref spans)) = item.kind {
-            let ast::ModSpans { inner_span: span, inject_use_span: _ } = *spans;
+        if let ast::ItemKind::Mod(_, ModKind::Loaded(.., ast::ModSpans { inner_span: span, .. })) =
+            item.kind
+        {
             let prev_tests = mem::take(&mut self.tests);
             noop_visit_item_kind(&mut item.kind, self);
             self.add_test_cases(item.id, span, prev_tests);
@@ -183,13 +186,12 @@ impl<'a> MutVisitor for EntryPointCleaner<'a> {
         let item = match entry_point_type(self.sess, &item, self.depth) {
             EntryPointType::MainNamed | EntryPointType::RustcMainAttr | EntryPointType::Start => {
                 item.map(|ast::Item { id, ident, attrs, kind, vis, span, tokens }| {
-                    let allow_ident = Ident::new(sym::allow, self.def_site);
-                    let dc_nested =
-                        attr::mk_nested_word_item(Ident::new(sym::dead_code, self.def_site));
-                    let allow_dead_code_item = attr::mk_list_item(allow_ident, vec![dc_nested]);
-                    let allow_dead_code = attr::mk_attr_outer(
+                    let allow_dead_code = attr::mk_attr_nested_word(
                         &self.sess.parse_sess.attr_id_generator,
-                        allow_dead_code_item,
+                        ast::AttrStyle::Outer,
+                        sym::allow,
+                        sym::dead_code,
+                        self.def_site,
                     );
                     let attrs = attrs
                         .into_iter()
@@ -307,8 +309,7 @@ fn mk_main(cx: &mut TestCtxt<'_>) -> P<ast::Item> {
     );
 
     // #[rustc_main]
-    let main_meta = ecx.meta_word(sp, sym::rustc_main);
-    let main_attr = ecx.attribute(main_meta);
+    let main_attr = ecx.attr_word(sym::rustc_main, sp);
 
     // pub fn main() { ... }
     let main_ret_ty = ecx.ty(sp, ast::TyKind::Tup(vec![]));
@@ -357,9 +358,12 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     debug!("building test vector from {} tests", cx.test_cases.len());
     let ecx = &cx.ext_cx;
 
+    let mut tests = cx.test_cases.clone();
+    tests.sort_by(|a, b| a.name.as_str().cmp(&b.name.as_str()));
+
     ecx.expr_array_ref(
         sp,
-        cx.test_cases
+        tests
             .iter()
             .map(|test| {
                 ecx.expr_addr_of(test.span, ecx.expr_path(ecx.path(test.span, vec![test.ident])))
@@ -368,8 +372,8 @@ fn mk_tests_slice(cx: &TestCtxt<'_>, sp: Span) -> P<ast::Expr> {
     )
 }
 
-fn is_test_case(sess: &Session, i: &ast::Item) -> bool {
-    sess.contains_name(&i.attrs, sym::rustc_test_marker)
+fn get_test_name(sess: &Session, i: &ast::Item) -> Option<Symbol> {
+    sess.first_attr_value_str_by_name(&i.attrs, sym::rustc_test_marker)
 }
 
 fn get_test_runner(

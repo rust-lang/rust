@@ -3,22 +3,16 @@ use libloading::Library;
 use rustc_ast as ast;
 use rustc_codegen_ssa::traits::CodegenBackend;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-#[cfg(parallel_compiler)]
-use rustc_data_structures::jobserver;
-use rustc_data_structures::sync::Lrc;
 use rustc_errors::registry::Registry;
-#[cfg(parallel_compiler)]
-use rustc_middle::ty::tls;
 use rustc_parse::validate_attr;
-#[cfg(parallel_compiler)]
-use rustc_query_impl::{QueryContext, QueryCtxt};
 use rustc_session as session;
 use rustc_session::config::CheckCfg;
 use rustc_session::config::{self, CrateType};
 use rustc_session::config::{ErrorOutputType, Input, OutputFilenames};
+use rustc_session::filesearch::sysroot_candidates;
 use rustc_session::lint::{self, BuiltinLintDiagnostics, LintBuffer};
 use rustc_session::parse::CrateConfig;
-use rustc_session::{early_error, filesearch, output, DiagnosticOutput, Session};
+use rustc_session::{early_error, filesearch, output, Session};
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::find_best_match_for_name;
 use rustc_span::source_map::FileLoader;
@@ -26,8 +20,6 @@ use rustc_span::symbol::{sym, Symbol};
 use std::env;
 use std::env::consts::{DLL_PREFIX, DLL_SUFFIX};
 use std::mem;
-#[cfg(not(parallel_compiler))]
-use std::panic;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::OnceLock;
@@ -65,7 +57,6 @@ pub fn create_session(
     sopts: config::Options,
     cfg: FxHashSet<(String, Option<String>)>,
     check_cfg: CheckCfg,
-    diagnostic_output: DiagnosticOutput,
     file_loader: Option<Box<dyn FileLoader + Send + Sync + 'static>>,
     input_path: Option<PathBuf>,
     lint_caps: FxHashMap<lint::LintId, lint::Level>,
@@ -73,14 +64,11 @@ pub fn create_session(
         Box<dyn FnOnce(&config::Options) -> Box<dyn CodegenBackend> + Send>,
     >,
     descriptions: Registry,
-) -> (Lrc<Session>, Lrc<Box<dyn CodegenBackend>>) {
+) -> (Session, Box<dyn CodegenBackend>) {
     let codegen_backend = if let Some(make_codegen_backend) = make_codegen_backend {
         make_codegen_backend(&sopts)
     } else {
-        get_codegen_backend(
-            &sopts.maybe_sysroot,
-            sopts.unstable_opts.codegen_backend.as_ref().map(|name| &name[..]),
-        )
+        get_codegen_backend(&sopts.maybe_sysroot, sopts.unstable_opts.codegen_backend.as_deref())
     };
 
     // target_override is documented to be called before init(), so this is okay
@@ -88,7 +76,7 @@ pub fn create_session(
 
     let bundle = match rustc_errors::fluent_bundle(
         sopts.maybe_sysroot.clone(),
-        sysroot_candidates(),
+        sysroot_candidates().to_vec(),
         sopts.unstable_opts.translate_lang.clone(),
         sopts.unstable_opts.translate_additional_ftl.as_deref(),
         sopts.unstable_opts.translate_directionality_markers,
@@ -104,7 +92,6 @@ pub fn create_session(
         input_path,
         bundle,
         descriptions,
-        diagnostic_output,
         lint_caps,
         file_loader,
         target_override,
@@ -121,7 +108,7 @@ pub fn create_session(
     sess.parse_sess.config = cfg;
     sess.parse_sess.check_config = check_cfg;
 
-    (Lrc::new(sess), Lrc::new(codegen_backend))
+    (sess, codegen_backend)
 }
 
 const STACK_SIZE: usize = 8 * 1024 * 1024;
@@ -132,79 +119,86 @@ fn get_stack_size() -> Option<usize> {
     env::var_os("RUST_MIN_STACK").is_none().then_some(STACK_SIZE)
 }
 
-/// Like a `thread::Builder::spawn` followed by a `join()`, but avoids the need
-/// for `'static` bounds.
 #[cfg(not(parallel_compiler))]
-fn scoped_thread<F: FnOnce() -> R + Send, R: Send>(cfg: thread::Builder, f: F) -> R {
-    // SAFETY: join() is called immediately, so any closure captures are still
-    // alive.
-    match unsafe { cfg.spawn_unchecked(f) }.unwrap().join() {
-        Ok(v) => v,
-        Err(e) => panic::resume_unwind(e),
-    }
-}
-
-#[cfg(not(parallel_compiler))]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     _threads: usize,
     f: F,
 ) -> R {
-    let mut cfg = thread::Builder::new().name("rustc".to_string());
-
+    // The "thread pool" is a single spawned thread in the non-parallel
+    // compiler. We run on a spawned thread instead of the main thread (a) to
+    // provide control over the stack size, and (b) to increase similarity with
+    // the parallel compiler, in particular to ensure there is no accidental
+    // sharing of data between the main thread and the compilation thread
+    // (which might cause problems for the parallel compiler).
+    let mut builder = thread::Builder::new().name("rustc".to_string());
     if let Some(size) = get_stack_size() {
-        cfg = cfg.stack_size(size);
+        builder = builder.stack_size(size);
     }
 
-    let main_handler = move || rustc_span::create_session_globals_then(edition, f);
+    // We build the session globals and run `f` on the spawned thread, because
+    // `SessionGlobals` does not impl `Send` in the non-parallel compiler.
+    thread::scope(|s| {
+        // `unwrap` is ok here because `spawn_scoped` only panics if the thread
+        // name contains null bytes.
+        let r = builder
+            .spawn_scoped(s, move || rustc_span::create_session_globals_then(edition, f))
+            .unwrap()
+            .join();
 
-    scoped_thread(cfg, main_handler)
-}
-
-/// Creates a new thread and forwards information in thread locals to it.
-/// The new thread runs the deadlock handler.
-/// Must only be called when a deadlock is about to happen.
-#[cfg(parallel_compiler)]
-unsafe fn handle_deadlock() {
-    let registry = rustc_rayon_core::Registry::current();
-
-    let query_map = tls::with(|tcx| {
-        QueryCtxt::from_tcx(tcx)
-            .try_collect_active_jobs()
-            .expect("active jobs shouldn't be locked in deadlock handler")
-    });
-    thread::spawn(move || rustc_query_impl::deadlock(query_map, &registry));
+        match r {
+            Ok(v) => v,
+            Err(e) => std::panic::resume_unwind(e),
+        }
+    })
 }
 
 #[cfg(parallel_compiler)]
-pub fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
+pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
     edition: Edition,
     threads: usize,
     f: F,
 ) -> R {
-    let mut config = rayon::ThreadPoolBuilder::new()
+    use rustc_data_structures::jobserver;
+    use rustc_middle::ty::tls;
+    use rustc_query_impl::{deadlock, QueryContext, QueryCtxt};
+
+    let mut builder = rayon::ThreadPoolBuilder::new()
         .thread_name(|_| "rustc".to_string())
         .acquire_thread_handler(jobserver::acquire_thread)
         .release_thread_handler(jobserver::release_thread)
         .num_threads(threads)
-        .deadlock_handler(|| unsafe { handle_deadlock() });
-
+        .deadlock_handler(|| {
+            // On deadlock, creates a new thread and forwards information in thread
+            // locals to it. The new thread runs the deadlock handler.
+            let query_map = tls::with(|tcx| {
+                QueryCtxt::from_tcx(tcx)
+                    .try_collect_active_jobs()
+                    .expect("active jobs shouldn't be locked in deadlock handler")
+            });
+            let registry = rustc_rayon_core::Registry::current();
+            thread::spawn(move || deadlock(query_map, &registry));
+        });
     if let Some(size) = get_stack_size() {
-        config = config.stack_size(size);
+        builder = builder.stack_size(size);
     }
 
-    let with_pool = move |pool: &rayon::ThreadPool| pool.install(f);
-
+    // We create the session globals on the main thread, then create the thread
+    // pool. Upon creation, each worker thread created gets a copy of the
+    // session globals in TLS. This is possible because `SessionGlobals` impls
+    // `Send` in the parallel compiler.
     rustc_span::create_session_globals_then(edition, || {
         rustc_span::with_session_globals(|session_globals| {
-            // The main handler runs for each Rayon worker thread and sets up
-            // the thread local rustc uses. `session_globals` is captured and set
-            // on the new threads.
-            let main_handler = move |thread: rayon::ThreadBuilder| {
-                rustc_span::set_session_globals_then(session_globals, || thread.run())
-            };
-
-            config.build_scoped(main_handler, with_pool).unwrap()
+            builder
+                .build_scoped(
+                    // Initialize each new worker thread when created.
+                    move |thread: rayon::ThreadBuilder| {
+                        rustc_span::set_session_globals_then(session_globals, || thread.run())
+                    },
+                    // Run `f` on the first thread in the thread pool.
+                    move |pool: &rayon::ThreadPool| pool.install(f),
+                )
+                .unwrap()
         })
     })
 }
@@ -263,7 +257,7 @@ pub fn rustc_path<'a>() -> Option<&'a Path> {
 
     const BIN_PATH: &str = env!("RUSTC_INSTALL_BINDIR");
 
-    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_ref().map(|v| &**v)
+    RUSTC_PATH.get_or_init(|| get_rustc_path_inner(BIN_PATH)).as_deref()
 }
 
 fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
@@ -275,100 +269,6 @@ fn get_rustc_path_inner(bin_path: &str) -> Option<PathBuf> {
         });
         candidate.exists().then_some(candidate)
     })
-}
-
-fn sysroot_candidates() -> Vec<PathBuf> {
-    let target = session::config::host_triple();
-    let mut sysroot_candidates = vec![filesearch::get_or_default_sysroot()];
-    let path = current_dll_path().and_then(|s| s.canonicalize().ok());
-    if let Some(dll) = path {
-        // use `parent` twice to chop off the file name and then also the
-        // directory containing the dll which should be either `lib` or `bin`.
-        if let Some(path) = dll.parent().and_then(|p| p.parent()) {
-            // The original `path` pointed at the `rustc_driver` crate's dll.
-            // Now that dll should only be in one of two locations. The first is
-            // in the compiler's libdir, for example `$sysroot/lib/*.dll`. The
-            // other is the target's libdir, for example
-            // `$sysroot/lib/rustlib/$target/lib/*.dll`.
-            //
-            // We don't know which, so let's assume that if our `path` above
-            // ends in `$target` we *could* be in the target libdir, and always
-            // assume that we may be in the main libdir.
-            sysroot_candidates.push(path.to_owned());
-
-            if path.ends_with(target) {
-                sysroot_candidates.extend(
-                    path.parent() // chop off `$target`
-                        .and_then(|p| p.parent()) // chop off `rustlib`
-                        .and_then(|p| p.parent()) // chop off `lib`
-                        .map(|s| s.to_owned()),
-                );
-            }
-        }
-    }
-
-    return sysroot_candidates;
-
-    #[cfg(unix)]
-    fn current_dll_path() -> Option<PathBuf> {
-        use std::ffi::{CStr, OsStr};
-        use std::os::unix::prelude::*;
-
-        unsafe {
-            let addr = current_dll_path as usize as *mut _;
-            let mut info = mem::zeroed();
-            if libc::dladdr(addr, &mut info) == 0 {
-                info!("dladdr failed");
-                return None;
-            }
-            if info.dli_fname.is_null() {
-                info!("dladdr returned null pointer");
-                return None;
-            }
-            let bytes = CStr::from_ptr(info.dli_fname).to_bytes();
-            let os = OsStr::from_bytes(bytes);
-            Some(PathBuf::from(os))
-        }
-    }
-
-    #[cfg(windows)]
-    fn current_dll_path() -> Option<PathBuf> {
-        use std::ffi::OsString;
-        use std::io;
-        use std::os::windows::prelude::*;
-        use std::ptr;
-
-        use winapi::um::libloaderapi::{
-            GetModuleFileNameW, GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-        };
-
-        unsafe {
-            let mut module = ptr::null_mut();
-            let r = GetModuleHandleExW(
-                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS,
-                current_dll_path as usize as *mut _,
-                &mut module,
-            );
-            if r == 0 {
-                info!("GetModuleHandleExW failed: {}", io::Error::last_os_error());
-                return None;
-            }
-            let mut space = Vec::with_capacity(1024);
-            let r = GetModuleFileNameW(module, space.as_mut_ptr(), space.capacity() as u32);
-            if r == 0 {
-                info!("GetModuleFileNameW failed: {}", io::Error::last_os_error());
-                return None;
-            }
-            let r = r as usize;
-            if r >= space.capacity() {
-                info!("our buffer was too small? {}", io::Error::last_os_error());
-                return None;
-            }
-            space.set_len(r);
-            let os = OsString::from_wide(&space);
-            Some(PathBuf::from(os))
-        }
-    }
 }
 
 fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> MakeBackendFn {
@@ -424,7 +324,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
     let mut file: Option<PathBuf> = None;
 
     let expected_names = &[
-        format!("rustc_codegen_{}-{}", backend_name, release_str().expect("CFG_RELEASE")),
+        format!("rustc_codegen_{}-{}", backend_name, env!("CFG_RELEASE")),
         format!("rustc_codegen_{}", backend_name),
     ];
     for entry in d.filter_map(|e| e.ok()) {
@@ -651,22 +551,12 @@ pub fn build_output_filenames(
     }
 }
 
-/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)"
-pub fn version_str() -> Option<&'static str> {
+/// Returns a version string such as "1.46.0 (04488afe3 2020-08-24)" when invoked by an in-tree tool.
+pub macro version_str() {
     option_env!("CFG_VERSION")
 }
 
-/// Returns a version string such as "0.12.0-dev".
-pub fn release_str() -> Option<&'static str> {
-    option_env!("CFG_RELEASE")
-}
-
-/// Returns the full SHA1 hash of HEAD of the Git repo from which rustc was built.
-pub fn commit_hash_str() -> Option<&'static str> {
-    option_env!("CFG_VER_HASH")
-}
-
-/// Returns the "commit date" of HEAD of the Git repo from which rustc was built as a static string.
-pub fn commit_date_str() -> Option<&'static str> {
-    option_env!("CFG_VER_DATE")
+/// Returns the version string for `rustc` itself (which may be different from a tool version).
+pub fn rustc_version_str() -> Option<&'static str> {
+    version_str!()
 }

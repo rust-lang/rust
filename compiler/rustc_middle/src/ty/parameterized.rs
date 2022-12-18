@@ -1,16 +1,10 @@
 use rustc_data_structures::fx::FxHashMap;
-use rustc_hir::def_id::{DefId, DefIndex};
+use rustc_hir::def_id::DefIndex;
 use rustc_index::vec::{Idx, IndexVec};
 
-use crate::middle::exported_symbols::ExportedSymbol;
-use crate::mir::Body;
-use crate::ty::abstract_const::Node;
-use crate::ty::{
-    self, Const, FnSig, GeneratorDiagnosticData, GenericPredicates, Predicate, TraitRef, Ty,
-};
+use crate::ty;
 
 pub trait ParameterizedOverTcx: 'static {
-    #[allow(unused_lifetimes)]
     type Value<'tcx>;
 }
 
@@ -61,15 +55,16 @@ trivially_parameterized_over_tcx! {
     crate::middle::resolve_lifetime::ObjectLifetimeDefault,
     crate::mir::ConstQualifs,
     ty::AssocItemContainer,
+    ty::DeducedParamAttrs,
     ty::Generics,
     ty::ImplPolarity,
     ty::ReprOptions,
     ty::TraitDef,
     ty::Visibility<DefIndex>,
     ty::adjustment::CoerceUnsizedInfo,
-    ty::fast_reject::SimplifiedTypeGen<DefId>,
+    ty::fast_reject::SimplifiedType,
     rustc_ast::Attribute,
-    rustc_ast::MacArgs,
+    rustc_ast::DelimArgs,
     rustc_attr::ConstStability,
     rustc_attr::DefaultBodyStability,
     rustc_attr::Deprecation,
@@ -82,6 +77,7 @@ trivially_parameterized_over_tcx! {
     rustc_hir::def::DefKind,
     rustc_hir::def_id::DefIndex,
     rustc_hir::definitions::DefKey,
+    rustc_index::bit_set::BitSet<u32>,
     rustc_index::bit_set::FiniteBitSet<u32>,
     rustc_session::cstore::ForeignModule,
     rustc_session::cstore::LinkagePreference,
@@ -99,29 +95,28 @@ trivially_parameterized_over_tcx! {
     rustc_type_ir::Variance,
 }
 
-// HACK(compiler-errors): This macro rule can only take an ident,
-// not a path, due to parsing ambiguity reasons. That means we gotta
-// import all of these types above.
+// HACK(compiler-errors): This macro rule can only take a fake path,
+// not a real, due to parsing ambiguity reasons.
 #[macro_export]
 macro_rules! parameterized_over_tcx {
-    ($($ident:ident),+ $(,)?) => {
+    ($($($fake_path:ident)::+),+ $(,)?) => {
         $(
-            impl $crate::ty::ParameterizedOverTcx for $ident<'static> {
-                type Value<'tcx> = $ident<'tcx>;
+            impl $crate::ty::ParameterizedOverTcx for $($fake_path)::+<'static> {
+                type Value<'tcx> = $($fake_path)::+<'tcx>;
             }
         )*
     }
 }
 
 parameterized_over_tcx! {
-    Ty,
-    FnSig,
-    GenericPredicates,
-    TraitRef,
-    Const,
-    Predicate,
-    GeneratorDiagnosticData,
-    Body,
-    Node,
-    ExportedSymbol,
+    crate::middle::exported_symbols::ExportedSymbol,
+    crate::mir::Body,
+    ty::Ty,
+    ty::FnSig,
+    ty::GenericPredicates,
+    ty::TraitRef,
+    ty::Const,
+    ty::Predicate,
+    ty::Clause,
+    ty::GeneratorDiagnosticData,
 }

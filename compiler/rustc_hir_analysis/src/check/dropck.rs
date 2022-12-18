@@ -183,25 +183,27 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
             let predicate = predicate.kind();
             let p = p.kind();
             match (predicate.skip_binder(), p.skip_binder()) {
-                (ty::PredicateKind::Trait(a), ty::PredicateKind::Trait(b)) => {
-                    // Since struct predicates cannot have ~const, project the impl predicate
-                    // onto one that ignores the constness. This is equivalent to saying that
-                    // we match a `Trait` bound on the struct with a `Trait` or `~const Trait`
-                    // in the impl.
-                    let non_const_a =
-                        ty::TraitPredicate { constness: ty::BoundConstness::NotConst, ..a };
-                    relator.relate(predicate.rebind(non_const_a), p.rebind(b)).is_ok()
-                }
-                (ty::PredicateKind::Projection(a), ty::PredicateKind::Projection(b)) => {
-                    relator.relate(predicate.rebind(a), p.rebind(b)).is_ok()
-                }
+                (
+                    ty::PredicateKind::Clause(ty::Clause::Trait(a)),
+                    ty::PredicateKind::Clause(ty::Clause::Trait(b)),
+                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
+                (
+                    ty::PredicateKind::Clause(ty::Clause::Projection(a)),
+                    ty::PredicateKind::Clause(ty::Clause::Projection(b)),
+                ) => relator.relate(predicate.rebind(a), p.rebind(b)).is_ok(),
                 (
                     ty::PredicateKind::ConstEvaluatable(a),
                     ty::PredicateKind::ConstEvaluatable(b),
-                ) => tcx.try_unify_abstract_consts(self_param_env.and((a, b))),
+                ) => relator.relate(predicate.rebind(a), predicate.rebind(b)).is_ok(),
                 (
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_a, lt_a)),
-                    ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(ty_b, lt_b)),
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty_a,
+                        lt_a,
+                    ))),
+                    ty::PredicateKind::Clause(ty::Clause::TypeOutlives(ty::OutlivesPredicate(
+                        ty_b,
+                        lt_b,
+                    ))),
                 ) => {
                     relator.relate(predicate.rebind(ty_a), p.rebind(ty_b)).is_ok()
                         && relator.relate(predicate.rebind(lt_a), p.rebind(lt_b)).is_ok()
@@ -231,9 +233,10 @@ fn ensure_drop_predicates_are_implied_by_item_defn<'tcx>(
     result
 }
 
-// This is an implementation of the TypeRelation trait with the
-// aim of simply comparing for equality (without side-effects).
-// It is not intended to be used anywhere else other than here.
+/// This is an implementation of the [`TypeRelation`] trait with the
+/// aim of simply comparing for equality (without side-effects).
+///
+/// It is not intended to be used anywhere else other than here.
 pub(crate) struct SimpleEqRelation<'tcx> {
     tcx: TyCtxt<'tcx>,
     param_env: ty::ParamEnv<'tcx>,
@@ -250,6 +253,10 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
         self.tcx
     }
 
+    fn intercrate(&self) -> bool {
+        false
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
@@ -260,6 +267,10 @@ impl<'tcx> TypeRelation<'tcx> for SimpleEqRelation<'tcx> {
 
     fn a_is_expected(&self) -> bool {
         true
+    }
+
+    fn mark_ambiguous(&mut self) {
+        bug!()
     }
 
     fn relate_with_variance<T: Relate<'tcx>>(

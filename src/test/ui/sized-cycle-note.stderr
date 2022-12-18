@@ -1,29 +1,19 @@
-error[E0072]: recursive type `Baz` has infinite size
-  --> $DIR/sized-cycle-note.rs:9:1
+error[E0072]: recursive types `Baz` and `Foo` have infinite size
+  --> $DIR/sized-cycle-note.rs:1:1
    |
 LL | struct Baz { q: Option<Foo> }
-   | ^^^^^^^^^^      ----------- recursive without indirection
-   | |
-   | recursive type has infinite size
-   |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Baz` representable
-   |
-LL | struct Baz { q: Option<Box<Foo>> }
-   |                        ++++   +
-
-error[E0072]: recursive type `Foo` has infinite size
-  --> $DIR/sized-cycle-note.rs:11:1
-   |
+   | ^^^^^^^^^^             --- recursive without indirection
+LL |
 LL | struct Foo { q: Option<Baz> }
-   | ^^^^^^^^^^      ----------- recursive without indirection
-   | |
-   | recursive type has infinite size
+   | ^^^^^^^^^^             --- recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `Foo` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
-LL | struct Foo { q: Option<Box<Baz>> }
-   |                        ++++   +
+LL ~ struct Baz { q: Option<Box<Foo>> }
+LL |
+LL ~ struct Foo { q: Option<Box<Baz>> }
+   |
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0072`.

@@ -1,7 +1,7 @@
 // aux-build:private-inferred-type.rs
 
 // error-pattern:type `fn() {ext::priv_fn}` is private
-// error-pattern:static `PRIV_STATIC` is private
+// error-pattern:static `ext::PRIV_STATIC` is private
 // error-pattern:type `ext::PrivEnum` is private
 // error-pattern:type `fn() {<u8 as ext::PrivTrait>::method}` is private
 // error-pattern:type `fn(u8) -> ext::PrivTupleStruct {ext::PrivTupleStruct}` is private

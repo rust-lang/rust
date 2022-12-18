@@ -11,7 +11,7 @@ use rustc_ast::token::CommentKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::sync::Lrc;
 use rustc_errors::emitter::EmitterWriter;
-use rustc_errors::{Applicability, Handler, MultiSpan, SuggestionStyle};
+use rustc_errors::{Applicability, Handler, SuggestionStyle};
 use rustc_hir as hir;
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{AnonConst, Expr};
@@ -198,6 +198,65 @@ declare_clippy_lint! {
     "presence of `fn main() {` in code examples"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Detects the syntax `['foo']` in documentation comments (notice quotes instead of backticks)
+    /// outside of code blocks
+    /// ### Why is this bad?
+    /// It is likely a typo when defining an intra-doc link
+    ///
+    /// ### Example
+    /// ```rust
+    /// /// See also: ['foo']
+    /// fn bar() {}
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// /// See also: [`foo`]
+    /// fn bar() {}
+    /// ```
+    #[clippy::version = "1.63.0"]
+    pub DOC_LINK_WITH_QUOTES,
+    pedantic,
+    "possible typo for an intra-doc link"
+}
+
+declare_clippy_lint! {
+    /// ### What it does
+    /// Checks for the doc comments of publicly visible
+    /// safe functions and traits and warns if there is a `# Safety` section.
+    ///
+    /// ### Why is this bad?
+    /// Safe functions and traits are safe to implement and therefore do not
+    /// need to describe safety preconditions that users are required to uphold.
+    ///
+    /// ### Examples
+    /// ```rust
+    ///# type Universe = ();
+    /// /// # Safety
+    /// ///
+    /// /// This function should not be called before the horsemen are ready.
+    /// pub fn start_apocalypse_but_safely(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    ///
+    /// The function is safe, so there shouldn't be any preconditions
+    /// that have to be explained for safety reasons.
+    ///
+    /// ```rust
+    ///# type Universe = ();
+    /// /// This function should really be documented
+    /// pub fn start_apocalypse(u: &mut Universe) {
+    ///     unimplemented!();
+    /// }
+    /// ```
+    #[clippy::version = "1.66.0"]
+    pub UNNECESSARY_SAFETY_DOC,
+    restriction,
+    "`pub fn` or `pub trait` with `# Safety` docs"
+}
+
 #[expect(clippy::module_name_repetitions)]
 #[derive(Clone)]
 pub struct DocMarkdown {
@@ -214,9 +273,15 @@ impl DocMarkdown {
     }
 }
 
-impl_lint_pass!(DocMarkdown =>
-    [DOC_MARKDOWN, MISSING_SAFETY_DOC, MISSING_ERRORS_DOC, MISSING_PANICS_DOC, NEEDLESS_DOCTEST_MAIN]
-);
+impl_lint_pass!(DocMarkdown => [
+    DOC_LINK_WITH_QUOTES,
+    DOC_MARKDOWN,
+    MISSING_SAFETY_DOC,
+    MISSING_ERRORS_DOC,
+    MISSING_PANICS_DOC,
+    NEEDLESS_DOCTEST_MAIN,
+    UNNECESSARY_SAFETY_DOC,
+]);
 
 impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
     fn check_crate(&mut self, cx: &LateContext<'tcx>) {
@@ -226,32 +291,37 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         match item.kind {
             hir::ItemKind::Fn(ref sig, _, body_id) => {
-                if !(is_entrypoint_fn(cx, item.def_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
+                if !(is_entrypoint_fn(cx, item.owner_id.to_def_id()) || in_external_macro(cx.tcx.sess, item.span)) {
                     let body = cx.tcx.hir().body(body_id);
                     let mut fpu = FindPanicUnwrap {
                         cx,
-                        typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                        typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                         panic_span: None,
                     };
                     fpu.visit_expr(body.value);
-                    lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+                    lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
                 }
             },
             hir::ItemKind::Impl(impl_) => {
                 self.in_trait_impl = impl_.of_trait.is_some();
             },
-            hir::ItemKind::Trait(_, unsafety, ..) => {
-                if !headers.safety && unsafety == hir::Unsafety::Unsafe {
-                    span_lint(
-                        cx,
-                        MISSING_SAFETY_DOC,
-                        item.span,
-                        "docs for unsafe trait missing `# Safety` section",
-                    );
-                }
+            hir::ItemKind::Trait(_, unsafety, ..) => match (headers.safety, unsafety) {
+                (false, hir::Unsafety::Unsafe) => span_lint(
+                    cx,
+                    MISSING_SAFETY_DOC,
+                    cx.tcx.def_span(item.owner_id),
+                    "docs for unsafe trait missing `# Safety` section",
+                ),
+                (true, hir::Unsafety::Normal) => span_lint(
+                    cx,
+                    UNNECESSARY_SAFETY_DOC,
+                    cx.tcx.def_span(item.owner_id),
+                    "docs for safe trait have unnecessary `# Safety` section",
+                ),
+                _ => (),
             },
             _ => (),
         }
@@ -265,17 +335,17 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::TraitItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if let hir::TraitItemKind::Fn(ref sig, ..) = item.kind {
             if !in_external_macro(cx.tcx.sess, item.span) {
-                lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, None, None);
+                lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, None, None);
             }
         }
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::ImplItem<'_>) {
         let attrs = cx.tcx.hir().attrs(item.hir_id());
-        let headers = check_attrs(cx, &self.valid_idents, attrs);
+        let Some(headers) = check_attrs(cx, &self.valid_idents, attrs) else { return };
         if self.in_trait_impl || in_external_macro(cx.tcx.sess, item.span) {
             return;
         }
@@ -283,25 +353,24 @@ impl<'tcx> LateLintPass<'tcx> for DocMarkdown {
             let body = cx.tcx.hir().body(body_id);
             let mut fpu = FindPanicUnwrap {
                 cx,
-                typeck_results: cx.tcx.typeck(item.def_id.def_id),
+                typeck_results: cx.tcx.typeck(item.owner_id.def_id),
                 panic_span: None,
             };
             fpu.visit_expr(body.value);
-            lint_for_missing_headers(cx, item.def_id.def_id, item.span, sig, headers, Some(body_id), fpu.panic_span);
+            lint_for_missing_headers(cx, item.owner_id.def_id, sig, headers, Some(body_id), fpu.panic_span);
         }
     }
 }
 
-fn lint_for_missing_headers<'tcx>(
-    cx: &LateContext<'tcx>,
+fn lint_for_missing_headers(
+    cx: &LateContext<'_>,
     def_id: LocalDefId,
-    span: impl Into<MultiSpan> + Copy,
     sig: &hir::FnSig<'_>,
     headers: DocHeaders,
     body_id: Option<hir::BodyId>,
     panic_span: Option<Span>,
 ) {
-    if !cx.access_levels.is_exported(def_id) {
+    if !cx.effective_visibilities.is_exported(def_id) {
         return; // Private functions do not require doc comments
     }
 
@@ -315,13 +384,21 @@ fn lint_for_missing_headers<'tcx>(
         return;
     }
 
-    if !headers.safety && sig.header.unsafety == hir::Unsafety::Unsafe {
-        span_lint(
+    let span = cx.tcx.def_span(def_id);
+    match (headers.safety, sig.header.unsafety) {
+        (false, hir::Unsafety::Unsafe) => span_lint(
             cx,
             MISSING_SAFETY_DOC,
             span,
             "unsafe function's docs miss `# Safety` section",
-        );
+        ),
+        (true, hir::Unsafety::Normal) => span_lint(
+            cx,
+            UNNECESSARY_SAFETY_DOC,
+            span,
+            "safe function's docs have unnecessary `# Safety` section",
+        ),
+        _ => (),
     }
     if !headers.panics && panic_span.is_some() {
         span_lint_and_note(
@@ -350,9 +427,7 @@ fn lint_for_missing_headers<'tcx>(
                 let body = cx.tcx.hir().body(body_id);
                 let ret_ty = typeck.expr_ty(body.value);
                 if implements_trait(cx, ret_ty, future, &[]);
-                if let ty::Opaque(_, subs) = ret_ty.kind();
-                if let Some(gen) = subs.types().next();
-                if let ty::Generator(_, subs, _) = gen.kind();
+                if let ty::Generator(_, subs, _) = ret_ty.kind();
                 if is_type_diagnostic_item(cx, subs.as_generator().return_ty(), sym::Result);
                 then {
                     span_lint(
@@ -416,14 +491,14 @@ pub fn strip_doc_comment_decoration(doc: &str, comment_kind: CommentKind, span: 
     (no_stars, sizes)
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Default)]
 struct DocHeaders {
     safety: bool,
     errors: bool,
     panics: bool,
 }
 
-fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &'a [Attribute]) -> DocHeaders {
+fn check_attrs(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs: &[Attribute]) -> Option<DocHeaders> {
     use pulldown_cmark::{BrokenLink, CowStr, Options};
     /// We don't want the parser to choke on intra doc links. Since we don't
     /// actually care about rendering them, just pretend that all broken links are
@@ -444,11 +519,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
         } else if attr.has_name(sym::doc) {
             // ignore mix of sugared and non-sugared doc
             // don't trigger the safety or errors check
-            return DocHeaders {
-                safety: true,
-                errors: true,
-                panics: true,
-            };
+            return None;
         }
     }
 
@@ -460,11 +531,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
     }
 
     if doc.is_empty() {
-        return DocHeaders {
-            safety: false,
-            errors: false,
-            panics: false,
-        };
+        return Some(DocHeaders::default());
     }
 
     let mut cb = fake_broken_link_callback;
@@ -487,7 +554,7 @@ fn check_attrs<'a>(cx: &LateContext<'_>, valid_idents: &FxHashSet<String>, attrs
             (previous, current) => Err(((previous, previous_range), (current, current_range))),
         }
     });
-    check_doc(cx, valid_idents, events, &spans)
+    Some(check_doc(cx, valid_idents, events, &spans))
 }
 
 const RUST_CODE: &[&str] = &["rust", "no_run", "should_panic", "compile_fail"];
@@ -505,11 +572,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
     use pulldown_cmark::Tag::{CodeBlock, Heading, Item, Link, Paragraph};
     use pulldown_cmark::{CodeBlockKind, CowStr};
 
-    let mut headers = DocHeaders {
-        safety: false,
-        errors: false,
-        panics: false,
-    };
+    let mut headers = DocHeaders::default();
     let mut in_code = false;
     let mut in_link = None;
     let mut in_heading = false;
@@ -596,6 +659,7 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
                         check_code(cx, &text, edition, span);
                     }
                 } else {
+                    check_link_quotes(cx, in_link.is_some(), trimmed_text, span, &range, begin, text.len());
                     // Adjust for the beginning of the current `Event`
                     let span = span.with_lo(span.lo() + BytePos::from_usize(range.start - begin));
                     text_to_check.push((text, span));
@@ -604,6 +668,27 @@ fn check_doc<'a, Events: Iterator<Item = (pulldown_cmark::Event<'a>, Range<usize
         }
     }
     headers
+}
+
+fn check_link_quotes(
+    cx: &LateContext<'_>,
+    in_link: bool,
+    trimmed_text: &str,
+    span: Span,
+    range: &Range<usize>,
+    begin: usize,
+    text_len: usize,
+) {
+    if in_link && trimmed_text.starts_with('\'') && trimmed_text.ends_with('\'') {
+        // fix the span to only point at the text within the link
+        let lo = span.lo() + BytePos::from_usize(range.start - begin);
+        span_lint(
+            cx,
+            DOC_LINK_WITH_QUOTES,
+            span.with_lo(lo).with_hi(lo + BytePos::from_usize(text_len)),
+            "possible intra-doc link using quotes instead of backticks",
+        );
+    }
 }
 
 fn get_current_span(spans: &[(usize, Span)], idx: usize) -> (usize, Span) {
@@ -632,6 +717,7 @@ fn check_code(cx: &LateContext<'_>, text: &str, edition: Edition, span: Span) {
                     false,
                     false,
                     None,
+                    false,
                     false,
                 );
                 let handler = Handler::with_emitter(false, None, Box::new(emitter));
@@ -790,7 +876,7 @@ fn check_word(cx: &LateContext<'_>, word: &str, span: Span) {
                 diag.span_suggestion_with_style(
                     span,
                     "try",
-                    format!("`{}`", snippet),
+                    format!("`{snippet}`"),
                     applicability,
                     // always show the suggestion in a separate line, since the
                     // inline presentation adds another pair of backticks

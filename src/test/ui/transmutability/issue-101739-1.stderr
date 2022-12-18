@@ -1,0 +1,16 @@
+error[E0412]: cannot find type `Dst` in this scope
+  --> $DIR/issue-101739-1.rs:8:9
+   |
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
+   |         ^^^ not found in this scope
+
+error[E0308]: mismatched types
+  --> $DIR/issue-101739-1.rs:8:50
+   |
+LL |         Dst: BikeshedIntrinsicFrom<Src, Context, ASSUME_ALIGNMENT>,
+   |                                                  ^^^^^^^^^^^^^^^^ expected struct `Assume`, found `bool`
+
+error: aborting due to 2 previous errors
+
+Some errors have detailed explanations: E0308, E0412.
+For more information about an error, try `rustc --explain E0308`.

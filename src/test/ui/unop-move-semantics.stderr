@@ -11,9 +11,10 @@ LL |     x.clone();
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
+help: consider cloning the value if the performance cost is acceptable
    |
-LL |     fn not(self) -> Self::Output;
-   |            ^^^^
+LL |     !x.clone();
+   |       ++++++++
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Not<Output=T> + Clone + Copy>(x: T) {
@@ -53,9 +54,6 @@ LL |     !*m;
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/bit.rs:LL:COL
-   |
-LL |     fn not(self) -> Self::Output;
-   |            ^^^^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/unop-move-semantics.rs:26:6

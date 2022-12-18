@@ -3,7 +3,7 @@
 // needs-asm-support
 // run-pass
 
-#![feature(thread_local, asm_sym)]
+#![feature(thread_local)]
 
 use std::arch::asm;
 

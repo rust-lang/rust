@@ -106,6 +106,14 @@ impl GlobalState {
             status.health = lsp_ext::Health::Error;
             status.message = Some(error)
         }
+
+        if self.config.linked_projects().is_empty()
+            && self.config.detached_files().is_empty()
+            && self.config.notifications().cargo_toml_not_found
+        {
+            status.health = lsp_ext::Health::Warning;
+            status.message = Some("Workspace reload required".to_string())
+        }
         status
     }
 
@@ -143,7 +151,7 @@ impl GlobalState {
                             project_model::ProjectWorkspace::load_inline(
                                 it.clone(),
                                 cargo_config.target.as_deref(),
-                                &cargo_config,
+                                &cargo_config.extra_env,
                             )
                         }
                     })
@@ -175,10 +183,8 @@ impl GlobalState {
                     sender.send(Task::FetchBuildData(BuildDataProgress::Report(msg))).unwrap()
                 }
             };
-            let mut res = Vec::new();
-            for ws in workspaces.iter() {
-                res.push(ws.run_build_scripts(&config, &progress));
-            }
+            let res = ProjectWorkspace::run_all_build_scripts(&workspaces, &config, &progress);
+
             sender.send(Task::FetchBuildData(BuildDataProgress::End((workspaces, res)))).unwrap();
         });
     }
@@ -200,12 +206,9 @@ impl GlobalState {
             self.show_and_log_error("failed to run build scripts".to_string(), Some(error));
         }
 
-        let workspaces = self
-            .fetch_workspaces_queue
-            .last_op_result()
-            .iter()
-            .filter_map(|res| res.as_ref().ok().cloned())
-            .collect::<Vec<_>>();
+        let Some(workspaces) = self.fetch_workspaces_queue.last_op_result() else { return; };
+        let workspaces =
+            workspaces.iter().filter_map(|res| res.as_ref().ok().cloned()).collect::<Vec<_>>();
 
         fn eq_ignore_build_data<'a>(
             left: &'a ProjectWorkspace,
@@ -302,45 +305,28 @@ impl GlobalState {
         let files_config = self.config.files();
         let project_folders = ProjectFolders::new(&self.workspaces, &files_config.exclude);
 
-        let standalone_server_name =
-            format!("rust-analyzer-proc-macro-srv{}", std::env::consts::EXE_SUFFIX);
-
         if self.proc_macro_clients.is_empty() {
-            if let Some((path, args)) = self.config.proc_macro_srv() {
+            if let Some((path, path_manually_set)) = self.config.proc_macro_srv() {
                 tracing::info!("Spawning proc-macro servers");
                 self.proc_macro_clients = self
                     .workspaces
                     .iter()
                     .map(|ws| {
-                        let mut args = args.clone();
-                        let mut path = path.clone();
-
-                        if let ProjectWorkspace::Cargo { sysroot, .. }
-                        | ProjectWorkspace::Json { sysroot, .. } = ws
-                        {
-                            tracing::debug!("Found a cargo workspace...");
-                            if let Some(sysroot) = sysroot.as_ref() {
-                                tracing::debug!("Found a cargo workspace with a sysroot...");
-                                let server_path =
-                                    sysroot.root().join("libexec").join(&standalone_server_name);
-                                if std::fs::metadata(&server_path).is_ok() {
-                                    tracing::debug!(
-                                        "And the server exists at {}",
-                                        server_path.display()
-                                    );
-                                    path = server_path;
-                                    args = vec![];
-                                } else {
-                                    tracing::debug!(
-                                        "And the server does not exist at {}",
-                                        server_path.display()
-                                    );
-                                }
+                        let (path, args): (_, &[_]) = if path_manually_set {
+                            tracing::debug!(
+                                "Pro-macro server path explicitly set: {}",
+                                path.display()
+                            );
+                            (path.clone(), &[])
+                        } else {
+                            match ws.find_sysroot_proc_macro_srv() {
+                                Some(server_path) => (server_path, &[]),
+                                None => (path.clone(), &["proc-macro"]),
                             }
-                        }
+                        };
 
                         tracing::info!(?args, "Using proc-macro server at {}", path.display(),);
-                        ProcMacroServer::spawn(path.clone(), args.clone()).map_err(|err| {
+                        ProcMacroServer::spawn(path.clone(), args).map_err(|err| {
                             let error = format!(
                                 "Failed to run proc-macro server from path {}, error: {:?}",
                                 path.display(),
@@ -402,7 +388,7 @@ impl GlobalState {
                 crate_graph.extend(ws.to_crate_graph(
                     &mut load_proc_macro,
                     &mut load,
-                    &self.config.cargo(),
+                    &self.config.cargo().extra_env,
                 ));
             }
             crate_graph
@@ -420,9 +406,14 @@ impl GlobalState {
     fn fetch_workspace_error(&self) -> Result<(), String> {
         let mut buf = String::new();
 
-        for ws in self.fetch_workspaces_queue.last_op_result() {
-            if let Err(err) = ws {
-                stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+        let Some(last_op_result) = self.fetch_workspaces_queue.last_op_result() else { return Ok(()) };
+        if last_op_result.is_empty() {
+            stdx::format_to!(buf, "rust-analyzer failed to discover workspace");
+        } else {
+            for ws in last_op_result {
+                if let Err(err) = ws {
+                    stdx::format_to!(buf, "rust-analyzer failed to load workspace: {:#}\n", err);
+                }
             }
         }
 
@@ -459,39 +450,54 @@ impl GlobalState {
         let config = match self.config.flycheck() {
             Some(it) => it,
             None => {
-                self.flycheck = Vec::new();
+                self.flycheck = Arc::new([]);
                 self.diagnostics.clear_check_all();
                 return;
             }
         };
 
         let sender = self.flycheck_sender.clone();
-        self.flycheck = self
-            .workspaces
-            .iter()
-            .enumerate()
-            .filter_map(|(id, w)| match w {
-                ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
-                ProjectWorkspace::Json { project, .. } => {
-                    // Enable flychecks for json projects if a custom flycheck command was supplied
-                    // in the workspace configuration.
-                    match config {
-                        FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
-                        _ => None,
-                    }
-                }
-                ProjectWorkspace::DetachedFiles { .. } => None,
-            })
-            .map(|(id, root)| {
-                let sender = sender.clone();
-                FlycheckHandle::spawn(
-                    id,
-                    Box::new(move |msg| sender.send(msg).unwrap()),
-                    config.clone(),
-                    root.to_path_buf(),
-                )
-            })
-            .collect();
+        let invocation_strategy = match config {
+            FlycheckConfig::CargoCommand { .. } => flycheck::InvocationStrategy::PerWorkspace,
+            FlycheckConfig::CustomCommand { invocation_strategy, .. } => invocation_strategy,
+        };
+
+        self.flycheck = match invocation_strategy {
+            flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
+                0,
+                Box::new(move |msg| sender.send(msg).unwrap()),
+                config.clone(),
+                self.config.root_path().clone(),
+            )],
+            flycheck::InvocationStrategy::PerWorkspace => {
+                self.workspaces
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(id, w)| match w {
+                        ProjectWorkspace::Cargo { cargo, .. } => Some((id, cargo.workspace_root())),
+                        ProjectWorkspace::Json { project, .. } => {
+                            // Enable flychecks for json projects if a custom flycheck command was supplied
+                            // in the workspace configuration.
+                            match config {
+                                FlycheckConfig::CustomCommand { .. } => Some((id, project.path())),
+                                _ => None,
+                            }
+                        }
+                        ProjectWorkspace::DetachedFiles { .. } => None,
+                    })
+                    .map(|(id, root)| {
+                        let sender = sender.clone();
+                        FlycheckHandle::spawn(
+                            id,
+                            Box::new(move |msg| sender.send(msg).unwrap()),
+                            config.clone(),
+                            root.to_path_buf(),
+                        )
+                    })
+                    .collect()
+            }
+        }
+        .into();
     }
 }
 

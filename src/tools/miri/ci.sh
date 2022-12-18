@@ -1,6 +1,17 @@
 #!/bin/bash
 set -euo pipefail
-set -x
+
+function begingroup {
+  echo "::group::$@"
+  set -x
+}
+
+function endgroup {
+  set +x
+  echo "::endgroup"
+}
+
+begingroup "Building Miri"
 
 # Determine configuration for installed build
 echo "Installing release version of Miri"
@@ -14,24 +25,30 @@ export CARGO_EXTRA_FLAGS="--locked"
 ./miri check --no-default-features # make sure this can be built
 ./miri check --all-features # and this, too
 ./miri build --all-targets # the build that all the `./miri test` below will use
-echo
+
+endgroup
 
 # Test
 function run_tests {
   if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
-    echo "Testing foreign architecture $MIRI_TEST_TARGET"
+    begingroup "Testing foreign architecture $MIRI_TEST_TARGET"
   else
-    echo "Testing host architecture"
+    begingroup "Testing host architecture"
   fi
 
   ## ui test suite
   ./miri test
   if [ -z "${MIRI_TEST_TARGET+exists}" ]; then
     # Only for host architecture: tests with optimizations (`-O` is what cargo passes, but crank MIR
-    # optimizations up all the way).
-    # Optimizations change diagnostics (mostly backtraces), so we don't check them
-    #FIXME(#2155): we want to only run the pass and panic tests here, not the fail tests.
+    # optimizations up all the way, too).
+    # Optimizations change diagnostics (mostly backtraces), so we don't check
+    # them. Also error locations change so we don't run the failing tests.
     MIRIFLAGS="${MIRIFLAGS:-} -O -Zmir-opt-level=4" MIRI_SKIP_UI_CHECKS=1 ./miri test -- tests/{pass,panic}
+
+    # Also run some many-seeds tests. 64 seeds means this takes around a minute per test.
+    for FILE in tests/many-seeds/*.rs; do
+      MIRI_SEEDS=64 CARGO_EXTRA_FLAGS="$CARGO_EXTRA_FLAGS -q" ./miri many-seeds ./miri run "$FILE"
+    done
   fi
 
   ## test-cargo-miri
@@ -52,7 +69,6 @@ function run_tests {
   echo 'build.rustc-wrapper = "thisdoesnotexist"' > .cargo/config.toml
   # Run the actual test
   ${PYTHON} test-cargo-miri/run-test.py
-  echo
   # Clean up
   unset RUSTC MIRI
   rm -rf .cargo
@@ -63,16 +79,23 @@ function run_tests {
       cargo miri run --manifest-path bench-cargo-miri/$BENCH/Cargo.toml
     done
   fi
+
+  endgroup
 }
 
 function run_tests_minimal {
   if [ -n "${MIRI_TEST_TARGET+exists}" ]; then
-    echo "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
+    begingroup "Testing MINIMAL foreign architecture $MIRI_TEST_TARGET: only testing $@"
   else
-    echo "Testing MINIMAL host architecture: only testing $@"
+    begingroup "Testing MINIMAL host architecture: only testing $@"
   fi
 
   ./miri test -- "$@"
+
+  # Ensure that a small smoke test of cargo-miri works.
+  cargo miri run --manifest-path test-cargo-miri/no-std-smoke/Cargo.toml --target ${MIRI_TEST_TARGET-$HOST_TARGET}
+
+  endgroup
 }
 
 # host
@@ -85,6 +108,7 @@ case $HOST_TARGET in
     MIRI_TEST_TARGET=i686-pc-windows-msvc run_tests
     MIRI_TEST_TARGET=x86_64-unknown-freebsd run_tests_minimal hello integer vec panic/panic concurrency/simple atomic data_race env/var
     MIRI_TEST_TARGET=aarch64-linux-android run_tests_minimal hello integer vec panic/panic
+    MIRI_TEST_TARGET=wasm32-wasi MIRI_NO_STD=1 run_tests_minimal no_std # supports std but miri doesn't support it
     MIRI_TEST_TARGET=thumbv7em-none-eabihf MIRI_NO_STD=1 run_tests_minimal no_std # no_std embedded architecture
     ;;
   x86_64-apple-darwin)
@@ -93,6 +117,7 @@ case $HOST_TARGET in
     ;;
   i686-pc-windows-msvc)
     MIRI_TEST_TARGET=x86_64-unknown-linux-gnu run_tests
+    MIRI_TEST_TARGET=x86_64-pc-windows-gnu run_tests
     ;;
   *)
     echo "FATAL: unknown OS"

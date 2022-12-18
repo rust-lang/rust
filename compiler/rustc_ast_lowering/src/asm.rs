@@ -11,7 +11,7 @@ use super::LoweringContext;
 
 use rustc_ast::ptr::P;
 use rustc_ast::*;
-use rustc_data_structures::fx::{FxHashMap, FxHashSet};
+use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::definitions::DefPathData;
@@ -71,7 +71,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .emit();
         }
 
-        let mut clobber_abis = FxHashMap::default();
+        let mut clobber_abis = FxIndexMap::default();
         if let Some(asm_arch) = asm_arch {
             for (abi_name, abi_span) in &asm.clobber_abis {
                 match asm::InlineAsmClobberAbi::parse(asm_arch, &self.tcx.sess.target, *abi_name) {
@@ -123,7 +123,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             .operands
             .iter()
             .map(|(op, op_sp)| {
-                let lower_reg = |reg| match reg {
+                let lower_reg = |&reg: &_| match reg {
                     InlineAsmRegOrRegClass::Reg(reg) => {
                         asm::InlineAsmRegOrRegClass::Reg(if let Some(asm_arch) = asm_arch {
                             asm::InlineAsmReg::parse(asm_arch, reg).unwrap_or_else(|error| {
@@ -152,32 +152,30 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     }
                 };
 
-                let op = match *op {
-                    InlineAsmOperand::In { reg, ref expr } => hir::InlineAsmOperand::In {
+                let op = match op {
+                    InlineAsmOperand::In { reg, expr } => hir::InlineAsmOperand::In {
                         reg: lower_reg(reg),
                         expr: self.lower_expr(expr),
                     },
-                    InlineAsmOperand::Out { reg, late, ref expr } => hir::InlineAsmOperand::Out {
+                    InlineAsmOperand::Out { reg, late, expr } => hir::InlineAsmOperand::Out {
                         reg: lower_reg(reg),
-                        late,
+                        late: *late,
                         expr: expr.as_ref().map(|expr| self.lower_expr(expr)),
                     },
-                    InlineAsmOperand::InOut { reg, late, ref expr } => {
-                        hir::InlineAsmOperand::InOut {
-                            reg: lower_reg(reg),
-                            late,
-                            expr: self.lower_expr(expr),
-                        }
-                    }
-                    InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
+                    InlineAsmOperand::InOut { reg, late, expr } => hir::InlineAsmOperand::InOut {
+                        reg: lower_reg(reg),
+                        late: *late,
+                        expr: self.lower_expr(expr),
+                    },
+                    InlineAsmOperand::SplitInOut { reg, late, in_expr, out_expr } => {
                         hir::InlineAsmOperand::SplitInOut {
                             reg: lower_reg(reg),
-                            late,
+                            late: *late,
                             in_expr: self.lower_expr(in_expr),
                             out_expr: out_expr.as_ref().map(|expr| self.lower_expr(expr)),
                         }
                     }
-                    InlineAsmOperand::Const { ref anon_const } => {
+                    InlineAsmOperand::Const { anon_const } => {
                         if !self.tcx.features().asm_const {
                             feature_err(
                                 &sess.parse_sess,
@@ -191,27 +189,14 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             anon_const: self.lower_anon_const(anon_const),
                         }
                     }
-                    InlineAsmOperand::Sym { ref sym } => {
-                        if !self.tcx.features().asm_sym {
-                            feature_err(
-                                &sess.parse_sess,
-                                sym::asm_sym,
-                                *op_sp,
-                                "sym operands for inline assembly are unstable",
-                            )
-                            .emit();
-                        }
-
+                    InlineAsmOperand::Sym { sym } => {
                         let static_def_id = self
                             .resolver
                             .get_partial_res(sym.id)
-                            .filter(|res| res.unresolved_segments() == 0)
-                            .and_then(|res| {
-                                if let Res::Def(DefKind::Static(_), def_id) = res.base_res() {
-                                    Some(def_id)
-                                } else {
-                                    None
-                                }
+                            .and_then(|res| res.full_res())
+                            .and_then(|res| match res {
+                                Res::Def(DefKind::Static(_), def_id) => Some(def_id),
+                                _ => None,
                             });
 
                         if let Some(def_id) = static_def_id {
@@ -237,7 +222,12 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             // Wrap the expression in an AnonConst.
                             let parent_def_id = self.current_hir_id_owner;
                             let node_id = self.next_node_id();
-                            self.create_def(parent_def_id.def_id, node_id, DefPathData::AnonConst);
+                            self.create_def(
+                                parent_def_id.def_id,
+                                node_id,
+                                DefPathData::AnonConst,
+                                *op_sp,
+                            );
                             let anon_const = AnonConst { id: node_id, value: P(expr) };
                             hir::InlineAsmOperand::SymFn {
                                 anon_const: self.lower_anon_const(&anon_const),
@@ -360,7 +350,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                                     skip = true;
 
                                     let idx2 = *o.get();
-                                    let &(ref op2, op_sp2) = &operands[idx2];
+                                    let (ref op2, op_sp2) = operands[idx2];
                                     let Some(asm::InlineAsmRegOrRegClass::Reg(reg2)) = op2.reg() else {
                                         unreachable!();
                                     };

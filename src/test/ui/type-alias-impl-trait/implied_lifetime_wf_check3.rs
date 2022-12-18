@@ -1,7 +1,7 @@
 #![feature(type_alias_impl_trait)]
 
 mod test_lifetime_param {
-    type Ty<'a> = impl Sized;
+    type Ty<'a> = impl Sized + 'a;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
     //~^ WARN: unnecessary lifetime parameter `'a`
@@ -10,7 +10,7 @@ mod test_lifetime_param {
 }
 
 mod test_higher_kinded_lifetime_param {
-    type Ty<'a> = impl Sized;
+    type Ty<'a> = impl Sized + 'a;
     fn defining(a: &str) -> Ty<'_> { a }
     fn assert_static<'a: 'static>() {}
     //~^ WARN: unnecessary lifetime parameter `'a`

@@ -75,7 +75,7 @@ use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
 use smallvec::smallvec;
 
-impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
+impl<'tcx> InferCtxt<'tcx> {
     /// Registers that the given region obligation must be resolved
     /// from within the scope of `body_id`. These regions are enqueued
     /// and later processed by regionck, when full type information is
@@ -183,7 +183,7 @@ impl<'cx, 'tcx> InferCtxt<'cx, 'tcx> {
             outlives_env.param_env,
         );
 
-        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
+        self.err_ctxt().resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 
@@ -338,7 +338,7 @@ where
             substs,
             true,
             |ty| match *ty.kind() {
-                ty::Opaque(def_id, substs) => (def_id, substs),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -349,17 +349,19 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
     ) {
         self.generic_must_outlive(
             origin,
             region,
             GenericKind::Projection(projection_ty),
-            projection_ty.item_def_id,
+            projection_ty.def_id,
             projection_ty.substs,
             false,
             |ty| match ty.kind() {
-                ty::Projection(projection_ty) => (projection_ty.item_def_id, projection_ty.substs),
+                ty::Alias(ty::Projection, projection_ty) => {
+                    (projection_ty.def_id, projection_ty.substs)
+                }
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -523,7 +525,7 @@ where
     }
 }
 
-impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'cx, 'tcx> {
+impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
     fn push_sub_region_constraint(
         &mut self,
         origin: SubregionOrigin<'tcx>,

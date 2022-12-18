@@ -8,7 +8,7 @@ LL | |         AFuture.await;
 LL | |     });
    | |_____^ future created by async block is not `Send`
    |
-   = help: within `impl Future<Output = ()>`, the trait `Send` is not implemented for `*mut ()`
+   = help: within `[async block@$DIR/issue-67252-unnamed-future.rs:18:11: 21:6]`, the trait `Send` is not implemented for `*mut ()`
 note: future is not `Send` as this value is used across an await
   --> $DIR/issue-67252-unnamed-future.rs:20:16
    |

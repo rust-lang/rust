@@ -6,6 +6,8 @@ use rustc_middle::ty::adjustment::PointerCast;
 use rustc_middle::ty::layout::FnAbiOf;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 
+use cranelift_codegen::ir::UserFuncName;
+
 use crate::constant::ConstantCx;
 use crate::debuginfo::FunctionDebugContext;
 use crate::prelude::*;
@@ -57,14 +59,14 @@ pub(crate) fn codegen_fn<'tcx>(
 
     // Declare function
     let symbol_name = tcx.symbol_name(instance).name.to_string();
-    let sig = get_function_sig(tcx, module.isa().triple(), instance);
+    let sig = get_function_sig(tcx, module.target_config().default_call_conv, instance);
     let func_id = module.declare_function(&symbol_name, Linkage::Local, &sig).unwrap();
 
     // Make the FunctionBuilder
     let mut func_ctx = FunctionBuilderContext::new();
     let mut func = cached_func;
     func.clear();
-    func.name = ExternalName::user(0, func_id.as_u32());
+    func.name = UserFuncName::user(0, func_id.as_u32());
     func.signature = sig;
     func.collect_debug_info();
 
@@ -370,8 +372,10 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                 }
             }
 
-            TerminatorKind::SwitchInt { discr, switch_ty, targets } => {
-                let discr = codegen_operand(fx, discr).load_scalar(fx);
+            TerminatorKind::SwitchInt { discr, targets } => {
+                let discr = codegen_operand(fx, discr);
+                let switch_ty = discr.layout().ty;
+                let discr = discr.load_scalar(fx);
 
                 let use_bool_opt = switch_ty.kind() == fx.tcx.types.bool.kind()
                     || (targets.iter().count() == 1 && targets.iter().next().unwrap().0 == 0);
@@ -386,11 +390,9 @@ fn codegen_fn_body(fx: &mut FunctionCx<'_, '_, '_>, start_block: Block) {
                         _ => unreachable!("{:?}", targets),
                     };
 
-                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
                     let (discr, is_inverted) =
                         crate::optimize::peephole::maybe_unwrap_bool_not(&mut fx.bcx, discr);
                     let test_zero = if is_inverted { !test_zero } else { test_zero };
-                    let discr = crate::optimize::peephole::maybe_unwrap_bint(&mut fx.bcx, discr);
                     if let Some(taken) = crate::optimize::peephole::maybe_known_branch_taken(
                         &fx.bcx, discr, test_zero,
                     ) {
@@ -567,7 +569,7 @@ fn codegen_stmt<'tcx>(
                         UnOp::Not => match layout.ty.kind() {
                             ty::Bool => {
                                 let res = fx.bcx.ins().icmp_imm(IntCC::Equal, val, 0);
-                                CValue::by_val(fx.bcx.ins().bint(types::I8, res), layout)
+                                CValue::by_val(res, layout)
                             }
                             ty::Uint(_) | ty::Int(_) => {
                                 CValue::by_val(fx.bcx.ins().bnot(val), layout)
@@ -575,12 +577,6 @@ fn codegen_stmt<'tcx>(
                             _ => unreachable!("un op Not for {:?}", layout.ty),
                         },
                         UnOp::Neg => match layout.ty.kind() {
-                            ty::Int(IntTy::I128) => {
-                                // FIXME remove this case once ineg.i128 works
-                                let zero =
-                                    CValue::const_val(fx, layout, ty::ScalarInt::null(layout.size));
-                                crate::num::codegen_int_binop(fx, BinOp::Sub, zero, operand)
-                            }
                             ty::Int(_) => CValue::by_val(fx.bcx.ins().ineg(val), layout),
                             ty::Float(_) => CValue::by_val(fx.bcx.ins().fneg(val), layout),
                             _ => unreachable!("un op Neg for {:?}", layout.ty),
@@ -633,7 +629,12 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, operand.cast_pointer_to(to_layout));
                 }
                 Rvalue::Cast(
-                    CastKind::Misc
+                    CastKind::IntToInt
+                    | CastKind::FloatToFloat
+                    | CastKind::FloatToInt
+                    | CastKind::IntToFloat
+                    | CastKind::FnPtrToPtr
+                    | CastKind::PtrToPtr
                     | CastKind::PointerExposeAddress
                     | CastKind::PointerFromExposedAddress,
                     ref operand,
@@ -701,9 +702,9 @@ fn codegen_stmt<'tcx>(
                     let operand = codegen_operand(fx, operand);
                     operand.unsize_value(fx, lval);
                 }
-                Rvalue::Cast(CastKind::DynStar, _, _) => {
-                    // FIXME(dyn-star)
-                    unimplemented!()
+                Rvalue::Cast(CastKind::DynStar, ref operand, _) => {
+                    let operand = codegen_operand(fx, operand);
+                    operand.coerce_dyn_star(fx, lval);
                 }
                 Rvalue::Discriminant(place) => {
                     let place = codegen_place(fx, place);
@@ -763,11 +764,7 @@ fn codegen_stmt<'tcx>(
                     lval.write_cvalue(fx, CValue::by_val(operand, box_layout));
                 }
                 Rvalue::NullaryOp(null_op, ty) => {
-                    assert!(
-                        lval.layout()
-                            .ty
-                            .is_sized(fx.tcx.at(stmt.source_info.span), ParamEnv::reveal_all())
-                    );
+                    assert!(lval.layout().ty.is_sized(fx.tcx, ParamEnv::reveal_all()));
                     let layout = fx.layout_of(fx.monomorphize(ty));
                     let val = match null_op {
                         NullOp::SizeOf => layout.size.bytes(),
@@ -917,7 +914,7 @@ pub(crate) fn codegen_operand<'tcx>(
             let cplace = codegen_place(fx, *place);
             cplace.to_cvalue(fx)
         }
-        Operand::Constant(const_) => crate::constant::codegen_constant(fx, const_),
+        Operand::Constant(const_) => crate::constant::codegen_constant_operand(fx, const_),
     }
 }
 

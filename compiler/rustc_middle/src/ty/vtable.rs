@@ -1,4 +1,3 @@
-use std::convert::TryFrom;
 use std::fmt;
 
 use crate::mir::interpret::{alloc_range, AllocId, Allocation, Pointer, Scalar};
@@ -66,7 +65,7 @@ pub(super) fn vtable_allocation_provider<'tcx>(
     let layout = tcx
         .layout_of(ty::ParamEnv::reveal_all().and(ty))
         .expect("failed to build vtable representation");
-    assert!(!layout.is_unsized(), "can't create a vtable for an unsized type");
+    assert!(layout.is_sized(), "can't create a vtable for an unsized type");
     let size = layout.size.bytes();
     let align = layout.align.abi.bytes();
 
@@ -89,8 +88,8 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }
-            VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size).into(),
-            VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size).into(),
+            VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size),
+            VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size),
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.

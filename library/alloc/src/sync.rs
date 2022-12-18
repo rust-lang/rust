@@ -3,6 +3,10 @@
 //! Thread-safe reference-counting pointers.
 //!
 //! See the [`Arc<T>`][Arc] documentation for more details.
+//!
+//! **Note**: This module is only available on platforms that support atomic
+//! loads and stores of pointers. This may be detected at compile time using
+//! `#[cfg(target_has_atomic = "ptr")]`.
 
 use core::any::Any;
 use core::borrow;
@@ -81,6 +85,11 @@ macro_rules! acquire {
 /// inside an `Arc`. If you need to mutate through an `Arc`, use
 /// [`Mutex`][mutex], [`RwLock`][rwlock], or one of the [`Atomic`][atomic]
 /// types.
+///
+/// **Note**: This type is only available on platforms that support atomic
+/// loads and stores of pointers, which includes all platforms that support
+/// the `std` crate but not all those which only support [`alloc`](crate).
+/// This may be detected at compile time using `#[cfg(target_has_atomic = "ptr")]`.
 ///
 /// ## Thread Safety
 ///
@@ -322,6 +331,15 @@ struct ArcInner<T: ?Sized> {
     weak: atomic::AtomicUsize,
 
     data: T,
+}
+
+/// Calculate layout for `ArcInner<T>` using the inner value's layout
+fn arcinner_layout_for_value_layout(layout: Layout) -> Layout {
+    // Calculate layout using the given value layout.
+    // Previously, layout was calculated on the expression
+    // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
+    // reference (see #54908).
+    Layout::new::<ArcInner<()>>().extend(layout).unwrap().0.pad_to_align()
 }
 
 unsafe impl<T: ?Sized + Sync + Send> Send for ArcInner<T> {}
@@ -1108,8 +1126,8 @@ impl<T: ?Sized> Arc<T> {
         drop(Weak { ptr: self.ptr });
     }
 
-    /// Returns `true` if the two `Arc`s point to the same allocation
-    /// (in a vein similar to [`ptr::eq`]).
+    /// Returns `true` if the two `Arc`s point to the same allocation in a vein similar to
+    /// [`ptr::eq`]. See [that function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Examples
     ///
@@ -1145,11 +1163,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> *mut ArcInner<T> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
         unsafe {
             Arc::try_allocate_for_layout(value_layout, allocate, mem_to_arcinner)
                 .unwrap_or_else(|_| handle_alloc_error(layout))
@@ -1167,11 +1181,7 @@ impl<T: ?Sized> Arc<T> {
         allocate: impl FnOnce(Layout) -> Result<NonNull<[u8]>, AllocError>,
         mem_to_arcinner: impl FnOnce(*mut u8) -> *mut ArcInner<T>,
     ) -> Result<*mut ArcInner<T>, AllocError> {
-        // Calculate layout using the given value layout.
-        // Previously, layout was calculated on the expression
-        // `&*(ptr as *const ArcInner<T>)`, but this created a misaligned
-        // reference (see #54908).
-        let layout = Layout::new::<ArcInner<()>>().extend(value_layout).unwrap().0.pad_to_align();
+        let layout = arcinner_layout_for_value_layout(value_layout);
 
         let ptr = allocate(layout)?;
 
@@ -1195,7 +1205,7 @@ impl<T: ?Sized> Arc<T> {
             Self::allocate_for_layout(
                 Layout::for_value(&*ptr),
                 |layout| Global.allocate(layout),
-                |mem| mem.with_metadata_of(ptr as *mut ArcInner<T>),
+                |mem| mem.with_metadata_of(ptr as *const ArcInner<T>),
             )
         }
     }
@@ -1237,7 +1247,7 @@ impl<T> Arc<[T]> {
         }
     }
 
-    /// Copy elements from slice into newly allocated Arc<\[T\]>
+    /// Copy elements from slice into newly allocated `Arc<[T]>`
     ///
     /// Unsafe because the caller must either take ownership or bind `T: Copy`.
     #[cfg(not(no_global_oom_handling))]
@@ -1577,10 +1587,11 @@ impl<T: ?Sized> Arc<T> {
     ///
     /// # Safety
     ///
-    /// Any other `Arc` or [`Weak`] pointers to the same allocation must not be dereferenced
-    /// for the duration of the returned borrow.
-    /// This is trivially the case if no such pointers exist,
-    /// for example immediately after `Arc::new`.
+    /// If any other `Arc` or [`Weak`] pointers to the same allocation exist, then
+    /// they must be must not be dereferenced or have active borrows for the duration
+    /// of the returned borrow, and their inner type must be exactly the same as the
+    /// inner type of this Rc (including lifetimes). This is trivially the case if no
+    /// such pointers exist, for example immediately after `Arc::new`.
     ///
     /// # Examples
     ///
@@ -1594,6 +1605,38 @@ impl<T: ?Sized> Arc<T> {
     ///     Arc::get_mut_unchecked(&mut x).push_str("foo")
     /// }
     /// assert_eq!(*x, "foo");
+    /// ```
+    /// Other `Arc` pointers to the same allocation must be to the same type.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<str> = Arc::from("Hello, world!");
+    /// let mut y: Arc<[u8]> = x.clone().into();
+    /// unsafe {
+    ///     // this is Undefined Behavior, because x's inner type is str, not [u8]
+    ///     Arc::get_mut_unchecked(&mut y).fill(0xff); // 0xff is invalid in UTF-8
+    /// }
+    /// println!("{}", &*x); // Invalid UTF-8 in a str
+    /// ```
+    /// Other `Arc` pointers to the same allocation must be to the exact same type, including lifetimes.
+    /// ```no_run
+    /// #![feature(get_mut_unchecked)]
+    ///
+    /// use std::sync::Arc;
+    ///
+    /// let x: Arc<&str> = Arc::new("Hello, world!");
+    /// {
+    ///     let s = String::from("Oh, no!");
+    ///     let mut y: Arc<&str> = x.clone().into();
+    ///     unsafe {
+    ///         // this is Undefined Behavior, because x's inner type
+    ///         // is &'long str, not &'short str
+    ///         *Arc::get_mut_unchecked(&mut y) = &s;
+    ///     }
+    /// }
+    /// println!("{}", &*x); // Use-after-free
     /// ```
     #[inline]
     #[unstable(feature = "get_mut_unchecked", issue = "63292")]
@@ -2060,9 +2103,9 @@ impl<T: ?Sized> Weak<T> {
         }
     }
 
-    /// Returns `true` if the two `Weak`s point to the same allocation (similar to
-    /// [`ptr::eq`]), or if both don't point to any allocation
-    /// (because they were created with `Weak::new()`).
+    /// Returns `true` if the two `Weak`s point to the same allocation similar to [`ptr::eq`], or if
+    /// both don't point to any allocation (because they were created with `Weak::new()`). See [that
+    /// function][`ptr::eq`] for caveats when comparing `dyn Trait` pointers.
     ///
     /// # Notes
     ///
@@ -2564,12 +2607,10 @@ impl<T> From<Vec<T>> for Arc<[T]> {
     #[inline]
     fn from(mut v: Vec<T>) -> Arc<[T]> {
         unsafe {
-            let arc = Arc::copy_from_slice(&v);
-
+            let rc = Arc::copy_from_slice(&v);
             // Allow the Vec to free its memory, but not destroy its contents
             v.set_len(0);
-
-            arc
+            rc
         }
     }
 }

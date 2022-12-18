@@ -40,7 +40,7 @@ pub(super) fn check(cx: &LateContext<'_>, metadata: &Metadata, ignore_publish: b
 }
 
 fn missing_warning(cx: &LateContext<'_>, package: &cargo_metadata::Package, field: &str) {
-    let message = format!("package `{}` is missing `{}` metadata", package.name, field);
+    let message = format!("package `{}` is missing `{field}` metadata", package.name);
     span_lint(cx, CARGO_COMMON_METADATA, DUMMY_SP, &message);
 }
 

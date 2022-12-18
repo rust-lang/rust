@@ -4,7 +4,6 @@ version = "0.0.0"
 edition = "2021"
 
 [lib]
-doctest = false
 
 [dependencies]
 libloading = "0.7.1"
@@ -39,6 +38,7 @@ rustc_mir_transform = { path = "../rustc_mir_transform" }
 rustc_monomorphize = { path = "../rustc_monomorphize" }
 rustc_passes = { path = "../rustc_passes" }
 rustc_hir_analysis = { path = "../rustc_hir_analysis" }
+rustc_hir_typeck = { path = "../rustc_hir_typeck" }
 rustc_lint = { path = "../rustc_lint" }
 rustc_errors = { path = "../rustc_errors" }
 rustc_plugin_impl = { path = "../rustc_plugin_impl" }
@@ -48,15 +48,9 @@ rustc_resolve = { path = "../rustc_resolve" }
 rustc_trait_selection = { path = "../rustc_trait_selection" }
 rustc_ty_utils = { path = "../rustc_ty_utils" }
 
-[target.'cfg(unix)'.dependencies]
-libc = "0.2"
-
-[target.'cfg(windows)'.dependencies]
-winapi = { version = "0.3", features = ["libloaderapi"] }
-
 [dev-dependencies]
 rustc_target = { path = "../rustc_target" }
 
 [features]
 llvm = ['rustc_codegen_llvm']
-rustc_use_parallel_compiler = ['rayon', 'rustc-rayon-core', 'rustc_query_impl/rustc_use_parallel_compiler']
+rustc_use_parallel_compiler = ['rayon', 'rustc-rayon-core', 'rustc_query_impl/rustc_use_parallel_compiler', 'rustc_errors/rustc_use_parallel_compiler']

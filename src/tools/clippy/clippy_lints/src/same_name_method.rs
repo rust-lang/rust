@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
         let mut map = FxHashMap::<Res, ExistingName>::default();
 
         for id in cx.tcx.hir().items() {
-            if matches!(cx.tcx.def_kind(id.def_id), DefKind::Impl)
+            if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl)
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {
                   items,
@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                     |diag| {
                                         diag.span_note(
                                             trait_method_span,
-                                            &format!("existing `{}` defined here", method_name),
+                                            &format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );
@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         // iterate on trait_spans?
                                         diag.span_note(
                                             trait_spans[0],
-                                            &format!("existing `{}` defined here", method_name),
+                                            &format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );

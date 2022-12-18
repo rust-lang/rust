@@ -1,103 +1,10 @@
 use rustc_ast::InlineAsmTemplatePiece;
 use rustc_data_structures::fx::FxHashSet;
-use rustc_errors::struct_span_err;
 use rustc_hir as hir;
-use rustc_index::vec::Idx;
-use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
 use rustc_middle::ty::{self, Article, FloatTy, IntTy, Ty, TyCtxt, TypeVisitable, UintTy};
 use rustc_session::lint;
-use rustc_span::{Span, Symbol, DUMMY_SP};
-use rustc_target::abi::{Pointer, VariantIdx};
+use rustc_span::{Symbol, DUMMY_SP};
 use rustc_target::asm::{InlineAsmReg, InlineAsmRegClass, InlineAsmRegOrRegClass, InlineAsmType};
-
-use super::FnCtxt;
-
-/// If the type is `Option<T>`, it will return `T`, otherwise
-/// the type itself. Works on most `Option`-like types.
-fn unpack_option_like<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
-    let ty::Adt(def, substs) = *ty.kind() else { return ty };
-
-    if def.variants().len() == 2 && !def.repr().c() && def.repr().int.is_none() {
-        let data_idx;
-
-        let one = VariantIdx::new(1);
-        let zero = VariantIdx::new(0);
-
-        if def.variant(zero).fields.is_empty() {
-            data_idx = one;
-        } else if def.variant(one).fields.is_empty() {
-            data_idx = zero;
-        } else {
-            return ty;
-        }
-
-        if def.variant(data_idx).fields.len() == 1 {
-            return def.variant(data_idx).fields[0].ty(tcx, substs);
-        }
-    }
-
-    ty
-}
-
-impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
-    pub fn check_transmute(&self, span: Span, from: Ty<'tcx>, to: Ty<'tcx>) {
-        let convert = |ty: Ty<'tcx>| {
-            let ty = self.resolve_vars_if_possible(ty);
-            let ty = self.tcx.normalize_erasing_regions(self.param_env, ty);
-            (SizeSkeleton::compute(ty, self.tcx, self.param_env), ty)
-        };
-        let (sk_from, from) = convert(from);
-        let (sk_to, to) = convert(to);
-
-        // Check for same size using the skeletons.
-        if let (Ok(sk_from), Ok(sk_to)) = (sk_from, sk_to) {
-            if sk_from.same_size(sk_to) {
-                return;
-            }
-
-            // Special-case transmuting from `typeof(function)` and
-            // `Option<typeof(function)>` to present a clearer error.
-            let from = unpack_option_like(self.tcx, from);
-            if let (&ty::FnDef(..), SizeSkeleton::Known(size_to)) = (from.kind(), sk_to) && size_to == Pointer.size(&self.tcx) {
-                struct_span_err!(self.tcx.sess, span, E0591, "can't transmute zero-sized type")
-                    .note(&format!("source type: {from}"))
-                    .note(&format!("target type: {to}"))
-                    .help("cast with `as` to a pointer instead")
-                    .emit();
-                return;
-            }
-        }
-
-        // Try to display a sensible error with as much information as possible.
-        let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
-            Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
-            Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
-            Err(LayoutError::Unknown(bad)) => {
-                if bad == ty {
-                    "this type does not have a fixed size".to_owned()
-                } else {
-                    format!("size can vary because of {bad}")
-                }
-            }
-            Err(err) => err.to_string(),
-        };
-
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            span,
-            E0512,
-            "cannot transmute between types of different sizes, \
-                                        or dependently-sized types"
-        );
-        if from == to {
-            err.note(&format!("`{from}` does not have a fixed size"));
-        } else {
-            err.note(&format!("source type: `{}` ({})", from, skeleton_string(from, sk_from)))
-                .note(&format!("target type: `{}` ({})", to, skeleton_string(to, sk_to)));
-        }
-        err.emit();
-    }
-}
 
 pub struct InlineAsmCtxt<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
@@ -126,7 +33,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
     fn is_thin_ptr_ty(&self, ty: Ty<'tcx>) -> bool {
         // Type still may have region variables, but `Sized` does not depend
         // on those, so just erase them before querying.
-        if ty.is_sized(self.tcx.at(DUMMY_SP), self.param_env) {
+        if ty.is_sized(self.tcx, self.param_env) {
             return true;
         }
         if let ty::Foreign(..) = ty.kind() {
@@ -146,7 +53,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
         target_features: &FxHashSet<Symbol>,
     ) -> Option<InlineAsmType> {
         let ty = (self.get_operand_ty)(expr);
-        if ty.has_infer_types_or_consts() {
+        if ty.has_non_region_infer() {
             bug!("inference variable in asm operand ty: {:?} {:?}", expr, ty);
         }
         let asm_ty_isize = match self.tcx.sess.target.pointer_width {
@@ -221,7 +128,7 @@ impl<'a, 'tcx> InlineAsmCtxt<'a, 'tcx> {
 
         // Check that the type implements Copy. The only case where this can
         // possibly fail is for SIMD types which don't #[derive(Copy)].
-        if !ty.is_copy_modulo_regions(self.tcx.at(expr.span), self.param_env) {
+        if !ty.is_copy_modulo_regions(self.tcx, self.param_env) {
             let msg = "arguments for inline assembly must be copyable";
             let mut err = self.tcx.sess.struct_span_err(expr.span, msg);
             err.note(&format!("`{ty}` does not implement the Copy trait"));

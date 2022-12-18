@@ -52,11 +52,8 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
                 Some(error_info) => error_info.to_universe_info(old_universe),
                 None => UniverseInfo::other(),
             };
-            for u in old_universe..universe {
-                self.borrowck_context
-                    .constraints
-                    .universe_causes
-                    .insert(u + 1, universe_info.clone());
+            for u in (old_universe + 1)..=universe {
+                self.borrowck_context.constraints.universe_causes.insert(u, universe_info.clone());
             }
         }
 
@@ -71,15 +68,13 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     where
         T: TypeFoldable<'tcx>,
     {
+        let old_universe = self.infcx.universe();
+
         let (instantiated, _) =
             self.infcx.instantiate_canonical_with_fresh_inference_vars(span, canonical);
 
-        for u in 0..canonical.max_universe.as_u32() {
-            let info = UniverseInfo::other();
-            self.borrowck_context
-                .constraints
-                .universe_causes
-                .insert(ty::UniverseIndex::from_u32(u), info);
+        for u in (old_universe + 1)..=self.infcx.universe() {
+            self.borrowck_context.constraints.universe_causes.insert(u, UniverseInfo::other());
         }
 
         instantiated
@@ -93,12 +88,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) {
         self.prove_predicate(
-            ty::Binder::dummy(ty::PredicateKind::Trait(ty::TraitPredicate {
+            ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
                 trait_ref,
                 constness: ty::BoundConstness::NotConst,
                 polarity: ty::ImplPolarity::Positive,
-            }))
-            .to_predicate(self.tcx()),
+            }))),
             locations,
             category,
         );
@@ -127,14 +121,11 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
 
     pub(super) fn prove_predicates(
         &mut self,
-        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx>>,
+        predicates: impl IntoIterator<Item = impl ToPredicate<'tcx> + std::fmt::Debug>,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         for predicate in predicates {
-            let predicate = predicate.to_predicate(self.tcx());
-            debug!("prove_predicates(predicate={:?}, locations={:?})", predicate, locations,);
-
             self.prove_predicate(predicate, locations, category);
         }
     }
@@ -142,11 +133,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
     #[instrument(skip(self), level = "debug")]
     pub(super) fn prove_predicate(
         &mut self,
-        predicate: ty::Predicate<'tcx>,
+        predicate: impl ToPredicate<'tcx> + std::fmt::Debug,
         locations: Locations,
         category: ConstraintCategory<'tcx>,
     ) {
         let param_env = self.param_env;
+        let predicate = predicate.to_predicate(self.tcx());
         self.fully_perform_op(
             locations,
             category,

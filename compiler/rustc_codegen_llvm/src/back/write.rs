@@ -537,7 +537,7 @@ pub(crate) fn link(
     mut modules: Vec<ModuleCodegen<ModuleLlvm>>,
 ) -> Result<ModuleCodegen<ModuleLlvm>, FatalError> {
     use super::lto::{Linker, ModuleBuffer};
-    // Sort the modules by name to ensure to ensure deterministic behavior.
+    // Sort the modules by name to ensure deterministic behavior.
     modules.sort_by(|a, b| a.name.cmp(&b.name));
     let (first, elements) =
         modules.split_first().expect("Bug! modules must contain at least one module.");
@@ -765,11 +765,21 @@ pub(crate) unsafe fn codegen(
         drop(handlers);
     }
 
+    // `.dwo` files are only emitted if:
+    //
+    // - Object files are being emitted (i.e. bitcode only or metadata only compilations will not
+    //   produce dwarf objects, even if otherwise enabled)
+    // - Target supports Split DWARF
+    // - Split debuginfo is enabled
+    // - Split DWARF kind is `split` (i.e. debuginfo is split into `.dwo` files, not different
+    //   sections in the `.o` files).
+    let dwarf_object_emitted = matches!(config.emit_obj, EmitObj::ObjectCode(_))
+        && cgcx.target_can_use_split_dwarf
+        && cgcx.split_debuginfo != SplitDebuginfo::Off
+        && cgcx.split_dwarf_kind == SplitDwarfKind::Split;
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
-        cgcx.target_can_use_split_dwarf
-            && cgcx.split_debuginfo != SplitDebuginfo::Off
-            && cgcx.split_dwarf_kind == SplitDwarfKind::Split,
+        dwarf_object_emitted,
         config.emit_bc,
         &cgcx.output_filenames,
     ))

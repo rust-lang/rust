@@ -34,11 +34,16 @@ fn get_clap_config() -> ArgMatches {
             Arg::new("markdown")
                 .long("markdown")
                 .help("Change the reports table to use markdown links"),
+            Arg::new("recursive")
+                .long("--recursive")
+                .help("Run clippy on the dependencies of crates specified in crates-toml")
+                .conflicts_with("threads")
+                .conflicts_with("fix"),
         ])
         .get_matches()
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub(crate) struct LintcheckConfig {
     /// max number of jobs to spawn (default 1)
     pub max_jobs: usize,
@@ -54,6 +59,8 @@ pub(crate) struct LintcheckConfig {
     pub lint_filter: Vec<String>,
     /// Indicate if the output should support markdown syntax
     pub markdown: bool,
+    /// Run clippy on the dependencies of crates
+    pub recursive: bool,
 }
 
 impl LintcheckConfig {
@@ -66,8 +73,7 @@ impl LintcheckConfig {
         let sources_toml = env::var("LINTCHECK_TOML").unwrap_or_else(|_| {
             clap_config
                 .get_one::<String>("crates-toml")
-                .map(|s| &**s)
-                .unwrap_or("lintcheck/lintcheck_crates.toml")
+                .map_or("lintcheck/lintcheck_crates.toml", |s| &**s)
                 .into()
         });
 
@@ -90,7 +96,7 @@ impl LintcheckConfig {
             Some(&0) => {
                 // automatic choice
                 // Rayon seems to return thread count so half that for core count
-                (rayon::current_num_threads() / 2) as usize
+                rayon::current_num_threads() / 2
             },
             Some(&threads) => threads,
             // no -j passed, use a single thread
@@ -119,6 +125,7 @@ impl LintcheckConfig {
             fix: clap_config.contains_id("fix"),
             lint_filter,
             markdown,
+            recursive: clap_config.contains_id("recursive"),
         }
     }
 }

@@ -1,12 +1,12 @@
 use clippy_utils::diagnostics::span_lint_and_help;
 use clippy_utils::eager_or_lazy::switch_to_eager_eval;
+use clippy_utils::msrvs::{self, Msrv};
 use clippy_utils::source::snippet_with_macro_callsite;
-use clippy_utils::{contains_return, higher, is_else_clause, is_lang_ctor, meets_msrv, msrvs, peel_blocks};
+use clippy_utils::{contains_return, higher, is_else_clause, is_res_lang_ctor, path_res, peel_blocks};
 use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Expr, ExprKind, Stmt, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
-use rustc_semver::RustcVersion;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 
 declare_clippy_lint! {
@@ -45,12 +45,12 @@ declare_clippy_lint! {
 }
 
 pub struct IfThenSomeElseNone {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl IfThenSomeElseNone {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         Self { msrv }
     }
 }
@@ -59,7 +59,7 @@ impl_lint_pass!(IfThenSomeElseNone => [IF_THEN_SOME_ELSE_NONE]);
 
 impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if !meets_msrv(self.msrv, msrvs::BOOL_THEN) {
+        if !self.msrv.meets(msrvs::BOOL_THEN) {
             return;
         }
 
@@ -76,15 +76,13 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             && let ExprKind::Block(then_block, _) = then.kind
             && let Some(then_expr) = then_block.expr
             && let ExprKind::Call(then_call, [then_arg]) = then_expr.kind
-            && let ExprKind::Path(ref then_call_qpath) = then_call.kind
-            && is_lang_ctor(cx, then_call_qpath, OptionSome)
-            && let ExprKind::Path(ref qpath) = peel_blocks(els).kind
-            && is_lang_ctor(cx, qpath, OptionNone)
+            && is_res_lang_ctor(cx, path_res(cx, then_call), OptionSome)
+            && is_res_lang_ctor(cx, path_res(cx, peel_blocks(els)), OptionNone)
             && !stmts_contains_early_return(then_block.stmts)
         {
             let cond_snip = snippet_with_macro_callsite(cx, cond.span, "[condition]");
             let cond_snip = if matches!(cond.kind, ExprKind::Unary(_, _) | ExprKind::Binary(_, _, _)) {
-                format!("({})", cond_snip)
+                format!("({cond_snip})")
             } else {
                 cond_snip.into_owned()
             };
@@ -92,9 +90,9 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             let mut method_body = if then_block.stmts.is_empty() {
                 arg_snip.into_owned()
             } else {
-                format!("{{ /* snippet */ {} }}", arg_snip)
+                format!("{{ /* snippet */ {arg_snip} }}")
             };
-            let method_name = if switch_to_eager_eval(cx, expr) && meets_msrv(self.msrv, msrvs::BOOL_THEN_SOME) {
+            let method_name = if switch_to_eager_eval(cx, expr) && self.msrv.meets(msrvs::BOOL_THEN_SOME) {
                 "then_some"
             } else {
                 method_body.insert_str(0, "|| ");
@@ -102,14 +100,13 @@ impl<'tcx> LateLintPass<'tcx> for IfThenSomeElseNone {
             };
 
             let help = format!(
-                "consider using `bool::{}` like: `{}.{}({})`",
-                method_name, cond_snip, method_name, method_body,
+                "consider using `bool::{method_name}` like: `{cond_snip}.{method_name}({method_body})`",
             );
             span_lint_and_help(
                 cx,
                 IF_THEN_SOME_ELSE_NONE,
                 expr.span,
-                &format!("this could be simplified with `bool::{}`", method_name),
+                &format!("this could be simplified with `bool::{method_name}`"),
                 None,
                 &help,
             );

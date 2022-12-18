@@ -2,12 +2,12 @@ error[E0072]: recursive type `E` has infinite size
   --> $DIR/infinite-recursive-type.rs:1:1
    |
 LL | enum E {
-   | ^^^^^^ recursive type has infinite size
+   | ^^^^^^
 LL |
 LL |     V(E),
    |       - recursive without indirection
    |
-help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to make `E` representable
+help: insert some indirection (e.g., a `Box`, `Rc`, or `&`) to break the cycle
    |
 LL |     V(Box<E>),
    |       ++++ +
