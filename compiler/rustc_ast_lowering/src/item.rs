@@ -1,6 +1,6 @@
 use super::errors::{InvalidAbi, InvalidAbiSuggestion, MisplacedRelaxTraitBound};
 use super::ResolverAstLoweringExt;
-use super::{Arena, AstOwner, ImplTraitContext, ImplTraitPosition};
+use super::{AstOwner, ImplTraitContext, ImplTraitPosition};
 use super::{FnDeclKind, LoweringContext, ParamMode};
 
 use rustc_ast::ptr::P;
@@ -24,7 +24,6 @@ use thin_vec::ThinVec;
 pub(super) struct ItemLowerer<'a, 'hir> {
     pub(super) tcx: TyCtxt<'hir>,
     pub(super) resolver: &'a mut ResolverAstLowering,
-    pub(super) ast_arena: &'a Arena<'static>,
     pub(super) ast_index: &'a IndexVec<LocalDefId, AstOwner<'a>>,
     pub(super) owners: &'a mut IndexVec<LocalDefId, hir::MaybeOwner<&'hir hir::OwnerInfo<'hir>>>,
 }
@@ -60,7 +59,6 @@ impl<'a, 'hir> ItemLowerer<'a, 'hir> {
             tcx: self.tcx,
             resolver: self.resolver,
             arena: self.tcx.hir_arena,
-            ast_arena: self.ast_arena,
 
             // HirId handling.
             bodies: Vec::new(),
