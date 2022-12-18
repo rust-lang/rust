@@ -134,6 +134,7 @@
 #![feature(const_option)]
 #![feature(const_option_ext)]
 #![feature(const_pin)]
+#![feature(const_pointer_byte_offsets)]
 #![feature(const_pointer_is_aligned)]
 #![feature(const_ptr_sub_ptr)]
 #![feature(const_replace)]
