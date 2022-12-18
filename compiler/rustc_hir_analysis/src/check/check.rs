@@ -99,18 +99,17 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
             ty: Ty<'tcx>,
             tcx: TyCtxt<'tcx>,
             param_env: ty::ParamEnv<'tcx>,
-            span: Span,
         ) -> bool {
             // We don't just accept all !needs_drop fields, due to semver concerns.
             match ty.kind() {
                 ty::Ref(..) => true, // references never drop (even mutable refs, which are non-Copy and hence fail the later check)
                 ty::Tuple(tys) => {
                     // allow tuples of allowed types
-                    tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env, span))
+                    tys.iter().all(|ty| allowed_union_field(ty, tcx, param_env))
                 }
                 ty::Array(elem, _len) => {
                     // Like `Copy`, we do *not* special-case length 0.
-                    allowed_union_field(*elem, tcx, param_env, span)
+                    allowed_union_field(*elem, tcx, param_env)
                 }
                 _ => {
                     // Fallback case: allow `ManuallyDrop` and things that are `Copy`.
@@ -124,7 +123,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
         for field in &def.non_enum_variant().fields {
             let field_ty = field.ty(tcx, substs);
 
-            if !allowed_union_field(field_ty, tcx, param_env, span) {
+            if !allowed_union_field(field_ty, tcx, param_env) {
                 let (field_span, ty_span) = match tcx.hir().get_if_local(field.did) {
                     // We are currently checking the type this field came from, so it must be local.
                     Some(Node::Field(field)) => (field.span, field.ty.span),

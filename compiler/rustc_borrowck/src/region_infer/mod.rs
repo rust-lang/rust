@@ -831,7 +831,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if self.eval_verify_bound(
                 infcx,
                 param_env,
-                body,
                 generic_ty,
                 type_test.lower_bound,
                 &type_test.verify_bound,
@@ -962,14 +961,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot.  See
             // #53570 for an example.
-            if self.eval_verify_bound(
-                infcx,
-                param_env,
-                body,
-                generic_ty,
-                ur,
-                &type_test.verify_bound,
-            ) {
+            if self.eval_verify_bound(infcx, param_env, generic_ty, ur, &type_test.verify_bound) {
                 continue;
             }
 
@@ -1190,7 +1182,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
@@ -1213,25 +1204,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(
-                    infcx,
-                    param_env,
-                    body,
-                    generic_ty,
-                    lower_bound,
-                    verify_bound,
-                )
+                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
             }),
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(
-                    infcx,
-                    param_env,
-                    body,
-                    generic_ty,
-                    lower_bound,
-                    verify_bound,
-                )
+                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
             }),
         }
     }
