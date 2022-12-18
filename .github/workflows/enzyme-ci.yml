@@ -1,6 +1,10 @@
 name: Enzyme CI
 
-on: [push]
+on: 
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
   build-linux:
@@ -51,7 +55,10 @@ jobs:
     - name: make check-activityanalysis
       run: cd enzyme/build && make check-activityanalysis -j`nproc`
     - name: make check-enzyme
-      run: cd enzyme/build && make check-enzyme -j`nproc`
+      run: cd enzyme/build && make check-enzyme-bench -j`nproc`
+    - name: graph results
+      run: python3 enzyme/test/upload-results.py enzyme/build/test/Enzyme/results.json --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'
   
   build-macos:
     name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} macOS
@@ -86,7 +93,10 @@ jobs:
     - name: make check-activityanalysis
       run: cd enzyme/build && make check-activityanalysis -j 3
     - name: make check-enzyme
-      run: cd enzyme/build && make check-enzyme -j 3
+      run: cd enzyme/build && make check-enzyme-bench -j 3
+    - name: graph results
+      run: python3 enzyme/test/upload-results.py enzyme/build/test/Enzyme/results.json --url https://enzyme.mit.edu/cibench/api --token ${{ secrets.GRAPH_TOKEN }}
+      if: github.event_name != 'pull_request' && matrix.build == 'Release'
 
   build-xcode:
     name: Enzyme CI LLVM ${{ matrix.llvm }} ${{ matrix.build }} macOS XCode
