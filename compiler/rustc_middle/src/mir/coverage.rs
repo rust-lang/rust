@@ -11,9 +11,9 @@ rustc_index::newtype_index! {
     /// (which _*descend*_ from u32::MAX). Id value `0` (zero) represents a virtual counter with a
     /// constant value of `0`.
     #[derive(HashStable)]
+    #[max = 0xFFFF_FFFF]
     pub struct ExpressionOperandId {
         DEBUG_FORMAT = "ExpressionOperandId({})",
-        MAX = 0xFFFF_FFFF,
     }
 }
 
@@ -33,9 +33,9 @@ impl ExpressionOperandId {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[max = 0xFFFF_FFFF]
     pub struct CounterValueReference {
         DEBUG_FORMAT = "CounterValueReference({})",
-        MAX = 0xFFFF_FFFF,
     }
 }
 
@@ -57,9 +57,9 @@ rustc_index::newtype_index! {
     ///
     /// Values descend from u32::MAX.
     #[derive(HashStable)]
+    #[max = 0xFFFF_FFFF]
     pub struct InjectedExpressionId {
         DEBUG_FORMAT = "InjectedExpressionId({})",
-        MAX = 0xFFFF_FFFF,
     }
 }
 
@@ -68,9 +68,9 @@ rustc_index::newtype_index! {
     ///
     /// Values ascend from 0.
     #[derive(HashStable)]
+    #[max = 0xFFFF_FFFF]
     pub struct InjectedExpressionIndex {
         DEBUG_FORMAT = "InjectedExpressionIndex({})",
-        MAX = 0xFFFF_FFFF,
     }
 }
 
@@ -79,9 +79,9 @@ rustc_index::newtype_index! {
     /// array position in the LLVM coverage map "Expressions" array, which is assembled during the
     /// "mapgen" process. They cannot be computed algorithmically, from the other `newtype_index`s.
     #[derive(HashStable)]
+    #[max = 0xFFFF_FFFF]
     pub struct MappedExpressionIndex {
         DEBUG_FORMAT = "MappedExpressionIndex({})",
-        MAX = 0xFFFF_FFFF,
     }
 }
 

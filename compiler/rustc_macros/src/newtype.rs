@@ -59,6 +59,17 @@ impl Parse for Newtype {
                     ord = false;
                     false
                 }
+                "max" => {
+                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                        panic!("#[max = NUMBER] attribute requires max value");
+                    };
+
+                    if let Some(old) = max.replace(literal.lit) {
+                        panic!("Specified multiple MAX: {:?}", old);
+                    }
+
+                    false
+                }
                 _ => true,
             },
             _ => true,
@@ -81,16 +92,6 @@ impl Parse for Newtype {
                     try_comma()?;
                     if let Some(old) = debug_format.replace(new_debug_format) {
                         panic!("Specified multiple debug format options: {:?}", old);
-                    }
-                    continue;
-                }
-                if body.lookahead1().peek(kw::MAX) {
-                    body.parse::<kw::MAX>()?;
-                    body.parse::<Token![=]>()?;
-                    let val: Lit = body.parse()?;
-                    try_comma()?;
-                    if let Some(old) = max.replace(val) {
-                        panic!("Specified multiple MAX: {:?}", old);
                     }
                     continue;
                 }
