@@ -123,7 +123,7 @@ where
             let fix_state = |state| if state == other.start { self.accepting } else { state };
             let entry = transitions.entry(fix_state(source)).or_default();
             for (edge, destinations) in transition {
-                let entry = entry.entry(edge.clone()).or_default();
+                let entry = entry.entry(edge).or_default();
                 for destination in destinations {
                     entry.insert(fix_state(destination));
                 }
@@ -147,7 +147,7 @@ where
             }
             let entry = transitions.entry(source).or_default();
             for (edge, destinations) in transition {
-                let entry = entry.entry(edge.clone()).or_default();
+                let entry = entry.entry(*edge).or_default();
                 for &(mut destination) in destinations {
                     // if dest is accepting state of `other`, replace with accepting state of `self`
                     if destination == other.accepting {
