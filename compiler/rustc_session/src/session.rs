@@ -1323,7 +1323,7 @@ pub fn build_session(
     let warnings_allow = sopts
         .lint_opts
         .iter()
-        .rfind(|&&(ref key, _)| *key == "warnings")
+        .rfind(|&(key, _)| *key == "warnings")
         .map_or(false, |&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);

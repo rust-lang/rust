@@ -1279,7 +1279,7 @@ impl UnusedImportBraces {
     fn check_use_tree(&self, cx: &EarlyContext<'_>, use_tree: &ast::UseTree, item: &ast::Item) {
         if let ast::UseTreeKind::Nested(ref items) = use_tree.kind {
             // Recursively check nested UseTrees
-            for &(ref tree, _) in items {
+            for (tree, _) in items {
                 self.check_use_tree(cx, tree, item);
             }
 
