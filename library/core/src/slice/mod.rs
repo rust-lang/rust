@@ -1002,6 +1002,17 @@ impl<T> [T] {
     /// assert_eq!(chunks, &[['l', 'o'], ['r', 'e']]);
     /// assert_eq!(remainder, &['m']);
     /// ```
+    ///
+    /// If you expect the slice to be an exact multiple, you can combine
+    /// `let`-`else` with an empty slice pattern:
+    /// ```
+    /// #![feature(slice_as_chunks)]
+    /// let slice = ['R', 'u', 's', 't'];
+    /// let (chunks, []) = slice.as_chunks::<2>() else {
+    ///     panic!("slice didn't have even length")
+    /// };
+    /// assert_eq!(chunks, &[['R', 'u'], ['s', 't']]);
+    /// ```
     #[unstable(feature = "slice_as_chunks", issue = "74985")]
     #[inline]
     #[must_use]
