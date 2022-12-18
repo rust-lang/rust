@@ -125,6 +125,7 @@
 #![feature(hasher_prefixfree_extras)]
 #![feature(inline_const)]
 #![feature(inplace_iteration)]
+#![cfg_attr(test, feature(is_sorted))]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
 #![feature(iter_repeat_n)]
