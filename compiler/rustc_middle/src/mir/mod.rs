@@ -655,8 +655,8 @@ impl SourceInfo {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[debug_format = "_{}"]
     pub struct Local {
-        DEBUG_FORMAT = "_{}",
         const RETURN_PLACE = 0,
     }
 }
@@ -1147,8 +1147,8 @@ rustc_index::newtype_index! {
     /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
     #[derive(HashStable)]
+    #[debug_format = "bb{}"]
     pub struct BasicBlock {
-        DEBUG_FORMAT = "bb{}",
         const START_BLOCK = 0,
     }
 }
@@ -1531,8 +1531,8 @@ rustc_index::newtype_index! {
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
     #[derive(HashStable)]
+    #[debug_format = "field[{}]"]
     pub struct Field {
-        DEBUG_FORMAT = "field[{}]"
     }
 }
 
@@ -1758,8 +1758,8 @@ impl Debug for Place<'_> {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[debug_format = "scope[{}]"]
     pub struct SourceScope {
-        DEBUG_FORMAT = "scope[{}]",
         const OUTERMOST_SOURCE_SCOPE = 0,
     }
 }
@@ -2756,8 +2756,8 @@ impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
+    #[debug_format = "promoted[{}]"]
     pub struct Promoted {
-        DEBUG_FORMAT = "promoted[{}]"
     }
 }
 

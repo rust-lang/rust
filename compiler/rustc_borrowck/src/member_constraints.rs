@@ -55,8 +55,8 @@ pub(crate) struct NllMemberConstraint<'tcx> {
 }
 
 rustc_index::newtype_index! {
+    #[debug_format = "MemberConstraintIndex({})"]
     pub(crate) struct NllMemberConstraintIndex {
-        DEBUG_FORMAT = "MemberConstraintIndex({})"
     }
 }
 

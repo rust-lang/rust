@@ -96,14 +96,14 @@ fn for_each_consumable<'tcx>(hir: Map<'tcx>, place: TrackedValue, mut f: impl Fn
 }
 
 rustc_index::newtype_index! {
+    #[debug_format = "id({})"]
     pub struct PostOrderId {
-        DEBUG_FORMAT = "id({})",
     }
 }
 
 rustc_index::newtype_index! {
+    #[debug_format = "hidx({})"]
     pub struct TrackedValueIndex {
-        DEBUG_FORMAT = "hidx({})",
     }
 }
 

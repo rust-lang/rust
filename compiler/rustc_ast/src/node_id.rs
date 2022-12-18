@@ -8,8 +8,8 @@ rustc_index::newtype_index! {
     /// This is later turned into [`DefId`] and `HirId` for the HIR.
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
+    #[debug_format = "NodeId({})"]
     pub struct NodeId {
-        DEBUG_FORMAT = "NodeId({})"
     }
 }
 

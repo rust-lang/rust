@@ -12,8 +12,8 @@ rustc_index::newtype_index! {
     /// constant value of `0`.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
+    #[debug_format = "ExpressionOperandId({})"]
     pub struct ExpressionOperandId {
-        DEBUG_FORMAT = "ExpressionOperandId({})",
     }
 }
 
@@ -34,8 +34,8 @@ impl ExpressionOperandId {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
+    #[debug_format = "CounterValueReference({})"]
     pub struct CounterValueReference {
-        DEBUG_FORMAT = "CounterValueReference({})",
     }
 }
 
@@ -58,8 +58,8 @@ rustc_index::newtype_index! {
     /// Values descend from u32::MAX.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
+    #[debug_format = "InjectedExpressionId({})"]
     pub struct InjectedExpressionId {
-        DEBUG_FORMAT = "InjectedExpressionId({})",
     }
 }
 
@@ -69,8 +69,8 @@ rustc_index::newtype_index! {
     /// Values ascend from 0.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
+    #[debug_format = "InjectedExpressionIndex({})"]
     pub struct InjectedExpressionIndex {
-        DEBUG_FORMAT = "InjectedExpressionIndex({})",
     }
 }
 
@@ -80,8 +80,8 @@ rustc_index::newtype_index! {
     /// "mapgen" process. They cannot be computed algorithmically, from the other `newtype_index`s.
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
+    #[debug_format = "MappedExpressionIndex({})"]
     pub struct MappedExpressionIndex {
-        DEBUG_FORMAT = "MappedExpressionIndex({})",
     }
 }
 

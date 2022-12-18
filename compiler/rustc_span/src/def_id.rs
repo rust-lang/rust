@@ -11,8 +11,8 @@ use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
     #[custom_encodable]
+    #[debug_format = "crate{}"]
     pub struct CrateNum {
-        DEBUG_FORMAT = "crate{}"
     }
 }
 
@@ -195,8 +195,8 @@ rustc_index::newtype_index! {
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
     #[custom_encodable] // (only encodable in metadata)
+    #[debug_format = "DefIndex({})"]
     pub struct DefIndex {
-        DEBUG_FORMAT = "DefIndex({})",
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
         const CRATE_DEF_INDEX = 0,

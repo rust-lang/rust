@@ -3,22 +3,6 @@ use quote::quote;
 use syn::parse::*;
 use syn::*;
 
-mod kw {
-    syn::custom_keyword!(DEBUG_FORMAT);
-    syn::custom_keyword!(MAX);
-    syn::custom_keyword!(custom);
-}
-
-#[derive(Debug)]
-enum DebugFormat {
-    // The user will provide a custom `Debug` impl, so we shouldn't generate
-    // one
-    Custom,
-    // Use the specified format string in the generated `Debug` impl
-    // By default, this is "{}"
-    Format(String),
-}
-
 // We parse the input and emit the output in a single step.
 // This field stores the final macro output
 struct Newtype(TokenStream);
@@ -35,7 +19,7 @@ impl Parse for Newtype {
 
         // Any additional `#[derive]` macro paths to apply
         let mut derive_paths: Vec<Path> = Vec::new();
-        let mut debug_format: Option<DebugFormat> = None;
+        let mut debug_format: Option<Lit> = None;
         let mut max = None;
         let mut consts = Vec::new();
         let mut encodable = true;
@@ -65,7 +49,18 @@ impl Parse for Newtype {
                     };
 
                     if let Some(old) = max.replace(literal.lit) {
-                        panic!("Specified multiple MAX: {:?}", old);
+                        panic!("Specified multiple max: {:?}", old);
+                    }
+
+                    false
+                }
+                "debug_format" => {
+                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                        panic!("#[debug_format = FMT] attribute requires a format");
+                    };
+
+                    if let Some(old) = debug_format.replace(literal.lit) {
+                        panic!("Specified multiple debug format options: {:?}", old);
                     }
 
                     false
@@ -79,23 +74,6 @@ impl Parse for Newtype {
             body.parse::<Token![..]>()?;
         } else {
             loop {
-                if body.lookahead1().peek(kw::DEBUG_FORMAT) {
-                    body.parse::<kw::DEBUG_FORMAT>()?;
-                    body.parse::<Token![=]>()?;
-                    let new_debug_format = if body.lookahead1().peek(kw::custom) {
-                        body.parse::<kw::custom>()?;
-                        DebugFormat::Custom
-                    } else {
-                        let format_str: LitStr = body.parse()?;
-                        DebugFormat::Format(format_str.value())
-                    };
-                    try_comma()?;
-                    if let Some(old) = debug_format.replace(new_debug_format) {
-                        panic!("Specified multiple debug format options: {:?}", old);
-                    }
-                    continue;
-                }
-
                 // We've parsed everything that the user provided, so we're done
                 if body.is_empty() {
                     break;
@@ -112,7 +90,9 @@ impl Parse for Newtype {
             }
         }
 
-        let debug_format = debug_format.unwrap_or(DebugFormat::Format("{}".to_string()));
+        let debug_format =
+            debug_format.unwrap_or_else(|| Lit::Str(LitStr::new("{}", Span::call_site())));
+
         // shave off 256 indices at the end to allow space for packing these indices into enums
         let max = max.unwrap_or_else(|| Lit::Int(LitInt::new("0xFFFF_FF00", Span::call_site())));
 
@@ -167,18 +147,14 @@ impl Parse for Newtype {
             quote! {}
         };
 
-        let debug_impl = match debug_format {
-            DebugFormat::Custom => quote! {},
-            DebugFormat::Format(format) => {
-                quote! {
-                    impl ::std::fmt::Debug for #name {
-                        fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                            write!(fmt, #format, self.as_u32())
-                        }
-                    }
+        let debug_impl = quote! {
+            impl ::std::fmt::Debug for #name {
+                fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    write!(fmt, #debug_format, self.as_u32())
                 }
             }
         };
+
         let spec_partial_eq_impl = if let Lit::Int(max) = &max {
             if let Ok(max_val) = max.base10_parse::<u32>() {
                 quote! {

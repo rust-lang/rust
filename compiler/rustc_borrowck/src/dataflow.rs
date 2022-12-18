@@ -108,8 +108,8 @@ impl_visitable! {
 }
 
 rustc_index::newtype_index! {
+    #[debug_format = "bw{}"]
     pub struct BorrowIndex {
-        DEBUG_FORMAT = "bw{}"
     }
 }
 

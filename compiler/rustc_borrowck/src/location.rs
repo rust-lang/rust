@@ -20,8 +20,8 @@ pub struct LocationTable {
 }
 
 rustc_index::newtype_index! {
+    #[debug_format = "LocationIndex({})"]
     pub struct LocationIndex {
-        DEBUG_FORMAT = "LocationIndex({})"
     }
 }
 
