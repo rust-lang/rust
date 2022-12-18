@@ -21,7 +21,7 @@ declare_clippy_lint! {
     /// if (fn_ptr as *const ()).is_null() { ... }
     /// ```
     /// Use instead:
-    /// ```rust
+    /// ```rust,ignore
     /// let fn_ptr: Option<fn()> = /* somehow obtained nullable function pointer */
     ///
     /// if fn_ptr.is_none() { ... }

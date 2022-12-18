@@ -426,7 +426,7 @@ declare_clippy_lint! {
     ///
     /// ### Example
     /// ```rust
-    /// let null_fn: fn() = unsafe { std::mem::transmute( std::ptr::null() ) };
+    /// let null_fn: fn() = unsafe { std::mem::transmute( std::ptr::null::<()>() ) };
     /// ```
     /// Use instead:
     /// ```rust
