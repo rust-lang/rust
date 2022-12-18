@@ -1128,9 +1128,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let cond_parent = hir.parent_iter(expr.hir_id).skip_while(|(_, node)| {
-            matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
-        }).next();
+        let cond_parent = hir.parent_iter(expr.hir_id).find(|(_, node)| {
+            !matches!(node, hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(op, _, _), .. }) if op.node == hir::BinOpKind::And)
+        });
         // Don't suggest:
         //     `let Some(_) = a.is_some() && b`
         //                     ++++++++++

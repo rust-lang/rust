@@ -488,7 +488,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
                         // larger; otherwise, the only ancestor is `'static`.
-                        if a_ui.can_name(placeholder.universe) { true } else { false }
+                        return a_ui.can_name(placeholder.universe);
                     }
                 }
             }
