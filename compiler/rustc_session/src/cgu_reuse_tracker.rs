@@ -119,13 +119,13 @@ impl CguReuseTracker {
 
                     if error {
                         let at_least = if at_least { 1 } else { 0 };
-                        IncorrectCguReuseType {
+                        sess.emit_err(IncorrectCguReuseType {
                             span: error_span.0,
                             cgu_user_name,
                             actual_reuse,
                             expected_reuse,
                             at_least,
-                        };
+                        });
                     }
                 } else {
                     sess.emit_fatal(CguNotRecorded { cgu_user_name, cgu_name });
