@@ -40,7 +40,7 @@ fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
         "function pointer assumed to be nullable, even though it isn't",
         None,
         "try wrapping your function pointer type in `Option<T>` instead, and using `is_none` to check for null pointer value",
-    )
+    );
 }
 
 fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
