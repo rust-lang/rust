@@ -308,7 +308,7 @@ jobs:
     name: auto
     env:
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'
     strategy:
       matrix:
         include:
@@ -741,7 +741,7 @@ jobs:
     name: try
     env:
       <<: [*shared-ci-variables, *prod-variables]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'
     strategy:
       matrix:
         include:
@@ -754,7 +754,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       <<: [*prod-variables]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'AlphaSteam/rust-microprint-test'
     steps:
       - name: checkout the source code
         uses: actions/checkout@v3
@@ -773,17 +773,17 @@ jobs:
   # successful listening to webhooks only.
   try-success:
     needs: [try]
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'"
     <<: *base-success-job
   try-failure:
     needs: [try]
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'"
     <<: *base-failure-job
   auto-success:
     needs: [auto]
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'"
     <<: *base-success-job
   auto-failure:
     needs: [auto]
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'"
     <<: *base-failure-job

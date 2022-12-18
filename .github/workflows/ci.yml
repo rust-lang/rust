@@ -162,7 +162,7 @@ jobs:
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'"
     strategy:
       matrix:
         include:
@@ -576,7 +576,7 @@ jobs:
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'"
     strategy:
       matrix:
         include:
@@ -689,7 +689,7 @@ jobs:
       CACHES_AWS_ACCESS_KEY_ID: AKIA46X5W6CZI5DHEBFL
       ARTIFACTS_AWS_ACCESS_KEY_ID: AKIA46X5W6CZN24CBO55
       CACHE_DOMAIN: ci-caches.rust-lang.org
-    if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'rust-lang-ci/rust'"
+    if: "github.event_name == 'push' && github.ref == 'refs/heads/master' && github.repository == 'AlphaSteam/rust-microprint-test'"
     steps:
       - name: checkout the source code
         uses: actions/checkout@v3
@@ -704,7 +704,7 @@ jobs:
   try-success:
     needs:
       - try
-    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'"
     steps:
       - name: mark the job as a success
         run: exit 0
@@ -714,7 +714,7 @@ jobs:
   try-failure:
     needs:
       - try
-    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'rust-lang-ci/rust'"
+    if: "!success() && github.event_name == 'push' && (github.ref == 'refs/heads/try' || github.ref == 'refs/heads/try-perf') && github.repository == 'AlphaSteam/rust-microprint-test'"
     steps:
       - name: mark the job as a failure
         run: exit 1
@@ -724,7 +724,7 @@ jobs:
   auto-success:
     needs:
       - auto
-    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'"
     steps:
       - name: mark the job as a success
         run: exit 0
@@ -734,7 +734,7 @@ jobs:
   auto-failure:
     needs:
       - auto
-    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'rust-lang-ci/rust'"
+    if: "!success() && github.event_name == 'push' && github.ref == 'refs/heads/auto' && github.repository == 'AlphaSteam/rust-microprint-test'"
     steps:
       - name: mark the job as a failure
         run: exit 1
