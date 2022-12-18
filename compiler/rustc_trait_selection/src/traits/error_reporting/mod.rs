@@ -1574,7 +1574,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,
-                    err.clone(),
+                    *err,
                 )
                 .emit();
             }
@@ -1583,7 +1583,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,
-                    err.clone(),
+                    *err,
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
                 if let ObligationCauseCode::BindingObligation(..)
