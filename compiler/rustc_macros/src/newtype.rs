@@ -7,7 +7,6 @@ mod kw {
     syn::custom_keyword!(DEBUG_FORMAT);
     syn::custom_keyword!(MAX);
     syn::custom_keyword!(custom);
-    syn::custom_keyword!(ORD_IMPL);
 }
 
 #[derive(Debug)]
@@ -56,6 +55,10 @@ impl Parse for Newtype {
                     encodable = false;
                     false
                 }
+                "no_ord_impl" => {
+                    ord = false;
+                    false
+                }
                 _ => true,
             },
             _ => true,
@@ -89,13 +92,6 @@ impl Parse for Newtype {
                     if let Some(old) = max.replace(val) {
                         panic!("Specified multiple MAX: {:?}", old);
                     }
-                    continue;
-                }
-                if body.lookahead1().peek(kw::ORD_IMPL) {
-                    body.parse::<kw::ORD_IMPL>()?;
-                    body.parse::<Token![=]>()?;
-                    body.parse::<kw::custom>()?;
-                    ord = false;
                     continue;
                 }
 
