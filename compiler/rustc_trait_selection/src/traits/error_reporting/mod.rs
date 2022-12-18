@@ -2332,9 +2332,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // get rid of :: between Trait and <type>
                                 // must be '::' between them, otherwise the parser won't accept the code
                                 suggestions.push((between_span, "".to_string(),));
-                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), format!(">")));
+                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
                             } else {
-                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), format!(">")));
+                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), ">".to_string()));
                             }
                             err.multipart_suggestion(
                                 message,

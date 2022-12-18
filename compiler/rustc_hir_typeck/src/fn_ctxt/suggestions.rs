@@ -319,11 +319,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
 
-            err.multipart_suggestion_verbose(
-                format!("use parentheses to call these"),
-                sugg,
-                applicability,
-            );
+            err.multipart_suggestion_verbose("use parentheses to call these", sugg, applicability);
 
             true
         } else {

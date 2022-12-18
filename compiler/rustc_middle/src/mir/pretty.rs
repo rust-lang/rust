@@ -448,15 +448,15 @@ impl<'tcx> Visitor<'tcx> for ExtraComments<'tcx> {
 
             // FIXME: this is a poor version of `pretty_print_const_value`.
             let fmt_val = |val: &ConstValue<'tcx>| match val {
-                ConstValue::ZeroSized => format!("<ZST>"),
+                ConstValue::ZeroSized => "<ZST>".to_string(),
                 ConstValue::Scalar(s) => format!("Scalar({:?})", s),
-                ConstValue::Slice { .. } => format!("Slice(..)"),
-                ConstValue::ByRef { .. } => format!("ByRef(..)"),
+                ConstValue::Slice { .. } => "Slice(..)".to_string(),
+                ConstValue::ByRef { .. } => "ByRef(..)".to_string(),
             };
 
             let fmt_valtree = |valtree: &ty::ValTree<'tcx>| match valtree {
                 ty::ValTree::Leaf(leaf) => format!("ValTree::Leaf({:?})", leaf),
-                ty::ValTree::Branch(_) => format!("ValTree::Branch(..)"),
+                ty::ValTree::Branch(_) => "ValTree::Branch(..)".to_string(),
             };
 
             let val = match literal {

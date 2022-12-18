@@ -406,7 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
-                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
+                        .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {

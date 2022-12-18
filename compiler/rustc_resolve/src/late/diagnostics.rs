@@ -277,11 +277,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 let override_suggestion =
                     if ["true", "false"].contains(&item_str.to_string().to_lowercase().as_str()) {
                         let item_typo = item_str.to_string().to_lowercase();
-                        Some((
-                            item_span,
-                            "you may want to use a bool value instead",
-                            format!("{}", item_typo),
-                        ))
+                        Some((item_span, "you may want to use a bool value instead", item_typo))
                     // FIXME(vincenzopalazzo): make the check smarter,
                     // and maybe expand with levenshtein distance checks
                     } else if item_str.as_str() == "printf" {
@@ -2324,7 +2320,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         let message = format!("consider introducing lifetime `{}` here", name);
                         should_continue = suggest(err, false, span, &message, sugg);
                     } else {
-                        let message = format!("consider introducing a named lifetime parameter");
+                        let message = "consider introducing a named lifetime parameter";
                         should_continue = suggest(err, false, span, &message, sugg);
                     }
                 }
