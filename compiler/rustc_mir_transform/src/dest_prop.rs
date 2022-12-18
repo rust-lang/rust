@@ -207,6 +207,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
 
             // This is the set of merges we will apply this round. It is a subset of the candidates.
             let mut merges = FxHashMap::default();
+            let mut remove_writes = FxHashMap::default();
 
             for (src, candidates) in candidates.c.drain() {
                 if merged_locals.contains(src) {
@@ -223,8 +224,10 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
                 }
                 merged_locals.insert(src);
                 merged_locals.insert(dest.0);
-                merges.insert(src, dest.clone());
-                merges.insert(dest.0, dest);
+                merges.insert(src, dest.0);
+                if !dest.1.is_empty() {
+                    remove_writes.insert(dest.0, dest.1);
+                }
             }
             trace!(merging = ?merges);
 
@@ -233,7 +236,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             }
             round_count += 1;
 
-            apply_merges(body, tcx, &merges, &merged_locals);
+            apply_merges(body, tcx, &merges, &remove_writes, &merged_locals);
         }
 
         trace!(round_count);
@@ -287,22 +290,24 @@ struct Candidates<'alloc> {
 fn apply_merges<'tcx>(
     body: &mut Body<'tcx>,
     tcx: TyCtxt<'tcx>,
-    merges: &FxHashMap<Local, (Local, Vec<Location>)>,
+    merges: &FxHashMap<Local, Local>,
+    remove_writes: &FxHashMap<Local, Vec<Location>>,
     merged_locals: &BitSet<Local>,
 ) {
-    let mut merger = Merger { tcx, merges, merged_locals };
+    let mut merger = Merger { tcx, merges, remove_writes, merged_locals };
     merger.visit_body_preserves_cfg(body);
 }
 
 struct Merger<'a, 'tcx> {
     tcx: TyCtxt<'tcx>,
-    merges: &'a FxHashMap<Local, (Local, Vec<Location>)>,
+    merges: &'a FxHashMap<Local, Local>,
+    remove_writes: &'a FxHashMap<Local, Vec<Location>>,
     merged_locals: &'a BitSet<Local>,
 }
 
 impl<'a, 'tcx> Merger<'a, 'tcx> {
     fn should_remove_write_at(&self, local: Local, location: Location) -> bool {
-        let Some((_, to_remove)) = self.merges.get(&local) else {
+        let Some(to_remove) = self.remove_writes.get(&local) else {
             return false;
         };
         to_remove.contains(&location)
@@ -316,7 +321,7 @@ impl<'a, 'tcx> MutVisitor<'tcx> for Merger<'a, 'tcx> {
 
     fn visit_local(&mut self, local: &mut Local, _: PlaceContext, _location: Location) {
         if let Some(dest) = self.merges.get(local) {
-            *local = dest.0;
+            *local = *dest;
         }
     }
 
