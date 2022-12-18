@@ -39,8 +39,8 @@ struct LintLevelSets {
 }
 
 rustc_index::newtype_index! {
+    #[custom_encodable] // we don't need encoding
     struct LintStackIndex {
-        ENCODABLE = custom, // we don't need encoding
         const COMMAND_LINE = 0,
     }
 }

@@ -6,7 +6,6 @@ use syn::*;
 mod kw {
     syn::custom_keyword!(DEBUG_FORMAT);
     syn::custom_keyword!(MAX);
-    syn::custom_keyword!(ENCODABLE);
     syn::custom_keyword!(custom);
     syn::custom_keyword!(ORD_IMPL);
 }
@@ -27,7 +26,7 @@ struct Newtype(TokenStream);
 
 impl Parse for Newtype {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(Attribute::parse_outer)?;
         let vis: Visibility = input.parse()?;
         input.parse::<Token![struct]>()?;
         let name: Ident = input.parse()?;
@@ -50,6 +49,17 @@ impl Parse for Newtype {
             }
             Ok(())
         };
+
+        attrs.retain(|attr| match attr.path.get_ident() {
+            Some(ident) => match &*ident.to_string() {
+                "custom_encodable" => {
+                    encodable = false;
+                    false
+                }
+                _ => true,
+            },
+            _ => true,
+        });
 
         if body.lookahead1().peek(Token![..]) {
             body.parse::<Token![..]>()?;
@@ -79,14 +89,6 @@ impl Parse for Newtype {
                     if let Some(old) = max.replace(val) {
                         panic!("Specified multiple MAX: {:?}", old);
                     }
-                    continue;
-                }
-                if body.lookahead1().peek(kw::ENCODABLE) {
-                    body.parse::<kw::ENCODABLE>()?;
-                    body.parse::<Token![=]>()?;
-                    body.parse::<kw::custom>()?;
-                    try_comma()?;
-                    encodable = false;
                     continue;
                 }
                 if body.lookahead1().peek(kw::ORD_IMPL) {
