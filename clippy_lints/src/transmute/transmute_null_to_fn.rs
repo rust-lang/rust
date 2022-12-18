@@ -1,4 +1,4 @@
-use clippy_utils::consts::{constant_context, Constant};
+use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::{is_integer_literal, is_path_diagnostic_item};
 use rustc_hir::{Expr, ExprKind};
@@ -25,12 +25,12 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
         return false;
     }
 
-    // Catching:
-    // transmute over constants that resolve to `null`.
-    let mut const_eval_context = constant_context(cx, cx.typeck_results());
-
     match arg.kind {
-        ExprKind::Path(ref _qpath) if matches!(const_eval_context.expr(arg), Some(Constant::RawPtr(0))) => {
+        // Catching:
+        // transmute over constants that resolve to `null`.
+        ExprKind::Path(ref _qpath)
+            if matches!(constant(cx, cx.typeck_results(), arg), Some((Constant::RawPtr(0), _))) =>
+        {
             lint_expr(cx, expr);
             true
         },

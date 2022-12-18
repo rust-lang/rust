@@ -56,6 +56,8 @@ fn is_fn_ptr_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
 impl<'tcx> LateLintPass<'tcx> for FnNullCheck {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>) {
         match expr.kind {
+            // Catching:
+            // (fn_ptr as *<const/mut> <ty>).is_null()
             ExprKind::MethodCall(method_name, receiver, _, _)
                 if method_name.ident.as_str() == "is_null" && is_fn_ptr_cast(cx, receiver) =>
             {
