@@ -6,8 +6,10 @@ LL |         if String::from("a") == "a".try_into().unwrap() {}
    |                              |
    |                              type must be known at this point
    |
-   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the `alloc` crate:
+   = note: multiple `impl`s satisfying `String: PartialEq<_>` found in the following crates: `alloc`, `std`:
            - impl PartialEq for String;
+           - impl PartialEq<Path> for String;
+           - impl PartialEq<PathBuf> for String;
            - impl<'a, 'b> PartialEq<&'a str> for String;
            - impl<'a, 'b> PartialEq<Cow<'a, str>> for String;
            - impl<'a, 'b> PartialEq<str> for String;
