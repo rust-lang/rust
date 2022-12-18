@@ -1920,7 +1920,7 @@ impl<'tcx> TypeTrace<'tcx> {
     ) -> TypeTrace<'tcx> {
         TypeTrace {
             cause: cause.clone(),
-            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a.into(), b.into())),
+            values: PolyTraitRefs(ExpectedFound::new(a_is_expected, a, b)),
         }
     }
 

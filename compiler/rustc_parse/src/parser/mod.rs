@@ -25,7 +25,7 @@ use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::util::case::Case;
 use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
-use rustc_ast::{self as ast, AnonConst, AttrStyle, AttrVec, Const, DelimArgs, Extern};
+use rustc_ast::{self as ast, AnonConst, AttrStyle, Const, DelimArgs, Extern};
 use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, MacDelimiter, Mutability, StrLit};
 use rustc_ast::{HasAttrs, HasTokens, Unsafe, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
@@ -1217,11 +1217,7 @@ impl<'a> Parser<'a> {
             value: self.mk_expr(blk.span, ExprKind::Block(blk, None)),
         };
         let blk_span = anon_const.value.span;
-        Ok(self.mk_expr_with_attrs(
-            span.to(blk_span),
-            ExprKind::ConstBlock(anon_const),
-            AttrVec::from(attrs),
-        ))
+        Ok(self.mk_expr_with_attrs(span.to(blk_span), ExprKind::ConstBlock(anon_const), attrs))
     }
 
     /// Parses mutability (`mut` or nothing).

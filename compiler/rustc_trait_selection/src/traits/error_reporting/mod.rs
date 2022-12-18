@@ -1735,8 +1735,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
                     infer::ValuePairs::Terms(ExpectedFound::new(
                         is_normalized_ty_expected,
-                        normalized_ty.into(),
-                        expected_ty.into(),
+                        normalized_ty,
+                        expected_ty,
                     ))
                 }),
                 err,
