@@ -5,14 +5,12 @@ use rustc_middle::ty::error::TypeError;
 
 rustc_index::newtype_index! {
     #[debug_format = "ExpectedIdx({})"]
-    pub(crate) struct ExpectedIdx {
-    }
+    pub(crate) struct ExpectedIdx {}
 }
 
 rustc_index::newtype_index! {
     #[debug_format = "ProvidedIdx({})"]
-    pub(crate) struct ProvidedIdx {
-    }
+    pub(crate) struct ProvidedIdx {}
 }
 
 impl ExpectedIdx {

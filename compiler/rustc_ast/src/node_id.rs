@@ -9,8 +9,7 @@ rustc_index::newtype_index! {
     ///
     /// [`DefId`]: rustc_span::def_id::DefId
     #[debug_format = "NodeId({})"]
-    pub struct NodeId {
-    }
+    pub struct NodeId {}
 }
 
 rustc_data_structures::define_id_collections!(NodeMap, NodeSet, NodeMapEntry, NodeId);

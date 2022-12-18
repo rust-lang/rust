@@ -46,7 +46,7 @@ struct Appearance {
 }
 
 rustc_index::newtype_index! {
-    pub struct AppearanceIndex { .. }
+    pub struct AppearanceIndex {}
 }
 
 impl vll::LinkElem for Appearance {

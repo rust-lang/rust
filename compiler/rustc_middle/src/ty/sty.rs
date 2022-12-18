@@ -1379,8 +1379,7 @@ rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
     #[debug_format = "'_#{}r"]
-    pub struct RegionVid {
-    }
+    pub struct RegionVid {}
 }
 
 impl Atom for RegionVid {
@@ -1391,7 +1390,7 @@ impl Atom for RegionVid {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
-    pub struct BoundVar { .. }
+    pub struct BoundVar {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]

@@ -12,8 +12,7 @@ use std::hash::{Hash, Hasher};
 rustc_index::newtype_index! {
     #[custom_encodable]
     #[debug_format = "crate{}"]
-    pub struct CrateNum {
-    }
+    pub struct CrateNum {}
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -199,7 +198,7 @@ rustc_index::newtype_index! {
     pub struct DefIndex {
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
-        const CRATE_DEF_INDEX = 0,
+        const CRATE_DEF_INDEX = 0;
     }
 }
 

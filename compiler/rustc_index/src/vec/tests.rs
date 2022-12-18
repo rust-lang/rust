@@ -5,7 +5,7 @@ use crate as rustc_index;
 
 rustc_macros::newtype_index! {
     #[max = 0xFFFF_FFFA]
-    struct MyIdx { }
+    struct MyIdx {}
 }
 
 #[test]

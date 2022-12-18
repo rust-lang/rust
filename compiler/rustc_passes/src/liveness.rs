@@ -109,14 +109,12 @@ mod rwu_table;
 
 rustc_index::newtype_index! {
     #[debug_format = "v({})"]
-    pub struct Variable {
-    }
+    pub struct Variable {}
 }
 
 rustc_index::newtype_index! {
     #[debug_format = "ln({})"]
-    pub struct LiveNode {
-    }
+    pub struct LiveNode {}
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

@@ -109,8 +109,7 @@ impl_visitable! {
 
 rustc_index::newtype_index! {
     #[debug_format = "bw{}"]
-    pub struct BorrowIndex {
-    }
+    pub struct BorrowIndex {}
 }
 
 /// `Borrows` stores the data used in the analyses that track the flow

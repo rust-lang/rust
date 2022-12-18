@@ -15,8 +15,7 @@ mod abs_domain;
 
 rustc_index::newtype_index! {
     #[debug_format = "mp{}"]
-    pub struct MovePathIndex {
-    }
+    pub struct MovePathIndex {}
 }
 
 impl polonius_engine::Atom for MovePathIndex {
@@ -27,14 +26,12 @@ impl polonius_engine::Atom for MovePathIndex {
 
 rustc_index::newtype_index! {
     #[debug_format = "mo{}"]
-    pub struct MoveOutIndex {
-    }
+    pub struct MoveOutIndex {}
 }
 
 rustc_index::newtype_index! {
     #[debug_format = "in{}"]
-    pub struct InitIndex {
-    }
+    pub struct InitIndex {}
 }
 
 impl MoveOutIndex {

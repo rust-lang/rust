@@ -148,8 +148,7 @@ rustc_index::newtype_index! {
     /// * The subscope with `first_statement_index == 1` is scope of `c`,
     ///   and thus does not include EXPR_2, but covers the `...`.
     #[derive(HashStable)]
-    pub struct FirstStatementIndex {
-    }
+    pub struct FirstStatementIndex {}
 }
 
 // compilation error if size of `ScopeData` is not the same as a `u32`

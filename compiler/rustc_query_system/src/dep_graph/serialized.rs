@@ -28,8 +28,7 @@ use smallvec::SmallVec;
 // and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
     #[max = 0x7FFF_FFFF]
-    pub struct SerializedDepNodeIndex {
-    }
+    pub struct SerializedDepNodeIndex {}
 }
 
 /// Data for use when recompiling the **current crate**.

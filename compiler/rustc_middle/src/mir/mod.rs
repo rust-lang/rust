@@ -657,7 +657,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "_{}"]
     pub struct Local {
-        const RETURN_PLACE = 0,
+        const RETURN_PLACE = 0;
     }
 }
 
@@ -1149,7 +1149,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "bb{}"]
     pub struct BasicBlock {
-        const START_BLOCK = 0,
+        const START_BLOCK = 0;
     }
 }
 
@@ -1532,8 +1532,7 @@ rustc_index::newtype_index! {
     /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
     #[derive(HashStable)]
     #[debug_format = "field[{}]"]
-    pub struct Field {
-    }
+    pub struct Field {}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1760,7 +1759,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "scope[{}]"]
     pub struct SourceScope {
-        const OUTERMOST_SOURCE_SCOPE = 0,
+        const OUTERMOST_SOURCE_SCOPE = 0;
     }
 }
 
@@ -2757,8 +2756,7 @@ impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
 rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "promoted[{}]"]
-    pub struct Promoted {
-    }
+    pub struct Promoted {}
 }
 
 impl<'tcx> Debug for Constant<'tcx> {

@@ -25,14 +25,6 @@ impl Parse for Newtype {
         let mut encodable = true;
         let mut ord = true;
 
-        // Parse an optional trailing comma
-        let try_comma = || -> Result<()> {
-            if body.lookahead1().peek(Token![,]) {
-                body.parse::<Token![,]>()?;
-            }
-            Ok(())
-        };
-
         attrs.retain(|attr| match attr.path.get_ident() {
             Some(ident) => match &*ident.to_string() {
                 "custom_encodable" => {
@@ -70,24 +62,20 @@ impl Parse for Newtype {
             _ => true,
         });
 
-        if body.lookahead1().peek(Token![..]) {
-            body.parse::<Token![..]>()?;
-        } else {
-            loop {
-                // We've parsed everything that the user provided, so we're done
-                if body.is_empty() {
-                    break;
-                }
-
-                // Otherwise, we are parsing a user-defined constant
-                let const_attrs = body.call(Attribute::parse_outer)?;
-                body.parse::<Token![const]>()?;
-                let const_name: Ident = body.parse()?;
-                body.parse::<Token![=]>()?;
-                let const_val: Expr = body.parse()?;
-                try_comma()?;
-                consts.push(quote! { #(#const_attrs)* #vis const #const_name: #name = #name::from_u32(#const_val); });
+        loop {
+            // We've parsed everything that the user provided, so we're done
+            if body.is_empty() {
+                break;
             }
+
+            // Otherwise, we are parsing a user-defined constant
+            let const_attrs = body.call(Attribute::parse_outer)?;
+            body.parse::<Token![const]>()?;
+            let const_name: Ident = body.parse()?;
+            body.parse::<Token![=]>()?;
+            let const_val: Expr = body.parse()?;
+            body.parse::<Token![;]>()?;
+            consts.push(quote! { #(#const_attrs)* #vis const #const_name: #name = #name::from_u32(#const_val); });
         }
 
         let debug_format =

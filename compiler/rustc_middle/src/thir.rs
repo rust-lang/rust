@@ -36,8 +36,7 @@ macro_rules! thir_with_elements {
             newtype_index! {
                 #[derive(HashStable)]
                 #[debug_format = $format]
-                pub struct $id {
-                }
+                pub struct $id {}
             }
         )*
 

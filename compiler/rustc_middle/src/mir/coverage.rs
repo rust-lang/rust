@@ -35,8 +35,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "CounterValueReference({})"]
-    pub struct CounterValueReference {
-    }
+    pub struct CounterValueReference {}
 }
 
 impl CounterValueReference {
@@ -59,8 +58,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "InjectedExpressionId({})"]
-    pub struct InjectedExpressionId {
-    }
+    pub struct InjectedExpressionId {}
 }
 
 rustc_index::newtype_index! {
@@ -70,8 +68,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "InjectedExpressionIndex({})"]
-    pub struct InjectedExpressionIndex {
-    }
+    pub struct InjectedExpressionIndex {}
 }
 
 rustc_index::newtype_index! {
@@ -81,8 +78,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[max = 0xFFFF_FFFF]
     #[debug_format = "MappedExpressionIndex({})"]
-    pub struct MappedExpressionIndex {
-    }
+    pub struct MappedExpressionIndex {}
 }
 
 impl From<CounterValueReference> for ExpressionOperandId {

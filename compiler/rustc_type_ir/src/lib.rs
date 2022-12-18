@@ -303,7 +303,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable_Generic)]
     #[debug_format = "DebruijnIndex({})"]
     pub struct DebruijnIndex {
-        const INNERMOST = 0,
+        const INNERMOST = 0;
     }
 }
 
@@ -500,8 +500,7 @@ pub struct FloatVarValue(pub FloatTy);
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
     #[debug_format = "_#{}t"]
-    pub struct TyVid {
-    }
+    pub struct TyVid {}
 }
 
 /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
@@ -789,8 +788,7 @@ rustc_index::newtype_index! {
     /// use for checking generic functions.
     #[derive(HashStable_Generic)]
     #[debug_format = "U{}"]
-    pub struct UniverseIndex {
-    }
+    pub struct UniverseIndex {}
 }
 
 impl UniverseIndex {

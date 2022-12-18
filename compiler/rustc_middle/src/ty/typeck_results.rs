@@ -611,7 +611,7 @@ rustc_index::newtype_index! {
     #[derive(HashStable)]
     #[debug_format = "UserType({})"]
     pub struct UserTypeAnnotationIndex {
-        const START_INDEX = 0,
+        const START_INDEX = 0;
     }
 }
 

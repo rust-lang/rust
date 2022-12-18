@@ -185,7 +185,7 @@ pub(crate) enum BreakableTarget {
 }
 
 rustc_index::newtype_index! {
-    struct DropIdx { .. }
+    struct DropIdx {}
 }
 
 const ROOT_NODE: DropIdx = DropIdx::from_u32(0);

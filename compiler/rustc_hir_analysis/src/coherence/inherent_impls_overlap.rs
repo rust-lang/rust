@@ -199,9 +199,9 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
 
             rustc_index::newtype_index! {
                 #[custom_encodable]
-                pub struct RegionId {
-                }
+                pub struct RegionId {}
             }
+
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
                 impl_blocks: FxHashSet<usize>,

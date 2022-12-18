@@ -21,8 +21,7 @@ pub struct LocationTable {
 
 rustc_index::newtype_index! {
     #[debug_format = "LocationIndex({})"]
-    pub struct LocationIndex {
-    }
+    pub struct LocationIndex {}
 }
 
 #[derive(Copy, Clone, Debug)]
