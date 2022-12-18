@@ -701,8 +701,8 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
                     BinOp::Mul if const_arg.layout.ty.is_integral() && arg_value == 0 => {
                         if let Rvalue::CheckedBinaryOp(_, _) = rvalue {
                             let val = Immediate::ScalarPair(
-                                const_arg.to_scalar().into(),
-                                Scalar::from_bool(false).into(),
+                                const_arg.to_scalar(),
+                                Scalar::from_bool(false),
                             );
                             this.ecx.write_immediate(val, &dest)
                         } else {
