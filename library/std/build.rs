@@ -39,6 +39,7 @@ fn main() {
         || target.contains("nto")
         || target.contains("xous")
         || target.contains("hurd")
+        || target.contains("uefi")
         // See src/bootstrap/synthetic_targets.rs
         || env::var("RUSTC_BOOTSTRAP_SYNTHETIC_TARGET").is_ok()
     {
@@ -51,7 +52,7 @@ fn main() {
         // - mipsel-sony-psp
         // - nvptx64-nvidia-cuda
         // - arch=avr
-        // - uefi (x86_64-unknown-uefi, i686-unknown-uefi)
+        // - tvos (aarch64-apple-tvos, x86_64-apple-tvos)
         // - JSON targets
         // - Any new targets that have not been explicitly added above.
         println!("cargo:rustc-cfg=feature=\"restricted-std\"");

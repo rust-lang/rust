@@ -48,6 +48,10 @@ hermit-abi = { version = "0.3.2", features = ['rustc-dep-of-std'], public = true
 [target.'cfg(target_os = "wasi")'.dependencies]
 wasi = { version = "0.11.0", features = ['rustc-dep-of-std'], default-features = false }
 
+[target.'cfg(target_os = "uefi")'.dependencies]
+r-efi = { version = "4.1.0", features = ['rustc-dep-of-std', 'efiapi']}
+r-efi-alloc = { version = "1.0.0", features = ['rustc-dep-of-std']}
+
 [features]
 backtrace = [
   "gimli-symbolize",

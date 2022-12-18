@@ -19,8 +19,8 @@ Available targets:
 ## Requirements
 
 All UEFI targets can be used as `no-std` environments via cross-compilation.
-Support for `std` is missing, but actively worked on. `alloc` is supported if
-an allocator is provided by the user. No host tools are supported.
+Support for `std` is present, but incomplete and extreamly new. `alloc` is supported if
+an allocator is provided by the user or if using std. No host tools are supported.
 
 The UEFI environment resembles the environment for Microsoft Windows, with some
 minor differences. Therefore, cross-compiling for UEFI works with the same
@@ -228,5 +228,73 @@ pub extern "C" fn main(_h: efi::Handle, st: *mut efi::SystemTable) -> efi::Statu
     }
 
     efi::Status::SUCCESS
+}
+```
+
+## Rust std for UEFI
+This section contains information on how to use std on UEFI.
+
+### Build std
+The building std part is pretty much the same as the official [docs](https://rustc-dev-guide.rust-lang.org/getting-started.html).
+The linker that should be used is `rust-lld`. Here is a sample `config.toml`:
+```toml
+[llvm]
+download-ci-llvm = false
+[rust]
+lld = true
+[target.x86_64-unknown-uefi]
+linker = "rust-lld"
+```
+Then just build using `x.py`:
+```sh
+./x.py build --target x86_64-unknown-uefi
+```
+
+### Std Requirements
+The current std has a few basic requirements to function:
+1. Memory Allocation Services (`EFI_BOOT_SERVICES.AllocatePool()` and
+   `EFI_BOOT_SERVICES.FreePool()`) are available.
+If the above requirement is satisfied, the Rust code will reach `main`.
+Now we will discuss what the different modules of std use in UEFI.
+
+### Implemented features
+#### alloc
+- Implemented using `EFI_BOOT_SERVICES.AllocatePool()` and `EFI_BOOT_SERVICES.FreePool()`.
+- Passes all the tests.
+- Some Quirks:
+  - Currently uses `EfiLoaderData` as the `EFI_ALLOCATE_POOL->PoolType`.
+#### cmath
+- Provided by compiler-builtins.
+#### env
+- Just some global consants.
+#### locks
+- Uses `unsupported/locks`.
+- They should work for a platform without threads according to docs.
+#### os_str
+- Uses WTF-8 from windows.
+
+## Example: Hello World With std
+The following code is a valid UEFI application showing stdio in UEFI. It also
+uses `alloc` type `OsString` and `Vec`.
+
+This example can be compiled as binary crate via `cargo` using the toolchain
+compiled from the above source (named custom):
+
+```sh
+cargo +custom build --target x86_64-unknown-uefi
+```
+
+```rust,ignore (platform-specific)
+use r_efi::efi;
+use std::os::uefi::ffi::OsStrExt;
+use std::{ffi::OsString, panic};
+
+pub fn main() {
+  let st = std::os::uefi::env::system_table().as_ptr() as *mut efi::SystemTable;
+  let mut s: Vec<u16> = OsString::from("Hello World!\n").encode_wide().collect();
+  s.push(0);
+  let r =
+      unsafe { ((*(*st).con_out).output_string)((*st).con_out, s.as_ptr() as *mut efi::Char16) };
+  assert!(!r.is_error())
 }
 ```

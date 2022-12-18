@@ -263,7 +263,6 @@
 #![cfg_attr(target_os = "xous", feature(slice_ptr_len))]
 //
 // Language features:
-// tidy-alphabetical-start
 #![feature(alloc_error_handler)]
 #![feature(allocator_internals)]
 #![feature(allow_internal_unsafe)]

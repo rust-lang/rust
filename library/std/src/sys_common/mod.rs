@@ -44,6 +44,8 @@ cfg_if::cfg_if! {
 
 cfg_if::cfg_if! {
     if #[cfg(any(target_os = "l4re",
+                 target_os = "hermit",
+                 target_os = "uefi",
                  feature = "restricted-std",
                  all(target_family = "wasm", not(target_os = "emscripten")),
                  target_os = "xous",
