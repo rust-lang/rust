@@ -20,8 +20,8 @@ impl ToJson for Endian {
 }
 
 rustc_index::newtype_index! {
+    #[derive(HashStable_Generic)]
     pub struct VariantIdx {
-        derive [HashStable_Generic]
     }
 }
 

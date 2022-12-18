@@ -1,11 +1,9 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::*;
-use syn::punctuated::Punctuated;
 use syn::*;
 
 mod kw {
-    syn::custom_keyword!(derive);
     syn::custom_keyword!(DEBUG_FORMAT);
     syn::custom_keyword!(MAX);
     syn::custom_keyword!(ENCODABLE);
@@ -57,16 +55,6 @@ impl Parse for Newtype {
             body.parse::<Token![..]>()?;
         } else {
             loop {
-                if body.lookahead1().peek(kw::derive) {
-                    body.parse::<kw::derive>()?;
-                    let derives;
-                    bracketed!(derives in body);
-                    let derives: Punctuated<Path, Token![,]> =
-                        derives.parse_terminated(Path::parse)?;
-                    try_comma()?;
-                    derive_paths.extend(derives);
-                    continue;
-                }
                 if body.lookahead1().peek(kw::DEBUG_FORMAT) {
                     body.parse::<kw::DEBUG_FORMAT>()?;
                     body.parse::<Token![=]>()?;

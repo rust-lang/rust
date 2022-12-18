@@ -608,8 +608,8 @@ impl<'a, V> LocalTableInContextMut<'a, V> {
 }
 
 rustc_index::newtype_index! {
+    #[derive(HashStable)]
     pub struct UserTypeAnnotationIndex {
-        derive [HashStable]
         DEBUG_FORMAT = "UserType({})",
         const START_INDEX = 0,
     }
