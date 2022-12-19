@@ -1789,7 +1789,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_conflicting_closure_bounds(cause, &mut err);
 
         if let Some(found_node) = found_node {
-            hint_missing_borrow(span, found_span, found, expected, found_node, &mut err);
+            hint_missing_borrow(span, found, expected, found_node, &mut err);
         }
 
         err
@@ -3460,7 +3460,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 /// Add a hint to add a missing borrow or remove an unnecessary one.
 fn hint_missing_borrow<'tcx>(
     span: Span,
-    found_span: Span,
     found: Ty<'tcx>,
     expected: Ty<'tcx>,
     found_node: Node<'_>,
@@ -3479,9 +3478,8 @@ fn hint_missing_borrow<'tcx>(
         }
     };
 
-    let fn_decl = found_node
-        .fn_decl()
-        .unwrap_or_else(|| span_bug!(found_span, "found node must be a function"));
+    // This could be a variant constructor, for example.
+    let Some(fn_decl) = found_node.fn_decl() else { return; };
 
     let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
 
