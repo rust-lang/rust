@@ -1976,10 +1976,7 @@ in storage.js
 }
 
 .scraped-example .code-wrapper .example-wrap {
-	display: grid;
-	grid-template-columns: max-content auto;
 	width: 100%;
-	overflow-x: auto;
 	overflow-y: hidden;
 	margin-bottom: 0;
 }
@@ -1987,13 +1984,6 @@ in storage.js
 .scraped-example:not(.expanded) .code-wrapper .example-wrap {
 	overflow-x: hidden;
 }
-
-.scraped-example .code-wrapper .example-wrap pre.rust {
-	overflow-x: inherit;
-	width: inherit;
-	overflow-y: hidden;
-}
-
 
 .more-examples-toggle {
 	max-width: calc(100% + 25px);
