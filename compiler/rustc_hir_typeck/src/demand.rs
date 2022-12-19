@@ -163,7 +163,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e.clone());
+        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
 
         let is_insufficiently_polymorphic =
             matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));
@@ -406,7 +406,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
-                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
+                        .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {

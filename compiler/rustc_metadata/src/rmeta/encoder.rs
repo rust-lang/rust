@@ -332,7 +332,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Symbol {
                     s.emit_str(self.as_str());
                 }
                 Entry::Occupied(o) => {
-                    let x = o.get().clone();
+                    let x = *o.get();
                     s.emit_u8(SYMBOL_OFFSET);
                     s.emit_usize(x);
                 }

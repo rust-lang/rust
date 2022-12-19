@@ -184,7 +184,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
             let text = if br.has_name() {
                 format!("the lifetime `{}` as defined here", br.name)
             } else {
-                format!("the anonymous lifetime as defined here")
+                "the anonymous lifetime as defined here".to_string()
             };
             (text, sp)
         }
@@ -203,7 +203,7 @@ fn msg_span_from_early_bound_and_free_regions<'tcx>(
                             sp = param.span;
                         }
                         let text = if name == kw::UnderscoreLifetime {
-                            format!("the anonymous lifetime as defined here")
+                            "the anonymous lifetime as defined here".to_string()
                         } else {
                             format!("the lifetime `{}` as defined here", name)
                         };

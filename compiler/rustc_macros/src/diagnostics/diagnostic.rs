@@ -39,10 +39,8 @@ impl<'a> DiagnosticDerive<'a> {
             let init = match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(format!(
-                            "specify the slug as the first argument to the `#[diag(...)]` \
-                            attribute, such as `#[diag(hir_analysis_example_error)]`",
-                        ))
+                        .help("specify the slug as the first argument to the `#[diag(...)]` \
+                            attribute, such as `#[diag(hir_analysis_example_error)]`")
                         .emit();
                     return DiagnosticDeriveError::ErrorHandled.to_compile_error();
                 }
@@ -133,10 +131,8 @@ impl<'a> LintDiagnosticDerive<'a> {
             match builder.slug.value_ref() {
                 None => {
                     span_err(builder.span, "diagnostic slug not specified")
-                        .help(format!(
-                            "specify the slug as the first argument to the attribute, such as \
-                            `#[diag(compiletest_example)]`",
-                        ))
+                        .help("specify the slug as the first argument to the attribute, such as \
+                            `#[diag(compiletest_example)]`")
                         .emit();
                     DiagnosticDeriveError::ErrorHandled.to_compile_error()
                 }

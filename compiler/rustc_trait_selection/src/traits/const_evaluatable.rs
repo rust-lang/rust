@@ -138,10 +138,10 @@ pub fn is_const_evaluatable<'tcx>(
                 } else if uv.has_non_region_param() {
                     NotConstEvaluatable::MentionsParam
                 } else {
-                    let guar = infcx.tcx.sess.delay_span_bug(
-                        span,
-                        format!("Missing value for constant, but no error reported?"),
-                    );
+                    let guar = infcx
+                        .tcx
+                        .sess
+                        .delay_span_bug(span, "Missing value for constant, but no error reported?");
                     NotConstEvaluatable::Error(guar)
                 };
 

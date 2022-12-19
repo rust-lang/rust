@@ -44,7 +44,7 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                         );
                     }
                     (Some(sub_span), Some(sup_span), _, Some(sup_symbol)) => {
-                        err.span_note(sub_span, format!("the lifetime defined here..."));
+                        err.span_note(sub_span, "the lifetime defined here...");
                         err.span_note(
                             sup_span,
                             format!("...must outlive the lifetime `{sup_symbol}` defined here"),
@@ -55,17 +55,11 @@ impl<'tcx> NiceRegionError<'_, 'tcx> {
                             sub_span,
                             format!("the lifetime `{sub_symbol}` defined here..."),
                         );
-                        err.span_note(
-                            sup_span,
-                            format!("...must outlive the lifetime defined here"),
-                        );
+                        err.span_note(sup_span, "...must outlive the lifetime defined here");
                     }
                     (Some(sub_span), Some(sup_span), _, _) => {
-                        err.span_note(sub_span, format!("the lifetime defined here..."));
-                        err.span_note(
-                            sup_span,
-                            format!("...must outlive the lifetime defined here"),
-                        );
+                        err.span_note(sub_span, "the lifetime defined here...");
+                        err.span_note(sup_span, "...must outlive the lifetime defined here");
                     }
                     _ => {}
                 }

@@ -29,6 +29,9 @@ pub fn size_and_align_of_dst<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
             let align = meth::VirtualIndex::from_index(ty::COMMON_VTABLE_ENTRIES_ALIGN)
                 .get_usize(bx, vtable);
 
+            // Size is always <= isize::MAX.
+            let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+            bx.range_metadata(size, WrappingRange { start: 0, end: size_bound });
             // Alignment is always nonzero.
             bx.range_metadata(align, WrappingRange { start: 1, end: !0 });
 
