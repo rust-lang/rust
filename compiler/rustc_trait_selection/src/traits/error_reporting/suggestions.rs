@@ -2344,28 +2344,33 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
-                // `Some(ref_ty)` if `target_ty` is `&T` and `T` fails to impl `Sync`
-                let refers_to_non_sync = match target_ty.kind() {
-                    ty::Ref(_, ref_ty, _) => match self.evaluate_obligation(&obligation) {
-                        Ok(eval) if !eval.may_apply() => Some(ref_ty),
+                // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
+                let non_send = match target_ty.kind() {
+                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(&obligation) {
+                        Ok(eval) if !eval.may_apply() => Some((ref_ty, mutability.is_mut())),
                         _ => None,
                     },
                     _ => None,
                 };
 
-                let (span_label, span_note) = match refers_to_non_sync {
-                    // if `target_ty` is `&T` and `T` fails to impl `Sync`,
-                    // include suggestions to make `T: Sync` so that `&T: Send`
-                    Some(ref_ty) => (
-                        format!(
-                            "has type `{}` which {}, because `{}` is not `Sync`",
-                            target_ty, trait_explanation, ref_ty
-                        ),
-                        format!(
-                            "captured value {} because `&` references cannot be sent unless their referent is `Sync`",
-                            trait_explanation
-                        ),
-                    ),
+                let (span_label, span_note) = match non_send {
+                    // if `target_ty` is `&T` or `&mut T` and fails to impl `Send`,
+                    // include suggestions to make `T: Sync` so that `&T: Send`,
+                    // or to make `T: Send` so that `&mut T: Send`
+                    Some((ref_ty, is_mut)) => {
+                        let ref_ty_trait = if is_mut { "Send" } else { "Sync" };
+                        let ref_kind = if is_mut { "&mut" } else { "&" };
+                        (
+                            format!(
+                                "has type `{}` which {}, because `{}` is not `{}`",
+                                target_ty, trait_explanation, ref_ty, ref_ty_trait
+                            ),
+                            format!(
+                                "captured value {} because `{}` references cannot be sent unless their referent is `{}`",
+                                trait_explanation, ref_kind, ref_ty_trait
+                            ),
+                        )
+                    }
                     None => (
                         format!("has type `{}` which {}", target_ty, trait_explanation),
                         format!("captured value {}", trait_explanation),
