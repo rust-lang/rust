@@ -322,10 +322,6 @@ main {
 	margin-right: auto;
 }
 
-.source .width-limiter {
-	max-width: unset;
-}
-
 details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
