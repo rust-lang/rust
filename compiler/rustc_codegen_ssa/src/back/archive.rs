@@ -123,7 +123,7 @@ fn try_filter_fat_archs<'a>(
 ) -> io::Result<Option<(&'a [u8], u64)>> {
     let archs = archs.map_err(|e| io::Error::new(io::ErrorKind::Other, e))?;
 
-    let desired = match archs.iter().filter(|a| a.architecture() == target_arch).next() {
+    let desired = match archs.iter().find(|a| a.architecture() == target_arch) {
         Some(a) => a,
         None => return Ok(None),
     };

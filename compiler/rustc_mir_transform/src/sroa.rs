@@ -182,7 +182,7 @@ fn replace_flattened_locals<'tcx>(
     let mut fragments = IndexVec::new();
     for (k, v) in &replacements.fields {
         fragments.ensure_contains_elem(k.local, || Vec::new());
-        fragments[k.local].push((&k.projection[..], *v));
+        fragments[k.local].push((k.projection, *v));
     }
     debug!(?fragments);
 
