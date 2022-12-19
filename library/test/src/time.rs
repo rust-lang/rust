@@ -107,16 +107,14 @@ impl TimeThreshold {
         let durations_str = env::var(env_var_name).ok()?;
         let (warn_str, critical_str) = durations_str.split_once(',').unwrap_or_else(|| {
             panic!(
-                "Duration variable {} expected to have 2 numbers separated by comma, but got {}",
-                env_var_name, durations_str
+                "Duration variable {env_var_name} expected to have 2 numbers separated by comma, but got {durations_str}"
             )
         });
 
         let parse_u64 = |v| {
             u64::from_str(v).unwrap_or_else(|_| {
                 panic!(
-                    "Duration value in variable {} is expected to be a number, but got {}",
-                    env_var_name, v
+                    "Duration value in variable {env_var_name} is expected to be a number, but got {v}"
                 )
             })
         };

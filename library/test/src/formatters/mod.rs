@@ -38,5 +38,5 @@ pub(crate) fn write_stderr_delimiter(test_output: &mut Vec<u8>, test_name: &Test
         Some(_) => test_output.push(b'\n'),
         None => (),
     }
-    writeln!(test_output, "---- {} stderr ----", test_name).unwrap();
+    writeln!(test_output, "---- {test_name} stderr ----").unwrap();
 }

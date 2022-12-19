@@ -354,8 +354,7 @@ fn get_shuffle_seed(matches: &getopts::Matches, allow_unstable: bool) -> OptPart
             Err(e) => {
                 return Err(format!(
                     "argument for --shuffle-seed must be a number \
-                     (error: {})",
-                    e
+                     (error: {e})"
                 ));
             }
         },
@@ -383,8 +382,7 @@ fn get_test_threads(matches: &getopts::Matches) -> OptPartRes<Option<usize>> {
             Err(e) => {
                 return Err(format!(
                     "argument for --test-threads must be a number > 0 \
-                     (error: {})",
-                    e
+                     (error: {e})"
                 ));
             }
         },
@@ -418,8 +416,7 @@ fn get_format(
         Some(v) => {
             return Err(format!(
                 "argument for --format must be pretty, terse, json or junit (was \
-                 {})",
-                v
+                 {v})"
             ));
         }
     };
@@ -436,8 +433,7 @@ fn get_color_config(matches: &getopts::Matches) -> OptPartRes<ColorConfig> {
         Some(v) => {
             return Err(format!(
                 "argument for --color must be auto, always, or never (was \
-                 {})",
-                v
+                 {v})"
             ));
         }
     };
