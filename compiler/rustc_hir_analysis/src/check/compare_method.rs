@@ -67,8 +67,14 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
-    {
+    if let Err(_) = compare_predicate_entailment(
+        tcx,
+        impl_m,
+        impl_m_span,
+        trait_m,
+        impl_trait_ref,
+        CheckImpliedWfMode::Check,
+    ) {
         return;
     }
 }
@@ -146,6 +152,7 @@ fn compare_predicate_entailment<'tcx>(
     impl_m_span: Span,
     trait_m: &ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
+    check_implied_wf: CheckImpliedWfMode,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
@@ -300,92 +307,106 @@ fn compare_predicate_entailment<'tcx>(
         return Err(emitted);
     }
 
-    // Check that all obligations are satisfied by the implementation's
-    // version.
-    let errors = ocx.select_all_or_error();
-    if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-        return Err(reported);
+    if check_implied_wf == CheckImpliedWfMode::Check {
+        // We need to check that the impl's args are well-formed given
+        // the hybrid param-env (impl + trait method where-clauses).
+        ocx.register_obligation(traits::Obligation::new(
+            infcx.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
+        ));
     }
-
-    // FIXME(compiler-errors): This can be removed when IMPLIED_BOUNDS_ENTAILMENT
-    // becomes a hard error.
-    let lint_infcx = infcx.fork();
-
-    // Finally, resolve all regions. This catches wily misuses of
-    // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::with_bounds(
-        param_env,
-        Some(infcx),
-        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys.clone()),
-    );
-    if let Some(guar) = infcx.check_region_obligations_and_report_errors(
-        impl_m.def_id.expect_local(),
-        &outlives_environment,
-    ) {
-        return Err(guar);
-    }
-
-    // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
-    // becomes a hard error (i.e. ideally we'd just register a WF obligation above...)
-    lint_implied_wf_entailment(
-        impl_m.def_id.expect_local(),
-        lint_infcx,
-        param_env,
-        unnormalized_impl_fty,
-        wf_tys,
-    );
-
-    Ok(())
-}
-
-fn lint_implied_wf_entailment<'tcx>(
-    impl_m_def_id: LocalDefId,
-    infcx: InferCtxt<'tcx>,
-    param_env: ty::ParamEnv<'tcx>,
-    unnormalized_impl_fty: Ty<'tcx>,
-    wf_tys: FxIndexSet<Ty<'tcx>>,
-) {
-    let ocx = ObligationCtxt::new(&infcx);
-
-    // We need to check that the impl's args are well-formed given
-    // the hybrid param-env (impl + trait method where-clauses).
-    ocx.register_obligation(traits::Obligation::new(
-        infcx.tcx,
-        ObligationCause::dummy(),
-        param_env,
-        ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
-    ));
-
-    let hir_id = infcx.tcx.hir().local_def_id_to_hir_id(impl_m_def_id);
-    let lint = || {
+    let emit_implied_wf_lint = || {
         infcx.tcx.struct_span_lint_hir(
             rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
-            hir_id,
-            infcx.tcx.def_span(impl_m_def_id),
+            impl_m_hir_id,
+            infcx.tcx.def_span(impl_m.def_id),
             "impl method assumes more implied bounds than the corresponding trait method",
             |lint| lint,
         );
     };
 
+    // Check that all obligations are satisfied by the implementation's
+    // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        lint();
+        match check_implied_wf {
+            CheckImpliedWfMode::Check => {
+                return compare_predicate_entailment(
+                    tcx,
+                    impl_m,
+                    impl_m_span,
+                    trait_m,
+                    impl_trait_ref,
+                    CheckImpliedWfMode::Skip,
+                )
+                .map(|()| {
+                    // If the skip-mode was successful, emit a lint.
+                    emit_implied_wf_lint();
+                });
+            }
+            CheckImpliedWfMode::Skip => {
+                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                return Err(reported);
+            }
+        }
     }
 
-    let outlives_environment = OutlivesEnvironment::with_bounds(
+    // Finally, resolve all regions. This catches wily misuses of
+    // lifetime parameters.
+    let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
-        Some(&infcx),
-        infcx.implied_bounds_tys(param_env, hir_id, wf_tys.clone()),
+        Some(infcx),
+        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys.clone()),
     );
     infcx.process_registered_region_obligations(
-        outlives_environment.region_bound_pairs(),
-        param_env,
+        outlives_env.region_bound_pairs(),
+        outlives_env.param_env,
     );
-
-    if !infcx.resolve_regions(&outlives_environment).is_empty() {
-        lint();
+    let errors = infcx.resolve_regions(&outlives_env);
+    if !errors.is_empty() {
+        // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
+        // becomes a hard error (i.e. ideally we'd just call `resolve_regions_and_report_errors`
+        match check_implied_wf {
+            CheckImpliedWfMode::Check => {
+                return compare_predicate_entailment(
+                    tcx,
+                    impl_m,
+                    impl_m_span,
+                    trait_m,
+                    impl_trait_ref,
+                    CheckImpliedWfMode::Skip,
+                )
+                .map(|()| {
+                    // If the skip-mode was successful, emit a lint.
+                    emit_implied_wf_lint();
+                });
+            }
+            CheckImpliedWfMode::Skip => {
+                if infcx.tainted_by_errors().is_none() {
+                    infcx.err_ctxt().report_region_errors(impl_m.def_id.expect_local(), &errors);
+                }
+                return Err(tcx
+                    .sess
+                    .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"));
+            }
+        }
     }
+
+    Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CheckImpliedWfMode {
+    /// Checks implied well-formedness of the impl method. If it fails, we will
+    /// re-check with `Skip`, and emit a lint if it succeeds.
+    Check,
+    /// Skips checking implied well-formedness of the impl method, but will emit
+    /// a lint if the `compare_predicate_entailment` succeeded. This means that
+    /// the reason that we had failed earlier during `Check` was due to the impl
+    /// having stronger requirements than the trait.
+    Skip,
 }
 
 #[instrument(skip(tcx), level = "debug", ret)]
