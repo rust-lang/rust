@@ -1159,6 +1159,12 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
+            if let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind() {
+                // There is nothing that we can compare here if we go through an opaque type.
+                // We're always in its defining scope as we can otherwise not project through
+                // it, so we're constraining it anyways.
+                return Ok(());
+            }
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 self.param_env,
