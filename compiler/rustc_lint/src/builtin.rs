@@ -270,7 +270,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                             |lint| {
                                 let suggested_ident =
                                     format!("{}{}", binding_annot.prefix_str(), ident);
-                                lint.set_arg("ident", ident.clone()).span_suggestion(
+                                lint.set_arg("ident", ident).span_suggestion(
                                     fieldpat.span,
                                     fluent::suggestion,
                                     suggested_ident,
@@ -2052,7 +2052,7 @@ impl KeywordIdents {
             ident.span,
             fluent::lint_builtin_keyword_idents,
             |lint| {
-                lint.set_arg("kw", ident.clone()).set_arg("next", next_edition).span_suggestion(
+                lint.set_arg("kw", ident).set_arg("next", next_edition).span_suggestion(
                     ident.span,
                     fluent::suggestion,
                     format!("r#{}", ident),

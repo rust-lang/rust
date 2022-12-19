@@ -76,7 +76,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
         let Some((otherwise, rest)) = arms.split_last() else {
             return Err(ParseError {
                 span,
-                item_description: format!("no arms"),
+                item_description: "no arms".to_string(),
                 expected: "at least one arm".to_string(),
             })
         };

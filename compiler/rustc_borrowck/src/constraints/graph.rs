@@ -148,7 +148,7 @@ impl<'s, 'tcx, D: ConstraintGraphDirecton> Iterator for Edges<'s, 'tcx, D> {
         if let Some(p) = self.pointer {
             self.pointer = self.graph.next_constraints[p];
 
-            Some(self.constraints[p].clone())
+            Some(self.constraints[p])
         } else if let Some(next_static_idx) = self.next_static_idx {
             self.next_static_idx = if next_static_idx == (self.graph.first_constraints.len() - 1) {
                 None

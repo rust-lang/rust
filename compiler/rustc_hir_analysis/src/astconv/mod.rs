@@ -2240,7 +2240,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     ),
                     "s",
                 ),
-                [only] => (format!("{only}"), ""),
+                [only] => (only.to_string(), ""),
                 [] => unreachable!(),
             };
             let last_span = *arg_spans.last().unwrap();
