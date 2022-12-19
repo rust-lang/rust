@@ -73,7 +73,7 @@ x--expand-yaml-anchors--remove:
     env: {}
 
   - &job-linux-xl
-    os: ubuntu-20.04-xl
+    os: ubuntu-latest
     <<: *base-job
 
   - &job-macos-xl

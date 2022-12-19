@@ -45,15 +45,15 @@ jobs:
       matrix:
         include:
           - name: mingw-check
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-llvm-13
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-tools
             env:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
@@ -172,132 +172,132 @@ jobs:
               - ARM64
               - linux
           - name: arm-android
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: armhf-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-aarch64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-android
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-arm-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-armhf-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-armv7-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-i586-gnu-i586-i686-musl
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-i686-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-mips-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-mips64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-mips64el-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-mipsel-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-powerpc-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-powerpc64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-powerpc64le-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-riscv64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-s390x-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-various-1
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-various-2
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-x86_64-freebsd
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-x86_64-illumos
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-x86_64-linux-alt
             env:
               IMAGE: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
           - name: dist-x86_64-musl
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: dist-x86_64-netbsd
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: i686-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: i686-gnu-nopt
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: mingw-check
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: test-various
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: wasm32
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-stable
             env:
               IMAGE: x86_64-gnu
               RUST_CI_OVERRIDE_RELEASE_CHANNEL: stable
               CI_ONLY_WHEN_CHANNEL: nightly
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
           - name: x86_64-gnu-aux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-debug
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-distcheck
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-llvm-13
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
           - name: x86_64-gnu-llvm-13-stage1
             env:
               RUST_BACKTRACE: 1
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
           - name: x86_64-gnu-nopt
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-tools
             env:
               DEPLOY_TOOLSTATES_JSON: toolstates-linux.json
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
@@ -581,7 +581,7 @@ jobs:
       matrix:
         include:
           - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
