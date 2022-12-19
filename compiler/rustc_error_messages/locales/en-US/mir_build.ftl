@@ -299,3 +299,22 @@ mir_build_multiple_mut_borrows = cannot borrow value as mutable more than once a
     .mutable_borrow = another mutable borrow, by `{$name_mut}`, occurs here
     .immutable_borrow = also borrowed as immutable, by `{$name_immut}`, here
     .moved = also moved into `{$name_moved}` here
+
+mir_build_union_pattern = cannot use unions in constant patterns
+
+mir_build_type_not_structural =
+     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_unsized_pattern = cannot use unsized non-slice type `{$non_sm_ty}` in constant patterns
+
+mir_build_invalid_pattern = `{$non_sm_ty}` cannot be used in patterns
+
+mir_build_float_pattern = floating-point types cannot be used in patterns
+
+mir_build_pointer_pattern = function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
+
+mir_build_indirect_structural_match = 
+    to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_nontrivial_structural_match = 
+    to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`

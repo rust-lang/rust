@@ -614,3 +614,54 @@ pub enum MultipleMutBorrowOccurence {
         name_moved: Ident,
     },
 }
+
+#[derive(Diagnostic)]
+#[diag(mir_build_union_pattern)]
+pub struct UnionPattern {
+    #[primary_span]
+    pub span: Span,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_type_not_structural)]
+pub struct TypeNotStructural<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub non_sm_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_invalid_pattern)]
+pub struct InvalidPattern<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub non_sm_ty: Ty<'tcx>,
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_unsized_pattern)]
+pub struct UnsizedPattern<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub non_sm_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_float_pattern)]
+pub struct FloatPattern;
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_pointer_pattern)]
+pub struct PointerPattern;
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_indirect_structural_match)]
+pub struct IndirectStructuralMatch<'tcx> {
+    pub non_sm_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_nontrivial_structural_match)]
+pub struct NontrivialStructuralMatch<'tcx> {
+    pub non_sm_ty: Ty<'tcx>,
+}
