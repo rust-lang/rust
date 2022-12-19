@@ -342,6 +342,7 @@ code, pre, a.test-arrow, .code-header {
 }
 pre {
 	padding: 14px;
+	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
 .item-decl pre {
 	overflow-x: auto;

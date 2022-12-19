@@ -455,3 +455,22 @@ impl TypeWithImplDoc {
     /// fn doc
     pub fn test_fn() {}
 }
+
+/// <sub id="codeblock-sub-1">
+///
+/// ```
+/// one
+/// ```
+///
+/// </sub>
+///
+/// <sub id="codeblock-sub-3">
+///
+/// ```
+/// one
+/// two
+/// three
+/// ```
+///
+/// </sub>
+pub mod codeblock_sub {}
