@@ -65,9 +65,10 @@ mod task_queue {
 /// execution. The signal is sent once all TLS destructors have finished at
 /// which point no new thread locals should be created.
 pub mod wait_notify {
-    use super::super::thread_parker::Parker;
+    use crate::mem::MaybeUninit;
     use crate::pin::Pin;
     use crate::sync::Arc;
+    use crate::sys_common::thread_parking::Parker;
 
     pub struct Notifier(Arc<Parker>);
 
@@ -94,7 +95,18 @@ pub mod wait_notify {
     }
 
     pub fn new() -> (Notifier, Waiter) {
-        let inner = Arc::new(Parker::new_internal());
+        // Safety:
+        // Some other platforms (looking at you, UNIX!) require that the thread
+        // parker is constructed in-place. This is just a noisy way of writing:
+        // ```rust
+        // let parker = Parker::new();
+        // ```
+        let parker = unsafe {
+            let mut place = MaybeUninit::uninit();
+            Parker::new(place.as_mut_ptr());
+            place.assume_init()
+        };
+        let inner = Arc::new(parker);
         (Notifier(inner.clone()), Waiter(inner))
     }
 }

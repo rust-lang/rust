@@ -24,7 +24,7 @@ cfg_if::cfg_if! {
         pub use darwin::Parker;
     } else if #[cfg(target_os = "netbsd")] {
         mod netbsd;
-        pub use netbsd::Parker;
+        pub use netbsd::{current, park, park_timeout, unpark, ThreadId};
     } else {
         mod pthread;
         pub use pthread::Parker;
