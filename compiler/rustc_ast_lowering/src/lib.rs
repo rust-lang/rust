@@ -600,7 +600,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
 
-        debug_assert!(self.children.iter().find(|(id, _)| id == &def_id).is_none());
+        debug_assert!(!self.children.iter().any(|(id, _)| id == &def_id));
         self.children.push((def_id, hir::MaybeOwner::Owner(info)));
     }
 

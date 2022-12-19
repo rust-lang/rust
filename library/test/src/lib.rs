@@ -213,8 +213,7 @@ pub fn assert_test_result<T: Termination>(result: T) -> Result<(), String> {
     } else {
         Err(format!(
             "the test returned a termination value with a non-zero status code \
-             ({}) which indicates a failure",
-            code
+             ({code}) which indicates a failure"
         ))
     }
 }
@@ -750,7 +749,7 @@ fn spawn_test_subprocess(
         })() {
             Ok(r) => r,
             Err(e) => {
-                write!(&mut test_output, "Unexpected error: {}", e).unwrap();
+                write!(&mut test_output, "Unexpected error: {e}").unwrap();
                 TrFailed
             }
         };

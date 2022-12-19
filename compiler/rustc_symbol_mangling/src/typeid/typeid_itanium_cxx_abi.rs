@@ -99,13 +99,8 @@ fn is_c_void_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>) -> bool {
         ty::Adt(adt_def, ..) => {
             let def_id = adt_def.0.did;
             let crate_name = tcx.crate_name(def_id.krate);
-            if tcx.item_name(def_id).as_str() == "c_void"
+            tcx.item_name(def_id).as_str() == "c_void"
                 && (crate_name == sym::core || crate_name == sym::std || crate_name == sym::libc)
-            {
-                true
-            } else {
-                false
-            }
         }
         _ => false,
     }
@@ -267,8 +262,7 @@ fn encode_predicates<'tcx>(
 ) -> String {
     // <predicate1[..predicateN]>E as part of vendor extended type
     let mut s = String::new();
-    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> =
-        predicates.iter().map(|predicate| predicate).collect();
+    let predicates: Vec<ty::PolyExistentialPredicate<'tcx>> = predicates.iter().collect();
     for predicate in predicates {
         s.push_str(&encode_predicate(tcx, predicate, dict, options));
     }
@@ -322,7 +316,7 @@ fn encode_substs<'tcx>(
 ) -> String {
     // [I<subst1..substN>E] as part of vendor extended type
     let mut s = String::new();
-    let substs: Vec<GenericArg<'_>> = substs.iter().map(|subst| subst).collect();
+    let substs: Vec<GenericArg<'_>> = substs.iter().collect();
     if !substs.is_empty() {
         s.push('I');
         for subst in substs {
@@ -703,11 +697,8 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                         tcx.layout_of(param_env.and(ty)).map_or(false, |layout| layout.is_zst());
                     !is_zst
                 });
-                if field.is_none() {
-                    // Transform repr(transparent) types without non-ZST field into ()
-                    ty = tcx.mk_unit();
-                } else {
-                    let ty0 = tcx.type_of(field.unwrap().did);
+                if let Some(field) = field {
+                    let ty0 = tcx.type_of(field.did);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -720,6 +711,9 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     } else {
                         ty = transform_ty(tcx, ty0, options);
                     }
+                } else {
+                    // Transform repr(transparent) types without non-ZST field into ()
+                    ty = tcx.mk_unit();
                 }
             } else {
                 ty = tcx.mk_adt(*adt_def, transform_substs(tcx, substs, options));

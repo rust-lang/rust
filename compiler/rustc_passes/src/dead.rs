@@ -787,7 +787,6 @@ impl<'tcx> DeadVisitor<'tcx> {
         let mut dead_codes = dead_codes
             .iter()
             .filter(|v| !v.name.as_str().starts_with('_'))
-            .map(|v| v)
             .collect::<Vec<&DeadVariant>>();
         if dead_codes.is_empty() {
             return;

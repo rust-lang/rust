@@ -1789,7 +1789,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         self.note_conflicting_closure_bounds(cause, &mut err);
 
         if let Some(found_node) = found_node {
-            hint_missing_borrow(span, found_span, found, expected, found_node, &mut err);
+            hint_missing_borrow(span, found, expected, found_node, &mut err);
         }
 
         err
@@ -2344,28 +2344,33 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             GeneratorInteriorOrUpvar::Upvar(upvar_span) => {
-                // `Some(ref_ty)` if `target_ty` is `&T` and `T` fails to impl `Sync`
-                let refers_to_non_sync = match target_ty.kind() {
-                    ty::Ref(_, ref_ty, _) => match self.evaluate_obligation(&obligation) {
-                        Ok(eval) if !eval.may_apply() => Some(ref_ty),
+                // `Some((ref_ty, is_mut))` if `target_ty` is `&T` or `&mut T` and fails to impl `Send`
+                let non_send = match target_ty.kind() {
+                    ty::Ref(_, ref_ty, mutability) => match self.evaluate_obligation(&obligation) {
+                        Ok(eval) if !eval.may_apply() => Some((ref_ty, mutability.is_mut())),
                         _ => None,
                     },
                     _ => None,
                 };
 
-                let (span_label, span_note) = match refers_to_non_sync {
-                    // if `target_ty` is `&T` and `T` fails to impl `Sync`,
-                    // include suggestions to make `T: Sync` so that `&T: Send`
-                    Some(ref_ty) => (
-                        format!(
-                            "has type `{}` which {}, because `{}` is not `Sync`",
-                            target_ty, trait_explanation, ref_ty
-                        ),
-                        format!(
-                            "captured value {} because `&` references cannot be sent unless their referent is `Sync`",
-                            trait_explanation
-                        ),
-                    ),
+                let (span_label, span_note) = match non_send {
+                    // if `target_ty` is `&T` or `&mut T` and fails to impl `Send`,
+                    // include suggestions to make `T: Sync` so that `&T: Send`,
+                    // or to make `T: Send` so that `&mut T: Send`
+                    Some((ref_ty, is_mut)) => {
+                        let ref_ty_trait = if is_mut { "Send" } else { "Sync" };
+                        let ref_kind = if is_mut { "&mut" } else { "&" };
+                        (
+                            format!(
+                                "has type `{}` which {}, because `{}` is not `{}`",
+                                target_ty, trait_explanation, ref_ty, ref_ty_trait
+                            ),
+                            format!(
+                                "captured value {} because `{}` references cannot be sent unless their referent is `{}`",
+                                trait_explanation, ref_kind, ref_ty_trait
+                            ),
+                        )
+                    }
                     None => (
                         format!("has type `{}` which {}", target_ty, trait_explanation),
                         format!("captured value {}", trait_explanation),
@@ -3455,7 +3460,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 /// Add a hint to add a missing borrow or remove an unnecessary one.
 fn hint_missing_borrow<'tcx>(
     span: Span,
-    found_span: Span,
     found: Ty<'tcx>,
     expected: Ty<'tcx>,
     found_node: Node<'_>,
@@ -3474,9 +3478,8 @@ fn hint_missing_borrow<'tcx>(
         }
     };
 
-    let fn_decl = found_node
-        .fn_decl()
-        .unwrap_or_else(|| span_bug!(found_span, "found node must be a function"));
+    // This could be a variant constructor, for example.
+    let Some(fn_decl) = found_node.fn_decl() else { return; };
 
     let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
 

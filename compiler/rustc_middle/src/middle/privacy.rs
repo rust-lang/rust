@@ -103,12 +103,7 @@ impl EffectiveVisibilities {
 
     pub fn public_at_level(&self, id: LocalDefId) -> Option<Level> {
         self.effective_vis(id).and_then(|effective_vis| {
-            for level in Level::all_levels() {
-                if effective_vis.is_public_at_level(level) {
-                    return Some(level);
-                }
-            }
-            None
+            Level::all_levels().into_iter().find(|&level| effective_vis.is_public_at_level(level))
         })
     }
 
