@@ -4,6 +4,7 @@ use crate::search_paths::SearchPath;
 use crate::utils::NativeLib;
 use crate::{lint, EarlyErrorHandler};
 use rustc_data_structures::profiling::TimePassesFormat;
+use rustc_errors::ColorConfig;
 use rustc_errors::{LanguageIdentifier, TerminalUrl};
 use rustc_target::spec::{CodeModel, LinkerFlavorCli, MergeFunctions, PanicStrategy, SanitizerSet};
 use rustc_target::spec::{
@@ -212,6 +213,7 @@ top_level_options!(
 
         /// The (potentially remapped) working directory
         working_dir: RealFileName [TRACKED],
+        color: ColorConfig [UNTRACKED],
     }
 );
 

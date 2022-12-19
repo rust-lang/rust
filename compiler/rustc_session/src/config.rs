@@ -909,6 +909,7 @@ impl Default for Options {
             json_future_incompat: false,
             pretty: None,
             working_dir: RealFileName::LocalPath(std::env::current_dir().unwrap()),
+            color: ColorConfig::Auto,
         }
     }
 }
@@ -2673,6 +2674,7 @@ pub fn build_session_options(
         json_future_incompat,
         pretty,
         working_dir,
+        color,
     }
 }
 

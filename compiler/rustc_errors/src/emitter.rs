@@ -616,7 +616,7 @@ pub enum ColorConfig {
 }
 
 impl ColorConfig {
-    fn to_color_choice(self) -> ColorChoice {
+    pub fn to_color_choice(self) -> ColorChoice {
         match self {
             ColorConfig::Always => {
                 if io::stderr().is_terminal() {
