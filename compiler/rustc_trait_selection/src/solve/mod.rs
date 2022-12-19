@@ -30,6 +30,7 @@ use rustc_span::DUMMY_SP;
 
 use self::infcx_ext::InferCtxtExt;
 
+mod assembly;
 mod cache;
 mod fulfill;
 mod infcx_ext;
