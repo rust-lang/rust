@@ -168,7 +168,7 @@ jobs:
         include:
           - name: aarch64-gnu
             os:
-              - self-hosted
+              - ubuntu-latest
               - ARM64
               - linux
           - name: arm-android

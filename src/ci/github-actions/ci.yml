@@ -85,7 +85,7 @@ x--expand-yaml-anchors--remove:
     <<: *base-job
 
   - &job-aarch64-linux
-    os: [self-hosted, ARM64, linux]
+    os: [ubuntu-latest, ARM64, linux]
 
   - &step
     if: success() && !env.SKIP_JOB
