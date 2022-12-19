@@ -44,65 +44,58 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
     }
 }
 
-fn verify_timestamp(build: &Builder<'_>) -> bool {
-    let stamp_file = {
-        let mut s = build.out.clone();
-        s.push("rustfmt.stamp");
-        s
-    };
+fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
+    let stamp_file = build.out.join("rustfmt.stamp");
 
     let mut cmd = Command::new(match build.initial_rustfmt() {
         Some(p) => p,
-        None => return false,
+        None => return None,
     });
     cmd.arg("--version");
     let output = match cmd.output() {
         Ok(status) => status,
-        Err(_) => return false,
+        Err(_) => return None,
     };
     if !output.status.success() {
-        return false;
+        return None;
     }
-    let version = String::from_utf8(output.stdout).unwrap();
+    Some((String::from_utf8(output.stdout).unwrap(), stamp_file))
+}
+
+/// Return whether the format cache can be reused.
+fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return false;};
     !program_out_of_date(&stamp_file, &version)
 }
 
-fn update_timestamp(build: &Builder<'_>) {
-    let stamp_file = {
-        let mut s = build.out.clone();
-        s.push("rustfmt.stamp");
-        s
-    };
-
-    let mut cmd = Command::new(match build.initial_rustfmt() {
-        Some(p) => p,
-        None => return,
-    });
-    cmd.arg("--version");
-    let output = match cmd.output() {
-        Ok(status) => status,
-        Err(_) => return,
-    };
-    if !output.status.success() {
-        return;
-    }
-    let version = String::from_utf8(output.stdout).unwrap();
-
+/// Updates the last rustfmt version used
+fn update_rustfmt_version(build: &Builder<'_>) {
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return;};
     t!(std::fs::write(stamp_file, version))
 }
 
+/// Returns the files modified between the `merge-base` of HEAD and
+/// rust-lang/master and what is now on the disk.
+///
+/// Returns `None` if all files should be formatted.
 fn get_modified_files(build: &Builder<'_>) -> Option<Vec<String>> {
     let Ok(remote) = get_rust_lang_rust_remote() else {return None;};
-    if !verify_timestamp(build) {
+    if !verify_rustfmt_version(build) {
         return None;
     }
-    let base =
-        output(build.config.git().arg("merge-base").arg("HEAD").arg(format!("{remote}/master")));
     Some(
-        output(build.config.git().arg("diff").arg("--name-only").arg(base.trim()))
-            .lines()
-            .map(|s| s.trim().to_owned())
-            .collect(),
+        output(
+            build
+                .config
+                .git()
+                .arg("diff-index")
+                .arg("--name-only")
+                .arg("--merge-base")
+                .arg(&format!("{remote}/master")),
+        )
+        .lines()
+        .map(|s| s.trim().to_owned())
+        .collect(),
     )
 }
 
@@ -286,6 +279,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     drop(tx);
 
     thread.join().unwrap();
-
-    update_timestamp(build);
+    if !check {
+        update_rustfmt_version(build);
+    }
 }
