@@ -1,3 +1,4 @@
+use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::as_place::PlaceBuilder;
 use crate::build::matches::MatchPair;
 use crate::build::Builder;
@@ -16,8 +17,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         subpatterns
             .iter()
             .map(|fieldpat| {
-                let place = place.clone().field(self, fieldpat.field);
-
+                let place =
+                    place.clone_project(PlaceElem::Field(fieldpat.field, fieldpat.pattern.ty));
                 MatchPair::new(place, &fieldpat.pattern, self)
             })
             .collect()
@@ -106,9 +107,9 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
 
         // Only add the OpaqueCast projection if the given place is an opaque type and the
         // expected type from the pattern is not.
-        let may_need_cast = match place {
-            PlaceBuilder::Local { local, ref projection } => {
-                let ty = Place::ty_from(local, projection, &cx.local_decls, cx.tcx).ty;
+        let may_need_cast = match place.base() {
+            PlaceBase::Local(local) => {
+                let ty = Place::ty_from(local, place.projection(), &cx.local_decls, cx.tcx).ty;
                 ty != pattern.ty && ty.has_opaque_types()
             }
             _ => true,
