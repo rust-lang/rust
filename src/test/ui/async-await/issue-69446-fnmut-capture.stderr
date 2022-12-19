@@ -14,9 +14,6 @@ LL | |     });
    |
    = note: `FnMut` closures only have access to their captured variables while they are executing...
    = note: ...therefore, they cannot allow references to captured variables to escape
-   = note: requirement occurs because of a mutable reference to `Context<'_>`
-   = note: mutable references are invariant over their type parameter
-   = help: see <https://doc.rust-lang.org/nomicon/subtyping.html> for more information about variance
 
 error: aborting due to previous error
 
