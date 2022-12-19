@@ -237,6 +237,7 @@ impl<'t> Parser<'t> {
 
     fn do_bump(&mut self, kind: SyntaxKind, n_raw_tokens: u8) {
         self.pos += n_raw_tokens as usize;
+        self.steps.set(0);
         self.push_event(Event::Token { kind, n_raw_tokens });
     }
 
