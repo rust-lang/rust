@@ -22,6 +22,7 @@ use rustc_ast as ast;
 use rustc_codegen_ssa::{traits::CodegenBackend, CodegenErrors, CodegenResults};
 use rustc_data_structures::profiling::{get_resident_set_size, print_time_passes_entry};
 use rustc_data_structures::sync::SeqCst;
+use rustc_errors::markdown;
 use rustc_errors::registry::{InvalidErrorCode, Registry};
 use rustc_errors::{ErrorGuaranteed, PResult};
 use rustc_feature::find_gated_cfg;
@@ -511,7 +512,7 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
                 text.push('\n');
             }
             if io::stdout().is_terminal() {
-                show_content_with_pager(&text);
+                show_md_content_with_pager(&text);
             } else {
                 print!("{}", text);
             }
@@ -525,17 +526,38 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     }
 }
 
-fn show_content_with_pager(content: &str) {
+fn show_md_content_with_pager(content: &str) {
+    let mut print_color = true;
+    let mut fallback_to_println = false;
+
     let pager_name = env::var_os("PAGER").unwrap_or_else(|| {
         if cfg!(windows) { OsString::from("more.com") } else { OsString::from("less") }
     });
 
-    let mut fallback_to_println = false;
+    let mut cmd = Command::new(&pager_name);
 
-    match Command::new(pager_name).stdin(Stdio::piped()).spawn() {
+    // FIXME: find if other pagers accept color options
+    if pager_name == "less" {
+        cmd.arg("-r");
+    } else {
+        print_color = false;
+    };
+
+    let md_ast = markdown::create_ast(content);
+    let bufwtr = markdown::create_stdout_bufwtr();
+    let mut buffer = bufwtr.buffer();
+    md_ast.write_termcolor_buf(&mut buffer);
+
+    match cmd.stdin(Stdio::piped()).spawn() {
         Ok(mut pager) => {
             if let Some(pipe) = pager.stdin.as_mut() {
-                if pipe.write_all(content.as_bytes()).is_err() {
+                let res = if print_color {
+                    pipe.write_all(buffer.as_slice())
+                } else {
+                    pipe.write_all(content.as_bytes())
+                };
+
+                if res.is_err() {
                     fallback_to_println = true;
                 }
             }
@@ -551,8 +573,13 @@ fn show_content_with_pager(content: &str) {
 
     // If pager fails for whatever reason, we should still print the content
     // to standard output
-    if fallback_to_println {
-        print!("{}", content);
+    if fallback_to_println && print_color {
+        // If we fail to print the buffer, we'll just fall back to println
+        print_color = bufwtr.print(&buffer).is_ok();
+    }
+
+    if fallback_to_println && !print_color {
+        println!("{content}");
     }
 }
 

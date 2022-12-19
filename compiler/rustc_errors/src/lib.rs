@@ -9,6 +9,7 @@
 #![feature(adt_const_params)]
 #![feature(let_chains)]
 #![feature(never_type)]
+#![feature(once_cell)]
 #![feature(result_option_inspect)]
 #![feature(rustc_attrs)]
 #![allow(incomplete_features)]
@@ -56,6 +57,7 @@ mod diagnostic_impls;
 pub mod emitter;
 pub mod json;
 mod lock;
+pub mod markdown;
 pub mod registry;
 mod snippet;
 mod styled_buffer;
