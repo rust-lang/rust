@@ -149,7 +149,7 @@ fn expected_ast() -> MdTree<'static> {
         MdTree::PlainText("\n"),
         MdTree::Strong("more start of line"),
         MdTree::PlainText("\n\n"),
-        MdTree::CodeBlock("\ntry two of everything\n"),
+        MdTree::CodeBlock("rust\ntry two of everything\n"),
         MdTree::PlainText("\n"),
         MdTree::Comment("\n  another\n  comment "),
         MdTree::PlainText("\n"),
