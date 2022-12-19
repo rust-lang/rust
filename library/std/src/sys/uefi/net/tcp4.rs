@@ -12,7 +12,6 @@ use crate::sys::uefi::{
 use r_efi::efi::Status;
 use r_efi::protocols::{ip4, managed_network, simple_network, tcp4};
 
-// FIXME: Discuss what the values these constants should have
 const TYPE_OF_SERVICE: u8 = 8;
 const TIME_TO_LIVE: u8 = 255;
 

@@ -48,6 +48,9 @@ pub mod memchr {
     pub use core::slice::memchr::{memchr, memrchr};
 }
 
+// SAFETY: must be called only once during runtime initialization.
+// SAFETY: argc must be 2.
+// SAFETY: argv must be &[Handle, *mut SystemTable].
 pub unsafe fn init(argc: isize, argv: *const *const u8, _sigpipe: u8) {
     assert_eq!(argc, 2);
     let image_handle = unsafe { NonNull::new(*argv as *mut crate::ffi::c_void).unwrap() };
@@ -66,10 +69,7 @@ pub const fn unsupported<T>() -> std_io::Result<T> {
 
 #[inline]
 pub const fn unsupported_err() -> std_io::Error {
-    std_io::const_io_error!(
-        std_io::ErrorKind::Unsupported,
-        "operation not supported on this platform",
-    )
+    std_io::const_io_error!(std_io::ErrorKind::Unsupported, "operation not supported on UEFI",)
 }
 
 pub fn decode_error_kind(code: i32) -> crate::io::ErrorKind {
@@ -114,7 +114,7 @@ pub fn hashmap_random_keys() -> (u64, u64) {
     unsafe { (get_random().unwrap_or(1), get_random().unwrap_or(2)) }
 }
 
-unsafe fn get_random() -> Option<u64> {
+fn get_random() -> Option<u64> {
     use r_efi::protocols::rng;
 
     let mut buf = [0u8; 8];
