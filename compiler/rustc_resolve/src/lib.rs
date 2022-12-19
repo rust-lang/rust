@@ -1491,7 +1491,7 @@ impl<'a> Resolver<'a> {
             label_res_map: self.label_res_map.clone(),
             lifetimes_res_map: self.lifetimes_res_map.clone(),
             extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
-            next_node_id: self.next_node_id.clone(),
+            next_node_id: self.next_node_id,
             node_id_to_def_id: self.node_id_to_def_id.clone(),
             def_id_to_node_id: self.def_id_to_node_id.clone(),
             trait_map: self.trait_map.clone(),

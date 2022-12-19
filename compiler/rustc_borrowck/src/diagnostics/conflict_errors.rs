@@ -649,7 +649,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         if !assign_value.is_empty() {
             err.span_suggestion_verbose(
                 sugg_span.shrink_to_hi(),
-                format!("consider assigning a value"),
+                "consider assigning a value",
                 format!(" = {}", assign_value),
                 Applicability::MaybeIncorrect,
             );

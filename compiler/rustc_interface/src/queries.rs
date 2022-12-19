@@ -127,7 +127,7 @@ impl<'tcx> Queries<'tcx> {
 
     pub fn register_plugins(&self) -> Result<&Query<(ast::Crate, Lrc<LintStore>)>> {
         self.register_plugins.compute(|| {
-            let crate_name = self.crate_name()?.peek().clone();
+            let crate_name = *self.crate_name()?.peek();
             let krate = self.parse()?.take();
 
             let empty: &(dyn Fn(&Session, &mut LintStore) + Sync + Send) = &|_, _| {};

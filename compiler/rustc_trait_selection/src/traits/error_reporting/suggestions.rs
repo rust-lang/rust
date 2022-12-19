@@ -2740,7 +2740,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             }
                             ty::Closure(def_id, _) => err.span_note(
                                 self.tcx.def_span(def_id),
-                                &format!("required because it's used within this closure"),
+                                "required because it's used within this closure",
                             ),
                             _ => err.note(&msg),
                         };
@@ -3386,7 +3386,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             err.span_note(
                 multi_span,
-                format!("the method call chain might not have had the expected associated types"),
+                "the method call chain might not have had the expected associated types",
             );
         }
     }

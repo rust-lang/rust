@@ -1007,7 +1007,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
                             err.span_suggestion(
                                 span,
-                                &format!("there is a method with a similar name",),
+                                "there is a method with a similar name",
                                 lev_candidate.name,
                                 Applicability::MaybeIncorrect,
                             );
