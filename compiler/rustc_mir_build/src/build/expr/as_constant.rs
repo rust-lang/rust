@@ -66,14 +66,14 @@ pub fn as_constant_inner<'tcx>(
 
             let literal = ConstantKind::Val(ConstValue::Scalar(Scalar::Int(lit)), ty);
 
-            Constant { span, user_ty: user_ty, literal }
+            Constant { span, user_ty, literal }
         }
         ExprKind::ZstLiteral { ref user_ty } => {
             let user_ty = user_ty.as_ref().map(push_cuta).flatten();
 
             let literal = ConstantKind::Val(ConstValue::ZeroSized, ty);
 
-            Constant { span, user_ty: user_ty, literal }
+            Constant { span, user_ty, literal }
         }
         ExprKind::NamedConst { def_id, substs, ref user_ty } => {
             let user_ty = user_ty.as_ref().map(push_cuta).flatten();
