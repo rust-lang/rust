@@ -4,7 +4,7 @@ use super::*;
 fn test_comment() {
     const TAG: MdType = MdType::Comment;
     let pat = PATTERNS.iter().find(|p| p.tag == TAG).unwrap();
-    let ctx = Context { at_line_start: true, preceded_by_ws: true };
+    let ctx = Context { at_line_start: true, preceded_by_break: true };
 
     let input = b"none<!--none-->residual";
     assert_eq!(
@@ -22,7 +22,7 @@ fn test_comment() {
 fn test_code_block() {
     const TAG: MdType = MdType::CodeBlock;
     let pat = PATTERNS.iter().find(|p| p.tag == TAG).unwrap();
-    let ctx = Context { at_line_start: true, preceded_by_ws: true };
+    let ctx = Context { at_line_start: true, preceded_by_break: true };
 
     let input = b"none\n```\nblock\n```";
     let end_expected =
@@ -35,7 +35,7 @@ fn test_code_block() {
         MdResult { matched: MdTree::from_type("\nblock\nof\ncode\n", TAG), residual: b"residual" };
     assert_eq!(pat.parse_start(input, &ctx), Some(expected));
 
-    let ctx = Context { at_line_start: false, preceded_by_ws: true };
+    let ctx = Context { at_line_start: false, preceded_by_break: true };
     assert_eq!(pat.parse_start(input, &ctx), None);
 }
 
@@ -43,7 +43,7 @@ fn test_code_block() {
 fn test_headings() {
     const TAG: MdType = MdType::Heading1;
     let pat = PATTERNS.iter().find(|p| p.tag == TAG).unwrap();
-    let ctx = Context { at_line_start: true, preceded_by_ws: true };
+    let ctx = Context { at_line_start: true, preceded_by_break: true };
 
     let input = b"content\nresidual";
     let end_expected = MdResult {
@@ -58,7 +58,7 @@ fn test_headings() {
     let expected = MdResult { matched: MdTree::from_type("content", TAG), residual: b"\nresidual" };
     assert_eq!(pat.parse_start(input, &ctx), Some(expected));
 
-    let ctx = Context { at_line_start: false, preceded_by_ws: true };
+    let ctx = Context { at_line_start: false, preceded_by_break: true };
     assert_eq!(pat.parse_start(input, &ctx), None);
 }
 
@@ -66,7 +66,7 @@ fn test_headings() {
 fn test_code_inline() {
     const TAG: MdType = MdType::CodeInline;
     let pat = PATTERNS.iter().find(|p| p.tag == TAG).unwrap();
-    let ctx = Context { at_line_start: false, preceded_by_ws: true };
+    let ctx = Context { at_line_start: false, preceded_by_break: true };
 
     let input = b"none `block` residual";
     let end_expected = MdResult {
@@ -81,7 +81,7 @@ fn test_code_inline() {
     let expected = MdResult { matched: MdTree::from_type("block", TAG), residual: b" residual" };
     assert_eq!(pat.parse_start(input, &ctx), Some(expected));
 
-    let ctx = Context { at_line_start: false, preceded_by_ws: false };
+    let ctx = Context { at_line_start: false, preceded_by_break: false };
     assert_eq!(pat.parse_start(input, &ctx), None);
 }
 
@@ -96,7 +96,7 @@ more code;
 
 <!-- I should disappear -->
 Further `inline`, some **bold**, a bit of _italics
-wrapped across lines_.
+wrapped across lines_. We can also try (`code inside parentheses`).
 
 Let's end with a list:
 
@@ -131,7 +131,9 @@ fn expected_ast() -> MdTree<'static> {
         MdTree::Strong("bold"),
         MdTree::PlainText(", a bit of "),
         MdTree::Emphasis("italics\nwrapped across lines"),
-        MdTree::PlainText(".\n\nLet's end with a list:\n\n"),
+        MdTree::PlainText(". We can also try ("),
+        MdTree::CodeInline("code inside parentheses"),
+        MdTree::PlainText(").\n\nLet's end with a list:\n\n"),
         MdTree::ListItem(vec![
             MdTree::PlainText(" Item 1 "),
             MdTree::Emphasis("italics"),

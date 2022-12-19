@@ -13,7 +13,7 @@ use std::sync::LazyLock;
 use termcolor::{Buffer, BufferWriter, Color, ColorChoice, ColorSpec, WriteColor};
 
 const NEWLINE_CHARS: &[u8; 2] = b"\r\n";
-const PUNCT_CHARS: &[u8; 8] = br#".,"'\;:?"#;
+const BREAK_CHARS: &[u8; 10] = br#".,"'\;:?()"#;
 
 /// Representation of how to match various markdown types
 const PATTERNS: [MdPattern; 10] = [
@@ -23,9 +23,9 @@ const PATTERNS: [MdPattern; 10] = [
     MdPattern::new(Anchor::Sol("## "), Anchor::Eol(""), MdType::Heading2),
     MdPattern::new(Anchor::Sol("### "), Anchor::Eol(""), MdType::Heading3),
     MdPattern::new(Anchor::Sol("#### "), Anchor::Eol(""), MdType::Heading4),
-    MdPattern::new(Anchor::LeadWs("`"), Anchor::TrailWs("`"), MdType::CodeInline),
-    MdPattern::new(Anchor::LeadWs("**"), Anchor::TrailWs("**"), MdType::Strong),
-    MdPattern::new(Anchor::LeadWs("_"), Anchor::TrailWs("_"), MdType::Emphasis),
+    MdPattern::new(Anchor::LeadBreak("`"), Anchor::TrailBreak("`"), MdType::CodeInline),
+    MdPattern::new(Anchor::LeadBreak("**"), Anchor::TrailBreak("**"), MdType::Strong),
+    MdPattern::new(Anchor::LeadBreak("_"), Anchor::TrailBreak("_"), MdType::Emphasis),
     MdPattern::new(Anchor::Sol("-"), Anchor::Eol(""), MdType::ListItem),
     // MdPattern::new(Anchor::Any("\n\n"),Anchor::Any(""))
     // strikethrough
@@ -223,10 +223,10 @@ enum Anchor {
     Sol(&'static str),
     /// End of line
     Eol(&'static str),
-    /// Preceded by whitespace
-    LeadWs(&'static str),
-    /// Precedes whitespace OR punctuation
-    TrailWs(&'static str),
+    /// Preceded by whitespace or punctuation
+    LeadBreak(&'static str),
+    /// Precedes whitespace or punctuation
+    TrailBreak(&'static str),
     /// Plain pattern matching
     Any(&'static str),
 }
@@ -235,7 +235,11 @@ impl Anchor {
     /// Get any inner value
     const fn unwrap(&self) -> &str {
         match self {
-            Self::Sol(s) | Self::Eol(s) | Self::LeadWs(s) | Self::TrailWs(s) | Self::Any(s) => s,
+            Self::Sol(s)
+            | Self::Eol(s)
+            | Self::LeadBreak(s)
+            | Self::TrailBreak(s)
+            | Self::Any(s) => s,
         }
     }
 }
@@ -244,7 +248,7 @@ impl Anchor {
 #[derive(Debug, PartialEq, Clone)]
 struct Context {
     at_line_start: bool,
-    preceded_by_ws: bool,
+    preceded_by_break: bool,
 }
 
 /// A simple markdown type
@@ -295,13 +299,11 @@ impl MdPattern {
 
             // Validate postconditions if we have a remaining string
             let is_matched = match anchor {
-                Anchor::TrailWs(_) => {
-                    next_byte.is_ascii_whitespace() | PUNCT_CHARS.contains(next_byte)
-                }
+                Anchor::TrailBreak(_) => is_break_char(*next_byte),
                 Anchor::Eol(_) => NEWLINE_CHARS.contains(next_byte),
                 Anchor::Sol(_) => at_line_start,
                 Anchor::Any(_) => true,
-                Anchor::LeadWs(_) => panic!("unexpected end pattern"),
+                Anchor::LeadBreak(_) => panic!("unexpected end pattern"),
             };
 
             if is_matched {
@@ -324,7 +326,7 @@ impl MdPattern {
         if !ctx.at_line_start && matches!(self.start, Anchor::Sol(_)) {
             return None;
         }
-        if !ctx.preceded_by_ws && matches!(self.start, Anchor::LeadWs(_)) {
+        if !ctx.preceded_by_break && matches!(self.start, Anchor::LeadBreak(_)) {
             return None;
         }
 
@@ -369,7 +371,7 @@ fn recurse_tree<'a>(tree: MdTree<'a>) -> Vec<MdTree<'a>> {
 /// Main parser function for a single string
 fn parse_str<'a>(s: &'a str) -> Vec<MdTree<'a>> {
     let mut v: Vec<MdTree<'_>> = Vec::new();
-    let mut ctx = Context { at_line_start: true, preceded_by_ws: true };
+    let mut ctx = Context { at_line_start: true, preceded_by_break: true };
     let mut next_ctx = ctx.clone();
     let mut working = s.as_bytes();
     let mut i = 0;
@@ -380,7 +382,7 @@ fn parse_str<'a>(s: &'a str) -> Vec<MdTree<'a>> {
 
         ctx = next_ctx.clone();
         next_ctx.at_line_start = NEWLINE_CHARS.contains(current_char);
-        next_ctx.preceded_by_ws = current_char.is_ascii_whitespace();
+        next_ctx.preceded_by_break = is_break_char(*current_char);
 
         let found = PATTERNS.iter().find_map(|p| p.parse_start(&working[i..], &ctx));
 
@@ -402,6 +404,11 @@ fn parse_str<'a>(s: &'a str) -> Vec<MdTree<'a>> {
     }
 
     v
+}
+
+/// Test if a character is whitespace or a breaking character (punctuation)
+fn is_break_char(c: u8) -> bool {
+    c.is_ascii_whitespace() || BREAK_CHARS.contains(&c)
 }
 
 #[must_use]
