@@ -126,11 +126,11 @@ fn encode_const<'tcx>(
         if value < zero {
             s.push('n')
         };
-        let _ = write!(s, "{}", value);
+        let _ = write!(s, "{value}");
     }
 
     fn push_unsigned_value<T: Display>(s: &mut String, value: T) {
-        let _ = write!(s, "{}", value);
+        let _ = write!(s, "{value}");
     }
 
     if let Some(scalar_int) = c.kind().try_to_scalar_int() {

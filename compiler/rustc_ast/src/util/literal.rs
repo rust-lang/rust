@@ -168,7 +168,7 @@ impl fmt::Display for LitKind {
         match *self {
             LitKind::Byte(b) => {
                 let b: String = ascii::escape_default(b).map(Into::<char>::into).collect();
-                write!(f, "b'{}'", b)?;
+                write!(f, "b'{b}'")?;
             }
             LitKind::Char(ch) => write!(f, "'{}'", escape_char_symbol(ch))?,
             LitKind::Str(sym, StrStyle::Cooked) => write!(f, "\"{}\"", escape_string_symbol(sym))?,
@@ -192,7 +192,7 @@ impl fmt::Display for LitKind {
                 )?;
             }
             LitKind::Int(n, ty) => {
-                write!(f, "{}", n)?;
+                write!(f, "{n}")?;
                 match ty {
                     ast::LitIntType::Unsigned(ty) => write!(f, "{}", ty.name())?,
                     ast::LitIntType::Signed(ty) => write!(f, "{}", ty.name())?,
@@ -200,7 +200,7 @@ impl fmt::Display for LitKind {
                 }
             }
             LitKind::Float(symbol, ty) => {
-                write!(f, "{}", symbol)?;
+                write!(f, "{symbol}")?;
                 match ty {
                     ast::LitFloatType::Suffixed(ty) => write!(f, "{}", ty.name())?,
                     ast::LitFloatType::Unsuffixed => {}

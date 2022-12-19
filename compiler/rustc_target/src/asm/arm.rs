@@ -249,7 +249,7 @@ impl ArmInlineAsmReg {
             let index = self as u32 - Self::q0 as u32;
             assert!(index < 16);
             let index = index * 2 + (modifier == 'f') as u32;
-            write!(out, "d{}", index)
+            write!(out, "d{index}")
         } else {
             out.write_str(self.name())
         }

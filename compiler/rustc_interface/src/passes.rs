@@ -620,7 +620,7 @@ fn write_out_deps(
         // prevents `make` from spitting out an error if a file is later
         // deleted. For more info see #28735
         for path in files {
-            writeln!(file, "{}:", path)?;
+            writeln!(file, "{path}:")?;
         }
 
         // Emit special comments with information about accessed environment variables.
@@ -633,9 +633,9 @@ fn write_out_deps(
             envs.sort_unstable();
             writeln!(file)?;
             for (k, v) in envs {
-                write!(file, "# env-dep:{}", k)?;
+                write!(file, "# env-dep:{k}")?;
                 if let Some(v) = v {
-                    write!(file, "={}", v)?;
+                    write!(file, "={v}")?;
                 }
                 writeln!(file)?;
             }

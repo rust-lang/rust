@@ -104,7 +104,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Err(supported_abis) => {
                         let mut abis = format!("`{}`", supported_abis[0]);
                         for m in &supported_abis[1..] {
-                            let _ = write!(abis, ", `{}`", m);
+                            let _ = write!(abis, ", `{m}`");
                         }
                         self.tcx.sess.emit_err(InvalidAbiClobberAbi {
                             abi_span: *abi_span,
@@ -262,7 +262,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                             let sub = if !valid_modifiers.is_empty() {
                                 let mut mods = format!("`{}`", valid_modifiers[0]);
                                 for m in &valid_modifiers[1..] {
-                                    let _ = write!(mods, ", `{}`", m);
+                                    let _ = write!(mods, ", `{m}`");
                                 }
                                 InvalidAsmTemplateModifierRegClassSub::SupportModifier {
                                     class_name: class.name(),

@@ -53,9 +53,8 @@ impl DefPathTable {
             //
             // See the documentation for DefPathHash for more information.
             panic!(
-                "found DefPathHash collision between {:?} and {:?}. \
-                    Compilation cannot continue.",
-                def_path1, def_path2
+                "found DefPathHash collision between {def_path1:?} and {def_path2:?}. \
+                    Compilation cannot continue."
             );
         }
 
@@ -224,7 +223,7 @@ impl DefPath {
         let mut s = String::with_capacity(self.data.len() * 16);
 
         for component in &self.data {
-            write!(s, "::{}", component).unwrap();
+            write!(s, "::{component}").unwrap();
         }
 
         s
@@ -240,7 +239,7 @@ impl DefPath {
         for component in &self.data {
             s.extend(opt_delimiter);
             opt_delimiter = Some('-');
-            write!(s, "{}", component).unwrap();
+            write!(s, "{component}").unwrap();
         }
 
         s
@@ -433,7 +432,7 @@ impl fmt::Display for DefPathData {
         match self.name() {
             DefPathDataName::Named(name) => f.write_str(name.as_str()),
             // FIXME(#70334): this will generate legacy {{closure}}, {{impl}}, etc
-            DefPathDataName::Anon { namespace } => write!(f, "{{{{{}}}}}", namespace),
+            DefPathDataName::Anon { namespace } => write!(f, "{{{{{namespace}}}}}"),
         }
     }
 }

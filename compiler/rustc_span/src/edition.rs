@@ -44,7 +44,7 @@ impl fmt::Display for Edition {
             Edition::Edition2021 => "2021",
             Edition::Edition2024 => "2024",
         };
-        write!(f, "{}", s)
+        write!(f, "{s}")
     }
 }
 

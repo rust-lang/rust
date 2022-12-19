@@ -90,8 +90,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String>) -> FxHashSet<(String, Option<String
             .into_iter()
             .map(|s| {
                 let sess = ParseSess::with_silent_emitter(Some(format!(
-                    "this error occurred on the command line: `--cfg={}`",
-                    s
+                    "this error occurred on the command line: `--cfg={s}`"
                 )));
                 let filename = FileName::cfg_spec_source_code(&s);
 
@@ -150,8 +149,7 @@ pub fn parse_check_cfg(specs: Vec<String>) -> CheckCfg {
 
         'specs: for s in specs {
             let sess = ParseSess::with_silent_emitter(Some(format!(
-                "this error occurred on the command line: `--check-cfg={}`",
-                s
+                "this error occurred on the command line: `--check-cfg={s}`"
             )));
             let filename = FileName::cfg_spec_source_code(&s);
 

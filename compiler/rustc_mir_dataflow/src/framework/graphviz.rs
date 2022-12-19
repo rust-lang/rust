@@ -71,7 +71,7 @@ where
 
     fn graph_id(&self) -> dot::Id<'_> {
         let name = graphviz_safe_def_name(self.body.source.def_id());
-        dot::Id::new(format!("graph_for_def_id_{}", name)).unwrap()
+        dot::Id::new(format!("graph_for_def_id_{name}")).unwrap()
     }
 
     fn node_id(&self, n: &Self::Node) -> dot::Id<'_> {
@@ -190,7 +190,7 @@ where
             " cellpadding=\"3\"",
             " sides=\"rb\"",
         );
-        write!(w, r#"<table{fmt}>"#, fmt = table_fmt)?;
+        write!(w, r#"<table{table_fmt}>"#)?;
 
         // A + B: Block header
         match self.style {
@@ -372,7 +372,7 @@ where
         write!(w, concat!("<tr>", r#"<td colspan="2" {fmt}>MIR</td>"#,), fmt = fmt,)?;
 
         for name in state_column_names {
-            write!(w, "<td {fmt}>{name}</td>", fmt = fmt, name = name)?;
+            write!(w, "<td {fmt}>{name}</td>")?;
         }
 
         write!(w, "</tr>")
@@ -394,18 +394,18 @@ where
         };
 
         for (i, statement) in body[block].statements.iter().enumerate() {
-            let statement_str = format!("{:?}", statement);
-            let index_str = format!("{}", i);
+            let statement_str = format!("{statement:?}");
+            let index_str = format!("{i}");
 
             let after = next_in_dataflow_order(&mut afters);
             let before = befores.as_mut().map(next_in_dataflow_order);
 
             self.write_row(w, &index_str, &statement_str, |_this, w, fmt| {
                 if let Some(before) = before {
-                    write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = before)?;
+                    write!(w, r#"<td {fmt} align="left">{before}</td>"#)?;
                 }
 
-                write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = after)
+                write!(w, r#"<td {fmt} align="left">{after}</td>"#)
             })?;
         }
 
@@ -421,10 +421,10 @@ where
 
         self.write_row(w, "T", &terminator_str, |_this, w, fmt| {
             if let Some(before) = before {
-                write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = before)?;
+                write!(w, r#"<td {fmt} align="left">{before}</td>"#)?;
             }
 
-            write!(w, r#"<td {fmt} align="left">{diff}</td>"#, fmt = fmt, diff = after)
+            write!(w, r#"<td {fmt} align="left">{after}</td>"#)
         })
     }
 

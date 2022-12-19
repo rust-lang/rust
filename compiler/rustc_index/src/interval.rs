@@ -135,10 +135,7 @@ impl<I: Idx> IntervalSet<I> {
         };
         debug_assert!(
             self.check_invariants(),
-            "wrong intervals after insert {:?}..={:?} to {:?}",
-            start,
-            end,
-            self
+            "wrong intervals after insert {start:?}..={end:?} to {self:?}"
         );
         result
     }
