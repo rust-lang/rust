@@ -198,10 +198,10 @@ impl<'tcx> InherentOverlapChecker<'tcx> {
             // entire graph when there are many connected regions.
 
             rustc_index::newtype_index! {
-                pub struct RegionId {
-                    ENCODABLE = custom
-                }
+                #[custom_encodable]
+                pub struct RegionId {}
             }
+
             struct ConnectedRegion {
                 idents: SmallVec<[Symbol; 8]>,
                 impl_blocks: FxHashSet<usize>,

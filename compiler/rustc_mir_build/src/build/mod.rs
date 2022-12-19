@@ -372,7 +372,7 @@ struct CFG<'tcx> {
 }
 
 rustc_index::newtype_index! {
-    struct ScopeId { .. }
+    struct ScopeId {}
 }
 
 #[derive(Debug)]

@@ -61,9 +61,8 @@ pub struct SyntaxContextData {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct ExpnIndex {
-        ENCODABLE = custom
-    }
+    #[custom_encodable]
+    pub struct ExpnIndex {}
 }
 
 /// A unique ID associated with a macro invocation and expansion.
@@ -82,11 +81,10 @@ impl fmt::Debug for ExpnId {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct LocalExpnId {
-        ENCODABLE = custom
-        ORD_IMPL = custom
-        DEBUG_FORMAT = "expn{}"
-    }
+    #[custom_encodable]
+    #[no_ord_impl]
+    #[debug_format = "expn{}"]
+    pub struct LocalExpnId {}
 }
 
 // To ensure correctness of incremental compilation,

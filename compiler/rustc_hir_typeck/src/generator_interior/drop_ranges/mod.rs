@@ -96,15 +96,13 @@ fn for_each_consumable<'tcx>(hir: Map<'tcx>, place: TrackedValue, mut f: impl Fn
 }
 
 rustc_index::newtype_index! {
-    pub struct PostOrderId {
-        DEBUG_FORMAT = "id({})",
-    }
+    #[debug_format = "id({})"]
+    pub struct PostOrderId {}
 }
 
 rustc_index::newtype_index! {
-    pub struct TrackedValueIndex {
-        DEBUG_FORMAT = "hidx({})",
-    }
+    #[debug_format = "hidx({})"]
+    pub struct TrackedValueIndex {}
 }
 
 /// Identifies a value whose drop state we need to track.
