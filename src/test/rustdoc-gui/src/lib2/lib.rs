@@ -67,6 +67,10 @@ pub mod sub_mod {
     /// ```
     /// aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
     /// ```
+    ///
+    /// ```
+    /// foo();
+    /// ```
     pub struct Foo;
 }
 

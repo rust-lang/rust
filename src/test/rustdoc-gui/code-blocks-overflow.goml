@@ -1,8 +1,18 @@
 // This test ensures that codeblocks content don't overflow.
 goto: "file://" + |DOC_PATH| + "/lib2/sub_mod/struct.Foo.html"
 size: (1080, 600)
-// There should be two codeblocks: a rust one and a non-rust one.
-assert-count: (".docblock > .example-wrap", 2)
+// There should be three codeblocks: two rust ones and a non-rust one.
+assert-count: (".docblock > .example-wrap", 3)
 assert: ".docblock > .example-wrap > .language-txt"
 assert: ".docblock > .example-wrap > .rust-example-rendered"
-assert-css: (".docblock > .example-wrap > pre", {"width": "796px", "overflow-x": "auto"}, ALL)
+
+// We confirm that we don't display line numbers currently.
+assert-local-storage-false: {"rustdoc-line-numbers": "true"}
+
+assert-css: (".docblock > .example-wrap", {"width": "796px", "overflow-x": "auto"}, ALL)
+assert-css: (".docblock > .example-wrap > pre", {"width": "1756px"})
+
+// Confirm that there is no change when line numbers are displayed.
+local-storage: {"rustdoc-line-numbers": "true"}
+assert-css: (".docblock > .example-wrap", {"width": "796px", "overflow-x": "auto"}, ALL)
+assert-css: (".docblock > .example-wrap > pre", {"width": "1756px"})
