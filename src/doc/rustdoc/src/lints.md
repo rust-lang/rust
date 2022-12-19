@@ -261,11 +261,10 @@ typo mistakes for some common attributes.
 
 ## `invalid_html_tags`
 
-This lint is **allowed by default** and is **nightly-only**. It detects unclosed
-or invalid HTML tags. For example:
+This lint **warns by default**. It detects unclosed or invalid HTML tags. For example:
 
 ```rust
-#![warn(rustdoc::invalid_html_tags)]
+#![warn(rustdoc::invalid_html_tags)] // note: unnecessary - warns by default.
 
 /// <h1>
 /// </script>
@@ -276,24 +275,18 @@ Which will give:
 
 ```text
 warning: unopened HTML tag `script`
- --> foo.rs:1:1
+ --> src/lib.rs:2:5
   |
-1 | / /// <h1>
-2 | | /// </script>
-  | |_____________^
+2 | /// </script>
+  |     ^^^^^^^^^
   |
-  note: the lint level is defined here
- --> foo.rs:1:9
-  |
-1 | #![warn(rustdoc::invalid_html_tags)]
-  |         ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  = note: `#[warn(rustdoc::invalid_html_tags)]` on by default
 
 warning: unclosed HTML tag `h1`
- --> foo.rs:1:1
+ --> src/lib.rs:1:5
   |
-1 | / /// <h1>
-2 | | /// </script>
-  | |_____________^
+1 | /// <h1>
+  |     ^^^^
 
 warning: 2 warnings emitted
 ```
@@ -344,7 +337,7 @@ warning: could not parse code block as Rust code
 
 ## `bare_urls`
 
-This lint is **warn-by-default**. It detects URLs which are not links.
+This lint **warns by default**. It detects URLs which are not links.
 For example:
 
 ```rust
