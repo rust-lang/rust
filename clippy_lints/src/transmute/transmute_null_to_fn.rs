@@ -8,16 +8,19 @@ use rustc_span::symbol::sym;
 
 use super::TRANSMUTE_NULL_TO_FN;
 
-const LINT_MSG: &str = "transmuting a known null pointer into a function pointer";
-const NOTE_MSG: &str = "this transmute results in undefined behavior";
-const HELP_MSG: &str =
-    "try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value";
-
 fn lint_expr(cx: &LateContext<'_>, expr: &Expr<'_>) {
-    span_lint_and_then(cx, TRANSMUTE_NULL_TO_FN, expr.span, LINT_MSG, |diag| {
-        diag.span_label(expr.span, NOTE_MSG);
-        diag.help(HELP_MSG);
-    });
+    span_lint_and_then(
+        cx,
+        TRANSMUTE_NULL_TO_FN,
+        expr.span,
+        "transmuting a known null pointer into a function pointer",
+        |diag| {
+            diag.span_label(expr.span, "this transmute results in undefined behavior");
+            diag.help(
+               "try wrapping your function pointer type in `Option<T>` instead, and using `None` as a null pointer value"
+            );
+        },
+    );
 }
 
 pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'tcx Expr<'_>, to_ty: Ty<'tcx>) -> bool {
