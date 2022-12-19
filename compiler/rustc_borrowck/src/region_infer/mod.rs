@@ -562,7 +562,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints(body);
 
-        let mut errors_buffer = RegionErrors::default();
+        let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
         // If this is a closure, we can propagate unsatisfied
         // `outlives_requirements` to our creator, so create a vector

@@ -18,9 +18,9 @@ use rustc_infer::infer::{
 use rustc_middle::hir::place::PlaceBase;
 use rustc_middle::mir::{ConstraintCategory, ReturnConstraint};
 use rustc_middle::ty::subst::InternalSubsts;
-use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
+use rustc_middle::ty::{Region, TyCtxt};
 use rustc_span::symbol::{kw, Ident};
 use rustc_span::{Span, DUMMY_SP};
 
@@ -70,14 +70,16 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-#[derive(Default)]
-pub(crate) struct RegionErrors<'tcx>(Vec<RegionErrorKind<'tcx>>);
+pub(crate) struct RegionErrors<'tcx>(Vec<RegionErrorKind<'tcx>>, TyCtxt<'tcx>);
 
 impl<'tcx> RegionErrors<'tcx> {
+    pub fn new(tcx: TyCtxt<'tcx>) -> Self {
+        Self(vec![], tcx)
+    }
     #[track_caller]
     pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
         let val = val.into();
-        ty::tls::with(|tcx| tcx.sess.delay_span_bug(DUMMY_SP, "{val:?}"));
+        self.1.sess.delay_span_bug(DUMMY_SP, "{val:?}");
         self.0.push(val);
     }
     pub fn is_empty(&self) -> bool {
