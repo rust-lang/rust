@@ -1153,6 +1153,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
+        trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
         let tcx = self.infcx.tcx;
@@ -1170,10 +1171,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
             curr_projected_ty = projected_ty;
         }
-        debug!(
-            "user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-            user_ty.base, annotated_type, user_ty.projs, curr_projected_ty
-        );
+        trace!(?curr_projected_ty);
 
         let ty = curr_projected_ty.ty;
         self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;
