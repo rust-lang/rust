@@ -22,7 +22,7 @@ use rustc_middle::ty::Region;
 use rustc_middle::ty::TypeVisitor;
 use rustc_middle::ty::{self, RegionVid, Ty};
 use rustc_span::symbol::{kw, Ident};
-use rustc_span::Span;
+use rustc_span::{Span, DUMMY_SP};
 
 use crate::borrowck_errors;
 use crate::session_diagnostics::{
@@ -70,7 +70,23 @@ impl<'tcx> ConstraintDescription for ConstraintCategory<'tcx> {
 ///
 /// Usually we expect this to either be empty or contain a small number of items, so we can avoid
 /// allocation most of the time.
-pub(crate) type RegionErrors<'tcx> = Vec<RegionErrorKind<'tcx>>;
+#[derive(Default)]
+pub(crate) struct RegionErrors<'tcx>(Vec<RegionErrorKind<'tcx>>);
+
+impl<'tcx> RegionErrors<'tcx> {
+    #[track_caller]
+    pub fn push(&mut self, val: impl Into<RegionErrorKind<'tcx>>) {
+        let val = val.into();
+        ty::tls::with(|tcx| tcx.sess.delay_span_bug(DUMMY_SP, "{val:?}"));
+        self.0.push(val);
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+    pub fn into_iter(self) -> impl Iterator<Item = RegionErrorKind<'tcx>> {
+        self.0.into_iter()
+    }
+}
 
 #[derive(Clone, Debug)]
 pub(crate) enum RegionErrorKind<'tcx> {
