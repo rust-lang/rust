@@ -4,8 +4,9 @@ use rustc_index::vec::Idx;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_target::abi::{Abi, Primitive};
 
+use crate::build::expr::as_place::PlaceBase;
 use crate::build::expr::category::{Category, RvalueFunc};
-use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary, PlaceBuilder};
+use crate::build::{BlockAnd, BlockAndExtension, Builder, NeedsTemporary};
 use rustc_hir::lang_items::LangItem;
 use rustc_middle::middle::region;
 use rustc_middle::mir::AssertKind;
@@ -650,15 +651,15 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let arg_place_builder = unpack!(block = this.as_place_builder(block, arg));
 
-        let mutability = match arg_place_builder {
+        let mutability = match arg_place_builder.base() {
             // We are capturing a path that starts off a local variable in the parent.
             // The mutability of the current capture is same as the mutability
             // of the local declaration in the parent.
-            PlaceBuilder::Local { local, .. } => this.local_decls[local].mutability,
+            PlaceBase::Local(local) => this.local_decls[local].mutability,
             // Parent is a closure and we are capturing a path that is captured
             // by the parent itself. The mutability of the current capture
             // is same as that of the capture in the parent closure.
-            PlaceBuilder::Upvar { .. } => {
+            PlaceBase::Upvar { .. } => {
                 let enclosing_upvars_resolved = arg_place_builder.to_place(this);
 
                 match enclosing_upvars_resolved.as_ref() {

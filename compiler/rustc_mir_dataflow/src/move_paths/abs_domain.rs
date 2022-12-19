@@ -18,7 +18,7 @@ use rustc_middle::ty::Ty;
 pub struct AbstractOperand;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
 pub struct AbstractType;
-pub type AbstractElem = ProjectionElem<AbstractOperand, AbstractType, AbstractType>;
+pub type AbstractElem = ProjectionElem<AbstractOperand, AbstractType>;
 
 pub trait Lift {
     type Abstract;
