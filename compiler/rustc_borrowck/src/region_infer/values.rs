@@ -90,12 +90,14 @@ impl RegionValueElements {
 rustc_index::newtype_index! {
     /// A single integer representing a `Location` in the MIR control-flow
     /// graph. Constructed efficiently from `RegionValueElements`.
-    pub struct PointIndex { DEBUG_FORMAT = "PointIndex({})" }
+    #[debug_format = "PointIndex({})"]
+    pub struct PointIndex {}
 }
 
 rustc_index::newtype_index! {
     /// A single integer representing a `ty::Placeholder`.
-    pub struct PlaceholderIndex { DEBUG_FORMAT = "PlaceholderIndex({})" }
+    #[debug_format = "PlaceholderIndex({})"]
+    pub struct PlaceholderIndex {}
 }
 
 /// An individual element in a region value -- the value of a

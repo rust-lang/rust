@@ -10,10 +10,9 @@ use std::fmt;
 use std::hash::{Hash, Hasher};
 
 rustc_index::newtype_index! {
-    pub struct CrateNum {
-        ENCODABLE = custom
-        DEBUG_FORMAT = "crate{}"
-    }
+    #[custom_encodable]
+    #[debug_format = "crate{}"]
+    pub struct CrateNum {}
 }
 
 /// Item definitions in the currently-compiled crate would have the `CrateNum`
@@ -194,13 +193,12 @@ rustc_index::newtype_index! {
     /// A DefIndex is an index into the hir-map for a crate, identifying a
     /// particular definition. It should really be considered an interned
     /// shorthand for a particular DefPath.
+    #[custom_encodable] // (only encodable in metadata)
+    #[debug_format = "DefIndex({})"]
     pub struct DefIndex {
-        ENCODABLE = custom // (only encodable in metadata)
-
-        DEBUG_FORMAT = "DefIndex({})",
         /// The crate root is always assigned index 0 by the AST Map code,
         /// thanks to `NodeCollector::new`.
-        const CRATE_DEF_INDEX = 0,
+        const CRATE_DEF_INDEX = 0;
     }
 }
 

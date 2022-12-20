@@ -1,27 +1,7 @@
 use proc_macro2::{Span, TokenStream};
 use quote::quote;
 use syn::parse::*;
-use syn::punctuated::Punctuated;
 use syn::*;
-
-mod kw {
-    syn::custom_keyword!(derive);
-    syn::custom_keyword!(DEBUG_FORMAT);
-    syn::custom_keyword!(MAX);
-    syn::custom_keyword!(ENCODABLE);
-    syn::custom_keyword!(custom);
-    syn::custom_keyword!(ORD_IMPL);
-}
-
-#[derive(Debug)]
-enum DebugFormat {
-    // The user will provide a custom `Debug` impl, so we shouldn't generate
-    // one
-    Custom,
-    // Use the specified format string in the generated `Debug` impl
-    // By default, this is "{}"
-    Format(String),
-}
 
 // We parse the input and emit the output in a single step.
 // This field stores the final macro output
@@ -29,7 +9,7 @@ struct Newtype(TokenStream);
 
 impl Parse for Newtype {
     fn parse(input: ParseStream<'_>) -> Result<Self> {
-        let attrs = input.call(Attribute::parse_outer)?;
+        let mut attrs = input.call(Attribute::parse_outer)?;
         let vis: Visibility = input.parse()?;
         input.parse::<Token![struct]>()?;
         let name: Ident = input.parse()?;
@@ -39,93 +19,68 @@ impl Parse for Newtype {
 
         // Any additional `#[derive]` macro paths to apply
         let mut derive_paths: Vec<Path> = Vec::new();
-        let mut debug_format: Option<DebugFormat> = None;
+        let mut debug_format: Option<Lit> = None;
         let mut max = None;
         let mut consts = Vec::new();
         let mut encodable = true;
         let mut ord = true;
 
-        // Parse an optional trailing comma
-        let try_comma = || -> Result<()> {
-            if body.lookahead1().peek(Token![,]) {
-                body.parse::<Token![,]>()?;
-            }
-            Ok(())
-        };
-
-        if body.lookahead1().peek(Token![..]) {
-            body.parse::<Token![..]>()?;
-        } else {
-            loop {
-                if body.lookahead1().peek(kw::derive) {
-                    body.parse::<kw::derive>()?;
-                    let derives;
-                    bracketed!(derives in body);
-                    let derives: Punctuated<Path, Token![,]> =
-                        derives.parse_terminated(Path::parse)?;
-                    try_comma()?;
-                    derive_paths.extend(derives);
-                    continue;
+        attrs.retain(|attr| match attr.path.get_ident() {
+            Some(ident) => match &*ident.to_string() {
+                "custom_encodable" => {
+                    encodable = false;
+                    false
                 }
-                if body.lookahead1().peek(kw::DEBUG_FORMAT) {
-                    body.parse::<kw::DEBUG_FORMAT>()?;
-                    body.parse::<Token![=]>()?;
-                    let new_debug_format = if body.lookahead1().peek(kw::custom) {
-                        body.parse::<kw::custom>()?;
-                        DebugFormat::Custom
-                    } else {
-                        let format_str: LitStr = body.parse()?;
-                        DebugFormat::Format(format_str.value())
+                "no_ord_impl" => {
+                    ord = false;
+                    false
+                }
+                "max" => {
+                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                        panic!("#[max = NUMBER] attribute requires max value");
                     };
-                    try_comma()?;
-                    if let Some(old) = debug_format.replace(new_debug_format) {
+
+                    if let Some(old) = max.replace(literal.lit) {
+                        panic!("Specified multiple max: {:?}", old);
+                    }
+
+                    false
+                }
+                "debug_format" => {
+                    let Ok(Meta::NameValue(literal) )= attr.parse_meta() else {
+                        panic!("#[debug_format = FMT] attribute requires a format");
+                    };
+
+                    if let Some(old) = debug_format.replace(literal.lit) {
                         panic!("Specified multiple debug format options: {:?}", old);
                     }
-                    continue;
-                }
-                if body.lookahead1().peek(kw::MAX) {
-                    body.parse::<kw::MAX>()?;
-                    body.parse::<Token![=]>()?;
-                    let val: Lit = body.parse()?;
-                    try_comma()?;
-                    if let Some(old) = max.replace(val) {
-                        panic!("Specified multiple MAX: {:?}", old);
-                    }
-                    continue;
-                }
-                if body.lookahead1().peek(kw::ENCODABLE) {
-                    body.parse::<kw::ENCODABLE>()?;
-                    body.parse::<Token![=]>()?;
-                    body.parse::<kw::custom>()?;
-                    try_comma()?;
-                    encodable = false;
-                    continue;
-                }
-                if body.lookahead1().peek(kw::ORD_IMPL) {
-                    body.parse::<kw::ORD_IMPL>()?;
-                    body.parse::<Token![=]>()?;
-                    body.parse::<kw::custom>()?;
-                    ord = false;
-                    continue;
-                }
 
-                // We've parsed everything that the user provided, so we're done
-                if body.is_empty() {
-                    break;
+                    false
                 }
+                _ => true,
+            },
+            _ => true,
+        });
 
-                // Otherwise, we are parsing a user-defined constant
-                let const_attrs = body.call(Attribute::parse_outer)?;
-                body.parse::<Token![const]>()?;
-                let const_name: Ident = body.parse()?;
-                body.parse::<Token![=]>()?;
-                let const_val: Expr = body.parse()?;
-                try_comma()?;
-                consts.push(quote! { #(#const_attrs)* #vis const #const_name: #name = #name::from_u32(#const_val); });
+        loop {
+            // We've parsed everything that the user provided, so we're done
+            if body.is_empty() {
+                break;
             }
+
+            // Otherwise, we are parsing a user-defined constant
+            let const_attrs = body.call(Attribute::parse_outer)?;
+            body.parse::<Token![const]>()?;
+            let const_name: Ident = body.parse()?;
+            body.parse::<Token![=]>()?;
+            let const_val: Expr = body.parse()?;
+            body.parse::<Token![;]>()?;
+            consts.push(quote! { #(#const_attrs)* #vis const #const_name: #name = #name::from_u32(#const_val); });
         }
 
-        let debug_format = debug_format.unwrap_or(DebugFormat::Format("{}".to_string()));
+        let debug_format =
+            debug_format.unwrap_or_else(|| Lit::Str(LitStr::new("{}", Span::call_site())));
+
         // shave off 256 indices at the end to allow space for packing these indices into enums
         let max = max.unwrap_or_else(|| Lit::Int(LitInt::new("0xFFFF_FF00", Span::call_site())));
 
@@ -180,18 +135,14 @@ impl Parse for Newtype {
             quote! {}
         };
 
-        let debug_impl = match debug_format {
-            DebugFormat::Custom => quote! {},
-            DebugFormat::Format(format) => {
-                quote! {
-                    impl ::std::fmt::Debug for #name {
-                        fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
-                            write!(fmt, #format, self.as_u32())
-                        }
-                    }
+        let debug_impl = quote! {
+            impl ::std::fmt::Debug for #name {
+                fn fmt(&self, fmt: &mut ::std::fmt::Formatter<'_>) -> ::std::fmt::Result {
+                    write!(fmt, #debug_format, self.as_u32())
                 }
             }
         };
+
         let spec_partial_eq_impl = if let Lit::Int(max) = &max {
             if let Ok(max_val) = max.base10_parse::<u32>() {
                 quote! {

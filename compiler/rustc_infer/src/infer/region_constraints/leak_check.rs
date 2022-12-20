@@ -357,15 +357,13 @@ impl<'tcx> SccUniverse<'tcx> {
 }
 
 rustc_index::newtype_index! {
-    struct LeakCheckNode {
-        DEBUG_FORMAT = "LeakCheckNode({})"
-    }
+    #[debug_format = "LeakCheckNode({})"]
+    struct LeakCheckNode {}
 }
 
 rustc_index::newtype_index! {
-    struct LeakCheckScc {
-        DEBUG_FORMAT = "LeakCheckScc({})"
-    }
+    #[debug_format = "LeakCheckScc({})"]
+    struct LeakCheckScc {}
 }
 
 /// Represents the graph of constraints. For each `R1: R2` constraint we create
