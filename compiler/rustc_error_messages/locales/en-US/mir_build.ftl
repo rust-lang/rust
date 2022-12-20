@@ -313,10 +313,10 @@ mir_build_float_pattern = floating-point types cannot be used in patterns
 
 mir_build_pointer_pattern = function pointers and unsized pointers in patterns behave unpredictably and should not be relied upon. See https://github.com/rust-lang/rust/issues/70861 for details.
 
-mir_build_indirect_structural_match = 
+mir_build_indirect_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
 
-mir_build_nontrivial_structural_match = 
+mir_build_nontrivial_structural_match =
     to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
 
 mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpoints
@@ -324,3 +324,13 @@ mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpo
     .note = you likely meant to write mutually exclusive ranges
 
 mir_build_overlapping_range = this range overlaps on `{$range}`...
+
+mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
+    .label = {$count ->
+        [1] pattern `{$witness_1}`
+        [2] patterns `{$witness_1}` and `{$witness_2}`
+        [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
+        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and more
+    } not covered
+    .help = ensure that all variants are matched explicitly by adding the suggested match arms
+    .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found

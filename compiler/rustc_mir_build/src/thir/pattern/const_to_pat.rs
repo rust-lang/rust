@@ -435,7 +435,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 _ => {
                     if !pointee_ty.is_sized(tcx, param_env) {
                         // `tcx.deref_mir_constant()` below will ICE with an unsized type
-                        // (except slices, which are handled in a separate arm above).                        
+                        // (except slices, which are handled in a separate arm above).
 
                         let err = UnsizedPattern { span, non_sm_ty: *pointee_ty };
                         tcx.sess.create_err(err).emit_unless(!self.include_lint_checks);

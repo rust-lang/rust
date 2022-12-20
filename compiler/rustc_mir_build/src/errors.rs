@@ -685,3 +685,17 @@ pub struct Overlap<'tcx> {
     pub span: Span,
     pub range: Pat<'tcx>,
 }
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_non_exhaustive_omitted_pattern)]
+#[help]
+#[note]
+pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
+    pub scrut_ty: Ty<'tcx>,
+    #[label]
+    pub uncovered: Span,
+    pub count: usize,
+    pub witness_1: Pat<'tcx>,
+    pub witness_2: Pat<'tcx>,
+    pub witness_3: Pat<'tcx>,
+}

@@ -291,9 +291,8 @@
 
 use self::ArmType::*;
 use self::Usefulness::*;
-
-use super::check_match::{joined_uncovered_patterns, pattern_not_covered_label};
 use super::deconstruct_pat::{Constructor, DeconstructedPat, Fields, SplitWildcard};
+use crate::errors::NonExhaustiveOmittedPattern;
 
 use rustc_data_structures::captures::Captures;
 
@@ -754,6 +753,23 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
     hir_id: HirId,
     witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
 ) {
+    let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
+
+    cx.tcx.emit_spanned_lint(
+        NON_EXHAUSTIVE_OMITTED_PATTERNS,
+        hir_id,
+        sp,
+        NonExhaustiveOmittedPattern {
+            scrut_ty,
+            uncovered: sp,
+            count: witnesses.len(),
+            // Substitute dummy values if witnesses is smaller than 3.
+            witness_2: witnesses.get(1).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
+            witness_3: witnesses.get(2).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
+            witness_1,
+        },
+    );
+    /*
     cx.tcx.struct_span_lint_hir(NON_EXHAUSTIVE_OMITTED_PATTERNS, hir_id, sp, "some variants are not matched explicitly", |lint| {
         let joined_patterns = joined_uncovered_patterns(cx, &witnesses);
         lint.span_label(sp, pattern_not_covered_label(&witnesses, &joined_patterns));
@@ -766,6 +782,7 @@ fn lint_non_exhaustive_omitted_patterns<'p, 'tcx>(
         ));
         lint
     });
+    */
 }
 
 /// Algorithm from <http://moscova.inria.fr/~maranget/papers/warn/index.html>.
