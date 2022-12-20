@@ -280,29 +280,35 @@ pub unsafe fn create_module<'ll>(
     }
 
     if let Some(BranchProtection { bti, pac_ret }) = sess.opts.unstable_opts.branch_protection {
+        let behavior = if llvm_version >= (15, 0, 0) {
+            llvm::LLVMModFlagBehavior::Min
+        } else {
+            llvm::LLVMModFlagBehavior::Error
+        };
+
         if sess.target.arch == "aarch64" {
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Min,
+                behavior,
                 "branch-target-enforcement\0".as_ptr().cast(),
                 bti.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Min,
+                behavior,
                 "sign-return-address\0".as_ptr().cast(),
                 pac_ret.is_some().into(),
             );
             let pac_opts = pac_ret.unwrap_or(PacRet { leaf: false, key: PAuthKey::A });
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Min,
+                behavior,
                 "sign-return-address-all\0".as_ptr().cast(),
                 pac_opts.leaf.into(),
             );
             llvm::LLVMRustAddModuleFlag(
                 llmod,
-                llvm::LLVMModFlagBehavior::Min,
+                behavior,
                 "sign-return-address-with-bkey\0".as_ptr().cast(),
                 u32::from(pac_opts.key == PAuthKey::B),
             );
