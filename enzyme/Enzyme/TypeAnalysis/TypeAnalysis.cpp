@@ -2248,6 +2248,21 @@ void TypeAnalyzer::visitAtomicRMWInst(llvm::AtomicRMWInst &I) {
     auto tmp = LHS;
     LHS = RHS;
     RHS = tmp;
+    bool Legal = true;
+    LHS.checkedOrIn(Ret, /*PointerIntSame*/ false, Legal);
+    if (!Legal) {
+      dump();
+      llvm::errs() << I << "\n";
+      llvm::errs() << "Illegal orIn: " << LHS.str() << " right: " << Ret.str()
+                   << "\n";
+      llvm::errs() << *I.getOperand(0) << " "
+                   << getAnalysis(I.getOperand(0)).str() << "\n";
+      llvm::errs() << *I.getOperand(1) << " "
+                   << getAnalysis(I.getOperand(1)).str() << "\n";
+      assert(0 && "Performed illegal visitAtomicRMWInst::orIn");
+      llvm_unreachable("Performed illegal visitAtomicRMWInst::orIn");
+    }
+    Ret = tmp;
     break;
   }
   case AtomicRMWInst::Add:
