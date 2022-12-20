@@ -60,7 +60,7 @@ pub(super) fn hints(
     }
     for adjustment in adjustments.into_iter().rev() {
         // FIXME: Add some nicer tooltips to each of these
-        let text = match adjustment {
+        let text = match adjustment.kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
                 "<never-to-any>"
             }
