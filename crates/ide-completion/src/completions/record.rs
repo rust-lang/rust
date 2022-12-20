@@ -124,7 +124,12 @@ fn complete_fields(
 
 #[cfg(test)]
 mod tests {
-    use crate::tests::check_edit;
+    use ide_db::SnippetCap;
+
+    use crate::{
+        tests::{check_edit, check_edit_with_config, TEST_CONFIG},
+        CompletionConfig,
+    };
 
     #[test]
     fn literal_struct_completion_edit() {
@@ -148,6 +153,37 @@ fn baz() {
     let foo = create_foo(&FooDesc { bar: ${1:()} }$0);
 }
             "#,
+        )
+    }
+
+    #[test]
+    fn enum_variant_no_snippets() {
+        let conf = CompletionConfig { snippet_cap: SnippetCap::new(false), ..TEST_CONFIG };
+        check_edit_with_config(
+            conf,
+            "Variant()",
+            r#"
+enum Enum {
+    Variant(usize),
+}
+
+impl Enum {
+    fn new(u: usize) -> Self {
+        Self::Va$0
+    }
+}
+"#,
+            r#"
+enum Enum {
+    Variant(usize),
+}
+
+impl Enum {
+    fn new(u: usize) -> Self {
+        Self::Variant
+    }
+}
+"#,
         )
     }
 

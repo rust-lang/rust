@@ -48,6 +48,9 @@ pub(crate) fn render_tuple_lit(
     fields: &[hir::Field],
     path: &str,
 ) -> RenderedLiteral {
+    if snippet_cap.is_none() {
+        return RenderedLiteral { literal: format!("{}", path), detail: format!("{}", path) };
+    }
     let completions = fields.iter().enumerate().format_with(", ", |(idx, _), f| {
         if snippet_cap.is_some() {
             f(&format_args!("${{{}:()}}", idx + 1))
@@ -87,7 +90,14 @@ pub(crate) fn visible_fields(
 }
 
 /// Format a struct, etc. literal option for display in the completions menu.
-pub(crate) fn format_literal_label(name: &str, kind: StructKind) -> SmolStr {
+pub(crate) fn format_literal_label(
+    name: &str,
+    kind: StructKind,
+    snippet_cap: Option<SnippetCap>,
+) -> SmolStr {
+    if snippet_cap.is_none() {
+        return name.into();
+    }
     match kind {
         StructKind::Tuple => SmolStr::from_iter([name, "(…)"]),
         StructKind::Record => SmolStr::from_iter([name, " {…}"]),

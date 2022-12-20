@@ -33,7 +33,7 @@ pub(crate) fn render_struct_pat(
     let name = local_name.unwrap_or_else(|| strukt.name(ctx.db()));
     let (name, escaped_name) = (name.unescaped().to_smol_str(), name.to_smol_str());
     let kind = strukt.kind(ctx.db());
-    let label = format_literal_label(name.as_str(), kind);
+    let label = format_literal_label(name.as_str(), kind, ctx.snippet_cap());
     let lookup = format_literal_lookup(name.as_str(), kind);
     let pat = render_pat(&ctx, pattern_ctx, &escaped_name, kind, &visible_fields, fields_omitted)?;
 
@@ -67,7 +67,7 @@ pub(crate) fn render_variant_pat(
         }
         _ => {
             let kind = variant.kind(ctx.db());
-            let label = format_literal_label(name.as_str(), kind);
+            let label = format_literal_label(name.as_str(), kind, ctx.snippet_cap());
             let lookup = format_literal_lookup(name.as_str(), kind);
             let pat = render_pat(
                 &ctx,
