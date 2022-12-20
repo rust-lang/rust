@@ -11,6 +11,7 @@ use rustc_mir_dataflow::{
     fmt::DebugWithContext, impls::MaybeStorageLive, lattice::JoinSemiLattice, Analysis, AnalysisDomain,
     CallReturnPlaces, ResultsCursor,
 };
+use std::borrow::Cow;
 use std::ops::ControlFlow;
 
 /// Collects the possible borrowers of each local.
@@ -214,7 +215,7 @@ fn rvalue_locals(rvalue: &mir::Rvalue<'_>, mut visit: impl FnMut(mir::Local)) {
 pub struct PossibleBorrowerMap<'b, 'tcx> {
     body: &'b mir::Body<'tcx>,
     possible_borrower: ResultsCursor<'b, 'tcx, PossibleBorrowerAnalysis<'b, 'tcx>>,
-    maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive>,
+    maybe_live: ResultsCursor<'b, 'tcx, MaybeStorageLive<'b>>,
     pushed: BitSet<Local>,
     stack: Vec<Local>,
 }
@@ -231,7 +232,7 @@ impl<'b, 'tcx> PossibleBorrowerMap<'b, 'tcx> {
             .pass_name("possible_borrower")
             .iterate_to_fixpoint()
             .into_results_cursor(mir);
-        let maybe_live = MaybeStorageLive::new(BitSet::new_empty(mir.local_decls.len()))
+        let maybe_live = MaybeStorageLive::new(Cow::Owned(BitSet::new_empty(mir.local_decls.len())))
             .into_engine(cx.tcx, mir)
             .pass_name("possible_borrower")
             .iterate_to_fixpoint()
