@@ -57,11 +57,6 @@ tidy:
 prepare:
 	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
 
-check-stage2-T-arm-linux-androideabi-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --stage 2 --target arm-linux-androideabi
-check-stage2-T-x86_64-unknown-linux-musl-H-x86_64-unknown-linux-gnu:
-	$(Q)$(BOOTSTRAP) test --stage 2 --target x86_64-unknown-linux-musl
-
 TESTS_IN_2 := \
 	src/test/ui \
 	src/tools/linkchecker
