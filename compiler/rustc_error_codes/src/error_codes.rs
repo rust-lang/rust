@@ -184,6 +184,7 @@ E0373: include_str!("./error_codes/E0373.md"),
 E0374: include_str!("./error_codes/E0374.md"),
 E0375: include_str!("./error_codes/E0375.md"),
 E0376: include_str!("./error_codes/E0376.md"),
+E0377: include_str!("./error_codes/E0377.md"),
 E0378: include_str!("./error_codes/E0378.md"),
 E0379: include_str!("./error_codes/E0379.md"),
 E0380: include_str!("./error_codes/E0380.md"),
@@ -579,8 +580,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
-    E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with the same definition
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
 //  E0406, // merged into 420
