@@ -254,7 +254,7 @@ unsafe impl<T: ?Sized + Sync + Send> Sync for Arc<T> {}
 #[stable(feature = "catch_unwind", since = "1.9.0")]
 impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Arc<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Arc<U>> for Arc<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
@@ -306,7 +306,7 @@ unsafe impl<T: ?Sized + Sync + Send> Send for Weak<T> {}
 #[stable(feature = "arc_weak", since = "1.4.0")]
 unsafe impl<T: ?Sized + Sync + Send> Sync for Weak<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> DispatchFromDyn<Weak<U>> for Weak<T> {}
