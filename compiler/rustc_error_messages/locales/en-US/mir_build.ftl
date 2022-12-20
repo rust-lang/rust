@@ -318,3 +318,9 @@ mir_build_indirect_structural_match =
 
 mir_build_nontrivial_structural_match = 
     to use a constant of type `{$non_sm_ty}` in a pattern, the constant's initializer must be trivial or `{$non_sm_ty}` must be annotated with `#[derive(PartialEq, Eq)]`
+
+mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpoints
+    .range = ... with this range
+    .note = you likely meant to write mutually exclusive ranges
+
+mir_build_overlapping_range = this range overlaps on `{$range}`...

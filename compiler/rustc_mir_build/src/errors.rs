@@ -4,6 +4,7 @@ use rustc_errors::{
     error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
 };
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
+use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
 use rustc_span::{symbol::Ident, Span};
 
@@ -664,4 +665,23 @@ pub struct IndirectStructuralMatch<'tcx> {
 #[diag(mir_build_nontrivial_structural_match)]
 pub struct NontrivialStructuralMatch<'tcx> {
     pub non_sm_ty: Ty<'tcx>,
+}
+
+#[derive(LintDiagnostic)]
+#[diag(mir_build_overlapping_range_endpoints)]
+#[note]
+pub struct OverlappingRangeEndpoints<'tcx> {
+    #[label(range)]
+    pub range: Span,
+    #[subdiagnostic]
+    pub overlap: Overlap<'tcx>,
+}
+
+#[derive(Debug)]
+#[derive(Subdiagnostic)]
+#[label(mir_build_overlapping_range)]
+pub struct Overlap<'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub range: Pat<'tcx>,
 }
