@@ -109,7 +109,7 @@ impl<'pat, 'tcx> MatchPair<'pat, 'tcx> {
         let may_need_cast = match place {
             PlaceBuilder::Local { local, ref projection } => {
                 let ty = Place::ty_from(local, projection, &cx.local_decls, cx.tcx).ty;
-                ty != pattern.ty && ty.has_opaque_types()
+                ty.has_opaque_types() && !pattern.ty.has_opaque_types()
             }
             _ => true,
         };
