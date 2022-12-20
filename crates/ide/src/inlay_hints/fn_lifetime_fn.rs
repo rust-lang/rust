@@ -188,3 +188,110 @@ pub(super) fn hints(
     }
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check, check_with_config, TEST_CONFIG},
+        InlayHintsConfig, LifetimeElisionHints,
+    };
+
+    #[test]
+    fn hints_lifetimes() {
+        check(
+            r#"
+fn empty() {}
+
+fn no_gpl(a: &()) {}
+ //^^^^^^<'0>
+          // ^'0
+fn empty_gpl<>(a: &()) {}
+      //    ^'0   ^'0
+fn partial<'b>(a: &(), b: &'b ()) {}
+//        ^'0, $  ^'0
+fn partial<'a>(a: &'a (), b: &()) {}
+//        ^'0, $             ^'0
+
+fn single_ret(a: &()) -> &() {}
+// ^^^^^^^^^^<'0>
+              // ^'0     ^'0
+fn full_mul(a: &(), b: &()) {}
+// ^^^^^^^^<'0, '1>
+            // ^'0     ^'1
+
+fn foo<'c>(a: &'c ()) -> &() {}
+                      // ^'c
+
+fn nested_in(a: &   &X< &()>) {}
+// ^^^^^^^^^<'0, '1, '2>
+              //^'0 ^'1 ^'2
+fn nested_out(a: &()) -> &   &X< &()>{}
+// ^^^^^^^^^^<'0>
+               //^'0     ^'0 ^'0 ^'0
+
+impl () {
+    fn foo(&self) {}
+    // ^^^<'0>
+        // ^'0
+    fn foo(&self) -> &() {}
+    // ^^^<'0>
+        // ^'0       ^'0
+    fn foo(&self, a: &()) -> &() {}
+    // ^^^<'0, '1>
+        // ^'0       ^'1     ^'0
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_named() {
+        check_with_config(
+            InlayHintsConfig { param_names_for_lifetime_elision_hints: true, ..TEST_CONFIG },
+            r#"
+fn nested_in<'named>(named: &        &X<      &()>) {}
+//          ^'named1, 'named2, 'named3, $
+                          //^'named1 ^'named2 ^'named3
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_trivial_skip() {
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::SkipTrivial,
+                ..TEST_CONFIG
+            },
+            r#"
+fn no_gpl(a: &()) {}
+fn empty_gpl<>(a: &()) {}
+fn partial<'b>(a: &(), b: &'b ()) {}
+fn partial<'a>(a: &'a (), b: &()) {}
+
+fn single_ret(a: &()) -> &() {}
+// ^^^^^^^^^^<'0>
+              // ^'0     ^'0
+fn full_mul(a: &(), b: &()) {}
+
+fn foo<'c>(a: &'c ()) -> &() {}
+                      // ^'c
+
+fn nested_in(a: &   &X< &()>) {}
+fn nested_out(a: &()) -> &   &X< &()>{}
+// ^^^^^^^^^^<'0>
+               //^'0     ^'0 ^'0 ^'0
+
+impl () {
+    fn foo(&self) {}
+    fn foo(&self) -> &() {}
+    // ^^^<'0>
+        // ^'0       ^'0
+    fn foo(&self, a: &()) -> &() {}
+    // ^^^<'0, '1>
+        // ^'0       ^'1     ^'0
+}
+"#,
+        );
+    }
+}

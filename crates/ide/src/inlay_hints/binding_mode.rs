@@ -76,3 +76,62 @@ pub(super) fn hints(
 
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        InlayHintsConfig,
+    };
+
+    #[test]
+    fn hints_binding_modes() {
+        check_with_config(
+            InlayHintsConfig { binding_mode_hints: true, ..DISABLED_CONFIG },
+            r#"
+fn __(
+    (x,): (u32,),
+    (x,): &(u32,),
+  //^^^^&
+   //^ ref
+    (x,): &mut (u32,)
+  //^^^^&mut
+   //^ ref mut
+) {
+    let (x,) = (0,);
+    let (x,) = &(0,);
+      //^^^^ &
+       //^ ref
+    let (x,) = &mut (0,);
+      //^^^^ &mut
+       //^ ref mut
+    let &mut (x,) = &mut (0,);
+    let (ref mut x,) = &mut (0,);
+      //^^^^^^^^^^^^ &mut
+    let &mut (ref mut x,) = &mut (0,);
+    let (mut x,) = &mut (0,);
+      //^^^^^^^^ &mut
+    match (0,) {
+        (x,) => ()
+    }
+    match &(0,) {
+        (x,) | (x,) => (),
+      //^^^^^^^^^^^&
+       //^ ref
+              //^ ref
+      //^^^^^^^^^^^(
+      //^^^^^^^^^^^)
+        ((x,) | (x,)) => (),
+      //^^^^^^^^^^^^^&
+        //^ ref
+               //^ ref
+    }
+    match &mut (0,) {
+        (x,) => ()
+      //^^^^ &mut
+       //^ ref mut
+    }
+}"#,
+        );
+    }
+}

@@ -235,3 +235,307 @@ fn is_adt_constructor_similar_to_param_name(
     })()
     .unwrap_or(false)
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        InlayHintsConfig,
+    };
+
+    #[track_caller]
+    fn check_params(ra_fixture: &str) {
+        check_with_config(
+            InlayHintsConfig { parameter_hints: true, ..DISABLED_CONFIG },
+            ra_fixture,
+        );
+    }
+
+    #[test]
+    fn param_hints_only() {
+        check_params(
+            r#"
+fn foo(a: i32, b: i32) -> i32 { a + b }
+fn main() {
+    let _x = foo(
+        4,
+      //^ a
+        4,
+      //^ b
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_hints_on_closure() {
+        check_params(
+            r#"
+fn main() {
+    let clo = |a: u8, b: u8| a + b;
+    clo(
+        1,
+      //^ a
+        2,
+      //^ b
+    );
+}
+            "#,
+        );
+    }
+
+    #[test]
+    fn param_name_similar_to_fn_name_still_hints() {
+        check_params(
+            r#"
+fn max(x: i32, y: i32) -> i32 { x + y }
+fn main() {
+    let _x = max(
+        4,
+      //^ x
+        4,
+      //^ y
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_name_similar_to_fn_name() {
+        check_params(
+            r#"
+fn param_with_underscore(with_underscore: i32) -> i32 { with_underscore }
+fn main() {
+    let _x = param_with_underscore(
+        4,
+    );
+}"#,
+        );
+        check_params(
+            r#"
+fn param_with_underscore(underscore: i32) -> i32 { underscore }
+fn main() {
+    let _x = param_with_underscore(
+        4,
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_name_same_as_fn_name() {
+        check_params(
+            r#"
+fn foo(foo: i32) -> i32 { foo }
+fn main() {
+    let _x = foo(
+        4,
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn never_hide_param_when_multiple_params() {
+        check_params(
+            r#"
+fn foo(foo: i32, bar: i32) -> i32 { bar + baz }
+fn main() {
+    let _x = foo(
+        4,
+      //^ foo
+        8,
+      //^ bar
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn param_hints_look_through_as_ref_and_clone() {
+        check_params(
+            r#"
+fn foo(bar: i32, baz: f32) {}
+
+fn main() {
+    let bar = 3;
+    let baz = &"baz";
+    let fez = 1.0;
+    foo(bar.clone(), bar.clone());
+                   //^^^^^^^^^^^ baz
+    foo(bar.as_ref(), bar.as_ref());
+                    //^^^^^^^^^^^^ baz
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn self_param_hints() {
+        check_params(
+            r#"
+struct Foo;
+
+impl Foo {
+    fn foo(self: Self) {}
+    fn bar(self: &Self) {}
+}
+
+fn main() {
+    Foo::foo(Foo);
+           //^^^ self
+    Foo::bar(&Foo);
+           //^^^^ self
+}
+"#,
+        )
+    }
+
+    #[test]
+    fn param_name_hints_show_for_literals() {
+        check_params(
+            r#"pub fn test(a: i32, b: i32) -> [i32; 2] { [a, b] }
+fn main() {
+    test(
+        0xa_b,
+      //^^^^^ a
+        0xa_b,
+      //^^^^^ b
+    );
+}"#,
+        )
+    }
+
+    #[test]
+    fn function_call_parameter_hint() {
+        check_params(
+            r#"
+//- minicore: option
+struct FileId {}
+struct SmolStr {}
+
+struct TextRange {}
+struct SyntaxKind {}
+struct NavigationTarget {}
+
+struct Test {}
+
+impl Test {
+    fn method(&self, mut param: i32) -> i32 { param * 2 }
+
+    fn from_syntax(
+        file_id: FileId,
+        name: SmolStr,
+        focus_range: Option<TextRange>,
+        full_range: TextRange,
+        kind: SyntaxKind,
+        docs: Option<String>,
+    ) -> NavigationTarget {
+        NavigationTarget {}
+    }
+}
+
+fn test_func(mut foo: i32, bar: i32, msg: &str, _: i32, last: i32) -> i32 {
+    foo + bar
+}
+
+fn main() {
+    let not_literal = 1;
+    let _: i32 = test_func(1,    2,      "hello", 3,  not_literal);
+                         //^ foo ^ bar   ^^^^^^^ msg  ^^^^^^^^^^^ last
+    let t: Test = Test {};
+    t.method(123);
+           //^^^ param
+    Test::method(&t,      3456);
+               //^^ self  ^^^^ param
+    Test::from_syntax(
+        FileId {},
+        "impl".into(),
+      //^^^^^^^^^^^^^ name
+        None,
+      //^^^^ focus_range
+        TextRange {},
+      //^^^^^^^^^^^^ full_range
+        SyntaxKind {},
+      //^^^^^^^^^^^^^ kind
+        None,
+      //^^^^ docs
+    );
+}"#,
+        );
+    }
+
+    #[test]
+    fn parameter_hint_heuristics() {
+        check_params(
+            r#"
+fn check(ra_fixture_thing: &str) {}
+
+fn map(f: i32) {}
+fn filter(predicate: i32) {}
+
+fn strip_suffix(suffix: &str) {}
+fn stripsuffix(suffix: &str) {}
+fn same(same: u32) {}
+fn same2(_same2: u32) {}
+
+fn enum_matches_param_name(completion_kind: CompletionKind) {}
+
+fn foo(param: u32) {}
+fn bar(param_eter: u32) {}
+
+enum CompletionKind {
+    Keyword,
+}
+
+fn non_ident_pat((a, b): (u32, u32)) {}
+
+fn main() {
+    const PARAM: u32 = 0;
+    foo(PARAM);
+    foo(!PARAM);
+     // ^^^^^^ param
+    check("");
+
+    map(0);
+    filter(0);
+
+    strip_suffix("");
+    stripsuffix("");
+              //^^ suffix
+    same(0);
+    same2(0);
+
+    enum_matches_param_name(CompletionKind::Keyword);
+
+    let param = 0;
+    foo(param);
+    foo(param as _);
+    let param_end = 0;
+    foo(param_end);
+    let start_param = 0;
+    foo(start_param);
+    let param2 = 0;
+    foo(param2);
+      //^^^^^^ param
+
+    macro_rules! param {
+        () => {};
+    };
+    foo(param!());
+
+    let param_eter = 0;
+    bar(param_eter);
+    let param_eter_end = 0;
+    bar(param_eter_end);
+    let start_param_eter = 0;
+    bar(start_param_eter);
+    let param_eter2 = 0;
+    bar(param_eter2);
+      //^^^^^^^^^^^ param_eter
+
+    non_ident_pat((0, 0));
+}"#,
+        );
+    }
+}

@@ -37,3 +37,35 @@ pub(super) fn hints(
 
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check_with_config, TEST_CONFIG},
+        InlayHintsConfig, LifetimeElisionHints,
+    };
+
+    #[test]
+    fn hints_lifetimes_static() {
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::Always,
+                ..TEST_CONFIG
+            },
+            r#"
+trait Trait {}
+static S: &str = "";
+//        ^'static
+const C: &str = "";
+//       ^'static
+const C: &dyn Trait = panic!();
+//       ^'static
+
+impl () {
+    const C: &str = "";
+    const C: &dyn Trait = panic!();
+}
+"#,
+        );
+    }
+}

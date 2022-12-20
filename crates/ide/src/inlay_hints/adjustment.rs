@@ -100,3 +100,112 @@ pub(super) fn hints(
     }
     Some(())
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        AdjustmentHints, InlayHintsConfig,
+    };
+
+    #[test]
+    fn adjustment_hints() {
+        check_with_config(
+            InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
+            r#"
+//- minicore: coerce_unsized
+fn main() {
+    let _: u32         = loop {};
+                       //^^^^^^^<never-to-any>
+    let _: &u32        = &mut 0;
+                       //^^^^^^&
+                       //^^^^^^*
+    let _: &mut u32    = &mut 0;
+                       //^^^^^^&mut $
+                       //^^^^^^*
+    let _: *const u32  = &mut 0;
+                       //^^^^^^&raw const $
+                       //^^^^^^*
+    let _: *mut u32    = &mut 0;
+                       //^^^^^^&raw mut $
+                       //^^^^^^*
+    let _: fn()        = main;
+                       //^^^^<fn-item-to-fn-pointer>
+    let _: unsafe fn() = main;
+                       //^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
+                       //^^^^<fn-item-to-fn-pointer>
+    let _: unsafe fn() = main as fn();
+                       //^^^^^^^^^^^^<safe-fn-pointer-to-unsafe-fn-pointer>
+    let _: fn()        = || {};
+                       //^^^^^<closure-to-fn-pointer>
+    let _: unsafe fn() = || {};
+                       //^^^^^<closure-to-unsafe-fn-pointer>
+    let _: *const u32  = &mut 0u32 as *mut u32;
+                       //^^^^^^^^^^^^^^^^^^^^^<mut-ptr-to-const-ptr>
+    let _: &mut [_]    = &mut [0; 0];
+                       //^^^^^^^^^^^<unsize>
+                       //^^^^^^^^^^^&mut $
+                       //^^^^^^^^^^^*
+
+    Struct.consume();
+    Struct.by_ref();
+  //^^^^^^(
+  //^^^^^^&
+  //^^^^^^)
+    Struct.by_ref_mut();
+  //^^^^^^(
+  //^^^^^^&mut $
+  //^^^^^^)
+
+    (&Struct).consume();
+   //^^^^^^^*
+    (&Struct).by_ref();
+
+    (&mut Struct).consume();
+   //^^^^^^^^^^^*
+    (&mut Struct).by_ref();
+   //^^^^^^^^^^^&
+   //^^^^^^^^^^^*
+    (&mut Struct).by_ref_mut();
+
+    // Check that block-like expressions don't duplicate hints
+    let _: &mut [u32] = (&mut []);
+                       //^^^^^^^<unsize>
+                       //^^^^^^^&mut $
+                       //^^^^^^^*
+    let _: &mut [u32] = { &mut [] };
+                        //^^^^^^^<unsize>
+                        //^^^^^^^&mut $
+                        //^^^^^^^*
+    let _: &mut [u32] = unsafe { &mut [] };
+                               //^^^^^^^<unsize>
+                               //^^^^^^^&mut $
+                               //^^^^^^^*
+    let _: &mut [u32] = if true {
+        &mut []
+      //^^^^^^^<unsize>
+      //^^^^^^^&mut $
+      //^^^^^^^*
+    } else {
+        loop {}
+      //^^^^^^^<never-to-any>
+    };
+    let _: &mut [u32] = match () { () => &mut [] }
+                                       //^^^^^^^<unsize>
+                                       //^^^^^^^&mut $
+                                       //^^^^^^^*
+}
+
+#[derive(Copy, Clone)]
+struct Struct;
+impl Struct {
+    fn consume(self) {}
+    fn by_ref(&self) {}
+    fn by_ref_mut(&mut self) {}
+}
+trait Trait {}
+impl Trait for Struct {}
+"#,
+        )
+    }
+}

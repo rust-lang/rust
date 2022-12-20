@@ -114,3 +114,75 @@ pub(super) fn hints(
 
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
+        InlayHintsConfig,
+    };
+
+    #[test]
+    fn hints_closing_brace() {
+        check_with_config(
+            InlayHintsConfig { closing_brace_hints_min_lines: Some(2), ..DISABLED_CONFIG },
+            r#"
+fn a() {}
+
+fn f() {
+} // no hint unless `}` is the last token on the line
+
+fn g() {
+  }
+//^ fn g
+
+fn h<T>(with: T, arguments: u8, ...) {
+  }
+//^ fn h
+
+trait Tr {
+    fn f();
+    fn g() {
+    }
+  //^ fn g
+  }
+//^ trait Tr
+impl Tr for () {
+  }
+//^ impl Tr for ()
+impl dyn Tr {
+  }
+//^ impl dyn Tr
+
+static S0: () = 0;
+static S1: () = {};
+static S2: () = {
+ };
+//^ static S2
+const _: () = {
+ };
+//^ const _
+
+mod m {
+  }
+//^ mod m
+
+m! {}
+m!();
+m!(
+ );
+//^ m!
+
+m! {
+  }
+//^ m!
+
+fn f() {
+    let v = vec![
+    ];
+  }
+//^ fn f
+"#,
+        );
+    }
+}
