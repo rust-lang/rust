@@ -698,12 +698,16 @@ fn match_meta_var(kind: MetaVarKind, input: &mut TtIter<'_>) -> ExpandResult<Opt
         MetaVarKind::Item => parser::PrefixEntryPoint::Item,
         MetaVarKind::Vis => parser::PrefixEntryPoint::Vis,
         MetaVarKind::Expr => {
-            // `expr` should not match underscores.
+            // `expr` should not match underscores, let expressions, or inline const. The latter
+            // two are for [backwards compatibility][0].
             // HACK: Macro expansion should not be done using "rollback and try another alternative".
-            // rustc [explicitly checks the next token][0].
-            // [0]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
+            // rustc [explicitly checks the next token][1].
+            // [0]: https://github.com/rust-lang/rust/issues/86730
+            // [1]: https://github.com/rust-lang/rust/blob/f0c4da499/compiler/rustc_expand/src/mbe/macro_parser.rs#L576
             match input.peek_n(0) {
-                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it))) if it.text == "_" => {
+                Some(tt::TokenTree::Leaf(tt::Leaf::Ident(it)))
+                    if it.text == "_" || it.text == "let" || it.text == "const" =>
+                {
                     return ExpandResult::only_err(ExpandError::NoMatchingRule)
                 }
                 _ => {}
