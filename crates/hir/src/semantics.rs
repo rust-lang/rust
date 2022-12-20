@@ -2,7 +2,7 @@
 
 mod source_to_def;
 
-use std::{cell::RefCell, fmt, iter, ops};
+use std::{cell::RefCell, fmt, iter, mem, ops};
 
 use base_db::{FileId, FileRange};
 use hir_def::{
@@ -29,7 +29,7 @@ use crate::{
     db::HirDatabase,
     semantics::source_to_def::{ChildContainer, SourceToDefCache, SourceToDefCtx},
     source_analyzer::{resolve_hir_path, SourceAnalyzer},
-    Access, Adjust, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
+    Access, Adjust, Adjustment, AutoBorrow, BindingMode, BuiltinAttr, Callable, ConstParam, Crate,
     DeriveHelper, Field, Function, HasSource, HirFileId, Impl, InFile, Label, LifetimeParam, Local,
     Macro, Module, ModuleDef, Name, OverloadedDeref, Path, ScopeDef, ToolModule, Trait, Type,
     TypeAlias, TypeParam, VariantDef,
@@ -334,7 +334,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
         self.imp.resolve_trait(trait_)
     }
 
-    pub fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjust>> {
+    pub fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjustment>> {
         self.imp.expr_adjustments(expr)
     }
 
@@ -1067,26 +1067,42 @@ impl<'db> SemanticsImpl<'db> {
         }
     }
 
-    fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjust>> {
+    fn expr_adjustments(&self, expr: &ast::Expr) -> Option<Vec<Adjustment>> {
         let mutability = |m| match m {
             hir_ty::Mutability::Not => Mutability::Shared,
             hir_ty::Mutability::Mut => Mutability::Mut,
         };
-        self.analyze(expr.syntax())?.expr_adjustments(self.db, expr).map(|it| {
+
+        let analyzer = self.analyze(expr.syntax())?;
+
+        let (mut source_ty, _) = analyzer.type_of_expr(self.db, expr)?;
+
+        analyzer.expr_adjustments(self.db, expr).map(|it| {
             it.iter()
-                .map(|adjust| match adjust.kind {
-                    hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
-                    hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
-                        Adjust::Deref(Some(OverloadedDeref(mutability(m))))
-                    }
-                    hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
-                    hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
-                        Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
-                    }
-                    hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
-                        Adjust::Borrow(AutoBorrow::Ref(mutability(m)))
-                    }
-                    hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
+                .map(|adjust| {
+                    let target =
+                        Type::new_with_resolver(self.db, &analyzer.resolver, adjust.target.clone());
+                    let kind = match adjust.kind {
+                        hir_ty::Adjust::NeverToAny => Adjust::NeverToAny,
+                        hir_ty::Adjust::Deref(Some(hir_ty::OverloadedDeref(m))) => {
+                            Adjust::Deref(Some(OverloadedDeref(mutability(m))))
+                        }
+                        hir_ty::Adjust::Deref(None) => Adjust::Deref(None),
+                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::RawPtr(m)) => {
+                            Adjust::Borrow(AutoBorrow::RawPtr(mutability(m)))
+                        }
+                        hir_ty::Adjust::Borrow(hir_ty::AutoBorrow::Ref(m)) => {
+                            Adjust::Borrow(AutoBorrow::Ref(mutability(m)))
+                        }
+                        hir_ty::Adjust::Pointer(pc) => Adjust::Pointer(pc),
+                    };
+
+                    // Update `source_ty` for the next adjustment
+                    let source = mem::replace(&mut source_ty, target.clone());
+
+                    let adjustment = Adjustment { source, target, kind };
+
+                    adjustment
                 })
                 .collect()
         })

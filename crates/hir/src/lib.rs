@@ -3691,6 +3691,13 @@ impl From<ItemInNs> for ScopeDef {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Adjustment {
+    pub source: Type,
+    pub target: Type,
+    pub kind: Adjust,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Adjust {
     /// Go from ! to any type.
