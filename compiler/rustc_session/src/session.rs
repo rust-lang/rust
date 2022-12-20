@@ -976,32 +976,8 @@ impl Session {
         self.opts.unstable_opts.verbose
     }
 
-    pub fn instrument_mcount(&self) -> bool {
-        self.opts.unstable_opts.instrument_mcount
-    }
-
-    pub fn time_passes(&self) -> bool {
-        self.opts.unstable_opts.time_passes
-    }
-
-    pub fn time_llvm_passes(&self) -> bool {
-        self.opts.unstable_opts.time_llvm_passes
-    }
-
-    pub fn meta_stats(&self) -> bool {
-        self.opts.unstable_opts.meta_stats
-    }
-
-    pub fn asm_comments(&self) -> bool {
-        self.opts.unstable_opts.asm_comments
-    }
-
     pub fn verify_llvm_ir(&self) -> bool {
         self.opts.unstable_opts.verify_llvm_ir || option_env!("RUSTC_VERIFY_LLVM_IR").is_some()
-    }
-
-    pub fn print_llvm_passes(&self) -> bool {
-        self.opts.unstable_opts.print_llvm_passes
     }
 
     pub fn binary_dep_depinfo(&self) -> bool {

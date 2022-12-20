@@ -1899,7 +1899,7 @@ impl<B: ExtraBackendMethods> OngoingCodegen<B> {
 
         // FIXME: time_llvm_passes support - does this use a global context or
         // something?
-        if sess.codegen_units() == 1 && sess.time_llvm_passes() {
+        if sess.codegen_units() == 1 && sess.opts.unstable_opts.time_llvm_passes {
             self.backend.print_pass_timings()
         }
 
