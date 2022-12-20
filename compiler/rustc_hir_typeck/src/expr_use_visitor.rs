@@ -756,8 +756,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
     fn walk_captures(&mut self, closure_expr: &hir::Closure<'_>) {
-        fn upvar_is_local_variable<'tcx>(
-            upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+        fn upvar_is_local_variable(
+            upvars: Option<&FxIndexMap<hir::HirId, hir::Upvar>>,
             upvar_id: hir::HirId,
             body_owner_is_closure: bool,
         ) -> bool {

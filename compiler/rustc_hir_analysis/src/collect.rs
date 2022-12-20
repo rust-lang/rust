@@ -839,7 +839,7 @@ fn convert_variant(
     )
 }
 
-fn adt_def<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> ty::AdtDef<'tcx> {
+fn adt_def(tcx: TyCtxt<'_>, def_id: DefId) -> ty::AdtDef<'_> {
     use rustc_hir::*;
 
     let def_id = def_id.expect_local();

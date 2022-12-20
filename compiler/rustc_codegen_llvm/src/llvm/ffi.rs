@@ -2389,11 +2389,11 @@ extern "C" {
 
     pub fn LLVMRustSetDataLayoutFromTargetMachine<'a>(M: &'a Module, TM: &'a TargetMachine);
 
-    pub fn LLVMRustBuildOperandBundleDef<'a>(
+    pub fn LLVMRustBuildOperandBundleDef(
         Name: *const c_char,
-        Inputs: *const &'a Value,
+        Inputs: *const &'_ Value,
         NumInputs: c_uint,
-    ) -> &'a mut OperandBundleDef<'a>;
+    ) -> &mut OperandBundleDef<'_>;
     pub fn LLVMRustFreeOperandBundleDef<'a>(Bundle: &'a mut OperandBundleDef<'a>);
 
     pub fn LLVMRustPositionBuilderAtStart<'a>(B: &Builder<'a>, BB: &'a BasicBlock);

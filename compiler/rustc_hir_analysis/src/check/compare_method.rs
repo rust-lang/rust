@@ -1517,8 +1517,8 @@ fn compare_generic_param_kinds<'tcx>(
 }
 
 /// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
-pub(crate) fn raw_compare_const_impl<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn raw_compare_const_impl(
+    tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
     let impl_const_item = tcx.associated_item(impl_const_item_def);

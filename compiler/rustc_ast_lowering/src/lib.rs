@@ -414,7 +414,7 @@ fn compute_hir_hash(
     })
 }
 
-pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
+pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
     let krate = tcx.untracked_crate.steal();
     let mut resolver = tcx.resolver_for_lowering(()).steal();

@@ -484,10 +484,7 @@ fn subst_and_check_impossible_predicates<'tcx>(
 ///
 /// This only considers predicates that reference the impl's generics, and not
 /// those that reference the method's generics.
-fn is_impossible_method<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (impl_def_id, trait_item_def_id): (DefId, DefId),
-) -> bool {
+fn is_impossible_method(tcx: TyCtxt<'_>, (impl_def_id, trait_item_def_id): (DefId, DefId)) -> bool {
     struct ReferencesOnlyParentGenerics<'tcx> {
         tcx: TyCtxt<'tcx>,
         generics: &'tcx ty::Generics,

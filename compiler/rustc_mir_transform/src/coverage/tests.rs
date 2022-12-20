@@ -169,7 +169,7 @@ impl<'tcx> MockBlocks<'tcx> {
     }
 }
 
-fn debug_basic_blocks<'tcx>(mir_body: &Body<'tcx>) -> String {
+fn debug_basic_blocks(mir_body: &Body) -> String {
     format!(
         "{:?}",
         mir_body

@@ -571,7 +571,7 @@ fn check_item<'tcx>(
     }
 }
 
-fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id: hir::TraitItemId) {
+fn check_trait_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::TraitItemId) {
     use hir::TraitItemKind::{Const, Fn};
     if matches!(tcx.def_kind(id.owner_id), DefKind::AssocConst | DefKind::AssocFn) {
         let trait_item = tcx.hir().trait_item(id);
@@ -583,11 +583,7 @@ fn check_trait_item<'tcx>(tcx: TyCtxt<'tcx>, worklist: &mut Vec<LocalDefId>, id:
     }
 }
 
-fn check_foreign_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    worklist: &mut Vec<LocalDefId>,
-    id: hir::ForeignItemId,
-) {
+fn check_foreign_item(tcx: TyCtxt<'_>, worklist: &mut Vec<LocalDefId>, id: hir::ForeignItemId) {
     if matches!(tcx.def_kind(id.owner_id), DefKind::Static(_) | DefKind::Fn)
         && has_allow_dead_code_or_lang_attr(tcx, id.hir_id())
     {
@@ -595,8 +591,8 @@ fn check_foreign_item<'tcx>(
     }
 }
 
-fn create_and_seed_worklist<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn create_and_seed_worklist(
+    tcx: TyCtxt<'_>,
 ) -> (Vec<LocalDefId>, FxHashMap<LocalDefId, LocalDefId>) {
     let effective_visibilities = &tcx.effective_visibilities(());
     // see `MarkSymbolVisitor::struct_constructors`
@@ -626,8 +622,8 @@ fn create_and_seed_worklist<'tcx>(
     (worklist, struct_constructors)
 }
 
-fn live_symbols_and_ignored_derived_traits<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn live_symbols_and_ignored_derived_traits(
+    tcx: TyCtxt<'_>,
     (): (),
 ) -> (FxHashSet<LocalDefId>, FxHashMap<LocalDefId, Vec<(DefId, DefId)>>) {
     let (worklist, struct_constructors) = create_and_seed_worklist(tcx);
