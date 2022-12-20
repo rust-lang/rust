@@ -24,7 +24,7 @@ pub(crate) fn render_union_literal(
         Some(p) => (p.unescaped().to_string(), p.to_string()),
         None => (name.unescaped().to_string(), name.to_string()),
     };
-    let label = format_literal_label(&name.to_smol_str(), StructKind::Record);
+    let label = format_literal_label(&name.to_smol_str(), StructKind::Record, ctx.snippet_cap());
     let lookup = format_literal_lookup(&name.to_smol_str(), StructKind::Record);
     let mut item = CompletionItem::new(
         CompletionItemKind::SymbolKind(SymbolKind::Union),
