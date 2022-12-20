@@ -600,6 +600,9 @@ fn configure_cmake(
             if target.starts_with("aarch64") {
                 // macOS uses a different name for building arm64
                 cfg.define("CMAKE_OSX_ARCHITECTURES", "arm64");
+            } else if target.starts_with("i686") {
+                // macOS uses a different name for building i386
+                cfg.define("CMAKE_OSX_ARCHITECTURES", "i386");
             } else {
                 cfg.define("CMAKE_OSX_ARCHITECTURES", target.triple.split('-').next().unwrap());
             }
