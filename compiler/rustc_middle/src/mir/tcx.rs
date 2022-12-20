@@ -32,8 +32,9 @@ impl<'tcx> PlaceTy<'tcx> {
     /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind() {
+        match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -47,9 +48,7 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-        };
-        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
-        answer
+        }
     }
 
     /// Convenience wrapper around `projection_ty_core` for
