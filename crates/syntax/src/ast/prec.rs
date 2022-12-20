@@ -21,7 +21,7 @@ impl Expr {
                 ast::StmtList(_) => self.needs_parens_in_stmt(None),
                 ast::ArgList(_) => false,
                 ast::MatchArm(_) => false,
-                _ => unimplemented!()
+                _ => false,
             }
         }
     }
