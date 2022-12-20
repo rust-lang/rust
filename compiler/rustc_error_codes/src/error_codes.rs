@@ -244,6 +244,7 @@ E0457: include_str!("./error_codes/E0457.md"),
 E0458: include_str!("./error_codes/E0458.md"),
 E0459: include_str!("./error_codes/E0459.md"),
 E0460: include_str!("./error_codes/E0460.md"),
+E0462: include_str!("./error_codes/E0462.md"),
 E0463: include_str!("./error_codes/E0463.md"),
 E0464: include_str!("./error_codes/E0464.md"),
 E0466: include_str!("./error_codes/E0466.md"),
@@ -594,7 +595,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
     E0461, // couldn't find crate `..` with expected target triple ..
-    E0462, // found staticlib `..` instead of rlib or dylib
     E0465, // multiple .. candidates for `..` found
 //  E0467, // removed
 //  E0470, // removed
