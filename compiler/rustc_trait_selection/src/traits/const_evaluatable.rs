@@ -181,8 +181,11 @@ fn satisfied_from_param_env<'tcx>(
                     && ocx.eq(&ObligationCause::dummy(), self.param_env, c, self.ct).is_ok()
                     && ocx.select_all_or_error().is_empty()
             }) {
-                self.single_match =
-                    if self.single_match.is_none() { Some(Ok(c)) } else { Some(Err(())) };
+                self.single_match = match self.single_match {
+                    None => Some(Ok(c)),
+                    Some(Ok(o)) if o == c => Some(Ok(c)),
+                    Some(_) => Some(Err(())),
+                };
                 ControlFlow::CONTINUE
             } else if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)
@@ -207,8 +210,17 @@ fn satisfied_from_param_env<'tcx>(
                 let b_ct = tcx.expand_abstract_consts(ce);
                 let mut v = Visitor { ct, infcx, param_env, single_match: None };
                 let _ = b_ct.visit_with(&mut v);
+
                 if let Some(inner) = v.single_match {
-                    single_match = if single_match.is_none() { Some(inner) } else { Some(Err(())) };
+                    single_match = if let Ok(inner) = inner {
+                        match single_match {
+                            None => Some(Ok(inner)),
+                            Some(Ok(prev)) if prev == inner => Some(Ok(prev)),
+                            Some(_) => Some(Err(())),
+                        }
+                    } else {
+                        Some(Err(()))
+                    };
                 }
             }
             _ => {} // don't care
