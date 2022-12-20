@@ -886,10 +886,6 @@ impl Step for Lld {
                 );
         }
 
-        // Explicitly set C++ standard, because upstream doesn't do so
-        // for standalone builds.
-        cfg.define("CMAKE_CXX_STANDARD", "14");
-
         cfg.build();
 
         t!(File::create(&done_stamp));
