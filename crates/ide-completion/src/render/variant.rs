@@ -48,6 +48,9 @@ pub(crate) fn render_tuple_lit(
     fields: &[hir::Field],
     path: &str,
 ) -> RenderedLiteral {
+    if snippet_cap.is_none() {
+        return RenderedLiteral { literal: format!("{}", path), detail: format!("{}", path) };
+    }
     let completions = fields.iter().enumerate().format_with(", ", |(idx, _), f| {
         if snippet_cap.is_some() {
             f(&format_args!("${{{}:()}}", idx + 1))
