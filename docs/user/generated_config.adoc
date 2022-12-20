@@ -469,6 +469,11 @@ Whether to show inlay hints for type adjustments.
 --
 Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
 --
+[[rust-analyzer.inlayHints.expressionAdjustmentHints.postfix]]rust-analyzer.inlayHints.expressionAdjustmentHints.postfix (default: `false`)::
++
+--
+Whether to show inlay hints for type adjustments as postfix ops (`.*` instead of `*`, etc).
+--
 [[rust-analyzer.inlayHints.lifetimeElisionHints.enable]]rust-analyzer.inlayHints.lifetimeElisionHints.enable (default: `"never"`)::
 +
 --

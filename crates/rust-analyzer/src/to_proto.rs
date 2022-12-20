@@ -452,6 +452,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
             | InlayKind::ClosingParenthesis
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ClosingBraceHint => position(line_index, inlay_hint.range.end()),
         },
@@ -465,6 +466,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::LifetimeHint
             | InlayKind::ParameterHint => false,
         }),
@@ -475,6 +477,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::ClosureReturnTypeHint
             | InlayKind::GenericParamListHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::TypeHint
             | InlayKind::DiscriminantHint
             | InlayKind::ClosingBraceHint => false,
@@ -493,6 +496,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::GenericParamListHint
             | InlayKind::LifetimeHint
             | InlayKind::AdjustmentHint
+            | InlayKind::AdjustmentHintPostfix
             | InlayKind::ClosingBraceHint => None,
         },
         text_edits: None,

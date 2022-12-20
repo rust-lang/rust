@@ -1000,6 +1000,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.expressionAdjustmentHints.postfix": {
+                    "markdownDescription": "Whether to show inlay hints for type adjustments as postfix ops (`.*` instead of `*`, etc).",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",

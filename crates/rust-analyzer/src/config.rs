@@ -333,6 +333,8 @@ config_data! {
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef = "\"never\"",
         /// Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = "false",
+        /// Whether to show inlay hints for type adjustments as postfix ops (`.*` instead of `*`, etc).
+        inlayHints_expressionAdjustmentHints_postfix: bool = "false",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -1252,6 +1254,7 @@ impl Config {
                 },
                 AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
             },
+            adjustment_hints_postfix: self.data.inlayHints_expressionAdjustmentHints_postfix,
             adjustment_hints_hide_outside_unsafe: self
                 .data
                 .inlayHints_expressionAdjustmentHints_hideOutsideUnsafe,
