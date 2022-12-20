@@ -805,7 +805,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         if builder.is_rust_llvm(target) {
             cargo.env("LLVM_RUSTLLVM", "1");
         }
-        let llvm_config = builder.ensure(native::Llvm { target });
+        let native::LlvmResult { llvm_config, .. } = builder.ensure(native::Llvm { target });
         cargo.env("LLVM_CONFIG", &llvm_config);
         if let Some(s) = target_config.and_then(|c| c.llvm_config.as_ref()) {
             cargo.env("CFG_LLVM_ROOT", s);
@@ -1341,9 +1341,10 @@ impl Step for Assemble {
         }
 
         if builder.config.rust_codegen_backends.contains(&INTERNER.intern_str("llvm")) {
-            let llvm_config_bin = builder.ensure(native::Llvm { target: target_compiler.host });
+            let native::LlvmResult { llvm_config, .. } =
+                builder.ensure(native::Llvm { target: target_compiler.host });
             if !builder.config.dry_run() {
-                let llvm_bin_dir = output(Command::new(llvm_config_bin).arg("--bindir"));
+                let llvm_bin_dir = output(Command::new(llvm_config).arg("--bindir"));
                 let llvm_bin_dir = Path::new(llvm_bin_dir.trim());
 
                 // Since we've already built the LLVM tools, install them to the sysroot.

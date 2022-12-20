@@ -24,6 +24,7 @@ use crate::channel;
 use crate::compile;
 use crate::config::TargetSelection;
 use crate::doc::DocumentationFormat;
+use crate::native;
 use crate::tarball::{GeneratedTarball, OverlayKind, Tarball};
 use crate::tool::{self, Tool};
 use crate::util::{exe, is_dylib, output, t, timeit};
@@ -1927,7 +1928,9 @@ fn maybe_install_llvm(builder: &Builder<'_>, target: TargetSelection, dst_libdir
             builder.install(&llvm_dylib_path, dst_libdir, 0o644);
         }
         !builder.config.dry_run()
-    } else if let Ok(llvm_config) = crate::native::prebuilt_llvm_config(builder, target) {
+    } else if let Ok(native::LlvmResult { llvm_config, .. }) =
+        native::prebuilt_llvm_config(builder, target)
+    {
         let mut cmd = Command::new(llvm_config);
         cmd.arg("--libfiles");
         builder.verbose(&format!("running {:?}", cmd));
@@ -2137,7 +2140,7 @@ impl Step for Bootstrap {
         let tarball = Tarball::new(builder, "bootstrap", &target.triple);
 
         let bootstrap_outdir = &builder.bootstrap_out;
-        for file in &["bootstrap", "llvm-config-wrapper", "rustc", "rustdoc", "sccache-plus-cl"] {
+        for file in &["bootstrap", "rustc", "rustdoc", "sccache-plus-cl"] {
             tarball.add_file(bootstrap_outdir.join(exe(file, target)), "bootstrap/bin", 0o755);
         }
 

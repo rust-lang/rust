@@ -1575,7 +1575,8 @@ note: if you're sure you want to do this, please open an issue as to why. In the
         let mut llvm_components_passed = false;
         let mut copts_passed = false;
         if builder.config.llvm_enabled() {
-            let llvm_config = builder.ensure(native::Llvm { target: builder.config.build });
+            let native::LlvmResult { llvm_config, .. } =
+                builder.ensure(native::Llvm { target: builder.config.build });
             if !builder.config.dry_run() {
                 let llvm_version = output(Command::new(&llvm_config).arg("--version"));
                 let llvm_components = output(Command::new(&llvm_config).arg("--components"));
