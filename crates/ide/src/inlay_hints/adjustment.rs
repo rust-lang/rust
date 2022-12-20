@@ -59,6 +59,10 @@ pub(super) fn hints(
         });
     }
     for adjustment in adjustments.into_iter().rev() {
+        if adjustment.source == adjustment.target {
+            continue;
+        }
+
         // FIXME: Add some nicer tooltips to each of these
         let text = match adjustment.kind {
             Adjust::NeverToAny if config.adjustment_hints == AdjustmentHints::Always => {
@@ -211,6 +215,22 @@ impl Struct {
 trait Trait {}
 impl Trait for Struct {}
 "#,
+        )
+    }
+
+    #[test]
+    fn never_to_never_is_never_shown() {
+        check_with_config(
+            InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
+            r#"
+fn never() -> ! {
+    return loop {};
+}
+
+fn or_else() {
+    let () = () else { return };
+}
+            "#,
         )
     }
 }
