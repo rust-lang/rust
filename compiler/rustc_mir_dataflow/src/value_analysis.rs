@@ -84,7 +84,8 @@ pub trait ValueAnalysis<'tcx> {
             StatementKind::Retag(..) => {
                 // We don't track references.
             }
-            StatementKind::Nop
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
             | StatementKind::FakeRead(..)
             | StatementKind::Coverage(..)
             | StatementKind::AscribeUserType(..) => (),

@@ -53,6 +53,7 @@ pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitS
                 | StatementKind::StorageDead(_)
                 | StatementKind::Coverage(_)
                 | StatementKind::Intrinsic(_)
+                | StatementKind::ConstEvalCounter
                 | StatementKind::Nop => (),
 
                 StatementKind::FakeRead(_) | StatementKind::AscribeUserType(_, _) => {

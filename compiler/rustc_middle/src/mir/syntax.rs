@@ -286,7 +286,10 @@ pub enum StatementKind<'tcx> {
     /// This is permitted for both generators and ADTs. This does not necessarily write to the
     /// entire place; instead, it writes to the minimum set of bytes as required by the layout for
     /// the type.
-    SetDiscriminant { place: Box<Place<'tcx>>, variant_index: VariantIdx },
+    SetDiscriminant {
+        place: Box<Place<'tcx>>,
+        variant_index: VariantIdx,
+    },
 
     /// Deinitializes the place.
     ///
@@ -354,6 +357,8 @@ pub enum StatementKind<'tcx> {
     /// Denotes a call to an intrinsic that does not require an unwind path and always returns.
     /// This avoids adding a new block and a terminator for simple intrinsics.
     Intrinsic(Box<NonDivergingIntrinsic<'tcx>>),
+
+    ConstEvalCounter,
 
     /// No-op. Useful for deleting instructions without affecting statement indices.
     Nop,

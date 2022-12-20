@@ -620,7 +620,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::Nop
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {

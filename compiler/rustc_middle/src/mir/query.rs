@@ -441,10 +441,14 @@ impl<'tcx> TyCtxt<'tcx> {
 
     #[inline]
     pub fn mir_for_ctfe_opt_const_arg(self, def: ty::WithOptConstParam<DefId>) -> &'tcx Body<'tcx> {
-        if let Some((did, param_did)) = def.as_const_arg() {
+        let res = if let Some((did, param_did)) = def.as_const_arg() {
+            info!("calling mir_for_ctfe_of_const_arg for DedId {did:?}");
             self.mir_for_ctfe_of_const_arg((did, param_did))
         } else {
+            info!("calling mir_for_ctfe for DefId {:?}", def.did);
             self.mir_for_ctfe(def.did)
-        }
+        };
+        //info!("RES OF CALLING MIR_FOR_CTFE_OPT_CONST_ARG: {:#?}", res);
+        res
     }
 }

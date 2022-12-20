@@ -369,6 +369,7 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         }
     }
 
+    #[instrument(skip(ecx), ret)]
     fn load_mir(
         ecx: &InterpCx<'mir, 'tcx, Self>,
         instance: ty::InstanceDef<'tcx>,

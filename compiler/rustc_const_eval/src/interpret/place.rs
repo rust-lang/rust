@@ -293,6 +293,17 @@ where
     Prov: Provenance + 'static,
     M: Machine<'mir, 'tcx, Provenance = Prov>,
 {
+    pub fn increment_const_eval_counter(&mut self) {
+        self.const_eval_counter = self.const_eval_counter + 1;
+        if self.const_eval_counter == self.const_eval_limit {
+            let mut warn = self.tcx.sess.struct_warn(format!(
+                "Const eval counter limit ({}) has been crossed",
+                self.const_eval_limit
+            ));
+            warn.emit();
+        }
+    }
+
     /// Take a value, which represents a (thin or wide) reference, and make it a place.
     /// Alignment is just based on the type. This is the inverse of `MemPlace::to_ref()`.
     ///

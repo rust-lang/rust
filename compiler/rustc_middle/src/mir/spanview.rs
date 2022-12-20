@@ -250,6 +250,7 @@ pub fn statement_kind_name(statement: &Statement<'_>) -> &'static str {
         AscribeUserType(..) => "AscribeUserType",
         Coverage(..) => "Coverage",
         Intrinsic(..) => "Intrinsic",
+        ConstEvalCounter => "ConstEvalCounter",
         Nop => "Nop",
     }
 }

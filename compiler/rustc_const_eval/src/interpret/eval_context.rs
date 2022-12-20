@@ -46,6 +46,9 @@ pub struct InterpCx<'mir, 'tcx, M: Machine<'mir, 'tcx>> {
 
     /// The recursion limit (cached from `tcx.recursion_limit(())`)
     pub recursion_limit: Limit,
+
+    pub const_eval_limit: u32,
+    pub const_eval_counter: u32,
 }
 
 // The Phantomdata exists to prevent this type from being `Send`. If it were sent across a thread
@@ -408,6 +411,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             param_env,
             memory: Memory::new(),
             recursion_limit: tcx.recursion_limit(),
+            const_eval_limit: 20,
+            const_eval_counter: 0,
         }
     }
 
