@@ -2039,12 +2039,12 @@ impl Path {
     /// #![feature(path_as_mut_os_str)]
     /// use std::path::{Path, PathBuf};
     ///
-    /// let mut path = PathBuf::from("/Foo.TXT").into_boxed_path();
+    /// let mut path = PathBuf::from("Foo.TXT");
     ///
-    /// assert_ne!(&*path, Path::new("/foo.txt"));
+    /// assert_ne!(path, Path::new("foo.txt"));
     ///
     /// path.as_mut_os_str().make_ascii_lowercase();
-    /// assert_eq!(&*path, Path::new("/foo.txt"));
+    /// assert_eq!(path, Path::new("foo.txt"));
     /// ```
     #[unstable(feature = "path_as_mut_os_str", issue = "105021")]
     #[must_use]

@@ -22,11 +22,11 @@ fn good_generic_fn<T>() {
 // This should fail because `T` ends up in the upvars of the closure.
 fn bad_generic_fn<T: Copy>(t: T) {
     assert_static(opaque(async move { t; }).next());
-    //~^ ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the associated type `<impl Iterator as Iterator>::Item` may not live long enough
     assert_static(opaque(move || { t; }).next());
     //~^ ERROR the associated type `<impl Iterator as Iterator>::Item` may not live long enough
     assert_static(opaque(opaque(async move { t; }).next()).next());
-    //~^ ERROR the parameter type `T` may not live long enough
+    //~^ ERROR the associated type `<impl Iterator as Iterator>::Item` may not live long enough
 }
 
 fn main() {}
