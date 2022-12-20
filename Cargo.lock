@@ -3590,7 +3590,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "bitflags",
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "ena",
  "indexmap",
  "jobserver",
@@ -4374,7 +4374,7 @@ dependencies = [
 name = "rustc_span"
 version = "0.0.0"
 dependencies = [
- "cfg-if 0.1.10",
+ "cfg-if 1.0.0",
  "md-5",
  "rustc_arena",
  "rustc_data_structures",
