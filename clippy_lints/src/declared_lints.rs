@@ -495,6 +495,7 @@ pub(crate) static LINTS: &[&crate::LintInfo] = &[
     crate::pass_by_ref_or_value::LARGE_TYPES_PASSED_BY_VALUE_INFO,
     crate::pass_by_ref_or_value::TRIVIALLY_COPY_PASS_BY_REF_INFO,
     crate::pattern_type_mismatch::PATTERN_TYPE_MISMATCH_INFO,
+    crate::permissions_set_readonly_false::PERMISSIONS_SET_READONLY_FALSE_INFO,
     crate::precedence::PRECEDENCE_INFO,
     crate::ptr::CMP_NULL_INFO,
     crate::ptr::INVALID_NULL_PTR_USAGE_INFO,

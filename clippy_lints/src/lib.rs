@@ -235,6 +235,7 @@ mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
 mod pattern_type_mismatch;
+mod permissions_set_readonly_false;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
@@ -904,6 +905,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
     store.register_late_pass(|_| Box::new(semicolon_block::SemicolonBlock));
     store.register_late_pass(|_| Box::new(fn_null_check::FnNullCheck));
+    store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 
