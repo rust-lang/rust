@@ -109,96 +109,10 @@ Compilation target override (target triple).
 --
 Unsets `#[cfg(test)]` for the specified crates.
 --
-[[rust-analyzer.checkOnSave.allTargets]]rust-analyzer.checkOnSave.allTargets (default: `true`)::
+[[rust-analyzer.checkOnSave]]rust-analyzer.checkOnSave (default: `true`)::
 +
 --
-Check all targets and tests (`--all-targets`).
---
-[[rust-analyzer.checkOnSave.command]]rust-analyzer.checkOnSave.command (default: `"check"`)::
-+
---
-Cargo command to use for `cargo check`.
---
-[[rust-analyzer.checkOnSave.enable]]rust-analyzer.checkOnSave.enable (default: `true`)::
-+
---
-Run specified `cargo check` command for diagnostics on save.
---
-[[rust-analyzer.checkOnSave.extraArgs]]rust-analyzer.checkOnSave.extraArgs (default: `[]`)::
-+
---
-Extra arguments for `cargo check`.
---
-[[rust-analyzer.checkOnSave.extraEnv]]rust-analyzer.checkOnSave.extraEnv (default: `{}`)::
-+
---
-Extra environment variables that will be set when running `cargo check`.
-Extends `#rust-analyzer.cargo.extraEnv#`.
---
-[[rust-analyzer.checkOnSave.features]]rust-analyzer.checkOnSave.features (default: `null`)::
-+
---
-List of features to activate. Defaults to
-`#rust-analyzer.cargo.features#`.
-
-Set to `"all"` to pass `--all-features` to Cargo.
---
-[[rust-analyzer.checkOnSave.invocationLocation]]rust-analyzer.checkOnSave.invocationLocation (default: `"workspace"`)::
-+
---
-Specifies the working directory for running checks.
-- "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-  This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
-- "root": run checks in the project's root directory.
-This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-is set.
---
-[[rust-analyzer.checkOnSave.invocationStrategy]]rust-analyzer.checkOnSave.invocationStrategy (default: `"per_workspace"`)::
-+
---
-Specifies the invocation strategy to use when running the checkOnSave command.
-If `per_workspace` is set, the command will be executed for each workspace.
-If `once` is set, the command will be executed once.
-This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-is set.
---
-[[rust-analyzer.checkOnSave.noDefaultFeatures]]rust-analyzer.checkOnSave.noDefaultFeatures (default: `null`)::
-+
---
-Whether to pass `--no-default-features` to Cargo. Defaults to
-`#rust-analyzer.cargo.noDefaultFeatures#`.
---
-[[rust-analyzer.checkOnSave.overrideCommand]]rust-analyzer.checkOnSave.overrideCommand (default: `null`)::
-+
---
-Override the command rust-analyzer uses instead of `cargo check` for
-diagnostics on save. The command is required to output json and
-should therefore include `--message-format=json` or a similar option.
-
-If you're changing this because you're using some tool wrapping
-Cargo, you might also want to change
-`#rust-analyzer.cargo.buildScripts.overrideCommand#`.
-
-If there are multiple linked projects, this command is invoked for
-each of them, with the working directory being the project root
-(i.e., the folder containing the `Cargo.toml`).
-
-An example command would be:
-
-```bash
-cargo check --workspace --message-format=json --all-targets
-```
-.
---
-[[rust-analyzer.checkOnSave.target]]rust-analyzer.checkOnSave.target (default: `null`)::
-+
---
-Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
-
-Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
-`["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
-
-Aliased as `"checkOnSave.targets"`.
+Run the flycheck command for diagnostics on save.
 --
 [[rust-analyzer.completion.autoimport.enable]]rust-analyzer.completion.autoimport.enable (default: `true`)::
 +
@@ -326,6 +240,92 @@ also need to add the folders to Code's `files.watcherExclude`.
 +
 --
 Controls file watching implementation.
+--
+[[rust-analyzer.flycheck.allTargets]]rust-analyzer.flycheck.allTargets (default: `true`)::
++
+--
+Check all targets and tests (`--all-targets`).
+--
+[[rust-analyzer.flycheck.command]]rust-analyzer.flycheck.command (default: `"check"`)::
++
+--
+Cargo command to use for `cargo check`.
+--
+[[rust-analyzer.flycheck.extraArgs]]rust-analyzer.flycheck.extraArgs (default: `[]`)::
++
+--
+Extra arguments for `cargo check`.
+--
+[[rust-analyzer.flycheck.extraEnv]]rust-analyzer.flycheck.extraEnv (default: `{}`)::
++
+--
+Extra environment variables that will be set when running `cargo check`.
+Extends `#rust-analyzer.cargo.extraEnv#`.
+--
+[[rust-analyzer.flycheck.features]]rust-analyzer.flycheck.features (default: `null`)::
++
+--
+List of features to activate. Defaults to
+`#rust-analyzer.cargo.features#`.
+
+Set to `"all"` to pass `--all-features` to Cargo.
+--
+[[rust-analyzer.flycheck.invocationLocation]]rust-analyzer.flycheck.invocationLocation (default: `"workspace"`)::
++
+--
+Specifies the working directory for running checks.
+- "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+  This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+- "root": run checks in the project's root directory.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.flycheck.invocationStrategy]]rust-analyzer.flycheck.invocationStrategy (default: `"per_workspace"`)::
++
+--
+Specifies the invocation strategy to use when running the checkOnSave command.
+If `per_workspace` is set, the command will be executed for each workspace.
+If `once` is set, the command will be executed once.
+This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+is set.
+--
+[[rust-analyzer.flycheck.noDefaultFeatures]]rust-analyzer.flycheck.noDefaultFeatures (default: `null`)::
++
+--
+Whether to pass `--no-default-features` to Cargo. Defaults to
+`#rust-analyzer.cargo.noDefaultFeatures#`.
+--
+[[rust-analyzer.flycheck.overrideCommand]]rust-analyzer.flycheck.overrideCommand (default: `null`)::
++
+--
+Override the command rust-analyzer uses instead of `cargo check` for
+diagnostics on save. The command is required to output json and
+should therefore include `--message-format=json` or a similar option.
+
+If you're changing this because you're using some tool wrapping
+Cargo, you might also want to change
+`#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+
+If there are multiple linked projects, this command is invoked for
+each of them, with the working directory being the project root
+(i.e., the folder containing the `Cargo.toml`).
+
+An example command would be:
+
+```bash
+cargo check --workspace --message-format=json --all-targets
+```
+.
+--
+[[rust-analyzer.flycheck.targets]]rust-analyzer.flycheck.targets (default: `null`)::
++
+--
+Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+
+Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+`["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+
+Aliased as `"checkOnSave.targets"`.
 --
 [[rust-analyzer.highlightRelated.breakPoints.enable]]rust-analyzer.highlightRelated.breakPoints.enable (default: `true`)::
 +

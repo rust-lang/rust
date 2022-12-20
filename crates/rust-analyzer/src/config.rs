@@ -124,65 +124,8 @@ config_data! {
         /// Unsets `#[cfg(test)]` for the specified crates.
         cargo_unsetTest: Vec<String>     = "[\"core\"]",
 
-        /// Check all targets and tests (`--all-targets`).
-        checkOnSave_allTargets: bool                     = "true",
-        /// Cargo command to use for `cargo check`.
-        checkOnSave_command: String                      = "\"check\"",
-        /// Run specified `cargo check` command for diagnostics on save.
-        checkOnSave_enable: bool                         = "true",
-        /// Extra arguments for `cargo check`.
-        checkOnSave_extraArgs: Vec<String>               = "[]",
-        /// Extra environment variables that will be set when running `cargo check`.
-        /// Extends `#rust-analyzer.cargo.extraEnv#`.
-        checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
-        /// List of features to activate. Defaults to
-        /// `#rust-analyzer.cargo.features#`.
-        ///
-        /// Set to `"all"` to pass `--all-features` to Cargo.
-        checkOnSave_features: Option<CargoFeaturesDef>      = "null",
-        /// Specifies the working directory for running checks.
-        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
-        // FIXME: Ideally we would support this in some way
-        ///   This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
-        /// - "root": run checks in the project's root directory.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
-        /// Specifies the invocation strategy to use when running the checkOnSave command.
-        /// If `per_workspace` is set, the command will be executed for each workspace.
-        /// If `once` is set, the command will be executed once.
-        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
-        /// is set.
-        checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
-        /// Whether to pass `--no-default-features` to Cargo. Defaults to
-        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
-        checkOnSave_noDefaultFeatures: Option<bool>      = "null",
-        /// Override the command rust-analyzer uses instead of `cargo check` for
-        /// diagnostics on save. The command is required to output json and
-        /// should therefore include `--message-format=json` or a similar option.
-        ///
-        /// If you're changing this because you're using some tool wrapping
-        /// Cargo, you might also want to change
-        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
-        ///
-        /// If there are multiple linked projects, this command is invoked for
-        /// each of them, with the working directory being the project root
-        /// (i.e., the folder containing the `Cargo.toml`).
-        ///
-        /// An example command would be:
-        ///
-        /// ```bash
-        /// cargo check --workspace --message-format=json --all-targets
-        /// ```
-        /// .
-        checkOnSave_overrideCommand: Option<Vec<String>> = "null",
-        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
-        ///
-        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
-        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
-        ///
-        /// Aliased as `"checkOnSave.targets"`.
-        checkOnSave_target | checkOnSave_targets: Option<CheckOnSaveTargets>           = "null",
+        /// Run the flycheck command for diagnostics on save.
+        checkOnSave | checkOnSave_enable: bool                         = "true",
 
         /// Toggles the additional completions that automatically add imports when completed.
         /// Note that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.
@@ -267,6 +210,64 @@ config_data! {
         files_excludeDirs: Vec<PathBuf> = "[]",
         /// Controls file watching implementation.
         files_watcher: FilesWatcherDef = "\"client\"",
+
+        /// Check all targets and tests (`--all-targets`).
+        flycheck_allTargets | checkOnSave_allTargets: bool                  = "true",
+        /// Cargo command to use for `cargo check`.
+        flycheck_command | checkOnSave_command: String                      = "\"check\"",
+        /// Extra arguments for `cargo check`.
+        flycheck_extraArgs | checkOnSave_extraArgs: Vec<String>             = "[]",
+        /// Extra environment variables that will be set when running `cargo check`.
+        /// Extends `#rust-analyzer.cargo.extraEnv#`.
+        flycheck_extraEnv | checkOnSave_extraEnv: FxHashMap<String, String> = "{}",
+        /// List of features to activate. Defaults to
+        /// `#rust-analyzer.cargo.features#`.
+        ///
+        /// Set to `"all"` to pass `--all-features` to Cargo.
+        flycheck_features | checkOnSave_features: Option<CargoFeaturesDef>  = "null",
+        /// Specifies the working directory for running checks.
+        /// - "workspace": run checks for workspaces in the corresponding workspaces' root directories.
+        // FIXME: Ideally we would support this in some way
+        ///   This falls back to "root" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.
+        /// - "root": run checks in the project's root directory.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        flycheck_invocationLocation | checkOnSave_invocationLocation: InvocationLocation = "\"workspace\"",
+        /// Specifies the invocation strategy to use when running the checkOnSave command.
+        /// If `per_workspace` is set, the command will be executed for each workspace.
+        /// If `once` is set, the command will be executed once.
+        /// This config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`
+        /// is set.
+        flycheck_invocationStrategy | checkOnSave_invocationStrategy: InvocationStrategy = "\"per_workspace\"",
+        /// Whether to pass `--no-default-features` to Cargo. Defaults to
+        /// `#rust-analyzer.cargo.noDefaultFeatures#`.
+        flycheck_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = "null",
+        /// Override the command rust-analyzer uses instead of `cargo check` for
+        /// diagnostics on save. The command is required to output json and
+        /// should therefore include `--message-format=json` or a similar option.
+        ///
+        /// If you're changing this because you're using some tool wrapping
+        /// Cargo, you might also want to change
+        /// `#rust-analyzer.cargo.buildScripts.overrideCommand#`.
+        ///
+        /// If there are multiple linked projects, this command is invoked for
+        /// each of them, with the working directory being the project root
+        /// (i.e., the folder containing the `Cargo.toml`).
+        ///
+        /// An example command would be:
+        ///
+        /// ```bash
+        /// cargo check --workspace --message-format=json --all-targets
+        /// ```
+        /// .
+        flycheck_overrideCommand | checkOnSave_overrideCommand: Option<Vec<String>>             = "null",
+        /// Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.
+        ///
+        /// Can be a single target, e.g. `"x86_64-unknown-linux-gnu"` or a list of targets, e.g.
+        /// `["aarch64-apple-darwin", "x86_64-apple-darwin"]`.
+        ///
+        /// Aliased as `"checkOnSave.targets"`.
+        flycheck_targets | checkOnSave_targets | checkOnSave_target: Option<CheckOnSaveTargets> = "null",
 
         /// Enables highlighting of related references while the cursor is on `break`, `loop`, `while`, or `for` keywords.
         highlightRelated_breakPoints_enable: bool = "true",
@@ -786,9 +787,9 @@ impl Config {
 
     fn validate(&self, error_sink: &mut Vec<(String, serde_json::Error)>) {
         use serde::de::Error;
-        if self.data.checkOnSave_command.is_empty() {
+        if self.data.flycheck_command.is_empty() {
             error_sink.push((
-                "/checkOnSave/command".to_string(),
+                "/flycheck/command".to_string(),
                 serde_json::Error::custom("expected a non-empty string"),
             ));
         }
@@ -1033,7 +1034,7 @@ impl Config {
 
     pub fn check_on_save_extra_env(&self) -> FxHashMap<String, String> {
         let mut extra_env = self.data.cargo_extraEnv.clone();
-        extra_env.extend(self.data.checkOnSave_extraEnv.clone());
+        extra_env.extend(self.data.flycheck_extraEnv.clone());
         extra_env
     }
 
@@ -1145,7 +1146,7 @@ impl Config {
     }
 
     pub fn flycheck(&self) -> FlycheckConfig {
-        match &self.data.checkOnSave_overrideCommand {
+        match &self.data.flycheck_overrideCommand {
             Some(args) if !args.is_empty() => {
                 let mut args = args.clone();
                 let command = args.remove(0);
@@ -1153,13 +1154,13 @@ impl Config {
                     command,
                     args,
                     extra_env: self.check_on_save_extra_env(),
-                    invocation_strategy: match self.data.checkOnSave_invocationStrategy {
+                    invocation_strategy: match self.data.flycheck_invocationStrategy {
                         InvocationStrategy::Once => flycheck::InvocationStrategy::Once,
                         InvocationStrategy::PerWorkspace => {
                             flycheck::InvocationStrategy::PerWorkspace
                         }
                     },
-                    invocation_location: match self.data.checkOnSave_invocationLocation {
+                    invocation_location: match self.data.flycheck_invocationLocation {
                         InvocationLocation::Root => {
                             flycheck::InvocationLocation::Root(self.root_path.clone())
                         }
@@ -1168,42 +1169,42 @@ impl Config {
                 }
             }
             Some(_) | None => FlycheckConfig::CargoCommand {
-                command: self.data.checkOnSave_command.clone(),
+                command: self.data.flycheck_command.clone(),
                 target_triples: self
                     .data
-                    .checkOnSave_target
+                    .flycheck_targets
                     .clone()
                     .and_then(|targets| match &targets.0[..] {
                         [] => None,
                         targets => Some(targets.into()),
                     })
                     .unwrap_or_else(|| self.data.cargo_target.clone().into_iter().collect()),
-                all_targets: self.data.checkOnSave_allTargets,
+                all_targets: self.data.flycheck_allTargets,
                 no_default_features: self
                     .data
-                    .checkOnSave_noDefaultFeatures
+                    .flycheck_noDefaultFeatures
                     .unwrap_or(self.data.cargo_noDefaultFeatures),
                 all_features: matches!(
-                    self.data.checkOnSave_features.as_ref().unwrap_or(&self.data.cargo_features),
+                    self.data.flycheck_features.as_ref().unwrap_or(&self.data.cargo_features),
                     CargoFeaturesDef::All
                 ),
                 features: match self
                     .data
-                    .checkOnSave_features
+                    .flycheck_features
                     .clone()
                     .unwrap_or_else(|| self.data.cargo_features.clone())
                 {
                     CargoFeaturesDef::All => vec![],
                     CargoFeaturesDef::Selected(it) => it,
                 },
-                extra_args: self.data.checkOnSave_extraArgs.clone(),
+                extra_args: self.data.flycheck_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
             },
         }
     }
 
     pub fn check_on_save(&self) -> bool {
-        self.data.checkOnSave_enable
+        self.data.checkOnSave
     }
 
     pub fn runnables(&self) -> RunnablesConfig {
@@ -1862,25 +1863,27 @@ fn get_field<T: DeserializeOwned>(
     alias: Option<&'static str>,
     default: &str,
 ) -> T {
-    let default = serde_json::from_str(default).unwrap();
     // XXX: check alias first, to work-around the VS Code where it pre-fills the
     // defaults instead of sending an empty object.
     alias
         .into_iter()
         .chain(iter::once(field))
-        .find_map(move |field| {
+        .filter_map(move |field| {
             let mut pointer = field.replace('_', "/");
             pointer.insert(0, '/');
-            json.pointer_mut(&pointer).and_then(|it| match serde_json::from_value(it.take()) {
-                Ok(it) => Some(it),
-                Err(e) => {
-                    tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
-                    error_sink.push((pointer, e));
-                    None
-                }
-            })
+            json.pointer_mut(&pointer)
+                .map(|it| serde_json::from_value(it.take()).map_err(|e| (e, pointer)))
         })
-        .unwrap_or(default)
+        .find(Result::is_ok)
+        .and_then(|res| match res {
+            Ok(it) => Some(it),
+            Err((e, pointer)) => {
+                tracing::warn!("Failed to deserialize config field at {}: {:?}", pointer, e);
+                error_sink.push((pointer, e));
+                None
+            }
+        })
+        .unwrap_or_else(|| serde_json::from_str(default).unwrap())
 }
 
 fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json::Value {
@@ -1963,15 +1966,6 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
         "Option<Vec<String>>" => set! {
             "type": ["null", "array"],
             "items": { "type": "string" },
-        },
-        "MergeBehaviorDef" => set! {
-            "type": "string",
-            "enum": ["none", "crate", "module"],
-            "enumDescriptions": [
-                "Do not merge imports at all.",
-                "Merge imports from the same crate into a single `use` statement.",
-                "Merge imports from the same module into a single `use` statement."
-            ],
         },
         "ExprFillDefaultDef" => set! {
             "type": "string",
