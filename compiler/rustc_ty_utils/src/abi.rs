@@ -108,21 +108,41 @@ fn fn_sig_for_fn_abi<'tcx>(
             // `Generator::resume(...) -> GeneratorState` function in case we
             // have an ordinary generator, or the `Future::poll(...) -> Poll`
             // function in case this is a special generator backing an async construct.
-            let ret_ty = if tcx.generator_is_async(did) {
-                let state_did = tcx.require_lang_item(LangItem::Poll, None);
-                let state_adt_ref = tcx.adt_def(state_did);
-                let state_substs = tcx.intern_substs(&[sig.return_ty.into()]);
-                tcx.mk_adt(state_adt_ref, state_substs)
+            let (resume_ty, ret_ty) = if tcx.generator_is_async(did) {
+                // The signature should be `Future::poll(_, &mut Context<'_>) -> Poll<Output>`
+                let poll_did = tcx.require_lang_item(LangItem::Poll, None);
+                let poll_adt_ref = tcx.adt_def(poll_did);
+                let poll_substs = tcx.intern_substs(&[sig.return_ty.into()]);
+                let ret_ty = tcx.mk_adt(poll_adt_ref, poll_substs);
+
+                // We have to replace the `ResumeTy` that is used for type and borrow checking
+                // with `&mut Context<'_>` which is used in codegen.
+                #[cfg(debug_assertions)]
+                {
+                    if let ty::Adt(resume_ty_adt, _) = sig.resume_ty.kind() {
+                        let expected_adt =
+                            tcx.adt_def(tcx.require_lang_item(LangItem::ResumeTy, None));
+                        assert_eq!(*resume_ty_adt, expected_adt);
+                    } else {
+                        panic!("expected `ResumeTy`, found `{:?}`", sig.resume_ty);
+                    };
+                }
+                let context_mut_ref = tcx.mk_task_context();
+
+                (context_mut_ref, ret_ty)
             } else {
+                // The signature should be `Generator::resume(_, Resume) -> GeneratorState<Yield, Return>`
                 let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
                 let state_adt_ref = tcx.adt_def(state_did);
                 let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-                tcx.mk_adt(state_adt_ref, state_substs)
+                let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+
+                (sig.resume_ty, ret_ty)
             };
 
             ty::Binder::bind_with_vars(
                 tcx.mk_fn_sig(
-                    [env_ty, sig.resume_ty].iter(),
+                    [env_ty, resume_ty].iter(),
                     &ret_ty,
                     false,
                     hir::Unsafety::Normal,
