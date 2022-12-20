@@ -215,18 +215,16 @@ fn satisfied_from_param_env<'tcx>(
         }
     }
 
-    if let Some(c) = single_match {
-        if let Ok(c) = c {
-            let is_ok = infcx
-                .commit_if_ok(|_| {
-                    let ocx = ObligationCtxt::new_in_snapshot(infcx);
-                    assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
-                    assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
-                    if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(()) }
-                })
-                .is_ok();
-            assert!(is_ok);
-        }
+    if let Some(Ok(c)) = single_match {
+        let is_ok = infcx
+            .commit_if_ok(|_| {
+                let ocx = ObligationCtxt::new_in_snapshot(infcx);
+                assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
+                assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
+                if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(()) }
+            })
+            .is_ok();
+        assert!(is_ok);
         return true;
     }
 
