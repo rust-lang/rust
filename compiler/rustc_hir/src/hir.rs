@@ -938,6 +938,7 @@ pub struct Crate<'hir> {
 pub struct Closure<'hir> {
     pub def_id: LocalDefId,
     pub binder: ClosureBinder,
+    pub constness: Constness,
     pub capture_clause: CaptureBy,
     pub bound_generic_params: &'hir [GenericParam<'hir>],
     pub fn_decl: &'hir FnDecl<'hir>,

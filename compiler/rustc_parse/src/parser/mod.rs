@@ -736,6 +736,16 @@ impl<'a> Parser<'a> {
         self.check_or_expected(self.token.can_begin_const_arg(), TokenType::Const)
     }
 
+    fn check_const_closure(&self) -> bool {
+        self.is_keyword_ahead(0, &[kw::Const])
+            && self.look_ahead(1, |t| match &t.kind {
+                token::Ident(kw::Move | kw::Static | kw::Async, _)
+                | token::OrOr
+                | token::BinOp(token::Or) => true,
+                _ => false,
+            })
+    }
+
     fn check_inline_const(&self, dist: usize) -> bool {
         self.is_keyword_ahead(dist, &[kw::Const])
             && self.look_ahead(dist + 1, |t| match &t.kind {
