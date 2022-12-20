@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 arrayvec = { version = "0.7", default-features = false }
 bitflags = "1.2.1"
-cfg-if = "0.1.2"
+cfg-if = "1.0"
 ena = "0.14"
 indexmap = { version = "1.9.1" }
 jobserver_crate = { version = "0.1.13", package = "jobserver" }
@@ -21,7 +21,11 @@ rustc-hash = "1.1.0"
 rustc_index = { path = "../rustc_index", package = "rustc_index" }
 rustc_macros = { path = "../rustc_macros" }
 rustc_serialize = { path = "../rustc_serialize" }
-smallvec = { version = "1.8.1", features = ["const_generics", "union", "may_dangle"] }
+smallvec = { version = "1.8.1", features = [
+    "const_generics",
+    "union",
+    "may_dangle",
+] }
 stable_deref_trait = "1.0.0"
 stacker = "0.1.15"
 tempfile = "3.2"
