@@ -205,6 +205,7 @@ pub(crate) fn format_expr(
         }
         ast::ExprKind::Closure(ref cl) => closures::rewrite_closure(
             &cl.binder,
+            cl.constness,
             cl.capture_clause,
             &cl.asyncness,
             cl.movability,
