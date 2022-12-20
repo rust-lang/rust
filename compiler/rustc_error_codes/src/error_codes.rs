@@ -249,6 +249,7 @@ E0464: include_str!("./error_codes/E0464.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0472: include_str!("./error_codes/E0472.md"),
 E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0482: include_str!("./error_codes/E0482.md"),
@@ -599,7 +600,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0467, // removed
 //  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
-    E0472, // llvm_asm! is unsupported on this target
 //  E0473, // dereference of reference outside its lifetime
 //  E0474, // captured variable `..` does not outlive the enclosing closure
 //  E0475, // index of slice outside its lifetime
