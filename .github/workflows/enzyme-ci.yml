@@ -77,7 +77,7 @@ jobs:
           brew update
           brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
           sudo python3 -m pip install --upgrade pip setuptools
-          sudo python3 -m pip install lit
+          sudo python3 -m pip install lit requests
     - uses: actions/checkout@v2
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
