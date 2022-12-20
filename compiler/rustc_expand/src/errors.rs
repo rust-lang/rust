@@ -213,6 +213,17 @@ pub(crate) struct RecursionLimitReached<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(expand_expansion_growth_limit_reached)]
+#[help]
+pub(crate) struct ExpansionGrowthLimitReached<'a> {
+    #[primary_span]
+    pub span: Span,
+    pub descr: String,
+    pub suggested_limit: Limit,
+    pub crate_name: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(expand_malformed_feature_attribute, code = "E0556")]
 pub(crate) struct MalformedFeatureAttribute {
     #[primary_span]

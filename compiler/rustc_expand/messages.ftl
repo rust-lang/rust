@@ -23,6 +23,10 @@ expand_duplicate_matcher_binding = duplicate matcher binding
     .label = duplicate binding
     .label2 = previous binding
 
+expand_expansion_growth_limit_reached =
+    expansion grow limit reached while expanding `{$descr}`
+    .help = consider increasing the expansion grow limit by adding a `#![expansion_growth_limit = "{$suggested_limit}"]` attribute to your crate (`{$crate_name}`)
+
 expand_expected_comma_in_list =
     expected token: `,`
 

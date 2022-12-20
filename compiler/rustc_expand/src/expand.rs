@@ -1,8 +1,8 @@
 use crate::base::*;
 use crate::config::StripUnconfigured;
 use crate::errors::{
-    IncompleteParse, RecursionLimitReached, RemoveExprNotSupported, RemoveNodeNotSupported,
-    UnsupportedKeyValue, WrongFragmentKind,
+    ExpansionGrowthLimitReached, IncompleteParse, RecursionLimitReached, RemoveExprNotSupported,
+    RemoveNodeNotSupported, UnsupportedKeyValue, WrongFragmentKind,
 };
 use crate::hygiene::SyntaxContext;
 use crate::mbe::diagnostics::annotate_err_with_kind;
@@ -628,20 +628,12 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
             limit => limit * 2,
         };
 
-        self.cx
-            .struct_span_err(
-                expn_data.call_site,
-                &format!(
-                    "expansion grow limit reached while expanding `{}`",
-                    expn_data.kind.descr()
-                ),
-            )
-            .help(&format!(
-                "consider increasing the expansion grow limit by adding a \
-                 `#![expansion_growth_limit = \"{}\"]` attribute to your crate (`{}`)",
-                suggested_limit, self.cx.ecfg.crate_name,
-            ))
-            .emit();
+        self.cx.emit_err(ExpansionGrowthLimitReached {
+            span: expn_data.call_site,
+            descr: expn_data.kind.descr(),
+            suggested_limit,
+            crate_name: &self.cx.ecfg.crate_name,
+        });
         self.cx.trace_macros_diag();
     }
 
@@ -663,7 +655,6 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
 
             // Reduce the recursion limit by half each time it triggers.
             self.cx.reduced_recursion_limit = Some(expansion_limit / 2);
-
             return Err(());
         }
         Ok(())
@@ -698,11 +689,9 @@ impl<'a, 'b> MacroExpander<'a, 'b> {
                     self.parse_ast_fragment(tok_result, fragment_kind, &mac.path, span)
                 }
                 SyntaxExtensionKind::LegacyBang(expander) => {
-                    if self.reduce_expansion_growth_limit(mac.args.inner_tokens().len()).is_err() {
+                    if self.reduce_expansion_growth_limit(mac.args.tokens.len()).is_err() {
                         return ExpandResult::Ready(fragment_kind.dummy(span));
                     }
-                    let prev = self.cx.current_expansion.prior_type_ascription;
-                    self.cx.current_expansion.prior_type_ascription = mac.prior_type_ascription;
                     let tok_result = expander.expand(self.cx, span, mac.args.tokens.clone());
                     let result = if let Some(result) = fragment_kind.make_from(tok_result) {
                         result
@@ -2040,7 +2029,7 @@ impl ExpansionConfig<'_> {
             crate_name,
             features,
             recursion_limit: Limit::new(1024),
-            expansion_growth_limit: Limit::new(6000),
+            expansion_growth_limit: Limit::new(1000000),
             trace_mac: false,
             should_test: false,
             span_debug: false,

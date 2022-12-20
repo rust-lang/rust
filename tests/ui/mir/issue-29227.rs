@@ -1,4 +1,3 @@
-#![expansion_growth_limit = "16000"]
 // run-pass
 // ignore-tidy-linelength
 

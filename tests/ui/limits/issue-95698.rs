@@ -1,6 +1,6 @@
 // check-fail
 
-/// issue #95698
+// issue #95698
 macro_rules! from_cow_impls {
     ($( $from: ty ),+ $(,)? ) => {
         // recursion call

@@ -12,7 +12,7 @@ LL | |     Vec<u8>, /*callback,*/
 LL | | );
    | |_- in this macro invocation
    |
-   = help: consider increasing the expansion grow limit by adding a `#![expansion_growth_limit = "12000"]` attribute to your crate (`issue_95698`)
+   = help: consider increasing the expansion grow limit by adding a `#![expansion_growth_limit = "2000000"]` attribute to your crate (`issue_95698`)
    = note: this error originates in the macro `from_cow_impls` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: aborting due to previous error
