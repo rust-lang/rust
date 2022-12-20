@@ -1,3 +1,4 @@
+//! Implementation of "closure return type" inlay hints.
 use hir::{HirDisplay, Semantics};
 use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 use syntax::ast::{self, AstNode};

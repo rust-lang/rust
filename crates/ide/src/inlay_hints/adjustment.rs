@@ -1,3 +1,8 @@
+//! Implementation of "adjustment" inlay hints:
+//! ```no_run
+//! let _: u32  = /* <never-to-any> */ loop {};
+//! let _: &u32 = /* &* */ &mut 0;
+//! ```
 use hir::{Adjust, AutoBorrow, Mutability, OverloadedDeref, PointerCast, Safety, Semantics};
 use ide_db::RootDatabase;
 

@@ -1,3 +1,8 @@
+//! Implementation of "closing brace" inlay hints:
+//! ```no_run
+//! fn g() {
+//! } /* fn g */
+//! ```
 use hir::{HirDisplay, Semantics};
 use ide_db::{base_db::FileRange, RootDatabase};
 use syntax::{

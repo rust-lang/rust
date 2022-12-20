@@ -1,3 +1,4 @@
+//! Implementation of "chaining" inlay hints.
 use hir::{HirDisplay, Semantics};
 use ide_db::{famous_defs::FamousDefs, RootDatabase};
 use syntax::{

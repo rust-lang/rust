@@ -1,3 +1,7 @@
+//! Implementation of "implicit static" inlay hints:
+//! ```no_run
+//! static S: &/* 'static */str = "";
+//! ```
 use either::Either;
 use syntax::{
     ast::{self, AstNode},

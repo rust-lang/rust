@@ -1,3 +1,8 @@
+//! Implementation of "type" inlay hints:
+//! ```no_run
+//! fn f(a: i32, b: i32) -> i32 { a + b }
+//! let _x /* i32 */= f(4, 4);
+//! ```
 use hir::{HirDisplay, Semantics, TypeInfo};
 use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 

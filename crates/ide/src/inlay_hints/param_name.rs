@@ -1,3 +1,8 @@
+//! Implementation of "param name" inlay hints:
+//! ```no_run
+//! fn max(x: i32, y: i32) -> i32 { x + y }
+//! _ = max(/*x*/4, /*y*/4);
+//! ```
 use either::Either;
 use hir::{Callable, Semantics};
 use ide_db::{base_db::FileRange, RootDatabase};

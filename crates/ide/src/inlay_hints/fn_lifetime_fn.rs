@@ -1,3 +1,7 @@
+//! Implementation of "lifetime elision" inlay hints:
+//! ```no_run
+//! fn example/* <'0> */(a: &/* '0 */()) {}
+//! ```
 use ide_db::{syntax_helpers::node_ext::walk_ty, FxHashMap};
 use itertools::Itertools;
 use syntax::SmolStr;

@@ -1,3 +1,7 @@
+//! Implementation of "binding mode" inlay hints:
+//! ```no_run
+//! let /* & */ (/* ref */ x,) = &(0,);
+//! ```
 use hir::{Mutability, Semantics};
 use ide_db::RootDatabase;
 
