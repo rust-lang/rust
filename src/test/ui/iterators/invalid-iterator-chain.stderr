@@ -52,14 +52,14 @@ LL |             .sum::<i32>(),
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:20:14
+  --> $DIR/invalid-iterator-chain.rs:25:14
    |
 LL |         vec![0, 1]
    |         ---------- this expression has type `Vec<{integer}>`
 LL |             .iter()
    |              ------ `Iterator::Item` is `&{integer}` here
 LL |             .map(|x| x * 2)
-   |              ^^^^^^^^^^^^^^ `Iterator::Item` changed to `{integer}` here
+   |              -------------- `Iterator::Item` changed to `{integer}` here
 LL |             .map(|x| x as f64)
    |              ----------------- `Iterator::Item` changed to `f64` here
 LL |             .map(|x| x as i64)
@@ -84,14 +84,14 @@ LL |             .sum::<i32>(),
              <i32 as Sum<&'a i32>>
              <i32 as Sum>
 note: the method call chain might not have had the expected associated types
-  --> $DIR/invalid-iterator-chain.rs:32:14
+  --> $DIR/invalid-iterator-chain.rs:33:14
    |
 LL |         vec![0, 1]
    |         ---------- this expression has type `Vec<{integer}>`
 LL |             .iter()
    |              ------ `Iterator::Item` is `&{integer}` here
 LL |             .map(|x| x * 2)
-   |              ^^^^^^^^^^^^^^ `Iterator::Item` changed to `{integer}` here
+   |              -------------- `Iterator::Item` changed to `{integer}` here
 LL |             .map(|x| x as f64)
    |              ^^^^^^^^^^^^^^^^^ `Iterator::Item` changed to `f64` here
 LL |             .filter(|x| *x > 0.0)
