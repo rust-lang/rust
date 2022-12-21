@@ -1,5 +1,7 @@
 // incremental
 // edition:2021
+// revisions: drop_tracking stock
+//[drop_tracking] compile-flags: -Zdrop-tracking
 
 fn main() {
     let _ = async {
