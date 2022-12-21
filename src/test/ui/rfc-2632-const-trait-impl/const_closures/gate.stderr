@@ -1,5 +1,5 @@
 error[E0658]: const closures are experimental
-  --> $DIR/gate.rs:2:6
+  --> $DIR/gate.rs:3:6
    |
 LL |     (const || {})();
    |      ^^^^^^^^^^^

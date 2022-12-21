@@ -84,7 +84,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Object(data)
             }
 
-            ClosureCandidate => {
+            ClosureCandidate { .. } => {
                 let vtable_closure = self.confirm_closure_candidate(obligation)?;
                 ImplSource::Closure(vtable_closure)
             }

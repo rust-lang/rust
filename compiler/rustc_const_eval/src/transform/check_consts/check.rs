@@ -783,6 +783,20 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             );
                             return;
                         }
+                        Ok(Some(ImplSource::Closure(data))) => {
+                            if !tcx.is_const_fn_raw(data.closure_def_id) {
+                                self.check_op(ops::FnCallNonConst {
+                                    caller,
+                                    callee,
+                                    substs,
+                                    span: *fn_span,
+                                    from_hir_call: *from_hir_call,
+                                    feature: None,
+                                });
+
+                                return;
+                            }
+                        }
                         Ok(Some(ImplSource::UserDefined(data))) => {
                             let callee_name = tcx.item_name(callee);
                             if let Some(&did) = tcx
