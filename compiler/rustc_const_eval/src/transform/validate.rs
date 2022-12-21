@@ -9,8 +9,8 @@ use rustc_middle::mir::visit::{PlaceContext, Visitor};
 use rustc_middle::mir::{
     traversal, AggregateKind, BasicBlock, BinOp, Body, BorrowKind, CastKind, CopyNonOverlapping,
     Local, Location, MirPass, MirPhase, NonDivergingIntrinsic, Operand, Place, PlaceElem, PlaceRef,
-    ProjectionElem, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind, Terminator,
-    TerminatorKind, UnOp, START_BLOCK,
+    ProjectionElem, RetagKind, RuntimePhase, Rvalue, SourceScope, Statement, StatementKind,
+    Terminator, TerminatorKind, UnOp, START_BLOCK,
 };
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
@@ -667,10 +667,13 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
                     self.fail(location, "`Deinit`is not allowed until deaggregation");
                 }
             }
-            StatementKind::Retag(_, _) => {
+            StatementKind::Retag(kind, _) => {
                 // FIXME(JakobDegen) The validator should check that `self.mir_phase <
                 // DropsLowered`. However, this causes ICEs with generation of drop shims, which
                 // seem to fail to set their `MirPhase` correctly.
+                if *kind == RetagKind::Raw {
+                    self.fail(location, "explicit `RetagKind::Raw` is forbidden");
+                }
             }
             StatementKind::StorageLive(..)
             | StatementKind::StorageDead(..)

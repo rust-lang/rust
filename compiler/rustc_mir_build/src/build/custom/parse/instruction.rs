@@ -15,9 +15,6 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
             @call("mir_retag", args) => {
                 Ok(StatementKind::Retag(RetagKind::Default, Box::new(self.parse_place(args[0])?)))
             },
-            @call("mir_retag_raw", args) => {
-                Ok(StatementKind::Retag(RetagKind::Raw, Box::new(self.parse_place(args[0])?)))
-            },
             @call("mir_set_discriminant", args) => {
                 let place = self.parse_place(args[0])?;
                 let var = self.parse_integer_literal(args[1])? as u32;

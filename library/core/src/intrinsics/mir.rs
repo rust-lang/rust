@@ -259,7 +259,6 @@ define!("mir_drop", fn Drop<T>(place: T, goto: BasicBlock));
 define!("mir_drop_and_replace", fn DropAndReplace<T>(place: T, value: T, goto: BasicBlock));
 define!("mir_call", fn Call<T>(place: T, goto: BasicBlock, call: T));
 define!("mir_retag", fn Retag<T>(place: T));
-define!("mir_retag_raw", fn RetagRaw<T>(place: T));
 define!("mir_move", fn Move<T>(place: T) -> T);
 define!("mir_static", fn Static<T>(s: T) -> &'static T);
 define!("mir_static_mut", fn StaticMut<T>(s: T) -> *mut T);
