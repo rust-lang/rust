@@ -73,9 +73,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "HeapAlloc" => {
                 let [handle, flags, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(handle)?.to_machine_isize(this)?;
+                this.read_machine_isize(handle)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
-                let size = this.read_scalar(size)?.to_machine_usize(this)?;
+                let size = this.read_machine_usize(size)?;
                 let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
                 let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
                 this.write_pointer(res, dest)?;
@@ -83,7 +83,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "HeapFree" => {
                 let [handle, flags, ptr] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(handle)?.to_machine_isize(this)?;
+                this.read_machine_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_pointer(ptr)?;
                 this.free(ptr, MiriMemoryKind::WinHeap)?;
@@ -92,10 +92,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "HeapReAlloc" => {
                 let [handle, flags, ptr, size] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(handle)?.to_machine_isize(this)?;
+                this.read_machine_isize(handle)?;
                 this.read_scalar(flags)?.to_u32()?;
                 let ptr = this.read_pointer(ptr)?;
-                let size = this.read_scalar(size)?.to_machine_usize(this)?;
+                let size = this.read_machine_usize(size)?;
                 let res = this.realloc(ptr, size, MiriMemoryKind::WinHeap)?;
                 this.write_pointer(res, dest)?;
             }
@@ -298,7 +298,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 #[allow(non_snake_case)]
                 let [hModule, lpProcName] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(hModule)?.to_machine_isize(this)?;
+                this.read_machine_isize(hModule)?;
                 let name = this.read_c_str(this.read_pointer(lpProcName)?)?;
                 if let Some(dlsym) = Dlsym::from_str(name, &this.tcx.sess.target.os)? {
                     let ptr = this.create_fn_alloc_ptr(FnVal::Other(dlsym));
@@ -356,7 +356,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // `term` needs this, so we fake it.
                 let [console, buffer_info] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(console)?.to_machine_isize(this)?;
+                this.read_machine_isize(console)?;
                 this.deref_operand(buffer_info)?;
                 // Indicate an error.
                 // FIXME: we should set last_error, but to what?
@@ -432,7 +432,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             "GetConsoleMode" if this.frame_in_std() => {
                 let [console, mode] =
                     this.check_shim(abi, Abi::System { unwind: false }, link_name, args)?;
-                this.read_scalar(console)?.to_machine_isize(this)?;
+                this.read_machine_isize(console)?;
                 this.deref_operand(mode)?;
                 // Indicate an error.
                 this.write_null(dest)?;
