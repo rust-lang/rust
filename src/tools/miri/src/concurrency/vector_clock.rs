@@ -45,8 +45,9 @@ impl From<u32> for VectorIdx {
 /// clock vectors larger than this will be stored on the heap
 const SMALL_VECTOR: usize = 4;
 
-/// The type of the time-stamps recorded in the data-race detector
-/// set to a type of unsigned integer
+/// The time-stamps recorded in the data-race detector consist of both
+/// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
+/// so that diagnostics can report what code was responsible for an operation.
 #[derive(Clone, Copy, Debug, Eq)]
 pub struct VTimestamp {
     time: u32,
@@ -128,7 +129,7 @@ impl VClock {
         let mut_slice = self.get_mut_with_min_len(idx + 1);
         let idx_ref = &mut mut_slice[idx];
         idx_ref.time = idx_ref.time.checked_add(1).expect("Vector clock overflow");
-        if current_span != DUMMY_SP {
+        if !current_span.is_dummy() {
             idx_ref.span = current_span;
         }
     }
@@ -143,14 +144,7 @@ impl VClock {
             let l_span = l.span;
             let r_span = r.span;
             *l = r.max(*l);
-            if l.span == DUMMY_SP {
-                if r_span != DUMMY_SP {
-                    l.span = r_span;
-                }
-                if l_span != DUMMY_SP {
-                    l.span = l_span;
-                }
-            }
+            l.span = l.span.substitute_dummy(r_span).substitute_dummy(l_span);
         }
     }
 
@@ -162,9 +156,8 @@ impl VClock {
 
         mut_slice[idx.index()] = other[idx];
 
-        if other[idx].span == DUMMY_SP {
-            mut_slice[idx.index()].span = prev_span;
-        }
+        let span = &mut mut_slice[idx.index()].span;
+        *span = span.substitute_dummy(prev_span);
     }
 
     /// Set the vector to the all-zero vector

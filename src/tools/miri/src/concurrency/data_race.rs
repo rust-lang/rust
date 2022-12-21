@@ -51,7 +51,6 @@ use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir;
 use rustc_span::Span;
-use rustc_span::DUMMY_SP;
 use rustc_target::abi::{Align, Size};
 
 use crate::diagnostics::RacingOp;
@@ -398,7 +397,10 @@ impl MemoryCellClocks {
         current_span: Span,
     ) -> Result<(), DataRace> {
         log::trace!("Unsynchronized read with vectors: {:#?} :: {:#?}", self, clocks);
-        let res = if self.write <= clocks.clock[self.write_index] {
+        if !current_span.is_dummy() {
+            clocks.clock[index].span = current_span;
+        }
+        if self.write <= clocks.clock[self.write_index] {
             let race_free = if let Some(atomic) = self.atomic() {
                 atomic.write_vector <= clocks.clock
             } else {
@@ -408,11 +410,7 @@ impl MemoryCellClocks {
             if race_free { Ok(()) } else { Err(DataRace) }
         } else {
             Err(DataRace)
-        };
-        if res.is_ok() && current_span != DUMMY_SP {
-            clocks.clock[index].span = current_span;
         }
-        res
     }
 
     /// Detect races for non-atomic write operations at the current memory cell
@@ -425,7 +423,7 @@ impl MemoryCellClocks {
         current_span: Span,
     ) -> Result<(), DataRace> {
         log::trace!("Unsynchronized write with vectors: {:#?} :: {:#?}", self, clocks);
-        if current_span != DUMMY_SP {
+        if !current_span.is_dummy() {
             clocks.clock[index].span = current_span;
         }
         if self.write <= clocks.clock[self.write_index] && self.read <= clocks.clock {
@@ -712,9 +710,7 @@ impl VClockAlloc {
             | MemoryKind::Stack => {
                 let (alloc_index, clocks) = global.current_thread_state(thread_mgr);
                 let mut alloc_timestamp = clocks.clock[alloc_index];
-                if current_span != DUMMY_SP {
-                    alloc_timestamp.span = current_span;
-                }
+                alloc_timestamp.span = current_span;
                 (alloc_timestamp, alloc_index)
             }
             // Other global memory should trace races but be allocated at the 0 timestamp.

@@ -20,10 +20,10 @@ LL | |                 std::mem::align_of::<usize>(),
 LL | |             );
    | |_____________^
 help: The Read on thread `<unnamed>` is here
-  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+  --> $DIR/dealloc_read_race1.rs:LL:CC
    |
-LL | }
-   | ^
+LL |             let _val = *ptr.0;
+   |                        ^^^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:

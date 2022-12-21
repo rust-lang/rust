@@ -12,8 +12,8 @@ LL |         *p = 5;
 help: The Read on thread `<unnamed>` is here
   --> $DIR/retag_data_race_read.rs:LL:CC
    |
-LL |     let t1 = std::thread::spawn(move || thread_1(p));
-   |                                                  ^
+LL |         let _r = &*p;
+   |                  ^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:

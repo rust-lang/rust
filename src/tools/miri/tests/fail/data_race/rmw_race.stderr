@@ -7,8 +7,8 @@ LL |                 *c.0
 help: The Read on thread `<unnamed>` is here
   --> $DIR/rmw_race.rs:LL:CC
    |
-LL |             if SYNC.load(Ordering::Acquire) == 3 {
-   |                                           ^
+LL |                 *c.0
+   |                 ^^^^
 help: The Write on thread `<unnamed>` is here
   --> $DIR/rmw_race.rs:LL:CC
    |

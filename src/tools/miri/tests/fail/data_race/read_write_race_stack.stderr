@@ -7,8 +7,8 @@ LL |             stack_var
 help: The Read on thread `<unnamed>` is here
   --> $DIR/read_write_race_stack.rs:LL:CC
    |
-LL |             sleep(Duration::from_millis(200));
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |             stack_var
+   |             ^^^^^^^^^
 help: The Write on thread `<unnamed>` is here
   --> $DIR/read_write_race_stack.rs:LL:CC
    |

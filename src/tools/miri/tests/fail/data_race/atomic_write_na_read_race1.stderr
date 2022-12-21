@@ -5,10 +5,10 @@ LL |             *atomic_ref.get_mut()
    |             ^^^^^^^^^^^^^^^^^^^^^ Data race detected between Read on thread `<unnamed>` and Atomic Store on thread `<unnamed>` at ALLOC
    |
 help: The Read on thread `<unnamed>` is here
-  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+  --> $DIR/atomic_write_na_read_race1.rs:LL:CC
    |
-LL | }
-   | ^
+LL |             *atomic_ref.get_mut()
+   |             ^^^^^^^^^^^^^^^^^^^^^
 help: The Atomic Store on thread `<unnamed>` is here
   --> $DIR/atomic_write_na_read_race1.rs:LL:CC
    |

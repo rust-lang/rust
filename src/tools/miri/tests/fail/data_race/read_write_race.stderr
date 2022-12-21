@@ -10,10 +10,10 @@ help: The Write on thread `<unnamed>` is here
 LL |             *c.0 = 64;
    |             ^^^^^^^^^
 help: The Read on thread `<unnamed>` is here
-  --> RUSTLIB/core/src/ptr/mod.rs:LL:CC
+  --> $DIR/read_write_race.rs:LL:CC
    |
-LL | }
-   | ^
+LL |             let _val = *c.0;
+   |                        ^^^^
    = help: this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
