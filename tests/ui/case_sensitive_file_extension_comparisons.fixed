@@ -11,24 +11,38 @@ impl TestStruct {
 
 #[allow(dead_code)]
 fn is_rust_file(filename: &str) -> bool {
-    filename.ends_with(".rs")
+    std::path::Path::new(filename)
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("rs"))
 }
 
 fn main() {
     // std::string::String and &str should trigger the lint failure with .ext12
-    let _ = String::new().ends_with(".ext12");
-    let _ = "str".ends_with(".ext12");
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+    let _ = std::path::Path::new("str")
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
 
     // The test struct should not trigger the lint failure with .ext12
     TestStruct {}.ends_with(".ext12");
 
     // std::string::String and &str should trigger the lint failure with .EXT12
-    let _ = String::new().ends_with(".EXT12");
-    let _ = "str".ends_with(".EXT12");
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    let _ = std::path::Path::new("str")
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
 
     // This should print a note about how to_lowercase and to_uppercase allocates
-    let _ = String::new().to_lowercase().ends_with(".EXT12");
-    let _ = String::new().to_uppercase().ends_with(".EXT12");
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    let _ = std::path::Path::new(&String::new())
+        .extension()
+        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
 
     // The test struct should not trigger the lint failure with .EXT12
     TestStruct {}.ends_with(".EXT12");
