@@ -1416,33 +1416,27 @@ impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
         span: Span,
         hir_id: HirId,
     ) {
-        if fn_kind.asyncness() == IsAsync::Async && !cx.tcx.features().closure_track_caller {
+        if fn_kind.asyncness() == IsAsync::Async
+            && !cx.tcx.features().closure_track_caller
+            && let attrs = cx.tcx.hir().attrs(hir_id)
             // Now, check if the function has the `#[track_caller]` attribute
-            let attrs = cx.tcx.hir().attrs(hir_id);
-            let maybe_track_caller = attrs.iter().find(|attr| attr.has_name(sym::track_caller));
-            if let Some(attr) = maybe_track_caller {
+            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
+            {
                 cx.struct_span_lint(
                     UNGATED_ASYNC_FN_TRACK_CALLER,
                     attr.span,
                     fluent::lint_ungated_async_fn_track_caller,
                     |lint| {
-                        lint.span_label(
-                            span,
-                            "this function will not propagate the caller location",
+                        lint.span_label(span, fluent::label);
+                        rustc_session::parse::add_feature_diagnostics(
+                            lint,
+                            &cx.tcx.sess.parse_sess,
+                            sym::closure_track_caller,
                         );
-                        if cx.tcx.sess.is_nightly_build() {
-                            lint.span_suggestion(
-                                attr.span,
-                                fluent::suggestion,
-                                "closure_track_caller",
-                                Applicability::MachineApplicable,
-                            );
-                        }
                         lint
                     },
                 );
             }
-        }
     }
 }
 
