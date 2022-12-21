@@ -995,6 +995,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.locationLinks": {
+                    "markdownDescription": "Whether to use location links for parts of type mentioned in inlay hints.",
+                    "default": true,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.maxLength": {
                     "markdownDescription": "Maximum length for inlay hints. Set to null to have an unlimited length.",
                     "default": 25,

@@ -106,6 +106,7 @@ impl StaticIndex<'_> {
             .analysis
             .inlay_hints(
                 &InlayHintsConfig {
+                    location_links: true,
                     render_colons: true,
                     type_hints: true,
                     parameter_hints: true,

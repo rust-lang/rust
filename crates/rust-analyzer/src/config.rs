@@ -20,7 +20,7 @@ use ide_db::{
     SnippetCap,
 };
 use itertools::Itertools;
-use lsp_types::{ClientCapabilities, MarkupKind};
+use lsp_types::{ClientCapabilities, ClientInfo, MarkupKind};
 use project_model::{
     CargoConfig, CargoFeatures, ProjectJson, ProjectJsonData, ProjectManifest, RustcSource,
     UnsetTestCrates,
@@ -333,6 +333,8 @@ config_data! {
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
         inlayHints_lifetimeElisionHints_useParameterNames: bool    = "false",
+        /// Whether to use location links for parts of type mentioned in inlay hints.
+        inlayHints_locationLinks: bool                             = "true",
         /// Maximum length for inlay hints. Set to null to have an unlimited length.
         inlayHints_maxLength: Option<usize>                        = "25",
         /// Whether to show function parameter name inlay hints at the call
@@ -711,6 +713,19 @@ impl Config {
             discovered_projects: None,
             root_path,
             snippets: Default::default(),
+        }
+    }
+
+    pub fn client_specific_adjustments(&mut self, client_info: &Option<ClientInfo>) {
+        // FIXME: remove this when we drop support for vscode 1.65 and below
+        if let Some(client) = client_info {
+            if client.name.contains("Code") || client.name.contains("Codium") {
+                if let Some(version) = &client.version {
+                    if version.as_str() < "1.76" {
+                        self.data.inlayHints_locationLinks = false;
+                    }
+                }
+            }
         }
     }
 
@@ -1196,6 +1211,7 @@ impl Config {
 
     pub fn inlay_hints(&self) -> InlayHintsConfig {
         InlayHintsConfig {
+            location_links: self.data.inlayHints_locationLinks,
             render_colons: self.data.inlayHints_renderColons,
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,

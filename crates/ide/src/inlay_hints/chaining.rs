@@ -74,7 +74,10 @@ mod tests {
     use expect_test::expect;
 
     use crate::{
-        inlay_hints::tests::{check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG},
+        inlay_hints::tests::{
+            check_expect, check_with_config, DISABLED_CONFIG, DISABLED_CONFIG_WITH_LINKS,
+            TEST_CONFIG,
+        },
         InlayHintsConfig,
     };
 
@@ -86,7 +89,11 @@ mod tests {
     #[test]
     fn chaining_hints_ignore_comments() {
         check_expect(
-            InlayHintsConfig { type_hints: false, chaining_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig {
+                type_hints: false,
+                chaining_hints: true,
+                ..DISABLED_CONFIG_WITH_LINKS
+            },
             r#"
 struct A(B);
 impl A { fn into_b(self) -> B { self.0 } }
@@ -179,9 +186,68 @@ fn main() {
     }
 
     #[test]
-    fn struct_access_chaining_hints() {
+    fn disabled_location_links() {
         check_expect(
             InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            r#"
+    struct A { pub b: B }
+    struct B { pub c: C }
+    struct C(pub bool);
+    struct D;
+
+    impl D {
+        fn foo(&self) -> i32 { 42 }
+    }
+
+    fn main() {
+        let x = A { b: B { c: C(true) } }
+            .b
+            .c
+            .0;
+        let x = D
+            .foo();
+    }"#,
+            expect![[r#"
+                [
+                    InlayHint {
+                        range: 143..190,
+                        kind: ChainingHint,
+                        label: [
+                            "C",
+                        ],
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
+                                143..190,
+                            ),
+                        ),
+                    },
+                    InlayHint {
+                        range: 143..179,
+                        kind: ChainingHint,
+                        label: [
+                            "B",
+                        ],
+                        tooltip: Some(
+                            HoverRanged(
+                                FileId(
+                                    0,
+                                ),
+                                143..179,
+                            ),
+                        ),
+                    },
+                ]
+            "#]],
+        );
+    }
+
+    #[test]
+    fn struct_access_chaining_hints() {
+        check_expect(
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
             r#"
 struct A { pub b: B }
 struct B { pub c: C }
@@ -264,7 +330,7 @@ fn main() {
     #[test]
     fn generic_chaining_hints() {
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
             r#"
 struct A<T>(T);
 struct B<T>(T);
@@ -372,7 +438,7 @@ fn main() {
     #[test]
     fn shorten_iterator_chaining_hints() {
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
             r#"
 //- minicore: iterators
 use core::iter;

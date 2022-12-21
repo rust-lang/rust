@@ -27,6 +27,7 @@ mod bind_pat;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
+    pub location_links: bool,
     pub render_colons: bool,
     pub type_hints: bool,
     pub parameter_hints: bool,
@@ -182,6 +183,7 @@ struct InlayHintLabelBuilder<'a> {
     db: &'a RootDatabase,
     result: InlayHintLabel,
     last_part: String,
+    location_link_enabled: bool,
     location: Option<FileRange>,
 }
 
@@ -193,6 +195,9 @@ impl fmt::Write for InlayHintLabelBuilder<'_> {
 
 impl HirWrite for InlayHintLabelBuilder<'_> {
     fn start_location_link(&mut self, def: ModuleDefId) {
+        if !self.location_link_enabled {
+            return;
+        }
         if self.location.is_some() {
             never!("location link is already started");
         }
@@ -204,6 +209,9 @@ impl HirWrite for InlayHintLabelBuilder<'_> {
     }
 
     fn end_location_link(&mut self) {
+        if !self.location_link_enabled {
+            return;
+        }
         self.make_new_part();
     }
 }
@@ -260,6 +268,7 @@ fn label_of_ty(
         db: sema.db,
         last_part: String::new(),
         location: None,
+        location_link_enabled: config.location_links,
         result: InlayHintLabel::default(),
     };
     rec(sema, &famous_defs, config.max_length, ty, &mut label_builder);
@@ -416,6 +425,7 @@ mod tests {
     use super::ClosureReturnTypeHints;
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
+        location_links: false,
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
@@ -430,6 +440,8 @@ mod tests {
         max_length: None,
         closing_brace_hints_min_lines: None,
     };
+    pub(super) const DISABLED_CONFIG_WITH_LINKS: InlayHintsConfig =
+        InlayHintsConfig { location_links: true, ..DISABLED_CONFIG };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
         parameter_hints: true,
@@ -437,7 +449,7 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
-        ..DISABLED_CONFIG
+        ..DISABLED_CONFIG_WITH_LINKS
     };
 
     #[track_caller]
