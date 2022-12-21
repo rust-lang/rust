@@ -485,8 +485,8 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     /// Returns `true` if the `node` is inside an `unsafe` context.
-    pub fn is_inside_unsafe(&self, node: &SyntaxNode) -> bool {
-        self.imp.is_inside_unsafe(node)
+    pub fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
+        self.imp.is_inside_unsafe(expr)
     }
 }
 
@@ -1471,7 +1471,7 @@ impl<'db> SemanticsImpl<'db> {
             .unwrap_or(false)
     }
 
-    fn is_inside_unsafe(&self, node: &SyntaxNode) -> bool {
+    fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
         let item_or_variant = |ancestor: SyntaxNode| {
             if ast::Item::can_cast(ancestor.kind()) {
                 ast::Item::cast(ancestor).map(Either::Left)
@@ -1479,9 +1479,10 @@ impl<'db> SemanticsImpl<'db> {
                 ast::Variant::cast(ancestor).map(Either::Right)
             }
         };
-        let Some(enclosing_item) = node.ancestors().find_map(item_or_variant) else { return false };
+        let Some(enclosing_item) = expr.syntax().ancestors().find_map(item_or_variant) else { return false };
 
         let def = match &enclosing_item {
+            Either::Left(ast::Item::Fn(it)) if it.unsafe_token().is_some() => return true,
             Either::Left(ast::Item::Fn(it)) => {
                 self.to_def(it).map(<_>::into).map(DefWithBodyId::FunctionId)
             }
@@ -1497,15 +1498,11 @@ impl<'db> SemanticsImpl<'db> {
         let Some(def) = def else { return false };
         let enclosing_node = enclosing_item.as_ref().either(|i| i.syntax(), |v| v.syntax());
 
-        if ast::Fn::cast(enclosing_node.clone()).and_then(|f| f.unsafe_token()).is_some() {
-            return true;
-        }
-
         let (body, source_map) = self.db.body_with_source_map(def);
 
-        let file_id = self.find_file(node).file_id;
+        let file_id = self.find_file(expr.syntax()).file_id;
 
-        let Some(mut parent) = node.parent() else { return false };
+        let Some(mut parent) = expr.syntax().parent() else { return false };
         loop {
             if &parent == enclosing_node {
                 break false;

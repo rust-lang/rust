@@ -15,7 +15,7 @@ pub(super) fn hints(
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
-    if config.adjustment_hints_hide_outside_unsafe && !sema.is_inside_unsafe(expr.syntax()) {
+    if config.adjustment_hints_hide_outside_unsafe && !sema.is_inside_unsafe(expr) {
         return None;
     }
 
