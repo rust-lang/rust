@@ -1971,43 +1971,50 @@ impl<'a> Resolver<'a> {
     /// `#[rustc_legacy_const_generics]` and returns the argument index list
     /// from the attribute.
     pub fn legacy_const_generic_args(&mut self, expr: &Expr) -> Option<Vec<usize>> {
-        if let ExprKind::Path(None, path) = &expr.kind {
-            // Don't perform legacy const generics rewriting if the path already
-            // has generic arguments.
-            if path.segments.last().unwrap().args.is_some() {
-                return None;
-            }
+        let ExprKind::Path(None, path) = &expr.kind else {
+            return None
+        };
 
-            let res = self.partial_res_map.get(&expr.id)?.full_res()?;
-            if let Res::Def(def::DefKind::Fn, def_id) = res {
-                // We only support cross-crate argument rewriting. Uses
-                // within the same crate should be updated to use the new
-                // const generics style.
-                if def_id.is_local() {
-                    return None;
-                }
+        // Don't perform legacy const generics rewriting if the path already
+        // has generic arguments.
+        if path.segments.last().unwrap().args.is_some() {
+            return None;
+        }
 
-                if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
-                    return v.clone();
-                }
+        let res = self.partial_res_map.get(&expr.id)?.full_res()?;
 
-                let attr = self
-                    .cstore()
-                    .item_attrs_untracked(def_id, self.session)
-                    .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
-                let mut ret = Vec::new();
-                for meta in attr.meta_item_list()? {
-                    match meta.lit()?.kind {
-                        LitKind::Int(a, _) => ret.push(a as usize),
-                        _ => panic!("invalid arg index"),
-                    }
-                }
-                // Cache the lookup to avoid parsing attributes for an item multiple times.
-                self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
-                return Some(ret);
+        let Res::Def(def::DefKind::Fn, def_id) = res else {
+            return None;
+        };
+
+        // We only support cross-crate argument rewriting. Uses
+        // within the same crate should be updated to use the new
+        // const generics style.
+        if def_id.is_local() {
+            return None;
+        }
+
+        if let Some(v) = self.legacy_const_generic_args.get(&def_id) {
+            return v.clone();
+        }
+
+        let attr = self
+            .cstore()
+            .item_attrs_untracked(def_id, self.session)
+            .find(|a| a.has_name(sym::rustc_legacy_const_generics))?;
+
+        let mut ret = Vec::new();
+        for meta in attr.meta_item_list()? {
+            match meta.lit()?.kind {
+                LitKind::Int(a, _) => ret.push(a as usize),
+                _ => panic!("invalid arg index"),
             }
         }
-        None
+
+        // Cache the lookup to avoid parsing attributes for an item multiple times.
+        self.legacy_const_generic_args.insert(def_id, Some(ret.clone()));
+
+        Some(ret)
     }
 
     fn resolve_main(&mut self) {
