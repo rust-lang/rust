@@ -657,11 +657,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         };
 
         let hir_id = self.lower_node_id(closure_node_id);
-        let unstable_span = self.mark_span_with_reason(
-            DesugaringKind::Async,
-            span,
-            self.allow_gen_future.clone(),
-        );
+        let unstable_span =
+            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
 
         if self.tcx.features().closure_track_caller
             && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)

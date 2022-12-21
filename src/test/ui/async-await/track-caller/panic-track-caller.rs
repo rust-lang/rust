@@ -69,6 +69,9 @@ async fn foo_assoc() {
     Foo::bar_assoc().await
 }
 
+// Since compilation is expected to fail for this fn when using
+// `nofeat`, we test that separately in `async-closure-gate.rs`
+#[cfg(feat)]
 async fn foo_closure() {
     let c = #[track_caller] async || {
         panic!();
@@ -104,4 +107,7 @@ fn main() {
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 69);
     #[cfg(nofeat)]
     assert_eq!(panicked_at(|| block_on(foo_assoc())), 64);
+
+    #[cfg(feat)]
+    assert_eq!(panicked_at(|| block_on(foo_closure())), 79);
 }
