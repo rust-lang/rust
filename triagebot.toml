@@ -342,6 +342,10 @@ cc = ["@BoxyUwU"]
 message = "Some changes occured in `rustc_ty_utils::consts.rs`"
 cc = ["@BoxyUwU"]
 
+[mentions."compiler/rustc_trait_selection/src/solve]
+message = "Some changes occurred to the core trait solver"
+cc = ["@lcnr"]
+
 [mentions."compiler/rustc_trait_selection/src/traits/engine.rs"]
 message = """
 Some changes occurred in engine.rs, potentially modifying the public API \

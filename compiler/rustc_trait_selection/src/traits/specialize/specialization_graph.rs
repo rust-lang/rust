@@ -1,6 +1,7 @@
 use super::OverlapError;
 
 use crate::traits;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::fast_reject::{self, SimplifiedType, TreatParams};
 use rustc_middle::ty::{self, TyCtxt, TypeVisitable};
@@ -377,5 +378,53 @@ impl<'tcx> GraphExt<'tcx> for Graph {
         }
 
         self.children.entry(parent).or_default().insert_blindly(tcx, child);
+    }
+}
+
+/// Locate the definition of an associated type in the specialization hierarchy,
+/// starting from the given impl.
+pub(crate) fn assoc_def(
+    tcx: TyCtxt<'_>,
+    impl_def_id: DefId,
+    assoc_def_id: DefId,
+) -> Result<LeafDef, ErrorGuaranteed> {
+    let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
+    let trait_def = tcx.trait_def(trait_def_id);
+
+    // This function may be called while we are still building the
+    // specialization graph that is queried below (via TraitDef::ancestors()),
+    // so, in order to avoid unnecessary infinite recursion, we manually look
+    // for the associated item at the given impl.
+    // If there is no such item in that impl, this function will fail with a
+    // cycle error if the specialization graph is currently being built.
+    if let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&assoc_def_id) {
+        let &item = tcx.associated_item(impl_item_id);
+        let impl_node = Node::Impl(impl_def_id);
+        return Ok(LeafDef {
+            item,
+            defining_node: impl_node,
+            finalizing_node: if item.defaultness(tcx).is_default() {
+                None
+            } else {
+                Some(impl_node)
+            },
+        });
+    }
+
+    let ancestors = trait_def.ancestors(tcx, impl_def_id)?;
+    if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
+        Ok(assoc_item)
+    } else {
+        // This is saying that neither the trait nor
+        // the impl contain a definition for this
+        // associated type.  Normally this situation
+        // could only arise through a compiler bug --
+        // if the user wrote a bad item name, it
+        // should have failed in astconv.
+        bug!(
+            "No associated type `{}` for {}",
+            tcx.item_name(assoc_def_id),
+            tcx.def_path_str(impl_def_id)
+        )
     }
 }
