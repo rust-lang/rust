@@ -389,7 +389,7 @@ fn resolve_negative_obligation<'tcx>(
     };
 
     let ocx = ObligationCtxt::new(&infcx);
-    let wf_tys = ocx.assumed_wf_types(param_env, DUMMY_SP, body_def_id);
+    let wf_tys = ocx.assumed_wf_types(body_def_id);
     let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         Some(&infcx),

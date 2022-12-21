@@ -705,6 +705,10 @@ impl<'tcx, T: TypeFoldable<'tcx>> ty::EarlyBinder<T> {
         let mut folder = SubstFolder { tcx, substs, binders_passed: 0 };
         self.0.fold_with(&mut folder)
     }
+
+    pub fn subst_identity(self) -> T {
+        self.0
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////

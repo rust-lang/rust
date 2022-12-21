@@ -7,5 +7,45 @@ LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
    = help: consider moving this anonymous constant into a `const` function
    = note: this operation may be supported in the future
 
-error: aborting due to previous error
+error[E0391]: cycle detected when evaluating type-level constant
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: ...which requires const-evaluating + checking `bug::{constant#0}`...
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires const-evaluating + checking `bug::{constant#0}`...
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires caching mir of `bug::{constant#0}` for CTFE...
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires elaborating drops for `bug::{constant#0}`...
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+note: ...which requires borrow-checking `bug::{constant#0}`...
+  --> $DIR/issue-77357.rs:6:46
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   |                                              ^^^^^^^^^^^^^^^^^^^^^^^^^
+   = note: ...which requires normalizing `Binder(ConstEvaluatable(Const { ty: usize, kind: Unevaluated(UnevaluatedConst { def: WithOptConstParam { did: DefId(0:8 ~ issue_77357[fee6]::bug::{constant#0}), const_param_did: None }, substs: [T] }) }), [])`...
+   = note: ...which again requires evaluating type-level constant, completing the cycle
+note: cycle used when computing the implied bounds of `bug`
+  --> $DIR/issue-77357.rs:6:1
+   |
+LL | fn bug<'a, T>() -> &'static dyn MyTrait<[(); { |x: &'a u32| { x }; 4 }]> {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+error: aborting due to 2 previous errors
+
+For more information about this error, try `rustc --explain E0391`.

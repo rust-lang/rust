@@ -97,7 +97,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types(body_def_id);
 
     let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 

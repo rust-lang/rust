@@ -20,7 +20,6 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self>;
@@ -179,34 +178,11 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         self.engine.borrow_mut().select_all_or_error(self.infcx)
     }
 
-    pub fn assumed_wf_types(
-        &self,
-        param_env: ty::ParamEnv<'tcx>,
-        span: Span,
-        def_id: LocalDefId,
-    ) -> FxIndexSet<Ty<'tcx>> {
+    pub fn assumed_wf_types(&self, def_id: LocalDefId) -> FxIndexSet<Ty<'tcx>> {
         let tcx = self.infcx.tcx;
-        let assumed_wf_types = tcx.assumed_wf_types(def_id);
-        let mut implied_bounds = FxIndexSet::default();
-        let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        let cause = ObligationCause::misc(span, hir_id);
-        for ty in assumed_wf_types {
-            // FIXME(@lcnr): rustc currently does not check wf for types
-            // pre-normalization, meaning that implied bounds are sometimes
-            // incorrect. See #100910 for more details.
-            //
-            // Not adding the unnormalized types here mostly fixes that, except
-            // that there are projections which are still ambiguous in the item definition
-            // but do normalize successfully when using the item, see #98543.
-            //
-            // Anyways, I will hopefully soon change implied bounds to make all of this
-            // sound and then uncomment this line again.
-
-            // implied_bounds.insert(ty);
-            let normalized = self.normalize(&cause, param_env, ty);
-            implied_bounds.insert(normalized);
-        }
-        implied_bounds
+        let def_id = def_id.to_def_id();
+        let assumed_wf_types = tcx.assumed_wf_types(def_id).subst_identity();
+        tcx.liberate_late_bound_regions(def_id, assumed_wf_types).into_iter().collect()
     }
 
     pub fn make_canonicalized_query_response<T>(

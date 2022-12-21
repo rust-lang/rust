@@ -1803,8 +1803,7 @@ pub fn check_type_bounds<'tcx>(
     let infcx = tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(&infcx);
 
-    let assumed_wf_types =
-        ocx.assumed_wf_types(param_env, impl_ty_span, impl_ty.def_id.expect_local());
+    let assumed_wf_types = ocx.assumed_wf_types(impl_ty.def_id.expect_local());
 
     let normalize_cause = ObligationCause::new(
         impl_ty_span,

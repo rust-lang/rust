@@ -167,8 +167,7 @@ fn get_impl_substs<'tcx>(
     let param_env = tcx.param_env(impl1_def_id);
     let impl1_hir_id = tcx.hir().local_def_id_to_hir_id(impl1_def_id);
 
-    let assumed_wf_types =
-        ocx.assumed_wf_types(param_env, tcx.def_span(impl1_def_id), impl1_def_id);
+    let assumed_wf_types = ocx.assumed_wf_types(impl1_def_id);
 
     let impl1_substs = InternalSubsts::identity_for_item(tcx, impl1_def_id.to_def_id());
     let impl2_substs =
