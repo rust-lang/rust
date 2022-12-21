@@ -3185,14 +3185,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
                 && let Some(pred) = predicates.predicates.get(*idx)
             {
-                if let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
-                    _ => Err(()),
-                })
-                    && let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
-                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
-                        _ => Err(()),
-                    })
+                if let Some(trait_pred) = pred.to_opt_poly_trait_pred()
+                    && let Some(trait_predicate) = predicate.to_opt_poly_trait_pred()
                 {
                     let mut c = CollectAllMismatches {
                         infcx: self.infcx,
