@@ -1655,10 +1655,10 @@ impl clean::types::Term {
         &'a self,
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
-        match self {
-            clean::types::Term::Type(ty) => ty.print(cx),
-            _ => todo!(),
-        }
+        display_fn(move |f| match self {
+            clean::types::Term::Type(ty) => fmt::Display::fmt(&ty.print(cx), f),
+            clean::types::Term::Constant(ct) => fmt::Display::fmt(&ct.print(cx.tcx()), f),
+        })
     }
 }
 
