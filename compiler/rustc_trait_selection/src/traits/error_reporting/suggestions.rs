@@ -3147,7 +3147,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: ty::Predicate<'tcx>,
+        failed_pred: ty::Predicate<'tcx>,
         call_hir_id: HirId,
     ) {
         let tcx = self.tcx;
@@ -3183,31 +3183,28 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
                 && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
-                && let predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
-                && let Some(pred) = predicates.predicates.get(*idx)
+                && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
+                && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
-                if let Some(trait_pred) = pred.to_opt_poly_trait_pred()
-                    && let Some(trait_predicate) = predicate.to_opt_poly_trait_pred()
+                if let Some(where_pred) = where_pred.to_opt_poly_trait_pred()
+                    && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
                 {
                     let mut c = CollectAllMismatches {
                         infcx: self.infcx,
                         param_env,
                         errors: vec![],
                     };
-                    if let Ok(_) = c.relate(trait_pred, trait_predicate) {
+                    if let Ok(_) = c.relate(where_pred, failed_pred) {
                         type_diffs = c.errors;
                     }
-                } else if let ty::PredicateKind::Clause(
-                    ty::Clause::Projection(proj)
-                ) = pred.kind().skip_binder()
-                    && let ty::PredicateKind::Clause(
-                        ty::Clause::Projection(projection)
-                    ) = predicate.kind().skip_binder()
+                } else if let Some(where_pred) = where_pred.to_opt_poly_projection_pred()
+                    && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
+                    && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
                     type_diffs = vec![
                         Sorts(ty::error::ExpectedFound {
-                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, proj.projection_ty)),
-                            found: projection.term.ty().unwrap(),
+                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, where_pred.skip_binder().projection_ty)),
+                            found,
                         }),
                     ];
                 }
