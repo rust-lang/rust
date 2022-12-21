@@ -586,9 +586,9 @@ dependencies = [
 
 [[package]]
 name = "hkalbasi-rustc-ap-rustc_abi"
-version = "0.0.20221125"
+version = "0.0.20221221"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "29c8368a30e518c0102d670d8515f7d424d875ee615ec7a7b6d29217b57a0371"
+checksum = "adabaadad9aa7576f97af02241cdf5554d62fb3d51a84cb05d77ba28edd3013f"
 dependencies = [
  "bitflags",
  "hkalbasi-rustc-ap-rustc_index",
@@ -597,9 +597,9 @@ dependencies = [
 
 [[package]]
 name = "hkalbasi-rustc-ap-rustc_index"
-version = "0.0.20221125"
+version = "0.0.20221221"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c07bba80d7f6a8e1efb0f3e2115ef1eecbf97292dc8cad84e4982226b9aa12e2"
+checksum = "f4d3c48474e09afb0f5efbd6f758e05411699301a113c47d454d28ec7059d00e"
 dependencies = [
  "arrayvec",
  "smallvec",
