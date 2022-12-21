@@ -273,7 +273,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let ptr = this.read_pointer(ptr_op)?;
         let compare = this.read_pointer(compare_op)?;
-        let size = this.read_scalar(size_op)?.to_machine_usize(this)?;
+        let size = this.read_machine_usize(size_op)?;
         let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
 
         let thread = this.get_active_thread();
