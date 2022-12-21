@@ -378,8 +378,9 @@ impl IndexMut<VectorIdx> for VClock {
 #[cfg(test)]
 mod tests {
 
-    use super::{VClock, VectorIdx};
+    use super::{VClock, VTimestamp, VectorIdx};
     use rustc_span::DUMMY_SP;
+    use std::cmp::Ordering;
 
     #[test]
     fn test_equal() {
@@ -396,7 +397,6 @@ mod tests {
         assert_eq!(c1, c2);
     }
 
-    /*
     #[test]
     fn test_partial_order() {
         // Small test
@@ -442,14 +442,14 @@ mod tests {
         );
     }
 
-    fn from_slice(mut slice: &[VTimestamp]) -> VClock {
+    fn from_slice(mut slice: &[u32]) -> VClock {
         while let Some(0) = slice.last() {
             slice = &slice[..slice.len() - 1]
         }
-        VClock(smallvec::SmallVec::from_slice(slice))
+        VClock(slice.iter().copied().map(|time| VTimestamp { time, span: DUMMY_SP }).collect())
     }
 
-    fn assert_order(l: &[VTimestamp], r: &[VTimestamp], o: Option<Ordering>) {
+    fn assert_order(l: &[u32], r: &[u32], o: Option<Ordering>) {
         let l = from_slice(l);
         let r = from_slice(r);
 
@@ -505,5 +505,4 @@ mod tests {
             "Invalid alt (>=):\n l: {l:?}\n r: {r:?}"
         );
     }
-    */
 }
