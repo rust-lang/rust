@@ -333,8 +333,8 @@ config_data! {
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef = "\"never\"",
         /// Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
         inlayHints_expressionAdjustmentHints_hideOutsideUnsafe: bool = "false",
-        /// Whether to show inlay hints for type adjustments as postfix ops (`.*` instead of `*`, etc).
-        inlayHints_expressionAdjustmentHints_postfix: bool = "false",
+        /// Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).
+        inlayHints_expressionAdjustmentHints_mode: AdjustmentHintsModeDef = "\"prefix\"",
         /// Whether to show inlay type hints for elided lifetimes in function signatures.
         inlayHints_lifetimeElisionHints_enable: LifetimeElisionDef = "\"never\"",
         /// Whether to prefer using parameter names as the name for elided lifetime hints if possible.
@@ -1254,7 +1254,12 @@ impl Config {
                 },
                 AdjustmentHintsDef::Reborrow => ide::AdjustmentHints::ReborrowOnly,
             },
-            adjustment_hints_postfix: self.data.inlayHints_expressionAdjustmentHints_postfix,
+            adjustment_hints_mode: match self.data.inlayHints_expressionAdjustmentHints_mode {
+                AdjustmentHintsModeDef::Prefix => ide::AdjustmentHintsMode::Prefix,
+                AdjustmentHintsModeDef::Postfix => ide::AdjustmentHintsMode::Postfix,
+                AdjustmentHintsModeDef::PreferPrefix => ide::AdjustmentHintsMode::PreferPrefix,
+                AdjustmentHintsModeDef::PreferPostfix => ide::AdjustmentHintsMode::PreferPostfix,
+            },
             adjustment_hints_hide_outside_unsafe: self
                 .data
                 .inlayHints_expressionAdjustmentHints_hideOutsideUnsafe,
@@ -1773,6 +1778,15 @@ enum DiscriminantHintsDef {
 
 #[derive(Deserialize, Debug, Clone)]
 #[serde(rename_all = "snake_case")]
+enum AdjustmentHintsModeDef {
+    Prefix,
+    Postfix,
+    PreferPrefix,
+    PreferPostfix,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(rename_all = "snake_case")]
 enum FilesWatcherDef {
     Client,
     Notify,
@@ -2102,6 +2116,21 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show all discriminant hints.",
                 "Never show discriminant hints.",
                 "Only show discriminant hints on fieldless enum variants."
+            ]
+        },
+        "AdjustmentHintsModeDef" => set! {
+            "type": "string",
+            "enum": [
+                "prefix",
+                "postfix",
+                "prefer_prefix",
+                "prefer_postfix",
+            ],
+            "enumDescriptions": [
+                "Always show adjustment hints as prefix (`*expr`).",
+                "Always show adjustment hints as postfix (`expr.*`).",
+                "Show prefix or postfix depending on which uses less parenthesis, prefering prefix.",
+                "Show prefix or postfix depending on which uses less parenthesis, prefering postfix.",
             ]
         },
         "CargoFeaturesDef" => set! {

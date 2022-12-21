@@ -35,7 +35,7 @@ pub struct InlayHintsConfig {
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
-    pub adjustment_hints_postfix: bool,
+    pub adjustment_hints_mode: AdjustmentHintsMode,
     pub adjustment_hints_hide_outside_unsafe: bool,
     pub closure_return_type_hints: ClosureReturnTypeHints,
     pub binding_mode_hints: bool,
@@ -73,6 +73,14 @@ pub enum AdjustmentHints {
     Always,
     ReborrowOnly,
     Never,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+pub enum AdjustmentHintsMode {
+    Prefix,
+    Postfix,
+    PreferPrefix,
+    PreferPostfix,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -432,7 +440,7 @@ mod tests {
     use itertools::Itertools;
     use test_utils::extract_annotations;
 
-    use crate::inlay_hints::AdjustmentHints;
+    use crate::inlay_hints::{AdjustmentHints, AdjustmentHintsMode};
     use crate::DiscriminantHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
@@ -448,7 +456,7 @@ mod tests {
         lifetime_elision_hints: LifetimeElisionHints::Never,
         closure_return_type_hints: ClosureReturnTypeHints::Never,
         adjustment_hints: AdjustmentHints::Never,
-        adjustment_hints_postfix: false,
+        adjustment_hints_mode: AdjustmentHintsMode::Prefix,
         adjustment_hints_hide_outside_unsafe: false,
         binding_mode_hints: false,
         hide_named_constructor_hints: false,

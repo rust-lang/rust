@@ -11,7 +11,7 @@ use syntax::{
     ted,
 };
 
-use crate::{AdjustmentHints, InlayHint, InlayHintsConfig, InlayKind};
+use crate::{AdjustmentHints, AdjustmentHintsMode, InlayHint, InlayHintsConfig, InlayKind};
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -40,8 +40,8 @@ pub(super) fn hints(
     let desc_expr = descended.as_ref().unwrap_or(expr);
     let adjustments = sema.expr_adjustments(desc_expr).filter(|it| !it.is_empty())?;
 
-    let (needs_outer_parens, needs_inner_parens) =
-        needs_parens_for_adjustment_hints(expr, config.adjustment_hints_postfix);
+    let (postfix, needs_outer_parens, needs_inner_parens) =
+        mode_and_needs_parens_for_adjustment_hints(expr, config.adjustment_hints_mode);
 
     if needs_outer_parens {
         acc.push(InlayHint {
@@ -52,7 +52,7 @@ pub(super) fn hints(
         });
     }
 
-    if config.adjustment_hints_postfix && needs_inner_parens {
+    if postfix && needs_inner_parens {
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::OpeningParenthesis,
@@ -68,7 +68,7 @@ pub(super) fn hints(
     }
 
     let (mut tmp0, mut tmp1);
-    let iter: &mut dyn Iterator<Item = _> = if config.adjustment_hints_postfix {
+    let iter: &mut dyn Iterator<Item = _> = if postfix {
         tmp0 = adjustments.into_iter();
         &mut tmp0
     } else {
@@ -112,20 +112,16 @@ pub(super) fn hints(
         };
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
-            kind: if config.adjustment_hints_postfix {
+            kind: if postfix {
                 InlayKind::AdjustmentHintPostfix
             } else {
                 InlayKind::AdjustmentHint
             },
-            label: if config.adjustment_hints_postfix {
-                format!(".{}", text.trim_end()).into()
-            } else {
-                text.into()
-            },
+            label: if postfix { format!(".{}", text.trim_end()).into() } else { text.into() },
             tooltip: None,
         });
     }
-    if !config.adjustment_hints_postfix && needs_inner_parens {
+    if !postfix && needs_inner_parens {
         acc.push(InlayHint {
             range: expr.syntax().text_range(),
             kind: InlayKind::OpeningParenthesis,
@@ -148,6 +144,41 @@ pub(super) fn hints(
         });
     }
     Some(())
+}
+
+/// Returns whatever the hint should be postfix and if we need to add paretheses on the inside and/or outside of `expr`,
+/// if we are going to add (`postfix`) adjustments hints to it.
+fn mode_and_needs_parens_for_adjustment_hints(
+    expr: &ast::Expr,
+    mode: AdjustmentHintsMode,
+) -> (bool, bool, bool) {
+    use {std::cmp::Ordering::*, AdjustmentHintsMode::*};
+
+    match mode {
+        Prefix | Postfix => {
+            let postfix = matches!(mode, Postfix);
+            let (inside, outside) = needs_parens_for_adjustment_hints(expr, postfix);
+            (postfix, inside, outside)
+        }
+        PreferPrefix | PreferPostfix => {
+            let prefer_postfix = matches!(mode, PreferPostfix);
+
+            let (pre_inside, pre_outside) = needs_parens_for_adjustment_hints(expr, false);
+            let prefix = (false, pre_inside, pre_outside);
+            let pre_count = pre_inside as u8 + pre_outside as u8;
+
+            let (post_inside, post_outside) = needs_parens_for_adjustment_hints(expr, true);
+            let postfix = (true, post_inside, post_outside);
+            let post_count = post_inside as u8 + post_outside as u8;
+
+            match pre_count.cmp(&post_count) {
+                Less => prefix,
+                Greater => postfix,
+                Equal if prefer_postfix => postfix,
+                Equal => prefix,
+            }
+        }
+    }
 }
 
 /// Returns whatever we need to add paretheses on the inside and/or outside of `expr`,
@@ -217,7 +248,7 @@ fn needs_parens_for_adjustment_hints(expr: &ast::Expr, postfix: bool) -> (bool, 
 mod tests {
     use crate::{
         inlay_hints::tests::{check_with_config, DISABLED_CONFIG},
-        AdjustmentHints, InlayHintsConfig,
+        AdjustmentHints, AdjustmentHintsMode, InlayHintsConfig,
     };
 
     #[test]
@@ -333,7 +364,7 @@ impl Struct {
         check_with_config(
             InlayHintsConfig {
                 adjustment_hints: AdjustmentHints::Always,
-                adjustment_hints_postfix: true,
+                adjustment_hints_mode: AdjustmentHintsMode::Postfix,
                 ..DISABLED_CONFIG
             },
             r#"
@@ -417,6 +448,58 @@ impl Struct {
 }
 "#,
         );
+    }
+
+    #[test]
+    fn adjustment_hints_prefer_prefix() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_mode: AdjustmentHintsMode::PreferPrefix,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn main() {
+    let _: u32         = loop {};
+                       //^^^^^^^<never-to-any>
+
+    Struct.by_ref();
+  //^^^^^^.&
+
+    let (): () = return ();
+               //^^^^^^^^^<never-to-any>
+
+    struct Struct;
+    impl Struct { fn by_ref(&self) {} }
+}
+            "#,
+        )
+    }
+
+    #[test]
+    fn adjustment_hints_prefer_postfix() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_mode: AdjustmentHintsMode::PreferPostfix,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn main() {
+    let _: u32         = loop {};
+                       //^^^^^^^.<never-to-any>
+
+    Struct.by_ref();
+  //^^^^^^.&
+
+    let (): () = return ();
+               //^^^^^^^^^<never-to-any>
+
+    struct Struct;
+    impl Struct { fn by_ref(&self) {} }
+}
+            "#,
+        )
     }
 
     #[test]
