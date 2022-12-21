@@ -104,7 +104,7 @@ pub struct RawWakerVTable {
     /// pointer.
     wake_by_ref: unsafe fn(*const ()),
 
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
@@ -151,7 +151,7 @@ impl RawWakerVTable {
     ///
     /// # `drop`
     ///
-    /// This function gets called when a [`RawWaker`] gets dropped.
+    /// This function gets called when a [`Waker`] gets dropped.
     ///
     /// The implementation of this function must make sure to release any
     /// resources that are associated with this instance of a [`RawWaker`] and
