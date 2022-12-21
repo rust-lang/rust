@@ -1,15 +1,19 @@
-use std::fmt;
+use std::{
+    fmt::{self, Write},
+    mem::take,
+};
 
 use either::Either;
-use hir::{known, HasVisibility, HirDisplay, Semantics};
+use hir::{known, HasVisibility, HirDisplay, HirWrite, ModuleDef, ModuleDefId, Semantics};
 use ide_db::{base_db::FileRange, famous_defs::FamousDefs, RootDatabase};
 use itertools::Itertools;
+use stdx::never;
 use syntax::{
     ast::{self, AstNode},
     match_ast, NodeOrToken, SyntaxNode, TextRange, TextSize,
 };
 
-use crate::FileId;
+use crate::{navigation_target::TryToNav, FileId};
 
 mod closing_brace;
 mod implicit_static;
@@ -23,6 +27,7 @@ mod bind_pat;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
+    pub location_links: bool,
     pub render_colons: bool,
     pub type_hints: bool,
     pub parameter_hints: bool,
@@ -89,6 +94,7 @@ pub enum InlayTooltip {
     HoverOffset(FileId, TextSize),
 }
 
+#[derive(Default)]
 pub struct InlayHintLabel {
     pub parts: Vec<InlayHintLabelPart>,
 }
@@ -172,6 +178,104 @@ impl fmt::Debug for InlayHintLabelPart {
     }
 }
 
+#[derive(Debug)]
+struct InlayHintLabelBuilder<'a> {
+    db: &'a RootDatabase,
+    result: InlayHintLabel,
+    last_part: String,
+    location_link_enabled: bool,
+    location: Option<FileRange>,
+}
+
+impl fmt::Write for InlayHintLabelBuilder<'_> {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        self.last_part.write_str(s)
+    }
+}
+
+impl HirWrite for InlayHintLabelBuilder<'_> {
+    fn start_location_link(&mut self, def: ModuleDefId) {
+        if !self.location_link_enabled {
+            return;
+        }
+        if self.location.is_some() {
+            never!("location link is already started");
+        }
+        self.make_new_part();
+        let Some(location) = ModuleDef::from(def).try_to_nav(self.db) else { return };
+        let location =
+            FileRange { file_id: location.file_id, range: location.focus_or_full_range() };
+        self.location = Some(location);
+    }
+
+    fn end_location_link(&mut self) {
+        if !self.location_link_enabled {
+            return;
+        }
+        self.make_new_part();
+    }
+}
+
+impl InlayHintLabelBuilder<'_> {
+    fn make_new_part(&mut self) {
+        self.result.parts.push(InlayHintLabelPart {
+            text: take(&mut self.last_part),
+            linked_location: self.location.take(),
+        });
+    }
+
+    fn finish(mut self) -> InlayHintLabel {
+        self.make_new_part();
+        self.result
+    }
+}
+
+fn label_of_ty(
+    sema: &Semantics<'_, RootDatabase>,
+    desc_pat: &impl AstNode,
+    config: &InlayHintsConfig,
+    ty: hir::Type,
+) -> Option<InlayHintLabel> {
+    fn rec(
+        sema: &Semantics<'_, RootDatabase>,
+        famous_defs: &FamousDefs<'_, '_>,
+        mut max_length: Option<usize>,
+        ty: hir::Type,
+        label_builder: &mut InlayHintLabelBuilder<'_>,
+    ) {
+        let iter_item_type = hint_iterator(sema, &famous_defs, &ty);
+        match iter_item_type {
+            Some(ty) => {
+                const LABEL_START: &str = "impl Iterator<Item = ";
+                const LABEL_END: &str = ">";
+
+                max_length =
+                    max_length.map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len()));
+
+                label_builder.write_str(LABEL_START).unwrap();
+                rec(sema, famous_defs, max_length, ty, label_builder);
+                label_builder.write_str(LABEL_END).unwrap();
+            }
+            None => {
+                let _ = ty.display_truncated(sema.db, max_length).write_to(label_builder);
+            }
+        };
+    }
+
+    let krate = sema.scope(desc_pat.syntax())?.krate();
+    let famous_defs = FamousDefs(sema, krate);
+    let mut label_builder = InlayHintLabelBuilder {
+        db: sema.db,
+        last_part: String::new(),
+        location: None,
+        location_link_enabled: config.location_links,
+        result: InlayHintLabel::default(),
+    };
+    rec(sema, &famous_defs, config.max_length, ty, &mut label_builder);
+    let r = label_builder.finish();
+    Some(r)
+}
+
 // Feature: Inlay Hints
 //
 // rust-analyzer shows additional information inline with the source code.
@@ -224,7 +328,7 @@ pub(crate) fn inlay_hints(
 
 fn hints(
     hints: &mut Vec<InlayHint>,
-    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
+    FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     node: SyntaxNode,
@@ -233,14 +337,14 @@ fn hints(
     match_ast! {
         match node {
             ast::Expr(expr) => {
-                chaining::hints(hints, sema, &famous_defs, config, file_id, &expr);
+                chaining::hints(hints, sema, config, file_id, &expr);
                 adjustment::hints(hints, sema, config, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name::hints(hints, sema, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
                         param_name::hints(hints, sema, config, ast::Expr::from(it))
                     }
-                    ast::Expr::ClosureExpr(it) => closure_ret::hints(hints, sema, &famous_defs, config, file_id, it),
+                    ast::Expr::ClosureExpr(it) => closure_ret::hints(hints, sema, config, file_id, it),
                     // We could show reborrows for all expressions, but usually that is just noise to the user
                     // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
                     // ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
@@ -270,13 +374,12 @@ fn hints(
     };
 }
 
-/// Checks if the type is an Iterator from std::iter and replaces its hint with an `impl Iterator<Item = Ty>`.
+/// Checks if the type is an Iterator from std::iter and returns its item type.
 fn hint_iterator(
     sema: &Semantics<'_, RootDatabase>,
     famous_defs: &FamousDefs<'_, '_>,
-    config: &InlayHintsConfig,
     ty: &hir::Type,
-) -> Option<String> {
+) -> Option<hir::Type> {
     let db = sema.db;
     let strukt = ty.strip_references().as_adt()?;
     let krate = strukt.module(db).krate();
@@ -299,21 +402,7 @@ fn hint_iterator(
             _ => None,
         })?;
         if let Some(ty) = ty.normalize_trait_assoc_type(db, &[], assoc_type_item) {
-            const LABEL_START: &str = "impl Iterator<Item = ";
-            const LABEL_END: &str = ">";
-
-            let ty_display = hint_iterator(sema, famous_defs, config, &ty)
-                .map(|assoc_type_impl| assoc_type_impl.to_string())
-                .unwrap_or_else(|| {
-                    ty.display_truncated(
-                        db,
-                        config
-                            .max_length
-                            .map(|len| len.saturating_sub(LABEL_START.len() + LABEL_END.len())),
-                    )
-                    .to_string()
-                });
-            return Some(format!("{}{}{}", LABEL_START, ty_display, LABEL_END));
+            return Some(ty);
         }
     }
 
@@ -336,6 +425,7 @@ mod tests {
     use super::ClosureReturnTypeHints;
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
+        location_links: false,
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
@@ -350,6 +440,8 @@ mod tests {
         max_length: None,
         closing_brace_hints_min_lines: None,
     };
+    pub(super) const DISABLED_CONFIG_WITH_LINKS: InlayHintsConfig =
+        InlayHintsConfig { location_links: true, ..DISABLED_CONFIG };
     pub(super) const TEST_CONFIG: InlayHintsConfig = InlayHintsConfig {
         type_hints: true,
         parameter_hints: true,
@@ -357,7 +449,7 @@ mod tests {
         closure_return_type_hints: ClosureReturnTypeHints::WithBlock,
         binding_mode_hints: true,
         lifetime_elision_hints: LifetimeElisionHints::Always,
-        ..DISABLED_CONFIG
+        ..DISABLED_CONFIG_WITH_LINKS
     };
 
     #[track_caller]

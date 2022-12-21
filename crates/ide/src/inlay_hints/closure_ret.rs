@@ -1,17 +1,18 @@
 //! Implementation of "closure return type" inlay hints.
-use hir::{HirDisplay, Semantics};
-use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
+use hir::Semantics;
+use ide_db::{base_db::FileId, RootDatabase};
 use syntax::ast::{self, AstNode};
 
 use crate::{
-    inlay_hints::{closure_has_block_body, hint_iterator},
-    ClosureReturnTypeHints, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
+    inlay_hints::closure_has_block_body, ClosureReturnTypeHints, InlayHint, InlayHintsConfig,
+    InlayKind, InlayTooltip,
 };
+
+use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
     sema: &Semantics<'_, RootDatabase>,
-    famous_defs: &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     closure: ast::ClosureExpr,
@@ -42,9 +43,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
-        label: hint_iterator(sema, &famous_defs, config, &ty)
-            .unwrap_or_else(|| ty.display_truncated(sema.db, config.max_length).to_string())
-            .into(),
+        label: label_of_ty(sema, &param_list, config, ty)?,
         tooltip: Some(InlayTooltip::HoverRanged(file_id, param_list.syntax().text_range())),
     });
     Some(())

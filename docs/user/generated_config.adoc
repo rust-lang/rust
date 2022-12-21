@@ -469,6 +469,11 @@ Whether to show inlay type hints for elided lifetimes in function signatures.
 --
 Whether to prefer using parameter names as the name for elided lifetime hints if possible.
 --
+[[rust-analyzer.inlayHints.locationLinks]]rust-analyzer.inlayHints.locationLinks (default: `true`)::
++
+--
+Whether to use location links for parts of type mentioned in inlay hints.
+--
 [[rust-analyzer.inlayHints.maxLength]]rust-analyzer.inlayHints.maxLength (default: `25`)::
 +
 --

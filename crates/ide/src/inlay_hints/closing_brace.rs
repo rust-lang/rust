@@ -109,7 +109,10 @@ pub(super) fn hints(
         return None;
     }
 
-    let linked_location = name_range.map(|range| FileRange { file_id, range });
+    let linked_location = config
+        .location_links
+        .then(|| name_range.map(|range| FileRange { file_id, range }))
+        .flatten();
     acc.push(InlayHint {
         range: closing_token.text_range(),
         kind: InlayKind::ClosingBraceHint,

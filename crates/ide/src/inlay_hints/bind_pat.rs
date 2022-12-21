@@ -3,8 +3,8 @@
 //! fn f(a: i32, b: i32) -> i32 { a + b }
 //! let _x /* i32 */= f(4, 4);
 //! ```
-use hir::{HirDisplay, Semantics, TypeInfo};
-use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
+use hir::{Semantics, TypeInfo};
+use ide_db::{base_db::FileId, RootDatabase};
 
 use itertools::Itertools;
 use syntax::{
@@ -13,9 +13,10 @@ use syntax::{
 };
 
 use crate::{
-    inlay_hints::{closure_has_block_body, hint_iterator},
-    InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
+    inlay_hints::closure_has_block_body, InlayHint, InlayHintsConfig, InlayKind, InlayTooltip,
 };
+
+use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
@@ -36,22 +37,13 @@ pub(super) fn hints(
         return None;
     }
 
-    let krate = sema.scope(desc_pat.syntax())?.krate();
-    let famous_defs = FamousDefs(sema, krate);
-    let label = hint_iterator(sema, &famous_defs, config, &ty);
+    let label = label_of_ty(sema, desc_pat, config, ty)?;
 
-    let label = match label {
-        Some(label) => label,
-        None => {
-            let ty_name = ty.display_truncated(sema.db, config.max_length).to_string();
-            if config.hide_named_constructor_hints
-                && is_named_constructor(sema, pat, &ty_name).is_some()
-            {
-                return None;
-            }
-            ty_name
-        }
-    };
+    if config.hide_named_constructor_hints
+        && is_named_constructor(sema, pat, &label.to_string()).is_some()
+    {
+        return None;
+    }
 
     acc.push(InlayHint {
         range: match pat.name() {
@@ -59,7 +51,7 @@ pub(super) fn hints(
             None => pat.syntax().text_range(),
         },
         kind: InlayKind::TypeHint,
-        label: label.into(),
+        label,
         tooltip: pat
             .name()
             .map(|it| it.syntax().text_range())
@@ -202,7 +194,8 @@ mod tests {
     use crate::{fixture, inlay_hints::InlayHintsConfig};
 
     use crate::inlay_hints::tests::{
-        check, check_expect, check_with_config, DISABLED_CONFIG, TEST_CONFIG,
+        check, check_expect, check_with_config, DISABLED_CONFIG, DISABLED_CONFIG_WITH_LINKS,
+        TEST_CONFIG,
     };
     use crate::ClosureReturnTypeHints;
 
@@ -298,7 +291,7 @@ fn main() {
     fn iterator_hint_regression_issue_12674() {
         // Ensure we don't crash while solving the projection type of iterators.
         check_expect(
-            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG },
+            InlayHintsConfig { chaining_hints: true, ..DISABLED_CONFIG_WITH_LINKS },
             r#"
 //- minicore: iterators
 struct S<T>(T);
@@ -346,7 +339,31 @@ fn main(a: SliceIter<'_, Container>) {
                         range: 484..485,
                         kind: ChainingHint,
                         label: [
-                            "SliceIter<Container>",
+                            "",
+                            InlayHintLabelPart {
+                                text: "SliceIter",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 289..298,
+                                    },
+                                ),
+                            },
+                            "<",
+                            InlayHintLabelPart {
+                                text: "Container",
+                                linked_location: Some(
+                                    FileRange {
+                                        file_id: FileId(
+                                            0,
+                                        ),
+                                        range: 238..247,
+                                    },
+                                ),
+                            },
+                            ">",
                         ],
                         tooltip: Some(
                             HoverRanged(
