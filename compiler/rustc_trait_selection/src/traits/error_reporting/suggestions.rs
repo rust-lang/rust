@@ -3182,7 +3182,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut type_diffs = vec![];
 
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
-                && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
+                && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
+                && let predicates = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
                 && let Some(pred) = predicates.predicates.get(*idx)
             {
                 if let Some(trait_pred) = pred.to_opt_poly_trait_pred()
