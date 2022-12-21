@@ -1091,15 +1091,13 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
     if name == sym::simd_bitmask {
         // The `fn simd_bitmask(vector) -> unsigned integer` intrinsic takes a
         // vector mask and returns the most significant bit (MSB) of each lane in the form
-        // of either:
-        // * an unsigned integer
-        // * an array of `u8`
-        // If the vector has less than 8 lanes, a u8 is returned with zeroed trailing bits.
+        // of an unsigned integer.
+        // If the vector has less than lanes than the integer has bits,
+        // the trailing bits are zeroed.
         //
         // The bit order of the result depends on the byte endianness, LSB-first for little
         // endian and MSB-first for big endian.
         let expected_int_bits = in_len.max(8);
-        let expected_bytes = expected_int_bits / 8 + ((expected_int_bits % 8 > 0) as u64);
 
         // Integer vector <i{in_bitwidth} x in_len>:
         let (i_xn, in_elem_bitwidth) = match in_elem.kind() {
@@ -1135,27 +1133,7 @@ fn generic_simd_intrinsic<'ll, 'tcx>(
                 // Zero-extend iN to the bitmask type:
                 return Ok(bx.zext(i_, bx.type_ix(expected_int_bits)));
             }
-            ty::Array(elem, len)
-                if matches!(elem.kind(), ty::Uint(ty::UintTy::U8))
-                    && len.try_eval_usize(bx.tcx, ty::ParamEnv::reveal_all())
-                        == Some(expected_bytes) =>
-            {
-                // Zero-extend iN to the array length:
-                let ze = bx.zext(i_, bx.type_ix(expected_bytes * 8));
-
-                // Convert the integer to a byte array
-                let ptr = bx.alloca(bx.type_ix(expected_bytes * 8), Align::ONE);
-                bx.store(ze, ptr, Align::ONE);
-                let array_ty = bx.type_array(bx.type_i8(), expected_bytes);
-                let ptr = bx.pointercast(ptr, bx.cx.type_ptr_to(array_ty));
-                return Ok(bx.load(array_ty, ptr, Align::ONE));
-            }
-            _ => return_error!(
-                "cannot return `{}`, expected `u{}` or `[u8; {}]`",
-                ret_ty,
-                expected_int_bits,
-                expected_bytes
-            ),
+            _ => return_error!("cannot return `{}`, expected `u{}`", ret_ty, expected_int_bits),
         }
     }
 
