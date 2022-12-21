@@ -335,7 +335,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
-    fn function_argument_obligation(
+    fn note_function_argument_obligation(
         &self,
         arg_hir_id: HirId,
         err: &mut Diagnostic,
@@ -2909,7 +2909,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ref parent_code,
                 ..
             } => {
-                self.function_argument_obligation(
+                self.note_function_argument_obligation(
                     arg_hir_id,
                     err,
                     parent_code,
@@ -3141,7 +3141,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             );
         }
     }
-    fn function_argument_obligation(
+    fn note_function_argument_obligation(
         &self,
         arg_hir_id: HirId,
         err: &mut Diagnostic,
@@ -3152,12 +3152,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         let tcx = self.tcx;
         let hir = tcx.hir();
-        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id) {
-            let parent_id = hir.get_parent_item(arg_hir_id);
-            let typeck_results: &TypeckResults<'tcx> = match &self.typeck_results {
-                Some(t) if t.hir_owner == parent_id => t,
-                _ => self.tcx.typeck(parent_id.def_id),
-            };
+        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
+            && let Some(typeck_results) = &self.typeck_results
+        {
             if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
                 let expr = expr.peel_blocks();
                 let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
@@ -3219,9 +3216,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // If the expression we're calling on is a binding, we want to point at the
                 // `let` when talking about the type. Otherwise we'll point at every part
                 // of the method chain with the type.
-                self.point_at_chain(binding_expr, typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(binding_expr, &typeck_results, type_diffs, param_env, err);
             } else {
-                self.point_at_chain(expr, typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(expr, &typeck_results, type_diffs, param_env, err);
             }
         }
         let call_node = hir.find(call_hir_id);
