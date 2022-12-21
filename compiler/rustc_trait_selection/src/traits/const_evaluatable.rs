@@ -186,8 +186,9 @@ fn satisfied_from_param_env<'tcx>(
                     Some(Ok(o)) if o == c => Some(Ok(c)),
                     Some(_) => Some(Err(())),
                 };
-                ControlFlow::CONTINUE
-            } else if let ty::ConstKind::Expr(e) = c.kind() {
+            }
+
+            if let ty::ConstKind::Expr(e) = c.kind() {
                 e.visit_with(self)
             } else {
                 // FIXME(generic_const_exprs): This doesn't recurse into `<T as Trait<U>>::ASSOC`'s substs.
@@ -208,35 +209,20 @@ fn satisfied_from_param_env<'tcx>(
         match pred.kind().skip_binder() {
             ty::PredicateKind::ConstEvaluatable(ce) => {
                 let b_ct = tcx.expand_abstract_consts(ce);
-                let mut v = Visitor { ct, infcx, param_env, single_match: None };
+                let mut v = Visitor { ct, infcx, param_env, single_match };
                 let _ = b_ct.visit_with(&mut v);
 
-                if let Some(inner) = v.single_match {
-                    single_match = if let Ok(inner) = inner {
-                        match single_match {
-                            None => Some(Ok(inner)),
-                            Some(Ok(prev)) if prev == inner => Some(Ok(prev)),
-                            Some(_) => Some(Err(())),
-                        }
-                    } else {
-                        Some(Err(()))
-                    };
-                }
+                single_match = v.single_match;
             }
             _ => {} // don't care
         }
     }
 
     if let Some(Ok(c)) = single_match {
-        let is_ok = infcx
-            .commit_if_ok(|_| {
-                let ocx = ObligationCtxt::new_in_snapshot(infcx);
-                assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
-                assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
-                if ocx.select_all_or_error().is_empty() { Ok(()) } else { Err(()) }
-            })
-            .is_ok();
-        assert!(is_ok);
+        let ocx = ObligationCtxt::new(infcx);
+        assert!(ocx.eq(&ObligationCause::dummy(), param_env, c.ty(), ct.ty()).is_ok());
+        assert!(ocx.eq(&ObligationCause::dummy(), param_env, c, ct).is_ok());
+        assert!(ocx.select_all_or_error().is_empty());
         return true;
     }
 
