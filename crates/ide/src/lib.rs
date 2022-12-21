@@ -236,6 +236,7 @@ impl Analysis {
             Ok(Vec::new()),
             false,
             CrateOrigin::CratesIo { repo: None, name: None },
+            None,
         );
         change.change_file(file_id, Some(Arc::new(text)));
         change.set_crate_graph(crate_graph);

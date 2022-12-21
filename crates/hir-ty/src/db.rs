@@ -64,8 +64,8 @@ pub trait HirDatabase: DefDatabase + Upcast<dyn DefDatabase> {
     #[salsa::cycle(crate::layout::layout_of_adt_recover)]
     fn layout_of_adt(&self, def: AdtId, subst: Substitution) -> Result<Layout, LayoutError>;
 
-    #[salsa::invoke(crate::layout::current_target_data_layout_query)]
-    fn current_target_data_layout(&self) -> Arc<TargetDataLayout>;
+    #[salsa::invoke(crate::layout::target_data_layout_query)]
+    fn target_data_layout(&self, krate: CrateId) -> Arc<TargetDataLayout>;
 
     #[salsa::invoke(crate::lower::callable_item_sig)]
     fn callable_item_signature(&self, def: CallableDefId) -> PolyFnSig;

@@ -34,15 +34,17 @@ fn eval_goal(ra_fixture: &str) -> Result<Layout, LayoutError> {
         })
         .unwrap();
     let goal_ty = TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner);
-    layout_of_ty(&db, &goal_ty)
+    layout_of_ty(&db, &goal_ty, module_id.krate())
 }
 
+#[track_caller]
 fn check_size_and_align(ra_fixture: &str, size: u64, align: u64) {
     let l = eval_goal(ra_fixture).unwrap();
     assert_eq!(l.size.bytes(), size);
     assert_eq!(l.align.abi.bytes(), align);
 }
 
+#[track_caller]
 fn check_fail(ra_fixture: &str, e: LayoutError) {
     let r = eval_goal(ra_fixture);
     assert_eq!(r, Err(e));

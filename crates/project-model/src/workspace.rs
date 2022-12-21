@@ -79,6 +79,7 @@ pub enum ProjectWorkspace {
         rustc_cfg: Vec<CfgFlag>,
         cfg_overrides: CfgOverrides,
         toolchain: Option<Version>,
+        target_layout: Option<String>,
     },
     /// Project workspace was manually specified using a `rust-project.json` file.
     Json { project: ProjectJson, sysroot: Option<Sysroot>, rustc_cfg: Vec<CfgFlag> },
@@ -108,6 +109,7 @@ impl fmt::Debug for ProjectWorkspace {
                 rustc_cfg,
                 cfg_overrides,
                 toolchain,
+                target_layout: data_layout,
             } => f
                 .debug_struct("Cargo")
                 .field("root", &cargo.workspace_root().file_name())
@@ -120,6 +122,7 @@ impl fmt::Debug for ProjectWorkspace {
                 .field("n_rustc_cfg", &rustc_cfg.len())
                 .field("n_cfg_overrides", &cfg_overrides.len())
                 .field("toolchain", &toolchain)
+                .field("data_layout", &data_layout)
                 .finish(),
             ProjectWorkspace::Json { project, sysroot, rustc_cfg } => {
                 let mut debug_struct = f.debug_struct("Json");
@@ -138,6 +141,40 @@ impl fmt::Debug for ProjectWorkspace {
                 .finish(),
         }
     }
+}
+
+fn data_layout(
+    cargo_toml: Option<&ManifestPath>,
+    target: Option<&str>,
+    extra_env: &FxHashMap<String, String>,
+) -> Option<String> {
+    let output = (|| {
+        if let Some(cargo_toml) = cargo_toml {
+            let mut cmd = Command::new(toolchain::rustc());
+            cmd.envs(extra_env);
+            cmd.current_dir(cargo_toml.parent())
+                .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+                .env("RUSTC_BOOTSTRAP", "1");
+            if let Some(target) = target {
+                cmd.args(&["--target", target]);
+            }
+            match utf8_stdout(cmd) {
+                Ok(it) => return Ok(it),
+                Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
+            }
+        }
+        // using unstable cargo features failed, fall back to using plain rustc
+        let mut cmd = Command::new(toolchain::rustc());
+        cmd.envs(extra_env)
+            .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+            .env("RUSTC_BOOTSTRAP", "1");
+        if let Some(target) = target {
+            cmd.args(&["--target", target]);
+        }
+        utf8_stdout(cmd)
+    })()
+    .ok()?;
+    Some(output.split_once(r#""data-layout": "#)?.1.trim_matches('"').to_owned())
 }
 
 impl ProjectWorkspace {
@@ -241,6 +278,8 @@ impl ProjectWorkspace {
                     rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
 
                 let cfg_overrides = config.cfg_overrides();
+                let data_layout =
+                    data_layout(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
                 ProjectWorkspace::Cargo {
                     cargo,
                     build_scripts: WorkspaceBuildScripts::default(),
@@ -249,6 +288,7 @@ impl ProjectWorkspace {
                     rustc_cfg,
                     cfg_overrides,
                     toolchain,
+                    target_layout: data_layout,
                 }
             }
         };
@@ -435,6 +475,7 @@ impl ProjectWorkspace {
                 cfg_overrides: _,
                 build_scripts,
                 toolchain: _,
+                target_layout: _,
             } => {
                 cargo
                     .packages()
@@ -530,6 +571,7 @@ impl ProjectWorkspace {
                 project,
                 sysroot,
                 extra_env,
+                None,
             ),
             ProjectWorkspace::Cargo {
                 cargo,
@@ -539,6 +581,7 @@ impl ProjectWorkspace {
                 cfg_overrides,
                 build_scripts,
                 toolchain: _,
+                target_layout,
             } => cargo_to_crate_graph(
                 load_proc_macro,
                 load,
@@ -548,9 +591,10 @@ impl ProjectWorkspace {
                 rustc_cfg.clone(),
                 cfg_overrides,
                 build_scripts,
+                target_layout.as_deref().map(Arc::from),
             ),
             ProjectWorkspace::DetachedFiles { files, sysroot, rustc_cfg } => {
-                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot)
+                detached_files_to_crate_graph(rustc_cfg.clone(), load, files, sysroot, None)
             }
         };
         if crate_graph.patch_cfg_if() {
@@ -569,11 +613,18 @@ fn project_json_to_crate_graph(
     project: &ProjectJson,
     sysroot: &Option<Sysroot>,
     extra_env: &FxHashMap<String, String>,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let mut crate_graph = CrateGraph::default();
-    let sysroot_deps = sysroot
-        .as_ref()
-        .map(|sysroot| sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load));
+    let sysroot_deps = sysroot.as_ref().map(|sysroot| {
+        sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        )
+    });
 
     let mut cfg_cache: FxHashMap<&str, Vec<CfgFlag>> = FxHashMap::default();
     let crates: NoHashHashMap<CrateId, CrateId> = project
@@ -625,6 +676,7 @@ fn project_json_to_crate_graph(
                     } else {
                         CrateOrigin::CratesIo { repo: None, name: None }
                     },
+                    target_layout.clone(),
                 ),
             )
         })
@@ -665,11 +717,18 @@ fn cargo_to_crate_graph(
     rustc_cfg: Vec<CfgFlag>,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let _p = profile::span("cargo_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let (public_deps, libproc_macro) = match sysroot {
-        Some(sysroot) => sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load),
+        Some(sysroot) => sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        ),
         None => (SysrootPublicDeps::default(), None),
     };
 
@@ -732,6 +791,7 @@ fn cargo_to_crate_graph(
                     file_id,
                     &cargo[tgt].name,
                     cargo[tgt].is_proc_macro,
+                    target_layout.clone(),
                 );
                 if cargo[tgt].kind == TargetKind::Lib {
                     lib_tgt = Some((crate_id, cargo[tgt].name.clone()));
@@ -811,6 +871,7 @@ fn cargo_to_crate_graph(
                 &cfg_options,
                 override_cfg,
                 build_scripts,
+                target_layout,
             );
         }
     }
@@ -822,11 +883,18 @@ fn detached_files_to_crate_graph(
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
     detached_files: &[AbsPathBuf],
     sysroot: &Option<Sysroot>,
+    target_layout: Option<Arc<str>>,
 ) -> CrateGraph {
     let _p = profile::span("detached_files_to_crate_graph");
     let mut crate_graph = CrateGraph::default();
     let (public_deps, _libproc_macro) = match sysroot {
-        Some(sysroot) => sysroot_to_crate_graph(&mut crate_graph, sysroot, rustc_cfg.clone(), load),
+        Some(sysroot) => sysroot_to_crate_graph(
+            &mut crate_graph,
+            sysroot,
+            rustc_cfg.clone(),
+            target_layout.clone(),
+            load,
+        ),
         None => (SysrootPublicDeps::default(), None),
     };
 
@@ -859,6 +927,7 @@ fn detached_files_to_crate_graph(
                 repo: None,
                 name: display_name.map(|n| n.canonical_name().to_string()),
             },
+            target_layout.clone(),
         );
 
         public_deps.add_to_crate_graph(&mut crate_graph, detached_file_crate);
@@ -879,6 +948,7 @@ fn handle_rustc_crates(
     cfg_options: &CfgOptions,
     override_cfg: &CfgOverrides,
     build_scripts: &WorkspaceBuildScripts,
+    target_layout: Option<Arc<str>>,
 ) {
     let mut rustc_pkg_crates = FxHashMap::default();
     // The root package of the rustc-dev component is rustc_driver, so we match that
@@ -935,6 +1005,7 @@ fn handle_rustc_crates(
                         file_id,
                         &rustc_workspace[tgt].name,
                         rustc_workspace[tgt].is_proc_macro,
+                        target_layout.clone(),
                     );
                     pkg_to_lib_crate.insert(pkg, crate_id);
                     // Add dependencies on core / std / alloc for this crate
@@ -999,6 +1070,7 @@ fn add_target_crate_root(
     file_id: FileId,
     cargo_name: &str,
     is_proc_macro: bool,
+    target_layout: Option<Arc<str>>,
 ) -> CrateId {
     let edition = pkg.edition;
     let mut potential_cfg_options = cfg_options.clone();
@@ -1045,6 +1117,7 @@ fn add_target_crate_root(
         proc_macro,
         is_proc_macro,
         CrateOrigin::CratesIo { repo: pkg.repository.clone(), name: Some(pkg.name.clone()) },
+        target_layout,
     )
 }
 
@@ -1066,6 +1139,7 @@ fn sysroot_to_crate_graph(
     crate_graph: &mut CrateGraph,
     sysroot: &Sysroot,
     rustc_cfg: Vec<CfgFlag>,
+    target_layout: Option<Arc<str>>,
     load: &mut dyn FnMut(&AbsPath) -> Option<FileId>,
 ) -> (SysrootPublicDeps, Option<CrateId>) {
     let _p = profile::span("sysroot_to_crate_graph");
@@ -1089,6 +1163,7 @@ fn sysroot_to_crate_graph(
                 Err("no proc macro loaded for sysroot crate".into()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::from(&*sysroot[krate].name)),
+                target_layout.clone(),
             );
             Some((krate, crate_id))
         })

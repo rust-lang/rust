@@ -162,6 +162,7 @@ impl ChangeFixture {
                     Ok(Vec::new()),
                     false,
                     origin,
+                    None,
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -197,6 +198,7 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::CratesIo { repo: None, name: None },
+                None,
             );
         } else {
             for (from, to, prelude) in crate_deps {
@@ -234,6 +236,7 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
+                None,
             );
 
             for krate in all_crates {
@@ -271,6 +274,7 @@ impl ChangeFixture {
                 Ok(proc_macro),
                 true,
                 CrateOrigin::CratesIo { repo: None, name: None },
+                None,
             );
 
             for krate in all_crates {
