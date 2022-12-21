@@ -730,6 +730,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: Some(sym::const_trait_impl),
                         });
                         return;
                     }
@@ -802,6 +803,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -844,6 +846,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                                     substs,
                                     span: *fn_span,
                                     from_hir_call: *from_hir_call,
+                                    feature: None,
                                 });
                                 return;
                             }
@@ -903,6 +906,7 @@ impl<'tcx> Visitor<'tcx> for Checker<'_, 'tcx> {
                             substs,
                             span: *fn_span,
                             from_hir_call: *from_hir_call,
+                            feature: None,
                         });
                         return;
                     }
