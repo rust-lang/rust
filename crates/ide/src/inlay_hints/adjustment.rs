@@ -3,10 +3,17 @@
 //! let _: u32  = /* <never-to-any> */ loop {};
 //! let _: &u32 = /* &* */ &mut 0;
 //! ```
-use hir::{Adjust, AutoBorrow, Mutability, OverloadedDeref, PointerCast, Safety, Semantics};
+use either::Either;
+use hir::{
+    db::DefDatabase, Adjust, AutoBorrow, InFile, Mutability, OverloadedDeref, PointerCast, Safety,
+    Semantics,
+};
 use ide_db::RootDatabase;
 
-use syntax::ast::{self, AstNode};
+use syntax::{
+    ast::{self, AstNode},
+    SyntaxNode,
+};
 
 use crate::{AdjustmentHints, InlayHint, InlayHintsConfig, InlayKind};
 
@@ -16,6 +23,10 @@ pub(super) fn hints(
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
+    if config.adjustment_hints_hide_outside_unsafe && !is_inside_unsafe(sema, expr.syntax()) {
+        return None;
+    }
+
     if config.adjustment_hints == AdjustmentHints::Never {
         return None;
     }
@@ -108,6 +119,59 @@ pub(super) fn hints(
         });
     }
     Some(())
+}
+
+fn is_inside_unsafe(sema: &Semantics<'_, RootDatabase>, node: &SyntaxNode) -> bool {
+    let item_or_variant = |ancestor: SyntaxNode| {
+        if ast::Item::can_cast(ancestor.kind()) {
+            ast::Item::cast(ancestor).map(Either::Left)
+        } else {
+            ast::Variant::cast(ancestor).map(Either::Right)
+        }
+    };
+    let Some(enclosing_item) = node.ancestors().find_map(item_or_variant) else { return false };
+
+    let def = match &enclosing_item {
+        Either::Left(ast::Item::Fn(it)) => {
+            sema.to_def(it).map(<_>::into).map(hir::DefWithBodyId::FunctionId)
+        }
+        Either::Left(ast::Item::Const(it)) => {
+            sema.to_def(it).map(<_>::into).map(hir::DefWithBodyId::ConstId)
+        }
+        Either::Left(ast::Item::Static(it)) => {
+            sema.to_def(it).map(<_>::into).map(hir::DefWithBodyId::StaticId)
+        }
+        Either::Left(_) => None,
+        Either::Right(it) => sema.to_def(it).map(<_>::into).map(hir::DefWithBodyId::VariantId),
+    };
+    let Some(def) = def else { return false };
+    let enclosing_node = enclosing_item.as_ref().either(|i| i.syntax(), |v| v.syntax());
+
+    if ast::Fn::cast(enclosing_node.clone()).and_then(|f| f.unsafe_token()).is_some() {
+        return true;
+    }
+
+    let (body, source_map) = sema.db.body_with_source_map(def);
+
+    let file_id = sema.hir_file_for(node);
+
+    let Some(mut parent) = node.parent() else { return false };
+    loop {
+        if &parent == enclosing_node {
+            break false;
+        }
+
+        if let Some(parent) = ast::Expr::cast(parent.clone()) {
+            if let Some(expr_id) = source_map.node_expr(InFile { file_id, value: &parent }) {
+                if let hir::Expr::Unsafe { .. } = body[expr_id] {
+                    break true;
+                }
+            }
+        }
+
+        let Some(parent_) = parent.parent() else { break false };
+        parent = parent_;
+    }
 }
 
 #[cfg(test)]
@@ -232,5 +296,97 @@ fn or_else() {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn adjustment_hints_unsafe_only() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_hide_outside_unsafe: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+unsafe fn enabled() {
+    f(&&());
+    //^^^^&
+    //^^^^*
+    //^^^^*
+}
+
+fn disabled() {
+    f(&&());
+}
+
+fn mixed() {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+}
+
+const _: () = {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+};
+
+static STATIC: () = {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+};
+
+enum E {
+    Disable = { f(&&()); 0 },
+    Enable = unsafe { f(&&()); 1 },
+                      //^^^^&
+                      //^^^^*
+                      //^^^^*
+}
+
+const fn f(_: &()) {}
+            "#,
+        )
+    }
+
+    #[test]
+    fn adjustment_hints_unsafe_only_with_item() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_hide_outside_unsafe: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn a() {
+    struct Struct;
+    impl Struct {
+        fn by_ref(&self) {}
+    }
+
+    _ = Struct.by_ref();
+
+    _ = unsafe { Struct.by_ref() };
+               //^^^^^^(
+               //^^^^^^&
+               //^^^^^^)
+}
+            "#,
+        );
     }
 }
