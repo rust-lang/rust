@@ -609,4 +609,20 @@ fn a() {
             "#,
         );
     }
+
+    #[test]
+    fn bug() {
+        check_with_config(
+            InlayHintsConfig { adjustment_hints: AdjustmentHints::Always, ..DISABLED_CONFIG },
+            r#"
+fn main() {
+    // These should be identical, but they are not...
+
+    let () = return;
+    let (): () = return;
+               //^^^^^^<never-to-any>
+}
+            "#,
+        )
+    }
 }
