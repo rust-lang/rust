@@ -10,7 +10,7 @@
 #[no_mangle]
 pub unsafe extern "C-unwind" fn rust_item_that_can_unwind() {
     // Handle both legacy and v0 symbol mangling.
-    // CHECK: call void @{{.*core9panicking15panic_no_unwind}}
+    // CHECK: call void @{{.*core9panicking19panic_cannot_unwind}}
     may_unwind();
 }
 

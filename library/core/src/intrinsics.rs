@@ -2281,7 +2281,7 @@ macro_rules! assert_unsafe_precondition {
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
                 if !$e {
                     // don't unwind to reduce impact on code size
-                    ::core::panicking::panic_str_nounwind(
+                    ::core::panicking::panic_nounwind(
                         concat!("unsafe precondition(s) violated: ", $name)
                     );
                 }
