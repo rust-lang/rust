@@ -1,5 +1,7 @@
 // test for https://github.com/rust-lang/rust/issues/29723
 
+#![feature(if_let_guard)]
+
 fn main() {
     let s = String::new();
     let _s = match 0 {
@@ -10,5 +12,11 @@ fn main() {
             s
             //~^ ERROR use of moved value: `s`
         }
+    };
+
+    let s = String::new();
+    let _s = match 0 {
+        0 if let Some(()) = { drop(s); None } => String::from("oops"),
+        _ => s //~ ERROR use of moved value: `s`
     };
 }

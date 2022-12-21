@@ -5,6 +5,8 @@
 // See further discussion on rust-lang/rust#24535,
 // rust-lang/rfcs#1006, and rust-lang/rfcs#107
 
+#![feature(if_let_guard)]
+
 fn main() {
     rust_issue_24535();
     rfcs_issue_1006_1();
@@ -21,6 +23,12 @@ fn rust_issue_24535() {
     match a {
         0 => panic!("nope"),
         3 if compare(&a, &mut 3) => (),
+        _ => panic!("nope"),
+    }
+
+    match a {
+        0 => panic!("nope"),
+        3 if let true = compare(&a, &mut 3) => (),
         _ => panic!("nope"),
     }
 }
