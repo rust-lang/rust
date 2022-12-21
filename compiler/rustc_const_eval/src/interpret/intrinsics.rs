@@ -428,7 +428,9 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             sym::transmute => {
                 self.copy_op(&args[0], dest, /*allow_transmute*/ true)?;
             }
-            sym::assert_inhabited | sym::assert_zero_valid | sym::assert_uninit_valid => {
+            sym::assert_inhabited
+            | sym::assert_zero_valid
+            | sym::assert_mem_uninitialized_valid => {
                 let ty = instance.substs.type_at(0);
                 let layout = self.layout_of(ty)?;
 
@@ -460,7 +462,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     }
                 }
 
-                if intrinsic_name == sym::assert_uninit_valid {
+                if intrinsic_name == sym::assert_mem_uninitialized_valid {
                     let should_panic = !self.tcx.permits_uninit_init(layout);
 
                     if should_panic {
