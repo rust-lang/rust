@@ -67,10 +67,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     byte_offset,
                     _key,
                 ] = check_arg_count(args)?;
-                let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
+                let handle = this.read_machine_isize(handle)?;
                 let buf = this.read_pointer(buf)?;
                 let n = this.read_scalar(n)?.to_u32()?;
-                let byte_offset = this.read_scalar(byte_offset)?.to_machine_usize(this)?; // is actually a pointer
+                let byte_offset = this.read_machine_usize(byte_offset)?; // is actually a pointer
                 let io_status_block = this.deref_operand(io_status_block)?;
 
                 if byte_offset != 0 {
