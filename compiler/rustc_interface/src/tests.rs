@@ -754,6 +754,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(move_size_limit, Some(4096));
     tracked!(mutable_noalias, Some(true));
     tracked!(no_generate_arange_section, true);
+    tracked!(no_jump_tables, true);
     tracked!(no_link, true);
     tracked!(no_profiler_runtime, true);
     tracked!(no_unique_section_names, true);
