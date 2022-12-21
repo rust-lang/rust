@@ -811,7 +811,10 @@ class RustBuild(object):
                 print('      and so in order to preserve your $HOME this will now')
                 print('      use vendored sources by default.')
 
-        cargo_dir = os.path.join(self.rust_root, '.cargo')
+        if 'CARGO_HOME' in os.environ:
+            cargo_dir = os.environ['CARGO_HOME']
+        else:
+            cargo_dir = os.path.join(self.rust_root, '.cargo')
         if self.use_vendored_sources:
             vendor_dir = os.path.join(self.rust_root, 'vendor')
             if not os.path.exists(vendor_dir):
@@ -825,7 +828,11 @@ class RustBuild(object):
                 raise Exception("{} not found".format(vendor_dir))
 
             if not os.path.exists(cargo_dir):
-                print('error: vendoring required, but .cargo/config does not exist.')
+                if 'CARGO_HOME' in os.environ:
+                    config = os.path.join(cargo_dir, 'config')
+                else:
+                    config = '.cargo/config'
+                print('error: vendoring required, but {} does not exist.'.format(config))
                 raise Exception("{} not found".format(cargo_dir))
         else:
             if os.path.exists(cargo_dir):
