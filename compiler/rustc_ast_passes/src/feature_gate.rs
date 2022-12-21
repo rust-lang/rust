@@ -385,6 +385,14 @@ impl<'a> Visitor<'a> for PostExpansionVisitor<'a> {
             ast::ExprKind::TryBlock(_) => {
                 gate_feature_post!(&self, try_blocks, e.span, "`try` expression is experimental");
             }
+            ast::ExprKind::Closure(box ast::Closure { constness: ast::Const::Yes(_), .. }) => {
+                gate_feature_post!(
+                    &self,
+                    const_closures,
+                    e.span,
+                    "const closures are experimental"
+                );
+            }
             _ => {}
         }
         visit::walk_expr(self, e)

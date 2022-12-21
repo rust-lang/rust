@@ -498,6 +498,7 @@ symbols! {
         console,
         const_allocate,
         const_async_blocks,
+        const_closures,
         const_compare_raw_pointers,
         const_constructor,
         const_deallocate,
