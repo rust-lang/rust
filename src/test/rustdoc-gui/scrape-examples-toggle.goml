@@ -1,3 +1,4 @@
+// This tests checks that the "scraped examples" toggle is working as expected.
 goto: "file://" + |DOC_PATH| + "/scrape_examples/fn.test_many.html"
 
 // Clicking "More examples..." will open additional examples
