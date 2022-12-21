@@ -959,8 +959,7 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn assert_zero_valid<T>();
 
-    /// A guard for `std::mem::uninitialized`. Checks whether a repeated bit pattern `0x01`
-    /// is legal for `T`: This will statically either panic, or do nothing.
+    /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
