@@ -2210,7 +2210,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             BindingMode::ByValue => ty::BindingMode::BindByValue(mutability),
             BindingMode::ByRef(_) => ty::BindingMode::BindByReference(mutability),
         };
-        let local = LocalDecl::<'tcx> {
+        let local = LocalDecl {
             mutability,
             ty: var_ty,
             user_ty: if user_ty.is_empty() { None } else { Some(Box::new(user_ty)) },
