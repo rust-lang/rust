@@ -690,13 +690,9 @@ a {
 	position: relative;
 }
 
-.small-section-header:hover > .anchor {
+.small-section-header:hover > .anchor, .impl:hover > .anchor,
+.trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: initial;
-}
-
-.impl:hover > .anchor, .trait-impl:hover > .anchor, .variant:hover > .anchor {
-	display: inline-block;
-	position: absolute;
 }
 .anchor {
 	display: none;
