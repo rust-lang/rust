@@ -804,6 +804,12 @@ impl Step for Lld {
         let target = self.target;
 
         let llvm_config = builder.ensure(Llvm { target: self.target });
+        let mut llvm_cmake_dir = llvm_config;
+        llvm_cmake_dir.pop();
+        llvm_cmake_dir.pop();
+        llvm_cmake_dir.push("lib");
+        llvm_cmake_dir.push("cmake");
+        llvm_cmake_dir.push("llvm");
 
         let out_dir = builder.lld_out(target);
         let done_stamp = out_dir.join("lld-finished-building");
@@ -834,22 +840,6 @@ impl Step for Lld {
         configure_cmake(builder, target, &mut cfg, true, ldflags);
         configure_llvm(builder, target, &mut cfg);
 
-        // This is an awful, awful hack. Discovered when we migrated to using
-        // clang-cl to compile LLVM/LLD it turns out that LLD, when built out of
-        // tree, will execute `llvm-config --cmakedir` and then tell CMake about
-        // that directory for later processing. Unfortunately if this path has
-        // forward slashes in it (which it basically always does on Windows)
-        // then CMake will hit a syntax error later on as... something isn't
-        // escaped it seems?
-        //
-        // Instead of attempting to fix this problem in upstream CMake and/or
-        // LLVM/LLD we just hack around it here. This thin wrapper will take the
-        // output from llvm-config and replace all instances of `\` with `/` to
-        // ensure we don't hit the same bugs with escaping. It means that you
-        // can't build on a system where your paths require `\` on Windows, but
-        // there's probably a lot of reasons you can't do that other than this.
-        let llvm_config_shim = env::current_exe().unwrap().with_file_name("llvm-config-wrapper");
-
         // Re-use the same flags as llvm to control the level of debug information
         // generated for lld.
         let profile = match (builder.config.llvm_optimize, builder.config.llvm_release_debuginfo) {
@@ -860,35 +850,8 @@ impl Step for Lld {
 
         cfg.out_dir(&out_dir)
             .profile(profile)
-            .env("LLVM_CONFIG_REAL", &llvm_config)
-            .define("LLVM_CONFIG_PATH", llvm_config_shim)
+            .define("LLVM_CMAKE_DIR", llvm_cmake_dir)
             .define("LLVM_INCLUDE_TESTS", "OFF");
-
-        // While we're using this horrible workaround to shim the execution of
-        // llvm-config, let's just pile on more. I can't seem to figure out how
-        // to build LLD as a standalone project and also cross-compile it at the
-        // same time. It wants a natively executable `llvm-config` to learn
-        // about LLVM, but then it learns about all the host configuration of
-        // LLVM and tries to link to host LLVM libraries.
-        //
-        // To work around that we tell our shim to replace anything with the
-        // build target with the actual target instead. This'll break parts of
-        // LLD though which try to execute host tools, such as llvm-tblgen, so
-        // we specifically tell it where to find those. This is likely super
-        // brittle and will break over time. If anyone knows better how to
-        // cross-compile LLD it would be much appreciated to fix this!
-        if target != builder.config.build {
-            cfg.env("LLVM_CONFIG_SHIM_REPLACE", &builder.config.build.triple)
-                .env("LLVM_CONFIG_SHIM_REPLACE_WITH", &target.triple)
-                .define(
-                    "LLVM_TABLEGEN_EXE",
-                    llvm_config.with_file_name("llvm-tblgen").with_extension(EXE_EXTENSION),
-                );
-        }
-
-        // Explicitly set C++ standard, because upstream doesn't do so
-        // for standalone builds.
-        cfg.define("CMAKE_CXX_STANDARD", "14");
 
         cfg.build();
 
