@@ -323,8 +323,7 @@ pub enum StatementKind<'tcx> {
     /// For code that is not specific to stacked borrows, you should consider retags to read and
     /// modify the place in an opaque way.
     ///
-    /// Explicit `RetagKind::Raw` is not permitted - it is implicit as a part of
-    /// `Rvalue::AddressOf`.
+    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
