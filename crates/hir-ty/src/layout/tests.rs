@@ -9,8 +9,22 @@ use crate::{test_db::TestDB, Interner, Substitution};
 
 use super::layout_of_ty;
 
-fn eval_goal(ra_fixture: &str) -> Result<Layout, LayoutError> {
-    let (db, file_id) = TestDB::with_single_file(ra_fixture);
+fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
+    // using unstable cargo features failed, fall back to using plain rustc
+    let mut cmd = std::process::Command::new("rustc");
+    cmd.args(&["-Z", "unstable-options", "--print", "target-spec-json"])
+        .env("RUSTC_BOOTSTRAP", "1");
+    let output = cmd.output().unwrap();
+    assert!(output.status.success(), "{}", output.status);
+    let stdout = String::from_utf8(output.stdout).unwrap();
+    let target_data_layout =
+        stdout.split_once(r#""data-layout": ""#).unwrap().1.split_once('"').unwrap().0.to_owned();
+
+    let ra_fixture = format!(
+        "{minicore}//- /main.rs crate:test target_data_layout:{target_data_layout}\n{ra_fixture}",
+    );
+
+    let (db, file_id) = TestDB::with_single_file(&ra_fixture);
     let module_id = db.module_for_file(file_id);
     let def_map = module_id.def_map(&db);
     let scope = &def_map[module_id.local_id].scope;
@@ -20,31 +34,29 @@ fn eval_goal(ra_fixture: &str) -> Result<Layout, LayoutError> {
         .find_map(|x| match x {
             hir_def::ModuleDefId::AdtId(x) => {
                 let name = match x {
-                    hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_string(),
-                    hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_string(),
-                    hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_string(),
+                    hir_def::AdtId::StructId(x) => db.struct_data(x).name.to_smol_str(),
+                    hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
+                    hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
                 };
-                if name == "Goal" {
-                    Some(x)
-                } else {
-                    None
-                }
+                (name == "Goal").then(|| x)
             }
             _ => None,
         })
         .unwrap();
     let goal_ty = TyKind::Adt(AdtId(adt_id), Substitution::empty(Interner)).intern(Interner);
-    layout_of_ty(&db, &goal_ty)
+    layout_of_ty(&db, &goal_ty, module_id.krate())
 }
 
-fn check_size_and_align(ra_fixture: &str, size: u64, align: u64) {
-    let l = eval_goal(ra_fixture).unwrap();
+#[track_caller]
+fn check_size_and_align(ra_fixture: &str, minicore: &str, size: u64, align: u64) {
+    let l = eval_goal(ra_fixture, minicore).unwrap();
     assert_eq!(l.size.bytes(), size);
     assert_eq!(l.align.abi.bytes(), align);
 }
 
+#[track_caller]
 fn check_fail(ra_fixture: &str, e: LayoutError) {
-    let r = eval_goal(ra_fixture);
+    let r = eval_goal(ra_fixture, "");
     assert_eq!(r, Err(e));
 }
 
@@ -54,7 +66,8 @@ macro_rules! size_and_align {
             #[allow(dead_code)]
             $($t)*
             check_size_and_align(
-                &format!("//- minicore: {}\n{}", stringify!($($x),*), stringify!($($t)*)),
+                stringify!($($t)*),
+                &format!("//- minicore: {}\n", stringify!($($x),*)),
                 ::std::mem::size_of::<Goal>() as u64,
                 ::std::mem::align_of::<Goal>() as u64,
             );
@@ -66,6 +79,7 @@ macro_rules! size_and_align {
             $($t)*
             check_size_and_align(
                 stringify!($($t)*),
+                "",
                 ::std::mem::size_of::<Goal>() as u64,
                 ::std::mem::align_of::<Goal>() as u64,
             );

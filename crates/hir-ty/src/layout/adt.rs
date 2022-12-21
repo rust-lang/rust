@@ -5,7 +5,7 @@ use std::ops::Bound;
 use hir_def::{
     adt::VariantData,
     layout::{Integer, IntegerExt, Layout, LayoutCalculator, LayoutError, RustcEnumVariantIdx},
-    AdtId, EnumVariantId, LocalEnumVariantId, VariantId,
+    AdtId, EnumVariantId, HasModule, LocalEnumVariantId, VariantId,
 };
 use la_arena::RawIdx;
 use smallvec::SmallVec;
@@ -23,12 +23,12 @@ pub fn layout_of_adt_query(
     def: AdtId,
     subst: Substitution,
 ) -> Result<Layout, LayoutError> {
-    let dl = db.current_target_data_layout();
-    let cx = LayoutCx { db };
+    let cx = LayoutCx { db, krate: def.module(db.upcast()).krate() };
+    let dl = cx.current_data_layout();
     let handle_variant = |def: VariantId, var: &VariantData| {
         var.fields()
             .iter()
-            .map(|(fd, _)| layout_of_ty(db, &field_ty(db, def, fd, &subst)))
+            .map(|(fd, _)| layout_of_ty(db, &field_ty(db, def, fd, &subst), cx.krate))
             .collect::<Result<Vec<_>, _>>()
     };
     let (variants, is_enum, is_union, repr) = match def {

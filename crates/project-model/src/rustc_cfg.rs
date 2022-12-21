@@ -50,7 +50,7 @@ fn get_rust_cfgs(
         cargo_config.envs(extra_env);
         cargo_config
             .current_dir(cargo_toml.parent())
-            .args(&["-Z", "unstable-options", "rustc", "--print", "cfg"])
+            .args(&["rustc", "-Z", "unstable-options", "--print", "cfg"])
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(target) = target {
             cargo_config.args(&["--target", target]);

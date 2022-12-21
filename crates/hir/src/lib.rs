@@ -866,7 +866,7 @@ impl Field {
     }
 
     pub fn layout(&self, db: &dyn HirDatabase) -> Result<Layout, LayoutError> {
-        layout_of_ty(db, &self.ty(db).ty)
+        layout_of_ty(db, &self.ty(db).ty, self.parent.module(db).krate().into())
     }
 
     pub fn parent_def(&self, _db: &dyn HirDatabase) -> VariantDef {

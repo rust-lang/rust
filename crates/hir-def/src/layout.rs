@@ -6,7 +6,7 @@ use la_arena::{Idx, RawIdx};
 pub use rustc_abi::{
     Abi, AbiAndPrefAlign, AddressSpace, Align, Endian, FieldsShape, Integer, IntegerType,
     LayoutCalculator, Niche, Primitive, ReprFlags, ReprOptions, Scalar, Size, StructKind,
-    TargetDataLayout, WrappingRange,
+    TargetDataLayout, TargetDataLayoutErrors, WrappingRange,
 };
 
 use crate::LocalEnumVariantId;

@@ -78,6 +78,7 @@ pub struct Fixture {
     pub edition: Option<String>,
     pub env: FxHashMap<String, String>,
     pub introduce_new_source_root: Option<String>,
+    pub target_data_layout: Option<String>,
 }
 
 pub struct MiniCore {
@@ -181,6 +182,7 @@ impl Fixture {
         let mut cfg_key_values = Vec::new();
         let mut env = FxHashMap::default();
         let mut introduce_new_source_root = None;
+        let mut target_data_layout = None;
         for component in components[1..].iter() {
             let (key, value) = component
                 .split_once(':')
@@ -213,6 +215,7 @@ impl Fixture {
                     }
                 }
                 "new_source_root" => introduce_new_source_root = Some(value.to_string()),
+                "target_data_layout" => target_data_layout = Some(value.to_string()),
                 _ => panic!("bad component: {:?}", component),
             }
         }
@@ -237,6 +240,7 @@ impl Fixture {
             edition,
             env,
             introduce_new_source_root,
+            target_data_layout,
         }
     }
 }
