@@ -162,7 +162,7 @@ impl ChangeFixture {
                     Ok(Vec::new()),
                     false,
                     origin,
-                    None,
+                    meta.target_data_layout.as_deref().map(Arc::from),
                 );
                 let prev = crates.insert(crate_name.clone(), crate_id);
                 assert!(prev.is_none());
@@ -212,6 +212,8 @@ impl ChangeFixture {
                     .unwrap();
             }
         }
+        let target_layout =
+            crate_graph.iter().next().and_then(|it| crate_graph[it].target_layout.clone());
 
         if let Some(mini_core) = mini_core {
             let core_file = file_id;
@@ -236,7 +238,7 @@ impl ChangeFixture {
                 Ok(Vec::new()),
                 false,
                 CrateOrigin::Lang(LangCrateOrigin::Core),
-                None,
+                target_layout.clone(),
             );
 
             for krate in all_crates {
@@ -274,7 +276,7 @@ impl ChangeFixture {
                 Ok(proc_macro),
                 true,
                 CrateOrigin::CratesIo { repo: None, name: None },
-                None,
+                target_layout,
             );
 
             for krate in all_crates {
@@ -395,6 +397,7 @@ struct FileMeta {
     edition: Edition,
     env: Env,
     introduce_new_source_root: Option<SourceRootKind>,
+    target_data_layout: Option<String>,
 }
 
 fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
@@ -438,6 +441,7 @@ impl From<Fixture> for FileMeta {
                 "library" => SourceRootKind::Library,
                 invalid => panic!("invalid source root kind '{}'", invalid),
             }),
+            target_data_layout: f.target_data_layout,
         }
     }
 }

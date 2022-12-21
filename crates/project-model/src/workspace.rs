@@ -21,8 +21,8 @@ use crate::{
     cfg_flag::CfgFlag,
     rustc_cfg,
     sysroot::SysrootCrate,
-    utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath, Package,
-    ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
+    target_data_layout, utf8_stdout, CargoConfig, CargoWorkspace, InvocationStrategy, ManifestPath,
+    Package, ProjectJson, ProjectManifest, Sysroot, TargetKind, WorkspaceBuildScripts,
 };
 
 /// A set of cfg-overrides per crate.
@@ -143,40 +143,6 @@ impl fmt::Debug for ProjectWorkspace {
     }
 }
 
-fn data_layout(
-    cargo_toml: Option<&ManifestPath>,
-    target: Option<&str>,
-    extra_env: &FxHashMap<String, String>,
-) -> Option<String> {
-    let output = (|| {
-        if let Some(cargo_toml) = cargo_toml {
-            let mut cmd = Command::new(toolchain::rustc());
-            cmd.envs(extra_env);
-            cmd.current_dir(cargo_toml.parent())
-                .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
-                .env("RUSTC_BOOTSTRAP", "1");
-            if let Some(target) = target {
-                cmd.args(&["--target", target]);
-            }
-            match utf8_stdout(cmd) {
-                Ok(it) => return Ok(it),
-                Err(e) => tracing::debug!("{e:?}: falling back to querying rustc for cfgs"),
-            }
-        }
-        // using unstable cargo features failed, fall back to using plain rustc
-        let mut cmd = Command::new(toolchain::rustc());
-        cmd.envs(extra_env)
-            .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
-            .env("RUSTC_BOOTSTRAP", "1");
-        if let Some(target) = target {
-            cmd.args(&["--target", target]);
-        }
-        utf8_stdout(cmd)
-    })()
-    .ok()?;
-    Some(output.split_once(r#""data-layout": "#)?.1.trim_matches('"').to_owned())
-}
-
 impl ProjectWorkspace {
     pub fn load(
         manifest: ProjectManifest,
@@ -278,8 +244,11 @@ impl ProjectWorkspace {
                     rustc_cfg::get(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
 
                 let cfg_overrides = config.cfg_overrides();
-                let data_layout =
-                    data_layout(Some(&cargo_toml), config.target.as_deref(), &config.extra_env);
+                let data_layout = target_data_layout::get(
+                    Some(&cargo_toml),
+                    config.target.as_deref(),
+                    &config.extra_env,
+                );
                 ProjectWorkspace::Cargo {
                     cargo,
                     build_scripts: WorkspaceBuildScripts::default(),
