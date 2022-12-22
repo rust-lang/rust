@@ -1130,11 +1130,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lt(&self, other: &Rhs) -> bool {
-        if let Some(ordering) = self.partial_cmp(other) {
-            ordering.is_lt()
-        } else {
-            false
-        }
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_lt() } else { false }
     }
 
     /// This method tests less than or equal to (for `self` and `other`) and is used by the `<=`
@@ -1153,11 +1149,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
-        if let Some(ordering) = self.partial_cmp(other) {
-            ordering.is_le()
-        } else {
-            false
-        }
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_le() } else { false }
     }
 
     /// This method tests greater than (for `self` and `other`) and is used by the `>` operator.
@@ -1175,11 +1167,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn gt(&self, other: &Rhs) -> bool {
-        if let Some(ordering) = self.partial_cmp(other) {
-            ordering.is_gt()
-        } else {
-            false
-        }
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_gt() } else { false }
     }
 
     /// This method tests greater than or equal to (for `self` and `other`) and is used by the `>=`
@@ -1198,11 +1186,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     #[must_use]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ge(&self, other: &Rhs) -> bool {
-        if let Some(ordering) = self.partial_cmp(other) {
-            ordering.is_ge()
-        } else {
-            false
-        }
+        if let Some(ordering) = self.partial_cmp(other) { ordering.is_ge() } else { false }
     }
 }
 
