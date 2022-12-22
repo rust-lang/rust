@@ -338,7 +338,7 @@ fn default_alloc_error_hook(layout: Layout) {
 
     #[allow(unused_unsafe)]
     if unsafe { __rust_alloc_error_handler_should_panic != 0 } {
-        panic!("memory allocation of {} bytes failed\n", layout.size());
+        panic!("memory allocation of {} bytes failed", layout.size());
     } else {
         rtprintpanic!("memory allocation of {} bytes failed\n", layout.size());
     }

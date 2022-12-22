@@ -110,6 +110,7 @@
 #![feature(const_maybe_uninit_as_mut_ptr)]
 #![feature(const_refs_to_cell)]
 #![feature(core_intrinsics)]
+#![feature(core_panic)]
 #![feature(const_eval_select)]
 #![feature(const_pin)]
 #![feature(const_waker)]
