@@ -3005,8 +3005,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                   </summary>\
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
-                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
-                    <div class=\"more-scraped-examples-inner\">"
+                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
         );
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
@@ -3030,7 +3029,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             write!(w, "</ul></div>");
         }
 
-        write!(w, "</div></div></details>");
+        write!(w, "</div></details>");
     }
 
     write!(w, "</div>");
