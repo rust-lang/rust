@@ -262,6 +262,7 @@ impl<'a> Visitor<'a> for CollectProcMacros<'a> {
 //          use proc_macro::bridge::client::ProcMacro;
 //
 //          #[rustc_proc_macro_decls]
+//          #[used]
 //          #[allow(deprecated)]
 //          static DECLS: &[ProcMacro] = &[
 //              ProcMacro::custom_derive($name_trait1, &[], ::$name1);
@@ -364,6 +365,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         )
         .map(|mut i| {
             i.attrs.push(cx.attr_word(sym::rustc_proc_macro_decls, span));
+            i.attrs.push(cx.attr_word(sym::used, span));
             i.attrs.push(cx.attr_nested_word(sym::allow, sym::deprecated, span));
             i
         });
