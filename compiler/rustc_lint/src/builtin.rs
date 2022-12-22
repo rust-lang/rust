@@ -55,7 +55,7 @@ use rustc_session::lint::{BuiltinLintDiagnostics, FutureIncompatibilityReason};
 use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
-use rustc_span::{BytePos, InnerSpan, Span};
+use rustc_span::{BytePos, InnerSpan, Span, SyntaxContext};
 use rustc_target::abi::{Abi, VariantIdx};
 use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
 use rustc_trait_selection::traits::{self, misc::can_type_implement_copy, EvaluationResult};
@@ -2184,6 +2184,7 @@ impl ExplicitOutlivesRequirements {
         tcx: TyCtxt<'tcx>,
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
+        span_cx: SyntaxContext,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_lifetime::Region;
 
@@ -2191,23 +2192,28 @@ impl ExplicitOutlivesRequirements {
             .iter()
             .enumerate()
             .filter_map(|(i, bound)| {
-                if let hir::GenericBound::Outlives(lifetime) = bound {
-                    let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::EarlyBound(def_id)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = **r {
-                                ebr.def_id == def_id
-                            } else {
-                                false
-                            }
-                        }),
-                        _ => false,
-                    };
-                    is_inferred.then_some((i, bound.span()))
-                } else {
-                    None
+                let hir::GenericBound::Outlives(lifetime) = bound else {
+                    return None;
+                };
+
+                let is_inferred = match tcx.named_region(lifetime.hir_id) {
+                    Some(Region::EarlyBound(def_id)) => inferred_outlives
+                        .iter()
+                        .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
+                    _ => false,
+                };
+
+                if !is_inferred {
+                    return None;
                 }
+
+                let span = bound.span();
+                if span.ctxt() != span_cx || in_external_macro(tcx.sess, span) {
+                    return None;
+                }
+
+                Some((i, span))
             })
-            .filter(|(_, span)| !in_external_macro(tcx.sess, *span))
             .collect()
     }
 
@@ -2312,9 +2318,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                         // FIXME we can also infer bounds on associated types,
                         // and should check for them here.
                         match predicate.bounded_ty.kind {
-                            hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
+                            hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
                                 let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                    continue
+                                    continue;
                                 };
                                 let index = ty_generics.param_def_id_to_index[&def_id];
                                 (
@@ -2335,8 +2341,12 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     continue;
                 }
 
-                let bound_spans =
-                    self.collect_outlives_bound_spans(cx.tcx, bounds, &relevant_lifetimes);
+                let bound_spans = self.collect_outlives_bound_spans(
+                    cx.tcx,
+                    bounds,
+                    &relevant_lifetimes,
+                    span.ctxt(),
+                );
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();

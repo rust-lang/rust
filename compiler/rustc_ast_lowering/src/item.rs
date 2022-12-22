@@ -1377,21 +1377,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let ident = self.lower_ident(ident);
         let param_span = ident.span;
-        let span = bounds
-            .iter()
-            .fold(Some(param_span.shrink_to_hi()), |span: Option<Span>, bound| {
-                let bound_span = bound.span();
-                // We include bounds that come from a `#[derive(_)]` but point at the user's code,
-                // as we use this method to get a span appropriate for suggestions.
-                if !bound_span.can_be_used_for_suggestions() {
-                    None
-                } else if let Some(span) = span {
-                    Some(span.to(bound_span))
-                } else {
-                    Some(bound_span)
-                }
-            })
-            .unwrap_or(param_span.shrink_to_hi());
+        let span =
+            bounds.iter().fold(param_span.shrink_to_hi(), |span, bound| span.to(bound.span()));
         match kind {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {

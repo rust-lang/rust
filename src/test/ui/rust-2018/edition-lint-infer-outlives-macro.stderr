@@ -1,5 +1,5 @@
 error: outlives requirements can be inferred
-  --> $DIR/edition-lint-infer-outlives-macro.rs:23:18
+  --> $DIR/edition-lint-infer-outlives-macro.rs:27:18
    |
 LL | struct Bar<'a, 'b: 'a> {
    |                  ^^^^ help: remove this bound
@@ -10,5 +10,27 @@ note: the lint level is defined here
 LL | #![deny(explicit_outlives_requirements)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-macro.rs:34:28
+   |
+LL |         struct Quux<'a, 'b> where 'b: 'a {
+   |                            ^^^^^^^^^^^^^ help: remove this bound
+...
+LL | make_quux!{}
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `make_quux` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: outlives requirements can be inferred
+  --> $DIR/edition-lint-infer-outlives-macro.rs:39:28
+   |
+LL |         struct Quux2<'a, 'b: 'a> {
+   |                            ^^^^ help: remove this bound
+...
+LL | make_quux!{}
+   | ------------ in this macro invocation
+   |
+   = note: this error originates in the macro `make_quux` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+error: aborting due to 3 previous errors
 
