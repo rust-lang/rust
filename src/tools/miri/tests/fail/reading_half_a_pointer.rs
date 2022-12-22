@@ -7,7 +7,7 @@ struct Data {
     ptr: &'static i32,
 }
 
-// But we need to gurantee some alignment
+// But we need to guarantee some alignment
 struct Wrapper {
     align: u64,
     data: Data,
