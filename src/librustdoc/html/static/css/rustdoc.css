@@ -1287,6 +1287,7 @@ a.test-arrow:hover {
 #titles > button > div.count {
 	display: inline-block;
 	font-size: 1rem;
+	color: var(--search-tab-title-count-color);
 }
 
 #src-sidebar-toggle {

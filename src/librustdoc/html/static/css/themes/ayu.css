@@ -45,6 +45,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--search-color: #fff;
 	--search-results-alias-color: #c5c5c5;
 	--search-results-grey-color: #999;
+	--search-tab-title-count-color: #888;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ff7733;
@@ -173,10 +174,6 @@ pre, .rustdoc.source .example-wrap {
 
 #titles > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
-}
-
-#titles > button > div.count {
-	color: #888;
 }
 
 /* rules that this theme does not need to set, here to satisfy the rule checker */
