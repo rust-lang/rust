@@ -813,16 +813,14 @@ function loadCss(cssUrl) {
         hideSidebar();
     });
 
-    onEachLazy(document.getElementsByTagName("a"), el => {
+    onEachLazy(document.querySelectorAll("a[href^='#']"), el => {
         // For clicks on internal links (<A> tags with a hash property), we expand the section we're
         // jumping to *before* jumping there. We can't do this in onHashChange, because it changes
         // the height of the document so we wind up scrolled to the wrong place.
-        if (el.hash) {
-            el.addEventListener("click", () => {
-                expandSection(el.hash.slice(1));
-                hideSidebar();
-            });
-        }
+        el.addEventListener("click", () => {
+            expandSection(el.hash.slice(1));
+            hideSidebar();
+        });
     });
 
     onEachLazy(document.querySelectorAll(".rustdoc-toggle > summary:not(.hideme)"), el => {
