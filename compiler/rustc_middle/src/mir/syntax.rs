@@ -320,8 +320,10 @@ pub enum StatementKind<'tcx> {
     /// <https://internals.rust-lang.org/t/stacked-borrows-an-aliasing-model-for-rust/8153/> for
     /// more details.
     ///
-    /// For code that is not specific to stacked borrows, you should consider retags to read
-    /// and modify the place in an opaque way.
+    /// For code that is not specific to stacked borrows, you should consider retags to read and
+    /// modify the place in an opaque way.
+    ///
+    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
