@@ -10,18 +10,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Performs type inference fallback, setting `FnCtxt::fallback_has_occurred`
     /// if fallback has occurred.
     pub(super) fn type_inference_fallback(&self) {
-        debug!(
-            "type-inference-fallback start obligations: {:#?}",
-            self.fulfillment_cx.borrow().pending_obligations()
-        );
-
         // All type checking constraints were added, try to fallback unsolved variables.
         self.select_obligations_where_possible(|_| {});
-
-        debug!(
-            "type-inference-fallback post selection obligations: {:#?}",
-            self.fulfillment_cx.borrow().pending_obligations()
-        );
 
         // Check if we have any unsolved variables. If not, no need for fallback.
         let unsolved_variables = self.unsolved_variables();
@@ -281,7 +271,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
-        debug!("obligations: {:#?}", self.fulfillment_cx.borrow().pending_obligations());
+        debug!("root obligations: {:#?}", self.root_obligations.borrow());
         debug!("relationships: {:#?}", relationships);
 
         // For each diverging variable, figure out whether it can
@@ -347,10 +337,10 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Returns a graph whose nodes are (unresolved) inference variables and where
     /// an edge `?A -> ?B` indicates that the variable `?A` is coerced to `?B`.
     fn create_coercion_graph(&self) -> VecGraph<ty::TyVid> {
-        let pending_obligations = self.fulfillment_cx.borrow().pending_obligations();
-        debug!("create_coercion_graph: pending_obligations={:?}", pending_obligations);
-        let coercion_edges: Vec<(ty::TyVid, ty::TyVid)> = pending_obligations
-            .into_iter()
+        let root_obligations = self.root_obligations.borrow();
+        debug!("create_coercion_graph: pending_obligations={:?}", root_obligations);
+        let coercion_edges: Vec<(ty::TyVid, ty::TyVid)> = root_obligations
+            .iter()
             .filter_map(|obligation| {
                 // The predicates we are looking for look like `Coerce(?A -> ?B)`.
                 // They will have no bound variables.
