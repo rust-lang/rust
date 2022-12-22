@@ -10,13 +10,8 @@ assert-property-false: (
 // Check that examples with very long lines have the same width as ones that don't.
 store-property: (
     clientWidth,
-    ".more-scraped-examples .scraped-example:nth-child(1) .code-wrapper .src-line-numbers",
-    "clientWidth"
-)
-
-assert-property: (
     ".more-scraped-examples .scraped-example:nth-child(2) .code-wrapper .src-line-numbers",
-    {"clientWidth": |clientWidth|}
+    "clientWidth"
 )
 
 assert-property: (
@@ -31,5 +26,10 @@ assert-property: (
 
 assert-property: (
     ".more-scraped-examples .scraped-example:nth-child(5) .code-wrapper .src-line-numbers",
+    {"clientWidth": |clientWidth|}
+)
+
+assert-property: (
+    ".more-scraped-examples .scraped-example:nth-child(6) .code-wrapper .src-line-numbers",
     {"clientWidth": |clientWidth|}
 )
