@@ -1743,46 +1743,45 @@ impl<'a> Resolver<'a> {
             // definitions actually produced by `macro` and `macro` definitions produced by
             // `macro_rules!`, but at least such configurations are not stable yet.
             ctxt = ctxt.normalize_to_macro_rules();
-
-            let marks = ctxt.marks();
-
             debug!(
                 "resolve_crate_root: marks={:?}",
-                marks.iter().map(|(i, t)| (i.expn_data(), t)).collect::<Vec<_>>()
+                ctxt.marks().into_iter().map(|(i, t)| (i.expn_data(), t)).collect::<Vec<_>>()
             );
-
+            let mut iter = ctxt.marks().into_iter().rev().peekable();
+            let mut result = None;
             // Find the last opaque mark from the end if it exists.
-            let last_opaque = marks
-                .iter()
-                .rev()
-                .take_while(|(_expn_id, transp)| *transp == Transparency::Opaque)
-                .last();
+            while let Some(&(mark, transparency)) = iter.peek() {
+                if transparency == Transparency::Opaque {
+                    result = Some(mark);
+                    iter.next();
+                } else {
+                    break;
+                }
+            }
             debug!(
                 "resolve_crate_root: found opaque mark {:?} {:?}",
-                last_opaque,
-                last_opaque.map(|r| r.0.expn_data())
+                result,
+                result.map(|r| r.expn_data())
             );
-
             // Then find the last semi-transparent mark from the end if it exists.
-            let last_semi_transp = marks
-                .iter()
-                .rev()
-                .skip_while(|(_expn_id, transp)| *transp == Transparency::Opaque)
-                .take_while(|(_expn_id, transp)| *transp == Transparency::SemiTransparent)
-                .last();
+            for (mark, transparency) in iter {
+                if transparency == Transparency::SemiTransparent {
+                    result = Some(mark);
+                } else {
+                    break;
+                }
+            }
             debug!(
                 "resolve_crate_root: found semi-transparent mark {:?} {:?}",
-                last_semi_transp,
-                last_semi_transp.map(|r| r.0.expn_data())
+                result,
+                result.map(|r| r.expn_data())
             );
-
-            last_semi_transp.or(last_opaque).map(|(expn_id, _transp)| expn_id).cloned()
+            result
         } else {
             debug!("resolve_crate_root: not DollarCrate");
             ctxt = ctxt.normalize_to_macros_2_0();
             ctxt.adjust(ExpnId::root())
         };
-
         let module = match mark {
             Some(def) => self.expn_def_scope(def),
             None => {
