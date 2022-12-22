@@ -470,6 +470,8 @@ fn make_format_args(
         report_invalid_references(ecx, &invalid_refs, &template, fmt_span, &args, parser);
     }
 
+    let mut duplicate_explicit_arg = Vec::new();
+
     let unused = used
         .iter()
         .enumerate()
@@ -478,17 +480,17 @@ fn make_format_args(
             let msg = if let FormatArgumentKind::Named(_) = args.explicit_args()[i].kind {
                 "named argument never used"
             } else {
-                let mut err = "argument never used";
                 if let Some(expr) = args.explicit_args()[i].expr.to_ty() {
                     if let Some(symbol) = expr.kind.is_simple_path() {
-                            let current_arg = symbol.as_str();
-                            let current_arg_ph = format!("{{{current_arg}}}");
-                            if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
-                                err = "argument is a duplicate of an inline argument"
-                            }
+                        let current_arg = symbol.as_str().to_owned();
+                        let current_arg_ph = format!("{{{current_arg}}}");
+                        if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
+                            duplicate_explicit_arg
+                                .push((current_arg, args.explicit_args()[i].expr.span));
                         }
                     }
-                err
+                }
+                "argument never used"
             };
             (args.explicit_args()[i].expr.span, msg)
         })
@@ -498,7 +500,15 @@ fn make_format_args(
         // If there's a lot of unused arguments,
         // let's check if this format arguments looks like another syntax (printf / shell).
         let detect_foreign_fmt = unused.len() > args.explicit_args().len() / 2;
-        report_missing_placeholders(ecx, unused, detect_foreign_fmt, str_style, fmt_str, fmt_span);
+        report_missing_placeholders(
+            ecx,
+            unused,
+            duplicate_explicit_arg,
+            detect_foreign_fmt,
+            str_style,
+            fmt_str,
+            fmt_span,
+        );
     }
 
     // Only check for unused named argument names if there are no other errors to avoid causing
@@ -581,14 +591,21 @@ fn invalid_placeholder_type_error(
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
     unused: Vec<(Span, &str)>,
+    duplicate_explicit_arg: Vec<(String, Span)>,
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
     fmt_span: Span,
 ) {
+    let mut dup_exist = false;
     let mut diag = if let &[(span, msg)] = &unused[..] {
         let mut diag = ecx.struct_span_err(span, msg);
         diag.span_label(span, msg);
+        for (_var, sp) in &duplicate_explicit_arg {
+            if !dup_exist && span == *sp {
+                dup_exist = true;
+            }
+        }
         diag
     } else {
         let mut diag = ecx.struct_span_err(
@@ -598,6 +615,11 @@ fn report_missing_placeholders(
         diag.span_label(fmt_span, "multiple missing formatting specifiers");
         for &(span, msg) in &unused {
             diag.span_label(span, msg);
+            for (_var, sp) in &duplicate_explicit_arg {
+                if !dup_exist && span == *sp {
+                    dup_exist = true;
+                }
+            }
         }
         diag
     };
@@ -685,7 +707,15 @@ fn report_missing_placeholders(
     if !found_foreign && unused.len() == 1 {
         diag.span_label(fmt_span, "formatting specifier missing");
     }
-
+    if dup_exist {
+        diag.note("the formatting string captures that binding directly, it doesn't need to be included in the argument list");
+        let (_names, spans): (Vec<_>, Vec<_>) = duplicate_explicit_arg.into_iter().unzip();
+        let multi = if spans.len() == 1 { false } else { true };
+        diag.span_help(
+            spans,
+            format!("Consider removing {}", if multi { "these" } else { "this" }),
+        );
+    }
     diag.emit();
 }
 

@@ -1,10 +1,33 @@
-error: argument is a duplicate of an inline argument
+error: argument never used
   --> $DIR/issue-105225.rs:3:21
    |
 LL |     println!("{x}", x);
-   |              -----  ^ argument is a duplicate of an inline argument
+   |              -----  ^ argument never used
    |              |
    |              formatting specifier missing
+   |
+   = note: the formatting string captures that binding directly, it doesn't need to be included in the argument list
+help: Consider removing this
+  --> $DIR/issue-105225.rs:3:21
+   |
+LL |     println!("{x}", x);
+   |                     ^
 
-error: aborting due to previous error
+error: multiple unused formatting arguments
+  --> $DIR/issue-105225.rs:6:25
+   |
+LL |     println!("{x} {y}", x, y);
+   |              ---------  ^  ^ argument never used
+   |              |          |
+   |              |          argument never used
+   |              multiple missing formatting specifiers
+   |
+   = note: the formatting string captures that binding directly, it doesn't need to be included in the argument list
+help: Consider removing these
+  --> $DIR/issue-105225.rs:6:25
+   |
+LL |     println!("{x} {y}", x, y);
+   |                         ^  ^
+
+error: aborting due to 2 previous errors
 
