@@ -399,7 +399,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
-                let mut skip_first_expr = false;
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
                     && let Some(mut diag) = self
@@ -422,15 +425,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         return ty;
                     } else {
                         diag.emit();
-                        skip_first_expr = true;
                     }
                 }
 
                 let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
-
-                for arg in arg_exprs.iter().skip(skip_first_expr as usize) {
-                    self.check_expr(arg);
-                }
 
                 return self.tcx.ty_error_with_guaranteed(err);
             }
@@ -492,9 +490,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            // This may happen recursively -- if so, avoid repeatedly checking the expr.
-            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr);
-            let callee_ty = callee_ty.unwrap_or_else(|| self.check_expr(callee_expr));
+            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)?;
+
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
