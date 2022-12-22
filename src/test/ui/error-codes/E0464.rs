@@ -9,7 +9,6 @@
 // NOTE: This test is duplicated from `src/test/ui/crate-loading/crateresolve1.rs`.
 
 extern crate crateresolve1;
-//~^ ERROR multiple matching crates for `crateresolve1`
+//~^ ERROR multiple candidates for `rlib` dependency `crateresolve1` found
 
-fn main() {
-}
+fn main() {}
