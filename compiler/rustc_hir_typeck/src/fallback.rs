@@ -12,7 +12,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     pub(super) fn type_inference_fallback(&self) {
         debug!(
             "type-inference-fallback start obligations: {:#?}",
-            self.fulfillment_cx.borrow_mut().pending_obligations()
+            self.fulfillment_cx.borrow().pending_obligations()
         );
 
         // All type checking constraints were added, try to fallback unsolved variables.
@@ -20,7 +20,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
 
         debug!(
             "type-inference-fallback post selection obligations: {:#?}",
-            self.fulfillment_cx.borrow_mut().pending_obligations()
+            self.fulfillment_cx.borrow().pending_obligations()
         );
 
         // Check if we have any unsolved variables. If not, no need for fallback.
@@ -281,8 +281,8 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
-        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow_mut().pending_obligations());
-        debug!("obligations: {:#?}", self.fulfillment_cx.borrow_mut().pending_obligations());
+        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow().pending_obligations());
+        debug!("obligations: {:#?}", self.fulfillment_cx.borrow().pending_obligations());
         debug!("relationships: {:#?}", relationships);
 
         // For each diverging variable, figure out whether it can
@@ -348,7 +348,7 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
     /// Returns a graph whose nodes are (unresolved) inference variables and where
     /// an edge `?A -> ?B` indicates that the variable `?A` is coerced to `?B`.
     fn create_coercion_graph(&self) -> VecGraph<ty::TyVid> {
-        let pending_obligations = self.fulfillment_cx.borrow_mut().pending_obligations();
+        let pending_obligations = self.fulfillment_cx.borrow().pending_obligations();
         debug!("create_coercion_graph: pending_obligations={:?}", pending_obligations);
         let coercion_edges: Vec<(ty::TyVid, ty::TyVid)> = pending_obligations
             .into_iter()
