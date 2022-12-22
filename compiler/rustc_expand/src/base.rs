@@ -1424,38 +1424,25 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                 if variant.ident.name == sym::Input {
                     let filename = sess.source_map().span_to_filename(item.ident.span);
                     if let FileName::Real(real) = filename {
-                        if let Some(c) = real
+                        if let real
                             .local_path()
                             .unwrap_or(Path::new(""))
                             .components()
                             .flat_map(|c| c.as_os_str().to_str())
-                            .find(|c| c.starts_with("rental") || c.starts_with("allsorts-rental"))
+                            .find(|c| c.starts_with("allsorts-rental"))
+                            .is_some()
                         {
-                            let crate_matches = if c.starts_with("allsorts-rental") {
-                                true
-                            } else {
-                                let mut version = c.trim_start_matches("rental-").split('.');
-                                version.next() == Some("0")
-                                    && version.next() == Some("5")
-                                    && version
-                                        .next()
-                                        .and_then(|c| c.parse::<u32>().ok())
-                                        .map_or(false, |v| v < 6)
-                            };
-
-                            if crate_matches {
-                                sess.buffer_lint_with_diagnostic(
-                                        &PROC_MACRO_BACK_COMPAT,
-                                        item.ident.span,
-                                        ast::CRATE_NODE_ID,
-                                        "using an old version of `rental`",
-                                        BuiltinLintDiagnostics::ProcMacroBackCompat(
-                                        "older versions of the `rental` crate will stop compiling in future versions of Rust; \
-                                        please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
-                                        )
-                                    );
-                                return true;
-                            }
+                            sess.buffer_lint_with_diagnostic(
+                                    &PROC_MACRO_BACK_COMPAT,
+                                    item.ident.span,
+                                    ast::CRATE_NODE_ID,
+                                    "using an old version of `rental`",
+                                    BuiltinLintDiagnostics::ProcMacroBackCompat(
+                                    "older versions of the `rental` crate will stop compiling in future versions of Rust; \
+                                    please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
+                                    )
+                                );
+                            return true;
                         }
                     }
                 }
