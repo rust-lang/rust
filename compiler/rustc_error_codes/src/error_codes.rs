@@ -598,7 +598,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0421, // merged into 531
 //  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
-    E0465, // multiple .. candidates for `..` found
+//  E0465, // removed: merged with E0464
 //  E0467, // removed
 //  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)

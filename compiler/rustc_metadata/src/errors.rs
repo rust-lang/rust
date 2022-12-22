@@ -486,23 +486,13 @@ impl IntoDiagnostic<'_> for MultipleCandidates {
         let mut diag = handler.struct_err(rustc_errors::fluent::metadata_multiple_candidates);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("flavor", self.flavor);
-        diag.code(error_code!(E0465));
+        diag.code(error_code!(E0464));
         diag.set_span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
-            diag.span_note(self.span, &format!("candidate #{}: {}", i + 1, candidate.display()));
+            diag.note(&format!("candidate #{}: {}", i + 1, candidate.display()));
         }
         diag
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(metadata_multiple_matching_crates, code = "E0464")]
-#[note]
-pub struct MultipleMatchingCrates {
-    #[primary_span]
-    pub span: Span,
-    pub crate_name: Symbol,
-    pub candidates: String,
 }
 
 #[derive(Diagnostic)]

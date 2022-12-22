@@ -8,7 +8,6 @@
 // normalize-stderr-test: "\\\?\\" -> ""
 
 extern crate crateresolve2;
-//~^ ERROR multiple matching crates for `crateresolve2`
+//~^ ERROR multiple candidates for `rmeta` dependency `crateresolve2` found
 
-fn main() {
-}
+fn main() {}
