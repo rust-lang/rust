@@ -1686,7 +1686,7 @@ impl<'a> Resolver<'a> {
             .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
-    // Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
+    /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
     fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
         for ambiguity_error in &self.ambiguity_errors {
             // if the span location and ident as well as its span are the same
