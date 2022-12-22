@@ -611,10 +611,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // FIXME: consider using `sub_root_var` here so we
         // can see through subtyping.
         let ty_var_root = self.root_var(self_ty);
-        trace!("pending_obligations = {:#?}", self.fulfillment_cx.borrow().pending_obligations());
+        trace!("root_obligations = {:#?}", self.root_obligations.borrow());
 
-        self.fulfillment_cx.borrow().pending_obligations().into_iter().filter_map(
-            move |obligation| match &obligation.predicate.kind().skip_binder() {
+        self.root_obligations.borrow().clone().into_iter().filter_map(move |obligation| {
+            match &obligation.predicate.kind().skip_binder() {
                 ty::PredicateKind::Clause(ty::Clause::Projection(data))
                     if self.self_type_matches_expected_vid(
                         data.projection_ty.self_ty(),
@@ -650,8 +650,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | ty::PredicateKind::ClosureKind(..)
                 | ty::PredicateKind::Ambiguous
                 | ty::PredicateKind::TypeWellFormedFromEnv(..) => None,
-            },
-        )
+            }
+        })
     }
 
     pub(in super::super) fn type_var_is_sized(&self, self_ty: ty::TyVid) -> bool {

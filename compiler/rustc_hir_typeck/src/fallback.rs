@@ -281,7 +281,6 @@ impl<'tcx> FnCtxt<'_, 'tcx> {
             roots_reachable_from_non_diverging,
         );
 
-        debug!("inherited: {:#?}", self.inh.fulfillment_cx.borrow().pending_obligations());
         debug!("obligations: {:#?}", self.fulfillment_cx.borrow().pending_obligations());
         debug!("relationships: {:#?}", relationships);
 

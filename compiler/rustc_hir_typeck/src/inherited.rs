@@ -1,6 +1,6 @@
 use super::callee::DeferredCallResolution;
 
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashSet, FxIndexSet};
 use rustc_hir as hir;
 use rustc_hir::def_id::LocalDefId;
 use rustc_hir::HirIdMap;
@@ -10,7 +10,7 @@ use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefIdMap;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{self, TraitEngine, TraitEngineExt as _};
+use rustc_trait_selection::traits::{self, PredicateObligation, TraitEngine, TraitEngineExt as _};
 
 use std::cell::RefCell;
 use std::ops::Deref;
@@ -32,6 +32,8 @@ pub struct Inherited<'tcx> {
     pub(super) locals: RefCell<HirIdMap<super::LocalTy<'tcx>>>,
 
     pub(super) fulfillment_cx: RefCell<Box<dyn TraitEngine<'tcx>>>,
+
+    pub(super) root_obligations: RefCell<FxIndexSet<PredicateObligation<'tcx>>>,
 
     /// Some additional `Sized` obligations badly affect type inference.
     /// These obligations are added in a later stage of typeck.
@@ -119,6 +121,7 @@ impl<'tcx> Inherited<'tcx> {
             typeck_results,
             infcx,
             fulfillment_cx: RefCell::new(<dyn TraitEngine<'_>>::new(tcx)),
+            root_obligations: RefCell::new(Default::default()),
             locals: RefCell::new(Default::default()),
             deferred_sized_obligations: RefCell::new(Vec::new()),
             deferred_call_resolutions: RefCell::new(Default::default()),
@@ -136,6 +139,7 @@ impl<'tcx> Inherited<'tcx> {
         if obligation.has_escaping_bound_vars() {
             span_bug!(obligation.cause.span, "escaping bound vars in predicate {:?}", obligation);
         }
+        self.root_obligations.borrow_mut().insert(obligation.clone());
         self.fulfillment_cx.borrow_mut().register_predicate_obligation(self, obligation);
     }
 

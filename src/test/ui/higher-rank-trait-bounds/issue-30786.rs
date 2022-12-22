@@ -116,7 +116,6 @@ fn variant1() {
     // guess.
     let map = source.mapx(|x: &_| x);
     let filter = map.filterx(|x: &_| true);
-    //~^ ERROR the method
 }
 
 fn variant2() {

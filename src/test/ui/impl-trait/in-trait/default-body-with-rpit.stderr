@@ -1,0 +1,33 @@
+error: non-defining opaque type use in defining scope
+  --> $DIR/default-body-with-rpit.rs:13:39
+   |
+LL |       async fn baz(&self) -> impl Debug {
+   |  _______________________________________^
+LL | |         ""
+LL | |     }
+   | |_____^ lifetime `'_` is part of concrete type but not used in parameter list of the `impl Trait` type alias
+
+error: concrete type differs from previous defining opaque type use
+  --> $DIR/default-body-with-rpit.rs:14:9
+   |
+LL |         ""
+   |         ^^ expected `impl Debug`, got `&'static str`
+   |
+note: previous use here
+  --> $DIR/default-body-with-rpit.rs:13:39
+   |
+LL |       async fn baz(&self) -> impl Debug {
+   |  _______________________________________^
+LL | |         ""
+LL | |     }
+   | |_____^
+
+error[E0720]: cannot resolve opaque type
+  --> $DIR/default-body-with-rpit.rs:13:28
+   |
+LL |     async fn baz(&self) -> impl Debug {
+   |                            ^^^^^^^^^^ cannot resolve opaque type
+
+error: aborting due to 3 previous errors
+
+For more information about this error, try `rustc --explain E0720`.
