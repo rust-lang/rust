@@ -386,5 +386,21 @@ LL |         let _ = 42; return;
    |
    = help: remove `return`
 
-error: aborting due to 46 previous errors
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:294:9
+   |
+LL |         return Ok(format!("ok!"));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return`
+
+error: unneeded `return` statement
+  --> $DIR/needless_return.rs:296:9
+   |
+LL |         return Err(format!("err!"));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = help: remove `return`
+
+error: aborting due to 48 previous errors
 
