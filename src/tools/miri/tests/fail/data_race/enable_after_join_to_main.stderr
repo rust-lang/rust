@@ -4,7 +4,7 @@ error: Undefined Behavior: Data race detected between Write on thread `<unnamed>
 LL |             *c.0 = 64;
    |             ^^^^^^^^^ Data race detected between Write on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Write is here
    |
-help: and Write on thread `<unnamed>`, which is here
+help: and the Write on thread `<unnamed>` is here
   --> $DIR/enable_after_join_to_main.rs:LL:CC
    |
 LL |             *c.0 = 32;

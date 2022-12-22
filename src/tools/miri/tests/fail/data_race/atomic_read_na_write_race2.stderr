@@ -4,7 +4,7 @@ error: Undefined Behavior: Data race detected between Write on thread `<unnamed>
 LL |             *atomic_ref.get_mut() = 32;
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Write on thread `<unnamed>` and Atomic Load on thread `<unnamed>` at ALLOC. The Write is here
    |
-help: and Atomic Load on thread `<unnamed>`, which is here
+help: and the Atomic Load on thread `<unnamed>` is here
   --> $DIR/atomic_read_na_write_race2.rs:LL:CC
    |
 LL |             atomic_ref.load(Ordering::SeqCst)

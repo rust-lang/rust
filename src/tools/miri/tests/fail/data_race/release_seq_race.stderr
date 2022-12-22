@@ -4,7 +4,7 @@ error: Undefined Behavior: Data race detected between Read on thread `<unnamed>`
 LL |                 *c.0
    |                 ^^^^ Data race detected between Read on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Read is here
    |
-help: and Write on thread `<unnamed>`, which is here
+help: and the Write on thread `<unnamed>` is here
   --> $DIR/release_seq_race.rs:LL:CC
    |
 LL |             *c.0 = 1;

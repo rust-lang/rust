@@ -4,7 +4,7 @@ error: Undefined Behavior: Data race detected between Write on thread `main` and
 LL |     unsafe { V = 2 }
    |              ^^^^^ Data race detected between Write on thread `main` and Write on thread `<unnamed>` at ALLOC. The Write is here
    |
-help: and Write on thread `<unnamed>`, which is here
+help: and the Write on thread `<unnamed>` is here
   --> $DIR/fence_after_load.rs:LL:CC
    |
 LL |         unsafe { V = 1 }
