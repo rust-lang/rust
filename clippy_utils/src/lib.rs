@@ -1304,6 +1304,7 @@ pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId)
     }
 }
 
+/// Gets the enclosing block, if any.
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
     let map = &cx.tcx.hir();
     let enclosing_node = map
