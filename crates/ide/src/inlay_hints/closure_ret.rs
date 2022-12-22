@@ -1,6 +1,5 @@
 //! Implementation of "closure return type" inlay hints.
-use hir::Semantics;
-use ide_db::{base_db::FileId, RootDatabase};
+use ide_db::{base_db::FileId, famous_defs::FamousDefs};
 use syntax::ast::{self, AstNode};
 
 use crate::{
@@ -12,7 +11,7 @@ use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     closure: ast::ClosureExpr,
@@ -43,7 +42,7 @@ pub(super) fn hints(
     acc.push(InlayHint {
         range: param_list.syntax().text_range(),
         kind: InlayKind::ClosureReturnTypeHint,
-        label: label_of_ty(sema, &param_list, config, ty)?,
+        label: label_of_ty(famous_defs, config, ty)?,
         tooltip: Some(InlayTooltip::HoverRanged(file_id, param_list.syntax().text_range())),
     });
     Some(())
