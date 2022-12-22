@@ -1,6 +1,5 @@
 //! Implementation of "chaining" inlay hints.
-use hir::Semantics;
-use ide_db::RootDatabase;
+use ide_db::famous_defs::FamousDefs;
 use syntax::{
     ast::{self, AstNode},
     Direction, NodeOrToken, SyntaxKind, T,
@@ -12,7 +11,7 @@ use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     expr: &ast::Expr,
@@ -61,7 +60,7 @@ pub(super) fn hints(
             acc.push(InlayHint {
                 range: expr.syntax().text_range(),
                 kind: InlayKind::ChainingHint,
-                label: label_of_ty(sema, desc_expr, config, ty)?,
+                label: label_of_ty(famous_defs, config, ty)?,
                 tooltip: Some(InlayTooltip::HoverRanged(file_id, expr.syntax().text_range())),
             });
         }

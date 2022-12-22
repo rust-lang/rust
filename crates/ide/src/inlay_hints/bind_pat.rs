@@ -4,7 +4,7 @@
 //! let _x /* i32 */= f(4, 4);
 //! ```
 use hir::{Semantics, TypeInfo};
-use ide_db::{base_db::FileId, RootDatabase};
+use ide_db::{base_db::FileId, famous_defs::FamousDefs, RootDatabase};
 
 use itertools::Itertools;
 use syntax::{
@@ -20,7 +20,7 @@ use super::label_of_ty;
 
 pub(super) fn hints(
     acc: &mut Vec<InlayHint>,
-    sema: &Semantics<'_, RootDatabase>,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     pat: &ast::IdentPat,
@@ -37,7 +37,7 @@ pub(super) fn hints(
         return None;
     }
 
-    let label = label_of_ty(sema, desc_pat, config, ty)?;
+    let label = label_of_ty(famous_defs, config, ty)?;
 
     if config.hide_named_constructor_hints
         && is_named_constructor(sema, pat, &label.to_string()).is_some()

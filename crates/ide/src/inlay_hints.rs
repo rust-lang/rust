@@ -232,8 +232,7 @@ impl InlayHintLabelBuilder<'_> {
 }
 
 fn label_of_ty(
-    sema: &Semantics<'_, RootDatabase>,
-    desc_pat: &impl AstNode,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     ty: hir::Type,
 ) -> Option<InlayHintLabel> {
@@ -263,8 +262,6 @@ fn label_of_ty(
         };
     }
 
-    let krate = sema.scope(desc_pat.syntax())?.krate();
-    let famous_defs = FamousDefs(sema, krate);
     let mut label_builder = InlayHintLabelBuilder {
         db: sema.db,
         last_part: String::new(),
@@ -329,7 +326,7 @@ pub(crate) fn inlay_hints(
 
 fn hints(
     hints: &mut Vec<InlayHint>,
-    FamousDefs(sema, _): &FamousDefs<'_, '_>,
+    famous_defs @ FamousDefs(sema, _): &FamousDefs<'_, '_>,
     config: &InlayHintsConfig,
     file_id: FileId,
     node: SyntaxNode,
@@ -338,14 +335,14 @@ fn hints(
     match_ast! {
         match node {
             ast::Expr(expr) => {
-                chaining::hints(hints, sema, config, file_id, &expr);
+                chaining::hints(hints, famous_defs, config, file_id, &expr);
                 adjustment::hints(hints, sema, config, &expr);
                 match expr {
                     ast::Expr::CallExpr(it) => param_name::hints(hints, sema, config, ast::Expr::from(it)),
                     ast::Expr::MethodCallExpr(it) => {
                         param_name::hints(hints, sema, config, ast::Expr::from(it))
                     }
-                    ast::Expr::ClosureExpr(it) => closure_ret::hints(hints, sema, config, file_id, it),
+                    ast::Expr::ClosureExpr(it) => closure_ret::hints(hints, famous_defs, config, file_id, it),
                     // We could show reborrows for all expressions, but usually that is just noise to the user
                     // and the main point here is to show why "moving" a mutable reference doesn't necessarily move it
                     // ast::Expr::PathExpr(_) => reborrow_hints(hints, sema, config, &expr),
@@ -355,7 +352,7 @@ fn hints(
             ast::Pat(it) => {
                 binding_mode::hints(hints, sema, config, &it);
                 if let ast::Pat::IdentPat(it) = it {
-                    bind_pat::hints(hints, sema, config, file_id, &it);
+                    bind_pat::hints(hints, famous_defs, config, file_id, &it);
                 }
                 Some(())
             },
