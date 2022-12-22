@@ -95,9 +95,9 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         'poll: {
             use crate::sys::os::errno;
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
             use libc::open as open64;
-            #[cfg(target_os = "linux")]
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
             use libc::open64;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
@@ -143,9 +143,9 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         {
             use crate::sys::os::errno;
-            #[cfg(not(target_os = "linux"))]
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
             use libc::open as open64;
-            #[cfg(target_os = "linux")]
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
             use libc::open64;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
