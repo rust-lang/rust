@@ -4039,6 +4039,7 @@ dependencies = [
  "rustc_ast",
  "rustc_attr",
  "rustc_data_structures",
+ "rustc_error_messages",
  "rustc_errors",
  "rustc_feature",
  "rustc_graphviz",
