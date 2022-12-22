@@ -6,6 +6,10 @@
 // to suggest either switching the order or note that intersection
 // patterns are not allowed.
 
+// run-rustfix
+
+#![allow(unused_variables)]
+
 fn main() {
     let s: Option<u8> = None;
 
@@ -16,15 +20,6 @@ fn main() {
         //~| binding on the right, should be on the left
         //~| HELP switch the order
         //~| SUGGESTION y @ Some(x)
-        _ => {}
-    }
-
-    match s {
-        Some(x) @ Some(y) => {}
-        //~^ ERROR left-hand side of `@` must be a binding
-        //~| interpreted as a pattern, not a binding
-        //~| also a pattern
-        //~| NOTE bindings are `x`, `mut x`, `ref x`, and `ref mut x`
         _ => {}
     }
 
