@@ -1281,6 +1281,7 @@ a.test-arrow:hover {
 #titles > button > div.count {
 	display: inline-block;
 	font-size: 1rem;
+	color: var(--search-tab-title-count-color);
 }
 
 #src-sidebar-toggle {
@@ -1991,20 +1992,15 @@ in storage.js
 }
 
 .more-scraped-examples {
-	margin-left: 5px;
-	display: flex;
-	flex-direction: row;
-}
-
-.more-scraped-examples-inner {
-	/* 20px is width of toggle-line + toggle-line-inner */
-	width: calc(100% - 20px);
+	margin-left: 25px;
+	position: relative;
 }
 
 .toggle-line {
-	align-self: stretch;
-	margin-right: 10px;
-	margin-top: 5px;
+	position: absolute;
+	top: 5px;
+	bottom: 0;
+	right: calc(100% + 10px);
 	padding: 0 4px;
 	cursor: pointer;
 }
