@@ -40,6 +40,7 @@
 	--search-color: #000;
 	--search-results-alias-color: #000;
 	--search-results-grey-color: #999;
+	--search-tab-title-count-color: #888;
 	--stab-background-color: #fff5d6;
 	--stab-code-color: #000;
 	--code-highlight-kw-color: #8959a8;
@@ -91,10 +92,6 @@
 #titles > button:hover, #titles > button.selected {
 	background-color: #ffffff;
 	border-top-color: #0089ff;
-}
-
-#titles > button > div.count {
-	color: #888;
 }
 
 .scraped-example-list .scrape-help {

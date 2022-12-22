@@ -67,6 +67,11 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
+    "#titles > button > div.count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
+assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(197, 197, 197)"},
 )
@@ -179,6 +184,11 @@ reload:
 // Waiting for the search results to appear...
 wait-for: "#titles"
 assert-css: (
+    "#titles > button > div.count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
+assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(221, 221, 221)"},
 )
@@ -275,6 +285,11 @@ reload:
 
 // Waiting for the search results to appear...
 wait-for: "#titles"
+assert-css: (
+    "#titles > button > div.count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
 assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(0, 0, 0)"},
