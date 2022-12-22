@@ -12,7 +12,6 @@ pub fn mut_ref(x: &mut i32) -> &mut i32 {
 
         {
             t = addr_of_mut!(*x);
-            RetagRaw(t);
             RET = &mut *t;
             Retag(RET);
             Return()
@@ -28,7 +27,6 @@ pub fn immut_ref(x: &i32) -> &i32 {
 
         {
             t = addr_of!(*x);
-            RetagRaw(t);
             RET = & *t;
             Retag(RET);
             Return()

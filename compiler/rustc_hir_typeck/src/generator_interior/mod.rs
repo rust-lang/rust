@@ -607,10 +607,7 @@ fn check_must_not_suspend_ty<'tcx>(
         ty::Tuple(fields) => {
             let mut has_emitted = false;
             let comps = match data.expr.map(|e| &e.kind) {
-                Some(hir::ExprKind::Tup(comps)) => {
-                    debug_assert_eq!(comps.len(), fields.len());
-                    Some(comps)
-                }
+                Some(hir::ExprKind::Tup(comps)) if comps.len() == fields.len() => Some(comps),
                 _ => None,
             };
             for (i, ty) in fields.iter().enumerate() {
