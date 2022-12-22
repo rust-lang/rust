@@ -335,7 +335,7 @@ pub trait TypeErrCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
-    fn function_argument_obligation(
+    fn note_function_argument_obligation(
         &self,
         arg_hir_id: HirId,
         err: &mut Diagnostic,
@@ -2909,7 +2909,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 ref parent_code,
                 ..
             } => {
-                self.function_argument_obligation(
+                self.note_function_argument_obligation(
                     arg_hir_id,
                     err,
                     parent_code,
@@ -3141,23 +3141,20 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             );
         }
     }
-    fn function_argument_obligation(
+    fn note_function_argument_obligation(
         &self,
         arg_hir_id: HirId,
         err: &mut Diagnostic,
         parent_code: &ObligationCauseCode<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        predicate: ty::Predicate<'tcx>,
+        failed_pred: ty::Predicate<'tcx>,
         call_hir_id: HirId,
     ) {
         let tcx = self.tcx;
         let hir = tcx.hir();
-        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id) {
-            let parent_id = hir.get_parent_item(arg_hir_id);
-            let typeck_results: &TypeckResults<'tcx> = match &self.typeck_results {
-                Some(t) if t.hir_owner == parent_id => t,
-                _ => self.tcx.typeck(parent_id.def_id),
-            };
+        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
+            && let Some(typeck_results) = &self.typeck_results
+        {
             if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
                 let expr = expr.peel_blocks();
                 let ty = typeck_results.expr_ty_adjusted_opt(expr).unwrap_or(tcx.ty_error());
@@ -3182,37 +3179,29 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             let mut type_diffs = vec![];
 
             if let ObligationCauseCode::ExprBindingObligation(def_id, _, _, idx) = parent_code.deref()
-                && let predicates = self.tcx.predicates_of(def_id).instantiate_identity(self.tcx)
-                && let Some(pred) = predicates.predicates.get(*idx)
+                && let Some(node_substs) = typeck_results.node_substs_opt(call_hir_id)
+                && let where_clauses = self.tcx.predicates_of(def_id).instantiate(self.tcx, node_substs)
+                && let Some(where_pred) = where_clauses.predicates.get(*idx)
             {
-                if let Ok(trait_pred) = pred.kind().try_map_bound(|pred| match pred {
-                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
-                    _ => Err(()),
-                })
-                    && let Ok(trait_predicate) = predicate.kind().try_map_bound(|pred| match pred {
-                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => Ok(trait_pred),
-                        _ => Err(()),
-                    })
+                if let Some(where_pred) = where_pred.to_opt_poly_trait_pred()
+                    && let Some(failed_pred) = failed_pred.to_opt_poly_trait_pred()
                 {
                     let mut c = CollectAllMismatches {
                         infcx: self.infcx,
                         param_env,
                         errors: vec![],
                     };
-                    if let Ok(_) = c.relate(trait_pred, trait_predicate) {
+                    if let Ok(_) = c.relate(where_pred, failed_pred) {
                         type_diffs = c.errors;
                     }
-                } else if let ty::PredicateKind::Clause(
-                    ty::Clause::Projection(proj)
-                ) = pred.kind().skip_binder()
-                    && let ty::PredicateKind::Clause(
-                        ty::Clause::Projection(projection)
-                    ) = predicate.kind().skip_binder()
+                } else if let Some(where_pred) = where_pred.to_opt_poly_projection_pred()
+                    && let Some(failed_pred) = failed_pred.to_opt_poly_projection_pred()
+                    && let Some(found) = failed_pred.skip_binder().term.ty()
                 {
                     type_diffs = vec![
                         Sorts(ty::error::ExpectedFound {
-                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, proj.projection_ty)),
-                            found: projection.term.ty().unwrap(),
+                            expected: self.tcx.mk_ty(ty::Alias(ty::Projection, where_pred.skip_binder().projection_ty)),
+                            found,
                         }),
                     ];
                 }
@@ -3227,9 +3216,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // If the expression we're calling on is a binding, we want to point at the
                 // `let` when talking about the type. Otherwise we'll point at every part
                 // of the method chain with the type.
-                self.point_at_chain(binding_expr, typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(binding_expr, &typeck_results, type_diffs, param_env, err);
             } else {
-                self.point_at_chain(expr, typeck_results, type_diffs, param_env, err);
+                self.point_at_chain(expr, &typeck_results, type_diffs, param_env, err);
             }
         }
         let call_node = hir.find(call_hir_id);
