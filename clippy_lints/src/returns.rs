@@ -295,7 +295,7 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         {
             ControlFlow::Break(())
         } else {
-            ControlFlow::Continue(Descend::from(!expr.span.from_expansion()))
+            ControlFlow::Continue(Descend::from(!e.span.from_expansion()))
         }
     })
     .is_some()
