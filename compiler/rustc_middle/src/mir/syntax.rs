@@ -564,14 +564,13 @@ pub enum TerminatorKind<'tcx> {
     Unreachable,
 
     /// The behavior of this statement differs significantly before and after drop elaboration.
-    /// After drop elaboration, `Drop` executes the drop glue for the specified place, after which
-    /// it continues execution/unwinds at the given basic blocks. It is possible that executing drop
-    /// glue is special - this would be part of Rust's memory model. (**FIXME**: due we have an
-    /// issue tracking if drop glue has any interesting semantics in addition to those of a function
-    /// call?)
     ///
-    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically, the
-    /// `Drop` will be executed if...
+    /// After drop elaboration: `Drop` terminators are a complete nop for types that have no drop
+    /// glue. For other types, `Drop` terminators behave exactly like a call to
+    /// `core::mem::drop_in_place` with a pointer to the given place.
+    ///
+    /// `Drop` before drop elaboration is a *conditional* execution of the drop glue. Specifically,
+    /// the `Drop` will be executed if...
     ///
     /// **Needs clarification**: End of that sentence. This in effect should document the exact
     /// behavior of drop elaboration. The following sounds vaguely right, but I'm not quite sure:
