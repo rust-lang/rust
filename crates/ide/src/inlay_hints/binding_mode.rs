@@ -31,7 +31,8 @@ pub(super) fn hints(
         .last();
     let range =
         outer_paren_pat.as_ref().map_or_else(|| pat.syntax(), |it| it.syntax()).text_range();
-    sema.pattern_adjustments(&pat).iter().for_each(|ty| {
+    let pattern_adjustments = sema.pattern_adjustments(&pat);
+    pattern_adjustments.iter().for_each(|ty| {
         let reference = ty.is_reference();
         let mut_reference = ty.is_mutable_reference();
         let r = match (reference, mut_reference) {
@@ -61,7 +62,7 @@ pub(super) fn hints(
                 tooltip: Some(InlayTooltip::String("Inferred binding mode".into())),
             });
         }
-        ast::Pat::OrPat(pat) if outer_paren_pat.is_none() => {
+        ast::Pat::OrPat(pat) if !pattern_adjustments.is_empty() && outer_paren_pat.is_none() => {
             acc.push(InlayHint {
                 range: pat.syntax().text_range(),
                 kind: InlayKind::OpeningParenthesis,
