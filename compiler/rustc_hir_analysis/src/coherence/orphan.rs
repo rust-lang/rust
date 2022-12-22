@@ -184,11 +184,19 @@ fn emit_orphan_check_error<'tcx>(
                     ty::Adt(def, _) => tcx.mk_adt(*def, ty::List::empty()),
                     _ => ty,
                 };
-                let this = "this".to_string();
-                let (ty, postfix) = match &ty.kind() {
-                    ty::Slice(_) => (this, " because slices are always foreign"),
-                    ty::Array(..) => (this, " because arrays are always foreign"),
-                    ty::Tuple(..) => (this, " because tuples are always foreign"),
+                let msg = |ty: &str, postfix: &str| {
+                    format!("{ty} is not defined in the current crate{postfix}")
+                };
+                let this = |name: &str| msg("this", &format!(" because {name} are always foreign"));
+                let msg = match &ty.kind() {
+                    ty::Slice(_) => this("slices"),
+                    ty::Array(..) => this("arrays"),
+                    ty::Tuple(..) => this("tuples"),
+                    ty::Alias(ty::Opaque, ..) => {
+                        "type alias impl trait is treated as if it were foreign, \
+                        because its hidden type could be from a foreign crate"
+                            .to_string()
+                    }
                     ty::RawPtr(ptr_ty) => {
                         emit_newtype_suggestion_for_raw_ptr(
                             full_impl_span,
@@ -198,12 +206,11 @@ fn emit_orphan_check_error<'tcx>(
                             &mut err,
                         );
 
-                        (format!("`{}`", ty), " because raw pointers are always foreign")
+                        msg(&format!("`{ty}`"), " because raw pointers are always foreign")
                     }
-                    _ => (format!("`{}`", ty), ""),
+                    _ => msg(&format!("`{ty}`"), ""),
                 };
 
-                let msg = format!("{} is not defined in the current crate{}", ty, postfix);
                 if is_target_ty {
                     // Point at `D<A>` in `impl<A, B> for C<B> in D<A>`
                     err.span_label(self_ty_span, &msg);
