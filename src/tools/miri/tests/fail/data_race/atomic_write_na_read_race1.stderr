@@ -1,10 +1,10 @@
-error: Undefined Behavior: Data race detected between Read on thread `<unnamed>` and Atomic Store on thread `<unnamed>` at ALLOC. The Read is here
+error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>` at ALLOC. (1) just happened here
   --> $DIR/atomic_write_na_read_race1.rs:LL:CC
    |
 LL |             *atomic_ref.get_mut()
-   |             ^^^^^^^^^^^^^^^^^^^^^ Data race detected between Read on thread `<unnamed>` and Atomic Store on thread `<unnamed>` at ALLOC. The Read is here
+   |             ^^^^^^^^^^^^^^^^^^^^^ Data race detected between (1) Read on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>` at ALLOC. (1) just happened here
    |
-help: and the Atomic Store on thread `<unnamed>` is here
+help: and (2) occurred earlier here
   --> $DIR/atomic_write_na_read_race1.rs:LL:CC
    |
 LL |             atomic_ref.store(32, Ordering::SeqCst)

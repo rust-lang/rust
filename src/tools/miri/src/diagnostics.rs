@@ -69,8 +69,8 @@ impl fmt::Display for TerminationInfo {
             DataRace { ptr, op1, op2 } =>
                 write!(
                     f,
-                    "Data race detected between {} on {} and {} on {} at {:?}. The {} is here",
-                    op1.action, op1.thread_info, op2.action, op2.thread_info, ptr, op1.action
+                    "Data race detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (1) just happened here",
+                    op1.action, op1.thread_info, op2.action, op2.thread_info
                 ),
         }
     }
@@ -224,7 +224,7 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
             DataRace { op2, .. } =>
                 vec![
-                    (Some(op2.span), format!("and the {} on {} is here", op2.action, op2.thread_info)),
+                    (Some(op2.span), format!("and (2) occurred earlier here")),
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ],

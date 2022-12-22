@@ -15,7 +15,7 @@ fn thread_1(p: SendPtr) {
 fn thread_2(p: SendPtr) {
     let p = p.0;
     unsafe {
-        *p = 5; //~ ERROR: Data race detected between Write on thread `<unnamed>` and Read on thread `<unnamed>`
+        *p = 5; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Read on thread `<unnamed>`
     }
 }
 

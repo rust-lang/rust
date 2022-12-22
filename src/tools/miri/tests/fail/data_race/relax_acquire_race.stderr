@@ -1,10 +1,10 @@
-error: Undefined Behavior: Data race detected between Read on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Read is here
+error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (1) just happened here
   --> $DIR/relax_acquire_race.rs:LL:CC
    |
 LL |                 *c.0
-   |                 ^^^^ Data race detected between Read on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Read is here
+   |                 ^^^^ Data race detected between (1) Read on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (1) just happened here
    |
-help: and the Write on thread `<unnamed>` is here
+help: and (2) occurred earlier here
   --> $DIR/relax_acquire_race.rs:LL:CC
    |
 LL |             *c.0 = 1;

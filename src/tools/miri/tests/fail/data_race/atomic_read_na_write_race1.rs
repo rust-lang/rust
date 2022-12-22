@@ -20,7 +20,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            (&*c.0).load(Ordering::SeqCst) //~ ERROR: Data race detected between Atomic Load on thread `<unnamed>` and Write on thread `<unnamed>`
+            (&*c.0).load(Ordering::SeqCst) //~ ERROR: Data race detected between (1) Atomic Load on thread `<unnamed>` and (2) Write on thread `<unnamed>`
         });
 
         j1.join().unwrap();

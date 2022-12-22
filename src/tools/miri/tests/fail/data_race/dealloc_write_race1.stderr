@@ -1,4 +1,4 @@
-error: Undefined Behavior: Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Deallocate is here
+error: Undefined Behavior: Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (1) just happened here
   --> $DIR/dealloc_write_race1.rs:LL:CC
    |
 LL | /             __rust_dealloc(
@@ -7,9 +7,9 @@ LL | |                 ptr.0 as *mut _,
 LL | |                 std::mem::size_of::<usize>(),
 LL | |                 std::mem::align_of::<usize>(),
 LL | |             );
-   | |_____________^ Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Deallocate is here
+   | |_____________^ Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Write on thread `<unnamed>` at ALLOC. (1) just happened here
    |
-help: and the Write on thread `<unnamed>` is here
+help: and (2) occurred earlier here
   --> $DIR/dealloc_write_race1.rs:LL:CC
    |
 LL |             *ptr.0 = 2;
