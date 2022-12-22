@@ -656,18 +656,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
             hir::ExprKind::Closure(c)
         };
 
-        let track_caller = self
-            .attrs
-            .get(&outer_hir_id.local_id)
-            .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
-
         let hir_id = self.lower_node_id(closure_node_id);
-        if track_caller {
-            let unstable_span = self.mark_span_with_reason(
-                DesugaringKind::Async,
-                span,
-                self.allow_gen_future.clone(),
-            );
+        let unstable_span =
+            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+
+        if self.tcx.features().closure_track_caller
+            && let Some(attrs) = self.attrs.get(&outer_hir_id.local_id)
+            && attrs.into_iter().any(|attr| attr.has_name(sym::track_caller))
+        {
             self.lower_attrs(
                 hir_id,
                 &[Attribute {
