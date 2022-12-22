@@ -242,7 +242,7 @@ impl<'mir, 'tcx> Checker<'mir, 'tcx> {
             // impl trait is gone in MIR, so check the return type of a const fn by its signature
             // instead of the type of the return place.
             self.span = body.local_decls[RETURN_PLACE].source_info.span;
-            let return_ty = tcx.fn_sig(def_id).output();
+            let return_ty = self.ccx.fn_sig().output();
             self.check_local_or_return_ty(return_ty.skip_binder(), RETURN_PLACE);
         }
 
