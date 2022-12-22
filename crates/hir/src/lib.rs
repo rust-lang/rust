@@ -74,7 +74,7 @@ use once_cell::unsync::Lazy;
 use rustc_hash::FxHashSet;
 use stdx::{impl_from, never};
 use syntax::{
-    ast::{self, Expr, HasAttrs as _, HasDocComments, HasName},
+    ast::{self, HasAttrs as _, HasDocComments, HasName},
     AstNode, AstPtr, SmolStr, SyntaxNodePtr, TextRange, T,
 };
 
@@ -1082,7 +1082,7 @@ impl Variant {
         db.enum_data(self.parent.id).variants[self.id].variant_data.clone()
     }
 
-    pub fn value(self, db: &dyn HirDatabase) -> Option<Expr> {
+    pub fn value(self, db: &dyn HirDatabase) -> Option<ast::Expr> {
         self.source(db)?.value.expr()
     }
 

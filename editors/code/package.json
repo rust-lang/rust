@@ -975,6 +975,11 @@
                         "Only show auto borrow and dereference adjustment hints."
                     ]
                 },
+                "rust-analyzer.inlayHints.expressionAdjustmentHints.hideOutsideUnsafe": {
+                    "markdownDescription": "Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",

@@ -5,11 +5,14 @@ mod source_to_def;
 use std::{cell::RefCell, fmt, iter, mem, ops};
 
 use base_db::{FileId, FileRange};
+use either::Either;
 use hir_def::{
-    body, macro_id_to_def_id,
+    body,
+    expr::Expr,
+    macro_id_to_def_id,
     resolver::{self, HasResolver, Resolver, TypeNs},
     type_ref::Mutability,
-    AsMacroCall, FunctionId, MacroId, TraitId, VariantId,
+    AsMacroCall, DefWithBodyId, FunctionId, MacroId, TraitId, VariantId,
 };
 use hir_expand::{
     db::AstDatabase,
@@ -438,8 +441,7 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
     }
 
     pub fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
-        let src = self.imp.find_file(src.syntax()).with_value(src).cloned();
-        T::to_def(&self.imp, src)
+        self.imp.to_def(src)
     }
 
     pub fn to_module_def(&self, file: FileId) -> Option<Module> {
@@ -480,6 +482,11 @@ impl<'db, DB: HirDatabase> Semantics<'db, DB> {
 
     pub fn is_unsafe_ident_pat(&self, ident_pat: &ast::IdentPat) -> bool {
         self.imp.is_unsafe_ident_pat(ident_pat)
+    }
+
+    /// Returns `true` if the `node` is inside an `unsafe` context.
+    pub fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
+        self.imp.is_inside_unsafe(expr)
     }
 }
 
@@ -1243,6 +1250,11 @@ impl<'db> SemanticsImpl<'db> {
         f(&mut ctx)
     }
 
+    fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
+        let src = self.find_file(src.syntax()).with_value(src).cloned();
+        T::to_def(&self, src)
+    }
+
     fn to_module_def(&self, file: FileId) -> impl Iterator<Item = Module> {
         self.with_ctx(|ctx| ctx.file_to_def(file)).into_iter().map(Module::from)
     }
@@ -1457,6 +1469,56 @@ impl<'db> SemanticsImpl<'db> {
             // Binding a reference to a packed type is possibly unsafe.
             .map(|ty| ty.original.is_packed(self.db))
             .unwrap_or(false)
+    }
+
+    fn is_inside_unsafe(&self, expr: &ast::Expr) -> bool {
+        let item_or_variant = |ancestor: SyntaxNode| {
+            if ast::Item::can_cast(ancestor.kind()) {
+                ast::Item::cast(ancestor).map(Either::Left)
+            } else {
+                ast::Variant::cast(ancestor).map(Either::Right)
+            }
+        };
+        let Some(enclosing_item) = expr.syntax().ancestors().find_map(item_or_variant) else { return false };
+
+        let def = match &enclosing_item {
+            Either::Left(ast::Item::Fn(it)) if it.unsafe_token().is_some() => return true,
+            Either::Left(ast::Item::Fn(it)) => {
+                self.to_def(it).map(<_>::into).map(DefWithBodyId::FunctionId)
+            }
+            Either::Left(ast::Item::Const(it)) => {
+                self.to_def(it).map(<_>::into).map(DefWithBodyId::ConstId)
+            }
+            Either::Left(ast::Item::Static(it)) => {
+                self.to_def(it).map(<_>::into).map(DefWithBodyId::StaticId)
+            }
+            Either::Left(_) => None,
+            Either::Right(it) => self.to_def(it).map(<_>::into).map(DefWithBodyId::VariantId),
+        };
+        let Some(def) = def else { return false };
+        let enclosing_node = enclosing_item.as_ref().either(|i| i.syntax(), |v| v.syntax());
+
+        let (body, source_map) = self.db.body_with_source_map(def);
+
+        let file_id = self.find_file(expr.syntax()).file_id;
+
+        let Some(mut parent) = expr.syntax().parent() else { return false };
+        loop {
+            if &parent == enclosing_node {
+                break false;
+            }
+
+            if let Some(parent) = ast::Expr::cast(parent.clone()) {
+                if let Some(expr_id) = source_map.node_expr(InFile { file_id, value: &parent }) {
+                    if let Expr::Unsafe { .. } = body[expr_id] {
+                        break true;
+                    }
+                }
+            }
+
+            let Some(parent_) = parent.parent() else { break false };
+            parent = parent_;
+        }
     }
 }
 

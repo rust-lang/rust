@@ -5,7 +5,6 @@
 //! ```
 use hir::{Adjust, AutoBorrow, Mutability, OverloadedDeref, PointerCast, Safety, Semantics};
 use ide_db::RootDatabase;
-
 use syntax::ast::{self, AstNode};
 
 use crate::{AdjustmentHints, InlayHint, InlayHintsConfig, InlayKind};
@@ -16,6 +15,10 @@ pub(super) fn hints(
     config: &InlayHintsConfig,
     expr: &ast::Expr,
 ) -> Option<()> {
+    if config.adjustment_hints_hide_outside_unsafe && !sema.is_inside_unsafe(expr) {
+        return None;
+    }
+
     if config.adjustment_hints == AdjustmentHints::Never {
         return None;
     }
@@ -232,5 +235,97 @@ fn or_else() {
 }
             "#,
         )
+    }
+
+    #[test]
+    fn adjustment_hints_unsafe_only() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_hide_outside_unsafe: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+unsafe fn enabled() {
+    f(&&());
+    //^^^^&
+    //^^^^*
+    //^^^^*
+}
+
+fn disabled() {
+    f(&&());
+}
+
+fn mixed() {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+}
+
+const _: () = {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+};
+
+static STATIC: () = {
+    f(&&());
+
+    unsafe {
+        f(&&());
+        //^^^^&
+        //^^^^*
+        //^^^^*
+    }
+};
+
+enum E {
+    Disable = { f(&&()); 0 },
+    Enable = unsafe { f(&&()); 1 },
+                      //^^^^&
+                      //^^^^*
+                      //^^^^*
+}
+
+const fn f(_: &()) {}
+            "#,
+        )
+    }
+
+    #[test]
+    fn adjustment_hints_unsafe_only_with_item() {
+        check_with_config(
+            InlayHintsConfig {
+                adjustment_hints: AdjustmentHints::Always,
+                adjustment_hints_hide_outside_unsafe: true,
+                ..DISABLED_CONFIG
+            },
+            r#"
+fn a() {
+    struct Struct;
+    impl Struct {
+        fn by_ref(&self) {}
+    }
+
+    _ = Struct.by_ref();
+
+    _ = unsafe { Struct.by_ref() };
+               //^^^^^^(
+               //^^^^^^&
+               //^^^^^^)
+}
+            "#,
+        );
     }
 }
