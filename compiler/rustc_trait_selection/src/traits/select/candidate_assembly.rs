@@ -261,16 +261,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     Some(closure_kind) => {
                         debug!(?closure_kind, "assemble_unboxed_candidates");
                         if closure_kind.extends(kind) {
-                            candidates.vec.push(ClosureCandidate {
-                                is_const,
-                            });
+                            candidates.vec.push(ClosureCandidate { is_const });
                         }
                     }
                     None => {
                         debug!("assemble_unboxed_candidates: closure_kind not yet known");
-                        candidates.vec.push(ClosureCandidate {
-                            is_const,
-                        });
+                        candidates.vec.push(ClosureCandidate { is_const });
                     }
                 }
             }
