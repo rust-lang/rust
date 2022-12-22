@@ -336,7 +336,7 @@ pub fn read_conf(sess: &Session, path: &io::Result<Option<PathBuf>>) -> Conf {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
         Err(error) => {
-            sess.struct_err(&format!("error finding Clippy's configuration file: {error}"))
+            sess.struct_err(format!("error finding Clippy's configuration file: {error}"))
                 .emit();
             return Conf::default();
         },
