@@ -358,15 +358,9 @@ impl MemoryCellClocks {
         index: VectorIdx,
     ) -> Result<(), DataRace> {
         log::trace!("Atomic read with vectors: {:#?} :: {:#?}", self, clocks);
-        if self.write <= clocks.clock[self.write_index] {
-            let atomic = self.atomic_mut();
-            atomic.read_vector.set_at_index(&clocks.clock, index);
-            Ok(())
-        } else {
-            let atomic = self.atomic_mut();
-            atomic.read_vector.set_at_index(&clocks.clock, index);
-            Err(DataRace)
-        }
+        let atomic = self.atomic_mut();
+        atomic.read_vector.set_at_index(&clocks.clock, index);
+        if self.write <= clocks.clock[self.write_index] { Ok(()) } else { Err(DataRace) }
     }
 
     /// Detect data-races with an atomic write, either with a non-atomic read or with
@@ -377,13 +371,11 @@ impl MemoryCellClocks {
         index: VectorIdx,
     ) -> Result<(), DataRace> {
         log::trace!("Atomic write with vectors: {:#?} :: {:#?}", self, clocks);
+        let atomic = self.atomic_mut();
+        atomic.write_vector.set_at_index(&clocks.clock, index);
         if self.write <= clocks.clock[self.write_index] && self.read <= clocks.clock {
-            let atomic = self.atomic_mut();
-            atomic.write_vector.set_at_index(&clocks.clock, index);
             Ok(())
         } else {
-            let atomic = self.atomic_mut();
-            atomic.write_vector.set_at_index(&clocks.clock, index);
             Err(DataRace)
         }
     }
@@ -635,6 +627,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
         if let Some(data_race) = &mut this.machine.data_race {
             data_race.maybe_perform_sync_operation(
                 &this.machine.threads,
+                current_span,
                 |index, mut clocks| {
                     log::trace!("Atomic fence on {:?} with ordering {:?}", index, atomic);
 
@@ -658,7 +651,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                     // Increment timestamp in case of release semantics.
                     Ok(atomic != AtomicFenceOrd::Acquire)
                 },
-                current_span,
             )
         } else {
             Ok(())
@@ -721,7 +713,7 @@ impl VClockAlloc {
                 | MiriMemoryKind::ExternStatic
                 | MiriMemoryKind::Tls,
             )
-            | MemoryKind::CallerLocation => (VTimestamp::NONE, VectorIdx::MAX_INDEX),
+            | MemoryKind::CallerLocation => (VTimestamp::ZERO, VectorIdx::MAX_INDEX),
         };
         VClockAlloc {
             alloc_ranges: RefCell::new(RangeMap::new(
@@ -752,7 +744,7 @@ impl VClockAlloc {
                     let idx = l_remainder_slice
                         .iter()
                         .enumerate()
-                        .find_map(|(idx, &r)| if r == VTimestamp::NONE { None } else { Some(idx) })
+                        .find_map(|(idx, &r)| if r == VTimestamp::ZERO { None } else { Some(idx) })
                         .expect("Invalid VClock Invariant");
                     Some(idx + r_slice.len())
                 } else {
@@ -1132,6 +1124,7 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                 // Perform the atomic operation.
                 data_race.maybe_perform_sync_operation(
                     &this.machine.threads,
+                    current_span,
                     |index, mut clocks| {
                         for (offset, range) in
                             alloc_meta.alloc_ranges.borrow_mut().iter_mut(base_offset, size)
@@ -1153,7 +1146,6 @@ trait EvalContextPrivExt<'mir, 'tcx: 'mir>: MiriInterpCxExt<'mir, 'tcx> {
                         // This conservatively assumes all operations have release semantics
                         Ok(true)
                     },
-                    current_span,
                 )?;
 
                 // Log changes to atomic memory.
@@ -1497,8 +1489,8 @@ impl GlobalState {
     fn maybe_perform_sync_operation<'tcx>(
         &self,
         thread_mgr: &ThreadManager<'_, '_>,
-        op: impl FnOnce(VectorIdx, RefMut<'_, ThreadClockSet>) -> InterpResult<'tcx, bool>,
         current_span: Span,
+        op: impl FnOnce(VectorIdx, RefMut<'_, ThreadClockSet>) -> InterpResult<'tcx, bool>,
     ) -> InterpResult<'tcx> {
         if self.multi_threaded.get() {
             let (index, clocks) = self.current_thread_state_mut(thread_mgr);

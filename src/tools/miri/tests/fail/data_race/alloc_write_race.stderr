@@ -1,15 +1,10 @@
-error: Undefined Behavior: Data race detected between Write on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC
+error: Undefined Behavior: Data race detected between Write on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC. The Write is here
   --> $DIR/alloc_write_race.rs:LL:CC
    |
 LL |             *pointer.load(Ordering::Relaxed) = 2;
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Write on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Write on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC. The Write is here
    |
-help: The Write on thread `<unnamed>` is here
-  --> $DIR/alloc_write_race.rs:LL:CC
-   |
-LL | ...   *pointer.load(Ordering::Relaxed) = 2;
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: The Allocate on thread `<unnamed>` is here
+help: and Allocate on thread `<unnamed>`, which is here
   --> $DIR/alloc_write_race.rs:LL:CC
    |
 LL |                 .store(Box::into_raw(Box::<usize>::new_uninit()) as *mut usize, Ordering::Relaxed);

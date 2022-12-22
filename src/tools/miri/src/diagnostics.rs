@@ -69,8 +69,8 @@ impl fmt::Display for TerminationInfo {
             DataRace { ptr, op1, op2 } =>
                 write!(
                     f,
-                    "Data race detected between {} on {} and {} on {} at {:?}",
-                    op1.action, op1.thread_info, op2.action, op2.thread_info, ptr,
+                    "Data race detected between {} on {} and {} on {} at {:?}. The {} is here",
+                    op1.action, op1.thread_info, op2.action, op2.thread_info, ptr, op1.action
                 ),
         }
     }
@@ -222,10 +222,9 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
             Int2PtrWithStrictProvenance =>
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
-            DataRace { ptr: _, op1, op2 } =>
+            DataRace { op2, .. } =>
                 vec![
-                    (Some(op1.span), format!("The {} on {} is here", op1.action, op1.thread_info)),
-                    (Some(op2.span), format!("The {} on {} is here", op2.action, op2.thread_info)),
+                    (Some(op2.span), format!("and {} on {}, which is here", op2.action, op2.thread_info)),
                     (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
                     (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
                 ],

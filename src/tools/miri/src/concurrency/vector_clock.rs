@@ -48,14 +48,14 @@ const SMALL_VECTOR: usize = 4;
 /// The time-stamps recorded in the data-race detector consist of both
 /// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
 /// so that diagnostics can report what code was responsible for an operation.
-#[derive(Clone, Copy, Debug, Eq)]
+#[derive(Clone, Copy, Debug)]
 pub struct VTimestamp {
     time: u32,
     pub span: Span,
 }
 
 impl VTimestamp {
-    pub const NONE: VTimestamp = VTimestamp { time: 0, span: DUMMY_SP };
+    pub const ZERO: VTimestamp = VTimestamp { time: 0, span: DUMMY_SP };
 
     pub fn span_data(&self) -> SpanData {
         self.span.data()
@@ -67,6 +67,8 @@ impl PartialEq for VTimestamp {
         self.time == other.time
     }
 }
+
+impl Eq for VTimestamp {}
 
 impl PartialOrd for VTimestamp {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
@@ -98,7 +100,7 @@ impl VClock {
     /// for a value at the given index
     pub fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
         let len = index.index() + 1;
-        let mut vec = smallvec::smallvec![VTimestamp::NONE; len];
+        let mut vec = smallvec::smallvec![VTimestamp::ZERO; len];
         vec[index.index()] = timestamp;
         VClock(vec)
     }
@@ -115,7 +117,7 @@ impl VClock {
     #[inline]
     fn get_mut_with_min_len(&mut self, min_len: usize) -> &mut [VTimestamp] {
         if self.0.len() < min_len {
-            self.0.resize(min_len, VTimestamp::NONE);
+            self.0.resize(min_len, VTimestamp::ZERO);
         }
         assert!(self.0.len() >= min_len);
         self.0.as_mut_slice()
@@ -361,7 +363,7 @@ impl Index<VectorIdx> for VClock {
 
     #[inline]
     fn index(&self, index: VectorIdx) -> &VTimestamp {
-        self.as_slice().get(index.to_u32() as usize).unwrap_or(&VTimestamp::NONE)
+        self.as_slice().get(index.to_u32() as usize).unwrap_or(&VTimestamp::ZERO)
     }
 }
 

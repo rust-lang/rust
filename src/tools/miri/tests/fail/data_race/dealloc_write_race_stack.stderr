@@ -1,15 +1,10 @@
-error: Undefined Behavior: Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC
+error: Undefined Behavior: Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Deallocate is here
   --> $DIR/dealloc_write_race_stack.rs:LL:CC
    |
 LL |             }
-   |             ^ Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC
+   |             ^ Data race detected between Deallocate on thread `<unnamed>` and Write on thread `<unnamed>` at ALLOC. The Deallocate is here
    |
-help: The Deallocate on thread `<unnamed>` is here
-  --> $DIR/dealloc_write_race_stack.rs:LL:CC
-   |
-LL |             }
-   |             ^
-help: The Write on thread `<unnamed>` is here
+help: and Write on thread `<unnamed>`, which is here
   --> $DIR/dealloc_write_race_stack.rs:LL:CC
    |
 LL |             *pointer.load(Ordering::Acquire) = 3;

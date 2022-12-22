@@ -1,15 +1,10 @@
-error: Undefined Behavior: Data race detected between Read on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC
+error: Undefined Behavior: Data race detected between Read on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC. The Read is here
   --> $DIR/alloc_read_race.rs:LL:CC
    |
 LL |             *pointer.load(Ordering::Relaxed)
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Read on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC
+   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ Data race detected between Read on thread `<unnamed>` and Allocate on thread `<unnamed>` at ALLOC. The Read is here
    |
-help: The Read on thread `<unnamed>` is here
-  --> $DIR/alloc_read_race.rs:LL:CC
-   |
-LL | ...   *pointer.load(Ordering::Relaxed)
-   |       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-help: The Allocate on thread `<unnamed>` is here
+help: and Allocate on thread `<unnamed>`, which is here
   --> $DIR/alloc_read_race.rs:LL:CC
    |
 LL |             pointer.store(Box::into_raw(Box::new_uninit()), Ordering::Relaxed);

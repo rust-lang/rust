@@ -258,7 +258,7 @@ impl<'mir, 'tcx: 'mir> StoreBuffer {
             // The thread index and timestamp of the initialisation write
             // are never meaningfully used, so it's fine to leave them as 0
             store_index: VectorIdx::from(0),
-            timestamp: VTimestamp::NONE,
+            timestamp: VTimestamp::ZERO,
             val: init,
             is_seqcst: false,
             load_info: RefCell::new(LoadInfo::default()),
