@@ -57,7 +57,7 @@ impl<'a> LexedStr<'a> {
         let mut conv = Converter::new(text);
         conv.extend_token(&token.kind, text);
         match &*conv.res.kind {
-            [kind] => Some((*kind, conv.res.error.pop().map(|it| it.msg.clone()))),
+            [kind] => Some((*kind, conv.res.error.pop().map(|it| it.msg))),
             _ => None,
         }
     }

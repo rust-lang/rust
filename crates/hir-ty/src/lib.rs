@@ -577,10 +577,9 @@ pub fn callable_sig_from_fnonce(
     let fn_once =
         TyBuilder::trait_ref(db, fn_once_trait).push(self_ty.clone()).push(args.clone()).build();
     let projection =
-        TyBuilder::assoc_type_projection(db, output_assoc_type, Some(fn_once.substitution.clone()))
-            .build();
+        TyBuilder::assoc_type_projection(db, output_assoc_type, Some(fn_once.substitution)).build();
 
     let ret_ty = db.normalize_projection(projection, env);
 
-    Some(CallableSig::from_params_and_return(params, ret_ty.clone(), false, Safety::Safe))
+    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
 }

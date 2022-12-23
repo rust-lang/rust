@@ -224,7 +224,7 @@ fn include_references(initial_element: &ast::Expr) -> (ast::Expr, ast::Expr) {
 
     if let Some(first_ref_expr) = resulting_element.syntax().parent().and_then(ast::RefExpr::cast) {
         if let Some(expr) = first_ref_expr.expr() {
-            resulting_element = expr.clone();
+            resulting_element = expr;
         }
 
         while let Some(parent_ref_element) =
@@ -571,7 +571,7 @@ fn main() { ControlFlow::Break('\\\\') }
         );
 
         check_edit_with_config(
-            config.clone(),
+            config,
             "break",
             r#"
 //- minicore: try

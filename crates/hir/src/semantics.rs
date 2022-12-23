@@ -847,7 +847,7 @@ impl<'db> SemanticsImpl<'db> {
                         }
                     };
                     process_expansion_for_token(&mut stack, file_id, None, token.as_ref())
-                } else if let Some(meta) = ast::Meta::cast(parent.clone()) {
+                } else if let Some(meta) = ast::Meta::cast(parent) {
                     // attribute we failed expansion for earlier, this might be a derive invocation
                     // or derive helper attribute
                     let attr = meta.parent_attr()?;

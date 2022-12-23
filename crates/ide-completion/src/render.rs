@@ -131,7 +131,7 @@ pub(crate) fn render_field(
     item.detail(ty.display(ctx.db()).to_string())
         .set_documentation(field.docs(ctx.db()))
         .set_deprecated(is_deprecated)
-        .lookup_by(name.clone());
+        .lookup_by(name);
     item.insert_text(field_with_receiver(receiver.as_ref(), &escaped_name));
     if let Some(receiver) = &dot_access.receiver {
         if let Some(original) = ctx.completion.sema.original_ast_node(receiver.clone()) {

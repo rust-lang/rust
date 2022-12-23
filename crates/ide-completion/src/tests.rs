@@ -86,7 +86,7 @@ pub(crate) fn completion_list_no_kw(ra_fixture: &str) -> String {
 }
 
 pub(crate) fn completion_list_no_kw_with_private_editable(ra_fixture: &str) -> String {
-    let mut config = TEST_CONFIG.clone();
+    let mut config = TEST_CONFIG;
     config.enable_private_editable = true;
     completion_list_with_config(config, ra_fixture, false, None)
 }

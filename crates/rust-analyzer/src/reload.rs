@@ -461,7 +461,7 @@ impl GlobalState {
             flycheck::InvocationStrategy::Once => vec![FlycheckHandle::spawn(
                 0,
                 Box::new(move |msg| sender.send(msg).unwrap()),
-                config.clone(),
+                config,
                 self.config.root_path().clone(),
             )],
             flycheck::InvocationStrategy::PerWorkspace => {
