@@ -1,0 +1,8 @@
+error: the return type of the `start` lang item is incorrect
+  --> $DIR/start_lang_item_args.rs:29:84
+   |
+LL | fn start<T>(_main: fn() -> T, _argc: isize, _argv: *const *const u8, _sigpipe: u8) {}
+   |                                                                                    ^ help: change the type from `()` to `isize`
+
+error: aborting due to previous error
+
