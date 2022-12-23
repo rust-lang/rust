@@ -419,7 +419,7 @@ impl<'rt, 'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValidityVisitor<'rt, 'mir, '
             )
         }
         // Recursive checking
-        if let Some(ref mut ref_tracking) = self.ref_tracking {
+        if let Some(ref_tracking) = self.ref_tracking.as_deref_mut() {
             // Proceed recursively even for ZST, no reason to skip them!
             // `!` is a ZST and we want to validate it.
             if let Ok((alloc_id, _offset, _prov)) = self.ecx.ptr_try_get_alloc_id(place.ptr) {

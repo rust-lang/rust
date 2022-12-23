@@ -167,7 +167,7 @@ pub(super) fn op_to_const<'tcx>(
         }
     };
     match immediate {
-        Left(ref mplace) => to_const_value(mplace),
+        Left(mplace) => to_const_value(&mplace),
         // see comment on `let try_as_immediate` above
         Right(imm) => match *imm {
             _ if imm.layout.is_zst() => ConstValue::ZeroSized,
