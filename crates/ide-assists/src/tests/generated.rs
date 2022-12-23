@@ -1439,6 +1439,39 @@ fn main() {
 }
 
 #[test]
+fn doctest_inline_macro() {
+    check_doc_test(
+        "inline_macro",
+        r#####"
+macro_rules! num {
+    (+$($t:tt)+) => (1 + num!($($t )+));
+    (-$($t:tt)+) => (-1 + num!($($t )+));
+    (+) => (1);
+    (-) => (-1);
+}
+
+fn main() {
+    let number = num$0!(+ + + - + +);
+    println!("{number}");
+}
+"#####,
+        r#####"
+macro_rules! num {
+    (+$($t:tt)+) => (1 + num!($($t )+));
+    (-$($t:tt)+) => (-1 + num!($($t )+));
+    (+) => (1);
+    (-) => (-1);
+}
+
+fn main() {
+    let number = 1+num!(+ + - + +);
+    println!("{number}");
+}
+"#####,
+    )
+}
+
+#[test]
 fn doctest_inline_type_alias() {
     check_doc_test(
         "inline_type_alias",
