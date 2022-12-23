@@ -399,6 +399,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
                     && let Some(mut diag) = self
@@ -486,7 +490,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let callee_ty = self.check_expr(callee_expr);
+            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)?;
+
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
