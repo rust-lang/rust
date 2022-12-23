@@ -463,7 +463,7 @@ fn main() {
         }
         "#;
         let (analysis, file_id) = fixture::file(fixture);
-        let expected = extract_annotations(&*analysis.file_text(file_id).unwrap());
+        let expected = extract_annotations(&analysis.file_text(file_id).unwrap());
         let inlay_hints = analysis
             .inlay_hints(
                 &InlayHintsConfig { type_hints: true, ..DISABLED_CONFIG },

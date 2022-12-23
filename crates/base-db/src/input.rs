@@ -128,7 +128,7 @@ impl fmt::Display for CrateName {
 impl ops::Deref for CrateName {
     type Target = str;
     fn deref(&self) -> &str {
-        &*self.0
+        &self.0
     }
 }
 
@@ -211,7 +211,7 @@ impl fmt::Display for CrateDisplayName {
 impl ops::Deref for CrateDisplayName {
     type Target = str;
     fn deref(&self) -> &str {
-        &*self.crate_name
+        &self.crate_name
     }
 }
 

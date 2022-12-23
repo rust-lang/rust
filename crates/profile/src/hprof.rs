@@ -133,7 +133,7 @@ static FILTER: Lazy<RwLock<Filter>> = Lazy::new(Default::default);
 
 fn with_profile_stack<T>(f: impl FnOnce(&mut ProfileStack) -> T) -> T {
     thread_local!(static STACK: RefCell<ProfileStack> = RefCell::new(ProfileStack::new()));
-    STACK.with(|it| f(&mut *it.borrow_mut()))
+    STACK.with(|it| f(&mut it.borrow_mut()))
 }
 
 #[derive(Default, Clone, Debug)]

@@ -190,7 +190,7 @@ impl<'a> Cursor<'a> {
     pub fn token_tree(self) -> Option<TokenTreeRef<'a>> {
         match self.entry() {
             Some(Entry::Leaf(tt)) => match tt {
-                TokenTree::Leaf(leaf) => Some(TokenTreeRef::Leaf(leaf, *tt)),
+                TokenTree::Leaf(leaf) => Some(TokenTreeRef::Leaf(leaf, tt)),
                 TokenTree::Subtree(subtree) => Some(TokenTreeRef::Subtree(subtree, Some(tt))),
             },
             Some(Entry::Subtree(tt, subtree, _)) => Some(TokenTreeRef::Subtree(subtree, *tt)),

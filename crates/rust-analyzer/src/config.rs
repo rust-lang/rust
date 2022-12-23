@@ -2178,7 +2178,7 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
         .iter()
         .map(|(field, _ty, doc, default)| {
             let name = format!("rust-analyzer.{}", field.replace('_', "."));
-            let doc = doc_comment_to_string(*doc);
+            let doc = doc_comment_to_string(doc);
             if default.contains('\n') {
                 format!(
                     r#"[[{}]]{}::

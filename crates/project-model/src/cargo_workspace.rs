@@ -427,7 +427,7 @@ impl CargoWorkspace {
     }
 
     pub fn package_flag(&self, package: &PackageData) -> String {
-        if self.is_unique(&*package.name) {
+        if self.is_unique(&package.name) {
             package.name.clone()
         } else {
             format!("{}:{}", package.name, package.version)
