@@ -1,14 +1,13 @@
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:13:8
+  --> $DIR/feature-gate-thiscall.rs:12:8
    |
 LL | extern "thiscall-unwind" fn fu() {}
    |        ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:14:8
+  --> $DIR/feature-gate-thiscall.rs:13:8
    |
 LL | extern "thiscall" fn f() {}
    |        ^^^^^^^^^^
@@ -16,7 +15,7 @@ LL | extern "thiscall" fn f() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:17:12
+  --> $DIR/feature-gate-thiscall.rs:16:12
    |
 LL |     extern "thiscall" fn m();
    |            ^^^^^^^^^^
@@ -24,16 +23,15 @@ LL |     extern "thiscall" fn m();
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:18:12
+  --> $DIR/feature-gate-thiscall.rs:17:12
    |
 LL |     extern "thiscall-unwind" fn mu();
    |            ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:20:12
+  --> $DIR/feature-gate-thiscall.rs:19:12
    |
 LL |     extern "thiscall" fn dm() {}
    |            ^^^^^^^^^^
@@ -41,16 +39,15 @@ LL |     extern "thiscall" fn dm() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:21:12
+  --> $DIR/feature-gate-thiscall.rs:20:12
    |
 LL |     extern "thiscall-unwind" fn dmu() {}
    |            ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:26:12
+  --> $DIR/feature-gate-thiscall.rs:25:12
    |
 LL |     extern "thiscall" fn m() {}
    |            ^^^^^^^^^^
@@ -58,16 +55,15 @@ LL |     extern "thiscall" fn m() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:27:12
+  --> $DIR/feature-gate-thiscall.rs:26:12
    |
 LL |     extern "thiscall-unwind" fn mu() {}
    |            ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:31:12
+  --> $DIR/feature-gate-thiscall.rs:30:12
    |
 LL |     extern "thiscall" fn im() {}
    |            ^^^^^^^^^^
@@ -75,16 +71,15 @@ LL |     extern "thiscall" fn im() {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:32:12
+  --> $DIR/feature-gate-thiscall.rs:31:12
    |
 LL |     extern "thiscall-unwind" fn imu() {}
    |            ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:35:18
+  --> $DIR/feature-gate-thiscall.rs:34:18
    |
 LL | type TA = extern "thiscall" fn();
    |                  ^^^^^^^^^^
@@ -92,16 +87,15 @@ LL | type TA = extern "thiscall" fn();
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:36:19
+  --> $DIR/feature-gate-thiscall.rs:35:19
    |
 LL | type TAU = extern "thiscall-unwind" fn();
    |                   ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:38:8
+  --> $DIR/feature-gate-thiscall.rs:37:8
    |
 LL | extern "thiscall" {}
    |        ^^^^^^^^^^
@@ -109,13 +103,12 @@ LL | extern "thiscall" {}
    = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error[E0658]: thiscall-unwind ABI is experimental and subject to change
-  --> $DIR/feature-gate-thiscall-unwind.rs:39:8
+  --> $DIR/feature-gate-thiscall.rs:38:8
    |
 LL | extern "thiscall-unwind" {}
    |        ^^^^^^^^^^^^^^^^^
    |
-   = note: see issue #74990 <https://github.com/rust-lang/rust/issues/74990> for more information
-   = help: add `#![feature(c_unwind)]` to the crate attributes to enable
+   = help: add `#![feature(abi_thiscall)]` to the crate attributes to enable
 
 error: aborting due to 14 previous errors
 

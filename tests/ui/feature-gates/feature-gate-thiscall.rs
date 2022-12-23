@@ -1,5 +1,4 @@
 // gate-test-abi_thiscall
-// gate-test-c_unwind
 // needs-llvm-components: x86
 // compile-flags: --target=i686-pc-windows-msvc --crate-type=rlib
 #![no_core]
@@ -7,8 +6,8 @@
 #[lang="sized"]
 trait Sized { }
 
-// Test that the "thiscall-unwind" ABI is feature-gated, and cannot be used when
-// the `c_unwind` feature gate is not used.
+// Test that the "thiscall" ABI is feature-gated, and cannot be used when
+// the `abi_thiscall` feature gate is not used.
 
 extern "thiscall-unwind" fn fu() {} //~ ERROR thiscall-unwind ABI is experimental
 extern "thiscall" fn f() {} //~ ERROR thiscall is experimental

@@ -1,8 +1,6 @@
 // Tests that C++ double unwinding through Rust code will be properly guarded
 // against instead of exhibiting undefined behaviour.
 
-#![feature(c_unwind)]
-
 extern "C-unwind" {
     fn throw_cxx_exception();
     fn cxx_catch_callback(cb: extern "C-unwind" fn());

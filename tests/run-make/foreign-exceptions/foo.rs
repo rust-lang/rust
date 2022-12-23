@@ -2,8 +2,6 @@
 // are caught by catch_unwind. Also tests that Rust panics can unwind through
 // C++ code.
 
-#![feature(c_unwind)]
-
 use std::panic::{catch_unwind, AssertUnwindSafe};
 
 struct DropCheck<'a>(&'a mut bool);
