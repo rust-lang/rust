@@ -5,7 +5,7 @@ write: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-text: ("#results .externcrate", "test_docs")
 
 wait-for: "#crate-search"
@@ -17,7 +17,7 @@ press-key: "ArrowDown"
 press-key: "ArrowDown"
 press-key: "Enter"
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-document-property: ({"URL": "&filter-crate="}, CONTAINS)
 // We check that there is no more "test_docs" appearing.
 assert-false: "#results .externcrate"
@@ -41,7 +41,7 @@ press-key: "ArrowUp"
 press-key: "ArrowUp"
 press-key: "Enter"
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-property: ("#crate-search", {"value": "all crates"})
 
 // Checking that the URL parameter is taken into account for crate filtering.
