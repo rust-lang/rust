@@ -37,7 +37,7 @@ use ide_db::{
     traits::get_missing_assoc_items, SymbolKind,
 };
 use syntax::{
-    ast::{self, edit_in_place::AttrsOwnerEdit},
+    ast::{self, edit_in_place::AttrsOwnerEdit, HasTypeBounds},
     AstNode, SyntaxElement, SyntaxKind, TextRange, T,
 };
 use text_edit::TextEdit;
@@ -265,10 +265,21 @@ fn add_type_alias_impl(
             };
 
             let start = transformed_ty.syntax().text_range().start();
-            let Some(end) = transformed_ty
-                .eq_token()
-                .map(|tok| tok.text_range().start())
-                .or(transformed_ty.semicolon_token().map(|tok| tok.text_range().start())) else { return };
+
+            let end = if let Some(end) =
+                transformed_ty.colon_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else if let Some(end) = transformed_ty.eq_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else if let Some(end) =
+                transformed_ty.semicolon_token().map(|tok| tok.text_range().start())
+            {
+                end
+            } else {
+                return;
+            };
 
             let len = end - start;
             let mut decl = transformed_ty.syntax().text().slice(..len).to_string();
