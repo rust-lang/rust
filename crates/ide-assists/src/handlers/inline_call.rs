@@ -394,7 +394,7 @@ fn inline(
     // Inline parameter expressions or generate `let` statements depending on whether inlining works or not.
     for ((pat, param_ty, _), usages, expr) in izip!(params, param_use_nodes, arguments).rev() {
         // izip confuses RA due to our lack of hygiene info currently losing us type info causing incorrect errors
-        let usages: &[ast::PathExpr] = &*usages;
+        let usages: &[ast::PathExpr] = &usages;
         let expr: &ast::Expr = expr;
 
         let insert_let_stmt = || {

@@ -1246,7 +1246,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn with_ctx<F: FnOnce(&mut SourceToDefCtx<'_, '_>) -> T, T>(&self, f: F) -> T {
         let mut cache = self.s2d_cache.borrow_mut();
-        let mut ctx = SourceToDefCtx { db: self.db, cache: &mut *cache };
+        let mut ctx = SourceToDefCtx { db: self.db, cache: &mut cache };
         f(&mut ctx)
     }
 

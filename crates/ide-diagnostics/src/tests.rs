@@ -102,7 +102,7 @@ pub(crate) fn check_diagnostics_with_config(config: DiagnosticsConfig, ra_fixtur
     for file_id in files {
         let diagnostics = super::diagnostics(&db, &config, &AssistResolveStrategy::All, file_id);
 
-        let expected = extract_annotations(&*db.file_text(file_id));
+        let expected = extract_annotations(&db.file_text(file_id));
         let mut actual = diagnostics
             .into_iter()
             .map(|d| {
