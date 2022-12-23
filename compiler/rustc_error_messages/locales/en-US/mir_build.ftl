@@ -326,11 +326,39 @@ mir_build_overlapping_range_endpoints = multiple patterns overlap on their endpo
 mir_build_overlapping_range = this range overlaps on `{$range}`...
 
 mir_build_non_exhaustive_omitted_pattern = some variants are not matched explicitly
-    .label = {$count ->
+    .help = ensure that all variants are matched explicitly by adding the suggested match arms
+    .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
+
+mir_build_uncovered = {$count ->
         [1] pattern `{$witness_1}`
         [2] patterns `{$witness_1}` and `{$witness_2}`
         [3] patterns `{$witness_1}`, `{$witness_2}` and `{$witness_3}`
-        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and more
+        *[other] patterns `{$witness_1}`, `{$witness_2}`, `{$witness_3}` and {$remainder} more
     } not covered
-    .help = ensure that all variants are matched explicitly by adding the suggested match arms
-    .note = the matched value is of type `{$scrut_ty}` and the `non_exhaustive_omitted_patterns` attribute was found
+
+mir_build_pattern_not_covered = refutable pattern in {$origin}
+    .pattern_ty = the matched value is of type `{$pattern_ty}`
+
+mir_build_inform_irrefutable = `let` bindings require an "irrefutable pattern", like a `struct` or an `enum` with only one variant
+
+mir_build_more_information = for more information, visit https://doc.rust-lang.org/book/ch18-02-refutability.html
+
+mir_build_res_defined_here = {$res} defined here
+
+mir_build_adt_defined_here = `{$ty}` defined here
+
+mir_build_variant_defined_here = not covered
+
+mir_build_interpreted_as_const = introduce a variable instead
+
+mir_build_confused = missing patterns are not covered because `{$variable}` is interpreted as {$article} {$res} pattern, not a new variable
+
+mir_build_suggest_if_let = you might want to use `if let` to ignore the {$count ->
+        [one] variant that isn't
+        *[other] variants that aren't
+    } matched
+
+mir_build_suggest_let_else = alternatively, you might want to use `let else` to handle the {$count ->
+        [one] variant that isn't
+        *[other] variants that aren't
+    } matched

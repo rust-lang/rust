@@ -1,8 +1,11 @@
+use crate::thir::pattern::deconstruct_pat::DeconstructedPat;
 use crate::thir::pattern::MatchCheckCtxt;
 use rustc_errors::Handler;
 use rustc_errors::{
-    error_code, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, MultiSpan,
+    error_code, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    IntoDiagnostic, MultiSpan, SubdiagnosticMessage,
 };
+use rustc_hir::def::Res;
 use rustc_macros::{Diagnostic, LintDiagnostic, Subdiagnostic};
 use rustc_middle::thir::Pat;
 use rustc_middle::ty::{self, Ty};
@@ -677,7 +680,6 @@ pub struct OverlappingRangeEndpoints<'tcx> {
     pub overlap: Overlap<'tcx>,
 }
 
-#[derive(Debug)]
 #[derive(Subdiagnostic)]
 #[label(mir_build_overlapping_range)]
 pub struct Overlap<'tcx> {
@@ -692,10 +694,158 @@ pub struct Overlap<'tcx> {
 #[note]
 pub(crate) struct NonExhaustiveOmittedPattern<'tcx> {
     pub scrut_ty: Ty<'tcx>,
-    #[label]
-    pub uncovered: Span,
+    #[subdiagnostic]
+    pub uncovered: Uncovered<'tcx>,
+}
+
+#[derive(Subdiagnostic)]
+#[label(mir_build_uncovered)]
+pub(crate) struct Uncovered<'tcx> {
+    #[primary_span]
+    span: Span,
+    count: usize,
+    witness_1: Pat<'tcx>,
+    witness_2: Pat<'tcx>,
+    witness_3: Pat<'tcx>,
+    remainder: usize,
+}
+
+impl<'tcx> Uncovered<'tcx> {
+    pub fn new<'p>(
+        span: Span,
+        cx: &MatchCheckCtxt<'p, 'tcx>,
+        witnesses: Vec<DeconstructedPat<'p, 'tcx>>,
+    ) -> Self {
+        let witness_1 = witnesses.get(0).unwrap().to_pat(cx);
+        Self {
+            span,
+            count: witnesses.len(),
+            // Substitute dummy values if witnesses is smaller than 3. These will never be read.
+            witness_2: witnesses.get(1).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
+            witness_3: witnesses.get(2).map(|w| w.to_pat(cx)).unwrap_or_else(|| witness_1.clone()),
+            witness_1,
+            remainder: witnesses.len().saturating_sub(3),
+        }
+    }
+}
+
+#[derive(Diagnostic)]
+#[diag(mir_build_pattern_not_covered, code = "E0005")]
+pub(crate) struct PatternNotCovered<'s, 'tcx> {
+    #[primary_span]
+    pub span: Span,
+    pub origin: &'s str,
+    #[subdiagnostic]
+    pub uncovered: Uncovered<'tcx>,
+    #[subdiagnostic]
+    pub inform: Option<Inform>,
+    #[subdiagnostic]
+    pub interpreted_as_const: Option<InterpretedAsConst>,
+    #[subdiagnostic]
+    pub adt_defined_here: Option<AdtDefinedHere<'tcx>>,
+    #[note(pattern_ty)]
+    pub _p: (),
+    pub pattern_ty: Ty<'tcx>,
+    #[subdiagnostic]
+    pub if_let_suggestion: Option<SuggestIfLet>,
+    #[subdiagnostic]
+    pub let_else_suggestion: Option<SuggestLetElse>,
+    #[subdiagnostic]
+    pub res_defined_here: Option<ResDefinedHere>,
+}
+
+#[derive(Subdiagnostic)]
+#[note(mir_build_inform_irrefutable)]
+#[note(mir_build_more_information)]
+pub struct Inform;
+
+pub struct AdtDefinedHere<'tcx> {
+    pub adt_def_span: Span,
+    pub ty: Ty<'tcx>,
+    pub variants: Vec<Variant>,
+}
+
+pub struct Variant {
+    pub span: Span,
+}
+
+impl<'tcx> AddToDiagnostic for AdtDefinedHere<'tcx> {
+    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, _: F)
+    where
+        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
+    {
+        diag.set_arg("ty", self.ty);
+        let mut spans = MultiSpan::from(self.adt_def_span);
+
+        for Variant { span } in self.variants {
+            spans.push_span_label(span, rustc_errors::fluent::mir_build_variant_defined_here);
+        }
+
+        diag.span_note(spans, rustc_errors::fluent::mir_build_adt_defined_here);
+    }
+}
+
+#[derive(Subdiagnostic)]
+#[label(mir_build_res_defined_here)]
+pub struct ResDefinedHere {
+    #[primary_span]
+    pub def_span: Span,
+    pub res: Res,
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    mir_build_interpreted_as_const,
+    code = "{variable}_var",
+    applicability = "maybe-incorrect"
+)]
+#[label(mir_build_confused)]
+pub struct InterpretedAsConst {
+    #[primary_span]
+    pub span: Span,
+    pub article: &'static str,
+    pub variable: String,
+    pub res: Res,
+}
+
+#[derive(Subdiagnostic)]
+pub enum SuggestIfLet {
+    #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
+    None {
+        #[suggestion_part(code = "if ")]
+        start_span: Span,
+        #[suggestion_part(code = " {{ todo!() }}")]
+        semi_span: Span,
+        count: usize,
+    },
+    #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
+    One {
+        #[suggestion_part(code = "let {binding} = if ")]
+        start_span: Span,
+        #[suggestion_part(code = " {{ {binding} }} else {{ todo!() }}")]
+        end_span: Span,
+        binding: Ident,
+        count: usize,
+    },
+    #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
+    More {
+        #[suggestion_part(code = "let ({bindings}) = if ")]
+        start_span: Span,
+        #[suggestion_part(code = " {{ ({bindings}) }} else {{ todo!() }}")]
+        end_span: Span,
+        bindings: String,
+        count: usize,
+    },
+}
+
+#[derive(Subdiagnostic)]
+#[suggestion(
+    mir_build_suggest_let_else,
+    code = " else {{ todo!() }}",
+    applicability = "has-placeholders"
+)]
+pub struct SuggestLetElse {
+    #[primary_span]
+    pub end_span: Span,
     pub count: usize,
-    pub witness_1: Pat<'tcx>,
-    pub witness_2: Pat<'tcx>,
-    pub witness_3: Pat<'tcx>,
 }

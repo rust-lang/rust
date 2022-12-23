@@ -1,3 +1,8 @@
+//#![allow(unused_imports, unused_variables)]
+
+//#![warn(rustc::untranslatable_diagnostic)]
+//#![warn(rustc::diagnostic_outside_of_impl)]
+
 use super::deconstruct_pat::{Constructor, DeconstructedPat};
 use super::usefulness::{
     compute_match_usefulness, MatchArm, MatchCheckCtxt, Reachability, UsefulnessReport,
@@ -9,8 +14,7 @@ use crate::errors::*;
 use rustc_arena::TypedArena;
 use rustc_ast::Mutability;
 use rustc_errors::{
-    pluralize, struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
-    MultiSpan,
+    struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
 use rustc_hir::def::*;
@@ -378,8 +382,8 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
         let pattern = self.lower_pattern(&mut cx, pat, &mut false);
         let pattern_ty = pattern.ty();
-        let arms = vec![MatchArm { pat: pattern, hir_id: pat.hir_id, has_guard: false }];
-        let report = compute_match_usefulness(&cx, &arms, pat.hir_id, pattern_ty);
+        let arm = MatchArm { pat: pattern, hir_id: pat.hir_id, has_guard: false };
+        let report = compute_match_usefulness(&cx, &[arm], pat.hir_id, pattern_ty);
 
         // Note: we ignore whether the pattern is unreachable (i.e. whether the type is empty). We
         // only care about exhaustiveness here.
@@ -390,145 +394,82 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             return;
         }
 
-        let joined_patterns = joined_uncovered_patterns(&cx, &witnesses);
-
-        let mut bindings = vec![];
-
-        let mut err = struct_span_err!(
-            self.tcx.sess,
-            pat.span,
-            E0005,
-            "refutable pattern in {}: {} not covered",
-            origin,
-            joined_patterns
-        );
-        let suggest_if_let = match &pat.kind {
-            hir::PatKind::Path(hir::QPath::Resolved(None, path))
-                if path.segments.len() == 1 && path.segments[0].args.is_none() =>
+        let (inform, interpreted_as_const, res_defined_here, if_let_suggestion, let_else_suggestion) =
+            if let hir::PatKind::Path(hir::QPath::Resolved(
+                None,
+                hir::Path {
+                    segments: &[hir::PathSegment { args: None, res, ident, .. }],
+                    ..
+                },
+            )) = &pat.kind
             {
-                const_not_var(&mut err, cx.tcx, pat, path);
-                false
-            }
-            _ => {
-                pat.walk(&mut |pat: &hir::Pat<'_>| {
-                    match pat.kind {
-                        hir::PatKind::Binding(_, _, ident, _) => {
-                            bindings.push(ident);
+                (
+                    None,
+                    Some(InterpretedAsConst {
+                        span: pat.span,
+                        article: res.article(),
+                        variable: ident.to_string().to_lowercase(),
+                        res,
+                    }),
+                    try {
+                        ResDefinedHere {
+                            def_span: cx.tcx.hir().res_span(res)?,
+                            res,
                         }
-                        _ => {}
+                    },
+                    None, None,
+                )
+            } else if let Some(span) = sp && self.tcx.sess.source_map().is_span_accessible(span) {
+                let mut bindings = vec![];
+                pat.walk_always(&mut |pat: &hir::Pat<'_>| {
+                    if let hir::PatKind::Binding(_, _, ident, _) = pat.kind {
+                        bindings.push(ident);
                     }
-                    true
                 });
-
-                err.span_label(pat.span, pattern_not_covered_label(&witnesses, &joined_patterns));
-                true
-            }
-        };
-
-        if let (Some(span), true) = (sp, suggest_if_let) {
-            err.note(
-                "`let` bindings require an \"irrefutable pattern\", like a `struct` or \
-                 an `enum` with only one variant",
-            );
-            if self.tcx.sess.source_map().is_span_accessible(span) {
                 let semi_span = span.shrink_to_hi().with_lo(span.hi() - BytePos(1));
                 let start_span = span.shrink_to_lo();
                 let end_span = semi_span.shrink_to_lo();
-                err.multipart_suggestion(
-                    &format!(
-                        "you might want to use `if let` to ignore the variant{} that {} matched",
-                        pluralize!(witnesses.len()),
-                        match witnesses.len() {
-                            1 => "isn't",
-                            _ => "aren't",
-                        },
-                    ),
-                    vec![
-                        match &bindings[..] {
-                            [] => (start_span, "if ".to_string()),
-                            [binding] => (start_span, format!("let {} = if ", binding)),
-                            bindings => (
-                                start_span,
-                                format!(
-                                    "let ({}) = if ",
-                                    bindings
-                                        .iter()
-                                        .map(|ident| ident.to_string())
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                ),
-                            ),
-                        },
-                        match &bindings[..] {
-                            [] => (semi_span, " { todo!() }".to_string()),
-                            [binding] => {
-                                (end_span, format!(" {{ {} }} else {{ todo!() }}", binding))
-                            }
-                            bindings => (
-                                end_span,
-                                format!(
-                                    " {{ ({}) }} else {{ todo!() }}",
-                                    bindings
-                                        .iter()
-                                        .map(|ident| ident.to_string())
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                ),
-                            ),
-                        },
-                    ],
-                    Applicability::HasPlaceholders,
-                );
-                if !bindings.is_empty() {
-                    err.span_suggestion_verbose(
-                        semi_span.shrink_to_lo(),
-                        &format!(
-                            "alternatively, you might want to use \
-                             let else to handle the variant{} that {} matched",
-                            pluralize!(witnesses.len()),
-                            match witnesses.len() {
-                                1 => "isn't",
-                                _ => "aren't",
-                            },
-                        ),
-                        " else { todo!() }",
-                        Applicability::HasPlaceholders,
-                    );
-                }
+                let count = witnesses.len();
+                let if_let = match *bindings {
+                    [] =>  SuggestIfLet::None{start_span, semi_span, count},
+                    [binding] => SuggestIfLet::One{start_span, end_span, count, binding },
+                    _ => SuggestIfLet::More{start_span, end_span, count, bindings: bindings
+                        .iter()
+                        .map(|ident| ident.to_string())
+                        .collect::<Vec<_>>()
+                        .join(", ")},
+                };
+                let let_else = if bindings.is_empty() {None} else{Some( SuggestLetElse{end_span, count })};
+                (sp.map(|_|Inform), None, None, Some(if_let), let_else)
+            } else{
+                (sp.map(|_|Inform), None, None,  None, None)
+            };
+
+        let adt_defined_here = try {
+            let ty = pattern_ty.peel_refs();
+            let ty::Adt(def, _) = ty.kind() else { None? };
+            let adt_def_span = cx.tcx.hir().get_if_local(def.did())?.ident()?.span;
+            let mut variants = vec![];
+
+            for span in maybe_point_at_variant(&cx, *def, witnesses.iter().take(5)) {
+                variants.push(Variant { span });
             }
-            err.note(
-                "for more information, visit \
-                 https://doc.rust-lang.org/book/ch18-02-refutability.html",
-            );
-        }
+            AdtDefinedHere { adt_def_span, ty, variants }
+        };
 
-        adt_defined_here(&cx, &mut err, pattern_ty, &witnesses);
-        err.note(&format!("the matched value is of type `{}`", pattern_ty));
-        err.emit();
-    }
-}
-
-/// A path pattern was interpreted as a constant, not a new variable.
-/// This caused an irrefutable match failure in e.g. `let`.
-fn const_not_var(err: &mut Diagnostic, tcx: TyCtxt<'_>, pat: &Pat<'_>, path: &hir::Path<'_>) {
-    let descr = path.res.descr();
-    err.span_label(
-        pat.span,
-        format!("interpreted as {} {} pattern, not a new variable", path.res.article(), descr,),
-    );
-
-    err.span_suggestion(
-        pat.span,
-        "introduce a variable instead",
-        format!("{}_var", path.segments[0].ident).to_lowercase(),
-        // Cannot use `MachineApplicable` as it's not really *always* correct
-        // because there may be such an identifier in scope or the user maybe
-        // really wanted to match against the constant. This is quite unlikely however.
-        Applicability::MaybeIncorrect,
-    );
-
-    if let Some(span) = tcx.hir().res_span(path.res) {
-        err.span_label(span, format!("{} defined here", descr));
+        self.tcx.sess.emit_err(PatternNotCovered {
+            span: pat.span,
+            origin,
+            uncovered: Uncovered::new(pat.span, &cx, witnesses),
+            inform,
+            interpreted_as_const,
+            _p: (),
+            pattern_ty,
+            if_let_suggestion,
+            let_else_suggestion,
+            res_defined_here,
+            adt_defined_here,
+        });
     }
 }
 
