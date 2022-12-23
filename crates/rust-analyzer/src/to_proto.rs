@@ -434,6 +434,7 @@ pub(crate) fn inlay_hint(
         InlayKind::ParameterHint if render_colons => inlay_hint.label.append_str(":"),
         InlayKind::TypeHint if render_colons => inlay_hint.label.prepend_str(": "),
         InlayKind::ClosureReturnTypeHint => inlay_hint.label.prepend_str(" -> "),
+        InlayKind::DiscriminantHint => inlay_hint.label.prepend_str(" = "),
         _ => {}
     }
 
@@ -447,6 +448,7 @@ pub(crate) fn inlay_hint(
             // after annotated thing
             InlayKind::ClosureReturnTypeHint
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ChainingHint
             | InlayKind::GenericParamListHint
             | InlayKind::ClosingParenthesis
@@ -457,6 +459,7 @@ pub(crate) fn inlay_hint(
             InlayKind::TypeHint => !render_colons,
             InlayKind::ChainingHint | InlayKind::ClosingBraceHint => true,
             InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
             | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::ClosureReturnTypeHint
@@ -473,6 +476,7 @@ pub(crate) fn inlay_hint(
             | InlayKind::GenericParamListHint
             | InlayKind::AdjustmentHint
             | InlayKind::TypeHint
+            | InlayKind::DiscriminantHint
             | InlayKind::ClosingBraceHint => false,
             InlayKind::BindingModeHint => inlay_hint.label.as_simple_str() != Some("&"),
             InlayKind::ParameterHint | InlayKind::LifetimeHint => true,
@@ -483,6 +487,7 @@ pub(crate) fn inlay_hint(
                 Some(lsp_types::InlayHintKind::TYPE)
             }
             InlayKind::ClosingParenthesis
+            | InlayKind::DiscriminantHint
             | InlayKind::OpeningParenthesis
             | InlayKind::BindingModeHint
             | InlayKind::GenericParamListHint

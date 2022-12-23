@@ -327,6 +327,8 @@ config_data! {
         inlayHints_closingBraceHints_minLines: usize               = "25",
         /// Whether to show inlay type hints for return types of closures.
         inlayHints_closureReturnTypeHints_enable: ClosureReturnTypeHintsDef  = "\"never\"",
+        /// Whether to show enum variant discriminant hints.
+        inlayHints_discriminantHints_enable: DiscriminantHintsDef            = "\"never\"",
         /// Whether to show inlay hints for type adjustments.
         inlayHints_expressionAdjustmentHints_enable: AdjustmentHintsDef = "\"never\"",
         /// Whether to hide inlay hints for type adjustments outside of `unsafe` blocks.
@@ -1218,6 +1220,11 @@ impl Config {
             type_hints: self.data.inlayHints_typeHints_enable,
             parameter_hints: self.data.inlayHints_parameterHints_enable,
             chaining_hints: self.data.inlayHints_chainingHints_enable,
+            discriminant_hints: match self.data.inlayHints_discriminantHints_enable {
+                DiscriminantHintsDef::Always => ide::DiscriminantHints::Always,
+                DiscriminantHintsDef::Never => ide::DiscriminantHints::Never,
+                DiscriminantHintsDef::Fieldless => ide::DiscriminantHints::Fieldless,
+            },
             closure_return_type_hints: match self.data.inlayHints_closureReturnTypeHints_enable {
                 ClosureReturnTypeHintsDef::Always => ide::ClosureReturnTypeHints::Always,
                 ClosureReturnTypeHintsDef::Never => ide::ClosureReturnTypeHints::Never,
@@ -1579,6 +1586,7 @@ mod de_unit_v {
     named_unit_variant!(skip_trivial);
     named_unit_variant!(mutable);
     named_unit_variant!(reborrow);
+    named_unit_variant!(fieldless);
     named_unit_variant!(with_block);
 }
 
@@ -1740,6 +1748,17 @@ enum AdjustmentHintsDef {
     Never,
     #[serde(deserialize_with = "de_unit_v::reborrow")]
     Reborrow,
+}
+
+#[derive(Deserialize, Debug, Clone)]
+#[serde(untagged)]
+enum DiscriminantHintsDef {
+    #[serde(deserialize_with = "true_or_always")]
+    Always,
+    #[serde(deserialize_with = "false_or_never")]
+    Never,
+    #[serde(deserialize_with = "de_unit_v::fieldless")]
+    Fieldless,
 }
 
 #[derive(Deserialize, Debug, Clone)]
@@ -2062,6 +2081,19 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 "Always show all adjustment hints.",
                 "Never show adjustment hints.",
                 "Only show auto borrow and dereference adjustment hints."
+            ]
+        },
+        "DiscriminantHintsDef" => set! {
+            "type": "string",
+            "enum": [
+                "always",
+                "never",
+                "fieldless"
+            ],
+            "enumDescriptions": [
+                "Always show all discriminant hints.",
+                "Never show discriminant hints.",
+                "Only show discriminant hints on fieldless enum variants."
             ]
         },
         "CargoFeaturesDef" => set! {

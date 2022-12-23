@@ -454,6 +454,11 @@ to always show them).
 --
 Whether to show inlay type hints for return types of closures.
 --
+[[rust-analyzer.inlayHints.discriminantHints.enable]]rust-analyzer.inlayHints.discriminantHints.enable (default: `"never"`)::
++
+--
+Whether to show enum variant discriminant hints.
+--
 [[rust-analyzer.inlayHints.expressionAdjustmentHints.enable]]rust-analyzer.inlayHints.expressionAdjustmentHints.enable (default: `"never"`)::
 +
 --
