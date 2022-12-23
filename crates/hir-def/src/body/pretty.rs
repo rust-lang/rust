@@ -32,7 +32,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
                 Some(name) => name.to_string(),
                 None => "_".to_string(),
             };
-            format!("const {} = ", name)
+            format!("const {name} = ")
         }
         DefWithBodyId::VariantId(it) => {
             needs_semi = false;
@@ -42,7 +42,7 @@ pub(super) fn print_body_hir(db: &dyn DefDatabase, body: &Body, owner: DefWithBo
                 Some(name) => name.to_string(),
                 None => "_".to_string(),
             };
-            format!("{}", name)
+            format!("{name}")
         }
     };
 

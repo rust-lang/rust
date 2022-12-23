@@ -39,7 +39,7 @@ impl Diagnostic {
             for block in comment_blocks {
                 let id = block.id;
                 if let Err(msg) = is_valid_diagnostic_name(&id) {
-                    panic!("invalid diagnostic name: {:?}:\n  {}", id, msg)
+                    panic!("invalid diagnostic name: {id:?}:\n  {msg}")
                 }
                 let doc = block.contents.join("\n");
                 let location = sourcegen::Location { file: path.clone(), line: block.line };

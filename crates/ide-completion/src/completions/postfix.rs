@@ -61,7 +61,7 @@ pub(crate) fn complete_postfix(
                 let mut item = postfix_snippet(
                     "drop",
                     "fn drop(&mut self)",
-                    &format!("drop($0{})", receiver_text),
+                    &format!("drop($0{receiver_text})"),
                 );
                 item.set_documentation(drop_fn.docs(ctx.db));
                 item.add_to(acc);
@@ -76,14 +76,14 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "ifl",
                     "if let Ok {}",
-                    &format!("if let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("if let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
 
                 postfix_snippet(
                     "while",
                     "while let Ok {}",
-                    &format!("while let Ok($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("while let Ok($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
             }
@@ -91,41 +91,37 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "ifl",
                     "if let Some {}",
-                    &format!("if let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("if let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
 
                 postfix_snippet(
                     "while",
                     "while let Some {}",
-                    &format!("while let Some($1) = {} {{\n    $0\n}}", receiver_text),
+                    &format!("while let Some($1) = {receiver_text} {{\n    $0\n}}"),
                 )
                 .add_to(acc);
             }
         }
     } else if receiver_ty.is_bool() || receiver_ty.is_unknown() {
-        postfix_snippet("if", "if expr {}", &format!("if {} {{\n    $0\n}}", receiver_text))
+        postfix_snippet("if", "if expr {}", &format!("if {receiver_text} {{\n    $0\n}}"))
             .add_to(acc);
-        postfix_snippet(
-            "while",
-            "while expr {}",
-            &format!("while {} {{\n    $0\n}}", receiver_text),
-        )
-        .add_to(acc);
-        postfix_snippet("not", "!expr", &format!("!{}", receiver_text)).add_to(acc);
+        postfix_snippet("while", "while expr {}", &format!("while {receiver_text} {{\n    $0\n}}"))
+            .add_to(acc);
+        postfix_snippet("not", "!expr", &format!("!{receiver_text}")).add_to(acc);
     } else if let Some(trait_) = ctx.famous_defs().core_iter_IntoIterator() {
         if receiver_ty.impls_trait(ctx.db, trait_, &[]) {
             postfix_snippet(
                 "for",
                 "for ele in expr {}",
-                &format!("for ele in {} {{\n    $0\n}}", receiver_text),
+                &format!("for ele in {receiver_text} {{\n    $0\n}}"),
             )
             .add_to(acc);
         }
     }
 
-    postfix_snippet("ref", "&expr", &format!("&{}", receiver_text)).add_to(acc);
-    postfix_snippet("refm", "&mut expr", &format!("&mut {}", receiver_text)).add_to(acc);
+    postfix_snippet("ref", "&expr", &format!("&{receiver_text}")).add_to(acc);
+    postfix_snippet("refm", "&mut expr", &format!("&mut {receiver_text}")).add_to(acc);
 
     // The rest of the postfix completions create an expression that moves an argument,
     // so it's better to consider references now to avoid breaking the compilation
@@ -148,7 +144,7 @@ pub(crate) fn complete_postfix(
                 postfix_snippet(
                     "match",
                     "match expr {}",
-                    &format!("match {} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}", receiver_text),
+                    &format!("match {receiver_text} {{\n    Ok(${{1:_}}) => {{$2}},\n    Err(${{3:_}}) => {{$0}},\n}}"),
                 )
                 .add_to(acc);
             }
@@ -168,21 +164,21 @@ pub(crate) fn complete_postfix(
             postfix_snippet(
                 "match",
                 "match expr {}",
-                &format!("match {} {{\n    ${{1:_}} => {{$0}},\n}}", receiver_text),
+                &format!("match {receiver_text} {{\n    ${{1:_}} => {{$0}},\n}}"),
             )
             .add_to(acc);
         }
     }
 
-    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({})", receiver_text)).add_to(acc);
-    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({})", receiver_text)).add_to(acc); // fixme
-    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{})", receiver_text)).add_to(acc);
-    postfix_snippet("call", "function(expr)", &format!("${{1}}({})", receiver_text)).add_to(acc);
+    postfix_snippet("box", "Box::new(expr)", &format!("Box::new({receiver_text})")).add_to(acc);
+    postfix_snippet("dbg", "dbg!(expr)", &format!("dbg!({receiver_text})")).add_to(acc); // fixme
+    postfix_snippet("dbgr", "dbg!(&expr)", &format!("dbg!(&{receiver_text})")).add_to(acc);
+    postfix_snippet("call", "function(expr)", &format!("${{1}}({receiver_text})")).add_to(acc);
 
     if let Some(parent) = dot_receiver.syntax().parent().and_then(|p| p.parent()) {
         if matches!(parent.kind(), STMT_LIST | EXPR_STMT) {
-            postfix_snippet("let", "let", &format!("let $0 = {};", receiver_text)).add_to(acc);
-            postfix_snippet("letm", "let mut", &format!("let mut $0 = {};", receiver_text))
+            postfix_snippet("let", "let", &format!("let $0 = {receiver_text};")).add_to(acc);
+            postfix_snippet("letm", "let mut", &format!("let mut $0 = {receiver_text};"))
                 .add_to(acc);
         }
     }
@@ -300,7 +296,7 @@ fn add_custom_postfix_completions(
             let body = snippet.postfix_snippet(receiver_text);
             let mut builder =
                 postfix_snippet(trigger, snippet.description.as_deref().unwrap_or_default(), &body);
-            builder.documentation(Documentation::new(format!("```rust\n{}\n```", body)));
+            builder.documentation(Documentation::new(format!("```rust\n{body}\n```")));
             for import in imports.into_iter() {
                 builder.add_import(import);
             }

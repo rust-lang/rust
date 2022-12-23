@@ -60,9 +60,9 @@ pub enum FlycheckConfig {
 impl fmt::Display for FlycheckConfig {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {}", command),
+            FlycheckConfig::CargoCommand { command, .. } => write!(f, "cargo {command}"),
             FlycheckConfig::CustomCommand { command, args, .. } => {
-                write!(f, "{} {}", command, args.join(" "))
+                write!(f, "{command} {}", args.join(" "))
             }
         }
     }
@@ -474,7 +474,7 @@ impl CargoActor {
         );
         match output {
             Ok(_) => Ok((read_at_least_one_message, error)),
-            Err(e) => Err(io::Error::new(e.kind(), format!("{:?}: {}", e, error))),
+            Err(e) => Err(io::Error::new(e.kind(), format!("{e:?}: {error}"))),
         }
     }
 }

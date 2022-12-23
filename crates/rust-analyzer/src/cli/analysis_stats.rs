@@ -87,9 +87,9 @@ impl flags::AnalysisStats {
             load_workspace(workspace, &cargo_config.extra_env, &load_cargo_config)?;
         let db = host.raw_database();
         eprint!("{:<20} {}", "Database loaded:", db_load_sw.elapsed());
-        eprint!(" (metadata {}", metadata_time);
+        eprint!(" (metadata {metadata_time}");
         if let Some(build_scripts_time) = build_scripts_time {
-            eprint!("; build {}", build_scripts_time);
+            eprint!("; build {build_scripts_time}");
         }
         eprintln!(")");
 
@@ -118,7 +118,7 @@ impl flags::AnalysisStats {
             shuffle(&mut rng, &mut visit_queue);
         }
 
-        eprint!("  crates: {}", num_crates);
+        eprint!("  crates: {num_crates}");
         let mut num_decls = 0;
         let mut funcs = Vec::new();
         while let Some(module) = visit_queue.pop() {
@@ -142,7 +142,7 @@ impl flags::AnalysisStats {
                 }
             }
         }
-        eprintln!(", mods: {}, decls: {}, fns: {}", visited_modules.len(), num_decls, funcs.len());
+        eprintln!(", mods: {}, decls: {num_decls}, fns: {}", visited_modules.len(), funcs.len());
         eprintln!("{:<20} {}", "Item Collection:", analysis_sw.elapsed());
 
         if self.randomize {
@@ -154,7 +154,7 @@ impl flags::AnalysisStats {
         }
 
         let total_span = analysis_sw.elapsed();
-        eprintln!("{:<20} {}", "Total:", total_span);
+        eprintln!("{:<20} {total_span}", "Total:");
         report_metric("total time", total_span.time.as_millis() as u64, "ms");
         if let Some(instructions) = total_span.instructions {
             report_metric("total instructions", instructions, "#instr");
@@ -179,7 +179,7 @@ impl flags::AnalysisStats {
                     total_macro_file_size += syntax_len(val.syntax_node())
                 }
             }
-            eprintln!("source files: {}, macro files: {}", total_file_size, total_macro_file_size);
+            eprintln!("source files: {total_file_size}, macro files: {total_macro_file_size}");
         }
 
         if self.memory_usage && verbosity.is_verbose() {
@@ -239,7 +239,7 @@ impl flags::AnalysisStats {
                     continue;
                 }
             }
-            let mut msg = format!("processing: {}", full_name);
+            let mut msg = format!("processing: {full_name}");
             if verbosity.is_verbose() {
                 if let Some(src) = f.source(db) {
                     let original_file = src.file_id.original_file(db);
@@ -275,7 +275,7 @@ impl flags::AnalysisStats {
                                 end.col,
                             ));
                         } else {
-                            bar.println(format!("{}: Unknown type", name,));
+                            bar.println(format!("{name}: Unknown type",));
                         }
                     }
                     true
@@ -402,7 +402,7 @@ fn location_csv(
     let text_range = original_range.range;
     let (start, end) =
         (line_index.line_col(text_range.start()), line_index.line_col(text_range.end()));
-    format!("{},{}:{},{}:{}", path, start.line + 1, start.col, end.line + 1, end.col)
+    format!("{path},{}:{},{}:{}", start.line + 1, start.col, end.line + 1, end.col)
 }
 
 fn expr_syntax_range(

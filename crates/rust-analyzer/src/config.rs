@@ -1869,14 +1869,14 @@ fn schema(fields: &[(&'static str, &'static str, &[&str], &str)]) -> serde_json:
         fn key(f: &str) -> &str {
             f.splitn(2, '_').next().unwrap()
         }
-        assert!(key(f1) <= key(f2), "wrong field order: {:?} {:?}", f1, f2);
+        assert!(key(f1) <= key(f2), "wrong field order: {f1:?} {f2:?}");
     }
 
     let map = fields
         .iter()
         .map(|(field, ty, doc, default)| {
             let name = field.replace('_', ".");
-            let name = format!("rust-analyzer.{}", name);
+            let name = format!("rust-analyzer.{name}");
             let props = field_props(field, ty, doc, default);
             (name, props)
         })
@@ -2166,7 +2166,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
                 },
             ],
         },
-        _ => panic!("missing entry for {}: {}", ty, default),
+        _ => panic!("missing entry for {ty}: {default}"),
     }
 
     map.into()
@@ -2194,14 +2194,14 @@ Default:
                     name, name, default, doc
                 )
             } else {
-                format!("[[{}]]{} (default: `{}`)::\n+\n--\n{}--\n", name, name, default, doc)
+                format!("[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")
             }
         })
         .collect::<String>()
 }
 
 fn doc_comment_to_string(doc: &[&str]) -> String {
-    doc.iter().map(|it| it.strip_prefix(' ').unwrap_or(it)).map(|it| format!("{}\n", it)).collect()
+    doc.iter().map(|it| it.strip_prefix(' ').unwrap_or(it)).map(|it| format!("{it}\n")).collect()
 }
 
 #[cfg(test)]
@@ -2215,7 +2215,7 @@ mod tests {
     #[test]
     fn generate_package_json_config() {
         let s = Config::json_schema();
-        let schema = format!("{:#}", s);
+        let schema = format!("{s:#}");
         let mut schema = schema
             .trim_start_matches('{')
             .trim_end_matches('}')

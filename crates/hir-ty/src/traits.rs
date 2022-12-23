@@ -130,7 +130,7 @@ fn solve(
 
     let mut solve = || {
         let _ctx = if is_chalk_debug() || is_chalk_print() {
-            Some(panic_context::enter(format!("solving {:?}", goal)))
+            Some(panic_context::enter(format!("solving {goal:?}")))
         } else {
             None
         };

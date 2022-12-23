@@ -52,8 +52,8 @@ pub(crate) fn status(db: &RootDatabase, file_id: Option<FileId>) -> String {
         let crate_graph = db.crate_graph();
         for krate in crates {
             let display_crate = |krate: CrateId| match &crate_graph[krate].display_name {
-                Some(it) => format!("{}({:?})", it, krate),
-                None => format!("{:?}", krate),
+                Some(it) => format!("{it}({krate:?})"),
+                None => format!("{krate:?}"),
             };
             format_to!(buf, "Crate: {}\n", display_crate(krate));
             let deps = crate_graph[krate]

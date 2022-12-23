@@ -105,7 +105,7 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                         .collect(),
                 );
             } else {
-                panic!("unexpected annotation: {}", expected);
+                panic!("unexpected annotation: {expected}");
             }
             had_annotations = true;
         }
@@ -181,11 +181,11 @@ fn check_impl(ra_fixture: &str, allow_none: bool, only_types: bool, display_sour
                         expected,
                         adjustments
                             .iter()
-                            .map(|Adjustment { kind, .. }| format!("{:?}", kind))
+                            .map(|Adjustment { kind, .. }| format!("{kind:?}"))
                             .collect::<Vec<_>>()
                     );
                 } else {
-                    panic!("expected {:?} adjustments, found none", expected);
+                    panic!("expected {expected:?} adjustments, found none");
                 }
             }
         }

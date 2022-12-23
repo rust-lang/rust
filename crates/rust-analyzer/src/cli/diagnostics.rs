@@ -40,7 +40,7 @@ impl flags::Diagnostics {
             if !visited_files.contains(&file_id) {
                 let crate_name =
                     module.krate().display_name(db).as_deref().unwrap_or("unknown").to_string();
-                println!("processing crate: {}, module: {}", crate_name, _vfs.file_path(file_id));
+                println!("processing crate: {crate_name}, module: {}", _vfs.file_path(file_id));
                 for diagnostic in analysis
                     .diagnostics(
                         &DiagnosticsConfig::test_sample(),
@@ -53,7 +53,7 @@ impl flags::Diagnostics {
                         found_error = true;
                     }
 
-                    println!("{:?}", diagnostic);
+                    println!("{diagnostic:?}");
                 }
 
                 visited_files.insert(file_id);

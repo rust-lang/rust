@@ -18,7 +18,7 @@ use super::check_doc_test;
         for assist in assists.iter() {
             for (idx, section) in assist.sections.iter().enumerate() {
                 let test_id =
-                    if idx == 0 { assist.id.clone() } else { format!("{}_{}", &assist.id, idx) };
+                    if idx == 0 { assist.id.clone() } else { format!("{}_{idx}", &assist.id) };
                 let test = format!(
                     r######"
 #[test]
@@ -175,7 +175,7 @@ impl fmt::Display for Assist {
 fn hide_hash_comments(text: &str) -> String {
     text.split('\n') // want final newline
         .filter(|&it| !(it.starts_with("# ") || it == "#"))
-        .map(|it| format!("{}\n", it))
+        .map(|it| format!("{it}\n"))
         .collect()
 }
 
@@ -190,6 +190,6 @@ fn reveal_hash_comments(text: &str) -> String {
                 it
             }
         })
-        .map(|it| format!("{}\n", it))
+        .map(|it| format!("{it}\n"))
         .collect()
 }

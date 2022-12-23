@@ -235,7 +235,7 @@ fn generate_getter_from_info(
 ) -> String {
     let mut buf = String::with_capacity(512);
 
-    let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+    let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{v} "));
     let (ty, body) = if info.mutable {
         (
             format!("&mut {}", record_field_info.field_ty),

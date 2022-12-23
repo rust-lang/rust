@@ -197,7 +197,7 @@ fn rename_mod(
 
         // Module exists in a named file
         if !is_mod_rs {
-            let path = format!("{}.rs", new_name);
+            let path = format!("{new_name}.rs");
             let dst = AnchoredPathBuf { anchor, path };
             source_change.push_file_system_edit(FileSystemEdit::MoveFile { src: anchor, dst })
         }
@@ -207,9 +207,7 @@ fn rename_mod(
         //  - Module has submodules defined in separate files
         let dir_paths = match (is_mod_rs, has_detached_child, module.name(sema.db)) {
             // Go up one level since the anchor is inside the dir we're trying to rename
-            (true, _, Some(mod_name)) => {
-                Some((format!("../{}", mod_name), format!("../{}", new_name)))
-            }
+            (true, _, Some(mod_name)) => Some((format!("../{mod_name}"), format!("../{new_name}"))),
             // The anchor is on the same level as target dir
             (false, true, Some(mod_name)) => Some((mod_name.to_string(), new_name.to_string())),
             _ => None,
@@ -356,7 +354,7 @@ fn source_edit_from_name(edit: &mut TextEditBuilder, name: &ast::Name, new_name:
 
             // FIXME: instead of splitting the shorthand, recursively trigger a rename of the
             // other name https://github.com/rust-lang/rust-analyzer/issues/6547
-            edit.insert(ident_pat.syntax().text_range().start(), format!("{}: ", new_name));
+            edit.insert(ident_pat.syntax().text_range().start(), format!("{new_name}: "));
             return true;
         }
     }
@@ -414,7 +412,7 @@ fn source_edit_from_name_ref(
                 // Foo { field } -> Foo { new_name: field }
                 //       ^ insert `new_name: `
                 let offset = name_ref.syntax().text_range().start();
-                edit.insert(offset, format!("{}: ", new_name));
+                edit.insert(offset, format!("{new_name}: "));
                 return true;
             }
             (None, Some(_)) if matches!(def, Definition::Local(_)) => {
@@ -422,7 +420,7 @@ fn source_edit_from_name_ref(
                 // Foo { field } -> Foo { field: new_name }
                 //            ^ insert `: new_name`
                 let offset = name_ref.syntax().text_range().end();
-                edit.insert(offset, format!(": {}", new_name));
+                edit.insert(offset, format!(": {new_name}"));
                 return true;
             }
             _ => (),

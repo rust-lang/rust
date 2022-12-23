@@ -218,7 +218,7 @@ pub fn diagnostics(
     // [#34344] Only take first 128 errors to prevent slowing down editor/ide, the number 128 is chosen arbitrarily.
     res.extend(
         parse.errors().iter().take(128).map(|err| {
-            Diagnostic::new("syntax-error", format!("Syntax Error: {}", err), err.range())
+            Diagnostic::new("syntax-error", format!("Syntax Error: {err}"), err.range())
         }),
     );
 

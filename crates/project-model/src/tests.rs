@@ -107,7 +107,7 @@ fn to_crate_graph(project_workspace: ProjectWorkspace) -> CrateGraph {
 }
 
 fn check_crate_graph(crate_graph: CrateGraph, expect: Expect) {
-    let mut crate_graph = format!("{:#?}", crate_graph);
+    let mut crate_graph = format!("{crate_graph:#?}");
     replace_root(&mut crate_graph, false);
     expect.assert_eq(&crate_graph);
 }

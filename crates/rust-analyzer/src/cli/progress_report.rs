@@ -67,7 +67,7 @@ impl ProgressReport {
             return;
         }
         let percent = (self.curr * 100.0) as u32;
-        let text = format!("{}/{} {:3>}% {}", self.pos, self.len, percent, self.msg);
+        let text = format!("{}/{} {percent:3>}% {}", self.pos, self.len, self.msg);
         self.update_text(&text);
     }
 
@@ -114,7 +114,7 @@ impl ProgressReport {
         // Fill all last text to space and return the cursor
         let spaces = " ".repeat(self.text.len());
         let backspaces = "\x08".repeat(self.text.len());
-        print!("{}{}{}", backspaces, spaces, backspaces);
+        print!("{backspaces}{spaces}{backspaces}");
         let _ = io::stdout().flush();
 
         self.text = String::new();

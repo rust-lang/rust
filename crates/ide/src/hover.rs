@@ -163,7 +163,7 @@ pub(crate) fn hover(
                 .filter_map(|(def, node)| hover_for_definition(sema, file_id, def, &node, config))
                 .reduce(|mut acc: HoverResult, HoverResult { markup, actions }| {
                     acc.actions.extend(actions);
-                    acc.markup = Markup::from(format!("{}\n---\n{}", acc.markup, markup));
+                    acc.markup = Markup::from(format!("{}\n---\n{markup}", acc.markup));
                     acc
                 })
         })

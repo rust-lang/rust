@@ -46,7 +46,7 @@ fn report_metric(metric: &str, value: u64, unit: &str) {
     if std::env::var("RA_METRICS").is_err() {
         return;
     }
-    println!("METRIC:{}:{}:{}", metric, value, unit)
+    println!("METRIC:{metric}:{value}:{unit}")
 }
 
 fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
@@ -65,6 +65,6 @@ fn print_memory_usage(mut host: AnalysisHost, vfs: Vfs) {
 
     for (name, bytes) in mem {
         // NOTE: Not a debug print, so avoid going through the `eprintln` defined above.
-        eprintln!("{:>8} {}", bytes, name);
+        eprintln!("{bytes:>8} {name}");
     }
 }

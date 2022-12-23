@@ -83,7 +83,7 @@ impl LsifManager<'_> {
 
     // FIXME: support file in addition to stdout here
     fn emit(&self, data: &str) {
-        println!("{}", data);
+        println!("{data}");
     }
 
     fn get_token_id(&mut self, id: TokenId) -> Id {

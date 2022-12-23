@@ -75,7 +75,7 @@ pub(crate) fn check_no_fix(ra_fixture: &str) {
     )
     .pop()
     .unwrap();
-    assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {:?}", diagnostic);
+    assert!(diagnostic.fixes.is_none(), "got a fix when none was expected: {diagnostic:?}");
 }
 
 pub(crate) fn check_expect(ra_fixture: &str, expect: Expect) {

@@ -54,7 +54,7 @@ pub(crate) fn add_format_like_completions(
     if let Ok((out, exprs)) = parse_format_exprs(receiver_text.text()) {
         let exprs = with_placeholders(exprs);
         for (label, macro_name) in KINDS {
-            let snippet = format!(r#"{}({}, {})"#, macro_name, out, exprs.join(", "));
+            let snippet = format!(r#"{macro_name}({out}, {})"#, exprs.join(", "));
 
             postfix_snippet(label, macro_name, &snippet).add_to(acc);
         }
@@ -81,7 +81,7 @@ mod tests {
         for (kind, input, output) in test_vector {
             let (parsed_string, exprs) = parse_format_exprs(input).unwrap();
             let exprs = with_placeholders(exprs);
-            let snippet = format!(r#"{}("{}", {})"#, kind, parsed_string, exprs.join(", "));
+            let snippet = format!(r#"{kind}("{parsed_string}", {})"#, exprs.join(", "));
             assert_eq!(&snippet, output);
         }
     }

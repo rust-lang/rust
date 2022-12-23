@@ -26,7 +26,7 @@ pub(crate) fn unresolved_proc_macro(
     };
 
     let message = match &d.macro_name {
-        Some(name) => format!("proc macro `{}` not expanded", name),
+        Some(name) => format!("proc macro `{name}` not expanded"),
         None => "proc macro not expanded".to_string(),
     };
     let severity = if config_enabled { Severity::Error } else { Severity::WeakWarning };

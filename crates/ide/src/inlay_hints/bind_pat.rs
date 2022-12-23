@@ -160,7 +160,7 @@ fn is_named_constructor(
     let ctor_name = match qual_seg.kind()? {
         ast::PathSegmentKind::Name(name_ref) => {
             match qual_seg.generic_arg_list().map(|it| it.generic_args()) {
-                Some(generics) => format!("{}<{}>", name_ref, generics.format(", ")),
+                Some(generics) => format!("{name_ref}<{}>", generics.format(", ")),
                 None => name_ref.to_string(),
             }
         }
@@ -473,7 +473,7 @@ fn main() {
             .unwrap();
         let actual =
             inlay_hints.into_iter().map(|it| (it.range, it.label.to_string())).collect::<Vec<_>>();
-        assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
+        assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
     }
 
     #[test]

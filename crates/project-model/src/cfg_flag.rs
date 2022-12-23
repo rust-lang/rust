@@ -17,7 +17,7 @@ impl FromStr for CfgFlag {
         let res = match s.split_once('=') {
             Some((key, value)) => {
                 if !(value.starts_with('"') && value.ends_with('"')) {
-                    return Err(format!("Invalid cfg ({:?}), value should be in quotes", s));
+                    return Err(format!("Invalid cfg ({s:?}), value should be in quotes"));
                 }
                 let key = key.to_string();
                 let value = value[1..value.len() - 1].to_string();

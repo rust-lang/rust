@@ -386,7 +386,7 @@ impl HirDisplay for Pat {
                 }
                 subpattern.hir_fmt(f)
             }
-            PatKind::LiteralBool { value } => write!(f, "{}", value),
+            PatKind::LiteralBool { value } => write!(f, "{value}"),
             PatKind::Or { pats } => f.write_joined(pats.iter(), " | "),
         }
     }

@@ -28,7 +28,7 @@ impl TestDir {
         static CNT: AtomicUsize = AtomicUsize::new(0);
         for _ in 0..100 {
             let cnt = CNT.fetch_add(1, Ordering::Relaxed);
-            let path = base.join(format!("{}_{}", pid, cnt));
+            let path = base.join(format!("{pid}_{cnt}"));
             if path.is_dir() {
                 continue;
             }
@@ -53,7 +53,7 @@ impl Drop for TestDir {
             return;
         }
         remove_dir_all(&self.path).unwrap_or_else(|err| {
-            panic!("failed to remove temporary directory {}: {}", self.path.display(), err)
+            panic!("failed to remove temporary directory {}: {err}", self.path.display())
         })
     }
 }

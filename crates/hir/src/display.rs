@@ -79,7 +79,7 @@ impl HirDisplay for Function {
                 }
             }
             match name {
-                Some(name) => write!(f, "{}: ", name)?,
+                Some(name) => write!(f, "{name}: ")?,
                 None => f.write_str("_: ")?,
             }
             // FIXME: Use resolved `param.ty` or raw `type_ref`?
@@ -327,7 +327,7 @@ fn write_generic_params(
                         continue;
                     }
                     delim(f)?;
-                    write!(f, "{}", name)?;
+                    write!(f, "{name}")?;
                     if let Some(default) = &ty.default {
                         f.write_str(" = ")?;
                         default.hir_fmt(f)?;
@@ -335,7 +335,7 @@ fn write_generic_params(
                 }
                 TypeOrConstParamData::ConstParamData(c) => {
                     delim(f)?;
-                    write!(f, "const {}: ", name)?;
+                    write!(f, "const {name}: ")?;
                     c.ty.hir_fmt(f)?;
                 }
             }
@@ -372,7 +372,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(),
         WherePredicateTypeTarget::TypeRef(ty) => ty.hir_fmt(f),
         WherePredicateTypeTarget::TypeOrConstParam(id) => {
             match &params.type_or_consts[*id].name() {
-                Some(name) => write!(f, "{}", name),
+                Some(name) => write!(f, "{name}"),
                 None => f.write_str("{unnamed}"),
             }
         }
@@ -424,7 +424,7 @@ fn write_where_clause(def: GenericDefId, f: &mut HirFormatter<'_>) -> Result<(),
                         if idx != 0 {
                             f.write_str(", ")?;
                         }
-                        write!(f, "{}", lifetime)?;
+                        write!(f, "{lifetime}")?;
                     }
                     f.write_str("> ")?;
                     write_target(target, f)?;
@@ -447,7 +447,7 @@ impl HirDisplay for Const {
         let data = f.db.const_data(self.id);
         f.write_str("const ")?;
         match &data.name {
-            Some(name) => write!(f, "{}: ", name)?,
+            Some(name) => write!(f, "{name}: ")?,
             None => f.write_str("_: ")?,
         }
         data.type_ref.hir_fmt(f)?;
@@ -511,9 +511,9 @@ impl HirDisplay for Module {
     fn hir_fmt(&self, f: &mut HirFormatter<'_>) -> Result<(), HirDisplayError> {
         // FIXME: Module doesn't have visibility saved in data.
         match self.name(f.db) {
-            Some(name) => write!(f, "mod {}", name),
+            Some(name) => write!(f, "mod {name}"),
             None if self.is_crate_root(f.db) => match self.krate(f.db).display_name(f.db) {
-                Some(name) => write!(f, "extern crate {}", name),
+                Some(name) => write!(f, "extern crate {name}"),
                 None => f.write_str("extern crate {unknown}"),
             },
             None => f.write_str("mod {unnamed}"),

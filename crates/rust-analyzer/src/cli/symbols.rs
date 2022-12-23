@@ -9,7 +9,7 @@ impl flags::Symbols {
         let (analysis, file_id) = Analysis::from_single_file(text);
         let structure = analysis.file_structure(file_id).unwrap();
         for s in structure {
-            println!("{:?}", s);
+            println!("{s:?}");
         }
         Ok(())
     }

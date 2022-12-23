@@ -263,7 +263,7 @@ mod tests {
     for runnable in ["consumer", "dependency", "devdependency"] {
         server.request::<Runnables>(
             RunnablesParams {
-                text_document: server.doc_id(&format!("{}/src/lib.rs", runnable)),
+                text_document: server.doc_id(&format!("{runnable}/src/lib.rs")),
                 position: None,
             },
             json!([
@@ -595,8 +595,8 @@ fn diagnostics_dont_block_typing() {
         return;
     }
 
-    let librs: String = (0..10).map(|i| format!("mod m{};", i)).collect();
-    let libs: String = (0..10).map(|i| format!("//- /src/m{}.rs\nfn foo() {{}}\n\n", i)).collect();
+    let librs: String = (0..10).map(|i| format!("mod m{i};")).collect();
+    let libs: String = (0..10).map(|i| format!("//- /src/m{i}.rs\nfn foo() {{}}\n\n")).collect();
     let server = Project::with_fixture(&format!(
         r#"
 //- /Cargo.toml
@@ -622,7 +622,7 @@ fn main() {{}}
     for i in 0..10 {
         server.notification::<DidOpenTextDocument>(DidOpenTextDocumentParams {
             text_document: TextDocumentItem {
-                uri: server.doc_id(&format!("src/m{}.rs", i)).uri,
+                uri: server.doc_id(&format!("src/m{i}.rs")).uri,
                 language_id: "rust".to_string(),
                 version: 0,
                 text: "/// Docs\nfn foo() {}".to_string(),
@@ -645,7 +645,7 @@ fn main() {{}}
         }]),
     );
     let elapsed = start.elapsed();
-    assert!(elapsed.as_millis() < 2000, "typing enter took {:?}", elapsed);
+    assert!(elapsed.as_millis() < 2000, "typing enter took {elapsed:?}");
 }
 
 #[test]
@@ -942,7 +942,7 @@ fn test_will_rename_files_same_level() {
     let tmp_dir = TestDir::new();
     let tmp_dir_path = tmp_dir.path().to_owned();
     let tmp_dir_str = tmp_dir_path.to_str().unwrap();
-    let base_path = PathBuf::from(format!("file://{}", tmp_dir_str));
+    let base_path = PathBuf::from(format!("file://{tmp_dir_str}"));
 
     let code = r#"
 //- /Cargo.toml

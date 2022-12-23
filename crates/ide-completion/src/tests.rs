@@ -153,7 +153,7 @@ fn render_completion_list(completions: Vec<CompletionItem>) -> String {
         .into_iter()
         .map(|it| {
             let tag = it.kind().tag();
-            let var_name = format!("{} {}", tag, it.label());
+            let var_name = format!("{tag} {}", it.label());
             let mut buf = var_name;
             if let Some(detail) = it.detail() {
                 let width = label_width.saturating_sub(monospace_width(it.label()));
@@ -188,7 +188,7 @@ pub(crate) fn check_edit_with_config(
         .iter()
         .filter(|it| it.lookup() == what)
         .collect_tuple()
-        .unwrap_or_else(|| panic!("can't find {:?} completion in {:#?}", what, completions));
+        .unwrap_or_else(|| panic!("can't find {what:?} completion in {completions:#?}"));
     let mut actual = db.file_text(position.file_id).to_string();
 
     let mut combined_edit = completion.text_edit().to_owned();

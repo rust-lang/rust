@@ -143,7 +143,7 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         let goal_data = goal.data(Interner);
-        Some(write!(fmt, "{:?}", goal_data))
+        Some(write!(fmt, "{goal_data:?}"))
     }
 
     fn debug_goals(

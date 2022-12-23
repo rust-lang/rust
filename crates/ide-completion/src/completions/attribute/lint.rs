@@ -51,7 +51,7 @@ pub(super) fn complete_lint(
             continue;
         }
         let label = match qual {
-            Some(qual) if !is_qualified => format!("{}::{}", qual, name),
+            Some(qual) if !is_qualified => format!("{qual}::{name}"),
             _ => name.to_owned(),
         };
         let mut item = CompletionItem::new(SymbolKind::Attribute, ctx.source_range(), label);

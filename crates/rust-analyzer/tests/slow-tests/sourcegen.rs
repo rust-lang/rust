@@ -42,7 +42,7 @@ impl Feature {
             for block in comment_blocks {
                 let id = block.id;
                 if let Err(msg) = is_valid_feature_name(&id) {
-                    panic!("invalid feature name: {:?}:\n  {}", id, msg)
+                    panic!("invalid feature name: {id:?}:\n  {msg}")
                 }
                 let doc = block.contents.join("\n");
                 let location = sourcegen::Location { file: path.clone(), line: block.line };
@@ -63,11 +63,11 @@ fn is_valid_feature_name(feature: &str) -> Result<(), String> {
         }
         for short in ["To", "And"] {
             if word == short {
-                return Err(format!("Don't capitalize {:?}", word));
+                return Err(format!("Don't capitalize {word:?}"));
             }
         }
         if !word.starts_with(char::is_uppercase) {
-            return Err(format!("Capitalize {:?}", word));
+            return Err(format!("Capitalize {word:?}"));
         }
     }
     Ok(())

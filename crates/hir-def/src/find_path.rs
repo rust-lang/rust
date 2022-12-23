@@ -512,7 +512,7 @@ mod tests {
     fn check_found_path_(ra_fixture: &str, path: &str, prefix_kind: Option<PrefixKind>) {
         let (db, pos) = TestDB::with_position(ra_fixture);
         let module = db.module_at_position(pos);
-        let parsed_path_file = syntax::SourceFile::parse(&format!("use {};", path));
+        let parsed_path_file = syntax::SourceFile::parse(&format!("use {path};"));
         let ast_path =
             parsed_path_file.syntax_node().descendants().find_map(syntax::ast::Path::cast).unwrap();
         let mod_path = ModPath::from_src(&db, ast_path, &Hygiene::new_unhygienic()).unwrap();
@@ -531,7 +531,7 @@ mod tests {
 
         let found_path =
             find_path_inner(&db, ItemInNs::Types(resolved), module, prefix_kind, false);
-        assert_eq!(found_path, Some(mod_path), "{:?}", prefix_kind);
+        assert_eq!(found_path, Some(mod_path), "{prefix_kind:?}");
     }
 
     fn check_found_path(

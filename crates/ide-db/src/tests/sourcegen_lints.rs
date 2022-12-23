@@ -241,9 +241,9 @@ fn generate_descriptor_clippy(buf: &mut String, path: &Path) {
 
     buf.push_str(r#"pub const CLIPPY_LINT_GROUPS: &[LintGroup] = &["#);
     for (id, children) in clippy_groups {
-        let children = children.iter().map(|id| format!("clippy::{}", id)).collect::<Vec<_>>();
+        let children = children.iter().map(|id| format!("clippy::{id}")).collect::<Vec<_>>();
         if !children.is_empty() {
-            let lint_ident = format!("clippy::{}", id);
+            let lint_ident = format!("clippy::{id}");
             let description = format!("lint group for: {}", children.iter().join(", "));
             push_lint_group(buf, &lint_ident, &description, &children);
         }
@@ -273,7 +273,7 @@ fn push_lint_group(buf: &mut String, label: &str, description: &str, children: &
 
     push_lint_completion(buf, label, description);
 
-    let children = format!("&[{}]", children.iter().map(|it| format!("\"{}\"", it)).join(", "));
+    let children = format!("&[{}]", children.iter().map(|it| format!("\"{it}\"")).join(", "));
     format_to!(
         buf,
         r###"

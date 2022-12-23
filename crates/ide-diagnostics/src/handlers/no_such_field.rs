@@ -78,13 +78,13 @@ fn missing_record_expr_field_fixes(
 
     let mut new_field = new_field.to_string();
     if usage_file_id != def_file_id {
-        new_field = format!("pub(crate) {}", new_field);
+        new_field = format!("pub(crate) {new_field}");
     }
-    new_field = format!("\n{}{}", indent, new_field);
+    new_field = format!("\n{indent}{new_field}");
 
     let needs_comma = !last_field_syntax.to_string().ends_with(',');
     if needs_comma {
-        new_field = format!(",{}", new_field);
+        new_field = format!(",{new_field}");
     }
 
     let source_change = SourceChange::from_text_edit(

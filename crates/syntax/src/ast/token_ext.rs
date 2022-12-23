@@ -436,9 +436,7 @@ mod tests {
 
     fn check_string_value<'a>(lit: &str, expected: impl Into<Option<&'a str>>) {
         assert_eq!(
-            ast::String { syntax: make::tokens::literal(&format!("\"{}\"", lit)) }
-                .value()
-                .as_deref(),
+            ast::String { syntax: make::tokens::literal(&format!("\"{lit}\"")) }.value().as_deref(),
             expected.into()
         );
     }
@@ -461,7 +459,7 @@ bcde", "abcde",
         expected: impl Into<Option<&'a [u8; N]>>,
     ) {
         assert_eq!(
-            ast::ByteString { syntax: make::tokens::literal(&format!("b\"{}\"", lit)) }
+            ast::ByteString { syntax: make::tokens::literal(&format!("b\"{lit}\"")) }
                 .value()
                 .as_deref(),
             expected.into().map(|value| &value[..])

@@ -513,7 +513,7 @@ where
     let mut error_replacer = ErrorReplacer { vars: 0 };
     let value = match t.clone().try_fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
         Ok(t) => t,
-        Err(_) => panic!("Encountered unbound or inference vars in {:?}", t),
+        Err(_) => panic!("Encountered unbound or inference vars in {t:?}"),
     };
     let kinds = (0..error_replacer.vars).map(|_| {
         chalk_ir::CanonicalVarKind::new(

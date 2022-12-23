@@ -407,9 +407,9 @@ fn parse_crate(crate_str: String) -> (String, CrateOrigin, Option<String>) {
                 Some((version, url)) => {
                     (version, CrateOrigin::CratesIo { repo: Some(url.to_owned()), name: None })
                 }
-                _ => panic!("Bad crates.io parameter: {}", data),
+                _ => panic!("Bad crates.io parameter: {data}"),
             },
-            _ => panic!("Bad string for crate origin: {}", b),
+            _ => panic!("Bad string for crate origin: {b}"),
         };
         (a.to_owned(), origin, Some(version.to_string()))
     } else {
@@ -439,7 +439,7 @@ impl From<Fixture> for FileMeta {
             introduce_new_source_root: f.introduce_new_source_root.map(|kind| match &*kind {
                 "local" => SourceRootKind::Local,
                 "library" => SourceRootKind::Library,
-                invalid => panic!("invalid source root kind '{}'", invalid),
+                invalid => panic!("invalid source root kind '{invalid}'"),
             }),
             target_data_layout: f.target_data_layout,
         }

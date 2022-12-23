@@ -161,7 +161,7 @@ fn resolve_path(
         .iter()
         .find_map(|(from, to)| file_name.strip_prefix(from).map(|file_name| (to, file_name)))
     {
-        Some((to, file_name)) => workspace_root.join(format!("{}{}", to, file_name)),
+        Some((to, file_name)) => workspace_root.join(format!("{to}{file_name}")),
         None => workspace_root.join(file_name),
     }
 }
@@ -218,7 +218,7 @@ fn map_rust_child_diagnostic(
     if !suggested_replacements.is_empty() {
         message.push_str(": ");
         let suggestions =
-            suggested_replacements.iter().map(|suggestion| format!("`{}`", suggestion)).join(", ");
+            suggested_replacements.iter().map(|suggestion| format!("`{suggestion}`")).join(", ");
         message.push_str(&suggestions);
     }
 
@@ -493,7 +493,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
             && chars.next().is_none()
     })
     .and_then(|code| {
-        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{}", code))
+        lsp_types::Url::parse(&format!("https://doc.rust-lang.org/error-index.html#{code}"))
             .ok()
             .map(|href| lsp_types::CodeDescription { href })
     })

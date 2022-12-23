@@ -104,7 +104,7 @@ impl Sysroot {
 
         for path in SYSROOT_CRATES.trim().lines() {
             let name = path.split('/').last().unwrap();
-            let root = [format!("{}/src/lib.rs", path), format!("lib{}/lib.rs", path)]
+            let root = [format!("{path}/src/lib.rs"), format!("lib{path}/lib.rs")]
                 .into_iter()
                 .map(|it| sysroot.src_root.join(it))
                 .filter_map(|it| ManifestPath::try_from(it).ok())

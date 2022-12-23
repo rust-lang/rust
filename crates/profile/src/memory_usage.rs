@@ -109,7 +109,7 @@ impl fmt::Display for Bytes {
                 suffix = "mb";
             }
         }
-        f.pad(&format!("{}{}", value, suffix))
+        f.pad(&format!("{value}{suffix}"))
     }
 }
 

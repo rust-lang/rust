@@ -142,7 +142,7 @@ impl<D> TyBuilder<D> {
         match (a.data(Interner), e) {
             (chalk_ir::GenericArgData::Ty(_), ParamKind::Type)
             | (chalk_ir::GenericArgData::Const(_), ParamKind::Const(_)) => (),
-            _ => panic!("Mismatched kinds: {:?}, {:?}, {:?}", a, self.vec, self.param_kinds),
+            _ => panic!("Mismatched kinds: {a:?}, {:?}, {:?}", self.vec, self.param_kinds),
         }
     }
 }

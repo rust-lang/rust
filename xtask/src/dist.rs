@@ -26,10 +26,10 @@ impl flags::Dist {
 
         if let Some(patch_version) = self.client_patch_version {
             let version = if stable {
-                format!("{}.{}", VERSION_STABLE, patch_version)
+                format!("{VERSION_STABLE}.{patch_version}")
             } else {
                 // A hack to make VS Code prefer nightly over stable.
-                format!("{}.{}", VERSION_NIGHTLY, patch_version)
+                format!("{VERSION_NIGHTLY}.{patch_version}")
             };
             dist_server(sh, &format!("{version}-standalone"), &target)?;
             let release_tag = if stable { date_iso(sh)? } else { "nightly".to_string() };
@@ -59,10 +59,10 @@ fn dist_client(
     let mut patch = Patch::new(sh, "./package.json")?;
     patch
         .replace(
-            &format!(r#""version": "{}.0-dev""#, VERSION_DEV),
-            &format!(r#""version": "{}""#, version),
+            &format!(r#""version": "{VERSION_DEV}.0-dev""#),
+            &format!(r#""version": "{version}""#),
         )
-        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{}""#, release_tag))
+        .replace(r#""releaseTag": null"#, &format!(r#""releaseTag": "{release_tag}""#))
         .replace(r#""$generated-start": {},"#, "")
         .replace(",\n                \"$generated-end\": {}", "")
         .replace(r#""enabledApiProposals": [],"#, r#""#);
@@ -130,8 +130,8 @@ impl Target {
         } else {
             (String::new(), None)
         };
-        let server_path = out_path.join(format!("rust-analyzer{}", exe_suffix));
-        let artifact_name = format!("rust-analyzer-{}{}", name, exe_suffix);
+        let server_path = out_path.join(format!("rust-analyzer{exe_suffix}"));
+        let artifact_name = format!("rust-analyzer-{name}{exe_suffix}");
         Self { name, server_path, symbols_path, artifact_name }
     }
 }

@@ -37,7 +37,7 @@ fn check(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 
@@ -58,7 +58,7 @@ fn check_hover_no_links(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 
@@ -79,7 +79,7 @@ fn check_hover_no_markdown(ra_fixture: &str, expect: Expect) {
     let content = analysis.db.file_text(position.file_id);
     let hovered_element = &content[hover.range];
 
-    let actual = format!("*{}*\n{}\n", hovered_element, hover.info.markup);
+    let actual = format!("*{hovered_element}*\n{}\n", hover.info.markup);
     expect.assert_eq(&actual)
 }
 

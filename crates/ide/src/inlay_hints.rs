@@ -468,7 +468,7 @@ mod tests {
             .collect::<Vec<_>>();
         expected.sort_by_key(|(range, _)| range.start());
 
-        assert_eq!(expected, actual, "\nExpected:\n{:#?}\n\nActual:\n{:#?}", expected, actual);
+        assert_eq!(expected, actual, "\nExpected:\n{expected:#?}\n\nActual:\n{actual:#?}");
     }
 
     #[track_caller]

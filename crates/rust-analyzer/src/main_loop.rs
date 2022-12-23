@@ -229,8 +229,8 @@ impl GlobalState {
 
                             message = match &report.crates_currently_indexing[..] {
                                 [crate_name] => Some(format!(
-                                    "{}/{} ({})",
-                                    report.crates_done, report.crates_total, crate_name
+                                    "{}/{} ({crate_name})",
+                                    report.crates_done, report.crates_total
                                 )),
                                 [crate_name, rest @ ..] => Some(format!(
                                     "{}/{} ({} + {} more)",
@@ -516,7 +516,7 @@ impl GlobalState {
                 self.report_progress(
                     "Roots Scanned",
                     state,
-                    Some(format!("{}/{}", n_done, n_total)),
+                    Some(format!("{n_done}/{n_total}")),
                     Some(Progress::fraction(n_done, n_total)),
                     None,
                 )
@@ -587,7 +587,7 @@ impl GlobalState {
                     state,
                     message,
                     None,
-                    Some(format!("rust-analyzer/flycheck/{}", id)),
+                    Some(format!("rust-analyzer/flycheck/{id}")),
                 );
             }
         }

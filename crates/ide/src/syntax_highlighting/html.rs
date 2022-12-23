@@ -52,7 +52,7 @@ pub(crate) fn highlight_as_html(db: &RootDatabase, file_id: FileId, rainbow: boo
         let class = r.highlight.to_string().replace('.', " ");
         let color = match (rainbow, r.binding_hash) {
             (true, Some(hash)) => {
-                format!(" data-binding-hash=\"{}\" style=\"color: {};\"", hash, rainbowify(hash))
+                format!(" data-binding-hash=\"{hash}\" style=\"color: {};\"", rainbowify(hash))
             }
             _ => "".into(),
         };

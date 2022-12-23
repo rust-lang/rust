@@ -9,7 +9,7 @@ fn check_empty(ra_fixture: &str, expect: Expect) {
 }
 
 fn check(ra_fixture: &str, expect: Expect) {
-    let actual = completion_list(&format!("{}\n{}", BASE_ITEMS_FIXTURE, ra_fixture));
+    let actual = completion_list(&format!("{BASE_ITEMS_FIXTURE}\n{ra_fixture}"));
     expect.assert_eq(&actual)
 }
 
