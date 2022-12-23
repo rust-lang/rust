@@ -81,7 +81,7 @@ fn should_not_display_type_hint(
 
     if config.hide_closure_initialization_hints {
         if let Some(parent) = bind_pat.syntax().parent() {
-            if let Some(it) = ast::LetStmt::cast(parent.clone()) {
+            if let Some(it) = ast::LetStmt::cast(parent) {
                 if let Some(ast::Expr::ClosureExpr(closure)) = it.initializer() {
                     if closure_has_block_body(&closure) {
                         return true;

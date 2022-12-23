@@ -494,7 +494,7 @@ impl Completions {
             pattern_ctx,
             path_ctx,
             variant,
-            local_name.clone(),
+            local_name,
             None,
         ));
     }

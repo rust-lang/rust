@@ -125,7 +125,7 @@ pub(crate) fn json_in_items(
                         .severity(Severity::WeakWarning)
                         .with_fixes(Some(vec![{
                             let mut scb = SourceChangeBuilder::new(file_id);
-                            let scope = match import_scope.clone() {
+                            let scope = match import_scope {
                                 ImportScope::File(it) => ImportScope::File(scb.make_mut(it)),
                                 ImportScope::Module(it) => ImportScope::Module(scb.make_mut(it)),
                                 ImportScope::Block(it) => ImportScope::Block(scb.make_mut(it)),

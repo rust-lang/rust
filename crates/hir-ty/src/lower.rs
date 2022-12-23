@@ -1983,7 +1983,7 @@ fn fallback_bound_vars<T: TypeFoldable<Interner> + HasInterner<Interner = Intern
             if bound.index_if_innermost().map_or(true, is_allowed) {
                 bound.shifted_in_from(binders).to_const(Interner, ty)
             } else {
-                unknown_const(ty.clone())
+                unknown_const(ty)
             }
         },
     )

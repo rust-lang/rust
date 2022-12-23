@@ -84,7 +84,7 @@ fn render(
         }
         _ => RenderedLiteral {
             literal: escaped_qualified_name.clone(),
-            detail: escaped_qualified_name.clone(),
+            detail: escaped_qualified_name,
         },
     };
 

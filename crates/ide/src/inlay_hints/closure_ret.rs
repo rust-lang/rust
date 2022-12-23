@@ -32,7 +32,7 @@ pub(super) fn hints(
 
     let param_list = closure.param_list()?;
 
-    let closure = sema.descend_node_into_attributes(closure.clone()).pop()?;
+    let closure = sema.descend_node_into_attributes(closure).pop()?;
     let ty = sema.type_of_expr(&ast::Expr::ClosureExpr(closure))?.adjusted();
     let callable = ty.as_callable(sema.db)?;
     let ty = callable.return_type();
