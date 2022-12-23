@@ -1,8 +1,3 @@
-//#![allow(unused_imports, unused_variables)]
-
-//#![warn(rustc::untranslatable_diagnostic)]
-//#![warn(rustc::diagnostic_outside_of_impl)]
-
 use super::deconstruct_pat::{Constructor, DeconstructedPat};
 use super::usefulness::{
     compute_match_usefulness, MatchArm, MatchCheckCtxt, Reachability, UsefulnessReport,
