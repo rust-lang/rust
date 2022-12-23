@@ -1,6 +1,5 @@
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 use std::borrow::Borrow;
-use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
@@ -171,7 +170,7 @@ impl<K: Ord, V> SortedMap<K, V> {
     where
         F: Fn(&mut K),
     {
-        self.data.iter_mut().map(|&mut (ref mut k, _)| k).for_each(f);
+        self.data.iter_mut().map(|(k, _)| k).for_each(f);
     }
 
     /// Inserts a presorted range of elements into the map. If the range can be
@@ -232,10 +231,10 @@ impl<K: Ord, V> SortedMap<K, V> {
         R: RangeBounds<K>,
     {
         let start = match range.start_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
@@ -243,11 +242,11 @@ impl<K: Ord, V> SortedMap<K, V> {
         };
 
         let end = match range.end_bound() {
-            Bound::Included(ref k) => match self.lookup_index_for(k) {
+            Bound::Included(k) => match self.lookup_index_for(k) {
                 Ok(index) => index + 1,
                 Err(index) => index,
             },
-            Bound::Excluded(ref k) => match self.lookup_index_for(k) {
+            Bound::Excluded(k) => match self.lookup_index_for(k) {
                 Ok(index) | Err(index) => index,
             },
             Bound::Unbounded => self.data.len(),
@@ -302,7 +301,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for SortedMap<K, V> {
         let mut data: Vec<(K, V)> = iter.into_iter().collect();
 
         data.sort_unstable_by(|(k1, _), (k2, _)| k1.cmp(k2));
-        data.dedup_by(|&mut (ref k1, _), &mut (ref k2, _)| k1.cmp(k2) == Ordering::Equal);
+        data.dedup_by(|(k1, _), (k2, _)| k1 == k2);
 
         SortedMap { data }
     }
