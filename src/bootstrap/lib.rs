@@ -796,7 +796,7 @@ impl Build {
     /// Gets the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self, target: TargetSelection) -> String {
-        let mut features = "panic-unwind".to_string();
+        let mut features = " panic-unwind".to_string();
 
         match self.config.llvm_libunwind(target) {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),

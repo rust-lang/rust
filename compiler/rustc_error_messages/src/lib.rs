@@ -381,7 +381,7 @@ impl<S: Into<String>> From<S> for DiagnosticMessage {
     }
 }
 
-/// A workaround for "good path" ICEs when formatting types in disables lints.
+/// A workaround for "good path" ICEs when formatting types in disabled lints.
 ///
 /// Delays formatting until `.into(): DiagnosticMessage` is used.
 pub struct DelayDm<F>(pub F);

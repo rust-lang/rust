@@ -321,8 +321,15 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
         ""
     };
 
+    let mut features = String::new();
+
+    // Cranelift doesn't support `asm`.
+    if stage != 0 && builder.config.default_codegen_backend().unwrap_or_default() == "cranelift" {
+        features += " compiler-builtins-no-asm";
+    }
+
     if builder.no_std(target) == Some(true) {
-        let mut features = "compiler-builtins-mem".to_string();
+        features += " compiler-builtins-mem";
         if !target.starts_with("bpf") {
             features.push_str(compiler_builtins_c_feature);
         }
@@ -335,7 +342,7 @@ pub fn std_cargo(builder: &Builder<'_>, target: TargetSelection, stage: u32, car
             .arg("--features")
             .arg(features);
     } else {
-        let mut features = builder.std_features(target);
+        features += &builder.std_features(target);
         features.push_str(compiler_builtins_c_feature);
 
         cargo
@@ -754,7 +761,7 @@ pub fn rustc_cargo_env(builder: &Builder<'_>, cargo: &mut Cargo, target: TargetS
         .env("CFG_RELEASE_CHANNEL", &builder.config.channel)
         .env("CFG_VERSION", builder.rust_version());
 
-    if let Some(backend) = builder.config.rust_codegen_backends.get(0) {
+    if let Some(backend) = builder.config.default_codegen_backend() {
         cargo.env("CFG_DEFAULT_CODEGEN_BACKEND", backend);
     }
 
