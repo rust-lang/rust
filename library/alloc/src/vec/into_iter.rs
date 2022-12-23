@@ -251,7 +251,7 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
                 return Err(unsafe { array::IntoIter::new_unchecked(raw_ary, 0..len) });
             }
 
-            self.ptr = self.ptr.wrapping_byte_add(N);
+            self.end = self.end.wrapping_byte_sub(N);
             // Safety: ditto
             return Ok(unsafe { raw_ary.transpose().assume_init() });
         }

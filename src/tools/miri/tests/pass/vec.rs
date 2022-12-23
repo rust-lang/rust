@@ -1,4 +1,6 @@
 //@compile-flags: -Zmiri-strict-provenance
+#![feature(iter_advance_by, iter_next_chunk)]
+
 // Gather all references from a mutable iterator and make sure Miri notices if
 // using them is dangerous.
 fn test_all_refs<'a, T: 'a>(dummy: &mut T, iter: impl Iterator<Item = &'a mut T>) {
@@ -44,6 +46,18 @@ fn vec_into_iter_zst() {
     for _ in vec![[0u64; 0]].into_iter() {}
     let v = vec![[0u64; 0], [0u64; 0]].into_iter().map(|x| x.len()).sum::<usize>();
     assert_eq!(v, 0);
+
+    let mut it = vec![[0u64; 0], [0u64; 0]].into_iter();
+    it.advance_by(1);
+    drop(it);
+
+    let mut it = vec![[0u64; 0], [0u64; 0]].into_iter();
+    it.next_chunk::<1>().unwrap();
+    drop(it);
+
+    let mut it = vec![[0u64; 0], [0u64; 0]].into_iter();
+    it.next_chunk::<4>().unwrap_err();
+    drop(it);
 }
 
 fn vec_into_iter_rev_zst() {
