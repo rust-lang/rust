@@ -311,7 +311,7 @@ declare_features! (
     (active, async_closure, "1.37.0", Some(62290), None),
     /// Allows async functions to be declared, implemented, and used in traits.
     (incomplete, async_fn_in_trait, "1.66.0", Some(91611), None),
-    /// Allows `extern "C-unwind" fn` to enable unwinding across ABI boundaries.
+    /// Treat `extern "C"` function as nounwind.
     (active, c_unwind, "1.52.0", Some(74990), None),
     /// Allows using C-variadics.
     (active, c_variadic, "1.34.0", Some(44930), None),
