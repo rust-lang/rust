@@ -3447,6 +3447,7 @@ dependencies = [
  "rustc_errors",
  "rustc_graphviz",
  "rustc_hir",
+ "rustc_hir_analysis",
  "rustc_index",
  "rustc_infer",
  "rustc_lexer",

@@ -6,6 +6,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
+use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
@@ -1066,18 +1067,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 CallKind::Normal { self_arg, desugaring, method_did } => {
                     let self_arg = self_arg.unwrap();
+                    let tcx = self.infcx.tcx;
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
-                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
-                        let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
+                        let ty = moved_place.ty(self.body, tcx).ty;
+                        let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => {
                                 let infcx = self.infcx.tcx.infer_ctxt().build();
                                 type_known_to_meet_bound_modulo_regions(
                                     &infcx,
                                     self.param_env,
-                                    infcx.tcx.mk_imm_ref(
-                                        infcx.tcx.lifetimes.re_erased,
-                                        infcx.tcx.erase_regions(ty),
-                                    ),
+                                    tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
                                     def_id,
                                     DUMMY_SP,
                                 )
@@ -1133,8 +1132,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
-                        if let ty::Adt(def, ..)
-                            = moved_place.ty(self.body, self.infcx.tcx).ty.kind()
+                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
+                        if let ty::Adt(def, ..) = ty.kind()
                             && Some(def.did()) == self.infcx.tcx.lang_items().pin_type()
                         {
                             err.span_suggestion_verbose(
@@ -1144,8 +1143,34 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             );
                         }
+                        if let Some(clone_trait) = tcx.lang_items().clone_trait() {
+                            // We can't use `predicate_may_hold` or `can_eq` without ICEs in
+                            // borrowck because of the inference context, so we do a poor-man's
+                            // version here.
+                            for impl_def_id in tcx.all_impls(clone_trait) {
+                                if let Some(def_id) = impl_def_id.as_local()
+                                    && let hir_id = tcx.hir().local_def_id_to_hir_id(def_id)
+                                    && let hir::Node::Item(hir::Item {
+                                        kind: hir::ItemKind::Impl(hir::Impl {
+                                            self_ty,
+                                            ..
+                                        }),
+                                        ..
+                                    }) = tcx.hir().get(hir_id)
+                                {
+                                    if ty == hir_ty_to_ty(tcx, self_ty) {
+                                        err.span_suggestion_verbose(
+                                            fn_call_span.shrink_to_lo(),
+                                            "you can `clone` the value and consume it, but this \
+                                             might not be your desired behavior",
+                                            "clone().".to_string(),
+                                            Applicability::MaybeIncorrect,
+                                        );
+                                    }
+                                }
+                            }
+                        }
                     }
-                    let tcx = self.infcx.tcx;
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {
