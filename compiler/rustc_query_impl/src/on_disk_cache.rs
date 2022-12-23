@@ -227,7 +227,7 @@ impl<'sess> rustc_middle::ty::OnDiskCache<'sess> for OnDiskCache<'sess> {
         *self.serialized_data.write() = None;
     }
 
-    fn serialize<'tcx>(&self, tcx: TyCtxt<'tcx>, encoder: FileEncoder) -> FileEncodeResult {
+    fn serialize(&self, tcx: TyCtxt<'_>, encoder: FileEncoder) -> FileEncodeResult {
         // Serializing the `DepGraph` should not modify it.
         tcx.dep_graph.with_ignore(|| {
             // Allocate `SourceFileIndex`es.

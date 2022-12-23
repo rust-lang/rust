@@ -1675,7 +1675,7 @@ fn apply_capture_kind_on_capture_ty<'tcx>(
 }
 
 /// Returns the Span of where the value with the provided HirId would be dropped
-fn drop_location_span<'tcx>(tcx: TyCtxt<'tcx>, hir_id: hir::HirId) -> Span {
+fn drop_location_span(tcx: TyCtxt<'_>, hir_id: hir::HirId) -> Span {
     let owner_id = tcx.hir().get_enclosing_scope(hir_id).unwrap();
 
     let owner_node = tcx.hir().get(owner_id);
@@ -1843,10 +1843,10 @@ fn restrict_precision_for_drop_types<'a, 'tcx>(
 /// - No projections are applied to raw pointers, since these require unsafe blocks. We capture
 ///   them completely.
 /// - No projections are applied on top of Union ADTs, since these require unsafe blocks.
-fn restrict_precision_for_unsafe<'tcx>(
-    mut place: Place<'tcx>,
+fn restrict_precision_for_unsafe(
+    mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+) -> (Place<'_>, ty::UpvarCapture) {
     if place.base_ty.is_unsafe_ptr() {
         truncate_place_to_len_and_update_capture_kind(&mut place, &mut curr_mode, 0);
     }
@@ -1876,10 +1876,10 @@ fn restrict_precision_for_unsafe<'tcx>(
 /// - No Index projections are captured, since arrays are captured completely.
 /// - No unsafe block is required to capture `place`
 /// Returns the truncated place and updated capture mode.
-fn restrict_capture_precision<'tcx>(
-    place: Place<'tcx>,
+fn restrict_capture_precision(
+    place: Place<'_>,
     curr_mode: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+) -> (Place<'_>, ty::UpvarCapture) {
     let (mut place, mut curr_mode) = restrict_precision_for_unsafe(place, curr_mode);
 
     if place.projections.is_empty() {
@@ -1904,10 +1904,10 @@ fn restrict_capture_precision<'tcx>(
 }
 
 /// Truncate deref of any reference.
-fn adjust_for_move_closure<'tcx>(
-    mut place: Place<'tcx>,
+fn adjust_for_move_closure(
+    mut place: Place<'_>,
     mut kind: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+) -> (Place<'_>, ty::UpvarCapture) {
     let first_deref = place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
     if let Some(idx) = first_deref {
@@ -1919,10 +1919,10 @@ fn adjust_for_move_closure<'tcx>(
 
 /// Adjust closure capture just that if taking ownership of data, only move data
 /// from enclosing stack frame.
-fn adjust_for_non_move_closure<'tcx>(
-    mut place: Place<'tcx>,
+fn adjust_for_non_move_closure(
+    mut place: Place<'_>,
     mut kind: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+) -> (Place<'_>, ty::UpvarCapture) {
     let contains_deref =
         place.projections.iter().position(|proj| proj.kind == ProjectionKind::Deref);
 
@@ -2225,10 +2225,10 @@ fn determine_place_ancestry_relation<'tcx>(
 ///     // it is constrained to `'a`
 /// }
 /// ```
-fn truncate_capture_for_optimization<'tcx>(
-    mut place: Place<'tcx>,
+fn truncate_capture_for_optimization(
+    mut place: Place<'_>,
     mut curr_mode: ty::UpvarCapture,
-) -> (Place<'tcx>, ty::UpvarCapture) {
+) -> (Place<'_>, ty::UpvarCapture) {
     let is_shared_ref = |ty: Ty<'_>| matches!(ty.kind(), ty::Ref(.., hir::Mutability::Not));
 
     // Find the right-most deref (if any). All the projections that come after this

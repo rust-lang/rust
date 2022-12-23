@@ -66,13 +66,13 @@ pub fn add_placeholder_note(err: &mut Diagnostic) {
 /// with a suitably-freshened `ImplHeader` with those types
 /// substituted. Otherwise, returns `None`.
 #[instrument(skip(tcx, skip_leak_check), level = "debug")]
-pub fn overlapping_impls<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn overlapping_impls(
+    tcx: TyCtxt<'_>,
     impl1_def_id: DefId,
     impl2_def_id: DefId,
     skip_leak_check: SkipLeakCheck,
     overlap_mode: OverlapMode,
-) -> Option<OverlapResult<'tcx>> {
+) -> Option<OverlapResult<'_>> {
     // Before doing expensive operations like entering an inference context, do
     // a quick check via fast_reject to tell if the impl headers could possibly
     // unify.
@@ -283,7 +283,7 @@ fn implicit_negative<'cx, 'tcx>(
 
 /// Given impl1 and impl2 check if both impls are never satisfied by a common type (including
 /// where-clauses) If so, return true, they are disjoint and false otherwise.
-fn negative_impl<'tcx>(tcx: TyCtxt<'tcx>, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
+fn negative_impl(tcx: TyCtxt<'_>, impl1_def_id: DefId, impl2_def_id: DefId) -> bool {
     debug!("negative_impl(impl1_def_id={:?}, impl2_def_id={:?})", impl1_def_id, impl2_def_id);
 
     // Create an infcx, taking the predicates of impl1 as assumptions:

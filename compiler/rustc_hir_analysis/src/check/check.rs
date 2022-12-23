@@ -162,7 +162,7 @@ fn check_union_fields(tcx: TyCtxt<'_>, span: Span, item_def_id: LocalDefId) -> b
 }
 
 /// Check that a `static` is inhabited.
-fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+fn check_static_inhabited(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     // Make sure statics are inhabited.
     // Other parts of the compiler assume that there are no uninhabited places. In principle it
     // would be enough to check this for `extern` statics, as statics with an initializer will
@@ -212,7 +212,7 @@ fn check_static_inhabited<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
 
 /// Checks that an opaque type does not contain cycles and does not use `Self` or `T::Foo`
 /// projections that would result in "inheriting lifetimes".
-fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
+fn check_opaque(tcx: TyCtxt<'_>, id: hir::ItemId) {
     let item = tcx.hir().item(id);
     let hir::ItemKind::OpaqueTy(hir::OpaqueTy { origin, .. }) = item.kind else {
         tcx.sess.delay_span_bug(tcx.hir().span(id.hir_id()), "expected opaque item");
@@ -245,8 +245,8 @@ fn check_opaque<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
 /// Checks that an opaque type does not use `Self` or `T::Foo` projections that would result
 /// in "inheriting lifetimes".
 #[instrument(level = "debug", skip(tcx, span))]
-pub(super) fn check_opaque_for_inheriting_lifetimes<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(super) fn check_opaque_for_inheriting_lifetimes(
+    tcx: TyCtxt<'_>,
     def_id: LocalDefId,
     span: Span,
 ) {
@@ -496,7 +496,7 @@ fn is_enum_of_nonnullable_ptr<'tcx>(
     matches!(field.ty(tcx, substs).kind(), ty::FnPtr(..) | ty::Ref(..))
 }
 
-fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+fn check_static_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     if tcx.codegen_fn_attrs(def_id).import_linkage.is_some() {
         if match tcx.type_of(def_id).kind() {
             ty::RawPtr(_) => false,
@@ -508,7 +508,7 @@ fn check_static_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
     }
 }
 
-fn check_item_type<'tcx>(tcx: TyCtxt<'tcx>, id: hir::ItemId) {
+fn check_item_type(tcx: TyCtxt<'_>, id: hir::ItemId) {
     debug!(
         "check_item_type(it.def_id={:?}, it.name={})",
         id.owner_id,
@@ -1160,7 +1160,7 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 }
 
 #[allow(trivial_numeric_casts)]
-fn check_enum<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) {
+fn check_enum(tcx: TyCtxt<'_>, def_id: LocalDefId) {
     let def = tcx.adt_def(def_id);
     def.destructor(tcx); // force the destructor to be evaluated
 

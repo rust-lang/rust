@@ -157,11 +157,11 @@ fn check_constness(tcx: TyCtxt<'_>, impl1_def_id: LocalDefId, impl2_node: Node, 
 /// ```
 ///
 /// Would return `S1 = [C]` and `S2 = [Vec<C>, C]`.
-fn get_impl_substs<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn get_impl_substs(
+    tcx: TyCtxt<'_>,
     impl1_def_id: LocalDefId,
     impl2_node: Node,
-) -> Option<(SubstsRef<'tcx>, SubstsRef<'tcx>)> {
+) -> Option<(SubstsRef<'_>, SubstsRef<'_>)> {
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
     let param_env = tcx.param_env(impl1_def_id);

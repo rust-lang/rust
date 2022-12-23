@@ -338,7 +338,7 @@ fn encode_substs<'tcx>(
 }
 
 /// Encodes a ty:Ty name, including its crate and path disambiguators and names.
-fn encode_ty_name<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> String {
+fn encode_ty_name(tcx: TyCtxt<'_>, def_id: DefId) -> String {
     // Encode <name> for use in u<length><name>[I<element-type1..element-typeN>E], where
     // <element-type> is <subst>, using v0's <path> without v0's extended form of paths:
     //

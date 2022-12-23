@@ -489,8 +489,8 @@ enum SavedLocalEligibility {
 // of any variant.
 
 /// Compute the eligibility and assignment of each local.
-fn generator_saved_local_eligibility<'tcx>(
-    info: &GeneratorLayout<'tcx>,
+fn generator_saved_local_eligibility(
+    info: &GeneratorLayout<'_>,
 ) -> (BitSet<GeneratorSavedLocal>, IndexVec<GeneratorSavedLocal, SavedLocalEligibility>) {
     use SavedLocalEligibility::*;
 
