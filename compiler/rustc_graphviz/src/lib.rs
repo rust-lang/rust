@@ -164,7 +164,7 @@
 //!     fn node_id(&'a self, n: &Nd) -> dot::Id<'a> {
 //!         dot::Id::new(format!("N{}", n)).unwrap()
 //!     }
-//!     fn node_label(&self, n: &Nd) -> dot::LabelText {
+//!     fn node_label(&self, n: &Nd) -> dot::LabelText<'_> {
 //!         dot::LabelText::LabelStr(self.nodes[*n].into())
 //!     }
 //!     fn edge_label<'b>(&'b self, _: &Ed) -> dot::LabelText<'b> {
