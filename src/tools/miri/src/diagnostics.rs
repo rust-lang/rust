@@ -362,9 +362,11 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
+    let mut extra_span = false;
     for (span_data, note) in &notes {
         if let Some(span_data) = span_data {
             err.span_note(span_data.span(), note);
+            extra_span = true;
         } else {
             err.note(note);
         }
@@ -372,13 +374,14 @@ fn report_msg<'tcx>(
     for (span_data, help) in &helps {
         if let Some(span_data) = span_data {
             err.span_help(span_data.span(), help);
+            extra_span = true;
         } else {
             err.help(help);
         }
     }
     if notes.len() + helps.len() > 0 {
         // Add visual separator before backtrace.
-        err.note("BACKTRACE:");
+        err.note(if extra_span { "BACKTRACE (of the first span):" } else { "BACKTRACE:" });
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
