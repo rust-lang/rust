@@ -1339,7 +1339,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s(
             "",
             "edition",
-            "Specify which edition of the compiler to use when compiling code.",
+            Box::leak(Box::new(format!("Specify which edition of the compiler to use when compiling code.\
+            The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."))),
             EDITION_NAME_LIST,
         ),
         opt::multi_s(
