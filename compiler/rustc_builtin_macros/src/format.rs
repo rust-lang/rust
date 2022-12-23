@@ -485,8 +485,7 @@ fn make_format_args(
                         let current_arg = symbol.as_str().to_owned();
                         let current_arg_ph = format!("{{{current_arg}}}");
                         if current_arg.len() > 0 && fmt_str.contains(current_arg_ph.as_str()) {
-                            duplicate_explicit_arg
-                                .push((current_arg, args.explicit_args()[i].expr.span));
+                            duplicate_explicit_arg.push(args.explicit_args()[i].expr.span);
                         }
                     }
                 }
@@ -591,7 +590,7 @@ fn invalid_placeholder_type_error(
 fn report_missing_placeholders(
     ecx: &mut ExtCtxt<'_>,
     unused: Vec<(Span, &str)>,
-    duplicate_explicit_arg: Vec<(String, Span)>,
+    duplicate_explicit_arg: Vec<Span>,
     detect_foreign_fmt: bool,
     str_style: Option<usize>,
     fmt_str: &str,
@@ -601,7 +600,7 @@ fn report_missing_placeholders(
     let mut diag = if let &[(span, msg)] = &unused[..] {
         let mut diag = ecx.struct_span_err(span, msg);
         diag.span_label(span, msg);
-        for (_var, sp) in &duplicate_explicit_arg {
+        for sp in &duplicate_explicit_arg {
             if !dup_exist && span == *sp {
                 dup_exist = true;
             }
@@ -615,7 +614,7 @@ fn report_missing_placeholders(
         diag.span_label(fmt_span, "multiple missing formatting specifiers");
         for &(span, msg) in &unused {
             diag.span_label(span, msg);
-            for (_var, sp) in &duplicate_explicit_arg {
+            for sp in &duplicate_explicit_arg {
                 if !dup_exist && span == *sp {
                     dup_exist = true;
                 }
@@ -709,12 +708,8 @@ fn report_missing_placeholders(
     }
     if dup_exist {
         diag.note("the formatting string captures that binding directly, it doesn't need to be included in the argument list");
-        let (_names, spans): (Vec<_>, Vec<_>) = duplicate_explicit_arg.into_iter().unzip();
-        let multi = if spans.len() == 1 { false } else { true };
-        diag.span_help(
-            spans,
-            format!("Consider removing {}", if multi { "these" } else { "this" }),
-        );
+        let this_these = if duplicate_explicit_arg.len() == 1 { "this" } else { "these" };
+        diag.span_help(duplicate_explicit_arg, format!("Consider removing {}", this_these));
     }
     diag.emit();
 }
