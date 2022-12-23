@@ -1132,9 +1132,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
-                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
-                        if let ty::Adt(def, ..) = ty.kind()
+                        let ty = tcx.erase_regions(moved_place.ty(self.body, self.infcx.tcx).ty);
+                        if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == self.infcx.tcx.lang_items().pin_type()
+                            && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
+                            // FIXME: this is a hack because we can't call `can_eq`
+                            && ty.to_string() ==    
+                                tcx.fn_sig(method_did).input(0).skip_binder().to_string()
                         {
                             err.span_suggestion_verbose(
                                 fn_call_span.shrink_to_lo(),
