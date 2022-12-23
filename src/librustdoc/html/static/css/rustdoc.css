@@ -579,8 +579,6 @@ ul.block, .block li {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
