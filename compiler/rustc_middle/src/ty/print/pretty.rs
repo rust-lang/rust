@@ -2883,13 +2883,19 @@ fn for_each_def(tcx: TyCtxt<'_>, mut collect_fn: impl for<'b> FnMut(&'b Ident, N
 /// `std::vec::Vec` to just `Vec`, as long as there is no other `Vec` importable anywhere.
 ///
 /// The implementation uses similar import discovery logic to that of 'use' suggestions.
+///
+/// See also [`DelayDm`](rustc_error_messages::DelayDm) and [`with_no_trimmed_paths`].
 fn trimmed_def_paths(tcx: TyCtxt<'_>, (): ()) -> FxHashMap<DefId, Symbol> {
     let mut map: FxHashMap<DefId, Symbol> = FxHashMap::default();
 
     if let TrimmedDefPaths::GoodPath = tcx.sess.opts.trimmed_def_paths {
+        // Trimming paths is expensive and not optimized, since we expect it to only be used for error reporting.
+        //
         // For good paths causing this bug, the `rustc_middle::ty::print::with_no_trimmed_paths`
         // wrapper can be used to suppress this query, in exchange for full paths being formatted.
-        tcx.sess.delay_good_path_bug("trimmed_def_paths constructed");
+        tcx.sess.delay_good_path_bug(
+            "trimmed_def_paths constructed but no error emitted; use `DelayDm` for lints or `with_no_trimmed_paths` for debugging",
+        );
     }
 
     let unique_symbols_rev: &mut FxHashMap<(Namespace, Symbol), Option<DefId>> =
