@@ -49,7 +49,7 @@ function printTab(nb) {
     let iter = 0;
     let foundCurrentTab = false;
     let foundCurrentResultSet = false;
-    onEachLazy(document.getElementById("titles").childNodes, elem => {
+    onEachLazy(document.getElementById("search-tabs").childNodes, elem => {
         if (nb === iter) {
             addClass(elem, "selected");
             foundCurrentTab = true;
@@ -1490,7 +1490,7 @@ function initSearch(rawSearchIndex) {
     function focusSearchResult() {
         const target = searchState.focusedByTab[searchState.currentTab] ||
             document.querySelectorAll(".search-results.active a").item(0) ||
-            document.querySelectorAll("#titles > button").item(searchState.currentTab);
+            document.querySelectorAll("#search-tabs button").item(searchState.currentTab);
         searchState.focusedByTab[searchState.currentTab] = null;
         if (target) {
             target.focus();
@@ -1645,9 +1645,9 @@ function initSearch(rawSearchIndex) {
     function makeTabHeader(tabNb, text, nbElems) {
         if (searchState.currentTab === tabNb) {
             return "<button class=\"selected\">" + text +
-                   " <div class=\"count\">(" + nbElems + ")</div></button>";
+                   " <span class=\"count\">(" + nbElems + ")</span></button>";
         }
-        return "<button>" + text + " <div class=\"count\">(" + nbElems + ")</div></button>";
+        return "<button>" + text + " <span class=\"count\">(" + nbElems + ")</span></button>";
     }
 
     /**
@@ -1712,12 +1712,12 @@ function initSearch(rawSearchIndex) {
         let output = `<h1 class="search-results-title">Results${crates}</h1>`;
         if (results.query.error !== null) {
             output += `<h3>Query parser error: "${results.query.error}".</h3>`;
-            output += "<div id=\"titles\">" +
+            output += "<div id=\"search-tabs\">" +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 "</div>";
             currentTab = 0;
         } else if (results.query.foundElems <= 1 && results.query.returned.length === 0) {
-            output += "<div id=\"titles\">" +
+            output += "<div id=\"search-tabs\">" +
                 makeTabHeader(0, "In Names", ret_others[1]) +
                 makeTabHeader(1, "In Parameters", ret_in_args[1]) +
                 makeTabHeader(2, "In Return Types", ret_returned[1]) +
@@ -1727,7 +1727,7 @@ function initSearch(rawSearchIndex) {
                 results.query.elems.length === 0 ? "In Function Return Types" :
                 results.query.returned.length === 0 ? "In Function Parameters" :
                 "In Function Signatures";
-            output += "<div id=\"titles\">" +
+            output += "<div id=\"search-tabs\">" +
                 makeTabHeader(0, signatureTabTitle, ret_others[1]) +
                 "</div>";
             currentTab = 0;
@@ -1747,7 +1747,7 @@ function initSearch(rawSearchIndex) {
         search.appendChild(resultsElem);
         // Reset focused elements.
         searchState.showResults(search);
-        const elems = document.getElementById("titles").childNodes;
+        const elems = document.getElementById("search-tabs").childNodes;
         searchState.focusedByTab = [];
         let i = 0;
         for (const elem of elems) {
