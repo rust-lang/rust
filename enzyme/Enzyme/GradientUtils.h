@@ -1338,6 +1338,8 @@ public:
       for (auto &BB : *inst->getParent()->getParent()) {
         if (!seen.count(&BB) || (inst->getParent() != &BB &&
                                  DT.dominates(&BB, inst->getParent()))) {
+          // OrigPDT.dominates(isOriginal(inst->getParent()),
+          //                  isOriginal(&BB)))) {
           lcssaFixes[inst][&BB] = UndefValue::get(inst->getType());
         }
       }
@@ -1426,7 +1428,8 @@ public:
   Value *
   lookupM(Value *val, IRBuilder<> &BuilderM,
           const ValueToValueMapTy &incoming_availalble = ValueToValueMapTy(),
-          bool tryLegalRecomputeCheck = true) override;
+          bool tryLegalRecomputeCheck = true,
+          llvm::BasicBlock *scope = nullptr) override;
 
   Value *invertPointerM(Value *val, IRBuilder<> &BuilderM,
                         bool nullShadow = false);

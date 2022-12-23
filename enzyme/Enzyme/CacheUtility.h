@@ -346,7 +346,7 @@ public:
   lookupM(llvm::Value *val, llvm::IRBuilder<> &BuilderM,
           const llvm::ValueToValueMapTy &incoming_availalble =
               llvm::ValueToValueMapTy(),
-          bool tryLegalityCheck = true) = 0;
+          bool tryLegalityCheck = true, llvm::BasicBlock *scope = nullptr) = 0;
 
   virtual bool assumeDynamicLoopOfSizeOne(llvm::Loop *L) const = 0;
 
