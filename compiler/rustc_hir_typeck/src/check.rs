@@ -1,4 +1,7 @@
 use crate::coercion::CoerceMany;
+use crate::errors::{
+    LangStartIncorrectNumberArgs, LangStartIncorrectParam, LangStartIncorrectRetTy,
+};
 use crate::gather_locals::GatherLocalsVisitor;
 use crate::FnCtxt;
 use crate::GeneratorTypes;
@@ -9,8 +12,9 @@ use rustc_hir::lang_items::LangItem;
 use rustc_hir_analysis::check::fn_maybe_err;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::RegionVariableOrigin;
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Binder, Ty, TyCtxt};
 use rustc_span::def_id::LocalDefId;
+use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
 use std::cell::RefCell;
 
@@ -168,6 +172,10 @@ pub(super) fn check_fn<'a, 'tcx>(
         check_panic_info_fn(tcx, panic_impl_did.expect_local(), fn_sig, decl, declared_ret_ty);
     }
 
+    if let Some(lang_start_defid) = tcx.lang_items().start_fn() && lang_start_defid == hir.local_def_id(fn_id).to_def_id() {
+        check_lang_start_fn(tcx, fn_sig, decl, fn_def_id);
+    }
+
     gen_ty
 }
 
@@ -221,5 +229,128 @@ fn check_panic_info_fn(
     if generic_counts.consts != 0 {
         let span = tcx.def_span(fn_id);
         tcx.sess.span_err(span, "should have no const parameters");
+    }
+}
+
+fn check_lang_start_fn<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    fn_sig: ty::FnSig<'tcx>,
+    decl: &'tcx hir::FnDecl<'tcx>,
+    def_id: LocalDefId,
+) {
+    let inputs = fn_sig.inputs();
+
+    let arg_count = inputs.len();
+    if arg_count != 4 {
+        tcx.sess.emit_err(LangStartIncorrectNumberArgs {
+            params_span: tcx.def_span(def_id),
+            found_param_count: arg_count,
+        });
+    }
+
+    // only check args if they should exist by checking the count
+    // note: this does not handle args being shifted or their order swapped very nicely
+    // but it's a lang item, users shouldn't frequently encounter this
+
+    // first arg is `main: fn() -> T`
+    if let Some(&main_arg) = inputs.get(0) {
+        // make a Ty for the generic on the fn for diagnostics
+        // FIXME: make the lang item generic checks check for the right generic *kind*
+        // for example `start`'s generic should be a type parameter
+        let generics = tcx.generics_of(def_id);
+        let fn_generic = generics.param_at(0, tcx);
+        let generic_tykind =
+            ty::Param(ty::ParamTy { index: fn_generic.index, name: fn_generic.name });
+        let generic_ty = tcx.mk_ty(generic_tykind);
+        let expected_fn_sig =
+            tcx.mk_fn_sig([].iter(), &generic_ty, false, hir::Unsafety::Normal, Abi::Rust);
+        let expected_ty = tcx.mk_fn_ptr(Binder::dummy(expected_fn_sig));
+
+        // we emit the same error to suggest changing the arg no matter what's wrong with the arg
+        let emit_main_fn_arg_err = || {
+            tcx.sess.emit_err(LangStartIncorrectParam {
+                param_span: decl.inputs[0].span,
+                param_num: 1,
+                expected_ty: expected_ty,
+                found_ty: main_arg,
+            });
+        };
+
+        if let ty::FnPtr(main_fn_sig) = main_arg.kind() {
+            let main_fn_inputs = main_fn_sig.inputs();
+            if main_fn_inputs.iter().count() != 0 {
+                emit_main_fn_arg_err();
+            }
+
+            let output = main_fn_sig.output();
+            output.map_bound(|ret_ty| {
+                // if the output ty is a generic, it's probably the right one
+                if !matches!(ret_ty.kind(), ty::Param(_)) {
+                    emit_main_fn_arg_err();
+                }
+            });
+        } else {
+            emit_main_fn_arg_err();
+        }
+    }
+
+    // second arg is isize
+    if let Some(&argc_arg) = inputs.get(1) {
+        if argc_arg != tcx.types.isize {
+            tcx.sess.emit_err(LangStartIncorrectParam {
+                param_span: decl.inputs[1].span,
+                param_num: 2,
+                expected_ty: tcx.types.isize,
+                found_ty: argc_arg,
+            });
+        }
+    }
+
+    // third arg is `*const *const u8`
+    if let Some(&argv_arg) = inputs.get(2) {
+        let mut argv_is_okay = false;
+        if let ty::RawPtr(outer_ptr) = argv_arg.kind() {
+            if outer_ptr.mutbl.is_not() {
+                if let ty::RawPtr(inner_ptr) = outer_ptr.ty.kind() {
+                    if inner_ptr.mutbl.is_not() && inner_ptr.ty == tcx.types.u8 {
+                        argv_is_okay = true;
+                    }
+                }
+            }
+        }
+
+        if !argv_is_okay {
+            let inner_ptr_ty =
+                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: tcx.types.u8 });
+            let expected_ty =
+                tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty: inner_ptr_ty });
+            tcx.sess.emit_err(LangStartIncorrectParam {
+                param_span: decl.inputs[2].span,
+                param_num: 3,
+                expected_ty,
+                found_ty: argv_arg,
+            });
+        }
+    }
+
+    // fourth arg is `sigpipe: u8`
+    if let Some(&sigpipe_arg) = inputs.get(3) {
+        if sigpipe_arg != tcx.types.u8 {
+            tcx.sess.emit_err(LangStartIncorrectParam {
+                param_span: decl.inputs[3].span,
+                param_num: 4,
+                expected_ty: tcx.types.u8,
+                found_ty: sigpipe_arg,
+            });
+        }
+    }
+
+    // output type is isize
+    if fn_sig.output() != tcx.types.isize {
+        tcx.sess.emit_err(LangStartIncorrectRetTy {
+            ret_span: decl.output.span(),
+            expected_ty: tcx.types.isize,
+            found_ty: fn_sig.output(),
+        });
     }
 }
