@@ -276,6 +276,7 @@ E0509: include_str!("./error_codes/E0509.md"),
 E0510: include_str!("./error_codes/E0510.md"),
 E0511: include_str!("./error_codes/E0511.md"),
 E0512: include_str!("./error_codes/E0512.md"),
+E0514: include_str!("./error_codes/E0514.md"),
 E0515: include_str!("./error_codes/E0515.md"),
 E0516: include_str!("./error_codes/E0516.md"),
 E0517: include_str!("./error_codes/E0517.md"),
@@ -616,7 +617,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0514, // metadata version mismatch
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes
