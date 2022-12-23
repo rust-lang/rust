@@ -41,8 +41,6 @@ pub trait TraitEngine<'tcx>: 'tcx {
 
     fn select_where_possible(&mut self, infcx: &InferCtxt<'tcx>) -> Vec<FulfillmentError<'tcx>>;
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>>;
-
     fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships>;
 }
 

@@ -151,10 +151,6 @@ impl<'tcx> TraitEngine<'tcx> for FulfillmentContext<'tcx> {
         errors
     }
 
-    fn pending_obligations(&self) -> Vec<PredicateObligation<'tcx>> {
-        self.obligations.iter().cloned().collect()
-    }
-
     fn relationships(&mut self) -> &mut FxHashMap<ty::TyVid, ty::FoundRelationships> {
         &mut self.relationships
     }

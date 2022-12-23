@@ -3,7 +3,8 @@ use crate::traits::query::evaluate_obligation::InferCtxtExt;
 use crate::traits::NormalizeExt;
 use crate::traits::{self, TraitEngine, TraitEngineExt};
 use rustc_hir as hir;
-use rustc_infer::infer::InferCtxt;
+use rustc_infer::infer::{InferCtxt, InferOk};
+use rustc_infer::traits::TraitEngineExt as _;
 use rustc_middle::ty::TypeVisitable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_session::Limit;
@@ -138,14 +139,16 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             return None;
         }
 
-        let normalized_ty = self
+        let InferOk { value: normalized_ty, obligations } = self
             .infcx
             .at(&cause, self.param_env)
             .normalize(tcx.mk_projection(tcx.lang_items().deref_target()?, trait_ref.substs));
-        let mut fulfillcx = <dyn TraitEngine<'tcx>>::new_in_snapshot(tcx);
-        let normalized_ty =
-            normalized_ty.into_value_registering_obligations(self.infcx, &mut *fulfillcx);
-        let errors = fulfillcx.select_where_possible(&self.infcx);
+
+        // HACK(compiler-errors): We must *select* here so we *affect* inference...
+        // This can probably be moved to method_autoderef_steps or something instead.
+        let mut fulfill_cx = <dyn TraitEngine<'_>>::new_in_snapshot(tcx);
+        fulfill_cx.register_predicate_obligations(&self.infcx, obligations.clone());
+        let errors = fulfill_cx.select_where_possible(&self.infcx);
         if !errors.is_empty() {
             // This shouldn't happen, except for evaluate/fulfill mismatches,
             // but that's not a reason for an ICE (`predicate_may_hold` is conservative
@@ -153,7 +156,7 @@ impl<'a, 'tcx> Autoderef<'a, 'tcx> {
             debug!("overloaded_deref_ty: encountered errors {:?} while fulfilling", errors);
             return None;
         }
-        let obligations = fulfillcx.pending_obligations();
+
         debug!("overloaded_deref_ty({:?}) = ({:?}, {:?})", ty, normalized_ty, obligations);
         self.state.obligations.extend(obligations);
 
