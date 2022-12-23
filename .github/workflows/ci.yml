@@ -36,6 +36,7 @@ jobs:
       actions: write
     name: PR
     env:
+      RUST_BACKTRACE: 1
       CI_JOB_NAME: "${{ matrix.name }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"

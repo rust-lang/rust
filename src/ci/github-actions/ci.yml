@@ -285,6 +285,7 @@ jobs:
     <<: *base-ci-job
     name: PR
     env:
+      RUST_BACKTRACE: 1
       <<: [*shared-ci-variables, *public-variables]
     if: github.event_name == 'pull_request'
     strategy:
