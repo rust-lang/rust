@@ -1863,7 +1863,10 @@ impl<'a> Builder<'a> {
             };
 
             if let Some(limit) = limit {
-                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                if stage == 0 || self.config.default_codegen_backend().unwrap_or_default() == "llvm"
+                {
+                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                }
             }
         }
 

@@ -1611,6 +1611,10 @@ impl Config {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
     }
 
+    pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
+        self.rust_codegen_backends.get(0).cloned()
+    }
+
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.
     fn download_ci_rustc_commit(&self, download_rustc: Option<StringOrBool>) -> Option<String> {
         // If `download-rustc` is not set, default to rebuilding.
