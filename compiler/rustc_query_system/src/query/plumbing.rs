@@ -2,7 +2,7 @@
 //! generate the actual methods on tcx which find and execute the provider,
 //! manage the caches, and so forth.
 
-use crate::dep_graph::{DepContext, DepNode, DepNodeIndex, DepNodeParams};
+use crate::dep_graph::{DepContext, DepKind, DepNode, DepNodeIndex, DepNodeParams};
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
 use crate::query::config::QueryVTable;
@@ -31,26 +31,27 @@ use thin_vec::ThinVec;
 
 use super::QueryConfig;
 
-pub struct QueryState<K> {
+pub struct QueryState<K, D: DepKind> {
     #[cfg(parallel_compiler)]
-    active: Sharded<FxHashMap<K, QueryResult>>,
+    active: Sharded<FxHashMap<K, QueryResult<D>>>,
     #[cfg(not(parallel_compiler))]
-    active: Lock<FxHashMap<K, QueryResult>>,
+    active: Lock<FxHashMap<K, QueryResult<D>>>,
 }
 
 /// Indicates the state of a query for a given key in a query map.
-enum QueryResult {
+enum QueryResult<D: DepKind> {
     /// An already executing query. The query job can be used to await for its completion.
-    Started(QueryJob),
+    Started(QueryJob<D>),
 
     /// The query panicked. Queries trying to wait on this will raise a fatal error which will
     /// silently panic.
     Poisoned,
 }
 
-impl<K> QueryState<K>
+impl<K, D> QueryState<K, D>
 where
     K: Eq + Hash + Clone + Debug,
+    D: DepKind,
 {
     pub fn all_inactive(&self) -> bool {
         #[cfg(parallel_compiler)]
@@ -67,8 +68,8 @@ where
     pub fn try_collect_active_jobs<Qcx: Copy>(
         &self,
         qcx: Qcx,
-        make_query: fn(Qcx, K) -> QueryStackFrame,
-        jobs: &mut QueryMap,
+        make_query: fn(Qcx, K) -> QueryStackFrame<D>,
+        jobs: &mut QueryMap<D>,
     ) -> Option<()> {
         #[cfg(parallel_compiler)]
         {
@@ -102,34 +103,34 @@ where
     }
 }
 
-impl<K> Default for QueryState<K> {
-    fn default() -> QueryState<K> {
+impl<K, D: DepKind> Default for QueryState<K, D> {
+    fn default() -> QueryState<K, D> {
         QueryState { active: Default::default() }
     }
 }
 
 /// A type representing the responsibility to execute the job in the `job` field.
 /// This will poison the relevant query if dropped.
-struct JobOwner<'tcx, K>
+struct JobOwner<'tcx, K, D: DepKind>
 where
     K: Eq + Hash + Clone,
 {
-    state: &'tcx QueryState<K>,
+    state: &'tcx QueryState<K, D>,
     key: K,
     id: QueryJobId,
 }
 
 #[cold]
 #[inline(never)]
-fn mk_cycle<Qcx, V, R>(
+fn mk_cycle<Qcx, V, R, D: DepKind>(
     qcx: Qcx,
-    cycle_error: CycleError,
+    cycle_error: CycleError<D>,
     handler: HandleCycleError,
     cache: &dyn crate::query::QueryStorage<Value = V, Stored = R>,
 ) -> R
 where
-    Qcx: QueryContext,
-    V: std::fmt::Debug + Value<Qcx::DepContext>,
+    Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
+    V: std::fmt::Debug + Value<Qcx::DepContext, Qcx::DepKind>,
     R: Clone,
 {
     let error = report_cycle(qcx.dep_context().sess(), &cycle_error);
@@ -139,13 +140,13 @@ where
 
 fn handle_cycle_error<Tcx, V>(
     tcx: Tcx,
-    cycle_error: &CycleError,
+    cycle_error: &CycleError<Tcx::DepKind>,
     mut error: DiagnosticBuilder<'_, ErrorGuaranteed>,
     handler: HandleCycleError,
 ) -> V
 where
     Tcx: DepContext,
-    V: Value<Tcx>,
+    V: Value<Tcx, Tcx::DepKind>,
 {
     use HandleCycleError::*;
     match handler {
@@ -165,7 +166,7 @@ where
     }
 }
 
-impl<'tcx, K> JobOwner<'tcx, K>
+impl<'tcx, K, D: DepKind> JobOwner<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
 {
@@ -180,12 +181,12 @@ where
     #[inline(always)]
     fn try_start<'b, Qcx>(
         qcx: &'b Qcx,
-        state: &'b QueryState<K>,
+        state: &'b QueryState<K, Qcx::DepKind>,
         span: Span,
         key: K,
-    ) -> TryGetJob<'b, K>
+    ) -> TryGetJob<'b, K, D>
     where
-        Qcx: QueryContext,
+        Qcx: QueryContext + crate::query::HasDepContext<DepKind = D>,
     {
         #[cfg(parallel_compiler)]
         let mut state_lock = state.active.get_shard_by_value(&key).lock();
@@ -280,9 +281,10 @@ where
     }
 }
 
-impl<'tcx, K> Drop for JobOwner<'tcx, K>
+impl<'tcx, K, D> Drop for JobOwner<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
+    D: DepKind,
 {
     #[inline(never)]
     #[cold]
@@ -308,19 +310,20 @@ where
 }
 
 #[derive(Clone)]
-pub(crate) struct CycleError {
+pub(crate) struct CycleError<D: DepKind> {
     /// The query and related span that uses the cycle.
-    pub usage: Option<(Span, QueryStackFrame)>,
-    pub cycle: Vec<QueryInfo>,
+    pub usage: Option<(Span, QueryStackFrame<D>)>,
+    pub cycle: Vec<QueryInfo<D>>,
 }
 
 /// The result of `try_start`.
-enum TryGetJob<'tcx, K>
+enum TryGetJob<'tcx, K, D>
 where
     K: Eq + Hash + Clone,
+    D: DepKind,
 {
     /// The query is not yet started. Contains a guard to the cache eventually used to start it.
-    NotYetStarted(JobOwner<'tcx, K>),
+    NotYetStarted(JobOwner<'tcx, K, D>),
 
     /// The query was already completed.
     /// Returns the result of the query and its dep-node index
@@ -329,7 +332,7 @@ where
     JobCompleted(TimingGuard<'tcx>),
 
     /// Trying to execute the query resulted in a cycle.
-    Cycle(CycleError),
+    Cycle(CycleError<D>),
 }
 
 /// Checks if the query is already computed and in the cache.
@@ -360,7 +363,7 @@ where
 
 fn try_execute_query<Qcx, C>(
     qcx: Qcx,
-    state: &QueryState<C::Key>,
+    state: &QueryState<C::Key, Qcx::DepKind>,
     cache: &C,
     span: Span,
     key: C::Key,
@@ -370,11 +373,11 @@ fn try_execute_query<Qcx, C>(
 where
     C: QueryCache,
     C::Key: Clone + DepNodeParams<Qcx::DepContext>,
-    C::Value: Value<Qcx::DepContext>,
+    C::Value: Value<Qcx::DepContext, Qcx::DepKind>,
     C::Stored: Debug + std::borrow::Borrow<C::Value>,
     Qcx: QueryContext,
 {
-    match JobOwner::<'_, C::Key>::try_start(&qcx, state, span, key.clone()) {
+    match JobOwner::<'_, C::Key, Qcx::DepKind>::try_start(&qcx, state, span, key.clone()) {
         TryGetJob::NotYetStarted(job) => {
             let (result, dep_node_index) = execute_job(qcx, key.clone(), dep_node, query, job.id);
             if query.feedable {
@@ -739,11 +742,12 @@ pub enum QueryMode {
     Ensure,
 }
 
-pub fn get_query<Q, Qcx>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
+pub fn get_query<Q, Qcx, D>(qcx: Qcx, span: Span, key: Q::Key, mode: QueryMode) -> Option<Q::Stored>
 where
+    D: DepKind,
     Q: QueryConfig<Qcx>,
     Q::Key: DepNodeParams<Qcx::DepContext>,
-    Q::Value: Value<Qcx::DepContext>,
+    Q::Value: Value<Qcx::DepContext, D>,
     Qcx: QueryContext,
 {
     let query = Q::make_vtable(qcx, &key);
@@ -772,11 +776,12 @@ where
     Some(result)
 }
 
-pub fn force_query<Q, Qcx>(qcx: Qcx, key: Q::Key, dep_node: DepNode<Qcx::DepKind>)
+pub fn force_query<Q, Qcx, D>(qcx: Qcx, key: Q::Key, dep_node: DepNode<Qcx::DepKind>)
 where
+    D: DepKind,
     Q: QueryConfig<Qcx>,
     Q::Key: DepNodeParams<Qcx::DepContext>,
-    Q::Value: Value<Qcx::DepContext>,
+    Q::Value: Value<Qcx::DepContext, D>,
     Qcx: QueryContext,
 {
     // We may be concurrently trying both execute and force a query.
