@@ -2299,6 +2299,8 @@ impl<'test> TestCx<'test> {
         } else {
             filecheck.args(&["--check-prefixes", &prefixes]);
         }
+        // Provide more context on failures.
+        filecheck.args(&["--dump-input-context", "100"]);
         self.compose_and_run(filecheck, "", None, None)
     }
 
