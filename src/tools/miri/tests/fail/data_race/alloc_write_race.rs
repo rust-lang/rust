@@ -35,7 +35,7 @@ pub fn main() {
 
         let j2 = spawn(move || {
             let pointer = &*ptr.0;
-            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Allocate on thread `<unnamed>`
+            *pointer.load(Ordering::Relaxed) = 2; //~ ERROR: Data race detected between (1) Allocate on thread `<unnamed>` and (2) Write on thread `<unnamed>`
         });
 
         j1.join().unwrap();

@@ -1,10 +1,10 @@
-error: Undefined Behavior: Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Read on thread `<unnamed>` at ALLOC. (1) just happened here
+error: Undefined Behavior: Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>` at ALLOC. (2) just happened here
   --> $DIR/dealloc_read_race_stack.rs:LL:CC
    |
 LL |             }
-   |             ^ Data race detected between (1) Deallocate on thread `<unnamed>` and (2) Read on thread `<unnamed>` at ALLOC. (1) just happened here
+   |             ^ Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>` at ALLOC. (2) just happened here
    |
-help: and (2) occurred earlier here
+help: and (1) occurred earlier here
   --> $DIR/dealloc_read_race_stack.rs:LL:CC
    |
 LL |             *pointer.load(Ordering::Acquire)

@@ -811,14 +811,14 @@ impl VClockAlloc {
         Err(err_machine_stop!(TerminationInfo::DataRace {
             ptr: ptr_dbg,
             op1: RacingOp {
-                action: action.to_string(),
-                thread_info: current_thread_info,
-                span: current_clocks.clock.as_slice()[current_index.index()].span_data(),
-            },
-            op2: RacingOp {
                 action: other_action.to_string(),
                 thread_info: other_thread_info,
                 span: other_clock.as_slice()[other_thread.index()].span_data(),
+            },
+            op2: RacingOp {
+                action: action.to_string(),
+                thread_info: current_thread_info,
+                span: current_clocks.clock.as_slice()[current_index.index()].span_data(),
             },
         }))?
     }
