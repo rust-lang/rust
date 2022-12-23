@@ -747,9 +747,7 @@ pub(crate) struct PatternNotCovered<'s, 'tcx> {
     pub _p: (),
     pub pattern_ty: Ty<'tcx>,
     #[subdiagnostic]
-    pub if_let_suggestion: Option<SuggestIfLet>,
-    #[subdiagnostic]
-    pub let_else_suggestion: Option<SuggestLetElse>,
+    pub let_suggestion: Option<SuggestLet>,
     #[subdiagnostic]
     pub res_defined_here: Option<ResDefinedHere>,
 }
@@ -809,43 +807,23 @@ pub struct InterpretedAsConst {
 }
 
 #[derive(Subdiagnostic)]
-pub enum SuggestIfLet {
+pub enum SuggestLet {
     #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
-    None {
+    If {
         #[suggestion_part(code = "if ")]
         start_span: Span,
         #[suggestion_part(code = " {{ todo!() }}")]
         semi_span: Span,
         count: usize,
     },
-    #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
-    One {
-        #[suggestion_part(code = "let {binding} = if ")]
-        start_span: Span,
-        #[suggestion_part(code = " {{ {binding} }} else {{ todo!() }}")]
+    #[suggestion(
+        mir_build_suggest_let_else,
+        code = " else {{ todo!() }}",
+        applicability = "has-placeholders"
+    )]
+    Else {
+        #[primary_span]
         end_span: Span,
-        binding: Ident,
         count: usize,
     },
-    #[multipart_suggestion(mir_build_suggest_if_let, applicability = "has-placeholders")]
-    More {
-        #[suggestion_part(code = "let ({bindings}) = if ")]
-        start_span: Span,
-        #[suggestion_part(code = " {{ ({bindings}) }} else {{ todo!() }}")]
-        end_span: Span,
-        bindings: String,
-        count: usize,
-    },
-}
-
-#[derive(Subdiagnostic)]
-#[suggestion(
-    mir_build_suggest_let_else,
-    code = " else {{ todo!() }}",
-    applicability = "has-placeholders"
-)]
-pub struct SuggestLetElse {
-    #[primary_span]
-    pub end_span: Span,
-    pub count: usize,
 }

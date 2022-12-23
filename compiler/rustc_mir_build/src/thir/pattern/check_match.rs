@@ -394,7 +394,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             return;
         }
 
-        let (inform, interpreted_as_const, res_defined_here, if_let_suggestion, let_else_suggestion) =
+        let (inform, interpreted_as_const, res_defined_here,let_suggestion) =
             if let hir::PatKind::Path(hir::QPath::Resolved(
                 None,
                 hir::Path {
@@ -417,7 +417,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                             res,
                         }
                     },
-                    None, None,
+                    None,
                 )
             } else if let Some(span) = sp && self.tcx.sess.source_map().is_span_accessible(span) {
                 let mut bindings = vec![];
@@ -430,19 +430,11 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
                 let start_span = span.shrink_to_lo();
                 let end_span = semi_span.shrink_to_lo();
                 let count = witnesses.len();
-                let if_let = match *bindings {
-                    [] =>  SuggestIfLet::None{start_span, semi_span, count},
-                    [binding] => SuggestIfLet::One{start_span, end_span, count, binding },
-                    _ => SuggestIfLet::More{start_span, end_span, count, bindings: bindings
-                        .iter()
-                        .map(|ident| ident.to_string())
-                        .collect::<Vec<_>>()
-                        .join(", ")},
-                };
-                let let_else = if bindings.is_empty() {None} else{Some( SuggestLetElse{end_span, count })};
-                (sp.map(|_|Inform), None, None, Some(if_let), let_else)
+
+                let let_suggestion = if bindings.is_empty() {SuggestLet::If{start_span, semi_span, count}} else{ SuggestLet::Else{end_span, count }};
+                (sp.map(|_|Inform), None, None, Some(let_suggestion))
             } else{
-                (sp.map(|_|Inform), None, None,  None, None)
+                (sp.map(|_|Inform), None, None,  None)
             };
 
         let adt_defined_here = try {
@@ -465,8 +457,7 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
             interpreted_as_const,
             _p: (),
             pattern_ty,
-            if_let_suggestion,
-            let_else_suggestion,
+            let_suggestion,
             res_defined_here,
             adt_defined_here,
         });
