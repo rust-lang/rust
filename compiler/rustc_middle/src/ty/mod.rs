@@ -589,6 +589,7 @@ pub enum Clause<'tcx> {
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, TyEncodable, TyDecodable)]
 #[derive(HashStable, TypeFoldable, TypeVisitable, Lift)]
+#[type_foldable(inline_always)]
 pub enum PredicateKind<'tcx> {
     /// Prove a clause
     Clause(Clause<'tcx>),
