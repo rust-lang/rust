@@ -40,7 +40,9 @@ pub struct IntoIter<
     // to avoid dropping the allocator twice we need to wrap it into ManuallyDrop
     pub(super) alloc: ManuallyDrop<A>,
     pub(super) ptr: *const T,
-    pub(super) end: *const T,
+    pub(super) end: *const T, // If T is a ZST, this is actually ptr+len.  This encoding is picked so that
+                              // ptr == end is a quick test for the Iterator being empty, that works
+                              // for both ZST and non-ZST.
 }
 
 #[stable(feature = "vec_intoiter_debug", since = "1.13.0")]
@@ -132,7 +134,9 @@ impl<T, A: Allocator> IntoIter<T, A> {
 
     /// Forgets to Drop the remaining elements while still allowing the backing allocation to be freed.
     pub(crate) fn forget_remaining_elements(&mut self) {
-        self.ptr = self.end;
+        // For th ZST case, it is crucial that we mutate `end` here, not `ptr`.
+        // `ptr` must stay aligned, while `end` may be unaligned.
+        self.end = self.ptr;
     }
 
     #[cfg(not(no_global_oom_handling))]
@@ -184,10 +188,9 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         if self.ptr == self.end {
             None
         } else if T::IS_ZST {
-            // purposefully don't use 'ptr.offset' because for
-            // vectors with 0-size elements this would return the
-            // same pointer.
-            self.ptr = self.ptr.wrapping_byte_add(1);
+            // `ptr` has to stay where it is to remain aligned, so we reduce the length by 1 by
+            // reducing the `end`.
+            self.end = self.end.wrapping_byte_sub(1);
 
             // Make up a value of this ZST.
             Some(unsafe { mem::zeroed() })
@@ -214,10 +217,8 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
         let step_size = self.len().min(n);
         let to_drop = ptr::slice_from_raw_parts_mut(self.ptr as *mut T, step_size);
         if T::IS_ZST {
-            // SAFETY: due to unchecked casts of unsigned amounts to signed offsets the wraparound
-            // effectively results in unsigned pointers representing positions 0..usize::MAX,
-            // which is valid for ZSTs.
-            self.ptr = self.ptr.wrapping_byte_add(step_size);
+            // See `next` for why we sub `end` here.
+            self.end = self.end.wrapping_byte_sub(step_size);
         } else {
             // SAFETY: the min() above ensures that step_size is in bounds
             self.ptr = unsafe { self.ptr.add(step_size) };
