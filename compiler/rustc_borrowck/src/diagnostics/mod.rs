@@ -1133,6 +1133,17 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
+                        if let ty::Adt(def, ..)
+                            = moved_place.ty(self.body, self.infcx.tcx).ty.kind()
+                            && Some(def.did()) == self.infcx.tcx.lang_items().pin_type()
+                        {
+                            err.span_suggestion_verbose(
+                                fn_call_span.shrink_to_lo(),
+                                "consider reborrowing the `Pin` instead of moving it",
+                                "as_mut().".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
                     let tcx = self.infcx.tcx;
                     // Avoid pointing to the same function in multiple different
