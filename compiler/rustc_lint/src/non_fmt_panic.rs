@@ -304,7 +304,7 @@ fn check_panic_str<'tcx>(
 
 /// Given the span of `some_macro!(args);`, gives the span of `(` and `)`,
 /// and the type of (opening) delimiter used.
-fn find_delimiters<'tcx>(cx: &LateContext<'tcx>, span: Span) -> Option<(Span, Span, char)> {
+fn find_delimiters(cx: &LateContext<'_>, span: Span) -> Option<(Span, Span, char)> {
     let snippet = cx.sess().parse_sess.source_map().span_to_snippet(span).ok()?;
     let (open, open_ch) = snippet.char_indices().find(|&(_, c)| "([{".contains(c))?;
     let close = snippet.rfind(|c| ")]}".contains(c))?;

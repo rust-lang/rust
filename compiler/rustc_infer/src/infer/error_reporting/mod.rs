@@ -2199,10 +2199,10 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             );
         }
 
-        fn binding_suggestion<'tcx, S: fmt::Display>(
+        fn binding_suggestion<S: fmt::Display>(
             err: &mut Diagnostic,
             type_param_span: Option<(Span, bool)>,
-            bound_kind: GenericKind<'tcx>,
+            bound_kind: GenericKind<'_>,
             sub: S,
             add_lt_sugg: Option<(Span, String)>,
         ) {

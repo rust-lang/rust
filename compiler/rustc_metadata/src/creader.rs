@@ -520,8 +520,8 @@ impl<'a> CrateLoader<'a> {
         }))
     }
 
-    fn resolve_crate<'b>(
-        &'b mut self,
+    fn resolve_crate(
+        &mut self,
         name: Symbol,
         span: Span,
         dep_kind: CrateDepKind,

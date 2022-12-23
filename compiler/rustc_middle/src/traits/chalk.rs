@@ -210,7 +210,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(chalk_ir::TyData { kind: ty, flags: flags })
     }
 
-    fn ty_data<'a>(self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
+    fn ty_data(self, ty: &Self::InternedType) -> &chalk_ir::TyData<Self> {
         ty
     }
 
@@ -218,10 +218,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(lifetime)
     }
 
-    fn lifetime_data<'a>(
-        self,
-        lifetime: &'a Self::InternedLifetime,
-    ) -> &'a chalk_ir::LifetimeData<Self> {
+    fn lifetime_data(self, lifetime: &Self::InternedLifetime) -> &chalk_ir::LifetimeData<Self> {
         &lifetime
     }
 
@@ -229,7 +226,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(constant)
     }
 
-    fn const_data<'a>(self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
+    fn const_data(self, constant: &Self::InternedConst) -> &chalk_ir::ConstData<Self> {
         &constant
     }
 
@@ -246,10 +243,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(data)
     }
 
-    fn generic_arg_data<'a>(
-        self,
-        data: &'a Self::InternedGenericArg,
-    ) -> &'a chalk_ir::GenericArgData<Self> {
+    fn generic_arg_data(self, data: &Self::InternedGenericArg) -> &chalk_ir::GenericArgData<Self> {
         &data
     }
 
@@ -257,7 +251,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(goal)
     }
 
-    fn goal_data<'a>(self, goal: &'a Self::InternedGoal) -> &'a chalk_ir::GoalData<Self> {
+    fn goal_data(self, goal: &Self::InternedGoal) -> &chalk_ir::GoalData<Self> {
         &goal
     }
 
@@ -268,7 +262,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn goals_data<'a>(self, goals: &'a Self::InternedGoals) -> &'a [chalk_ir::Goal<Self>] {
+    fn goals_data(self, goals: &Self::InternedGoals) -> &[chalk_ir::Goal<Self>] {
         goals
     }
 
@@ -279,10 +273,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn substitution_data<'a>(
+    fn substitution_data(
         self,
-        substitution: &'a Self::InternedSubstitution,
-    ) -> &'a [chalk_ir::GenericArg<Self>] {
+        substitution: &Self::InternedSubstitution,
+    ) -> &[chalk_ir::GenericArg<Self>] {
         substitution
     }
 
@@ -293,10 +287,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         Box::new(data)
     }
 
-    fn program_clause_data<'a>(
+    fn program_clause_data(
         self,
-        clause: &'a Self::InternedProgramClause,
-    ) -> &'a chalk_ir::ProgramClauseData<Self> {
+        clause: &Self::InternedProgramClause,
+    ) -> &chalk_ir::ProgramClauseData<Self> {
         &clause
     }
 
@@ -307,10 +301,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn program_clauses_data<'a>(
+    fn program_clauses_data(
         self,
-        clauses: &'a Self::InternedProgramClauses,
-    ) -> &'a [chalk_ir::ProgramClause<Self>] {
+        clauses: &Self::InternedProgramClauses,
+    ) -> &[chalk_ir::ProgramClause<Self>] {
         clauses
     }
 
@@ -321,10 +315,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn quantified_where_clauses_data<'a>(
+    fn quantified_where_clauses_data(
         self,
-        clauses: &'a Self::InternedQuantifiedWhereClauses,
-    ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
+        clauses: &Self::InternedQuantifiedWhereClauses,
+    ) -> &[chalk_ir::QuantifiedWhereClause<Self>] {
         clauses
     }
 
@@ -335,10 +329,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn variable_kinds_data<'a>(
+    fn variable_kinds_data(
         self,
-        parameter_kinds: &'a Self::InternedVariableKinds,
-    ) -> &'a [chalk_ir::VariableKind<Self>] {
+        parameter_kinds: &Self::InternedVariableKinds,
+    ) -> &[chalk_ir::VariableKind<Self>] {
         parameter_kinds
     }
 
@@ -349,10 +343,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn canonical_var_kinds_data<'a>(
+    fn canonical_var_kinds_data(
         self,
-        canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
-    ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
+        canonical_var_kinds: &Self::InternedCanonicalVarKinds,
+    ) -> &[chalk_ir::CanonicalVarKind<Self>] {
         canonical_var_kinds
     }
 
@@ -363,10 +357,10 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn constraints_data<'a>(
+    fn constraints_data(
         self,
-        constraints: &'a Self::InternedConstraints,
-    ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
+        constraints: &Self::InternedConstraints,
+    ) -> &[chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
     }
 
@@ -377,10 +371,7 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
         data.into_iter().collect::<Result<Vec<_>, _>>()
     }
 
-    fn variances_data<'a>(
-        self,
-        variances: &'a Self::InternedVariances,
-    ) -> &'a [chalk_ir::Variance] {
+    fn variances_data(self, variances: &Self::InternedVariances) -> &[chalk_ir::Variance] {
         variances
     }
 }
