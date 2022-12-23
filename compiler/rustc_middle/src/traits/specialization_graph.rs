@@ -180,6 +180,7 @@ impl Iterator for Ancestors<'_> {
 }
 
 /// Information about the most specialized definition of an associated item.
+#[derive(Debug)]
 pub struct LeafDef {
     /// The associated item described by this `LeafDef`.
     pub item: ty::AssocItem,

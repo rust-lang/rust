@@ -25,7 +25,6 @@ use rustc_data_structures::sso::SsoHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def::DefKind;
-use rustc_hir::def_id::DefId;
 use rustc_hir::lang_items::LangItem;
 use rustc_infer::infer::at::At;
 use rustc_infer::infer::resolve::OpportunisticRegionResolver;
@@ -1553,7 +1552,7 @@ fn assemble_candidates_from_impls<'cx, 'tcx>(
                 // NOTE: This should be kept in sync with the similar code in
                 // `rustc_ty_utils::instance::resolve_associated_item()`.
                 let node_item =
-                    assoc_def(selcx, impl_data.impl_def_id, obligation.predicate.def_id)
+                    specialization_graph::assoc_def(selcx.tcx(), impl_data.impl_def_id, obligation.predicate.def_id)
                         .map_err(|ErrorGuaranteed { .. }| ())?;
 
                 if node_item.is_final() {
@@ -2113,7 +2112,7 @@ fn confirm_impl_candidate<'cx, 'tcx>(
     let trait_def_id = tcx.trait_id_of_impl(impl_def_id).unwrap();
 
     let param_env = obligation.param_env;
-    let Ok(assoc_ty) = assoc_def(selcx, impl_def_id, assoc_item_id) else {
+    let Ok(assoc_ty) = specialization_graph::assoc_def(tcx, impl_def_id, assoc_item_id) else {
         return Progress { term: tcx.ty_error().into(), obligations: nested };
     };
 
@@ -2210,7 +2209,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
     let mut obligations = data.nested;
 
     let trait_fn_def_id = tcx.impl_trait_in_trait_parent(obligation.predicate.def_id);
-    let Ok(leaf_def) = assoc_def(selcx, data.impl_def_id, trait_fn_def_id) else {
+    let Ok(leaf_def) = specialization_graph::assoc_def(tcx, data.impl_def_id, trait_fn_def_id) else {
         return Progress { term: tcx.ty_error().into(), obligations };
     };
     if !leaf_def.item.defaultness(tcx).has_value() {
@@ -2344,58 +2343,6 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
             obligation.param_env,
             normalized,
         ));
-    }
-}
-
-/// Locate the definition of an associated type in the specialization hierarchy,
-/// starting from the given impl.
-///
-/// Based on the "projection mode", this lookup may in fact only examine the
-/// topmost impl. See the comments for `Reveal` for more details.
-fn assoc_def(
-    selcx: &SelectionContext<'_, '_>,
-    impl_def_id: DefId,
-    assoc_def_id: DefId,
-) -> Result<specialization_graph::LeafDef, ErrorGuaranteed> {
-    let tcx = selcx.tcx();
-    let trait_def_id = tcx.impl_trait_ref(impl_def_id).unwrap().def_id;
-    let trait_def = tcx.trait_def(trait_def_id);
-
-    // This function may be called while we are still building the
-    // specialization graph that is queried below (via TraitDef::ancestors()),
-    // so, in order to avoid unnecessary infinite recursion, we manually look
-    // for the associated item at the given impl.
-    // If there is no such item in that impl, this function will fail with a
-    // cycle error if the specialization graph is currently being built.
-    if let Some(&impl_item_id) = tcx.impl_item_implementor_ids(impl_def_id).get(&assoc_def_id) {
-        let item = tcx.associated_item(impl_item_id);
-        let impl_node = specialization_graph::Node::Impl(impl_def_id);
-        return Ok(specialization_graph::LeafDef {
-            item: *item,
-            defining_node: impl_node,
-            finalizing_node: if item.defaultness(tcx).is_default() {
-                None
-            } else {
-                Some(impl_node)
-            },
-        });
-    }
-
-    let ancestors = trait_def.ancestors(tcx, impl_def_id)?;
-    if let Some(assoc_item) = ancestors.leaf_def(tcx, assoc_def_id) {
-        Ok(assoc_item)
-    } else {
-        // This is saying that neither the trait nor
-        // the impl contain a definition for this
-        // associated type.  Normally this situation
-        // could only arise through a compiler bug --
-        // if the user wrote a bad item name, it
-        // should have failed in astconv.
-        bug!(
-            "No associated type `{}` for {}",
-            tcx.item_name(assoc_def_id),
-            tcx.def_path_str(impl_def_id)
-        )
     }
 }
 
