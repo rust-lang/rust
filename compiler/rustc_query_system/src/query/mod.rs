@@ -14,6 +14,7 @@ pub use self::caches::{
 mod config;
 pub use self::config::{QueryConfig, QueryVTable};
 
+use crate::dep_graph::DepKind;
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};
 use rustc_data_structures::sync::Lock;
 use rustc_errors::Diagnostic;
@@ -26,37 +27,37 @@ use thin_vec::ThinVec;
 ///
 /// This is mostly used in case of cycles for error reporting.
 #[derive(Clone, Debug)]
-pub struct QueryStackFrame {
-    pub name: &'static str,
+pub struct QueryStackFrame<D: DepKind> {
     pub description: String,
     span: Option<Span>,
     pub def_id: Option<DefId>,
     pub def_kind: Option<DefKind>,
     pub ty_adt_id: Option<DefId>,
+    pub dep_kind: D,
     /// This hash is used to deterministically pick
     /// a query to remove cycles in the parallel compiler.
     #[cfg(parallel_compiler)]
     hash: u64,
 }
 
-impl QueryStackFrame {
+impl<D: DepKind> QueryStackFrame<D> {
     #[inline]
     pub fn new(
-        name: &'static str,
         description: String,
         span: Option<Span>,
         def_id: Option<DefId>,
         def_kind: Option<DefKind>,
+        dep_kind: D,
         ty_adt_id: Option<DefId>,
         _hash: impl FnOnce() -> u64,
     ) -> Self {
         Self {
-            name,
             description,
             span,
             def_id,
             def_kind,
             ty_adt_id,
+            dep_kind,
             #[cfg(parallel_compiler)]
             hash: _hash(),
         }
@@ -104,7 +105,7 @@ pub trait QueryContext: HasDepContext {
     /// Get the query information from the TLS context.
     fn current_query_job(&self) -> Option<QueryJobId>;
 
-    fn try_collect_active_jobs(&self) -> Option<QueryMap>;
+    fn try_collect_active_jobs(&self) -> Option<QueryMap<Self::DepKind>>;
 
     /// Load side effects associated to the node in the previous session.
     fn load_side_effects(&self, prev_dep_node_index: SerializedDepNodeIndex) -> QuerySideEffects;
