@@ -2891,7 +2891,14 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
               // reverse of the branching block.
               if (rB == origLI->getHeader())
                 return reverseBlocks[getNewFromOriginal(B)].front();
-              return origToNewForward[rB];
+              auto found = origToNewForward.find(rB);
+              if (found == origToNewForward.end()) {
+                llvm::errs() << *newFunc << "\n";
+                llvm::errs() << *origLI << "\n";
+                llvm::errs() << *rB << "\n";
+              }
+              assert(found != origToNewForward.end());
+              return found->second;
             };
 
             // TODO clone terminator
@@ -2900,20 +2907,36 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
             if (notForAnalysis.count(B)) {
               NB.CreateUnreachable();
             } else if (auto BI = dyn_cast<BranchInst>(TI)) {
-              if (BI->isUnconditional())
-                NB.CreateBr(remap(BI->getSuccessor(0)));
-              else
-                NB.CreateCondBr(lookupM(getNewFromOriginal(BI->getCondition()),
-                                        NB, available),
-                                remap(BI->getSuccessor(0)),
-                                remap(BI->getSuccessor(1)));
+              if (BI->isUnconditional()) {
+                if (notForAnalysis.count(BI->getSuccessor(0)))
+                  NB.CreateUnreachable();
+                else
+                  NB.CreateBr(remap(BI->getSuccessor(0)));
+              } else {
+                if (notForAnalysis.count(BI->getSuccessor(0))) {
+                  if (notForAnalysis.count(BI->getSuccessor(1))) {
+                    NB.CreateUnreachable();
+                  } else {
+                    NB.CreateBr(remap(BI->getSuccessor(1)));
+                  }
+                } else if (notForAnalysis.count(BI->getSuccessor(1))) {
+                  NB.CreateBr(remap(BI->getSuccessor(0)));
+                } else {
+                  NB.CreateCondBr(
+                      lookupM(getNewFromOriginal(BI->getCondition()), NB,
+                              available),
+                      remap(BI->getSuccessor(0)), remap(BI->getSuccessor(1)));
+                }
+              }
             } else if (auto SI = dyn_cast<SwitchInst>(TI)) {
               auto NSI = NB.CreateSwitch(
                   lookupM(getNewFromOriginal(BI->getCondition()), NB,
                           available),
                   remap(SI->getDefaultDest()));
               for (auto cas : SI->cases()) {
-                NSI->addCase(cas.getCaseValue(), remap(cas.getCaseSuccessor()));
+                if (!notForAnalysis.count(cas.getCaseSuccessor()))
+                  NSI->addCase(cas.getCaseValue(),
+                               remap(cas.getCaseSuccessor()));
               }
             } else {
               assert(isa<UnreachableInst>(TI));
