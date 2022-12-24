@@ -336,7 +336,7 @@ impl<T: RefUnwindSafe + ?Sized> UnwindSafe for Rc<T> {}
 #[stable(feature = "rc_ref_unwind_safe", since = "1.58.0")]
 impl<T: RefUnwindSafe + ?Sized> RefUnwindSafe for Rc<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Rc<U>> for Rc<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]
@@ -2190,7 +2190,7 @@ impl<T: ?Sized> !marker::Send for Weak<T> {}
 #[stable(feature = "rc_weak", since = "1.4.0")]
 impl<T: ?Sized> !marker::Sync for Weak<T> {}
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized> CoerceUnsized<Weak<U>> for Weak<T> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]

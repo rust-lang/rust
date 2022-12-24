@@ -14,21 +14,27 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
     fn tag(&self) -> &'static str {
         "CollectAllMismatches"
     }
+
     fn tcx(&self) -> TyCtxt<'tcx> {
         self.infcx.tcx
     }
+
     fn intercrate(&self) -> bool {
         false
     }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.param_env
     }
+
     fn a_is_expected(&self) -> bool {
         true
-    } // irrelevant
+    }
+
     fn mark_ambiguous(&mut self) {
         bug!()
     }
+
     fn relate_with_variance<T: Relate<'tcx>>(
         &mut self,
         _: ty::Variance,
@@ -38,6 +44,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
     ) -> RelateResult<'tcx, T> {
         self.relate(a, b)
     }
+
     fn regions(
         &mut self,
         a: ty::Region<'tcx>,
@@ -45,15 +52,20 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
     ) -> RelateResult<'tcx, ty::Region<'tcx>> {
         Ok(a)
     }
+
     fn tys(&mut self, a: Ty<'tcx>, b: Ty<'tcx>) -> RelateResult<'tcx, Ty<'tcx>> {
-        if a == b || matches!(a.kind(), ty::Infer(_)) || matches!(b.kind(), ty::Infer(_)) {
-            return Ok(a);
-        }
-        relate::super_relate_tys(self, a, b).or_else(|e| {
-            self.errors.push(e);
-            Ok(a)
+        self.infcx.probe(|_| {
+            if a.is_ty_infer() || b.is_ty_infer() {
+                Ok(a)
+            } else {
+                self.infcx.super_combine_tys(self, a, b).or_else(|e| {
+                    self.errors.push(e);
+                    Ok(a)
+                })
+            }
         })
     }
+
     fn consts(
         &mut self,
         a: ty::Const<'tcx>,
@@ -64,6 +76,7 @@ impl<'a, 'tcx> TypeRelation<'tcx> for CollectAllMismatches<'a, 'tcx> {
         }
         relate::super_relate_consts(self, a, b) // could do something similar here for constants!
     }
+
     fn binders<T: Relate<'tcx>>(
         &mut self,
         a: ty::Binder<'tcx, T>,

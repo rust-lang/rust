@@ -381,7 +381,7 @@ impl<S: Into<String>> From<S> for DiagnosticMessage {
     }
 }
 
-/// A workaround for "good path" ICEs when formatting types in disables lints.
+/// A workaround for "good path" ICEs when formatting types in disabled lints.
 ///
 /// Delays formatting until `.into(): DiagnosticMessage` is used.
 pub struct DelayDm<F>(pub F);
@@ -549,9 +549,7 @@ fn icu_locale_from_unic_langid(lang: LanguageIdentifier) -> Option<icu_locid::Lo
     icu_locid::Locale::try_from_bytes(lang.to_string().as_bytes()).ok()
 }
 
-pub fn fluent_value_from_str_list_sep_by_and<'source>(
-    l: Vec<Cow<'source, str>>,
-) -> FluentValue<'source> {
+pub fn fluent_value_from_str_list_sep_by_and(l: Vec<Cow<'_, str>>) -> FluentValue<'_> {
     // Fluent requires 'static value here for its AnyEq usages.
     #[derive(Clone, PartialEq, Debug)]
     struct FluentStrListSepByAnd(Vec<String>);

@@ -108,15 +108,13 @@ use std::rc::Rc;
 mod rwu_table;
 
 rustc_index::newtype_index! {
-    pub struct Variable {
-        DEBUG_FORMAT = "v({})",
-    }
+    #[debug_format = "v({})"]
+    pub struct Variable {}
 }
 
 rustc_index::newtype_index! {
-    pub struct LiveNode {
-        DEBUG_FORMAT = "ln({})",
-    }
+    #[debug_format = "ln({})"]
+    pub struct LiveNode {}
 }
 
 #[derive(Copy, Clone, PartialEq, Debug)]

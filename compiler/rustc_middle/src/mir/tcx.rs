@@ -28,12 +28,13 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `place_ty.field_ty(tcx, f)` computes the type at a given field
     /// of a record or enum-variant. (Most clients of `PlaceTy` can
     /// instead just extract the relevant type directly from their
-    /// `PlaceElem`, but some instances of `ProjectionElem<V, T1, T2>` do
-    /// not carry a `Ty` for `T1` or `T2`.)
+    /// `PlaceElem`, but some instances of `ProjectionElem<V, T>` do
+    /// not carry a `Ty` for `T`.)
     ///
     /// Note that the resulting type has not been normalized.
+    #[instrument(level = "debug", skip(tcx), ret)]
     pub fn field_ty(self, tcx: TyCtxt<'tcx>, f: Field) -> Ty<'tcx> {
-        let answer = match self.ty.kind() {
+        match self.ty.kind() {
             ty::Adt(adt_def, substs) => {
                 let variant_def = match self.variant_index {
                     None => adt_def.non_enum_variant(),
@@ -47,9 +48,7 @@ impl<'tcx> PlaceTy<'tcx> {
             }
             ty::Tuple(tys) => tys[f.index()],
             _ => bug!("extracting field of non-tuple non-adt: {:?}", self),
-        };
-        debug!("field_ty self: {:?} f: {:?} yields: {:?}", self, f, answer);
-        answer
+        }
     }
 
     /// Convenience wrapper around `projection_ty_core` for
@@ -64,18 +63,17 @@ impl<'tcx> PlaceTy<'tcx> {
     /// `Ty` or downcast variant corresponding to that projection.
     /// The `handle_field` callback must map a `Field` to its `Ty`,
     /// (which should be trivial when `T` = `Ty`).
-    pub fn projection_ty_core<V, T1, T2>(
+    pub fn projection_ty_core<V, T>(
         self,
         tcx: TyCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        elem: &ProjectionElem<V, T1, T2>,
-        mut handle_field: impl FnMut(&Self, Field, T1) -> Ty<'tcx>,
-        mut handle_opaque_cast: impl FnMut(&Self, T2) -> Ty<'tcx>,
+        elem: &ProjectionElem<V, T>,
+        mut handle_field: impl FnMut(&Self, Field, T) -> Ty<'tcx>,
+        mut handle_opaque_cast: impl FnMut(&Self, T) -> Ty<'tcx>,
     ) -> PlaceTy<'tcx>
     where
         V: ::std::fmt::Debug,
-        T1: ::std::fmt::Debug + Copy,
-        T2: ::std::fmt::Debug + Copy,
+        T: ::std::fmt::Debug + Copy,
     {
         if self.variant_index.is_some() && !matches!(elem, ProjectionElem::Field(..)) {
             bug!("cannot use non field projection on downcasted place")

@@ -702,6 +702,7 @@ impl<'a> Builder<'a> {
                 doc::RustdocBook,
                 doc::RustByExample,
                 doc::RustcBook,
+                doc::Cargo,
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
@@ -1068,7 +1069,7 @@ impl<'a> Builder<'a> {
     /// check build or dry-run, where there's no need to build all of LLVM.
     fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run() {
-            let llvm_config = self.ensure(native::Llvm { target });
+            let native::LlvmResult { llvm_config, .. } = self.ensure(native::Llvm { target });
             if llvm_config.is_file() {
                 return Some(llvm_config);
             }
@@ -1863,7 +1864,10 @@ impl<'a> Builder<'a> {
             };
 
             if let Some(limit) = limit {
-                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                if stage == 0 || self.config.default_codegen_backend().unwrap_or_default() == "llvm"
+                {
+                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                }
             }
         }
 

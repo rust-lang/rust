@@ -959,13 +959,13 @@ extern "rust-intrinsic" {
     #[rustc_safe_intrinsic]
     pub fn assert_zero_valid<T>();
 
-    /// A guard for unsafe functions that cannot ever be executed if `T` has invalid
-    /// bit patterns: This will statically either panic, or do nothing.
+    /// A guard for `std::mem::uninitialized`. This will statically either panic, or do nothing.
     ///
     /// This intrinsic does not have a stable counterpart.
     #[rustc_const_unstable(feature = "const_assert_type2", issue = "none")]
     #[rustc_safe_intrinsic]
-    pub fn assert_uninit_valid<T>();
+    #[cfg(not(bootstrap))]
+    pub fn assert_mem_uninitialized_valid<T>();
 
     /// Gets a reference to a static `Location` indicating where it was called.
     ///

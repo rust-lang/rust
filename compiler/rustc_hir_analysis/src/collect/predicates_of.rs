@@ -318,10 +318,10 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
     }
 }
 
-fn const_evaluatable_predicates_of<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn const_evaluatable_predicates_of(
+    tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> FxIndexSet<(ty::Predicate<'tcx>, Span)> {
+) -> FxIndexSet<(ty::Predicate<'_>, Span)> {
     struct ConstCollector<'tcx> {
         tcx: TyCtxt<'tcx>,
         preds: FxIndexSet<(ty::Predicate<'tcx>, Span)>,

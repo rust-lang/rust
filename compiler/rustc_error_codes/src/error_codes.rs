@@ -184,6 +184,7 @@ E0373: include_str!("./error_codes/E0373.md"),
 E0374: include_str!("./error_codes/E0374.md"),
 E0375: include_str!("./error_codes/E0375.md"),
 E0376: include_str!("./error_codes/E0376.md"),
+E0377: include_str!("./error_codes/E0377.md"),
 E0378: include_str!("./error_codes/E0378.md"),
 E0379: include_str!("./error_codes/E0379.md"),
 E0380: include_str!("./error_codes/E0380.md"),
@@ -239,13 +240,17 @@ E0452: include_str!("./error_codes/E0452.md"),
 E0453: include_str!("./error_codes/E0453.md"),
 E0454: include_str!("./error_codes/E0454.md"),
 E0455: include_str!("./error_codes/E0455.md"),
+E0457: include_str!("./error_codes/E0457.md"),
 E0458: include_str!("./error_codes/E0458.md"),
 E0459: include_str!("./error_codes/E0459.md"),
+E0460: include_str!("./error_codes/E0460.md"),
+E0462: include_str!("./error_codes/E0462.md"),
 E0463: include_str!("./error_codes/E0463.md"),
 E0464: include_str!("./error_codes/E0464.md"),
 E0466: include_str!("./error_codes/E0466.md"),
 E0468: include_str!("./error_codes/E0468.md"),
 E0469: include_str!("./error_codes/E0469.md"),
+E0472: include_str!("./error_codes/E0472.md"),
 E0477: include_str!("./error_codes/E0477.md"),
 E0478: include_str!("./error_codes/E0478.md"),
 E0482: include_str!("./error_codes/E0482.md"),
@@ -577,8 +582,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums
 //  E0372, // coherence not object safe
-    E0377, // the trait `CoerceUnsized` may only be implemented for a coercion
-           // between structures with the same definition
 //  E0385, // {} in an aliasable location
 //  E0402, // cannot use an outer type parameter in this context
 //  E0406, // merged into 420
@@ -592,15 +595,11 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0421, // merged into 531
 //  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
-    E0457, // plugin `..` only found in rlib format, but must be available...
-    E0460, // found possibly newer version of crate `..`
     E0461, // couldn't find crate `..` with expected target triple ..
-    E0462, // found staticlib `..` instead of rlib or dylib
     E0465, // multiple .. candidates for `..` found
 //  E0467, // removed
 //  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
-    E0472, // llvm_asm! is unsupported on this target
 //  E0473, // dereference of reference outside its lifetime
 //  E0474, // captured variable `..` does not outlive the enclosing closure
 //  E0475, // index of slice outside its lifetime

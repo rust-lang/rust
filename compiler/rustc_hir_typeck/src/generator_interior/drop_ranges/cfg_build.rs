@@ -233,6 +233,7 @@ impl<'a, 'tcx> DropRangeVisitor<'a, 'tcx> {
             self.tcx()
                 .sess
                 .delay_span_bug(expr.span, format!("could not resolve infer vars in `{ty}`"));
+            return;
         }
         let ty = self.tcx().erase_regions(ty);
         let m = self.tcx().parent_module(expr.hir_id).to_def_id();

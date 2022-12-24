@@ -191,7 +191,7 @@ fn dump_vtable_entries<'tcx>(
     });
 }
 
-fn own_existential_vtable_entries<'tcx>(tcx: TyCtxt<'tcx>, trait_def_id: DefId) -> &'tcx [DefId] {
+fn own_existential_vtable_entries(tcx: TyCtxt<'_>, trait_def_id: DefId) -> &[DefId] {
     let trait_methods = tcx
         .associated_items(trait_def_id)
         .in_definition_order()

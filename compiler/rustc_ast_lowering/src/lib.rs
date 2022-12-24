@@ -414,7 +414,7 @@ fn compute_hir_hash(
     })
 }
 
-pub fn lower_to_hir<'hir>(tcx: TyCtxt<'hir>, (): ()) -> hir::Crate<'hir> {
+pub fn lower_to_hir(tcx: TyCtxt<'_>, (): ()) -> hir::Crate<'_> {
     let sess = tcx.sess;
     let krate = tcx.untracked_crate.steal();
     let mut resolver = tcx.resolver_for_lowering(()).steal();
@@ -600,7 +600,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         self.impl_trait_defs = current_impl_trait_defs;
         self.impl_trait_bounds = current_impl_trait_bounds;
 
-        debug_assert!(self.children.iter().find(|(id, _)| id == &def_id).is_none());
+        debug_assert!(!self.children.iter().any(|(id, _)| id == &def_id));
         self.children.push((def_id, hir::MaybeOwner::Owner(info)));
     }
 

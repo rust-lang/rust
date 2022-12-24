@@ -70,14 +70,6 @@ impl GenericParamDef {
         }
     }
 
-    pub fn has_default(&self) -> bool {
-        match self.kind {
-            GenericParamDefKind::Type { has_default, .. }
-            | GenericParamDefKind::Const { has_default } => has_default,
-            GenericParamDefKind::Lifetime => false,
-        }
-    }
-
     pub fn is_anonymous_lifetime(&self) -> bool {
         match self.kind {
             GenericParamDefKind::Lifetime => {

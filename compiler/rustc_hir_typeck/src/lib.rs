@@ -462,8 +462,8 @@ fn fatally_break_rust(sess: &Session) {
     ));
 }
 
-fn has_expected_num_generic_args<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn has_expected_num_generic_args(
+    tcx: TyCtxt<'_>,
     trait_did: Option<DefId>,
     expected: usize,
 ) -> bool {

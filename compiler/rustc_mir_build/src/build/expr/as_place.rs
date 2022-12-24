@@ -7,7 +7,6 @@ use rustc_hir::def_id::LocalDefId;
 use rustc_middle::hir::place::Projection as HirProjection;
 use rustc_middle::hir::place::ProjectionKind as HirProjectionKind;
 use rustc_middle::middle::region;
-use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::AssertKind::BoundsCheck;
 use rustc_middle::mir::*;
 use rustc_middle::thir::*;
@@ -19,31 +18,23 @@ use rustc_target::abi::VariantIdx;
 use rustc_index::vec::Idx;
 
 use std::assert_matches::assert_matches;
-use std::convert::From;
 use std::iter;
 
-/// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
-/// place by pushing more and more projections onto the end, and then convert the final set into a
-/// place using the `into_place` method.
-///
-/// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
-/// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
-#[derive(Clone, Debug, PartialEq)]
-pub(in crate::build) enum PlaceBuilder<'tcx> {
+/// The "outermost" place that holds this value.
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub(crate) enum PlaceBase {
     /// Denotes the start of a `Place`.
-    ///
-    /// We use `PlaceElem` since this has all `Field` types available.
-    Local { local: Local, projection: Vec<PlaceElem<'tcx>> },
+    Local(Local),
 
     /// When building place for an expression within a closure, the place might start off a
     /// captured path. When `capture_disjoint_fields` is enabled, we might not know the capture
     /// index (within the desugared closure) of the captured path until most of the projections
-    /// are applied. We use `PlaceBuilder::Upvar` to keep track of the root variable off of which the
+    /// are applied. We use `PlaceBase::Upvar` to keep track of the root variable off of which the
     /// captured path starts, the closure the capture belongs to and the trait the closure
     /// implements.
     ///
-    /// Once we have figured out the capture index, we can convert the place builder to
-    /// `PlaceBuilder::Local`.
+    /// Once we have figured out the capture index, we can convert the place builder to start from
+    /// `PlaceBase::Local`.
     ///
     /// Consider the following example
     /// ```rust
@@ -64,16 +55,24 @@ pub(in crate::build) enum PlaceBuilder<'tcx> {
     ///
     /// When `capture_disjoint_fields` is enabled, `t.0.0.0` is captured and we won't be able to
     /// figure out that it is captured until all the `Field` projections are applied.
-    ///
-    /// Note: in contrast to `PlaceBuilder::Local` we have not yet determined all `Field` types
-    /// and will only do so once converting to `PlaceBuilder::Local`.
-    Upvar { upvar: Upvar, projection: Vec<UpvarProjectionElem<'tcx>> },
+    Upvar {
+        /// HirId of the upvar
+        var_hir_id: LocalVarId,
+        /// DefId of the closure
+        closure_def_id: LocalDefId,
+    },
 }
 
-#[derive(Copy, Clone, Debug, PartialEq)]
-pub(crate) struct Upvar {
-    var_hir_id: LocalVarId,
-    closure_def_id: LocalDefId,
+/// `PlaceBuilder` is used to create places during MIR construction. It allows you to "build up" a
+/// place by pushing more and more projections onto the end, and then convert the final set into a
+/// place using the `to_place` method.
+///
+/// This is used internally when building a place for an expression like `a.b.c`. The fields `b`
+/// and `c` can be progressively pushed onto the place builder that is created when converting `a`.
+#[derive(Clone, Debug, PartialEq)]
+pub(in crate::build) struct PlaceBuilder<'tcx> {
+    base: PlaceBase,
+    projection: Vec<PlaceElem<'tcx>>,
 }
 
 /// Given a list of MIR projections, convert them to list of HIR ProjectionKind.
@@ -82,8 +81,8 @@ pub(crate) struct Upvar {
 /// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, or `Subslice` because those will never be
 /// part of a path that is captured by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
-fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
-    mir_projections: &[UpvarProjectionElem<'tcx>],
+fn convert_to_hir_projections_and_truncate_for_capture(
+    mir_projections: &[PlaceElem<'_>],
 ) -> Vec<HirProjectionKind> {
     let mut hir_projections = Vec::new();
     let mut variant = None;
@@ -157,7 +156,7 @@ fn is_ancestor_or_same_capture(
 fn find_capture_matching_projections<'a, 'tcx>(
     upvars: &'a CaptureMap<'tcx>,
     var_hir_id: LocalVarId,
-    projections: &[UpvarProjectionElem<'tcx>],
+    projections: &[PlaceElem<'tcx>],
 ) -> Option<(usize, &'a Capture<'tcx>)> {
     let hir_projections = convert_to_hir_projections_and_truncate_for_capture(projections);
 
@@ -175,7 +174,7 @@ fn to_upvars_resolved_place_builder<'tcx>(
     cx: &Builder<'_, 'tcx>,
     var_hir_id: LocalVarId,
     closure_def_id: LocalDefId,
-    projection: &[UpvarProjectionElem<'tcx>],
+    projection: &[PlaceElem<'tcx>],
 ) -> Option<PlaceBuilder<'tcx>> {
     let Some((capture_index, capture)) =
         find_capture_matching_projections(
@@ -197,32 +196,23 @@ fn to_upvars_resolved_place_builder<'tcx>(
                 var_hir_id, projection,
             );
         }
-
         return None;
     };
 
     // Access the capture by accessing the field within the Closure struct.
     let capture_info = &cx.upvars[capture_index];
 
-    let Place { local: upvar_resolved_local, projection: local_projection } =
-        capture_info.use_place;
+    let mut upvar_resolved_place_builder = PlaceBuilder::from(capture_info.use_place);
 
     // We used some of the projections to build the capture itself,
     // now we apply the remaining to the upvar resolved place.
-    let upvar_projection = strip_prefix(
+    trace!(?capture.captured_place, ?projection);
+    let remaining_projections = strip_prefix(
         capture.captured_place.place.base_ty,
         projection,
         &capture.captured_place.place.projections,
     );
-
-    let upvar_resolved_place_builder = PlaceBuilder::construct_local_place_builder(
-        cx,
-        upvar_resolved_local,
-        local_projection.as_slice(),
-        upvar_projection,
-    );
-
-    assert!(matches!(upvar_resolved_place_builder, PlaceBuilder::Local { .. }));
+    upvar_resolved_place_builder.projection.extend(remaining_projections);
 
     Some(upvar_resolved_place_builder)
 }
@@ -235,17 +225,15 @@ fn to_upvars_resolved_place_builder<'tcx>(
 /// projection kinds are unsupported.
 fn strip_prefix<'a, 'tcx>(
     mut base_ty: Ty<'tcx>,
-    projections: &'a [UpvarProjectionElem<'tcx>],
+    projections: &'a [PlaceElem<'tcx>],
     prefix_projections: &[HirProjection<'tcx>],
-) -> impl Iterator<Item = UpvarProjectionElem<'tcx>> + 'a {
+) -> impl Iterator<Item = PlaceElem<'tcx>> + 'a {
     let mut iter = projections
         .iter()
         .copied()
         // Filter out opaque casts, they are unnecessary in the prefix.
         .filter(|elem| !matches!(elem, ProjectionElem::OpaqueCast(..)));
     for projection in prefix_projections {
-        debug!(?projection, ?projection.ty);
-
         match projection.kind {
             HirProjectionKind::Deref => {
                 assert_matches!(iter.next(), Some(ProjectionElem::Deref));
@@ -260,10 +248,8 @@ fn strip_prefix<'a, 'tcx>(
                 bug!("unexpected projection kind: {:?}", projection);
             }
         }
-
         base_ty = projection.ty;
     }
-
     iter
 }
 
@@ -276,9 +262,9 @@ impl<'tcx> PlaceBuilder<'tcx> {
     pub(in crate::build) fn try_to_place(&self, cx: &Builder<'_, 'tcx>) -> Option<Place<'tcx>> {
         let resolved = self.resolve_upvar(cx);
         let builder = resolved.as_ref().unwrap_or(self);
-        let PlaceBuilder::Local{local, ref projection} = builder else { return None };
-        let projection = cx.tcx.intern_place_elems(projection);
-        Some(Place { local: *local, projection })
+        let PlaceBase::Local(local) = builder.base else { return None };
+        let projection = cx.tcx.intern_place_elems(&builder.projection);
+        Some(Place { local, projection })
     }
 
     /// Attempts to resolve the `PlaceBuilder`.
@@ -295,31 +281,22 @@ impl<'tcx> PlaceBuilder<'tcx> {
         &self,
         cx: &Builder<'_, 'tcx>,
     ) -> Option<PlaceBuilder<'tcx>> {
-        let PlaceBuilder::Upvar{ upvar: Upvar {var_hir_id, closure_def_id }, projection} = self else {
+        let PlaceBase::Upvar { var_hir_id, closure_def_id } = self.base else {
             return None;
         };
-
-        to_upvars_resolved_place_builder(cx, *var_hir_id, *closure_def_id, &projection)
+        to_upvars_resolved_place_builder(cx, var_hir_id, closure_def_id, &self.projection)
     }
 
-    #[instrument(skip(cx), level = "debug")]
-    pub(crate) fn field(self, cx: &Builder<'_, 'tcx>, f: Field) -> Self {
-        match self.clone() {
-            PlaceBuilder::Local { local, projection } => {
-                let base_place = PlaceBuilder::Local { local, projection };
-                let PlaceTy { ty, variant_index } =
-                    base_place.to_place(cx).ty(&cx.local_decls, cx.tcx);
-                let base_ty = cx.tcx.normalize_erasing_regions(cx.param_env, ty);
+    pub(crate) fn base(&self) -> PlaceBase {
+        self.base
+    }
 
-                let field_ty = PlaceBuilder::compute_field_ty(cx, f, base_ty, variant_index);
+    pub(crate) fn projection(&self) -> &[PlaceElem<'tcx>] {
+        &self.projection
+    }
 
-                self.project(ProjectionElem::Field(f, field_ty))
-            }
-            PlaceBuilder::Upvar { upvar, mut projection } => {
-                projection.push(ProjectionElem::Field(f, ()));
-                PlaceBuilder::Upvar { upvar, projection }
-            }
-        }
+    pub(crate) fn field(self, f: Field, ty: Ty<'tcx>) -> Self {
+        self.project(PlaceElem::Field(f, ty))
     }
 
     pub(crate) fn deref(self) -> Self {
@@ -334,236 +311,35 @@ impl<'tcx> PlaceBuilder<'tcx> {
         self.project(PlaceElem::Index(index))
     }
 
-    #[instrument(level = "debug")]
-    pub(crate) fn project(self, elem: PlaceElem<'tcx>) -> Self {
-        let result = match self {
-            PlaceBuilder::Local { local, mut projection } => {
-                projection.push(elem);
-                PlaceBuilder::Local { local, projection }
-            }
-            PlaceBuilder::Upvar { upvar, mut projection } => {
-                projection.push(elem.into());
-                PlaceBuilder::Upvar { upvar, projection }
-            }
-        };
-
-        debug!(?result);
-        result
+    pub(crate) fn project(mut self, elem: PlaceElem<'tcx>) -> Self {
+        self.projection.push(elem);
+        self
     }
 
     /// Same as `.clone().project(..)` but more efficient
     pub(crate) fn clone_project(&self, elem: PlaceElem<'tcx>) -> Self {
-        match self {
-            PlaceBuilder::Local { local, projection } => PlaceBuilder::Local {
-                local: *local,
-                projection: Vec::from_iter(projection.iter().copied().chain([elem])),
-            },
-            PlaceBuilder::Upvar { upvar, projection } => PlaceBuilder::Upvar {
-                upvar: *upvar,
-                projection: Vec::from_iter(projection.iter().copied().chain([elem.into()])),
-            },
+        Self {
+            base: self.base,
+            projection: Vec::from_iter(self.projection.iter().copied().chain([elem])),
         }
-    }
-
-    /// Similar to `Place::ty` but needed during mir building.
-    ///
-    /// Applies the projections in the `PlaceBuilder` to the base
-    /// type.
-    ///
-    /// Fallible as the root of this place may be an upvar for
-    /// which no base type can be determined.
-    #[instrument(skip(cx), level = "debug")]
-    fn compute_field_ty(
-        cx: &Builder<'_, 'tcx>,
-        field: Field,
-        base_ty: Ty<'tcx>,
-        variant_index: Option<VariantIdx>,
-    ) -> Ty<'tcx> {
-        let field_idx = field.as_usize();
-        let field_ty = match base_ty.kind() {
-            ty::Adt(adt_def, substs) if adt_def.is_enum() => {
-                let variant_idx = variant_index.unwrap();
-                adt_def.variant(variant_idx).fields[field_idx].ty(cx.tcx, substs)
-            }
-            ty::Adt(adt_def, substs) => adt_def
-                .all_fields()
-                .nth(field_idx)
-                .unwrap_or_else(|| {
-                    bug!(
-                        "expected to take field with idx {:?} of fields of {:?}",
-                        field_idx,
-                        adt_def
-                    )
-                })
-                .ty(cx.tcx, substs),
-            ty::Tuple(elems) => elems.iter().nth(field_idx).unwrap_or_else(|| {
-                bug!("expected to take field with idx {:?} of {:?}", field_idx, elems)
-            }),
-            ty::Closure(_, substs) => {
-                let substs = substs.as_closure();
-                let Some(f_ty) = substs.upvar_tys().nth(field_idx) else {
-                    bug!("expected to take field with idx {:?} of {:?}", field_idx, substs.upvar_tys().collect::<Vec<_>>());
-                };
-
-                f_ty
-            }
-            &ty::Generator(def_id, substs, _) => {
-                if let Some(var) = variant_index {
-                    let gen_body = cx.tcx.optimized_mir(def_id);
-                    let Some(layout) = gen_body.generator_layout() else {
-                        bug!("No generator layout for {:?}", base_ty);
-                    };
-
-                    let Some(&local) = layout.variant_fields[var].get(field) else {
-                        bug!("expected to take field {:?} of {:?}", field, layout.variant_fields[var]);
-                    };
-
-                    let Some(&f_ty) = layout.field_tys.get(local) else {
-                        bug!("expected to get element for {:?} in {:?}", local, layout.field_tys);
-                    };
-
-                    f_ty
-                } else {
-                    let Some(f_ty) = substs.as_generator().prefix_tys().nth(field.index()) else {
-                        bug!(
-                            "expected to take index {:?} in {:?}",
-                            field.index(),
-                            substs.as_generator().prefix_tys().collect::<Vec<_>>()
-                        );
-                    };
-
-                    f_ty
-                }
-            }
-            _ => bug!("couldn't create field type, unexpected base type: {:?}", base_ty),
-        };
-
-        cx.tcx.normalize_erasing_regions(cx.param_env, field_ty)
-    }
-
-    /// Creates a `PlaceBuilder::Local` from a `PlaceBuilder::Upvar` whose upvars
-    /// are resolved. This function takes two kinds of projections: `local_projection`
-    /// contains the projections of the captured upvar and `upvar_projection` the
-    /// projections that are applied to the captured upvar. The main purpose of this
-    /// function is to figure out the `Ty`s of the field projections in `upvar_projection`.
-    #[instrument(skip(cx, local, upvar_projection))]
-    fn construct_local_place_builder(
-        cx: &Builder<'_, 'tcx>,
-        local: Local,
-        local_projection: &[PlaceElem<'tcx>],
-        upvar_projection: impl Iterator<Item = UpvarProjectionElem<'tcx>>,
-    ) -> Self {
-        // We maintain a `Ty` to which we apply a projection in each iteration over `upvar_projection`.
-        // This `ancestor_ty` let's us infer the field type whenever we encounter a
-        // `ProjectionElem::Field`.
-        let (mut ancestor_ty, mut opt_variant_idx) =
-            local_projections_to_ty(cx, local, local_projection);
-
-        // We add all projection elements we encounter to this `Vec`.
-        let mut local_projection = local_projection.to_vec();
-
-        for (i, proj) in upvar_projection.enumerate() {
-            debug!("i: {:?}, proj: {:?}, local_projection: {:?}", i, proj, local_projection);
-            match proj {
-                ProjectionElem::Field(field, _) => {
-                    let field_ty =
-                        PlaceBuilder::compute_field_ty(cx, field, ancestor_ty, opt_variant_idx);
-                    debug!(?field_ty);
-
-                    local_projection.push(ProjectionElem::Field(field, field_ty));
-                    ancestor_ty = field_ty;
-                    opt_variant_idx = None;
-                }
-                _ => {
-                    let proj = upvar_proj_to_place_elem_no_field_proj(proj);
-                    (ancestor_ty, opt_variant_idx) = project_ty(cx.tcx, ancestor_ty, proj);
-                    local_projection.push(proj);
-                }
-            }
-        }
-
-        PlaceBuilder::Local { local, projection: local_projection }
     }
 }
 
 impl<'tcx> From<Local> for PlaceBuilder<'tcx> {
     fn from(local: Local) -> Self {
-        Self::Local { local, projection: Vec::new() }
+        Self { base: PlaceBase::Local(local), projection: Vec::new() }
+    }
+}
+
+impl<'tcx> From<PlaceBase> for PlaceBuilder<'tcx> {
+    fn from(base: PlaceBase) -> Self {
+        Self { base, projection: Vec::new() }
     }
 }
 
 impl<'tcx> From<Place<'tcx>> for PlaceBuilder<'tcx> {
     fn from(p: Place<'tcx>) -> Self {
-        Self::Local { local: p.local, projection: p.projection.to_vec() }
-    }
-}
-
-fn project_ty<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    ty: Ty<'tcx>,
-    elem: PlaceElem<'tcx>,
-) -> (Ty<'tcx>, Option<VariantIdx>) {
-    match elem {
-        ProjectionElem::Deref => {
-            let updated_ty = ty
-                .builtin_deref(true)
-                .unwrap_or_else(|| bug!("deref projection of non-dereferenceable ty {:?}", ty))
-                .ty;
-
-            (updated_ty, None)
-        }
-        ProjectionElem::Index(_) | ProjectionElem::ConstantIndex { .. } => {
-            (ty.builtin_index().unwrap(), None)
-        }
-        ProjectionElem::Subslice { from, to, from_end } => {
-            let ty = match ty.kind() {
-                ty::Slice(..) => ty,
-                ty::Array(inner, _) if !from_end => tcx.mk_array(*inner, (to - from) as u64),
-                ty::Array(inner, size) if from_end => {
-                    let size = size.eval_usize(tcx, ty::ParamEnv::empty());
-                    let len = size - (from as u64) - (to as u64);
-                    tcx.mk_array(*inner, len)
-                }
-                _ => bug!("cannot subslice non-array type: `{:?}`", ty),
-            };
-
-            (ty, None)
-        }
-        ProjectionElem::Downcast(_, variant_idx) => (ty, Some(variant_idx)),
-        ProjectionElem::Field(_, ty) => (ty, None),
-        ProjectionElem::OpaqueCast(..) => bug!("didn't expect OpaqueCast"),
-    }
-}
-
-fn local_projections_to_ty<'a, 'tcx>(
-    cx: &'a Builder<'a, 'tcx>,
-    local: Local,
-    projection: &'a [PlaceElem<'tcx>],
-) -> (Ty<'tcx>, Option<VariantIdx>) {
-    let local_ty = cx.local_decls.local_decls()[local].ty;
-    projection.iter().fold((local_ty, None), |ty_variant_idx, elem| {
-        let ty = ty_variant_idx.0;
-        project_ty(cx.tcx, ty, *elem)
-    })
-}
-
-// Converts an `UpvarProjectionElem` to `PlaceElem`, ICE'ing when being passed a
-// field projection.
-fn upvar_proj_to_place_elem_no_field_proj<'tcx>(
-    upvar_proj: UpvarProjectionElem<'tcx>,
-) -> PlaceElem<'tcx> {
-    match upvar_proj {
-        ProjectionElem::Deref => ProjectionElem::Deref,
-        ProjectionElem::Index(i) => ProjectionElem::Index(i),
-        ProjectionElem::ConstantIndex { offset, min_length, from_end } => {
-            ProjectionElem::ConstantIndex { offset, min_length, from_end }
-        }
-        ProjectionElem::Subslice { from, to, from_end } => {
-            ProjectionElem::Subslice { from, to, from_end }
-        }
-        ProjectionElem::Downcast(ty, variant_idx) => ProjectionElem::Downcast(ty, variant_idx),
-        ProjectionElem::OpaqueCast(ty) => ProjectionElem::OpaqueCast(ty),
-        ProjectionElem::Field(..) => bug!("should not be called with `ProjectionElem::Field`"),
+        Self { base: PlaceBase::Local(p.local), projection: p.projection.to_vec() }
     }
 }
 
@@ -627,7 +403,6 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.expr_as_place(block, expr, Mutability::Not, None)
     }
 
-    #[instrument(skip(self, fake_borrow_temps), level = "debug")]
     fn expr_as_place(
         &mut self,
         mut block: BasicBlock,
@@ -635,6 +410,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         mutability: Mutability,
         fake_borrow_temps: Option<&mut Vec<Local>>,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
+        debug!("expr_as_place(block={:?}, expr={:?}, mutability={:?})", block, expr, mutability);
+
         let this = self;
         let expr_span = expr.span;
         let source_info = this.source_info(expr_span);
@@ -648,13 +425,12 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 let lhs = &this.thir[lhs];
                 let mut place_builder =
                     unpack!(block = this.expr_as_place(block, lhs, mutability, fake_borrow_temps,));
-                debug!(?place_builder);
                 if let ty::Adt(adt_def, _) = lhs.ty.kind() {
                     if adt_def.is_enum() {
                         place_builder = place_builder.downcast(*adt_def, variant_index);
                     }
                 }
-                block.and(place_builder.field(this, name))
+                block.and(place_builder.field(name, expr.ty))
             }
             ExprKind::Deref { arg } => {
                 let place_builder = unpack!(
@@ -796,7 +572,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     }
 
     /// Lower a captured upvar. Note we might not know the actual capture index,
-    /// so we create a place starting from `Upvar`, which will be resolved
+    /// so we create a place starting from `PlaceBase::Upvar`, which will be resolved
     /// once all projections that allow us to identify a capture have been applied.
     fn lower_captured_upvar(
         &mut self,
@@ -804,10 +580,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         closure_def_id: LocalDefId,
         var_hir_id: LocalVarId,
     ) -> BlockAnd<PlaceBuilder<'tcx>> {
-        block.and(PlaceBuilder::Upvar {
-            upvar: Upvar { var_hir_id, closure_def_id },
-            projection: vec![],
-        })
+        block.and(PlaceBuilder::from(PlaceBase::Upvar { var_hir_id, closure_def_id }))
     }
 
     /// Lower an index expression
@@ -898,8 +671,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         source_info: SourceInfo,
     ) {
         let tcx = self.tcx;
-        let place_ty = base_place.ty(&self.local_decls, tcx);
 
+        let place_ty = base_place.ty(&self.local_decls, tcx);
         if let ty::Slice(_) = place_ty.ty.kind() {
             // We need to create fake borrows to ensure that the bounds
             // check that we just did stays valid. Since we can't assign to

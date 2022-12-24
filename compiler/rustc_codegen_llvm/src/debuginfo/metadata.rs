@@ -111,7 +111,7 @@ macro_rules! return_if_di_node_created_in_meantime {
 
 /// Extract size and alignment from a TyAndLayout.
 #[inline]
-fn size_and_align_of<'tcx>(ty_and_layout: TyAndLayout<'tcx>) -> (Size, Align) {
+fn size_and_align_of(ty_and_layout: TyAndLayout<'_>) -> (Size, Align) {
     (ty_and_layout.size, ty_and_layout.align.abi)
 }
 

@@ -71,8 +71,14 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_predicate_entailment(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)
-    {
+    if let Err(_) = compare_predicate_entailment(
+        tcx,
+        impl_m,
+        impl_m_span,
+        trait_m,
+        impl_trait_ref,
+        CheckImpliedWfMode::Check,
+    ) {
         return;
     }
 }
@@ -150,6 +156,7 @@ fn compare_predicate_entailment<'tcx>(
     impl_m_span: Span,
     trait_m: &ty::AssocItem,
     impl_trait_ref: ty::TraitRef<'tcx>,
+    check_implied_wf: CheckImpliedWfMode,
 ) -> Result<(), ErrorGuaranteed> {
     let trait_to_impl_substs = impl_trait_ref.substs;
 
@@ -255,15 +262,15 @@ fn compare_predicate_entailment<'tcx>(
 
     let mut wf_tys = FxIndexSet::default();
 
-    let impl_sig = infcx.replace_bound_vars_with_fresh_vars(
+    let unnormalized_impl_sig = infcx.replace_bound_vars_with_fresh_vars(
         impl_m_span,
         infer::HigherRankedType,
         tcx.fn_sig(impl_m.def_id),
     );
+    let unnormalized_impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(unnormalized_impl_sig));
 
     let norm_cause = ObligationCause::misc(impl_m_span, impl_m_hir_id);
-    let impl_sig = ocx.normalize(&norm_cause, param_env, impl_sig);
-    let impl_fty = tcx.mk_fn_ptr(ty::Binder::dummy(impl_sig));
+    let impl_fty = ocx.normalize(&norm_cause, param_env, unnormalized_impl_fty);
     debug!("compare_impl_method: impl_fty={:?}", impl_fty);
 
     let trait_sig = tcx.bound_fn_sig(trait_m.def_id).subst(tcx, trait_to_placeholder_substs);
@@ -304,27 +311,106 @@ fn compare_predicate_entailment<'tcx>(
         return Err(emitted);
     }
 
+    if check_implied_wf == CheckImpliedWfMode::Check {
+        // We need to check that the impl's args are well-formed given
+        // the hybrid param-env (impl + trait method where-clauses).
+        ocx.register_obligation(traits::Obligation::new(
+            infcx.tcx,
+            ObligationCause::dummy(),
+            param_env,
+            ty::Binder::dummy(ty::PredicateKind::WellFormed(unnormalized_impl_fty.into())),
+        ));
+    }
+    let emit_implied_wf_lint = || {
+        infcx.tcx.struct_span_lint_hir(
+            rustc_session::lint::builtin::IMPLIED_BOUNDS_ENTAILMENT,
+            impl_m_hir_id,
+            infcx.tcx.def_span(impl_m.def_id),
+            "impl method assumes more implied bounds than the corresponding trait method",
+            |lint| lint,
+        );
+    };
+
     // Check that all obligations are satisfied by the implementation's
     // version.
     let errors = ocx.select_all_or_error();
     if !errors.is_empty() {
-        let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
-        return Err(reported);
+        match check_implied_wf {
+            CheckImpliedWfMode::Check => {
+                return compare_predicate_entailment(
+                    tcx,
+                    impl_m,
+                    impl_m_span,
+                    trait_m,
+                    impl_trait_ref,
+                    CheckImpliedWfMode::Skip,
+                )
+                .map(|()| {
+                    // If the skip-mode was successful, emit a lint.
+                    emit_implied_wf_lint();
+                });
+            }
+            CheckImpliedWfMode::Skip => {
+                let reported = infcx.err_ctxt().report_fulfillment_errors(&errors, None);
+                return Err(reported);
+            }
+        }
     }
 
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
-    let outlives_environment = OutlivesEnvironment::with_bounds(
+    let outlives_env = OutlivesEnvironment::with_bounds(
         param_env,
         Some(infcx),
-        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
+        infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys.clone()),
     );
-    infcx.check_region_obligations_and_report_errors(
-        impl_m.def_id.expect_local(),
-        &outlives_environment,
+    infcx.process_registered_region_obligations(
+        outlives_env.region_bound_pairs(),
+        outlives_env.param_env,
     );
+    let errors = infcx.resolve_regions(&outlives_env);
+    if !errors.is_empty() {
+        // FIXME(compiler-errors): This can be simplified when IMPLIED_BOUNDS_ENTAILMENT
+        // becomes a hard error (i.e. ideally we'd just call `resolve_regions_and_report_errors`
+        match check_implied_wf {
+            CheckImpliedWfMode::Check => {
+                return compare_predicate_entailment(
+                    tcx,
+                    impl_m,
+                    impl_m_span,
+                    trait_m,
+                    impl_trait_ref,
+                    CheckImpliedWfMode::Skip,
+                )
+                .map(|()| {
+                    // If the skip-mode was successful, emit a lint.
+                    emit_implied_wf_lint();
+                });
+            }
+            CheckImpliedWfMode::Skip => {
+                if infcx.tainted_by_errors().is_none() {
+                    infcx.err_ctxt().report_region_errors(impl_m.def_id.expect_local(), &errors);
+                }
+                return Err(tcx
+                    .sess
+                    .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"));
+            }
+        }
+    }
 
     Ok(())
+}
+
+#[derive(Debug, PartialEq, Eq)]
+enum CheckImpliedWfMode {
+    /// Checks implied well-formedness of the impl method. If it fails, we will
+    /// re-check with `Skip`, and emit a lint if it succeeds.
+    Check,
+    /// Skips checking implied well-formedness of the impl method, but will emit
+    /// a lint if the `compare_predicate_entailment` succeeded. This means that
+    /// the reason that we had failed earlier during `Check` was due to the impl
+    /// having stronger requirements than the trait.
+    Skip,
 }
 
 fn compare_asyncness<'tcx>(
@@ -1431,8 +1517,8 @@ fn compare_generic_param_kinds<'tcx>(
 }
 
 /// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
-pub(crate) fn raw_compare_const_impl<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn raw_compare_const_impl(
+    tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
     let impl_const_item = tcx.associated_item(impl_const_item_def);

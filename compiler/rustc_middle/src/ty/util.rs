@@ -3,6 +3,7 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::mir;
 use crate::ty::layout::IntegerExt;
+use crate::ty::query::TyCtxtAt;
 use crate::ty::{
     self, DefIdTree, FallibleTypeFolder, Ty, TyCtxt, TypeFoldable, TypeFolder, TypeSuperFoldable,
     TypeVisitable,
@@ -769,6 +770,12 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 }
 
+impl<'tcx> TyCtxtAt<'tcx> {
+    pub fn bound_type_of(self, def_id: DefId) -> ty::EarlyBinder<Ty<'tcx>> {
+        ty::EarlyBinder(self.type_of(def_id))
+    }
+}
+
 struct OpaqueTypeExpander<'tcx> {
     // Contains the DefIds of the opaque types that are currently being
     // expanded. When we expand an opaque type we insert the DefId of
@@ -1241,7 +1248,7 @@ pub fn needs_drop_components<'tcx>(
     }
 }
 
-pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
+pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
     match *ty.kind() {
         ty::Bool
         | ty::Char

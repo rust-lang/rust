@@ -483,7 +483,16 @@ impl LintStore {
             return CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)));
         }
         // ...if not, search for lints with a similar name
-        let groups = self.lint_groups.keys().copied().map(Symbol::intern);
+        // Note: find_best_match_for_name depends on the sort order of its input vector.
+        // To ensure deterministic output, sort elements of the lint_groups hash map.
+        // Also, never suggest deprecated lint groups.
+        let mut groups: Vec<_> = self
+            .lint_groups
+            .iter()
+            .filter_map(|(k, LintGroup { depr, .. })| if depr.is_none() { Some(k) } else { None })
+            .collect();
+        groups.sort();
+        let groups = groups.iter().map(|k| Symbol::intern(k));
         let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
         let names: Vec<Symbol> = groups.chain(lints).collect();
         let suggestion = find_best_match_for_name(&names, Symbol::intern(&name_lower), None);

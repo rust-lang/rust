@@ -23,6 +23,35 @@ use std::cmp::min;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn emit_type_mismatch_suggestions(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        _error: Option<TypeError<'tcx>>,
+    ) {
+        if expr_ty == expected {
+            return;
+        }
+
+        // Use `||` to give these suggestions a precedence
+        let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
+            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
+            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
+            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_into(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
+    }
+
     pub fn emit_coerce_suggestions(
         &self,
         err: &mut Diagnostic,
@@ -37,21 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
-
-        // Use `||` to give these suggestions a precedence
-        let _ = self.suggest_missing_parentheses(err, expr)
-            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
-            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
-            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
-            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
-            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
-            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
-            || self.suggest_into(err, expr, expr_ty, expected)
-            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
-            || self.suggest_floating_point_literal(err, expr, expected);
-
+        self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);

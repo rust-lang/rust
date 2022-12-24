@@ -1293,7 +1293,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("linux", "readdir64");
 
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+        let dirp = this.read_machine_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1385,7 +1385,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         this.assert_target_os("macos", "readdir_r");
 
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+        let dirp = this.read_machine_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1478,7 +1478,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn closedir(&mut self, dirp_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx, i32> {
         let this = self.eval_context_mut();
 
-        let dirp = this.read_scalar(dirp_op)?.to_machine_usize(this)?;
+        let dirp = this.read_machine_usize(dirp_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {
@@ -1642,7 +1642,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let pathname = this.read_path_from_c_str(this.read_pointer(pathname_op)?)?;
         let buf = this.read_pointer(buf_op)?;
-        let bufsize = this.read_scalar(bufsize_op)?.to_machine_usize(this)?;
+        let bufsize = this.read_machine_usize(bufsize_op)?;
 
         // Reject if isolation is enabled.
         if let IsolatedOp::Reject(reject_with) = this.machine.isolated_op {

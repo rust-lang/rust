@@ -30,7 +30,7 @@ use std::ffi::CString;
 /// implementing this Rust version, and though the format documentation is very explicit and
 /// detailed, some undocumented details in Clang's implementation (that may or may not be important)
 /// were also replicated for Rust's Coverage Map.
-pub fn finalize<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+pub fn finalize(cx: &CodegenCx<'_, '_>) {
     let tcx = cx.tcx;
 
     // Ensure the installed version of LLVM supports at least Coverage Map
@@ -284,7 +284,7 @@ fn save_function_record(
 /// "code coverage dead code cgu" during the partitioning process. This prevents us from generating
 /// code regions for the same function more than once which can lead to linker errors regarding
 /// duplicate symbols.
-fn add_unused_functions<'ll, 'tcx>(cx: &CodegenCx<'ll, 'tcx>) {
+fn add_unused_functions(cx: &CodegenCx<'_, '_>) {
     assert!(cx.codegen_unit.is_code_coverage_dead_code_cgu());
 
     let tcx = cx.tcx;

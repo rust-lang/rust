@@ -1,5 +1,5 @@
-- // MIR for `match_guard` before CleanupNonCodegenStatements
-+ // MIR for `match_guard` after CleanupNonCodegenStatements
+- // MIR for `match_guard` before CleanupPostBorrowck
++ // MIR for `match_guard` after CleanupPostBorrowck
   
   fn match_guard(_1: Option<&&i32>, _2: bool) -> i32 {
       debug x => _1;                       // in scope 0 at $DIR/remove_fake_borrows.rs:+0:16: +0:17
@@ -29,7 +29,8 @@
       }
   
       bb3: {
-          goto -> bb4;                     // scope 0 at $DIR/remove_fake_borrows.rs:+2:9: +2:16
+-         falseEdge -> [real: bb4, imaginary: bb1]; // scope 0 at $DIR/remove_fake_borrows.rs:+2:9: +2:16
++         goto -> bb4;                     // scope 0 at $DIR/remove_fake_borrows.rs:+2:9: +2:16
       }
   
       bb4: {
@@ -62,15 +63,12 @@
   
       bb6: {
           StorageDead(_8);                 // scope 0 at $DIR/remove_fake_borrows.rs:+2:20: +2:21
-          goto -> bb1;                     // scope 0 at $DIR/remove_fake_borrows.rs:+2:20: +2:21
+-         falseEdge -> [real: bb1, imaginary: bb1]; // scope 0 at $DIR/remove_fake_borrows.rs:+2:20: +2:21
++         goto -> bb1;                     // scope 0 at $DIR/remove_fake_borrows.rs:+2:20: +2:21
       }
   
       bb7: {
           return;                          // scope 0 at $DIR/remove_fake_borrows.rs:+5:2: +5:2
-      }
-  
-      bb8 (cleanup): {
-          resume;                          // scope 0 at $DIR/remove_fake_borrows.rs:+0:1: +5:2
       }
   }
   

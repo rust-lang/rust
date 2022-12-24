@@ -1153,16 +1153,23 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         category: ConstraintCategory<'tcx>,
     ) -> Fallible<()> {
         let annotated_type = self.user_type_annotations[user_ty.base].inferred_ty;
+        trace!(?annotated_type);
         let mut curr_projected_ty = PlaceTy::from_ty(annotated_type);
 
         let tcx = self.infcx.tcx;
 
         for proj in &user_ty.projs {
+            if let ty::Alias(ty::Opaque, ..) = curr_projected_ty.ty.kind() {
+                // There is nothing that we can compare here if we go through an opaque type.
+                // We're always in its defining scope as we can otherwise not project through
+                // it, so we're constraining it anyways.
+                return Ok(());
+            }
             let projected_ty = curr_projected_ty.projection_ty_core(
                 tcx,
                 self.param_env,
                 proj,
-                |this, field, _| {
+                |this, field, ()| {
                     let ty = this.field_ty(tcx, field);
                     self.normalize(ty, locations)
                 },
@@ -1170,10 +1177,7 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             );
             curr_projected_ty = projected_ty;
         }
-        debug!(
-            "user_ty base: {:?} freshened: {:?} projs: {:?} yields: {:?}",
-            user_ty.base, annotated_type, user_ty.projs, curr_projected_ty
-        );
+        trace!(?curr_projected_ty);
 
         let ty = curr_projected_ty.ty;
         self.relate_types(ty, v.xform(ty::Variance::Contravariant), a, locations, category)?;

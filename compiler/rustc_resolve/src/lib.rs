@@ -1686,6 +1686,24 @@ impl<'a> Resolver<'a> {
             .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
+    /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
+    fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
+        for ambiguity_error in &self.ambiguity_errors {
+            // if the span location and ident as well as its span are the same
+            if ambiguity_error.kind == ambi.kind
+                && ambiguity_error.ident == ambi.ident
+                && ambiguity_error.ident.span == ambi.ident.span
+                && ambiguity_error.b1.span == ambi.b1.span
+                && ambiguity_error.b2.span == ambi.b2.span
+                && ambiguity_error.misc1 == ambi.misc1
+                && ambiguity_error.misc2 == ambi.misc2
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     fn record_use(
         &mut self,
         ident: Ident,
@@ -1693,14 +1711,18 @@ impl<'a> Resolver<'a> {
         is_lexical_scope: bool,
     ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
-            self.ambiguity_errors.push(AmbiguityError {
+            let ambiguity_error = AmbiguityError {
                 kind,
                 ident,
                 b1: used_binding,
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
-            });
+            };
+            if !self.matches_previous_ambiguity_error(&ambiguity_error) {
+                // avoid dumplicated span information to be emitt out
+                self.ambiguity_errors.push(ambiguity_error);
+            }
         }
         if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,

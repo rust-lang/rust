@@ -202,6 +202,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
@@ -795,7 +796,7 @@ impl Build {
     /// Gets the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self, target: TargetSelection) -> String {
-        let mut features = "panic-unwind".to_string();
+        let mut features = " panic-unwind".to_string();
 
         match self.config.llvm_libunwind(target) {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),

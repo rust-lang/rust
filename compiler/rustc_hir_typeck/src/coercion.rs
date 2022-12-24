@@ -118,7 +118,7 @@ fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
     vec![]
 }
 
-fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
+fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'_>> {
     move |target| vec![Adjustment { kind, target }]
 }
 

@@ -4,7 +4,7 @@ use super::{Expectation, FnCtxt, TupleArgumentsFlag};
 
 use crate::type_error_struct;
 use rustc_ast::util::parser::PREC_POSTFIX;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, StashKey};
+use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, StashKey};
 use rustc_hir as hir;
 use rustc_hir::def::{self, CtorKind, Namespace, Res};
 use rustc_hir::def_id::DefId;
@@ -399,6 +399,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             ty::FnPtr(sig) => (sig, None),
             _ => {
+                for arg in arg_exprs {
+                    self.check_expr(arg);
+                }
+
                 if let hir::ExprKind::Path(hir::QPath::Resolved(_, path)) = &callee_expr.kind
                     && let [segment] = path.segments
                     && let Some(mut diag) = self
@@ -424,21 +428,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
 
-                self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
+                let err = self.report_invalid_callee(call_expr, callee_expr, callee_ty, arg_exprs);
 
-                // This is the "default" function signature, used in case of error.
-                // In that case, we check each argument against "error" in order to
-                // set up all the node type bindings.
-                (
-                    ty::Binder::dummy(self.tcx.mk_fn_sig(
-                        self.err_args(arg_exprs.len()).into_iter(),
-                        self.tcx.ty_error(),
-                        false,
-                        hir::Unsafety::Normal,
-                        abi::Abi::Rust,
-                    )),
-                    None,
-                )
+                return self.tcx.ty_error_with_guaranteed(err);
             }
         };
 
@@ -498,7 +490,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Option<Ty<'tcx>> {
         if let [callee_expr, rest @ ..] = arg_exprs {
-            let callee_ty = self.check_expr(callee_expr);
+            let callee_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(callee_expr)?;
+
             // First, do a probe with `IsSuggestion(true)` to avoid emitting
             // any strange errors. If it's successful, then we'll do a true
             // method lookup.
@@ -591,7 +584,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         callee_expr: &'tcx hir::Expr<'tcx>,
         callee_ty: Ty<'tcx>,
         arg_exprs: &'tcx [hir::Expr<'tcx>],
-    ) {
+    ) -> ErrorGuaranteed {
         let mut unit_variant = None;
         if let hir::ExprKind::Path(qpath) = &callee_expr.kind
             && let Res::Def(def::DefKind::Ctor(kind, CtorKind::Const), _)
@@ -720,7 +713,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.span_label(span, label);
             }
         }
-        err.emit();
+        err.emit()
     }
 
     fn confirm_deferred_closure_call(

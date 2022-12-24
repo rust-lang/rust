@@ -96,6 +96,10 @@ impl Step for Profile {
     }
 
     fn make_run(run: RunConfig<'_>) {
+        if run.builder.config.dry_run() {
+            return;
+        }
+
         // for Profile, `run.paths` will have 1 and only 1 element
         // this is because we only accept at most 1 path from user input.
         // If user calls `x.py setup` without arguments, the interactive TUI

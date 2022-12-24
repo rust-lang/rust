@@ -404,12 +404,23 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
         Ok(self.read_immediate(op)?.to_scalar())
     }
 
+    // Pointer-sized reads are fairly common and need target layout access, so we wrap them in
+    // convenience functions.
+
     /// Read a pointer from a place.
     pub fn read_pointer(
         &self,
         op: &OpTy<'tcx, M::Provenance>,
     ) -> InterpResult<'tcx, Pointer<Option<M::Provenance>>> {
         self.read_scalar(op)?.to_pointer(self)
+    }
+    /// Read a pointer-sized unsigned integer from a place.
+    pub fn read_machine_usize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, u64> {
+        self.read_scalar(op)?.to_machine_usize(self)
+    }
+    /// Read a pointer-sized signed integer from a place.
+    pub fn read_machine_isize(&self, op: &OpTy<'tcx, M::Provenance>) -> InterpResult<'tcx, i64> {
+        self.read_scalar(op)?.to_machine_isize(self)
     }
 
     /// Turn the wide MPlace into a string (must already be dereferenced!)
@@ -566,8 +577,10 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             ty::ConstKind::Unevaluated(uv) => {
                 let instance = self.resolve(uv.def, uv.substs)?;
                 let cid = GlobalId { instance, promoted: None };
-                self.ctfe_query(span, |tcx| tcx.eval_to_valtree(self.param_env.and(cid)))?
-                    .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
+                self.ctfe_query(span, |tcx| {
+                    tcx.eval_to_valtree(self.param_env.with_const().and(cid))
+                })?
+                .unwrap_or_else(|| bug!("unable to create ValTree for {uv:?}"))
             }
             ty::ConstKind::Bound(..) | ty::ConstKind::Infer(..) => {
                 span_bug!(self.cur_span(), "unexpected ConstKind in ctfe: {val:?}")

@@ -22,7 +22,7 @@ impl FlagComputation {
         result
     }
 
-    pub fn for_predicate<'tcx>(binder: ty::Binder<'tcx, ty::PredicateKind<'_>>) -> FlagComputation {
+    pub fn for_predicate(binder: ty::Binder<'_, ty::PredicateKind<'_>>) -> FlagComputation {
         let mut result = FlagComputation::new();
         result.add_predicate(binder);
         result

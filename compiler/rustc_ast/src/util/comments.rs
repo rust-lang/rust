@@ -51,7 +51,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    fn get_horizontal_trim<'a>(lines: &'a [&str], kind: CommentKind) -> Option<String> {
+    fn get_horizontal_trim(lines: &[&str], kind: CommentKind) -> Option<String> {
         let mut i = usize::MAX;
         let mut first = true;
 

@@ -19,7 +19,7 @@ enum FloatConv {
 #[derive(Copy, Clone)]
 struct CannotUseFpConv;
 
-fn is_loongarch_aggregate<'a, Ty>(arg: &ArgAbi<'a, Ty>) -> bool {
+fn is_loongarch_aggregate<Ty>(arg: &ArgAbi<'_, Ty>) -> bool {
     match arg.layout.abi {
         Abi::Vector { .. } => true,
         _ => arg.layout.is_aggregate(),
@@ -290,7 +290,7 @@ fn classify_arg<'a, Ty, C>(
     }
 }
 
-fn extend_integer_width<'a, Ty>(arg: &mut ArgAbi<'a, Ty>, xlen: u64) {
+fn extend_integer_width<Ty>(arg: &mut ArgAbi<'_, Ty>, xlen: u64) {
     if let Abi::Scalar(scalar) = arg.layout.abi {
         if let abi::Int(i, _) = scalar.primitive() {
             // 32-bit integers are always sign-extended

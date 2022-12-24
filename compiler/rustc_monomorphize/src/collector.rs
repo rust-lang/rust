@@ -595,8 +595,8 @@ fn check_recursion_limit<'tcx>(
         let def_path_str = tcx.def_path_str(def_id);
         let (shrunk, written_to_path) = shrunk_instance_name(tcx, &instance);
         let mut path = PathBuf::new();
-        let was_written = if written_to_path.is_some() {
-            path = written_to_path.unwrap();
+        let was_written = if let Some(written_to_path) = written_to_path {
+            path = written_to_path;
             Some(())
         } else {
             None

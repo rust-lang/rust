@@ -490,10 +490,10 @@ fn check_unused_unsafe(
     unused_unsafes
 }
 
-fn unsafety_check_result<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn unsafety_check_result(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx UnsafetyCheckResult {
+) -> &UnsafetyCheckResult {
     debug!("unsafety_violations({:?})", def);
 
     // N.B., this borrow is valid because all the consumers of

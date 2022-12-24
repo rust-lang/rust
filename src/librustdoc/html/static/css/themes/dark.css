@@ -40,6 +40,7 @@
 	--search-color: #111;
 	--search-results-alias-color: #fff;
 	--search-results-grey-color: #ccc;
+	--search-tab-title-count-color: #888;
 	--stab-background-color: #314559;
 	--stab-code-color: #e6e1cf;
 	--code-highlight-kw-color: #ab8ac1;
@@ -96,10 +97,6 @@
 	background-color: #353535;
 }
 
-#titles > button > div.count {
-	color: #888;
-}
-
 .scraped-example-list .scrape-help {
 	border-color: #aaa;
 	color: #eee;
@@ -114,10 +111,10 @@
 .scraped-example .example-wrap .rust span.highlight.focus {
 	background: rgb(124, 75, 15);
 }
-.scraped-example:not(.expanded) .code-wrapper:before {
+.scraped-example:not(.expanded) .code-wrapper::before {
 	background: linear-gradient(to bottom, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }
-.scraped-example:not(.expanded) .code-wrapper:after {
+.scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }
 .toggle-line-inner {
