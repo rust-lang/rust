@@ -6,11 +6,7 @@ standard library, and documentation.
 [Rust]: https://www.rust-lang.org
 
 **Note: this README is for _users_ rather than _contributors_.
-If you wish to _contribute_ to the compiler, you should read the
-[Getting Started][gettingstarted] section of the rustc-dev-guide instead.
-You can ask for help in the [#new members Zulip stream][new-members].**
-
-[new-members]: https://rust-lang.zulipchat.com/#narrow/stream/122652-new-members
+If you wish to _contribute_ to the compiler, you should read [CONTRIBUTING.md](CONTRIBUTING.md) instead.
 
 ## Quick Start
 
@@ -227,41 +223,20 @@ precompiled "snapshot" version of itself (made in an earlier stage of
 development). As such, source builds require an Internet connection to
 fetch snapshots, and an OS that can execute the available snapshot binaries.
 
-Snapshot binaries are currently built and tested on several platforms:
-
-| Platform / Architecture                     | x86 | x86_64 |
-|---------------------------------------------|-----|--------|
-| Windows (7, 8, 10, ...)                     | ✓   | ✓      |
-| Linux (kernel 3.2, glibc 2.17 or later)     | ✓   | ✓      |
-| macOS (10.7 Lion or later)                  | (\*) | ✓      |
-
-(\*): Apple dropped support for running 32-bit binaries starting from macOS 10.15 and iOS 11.
-Due to this decision from Apple, the targets are no longer useful to our users.
-Please read [our blog post][macx32] for more info.
-
-[macx32]: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
+See https://doc.rust-lang.org/nightly/rustc/platform-support.html for a list of supported platforms.
+Only "host tools" platforms have a pre-compiled snapshot binary available; to compile for a platform
+without host tools you must cross-compile.
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
 ## Getting Help
 
-The Rust community congregates in a few places:
-
-* [Stack Overflow] - Direct questions about using the language.
-* [users.rust-lang.org] - General discussion and broader questions.
-* [/r/rust] - News and general discussion.
-
-[Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
-[/r/rust]: https://reddit.com/r/rust
-[users.rust-lang.org]: https://users.rust-lang.org/
+See https://www.rust-lang.org/community for a list of chat platforms and forums.
 
 ## Contributing
 
-If you are interested in contributing to the Rust project, please take a look
-at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
-
-[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
