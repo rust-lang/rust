@@ -837,7 +837,7 @@ impl<'a> TtIter<'a> {
                 },
                 Err(_) => false,
             },
-            Separator::Puncts(lhss) if idx < lhss.len() => match fork.expect_punct() {
+            Separator::Puncts(lhss) if idx < lhss.len() => match fork.expect_single_punct() {
                 Ok(rhs) => rhs.char == lhss[idx].char,
                 Err(_) => false,
             },
@@ -850,52 +850,21 @@ impl<'a> TtIter<'a> {
     }
 
     fn expect_tt(&mut self) -> Result<tt::TokenTree, ()> {
-        match self.peek_n(0) {
-            Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) if punct.char == '\'' => {
-                return self.expect_lifetime();
+        if let Some(tt::TokenTree::Leaf(tt::Leaf::Punct(punct))) = self.peek_n(0) {
+            if punct.char == '\'' {
+                self.expect_lifetime()
+            } else {
+                let puncts = self.expect_glued_punct()?;
+                let token_trees = puncts.into_iter().map(|p| tt::Leaf::Punct(p).into()).collect();
+                Ok(tt::TokenTree::Subtree(tt::Subtree { delimiter: None, token_trees }))
             }
-            _ => (),
-        }
-
-        let tt = self.next().ok_or(())?.clone();
-        let punct = match tt {
-            tt::TokenTree::Leaf(tt::Leaf::Punct(punct)) if punct.spacing == tt::Spacing::Joint => {
-                punct
-            }
-            _ => return Ok(tt),
-        };
-
-        let (second, third) = match (self.peek_n(0), self.peek_n(1)) {
-            (
-                Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p2))),
-                Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p3))),
-            ) if p2.spacing == tt::Spacing::Joint => (p2.char, Some(p3.char)),
-            (Some(tt::TokenTree::Leaf(tt::Leaf::Punct(p2))), _) => (p2.char, None),
-            _ => return Ok(tt),
-        };
-
-        match (punct.char, second, third) {
-            ('.', '.', Some('.' | '=')) | ('<', '<', Some('=')) | ('>', '>', Some('=')) => {
-                let tt2 = self.next().unwrap().clone();
-                let tt3 = self.next().unwrap().clone();
-                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt, tt2, tt3] }.into())
-            }
-            ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
-            | ('-' | '=' | '>', '>', _)
-            | (':', ':', _)
-            | ('.', '.', _)
-            | ('&', '&', _)
-            | ('<', '<', _)
-            | ('|', '|', _) => {
-                let tt2 = self.next().unwrap().clone();
-                Ok(tt::Subtree { delimiter: None, token_trees: vec![tt, tt2] }.into())
-            }
-            _ => Ok(tt),
+        } else {
+            self.next().ok_or(()).cloned()
         }
     }
 
     fn expect_lifetime(&mut self) -> Result<tt::TokenTree, ()> {
-        let punct = self.expect_punct()?;
+        let punct = self.expect_single_punct()?;
         if punct.char != '\'' {
             return Err(());
         }
