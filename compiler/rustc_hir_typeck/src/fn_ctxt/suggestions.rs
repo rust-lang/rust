@@ -329,6 +329,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub fn suggest_remove_last_method_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        if let hir::ExprKind::MethodCall(hir::PathSegment { ident: method, .. }, recv_expr, &[], _) = expr.kind &&
+            let Some(recv_ty) = self.typeck_results.borrow().expr_ty_opt(recv_expr) &&
+            self.can_coerce(recv_ty, expected) {
+                let span = if let Some(recv_span) = recv_expr.span.find_ancestor_inside(expr.span) {
+                    expr.span.with_lo(recv_span.hi())
+                } else {
+                    expr.span.with_lo(method.span.lo() - rustc_span::BytePos(1))
+                };
+                err.span_suggestion_verbose(
+                    span,
+                    "try removing the method call",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+                return true;
+            }
+        false
+    }
+
     pub fn suggest_deref_ref_or_into(
         &self,
         err: &mut Diagnostic,
