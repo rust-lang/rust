@@ -690,18 +690,18 @@ where
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[unstable(feature = "ptr_from_ref", issue = "999999")] // FIXME
+#[unstable(feature = "ptr_from_ref", issue = "106116")]
 pub fn from_ref<T: ?Sized>(r: &T) -> *const T {
     r
 }
 
-/// Convert a mutble reference to a raw pointer.
+/// Convert a mutable reference to a raw pointer.
 ///
 /// This is equivalent to `r as *mut T`, but is a bit safer since it will never silently change
 /// type or mutability, in particular if the code is refactored.
 #[inline(always)]
 #[must_use]
-#[unstable(feature = "ptr_from_ref", issue = "999999")] // FIXME
+#[unstable(feature = "ptr_from_ref", issue = "106116")]
 pub fn from_mut<T: ?Sized>(r: &mut T) -> *mut T {
     r
 }
