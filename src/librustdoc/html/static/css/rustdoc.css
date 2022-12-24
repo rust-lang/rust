@@ -2029,6 +2029,11 @@ in storage.js
 .toggle-line-inner {
 	min-width: 2px;
 	height: 100%;
+	background: var(--scrape-example-toggle-line-background);
+}
+
+.toggle-line:hover .toggle-line-inner {
+	background: var(--scrape-example-toggle-line-hover-background);
 }
 
 .more-scraped-examples .scraped-example, .example-links {
