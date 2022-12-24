@@ -239,8 +239,7 @@ pub fn expand_test_or_bench(
             cx.attr_nested_word(sym::cfg, sym::test, attr_sp),
             // #[rustc_test_marker = "test_case_sort_key"]
             cx.attr_name_value_str(sym::rustc_test_marker, test_path_symbol, attr_sp),
-        ]
-        .into(),
+        ],
         // const $ident: test::TestDescAndFn =
         ast::ItemKind::Const(
             ast::Defaultness::Final,

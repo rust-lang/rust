@@ -171,7 +171,7 @@ fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     }
 }
 
-fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_coerce_unsized(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_coerce_unsized: impl_did={:?}", impl_did);
 
     // Just compute this for the side-effects, in particular reporting
@@ -181,7 +181,7 @@ fn visit_implementation_of_coerce_unsized<'tcx>(tcx: TyCtxt<'tcx>, impl_did: Loc
     tcx.at(span).coerce_unsized_info(impl_did);
 }
 
-fn visit_implementation_of_dispatch_from_dyn<'tcx>(tcx: TyCtxt<'tcx>, impl_did: LocalDefId) {
+fn visit_implementation_of_dispatch_from_dyn(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
     debug!("visit_implementation_of_dispatch_from_dyn: impl_did={:?}", impl_did);
 
     let impl_hir_id = tcx.hir().local_def_id_to_hir_id(impl_did);

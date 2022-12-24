@@ -1,7 +1,7 @@
 # `branch-protection`
 
 This option lets you enable branch authentication instructions on AArch64.
-This option is ignored for non-AArch64 architectures.
+This option is only accepted when targeting AArch64 architectures.
 It takes some combination of the following values, separated by a `,`.
 
 - `pac-ret` - Enable pointer authentication for non-leaf functions.

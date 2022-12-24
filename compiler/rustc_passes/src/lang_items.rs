@@ -83,7 +83,6 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                         .map(|p| p.display().to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
-                        .into()
                 };
                 let first_defined_span = self.tcx.hir().span_if_local(original_def_id);
                 let mut orig_crate_name = Empty;
@@ -98,7 +97,6 @@ impl<'tcx> LanguageItemCollector<'tcx> {
                         .map(|p| p.display().to_string())
                         .collect::<Vec<_>>()
                         .join(", ")
-                        .into()
                 };
                 if first_defined_span.is_none() {
                     orig_crate_name = self.tcx.crate_name(original_def_id.krate);

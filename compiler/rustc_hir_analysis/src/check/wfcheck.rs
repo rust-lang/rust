@@ -1673,7 +1673,7 @@ fn check_method_receiver<'tcx>(
     }
 }
 
-fn e0307<'tcx>(tcx: TyCtxt<'tcx>, span: Span, receiver_ty: Ty<'_>) {
+fn e0307(tcx: TyCtxt<'_>, span: Span, receiver_ty: Ty<'_>) {
     struct_span_err!(
         tcx.sess.diagnostic(),
         span,

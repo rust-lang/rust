@@ -29,11 +29,6 @@ name = "sccache-plus-cl"
 path = "bin/sccache-plus-cl.rs"
 test = false
 
-[[bin]]
-name = "llvm-config-wrapper"
-path = "bin/llvm-config-wrapper.rs"
-test = false
-
 [dependencies]
 cmake = "0.1.38"
 fd-lock = "3.0.8"

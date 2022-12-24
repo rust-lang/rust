@@ -16,8 +16,8 @@ use rustc_infer::infer::{
 use rustc_lint::LateContext;
 use rustc_middle::mir::interpret::{ConstValue, Scalar};
 use rustc_middle::ty::{
-    self, AdtDef, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate, PredicateKind,
-    AliasTy, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
+    self, AdtDef, AliasTy, AssocKind, Binder, BoundRegion, DefIdTree, FnSig, IntTy, List, ParamEnv, Predicate,
+    PredicateKind, Region, RegionKind, SubstsRef, Ty, TyCtxt, TypeSuperVisitable, TypeVisitable, TypeVisitor, UintTy,
     VariantDef, VariantDiscr,
 };
 use rustc_middle::ty::{GenericArg, GenericArgKind};
@@ -30,7 +30,7 @@ use std::iter;
 
 use crate::{match_def_path, path_res, paths};
 
-// Checks if the given type implements copy.
+/// Checks if the given type implements copy.
 pub fn is_copy<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> bool {
     ty.is_copy_modulo_regions(cx.tcx, cx.param_env)
 }
@@ -69,50 +69,66 @@ pub fn contains_adt_constructor<'tcx>(ty: Ty<'tcx>, adt: AdtDef<'tcx>) -> bool {
 /// This method also recurses into opaque type predicates, so call it with `impl Trait<U>` and `U`
 /// will also return `true`.
 pub fn contains_ty_adt_constructor_opaque<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, needle: Ty<'tcx>) -> bool {
-    ty.walk().any(|inner| match inner.unpack() {
-        GenericArgKind::Type(inner_ty) => {
-            if inner_ty == needle {
-                return true;
-            }
+    fn contains_ty_adt_constructor_opaque_inner<'tcx>(
+        cx: &LateContext<'tcx>,
+        ty: Ty<'tcx>,
+        needle: Ty<'tcx>,
+        seen: &mut FxHashSet<DefId>,
+    ) -> bool {
+        ty.walk().any(|inner| match inner.unpack() {
+            GenericArgKind::Type(inner_ty) => {
+                if inner_ty == needle {
+                    return true;
+                }
 
-            if inner_ty.ty_adt_def() == needle.ty_adt_def() {
-                return true;
-            }
+                if inner_ty.ty_adt_def() == needle.ty_adt_def() {
+                    return true;
+                }
 
-            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
-                for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
-                    match predicate.kind().skip_binder() {
-                        // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
-                        // and check substituions to find `U`.
-                        ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
-                            if trait_predicate
-                                .trait_ref
-                                .substs
-                                .types()
-                                .skip(1) // Skip the implicit `Self` generic parameter
-                                .any(|ty| contains_ty_adt_constructor_opaque(cx, ty, needle))
-                            {
-                                return true;
-                            }
-                        },
-                        // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
-                        // so we check the term for `U`.
-                        ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
-                            if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
-                                if contains_ty_adt_constructor_opaque(cx, ty, needle) {
+                if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *inner_ty.kind() {
+                    if !seen.insert(def_id) {
+                        return false;
+                    }
+
+                    for &(predicate, _span) in cx.tcx.explicit_item_bounds(def_id) {
+                        match predicate.kind().skip_binder() {
+                            // For `impl Trait<U>`, it will register a predicate of `T: Trait<U>`, so we go through
+                            // and check substituions to find `U`.
+                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                                if trait_predicate
+                                    .trait_ref
+                                    .substs
+                                    .types()
+                                    .skip(1) // Skip the implicit `Self` generic parameter
+                                    .any(|ty| contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen))
+                                {
                                     return true;
                                 }
-                            };
-                        },
-                        _ => (),
+                            },
+                            // For `impl Trait<Assoc=U>`, it will register a predicate of `<T as Trait>::Assoc = U`,
+                            // so we check the term for `U`.
+                            ty::PredicateKind::Clause(ty::Clause::Projection(projection_predicate)) => {
+                                if let ty::TermKind::Ty(ty) = projection_predicate.term.unpack() {
+                                    if contains_ty_adt_constructor_opaque_inner(cx, ty, needle, seen) {
+                                        return true;
+                                    }
+                                };
+                            },
+                            _ => (),
+                        }
                     }
                 }
-            }
 
-            false
-        },
-        GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
-    })
+                false
+            },
+            GenericArgKind::Lifetime(_) | GenericArgKind::Const(_) => false,
+        })
+    }
+
+    // A hash set to ensure that the same opaque type (`impl Trait` in RPIT or TAIT) is not
+    // visited twice.
+    let mut seen = FxHashSet::default();
+    contains_ty_adt_constructor_opaque_inner(cx, ty, needle, &mut seen)
 }
 
 /// Resolves `<T as Iterator>::Item` for `T`
@@ -631,7 +647,9 @@ pub fn ty_sig<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>) -> Option<ExprFnSig<'t
             Some(ExprFnSig::Closure(decl, subs.as_closure().sig()))
         },
         ty::FnDef(id, subs) => Some(ExprFnSig::Sig(cx.tcx.bound_fn_sig(id).subst(cx.tcx, subs), Some(id))),
-        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id)),
+        ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) => {
+            sig_from_bounds(cx, ty, cx.tcx.item_bounds(def_id), cx.tcx.opt_parent(def_id))
+        },
         ty::FnPtr(sig) => Some(ExprFnSig::Sig(sig, None)),
         ty::Dynamic(bounds, _, _) => {
             let lang_items = cx.tcx.lang_items();
@@ -685,8 +703,7 @@ fn sig_from_bounds<'tcx>(
                 inputs = Some(i);
             },
             PredicateKind::Clause(ty::Clause::Projection(p))
-                if Some(p.projection_ty.def_id) == lang_items.fn_once_output()
-                    && p.projection_ty.self_ty() == ty =>
+                if Some(p.projection_ty.def_id) == lang_items.fn_once_output() && p.projection_ty.self_ty() == ty =>
             {
                 if output.is_some() {
                     // Multiple different fn trait impls. Is this even allowed?
@@ -1039,10 +1056,7 @@ pub fn make_projection<'tcx>(
             }
         }
 
-        Some(tcx.mk_alias_ty(
-            assoc_item.def_id,
-            substs,
-        ))
+        Some(tcx.mk_alias_ty(assoc_item.def_id, substs))
     }
     helper(
         tcx,

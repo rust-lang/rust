@@ -66,6 +66,8 @@ cfg_if::cfg_if! {
     } else {
         #[path = "../unsupported/locks/mod.rs"]
         pub mod locks;
+        #[path = "../unsupported/once.rs"]
+        pub mod once;
         #[path = "../unsupported/thread.rs"]
         pub mod thread;
     }

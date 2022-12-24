@@ -226,7 +226,7 @@ impl<'tcx> InferCtxtExt<'tcx> for InferCtxt<'tcx> {
             let arg_length = arguments.len();
             let distinct = matches!(other, &[ArgKind::Tuple(..)]);
             match (arg_length, arguments.get(0)) {
-                (1, Some(&ArgKind::Tuple(_, ref fields))) => {
+                (1, Some(ArgKind::Tuple(_, fields))) => {
                     format!("a single {}-tuple as argument", fields.len())
                 }
                 _ => format!(
@@ -1574,7 +1574,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,
-                    err.clone(),
+                    *err,
                 )
                 .emit();
             }
@@ -1583,7 +1583,7 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     &error.obligation.cause,
                     expected_found.expected,
                     expected_found.found,
-                    err.clone(),
+                    *err,
                 );
                 let code = error.obligation.cause.code().peel_derives().peel_match_impls();
                 if let ObligationCauseCode::BindingObligation(..)
@@ -1735,8 +1735,8 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 values.map(|(_, is_normalized_ty_expected, normalized_ty, expected_ty)| {
                     infer::ValuePairs::Terms(ExpectedFound::new(
                         is_normalized_ty_expected,
-                        normalized_ty.into(),
-                        expected_ty.into(),
+                        normalized_ty,
+                        expected_ty,
                     ))
                 }),
                 err,
@@ -2332,9 +2332,9 @@ impl<'tcx> InferCtxtPrivExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 // get rid of :: between Trait and <type>
                                 // must be '::' between them, otherwise the parser won't accept the code
                                 suggestions.push((between_span, "".to_string(),));
-                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), format!(">")));
+                                suggestions.push((generic_arg.span_ext.shrink_to_hi(), ">".to_string()));
                             } else {
-                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), format!(">")));
+                                suggestions.push((trait_path_segment.ident.span.shrink_to_hi(), ">".to_string()));
                             }
                             err.multipart_suggestion(
                                 message,

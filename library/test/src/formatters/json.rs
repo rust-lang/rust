@@ -53,7 +53,7 @@ impl<T: Write> JsonFormatter<T> {
             self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
         }
         if let Some(extra) = extra {
-            self.write_message(&*format!(r#", {}"#, extra))?;
+            self.write_message(&*format!(r#", {extra}"#))?;
         }
         self.writeln_message(" }")
     }
@@ -62,13 +62,12 @@ impl<T: Write> JsonFormatter<T> {
 impl<T: Write> OutputFormatter for JsonFormatter<T> {
     fn write_run_start(&mut self, test_count: usize, shuffle_seed: Option<u64>) -> io::Result<()> {
         let shuffle_seed_json = if let Some(shuffle_seed) = shuffle_seed {
-            format!(r#", "shuffle_seed": {}"#, shuffle_seed)
+            format!(r#", "shuffle_seed": {shuffle_seed}"#)
         } else {
             String::new()
         };
         self.writeln_message(&*format!(
-            r#"{{ "type": "suite", "event": "started", "test_count": {}{} }}"#,
-            test_count, shuffle_seed_json
+            r#"{{ "type": "suite", "event": "started", "test_count": {test_count}{shuffle_seed_json} }}"#
         ))
     }
 

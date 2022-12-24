@@ -200,7 +200,7 @@ impl<'tcx> ProjectionCache<'_, 'tcx> {
     pub fn complete(&mut self, key: ProjectionCacheKey<'tcx>, result: EvaluationResult) {
         let mut map = self.map();
         match map.get(&key) {
-            Some(&ProjectionCacheEntry::NormalizedTy { ref ty, complete: _ }) => {
+            Some(ProjectionCacheEntry::NormalizedTy { ty, complete: _ }) => {
                 info!("ProjectionCacheEntry::complete({:?}) - completing {:?}", key, ty);
                 let mut ty = ty.clone();
                 if result.must_apply_considering_regions() {

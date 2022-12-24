@@ -200,10 +200,14 @@ install!((self, builder, _config),
         install_sh(builder, "clippy", self.compiler.stage, Some(self.target), &tarball);
     };
     Miri, alias = "miri", Self::should_build(_config), only_hosts: true, {
-        let tarball = builder
-            .ensure(dist::Miri { compiler: self.compiler, target: self.target })
-            .expect("missing miri");
-        install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
+        if let Some(tarball) = builder.ensure(dist::Miri { compiler: self.compiler, target: self.target }) {
+            install_sh(builder, "miri", self.compiler.stage, Some(self.target), &tarball);
+        } else {
+            // Miri is only available on nightly
+            builder.info(
+                &format!("skipping Install miri stage{} ({})", self.compiler.stage, self.target),
+            );
+        }
     };
     LlvmTools, alias = "llvm-tools", Self::should_build(_config), only_hosts: true, {
         let tarball = builder

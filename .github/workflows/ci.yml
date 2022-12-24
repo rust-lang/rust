@@ -41,16 +41,24 @@ jobs:
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
       CACHE_DOMAIN: ci-caches.rust-lang.org
     if: "github.event_name == 'pull_request'"
+    continue-on-error: "${{ matrix.tidy }}"
     strategy:
       matrix:
         include:
           - name: mingw-check
+            tidy: false
+            os: ubuntu-20.04-xl
+            env: {}
+          - name: mingw-check-tidy
+            tidy: true
             os: ubuntu-20.04-xl
             env: {}
           - name: x86_64-gnu-llvm-13
+            tidy: false
             os: ubuntu-20.04-xl
             env: {}
           - name: x86_64-gnu-tools
+            tidy: false
             env:
               CI_ONLY_WHEN_SUBMODULES_CHANGED: 1
             os: ubuntu-20.04-xl
@@ -301,7 +309,7 @@ jobs:
           - name: dist-x86_64-apple
             env:
               SCRIPT: "./x.py dist bootstrap --include-default-paths --host=x86_64-apple-darwin --target=x86_64-apple-darwin"
-              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false"
+              RUST_CONFIGURE_ARGS: "--enable-full-tools --enable-sanitizers --enable-profiler --set rust.jemalloc --set llvm.ninja=false --set rust.lto=thin"
               RUSTC_RETRY_LINKER_ON_SEGFAULT: 1
               MACOSX_DEPLOYMENT_TARGET: 10.7
               SELECT_XCODE: /Applications/Xcode_13.4.1.app

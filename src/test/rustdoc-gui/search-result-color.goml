@@ -65,7 +65,12 @@ local-storage: {
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
+assert-css: (
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
 assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(197, 197, 197)"},
@@ -177,7 +182,12 @@ local-storage: {
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
+assert-css: (
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
 assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(221, 221, 221)"},
@@ -274,7 +284,12 @@ local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
+assert-css: (
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
 assert-css: (
     "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(0, 0, 0)"},
@@ -381,7 +396,7 @@ define-function: (
         // To be SURE that the search will be run.
         ("press-key", 'Enter'),
         // Waiting for the search results to appear...
-        ("wait-for", "#titles"),
+        ("wait-for", "#search-tabs"),
         // Checking that the colors for the alias element are the ones expected.
         ("assert-css", (".result-name > .alias", {"color": |alias|})),
         ("assert-css", (".result-name > .alias > .grey", {"color": |grey|})),

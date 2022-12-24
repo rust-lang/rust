@@ -66,7 +66,7 @@ mod declared_lints;
 mod renamed_lints;
 
 // begin lints modules, do not remove this comment, it’s used in `update_lints`
-mod almost_complete_letter_range;
+mod almost_complete_range;
 mod approx_const;
 mod as_conversions;
 mod asm_syntax;
@@ -256,6 +256,7 @@ mod return_self_not_must_use;
 mod returns;
 mod same_name_method;
 mod self_named_constructors;
+mod semicolon_block;
 mod semicolon_if_nothing_returned;
 mod serde_api;
 mod shadow;
@@ -507,9 +508,20 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     }
 
     let arithmetic_side_effects_allowed = conf.arithmetic_side_effects_allowed.clone();
+    let arithmetic_side_effects_allowed_binary = conf.arithmetic_side_effects_allowed_binary.clone();
+    let arithmetic_side_effects_allowed_unary = conf.arithmetic_side_effects_allowed_unary.clone();
     store.register_late_pass(move |_| {
         Box::new(operators::arithmetic_side_effects::ArithmeticSideEffects::new(
-            arithmetic_side_effects_allowed.clone(),
+            arithmetic_side_effects_allowed
+                .iter()
+                .flat_map(|el| [[el.clone(), "*".to_string()], ["*".to_string(), el.clone()]])
+                .chain(arithmetic_side_effects_allowed_binary.clone())
+                .collect(),
+            arithmetic_side_effects_allowed
+                .iter()
+                .chain(arithmetic_side_effects_allowed_unary.iter())
+                .cloned()
+                .collect(),
         ))
     });
     store.register_late_pass(|_| Box::new(utils::dump_hir::DumpHir));
@@ -538,7 +550,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(needless_bool::NeedlessBool));
     store.register_late_pass(|_| Box::new(needless_bool::BoolComparison));
     store.register_late_pass(|_| Box::new(needless_for_each::NeedlessForEach));
-    store.register_late_pass(|_| Box::new(misc::MiscLints));
+    store.register_late_pass(|_| Box::<misc::LintPass>::default());
     store.register_late_pass(|_| Box::new(eta_reduction::EtaReduction));
     store.register_late_pass(|_| Box::new(mut_mut::MutMut));
     store.register_late_pass(|_| Box::new(mut_reference::UnnecessaryMutPassed));
@@ -561,6 +573,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     let avoid_breaking_exported_api = conf.avoid_breaking_exported_api;
     let allow_expect_in_tests = conf.allow_expect_in_tests;
     let allow_unwrap_in_tests = conf.allow_unwrap_in_tests;
+    let suppress_restriction_lint_in_const = conf.suppress_restriction_lint_in_const;
     store.register_late_pass(move |_| Box::new(approx_const::ApproxConstant::new(msrv())));
     store.register_late_pass(move |_| {
         Box::new(methods::Methods::new(
@@ -682,7 +695,11 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(inherent_impl::MultipleInherentImpl));
     store.register_late_pass(|_| Box::new(neg_cmp_op_on_partial_ord::NoNegCompOpForPartialOrd));
     store.register_late_pass(|_| Box::new(unwrap::Unwrap));
-    store.register_late_pass(|_| Box::new(indexing_slicing::IndexingSlicing));
+    store.register_late_pass(move |_| {
+        Box::new(indexing_slicing::IndexingSlicing::new(
+            suppress_restriction_lint_in_const,
+        ))
+    });
     store.register_late_pass(|_| Box::new(non_copy_const::NonCopyConst));
     store.register_late_pass(|_| Box::new(ptr_offset_with_cast::PtrOffsetWithCast));
     store.register_late_pass(|_| Box::new(redundant_clone::RedundantClone));
@@ -859,7 +876,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(rc_clone_in_vec_init::RcCloneInVecInit));
     store.register_early_pass(|| Box::<duplicate_mod::DuplicateMod>::default());
     store.register_early_pass(|| Box::new(unused_rounding::UnusedRounding));
-    store.register_early_pass(move || Box::new(almost_complete_letter_range::AlmostCompleteLetterRange::new(msrv())));
+    store.register_early_pass(move || Box::new(almost_complete_range::AlmostCompleteRange::new(msrv())));
     store.register_late_pass(|_| Box::new(swap_ptr_to_ref::SwapPtrToRef));
     store.register_late_pass(|_| Box::new(mismatching_type_param_order::TypeParamMismatch));
     store.register_late_pass(|_| Box::new(read_zero_byte_vec::ReadZeroByteVec));
@@ -884,6 +901,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(from_raw_with_void_ptr::FromRawWithVoidPtr));
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
+    store.register_late_pass(|_| Box::new(semicolon_block::SemicolonBlock));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

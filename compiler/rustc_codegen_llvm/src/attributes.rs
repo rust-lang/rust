@@ -137,6 +137,14 @@ fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribu
     }
 }
 
+fn nojumptables_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
+    if !cx.sess().opts.unstable_opts.no_jump_tables {
+        return None;
+    }
+
+    Some(llvm::CreateAttrStringValue(cx.llcx, "no-jump-tables", "true"))
+}
+
 fn probestack_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     // Currently stack probes seem somewhat incompatible with the address
     // sanitizer and thread sanitizer. With asan we're already protected from
@@ -293,6 +301,7 @@ pub fn from_fn_attrs<'ll, 'tcx>(
     // FIXME: none of these three functions interact with source level attributes.
     to_add.extend(frame_pointer_type_attr(cx));
     to_add.extend(instrument_function_attr(cx));
+    to_add.extend(nojumptables_attr(cx));
     to_add.extend(probestack_attr(cx));
     to_add.extend(stackprotector_attr(cx));
 

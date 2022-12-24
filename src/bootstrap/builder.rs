@@ -19,6 +19,7 @@ use crate::flags::{Color, Subcommand};
 use crate::install;
 use crate::native;
 use crate::run;
+use crate::setup;
 use crate::test;
 use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
@@ -433,8 +434,11 @@ impl<'a> ShouldRun<'a> {
 
     // single alias, which does not correspond to any on-disk path
     pub fn alias(mut self, alias: &str) -> Self {
+        // exceptional case for `Kind::Setup` because its `library`
+        // and `compiler` options would otherwise naively match with
+        // `compiler` and `library` folders respectively.
         assert!(
-            !self.builder.src.join(alias).exists(),
+            self.kind == Kind::Setup || !self.builder.src.join(alias).exists(),
             "use `builder.path()` for real paths: {}",
             alias
         );
@@ -698,6 +702,7 @@ impl<'a> Builder<'a> {
                 doc::RustdocBook,
                 doc::RustByExample,
                 doc::RustcBook,
+                doc::Cargo,
                 doc::CargoBook,
                 doc::Clippy,
                 doc::ClippyBook,
@@ -758,8 +763,9 @@ impl<'a> Builder<'a> {
                 run::CollectLicenseMetadata,
                 run::GenerateCopyright,
             ),
+            Kind::Setup => describe!(setup::Profile),
             // These commands either don't use paths, or they're special-cased in Build::build()
-            Kind::Clean | Kind::Format | Kind::Setup => vec![],
+            Kind::Clean | Kind::Format => vec![],
         }
     }
 
@@ -822,7 +828,11 @@ impl<'a> Builder<'a> {
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths, .. } => (Kind::Run, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
-            Subcommand::Clean { .. } | Subcommand::Setup { .. } => {
+            Subcommand::Setup { profile: ref path } => (
+                Kind::Setup,
+                path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
+            ),
+            Subcommand::Clean { .. } => {
                 panic!()
             }
         };
@@ -1059,7 +1069,7 @@ impl<'a> Builder<'a> {
     /// check build or dry-run, where there's no need to build all of LLVM.
     fn llvm_config(&self, target: TargetSelection) -> Option<PathBuf> {
         if self.config.llvm_enabled() && self.kind != Kind::Check && !self.config.dry_run() {
-            let llvm_config = self.ensure(native::Llvm { target });
+            let native::LlvmResult { llvm_config, .. } = self.ensure(native::Llvm { target });
             if llvm_config.is_file() {
                 return Some(llvm_config);
             }
@@ -1854,7 +1864,10 @@ impl<'a> Builder<'a> {
             };
 
             if let Some(limit) = limit {
-                rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                if stage == 0 || self.config.default_codegen_backend().unwrap_or_default() == "llvm"
+                {
+                    rustflags.arg(&format!("-Cllvm-args=-import-instr-limit={}", limit));
+                }
             }
         }
 

@@ -46,6 +46,7 @@ const NUMBER_OF_RETRIES: usize = 5;
 struct Config {
     verbose: bool,
     sequential: bool,
+    batch: bool,
     bind: SocketAddr,
 }
 
@@ -54,6 +55,7 @@ impl Config {
         Config {
             verbose: false,
             sequential: false,
+            batch: false,
             bind: if cfg!(target_os = "android") || cfg!(windows) {
                 ([0, 0, 0, 0], 12345).into()
             } else {
@@ -75,6 +77,7 @@ impl Config {
                 }
                 "--bind" => next_is_bind = true,
                 "--sequential" => config.sequential = true,
+                "--batch" => config.batch = true,
                 "--verbose" | "-v" => config.verbose = true,
                 "--help" | "-h" => {
                     show_help();
@@ -100,6 +103,7 @@ fn show_help() {
 OPTIONS:
     --bind <IP>:<PORT>   Specify IP address and port to listen for requests, e.g. "0.0.0.0:12345"
     --sequential         Run only one test at a time
+    --batch              Send stdout and stderr in batch instead of streaming
     -v, --verbose        Show status messages
     -h, --help           Show this help screen
 "#,
@@ -280,22 +284,30 @@ fn handle_run(socket: TcpStream, work: &Path, tmp: &Path, lock: &Mutex<()>, conf
     // Some tests assume RUST_TEST_TMPDIR exists
     cmd.env("RUST_TEST_TMPDIR", tmp.to_owned());
 
-    // Spawn the child and ferry over stdout/stderr to the socket in a framed
-    // fashion (poor man's style)
-    let mut child =
-        t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
-    drop(lock);
-    let mut stdout = child.stdout.take().unwrap();
-    let mut stderr = child.stderr.take().unwrap();
     let socket = Arc::new(Mutex::new(reader.into_inner()));
-    let socket2 = socket.clone();
-    let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
-    my_copy(&mut stderr, 1, &*socket);
-    thread.join().unwrap();
+
+    let status = if config.batch {
+        let child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).output());
+        batch_copy(&child.stdout, 0, &*socket);
+        batch_copy(&child.stderr, 1, &*socket);
+        child.status
+    } else {
+        // Spawn the child and ferry over stdout/stderr to the socket in a framed
+        // fashion (poor man's style)
+        let mut child =
+            t!(cmd.stdin(Stdio::null()).stdout(Stdio::piped()).stderr(Stdio::piped()).spawn());
+        drop(lock);
+        let mut stdout = child.stdout.take().unwrap();
+        let mut stderr = child.stderr.take().unwrap();
+        let socket2 = socket.clone();
+        let thread = thread::spawn(move || my_copy(&mut stdout, 0, &*socket2));
+        my_copy(&mut stderr, 1, &*socket);
+        thread.join().unwrap();
+        t!(child.wait())
+    };
 
     // Finally send over the exit status.
-    let status = t!(child.wait());
-
     let (which, code) = get_status_code(&status);
 
     t!(socket.lock().unwrap().write_all(&[
@@ -353,13 +365,7 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     loop {
         let n = t!(src.read(&mut b));
         let mut dst = dst.lock().unwrap();
-        t!(dst.write_all(&[
-            which,
-            (n >> 24) as u8,
-            (n >> 16) as u8,
-            (n >> 8) as u8,
-            (n >> 0) as u8,
-        ]));
+        t!(dst.write_all(&create_header(which, n as u32)));
         if n > 0 {
             t!(dst.write_all(&b[..n]));
         } else {
@@ -368,11 +374,24 @@ fn my_copy(src: &mut dyn Read, which: u8, dst: &Mutex<dyn Write>) {
     }
 }
 
+fn batch_copy(buf: &[u8], which: u8, dst: &Mutex<dyn Write>) {
+    let n = buf.len();
+    let mut dst = dst.lock().unwrap();
+    t!(dst.write_all(&create_header(which, n as u32)));
+    if n > 0 {
+        t!(dst.write_all(buf));
+        // Marking buf finished
+        t!(dst.write_all(&[which, 0, 0, 0, 0,]));
+    }
+}
+
+const fn create_header(which: u8, n: u32) -> [u8; 5] {
+    let bytes = n.to_be_bytes();
+    [which, bytes[0], bytes[1], bytes[2], bytes[3]]
+}
+
 fn read_u32(r: &mut dyn Read) -> u32 {
     let mut len = [0; 4];
     t!(r.read_exact(&mut len));
-    ((len[0] as u32) << 24)
-        | ((len[1] as u32) << 16)
-        | ((len[2] as u32) << 8)
-        | ((len[3] as u32) << 0)
+    u32::from_be_bytes(len)
 }

@@ -30,7 +30,7 @@ declare_clippy_lint! {
     /// ```rust
     /// let x: Box<String> = Box::default();
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub BOX_DEFAULT,
     perf,
     "Using Box::new(T::default()) instead of Box::default()"

@@ -277,8 +277,7 @@ impl<'a> Parser<'a> {
                         if let Some(arg) = args
                             .iter()
                             .rev()
-                            .skip_while(|arg| matches!(arg, AngleBracketedArg::Constraint(_)))
-                            .next()
+                            .find(|arg| !matches!(arg, AngleBracketedArg::Constraint(_)))
                         {
                             err.span_suggestion_verbose(
                                 arg.span().shrink_to_hi(),

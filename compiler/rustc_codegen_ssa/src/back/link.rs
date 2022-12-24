@@ -253,7 +253,7 @@ pub fn each_linked_rlib(
     };
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
-            Some(&Linkage::NotLinked | &Linkage::IncludedFromDylib) => continue,
+            Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
             Some(_) => {}
             None => return Err(errors::LinkRlibError::MissingFormat),
         }
@@ -607,21 +607,21 @@ fn link_dwarf_object<'a>(
     }
 
     impl<Relocations> ThorinSession<Relocations> {
-        fn alloc_mmap<'arena>(&'arena self, data: Mmap) -> &'arena Mmap {
+        fn alloc_mmap(&self, data: Mmap) -> &Mmap {
             (*self.arena_mmap.alloc(data)).borrow()
         }
     }
 
     impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
-        fn alloc_data<'arena>(&'arena self, data: Vec<u8>) -> &'arena [u8] {
+        fn alloc_data(&self, data: Vec<u8>) -> &[u8] {
             (*self.arena_data.alloc(data)).borrow()
         }
 
-        fn alloc_relocation<'arena>(&'arena self, data: Relocations) -> &'arena Relocations {
+        fn alloc_relocation(&self, data: Relocations) -> &Relocations {
             (*self.arena_relocations.alloc(data)).borrow()
         }
 
-        fn read_input<'arena>(&'arena self, path: &Path) -> std::io::Result<&'arena [u8]> {
+        fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
             let file = File::open(&path)?;
             let mmap = (unsafe { Mmap::map(file) })?;
             Ok(self.alloc_mmap(mmap))
@@ -722,7 +722,7 @@ fn link_natively<'a>(
 
     linker::disable_localization(&mut cmd);
 
-    for &(ref k, ref v) in sess.target.link_env.as_ref() {
+    for (k, v) in sess.target.link_env.as_ref() {
         cmd.env(k.as_ref(), v.as_ref());
     }
     for k in sess.target.link_env_remove.as_ref() {

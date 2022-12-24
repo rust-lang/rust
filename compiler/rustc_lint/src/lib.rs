@@ -219,6 +219,7 @@ late_lint_methods!(
             // May Depend on constants elsewhere
             UnusedBrokenConst: UnusedBrokenConst,
             UnstableFeatures: UnstableFeatures,
+            UngatedAsyncFnTrackCaller: UngatedAsyncFnTrackCaller,
             ArrayIntoIter: ArrayIntoIter::default(),
             DropTraitConstraints: DropTraitConstraints,
             TemporaryCStringAsPtr: TemporaryCStringAsPtr,

@@ -332,7 +332,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
                     Immediate::new_slice(ptr, length.eval_usize(*self.tcx, self.param_env), self);
                 self.write_immediate(val, dest)
             }
-            (&ty::Dynamic(ref data_a, ..), &ty::Dynamic(ref data_b, ..)) => {
+            (ty::Dynamic(data_a, ..), ty::Dynamic(data_b, ..)) => {
                 let val = self.read_immediate(src)?;
                 if data_a.principal() == data_b.principal() {
                     // A NOP cast that doesn't actually change anything, should be allowed even with mismatching vtables.

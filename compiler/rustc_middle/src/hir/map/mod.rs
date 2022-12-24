@@ -18,7 +18,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]
-pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
+pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
@@ -41,7 +41,7 @@ pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     }
 }
 
-fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
+fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
     match associated_body(node) {
         Some(b) => b.hir_id == hir_id,
         None => false,
@@ -170,6 +170,7 @@ impl<'hir> Map<'hir> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn local_def_id(self, hir_id: HirId) -> LocalDefId {
         self.opt_local_def_id(hir_id).unwrap_or_else(|| {
             bug!(
@@ -310,6 +311,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[track_caller]
     pub fn get_parent_node(self, hir_id: HirId) -> HirId {
         self.find_parent_node(hir_id)
             .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
@@ -334,12 +336,14 @@ impl<'hir> Map<'hir> {
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
+    #[track_caller]
     pub fn get(self, id: HirId) -> Node<'hir> {
         self.find(id).unwrap_or_else(|| bug!("couldn't find hir id {} in the HIR map", id))
     }
 
     /// Retrieves the `Node` corresponding to `id`, panicking if it cannot be found.
     #[inline]
+    #[track_caller]
     pub fn get_by_def_id(self, id: LocalDefId) -> Node<'hir> {
         self.find_by_def_id(id).unwrap_or_else(|| bug!("couldn't find {:?} in the HIR map", id))
     }
@@ -377,6 +381,7 @@ impl<'hir> Map<'hir> {
         self.tcx.hir_owner_nodes(id.hir_id.owner).unwrap().bodies[&id.hir_id.local_id]
     }
 
+    #[track_caller]
     pub fn fn_decl_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnDecl<'hir>> {
         if let Some(node) = self.find(hir_id) {
             node.fn_decl()
@@ -385,6 +390,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[track_caller]
     pub fn fn_sig_by_hir_id(self, hir_id: HirId) -> Option<&'hir FnSig<'hir>> {
         if let Some(node) = self.find(hir_id) {
             node.fn_sig()
@@ -393,6 +399,7 @@ impl<'hir> Map<'hir> {
         }
     }
 
+    #[track_caller]
     pub fn enclosing_body_owner(self, hir_id: HirId) -> LocalDefId {
         for (_, node) in self.parent_iter(hir_id) {
             if let Some(body) = associated_body(node) {
@@ -408,7 +415,7 @@ impl<'hir> Map<'hir> {
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
         let parent = self.get_parent_node(hir_id);
-        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)));
+        assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)), "{hir_id:?}");
         parent
     }
 
@@ -419,10 +426,11 @@ impl<'hir> Map<'hir> {
     /// Given a `LocalDefId`, returns the `BodyId` associated with it,
     /// if the node is a body owner, otherwise returns `None`.
     pub fn maybe_body_owned_by(self, id: LocalDefId) -> Option<BodyId> {
-        self.get_if_local(id.to_def_id()).map(associated_body).flatten()
+        self.find_by_def_id(id).and_then(associated_body)
     }
 
     /// Given a body owner's id, returns the `BodyId` associated with it.
+    #[track_caller]
     pub fn body_owned_by(self, id: LocalDefId) -> BodyId {
         self.maybe_body_owned_by(id).unwrap_or_else(|| {
             let hir_id = self.local_def_id_to_hir_id(id);

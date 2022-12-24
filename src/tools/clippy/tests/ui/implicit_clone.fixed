@@ -115,4 +115,14 @@ fn main() {
     let pathbuf_ref = &pathbuf_ref;
     let _ = pathbuf_ref.to_owned(); // Don't lint. Returns `&&PathBuf`
     let _ = (**pathbuf_ref).clone();
+
+    struct NoClone;
+    impl ToOwned for NoClone {
+        type Owned = Self;
+        fn to_owned(&self) -> Self {
+            NoClone
+        }
+    }
+    let no_clone = &NoClone;
+    let _ = no_clone.to_owned();
 }

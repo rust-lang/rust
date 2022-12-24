@@ -1,20 +1,20 @@
 #![cfg_attr(feature = "deny-warnings", deny(warnings))]
 
-use std::env;
-
+/// This macro creates the version string during compilation from the
+/// current environment
 #[macro_export]
 macro_rules! get_version_info {
     () => {{
-        let major = env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>().unwrap();
-        let minor = env!("CARGO_PKG_VERSION_MINOR").parse::<u8>().unwrap();
-        let patch = env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
-        let crate_name = String::from(env!("CARGO_PKG_NAME"));
+        let major = std::env!("CARGO_PKG_VERSION_MAJOR").parse::<u8>().unwrap();
+        let minor = std::env!("CARGO_PKG_VERSION_MINOR").parse::<u8>().unwrap();
+        let patch = std::env!("CARGO_PKG_VERSION_PATCH").parse::<u16>().unwrap();
+        let crate_name = String::from(std::env!("CARGO_PKG_NAME"));
 
-        let host_compiler = option_env!("RUSTC_RELEASE_CHANNEL").map(str::to_string);
-        let commit_hash = option_env!("GIT_HASH").map(str::to_string);
-        let commit_date = option_env!("COMMIT_DATE").map(str::to_string);
+        let host_compiler = std::option_env!("RUSTC_RELEASE_CHANNEL").map(str::to_string);
+        let commit_hash = std::option_env!("GIT_HASH").map(str::to_string);
+        let commit_date = std::option_env!("COMMIT_DATE").map(str::to_string);
 
-        VersionInfo {
+        $crate::VersionInfo {
             major,
             minor,
             patch,
@@ -23,6 +23,24 @@ macro_rules! get_version_info {
             commit_date,
             crate_name,
         }
+    }};
+}
+
+/// This macro can be used in `build.rs` to automatically set the needed
+/// environment values, namely `GIT_HASH`, `COMMIT_DATE` and
+/// `RUSTC_RELEASE_CHANNEL`
+#[macro_export]
+macro_rules! setup_version_info {
+    () => {{
+        println!(
+            "cargo:rustc-env=GIT_HASH={}",
+            $crate::get_commit_hash().unwrap_or_default()
+        );
+        println!(
+            "cargo:rustc-env=COMMIT_DATE={}",
+            $crate::get_commit_date().unwrap_or_default()
+        );
+        println!("cargo:rustc-env=RUSTC_RELEASE_CHANNEL={}", $crate::get_channel());
     }};
 }
 
@@ -101,7 +119,7 @@ pub fn get_commit_date() -> Option<String> {
 
 #[must_use]
 pub fn get_channel() -> String {
-    match env::var("CFG_RELEASE_CHANNEL") {
+    match std::env::var("CFG_RELEASE_CHANNEL") {
         Ok(channel) => channel,
         Err(_) => {
             // if that failed, try to ask rustc -V, do some parsing and find out
@@ -136,8 +154,8 @@ mod test {
     fn test_struct_local() {
         let vi = get_version_info!();
         assert_eq!(vi.major, 0);
-        assert_eq!(vi.minor, 2);
-        assert_eq!(vi.patch, 1);
+        assert_eq!(vi.minor, 3);
+        assert_eq!(vi.patch, 0);
         assert_eq!(vi.crate_name, "rustc_tools_util");
         // hard to make positive tests for these since they will always change
         assert!(vi.commit_hash.is_none());
@@ -147,7 +165,7 @@ mod test {
     #[test]
     fn test_display_local() {
         let vi = get_version_info!();
-        assert_eq!(vi.to_string(), "rustc_tools_util 0.2.1");
+        assert_eq!(vi.to_string(), "rustc_tools_util 0.3.0");
     }
 
     #[test]
@@ -156,7 +174,7 @@ mod test {
         let s = format!("{vi:?}");
         assert_eq!(
             s,
-            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 2, patch: 1 }"
+            "VersionInfo { crate_name: \"rustc_tools_util\", major: 0, minor: 3, patch: 0 }"
         );
     }
 }

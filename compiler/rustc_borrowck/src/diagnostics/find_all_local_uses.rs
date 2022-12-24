@@ -9,7 +9,7 @@ use rustc_middle::mir::{Body, Local, Location};
 /// Find all uses of (including assignments to) a [`Local`].
 ///
 /// Uses `BTreeSet` so output is deterministic.
-pub(super) fn find<'tcx>(body: &Body<'tcx>, local: Local) -> BTreeSet<Location> {
+pub(super) fn find(body: &Body<'_>, local: Local) -> BTreeSet<Location> {
     let mut visitor = AllLocalUsesVisitor { for_local: local, uses: BTreeSet::default() };
     visitor.visit_body(body);
     visitor.uses

@@ -126,7 +126,7 @@ pub trait Sized {
 /// [`Rc`]: ../../std/rc/struct.Rc.html
 /// [RFC982]: https://github.com/rust-lang/rfcs/blob/master/text/0982-dst-coercion.md
 /// [nomicon-coerce]: ../../nomicon/coercions.html
-#[unstable(feature = "unsize", issue = "27732")]
+#[unstable(feature = "unsize", issue = "18598")]
 #[lang = "unsize"]
 #[cfg_attr(not(bootstrap), rustc_deny_explicit_impl)]
 pub trait Unsize<T: ?Sized> {

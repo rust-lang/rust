@@ -65,7 +65,7 @@ LL | |     }
    | |_____^ help: try instead: `assert!(!a.is_empty(), "with expansion {}", one!());`
 
 error: only a `panic!` in `if`-then statement
-  --> $DIR/manual_assert.rs:73:5
+  --> $DIR/manual_assert.rs:78:5
    |
 LL | /     if a > 2 {
 LL | |         // comment

@@ -143,7 +143,7 @@ pub enum Subcommand {
         args: Vec<String>,
     },
     Setup {
-        profile: Option<Profile>,
+        profile: Option<PathBuf>,
     },
 }
 
@@ -351,7 +351,7 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            let config = Config::parse(&["build".to_string()]);
+            let config = Config::parse(&["setup".to_string()]);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
 
@@ -621,7 +621,7 @@ Arguments:
             }
             Kind::Setup => {
                 let profile = if paths.len() > 1 {
-                    println!("\nat most one profile can be passed to setup\n");
+                    eprintln!("\nerror: At most one profile can be passed to setup\n");
                     usage(1, &opts, verbose, &subcommand_help)
                 } else if let Some(path) = paths.pop() {
                     let profile_string = t!(path.into_os_string().into_string().map_err(

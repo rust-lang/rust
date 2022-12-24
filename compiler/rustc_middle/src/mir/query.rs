@@ -130,10 +130,9 @@ pub struct UnsafetyCheckResult {
 }
 
 rustc_index::newtype_index! {
-    pub struct GeneratorSavedLocal {
-        derive [HashStable]
-        DEBUG_FORMAT = "_{}",
-    }
+    #[derive(HashStable)]
+    #[debug_format = "_{}"]
+    pub struct GeneratorSavedLocal {}
 }
 
 /// The layout of generator state.

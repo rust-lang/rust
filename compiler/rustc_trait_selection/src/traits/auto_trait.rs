@@ -159,13 +159,12 @@ impl<'tcx> AutoTraitFinder<'tcx> {
             orig_env,
             orig_env,
             &mut fresh_preds,
-            false,
         ) else {
             return AutoTraitResult::NegativeImpl;
         };
 
         let (full_env, full_user_env) = self
-            .evaluate_predicates(&infcx, trait_did, ty, new_env, user_env, &mut fresh_preds, true)
+            .evaluate_predicates(&infcx, trait_did, ty, new_env, user_env, &mut fresh_preds)
             .unwrap_or_else(|| {
                 panic!("Failed to fully process: {:?} {:?} {:?}", ty, trait_did, orig_env)
             });
@@ -247,7 +246,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         param_env: ty::ParamEnv<'tcx>,
         user_env: ty::ParamEnv<'tcx>,
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
-        only_projections: bool,
     ) -> Option<(ty::ParamEnv<'tcx>, ty::ParamEnv<'tcx>)> {
         let tcx = infcx.tcx;
 
@@ -322,7 +320,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                         fresh_preds,
                         &mut predicates,
                         &mut select,
-                        only_projections,
                     ) {
                         return None;
                     }
@@ -600,7 +597,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
         fresh_preds: &mut FxHashSet<ty::Predicate<'tcx>>,
         predicates: &mut VecDeque<ty::PolyTraitPredicate<'tcx>>,
         selcx: &mut SelectionContext<'_, 'tcx>,
-        only_projections: bool,
     ) -> bool {
         let dummy_cause = ObligationCause::dummy();
 
@@ -744,7 +740,6 @@ impl<'tcx> AutoTraitFinder<'tcx> {
                                     fresh_preds,
                                     predicates,
                                     selcx,
-                                    only_projections,
                                 ) {
                                     return false;
                                 }

@@ -1169,7 +1169,7 @@ pub struct AliasTy<'tcx> {
 }
 
 impl<'tcx> AliasTy<'tcx> {
-    pub fn trait_def_id(&self, tcx: TyCtxt<'tcx>) -> DefId {
+    pub fn trait_def_id(self, tcx: TyCtxt<'tcx>) -> DefId {
         match tcx.def_kind(self.def_id) {
             DefKind::AssocTy | DefKind::AssocConst => tcx.parent(self.def_id),
             DefKind::ImplTraitPlaceholder => {
@@ -1183,7 +1183,7 @@ impl<'tcx> AliasTy<'tcx> {
     /// For example, if this is a projection of `<T as StreamingIterator>::Item<'a>`,
     /// then this function would return a `T: Iterator` trait reference and `['a]` as the own substs
     pub fn trait_ref_and_own_substs(
-        &self,
+        self,
         tcx: TyCtxt<'tcx>,
     ) -> (ty::TraitRef<'tcx>, &'tcx [ty::GenericArg<'tcx>]) {
         debug_assert!(matches!(tcx.def_kind(self.def_id), DefKind::AssocTy | DefKind::AssocConst));
@@ -1202,13 +1202,17 @@ impl<'tcx> AliasTy<'tcx> {
     /// WARNING: This will drop the substs for generic associated types
     /// consider calling [Self::trait_ref_and_own_substs] to get those
     /// as well.
-    pub fn trait_ref(&self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
+    pub fn trait_ref(self, tcx: TyCtxt<'tcx>) -> ty::TraitRef<'tcx> {
         let def_id = self.trait_def_id(tcx);
         tcx.mk_trait_ref(def_id, self.substs.truncate_to(tcx, tcx.generics_of(def_id)))
     }
 
-    pub fn self_ty(&self) -> Ty<'tcx> {
+    pub fn self_ty(self) -> Ty<'tcx> {
         self.substs.type_at(0)
+    }
+
+    pub fn with_self_ty(self, tcx: TyCtxt<'tcx>, self_ty: Ty<'tcx>) -> Self {
+        tcx.mk_alias_ty(self.def_id, [self_ty.into()].into_iter().chain(self.substs.iter().skip(1)))
     }
 }
 
@@ -1378,9 +1382,8 @@ pub struct ConstVid<'tcx> {
 rustc_index::newtype_index! {
     /// A **region** (lifetime) **v**ariable **ID**.
     #[derive(HashStable)]
-    pub struct RegionVid {
-        DEBUG_FORMAT = custom,
-    }
+    #[debug_format = "'_#{}r"]
+    pub struct RegionVid {}
 }
 
 impl Atom for RegionVid {
@@ -1391,7 +1394,7 @@ impl Atom for RegionVid {
 
 rustc_index::newtype_index! {
     #[derive(HashStable)]
-    pub struct BoundVar { .. }
+    pub struct BoundVar {}
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, TyEncodable, TyDecodable)]

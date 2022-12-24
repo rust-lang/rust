@@ -37,7 +37,7 @@ pub struct DepGraph<K: DepKind> {
 }
 
 rustc_index::newtype_index! {
-    pub struct DepNodeIndex { .. }
+    pub struct DepNodeIndex {}
 }
 
 impl DepNodeIndex {
@@ -974,7 +974,7 @@ pub struct WorkProduct {
 
 // Index type for `DepNodeData`'s edges.
 rustc_index::newtype_index! {
-    struct EdgeIndex { .. }
+    struct EdgeIndex {}
 }
 
 /// `CurrentDepGraph` stores the dependency graph for the current session. It

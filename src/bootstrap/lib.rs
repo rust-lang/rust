@@ -108,6 +108,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::fs::{self, File};
 use std::io;
+use std::io::ErrorKind;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
@@ -119,7 +120,9 @@ use once_cell::sync::OnceCell;
 
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
-use crate::util::{exe, libdir, mtime, output, run, run_suppressed, try_run_suppressed, CiEnv};
+use crate::util::{
+    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed, CiEnv,
+};
 
 mod bolt;
 mod builder;
@@ -199,6 +202,7 @@ const EXTRA_CHECK_CFGS: &[(Option<Mode>, &'static str, Option<&[&'static str]>)]
     (None, "bootstrap", None),
     (Some(Mode::Rustc), "parallel_compiler", None),
     (Some(Mode::ToolRustc), "parallel_compiler", None),
+    (Some(Mode::ToolRustc), "emulate_second_only_system", None),
     (Some(Mode::Codegen), "parallel_compiler", None),
     (Some(Mode::Std), "stdarch_intel_sde", None),
     (Some(Mode::Std), "no_fp_fmt_parse", None),
@@ -586,6 +590,20 @@ impl Build {
             metadata::build(&mut build);
         }
 
+        // Make a symbolic link so we can use a consistent directory in the documentation.
+        let build_triple = build.out.join(&build.build.triple);
+        let host = build.out.join("host");
+        if let Err(e) = symlink_dir(&build.config, &build_triple, &host) {
+            if e.kind() != ErrorKind::AlreadyExists {
+                panic!(
+                    "symlink_dir({} => {}) failed with {}",
+                    host.display(),
+                    build_triple.display(),
+                    e
+                );
+            }
+        }
+
         build
     }
 
@@ -713,10 +731,6 @@ impl Build {
             return clean::clean(self, all);
         }
 
-        if let Subcommand::Setup { profile } = &self.config.cmd {
-            return setup::setup(&self.config, *profile);
-        }
-
         // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
 
@@ -782,7 +796,7 @@ impl Build {
     /// Gets the space-separated set of activated features for the standard
     /// library.
     fn std_features(&self, target: TargetSelection) -> String {
-        let mut features = "panic-unwind".to_string();
+        let mut features = " panic-unwind".to_string();
 
         match self.config.llvm_libunwind(target) {
             LlvmLibunwind::InTree => features.push_str(" llvm-libunwind"),

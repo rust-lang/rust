@@ -111,7 +111,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
                 let ptr = this.read_pointer(ptr)?;
-                let count = this.read_scalar(count)?.to_machine_usize(this)?;
+                let count = this.read_machine_usize(count)?;
                 // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
                 // but no actual allocation can be big enough for the difference to be noticeable.
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
@@ -124,7 +124,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let [ptr, mask] = check_arg_count(args)?;
 
                 let ptr = this.read_pointer(ptr)?;
-                let mask = this.read_scalar(mask)?.to_machine_usize(this)?;
+                let mask = this.read_machine_usize(mask)?;
 
                 let masked_addr = Size::from_bytes(ptr.addr().bytes() & mask);
 

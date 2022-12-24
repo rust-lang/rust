@@ -129,6 +129,7 @@
 
 use std::collections::hash_map::{Entry, OccupiedEntry};
 
+use crate::simplify::remove_dead_blocks;
 use crate::MirPass;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_index::bit_set::BitSet;
@@ -233,6 +234,12 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             round_count += 1;
 
             apply_merges(body, tcx, &merges, &merged_locals);
+        }
+
+        if round_count != 0 {
+            // Merging can introduce overlap between moved arguments and/or call destination in an
+            // unreachable code, which validator considers to be ill-formed.
+            remove_dead_blocks(tcx, body);
         }
 
         trace!(round_count);
@@ -651,7 +658,7 @@ impl WriteInfo {
         }
     }
 
-    fn add_place<'tcx>(&mut self, place: Place<'tcx>) {
+    fn add_place(&mut self, place: Place<'_>) {
         self.writes.push(place.local);
     }
 

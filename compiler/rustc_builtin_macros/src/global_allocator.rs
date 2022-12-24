@@ -35,7 +35,7 @@ pub fn expand(
             (item, true, ecx.with_def_site_ctxt(ty.span))
         } else {
             ecx.sess.parse_sess.span_diagnostic.span_err(item.span(), "allocators must be statics");
-            return vec![orig_item.clone()]
+            return vec![orig_item];
         };
 
     // Generate a bunch of new items using the AllocFnFactory

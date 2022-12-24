@@ -99,7 +99,7 @@
         {{- sidebar|safe -}}
     </nav> {#- -#}
     <main> {#- -#}
-        <div class="width-limiter"> {#- -#}
+        {%- if page.css_class != "source" -%}<div class="width-limiter">{%- endif -%}
             <nav class="sub"> {#- -#}
                 {%- if page.css_class == "source" -%}
                 <a class="sub-logo-container" href="{{page.root_path|safe}}{{krate_with_trailing_slash|safe}}index.html"> {#- -#}
@@ -132,7 +132,7 @@
                 </form> {#- -#}
             </nav> {#- -#}
             <section id="main-content" class="content">{{- content|safe -}}</section> {#- -#}
-        </div> {#- -#}
+        {%- if page.css_class != "source" -%}</div>{%- endif -%}
     </main> {#- -#}
     {{- layout.external_html.after_content|safe -}}
     <div id="rustdoc-vars" {# -#}

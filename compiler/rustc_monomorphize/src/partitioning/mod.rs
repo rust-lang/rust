@@ -345,10 +345,7 @@ where
     }
 }
 
-fn collect_and_partition_mono_items<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (): (),
-) -> (&'tcx DefIdSet, &'tcx [CodegenUnit<'tcx>]) {
+fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[CodegenUnit<'_>]) {
     let collection_mode = match tcx.sess.opts.unstable_opts.print_mono_items {
         Some(ref s) => {
             let mode_string = s.to_lowercase();
@@ -541,7 +538,7 @@ fn dump_mono_items_stats<'tcx>(
     Ok(())
 }
 
-fn codegened_and_inlined_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> &'tcx DefIdSet {
+fn codegened_and_inlined_items(tcx: TyCtxt<'_>, (): ()) -> &DefIdSet {
     let (items, cgus) = tcx.collect_and_partition_mono_items(());
     let mut visited = DefIdSet::default();
     let mut result = items.clone();

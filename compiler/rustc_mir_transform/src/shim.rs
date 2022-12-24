@@ -174,9 +174,36 @@ fn build_drop_shim<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId, ty: Option<Ty<'tcx>>)
     let mut body =
         new_body(source, blocks, local_decls_for_sig(&sig, span), sig.inputs().len(), span);
 
+    // The first argument (index 0), but add 1 for the return value.
+    let mut dropee_ptr = Place::from(Local::new(1 + 0));
+    if tcx.sess.opts.unstable_opts.mir_emit_retag {
+        // We want to treat the function argument as if it was passed by `&mut`. As such, we
+        // generate
+        // ```
+        // temp = &mut *arg;
+        // Retag(temp, FnEntry)
+        // ```
+        // It's important that we do this first, before anything that depends on `dropee_ptr`
+        // has been put into the body.
+        let reborrow = Rvalue::Ref(
+            tcx.lifetimes.re_erased,
+            BorrowKind::Mut { allow_two_phase_borrow: false },
+            tcx.mk_place_deref(dropee_ptr),
+        );
+        let ref_ty = reborrow.ty(body.local_decls(), tcx);
+        dropee_ptr = body.local_decls.push(LocalDecl::new(ref_ty, span)).into();
+        let new_statements = [
+            StatementKind::Assign(Box::new((dropee_ptr, reborrow))),
+            StatementKind::Retag(RetagKind::FnEntry, Box::new(dropee_ptr)),
+        ];
+        for s in new_statements {
+            body.basic_blocks_mut()[START_BLOCK]
+                .statements
+                .push(Statement { source_info, kind: s });
+        }
+    }
+
     if ty.is_some() {
-        // The first argument (index 0), but add 1 for the return value.
-        let dropee_ptr = Place::from(Local::new(1 + 0));
         let patch = {
             let param_env = tcx.param_env_reveal_all_normalized(def_id);
             let mut elaborator =

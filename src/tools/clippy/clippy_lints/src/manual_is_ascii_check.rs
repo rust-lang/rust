@@ -1,11 +1,12 @@
 use clippy_utils::msrvs::{self, Msrv};
-use clippy_utils::{diagnostics::span_lint_and_sugg, in_constant, macros::root_macro_call, source::snippet};
+use clippy_utils::{diagnostics::span_lint_and_sugg, higher, in_constant, macros::root_macro_call, source::snippet};
+use rustc_ast::ast::RangeLimits;
 use rustc_ast::LitKind::{Byte, Char};
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, PatKind, RangeEnd};
+use rustc_hir::{BorrowKind, Expr, ExprKind, PatKind, RangeEnd};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
-use rustc_span::{def_id::DefId, sym};
+use rustc_span::{def_id::DefId, sym, Span};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -23,6 +24,10 @@ declare_clippy_lint! {
     ///     assert!(matches!(b'X', b'A'..=b'Z'));
     ///     assert!(matches!('2', '0'..='9'));
     ///     assert!(matches!('x', 'A'..='Z' | 'a'..='z'));
+    ///
+    ///     ('0'..='9').contains(&'0');
+    ///     ('a'..='z').contains(&'a');
+    ///     ('A'..='Z').contains(&'A');
     /// }
     /// ```
     /// Use instead:
@@ -32,6 +37,10 @@ declare_clippy_lint! {
     ///     assert!(b'X'.is_ascii_uppercase());
     ///     assert!('2'.is_ascii_digit());
     ///     assert!('x'.is_ascii_alphabetic());
+    ///
+    ///     '0'.is_ascii_digit();
+    ///     'a'.is_ascii_lowercase();
+    ///     'A'.is_ascii_uppercase();
     /// }
     /// ```
     #[clippy::version = "1.66.0"]
@@ -75,45 +84,57 @@ impl<'tcx> LateLintPass<'tcx> for ManualIsAsciiCheck {
             return;
         }
 
-        let Some(macro_call) = root_macro_call(expr.span) else { return };
-
-        if is_matches_macro(cx, macro_call.def_id) {
+        if let Some(macro_call) = root_macro_call(expr.span)
+            && is_matches_macro(cx, macro_call.def_id) {
             if let ExprKind::Match(recv, [arm, ..], _) = expr.kind {
                 let range = check_pat(&arm.pat.kind);
-
-                if let Some(sugg) = match range {
-                    CharRange::UpperChar => Some("is_ascii_uppercase"),
-                    CharRange::LowerChar => Some("is_ascii_lowercase"),
-                    CharRange::FullChar => Some("is_ascii_alphabetic"),
-                    CharRange::Digit => Some("is_ascii_digit"),
-                    CharRange::Otherwise => None,
-                } {
-                    let default_snip = "..";
-                    // `snippet_with_applicability` may set applicability to `MaybeIncorrect` for
-                    // macro span, so we check applicability manually by comparing `recv` is not default.
-                    let recv = snippet(cx, recv.span, default_snip);
-
-                    let applicability = if recv == default_snip {
-                        Applicability::HasPlaceholders
-                    } else {
-                        Applicability::MachineApplicable
-                    };
-
-                    span_lint_and_sugg(
-                        cx,
-                        MANUAL_IS_ASCII_CHECK,
-                        macro_call.span,
-                        "manual check for common ascii range",
-                        "try",
-                        format!("{recv}.{sugg}()"),
-                        applicability,
-                    );
-                }
+                check_is_ascii(cx, macro_call.span, recv, &range);
+            }
+        } else if let ExprKind::MethodCall(path, receiver, [arg], ..) = expr.kind
+            && path.ident.name == sym!(contains)
+            && let Some(higher::Range { start: Some(start), end: Some(end), limits: RangeLimits::Closed })
+            = higher::Range::hir(receiver) {
+            let range = check_range(start, end);
+            if let ExprKind::AddrOf(BorrowKind::Ref, _, e) = arg.kind {
+                check_is_ascii(cx, expr.span, e, &range);
+            } else {
+                check_is_ascii(cx, expr.span, arg, &range);
             }
         }
     }
 
     extract_msrv_attr!(LateContext);
+}
+
+fn check_is_ascii(cx: &LateContext<'_>, span: Span, recv: &Expr<'_>, range: &CharRange) {
+    if let Some(sugg) = match range {
+        CharRange::UpperChar => Some("is_ascii_uppercase"),
+        CharRange::LowerChar => Some("is_ascii_lowercase"),
+        CharRange::FullChar => Some("is_ascii_alphabetic"),
+        CharRange::Digit => Some("is_ascii_digit"),
+        CharRange::Otherwise => None,
+    } {
+        let default_snip = "..";
+        // `snippet_with_applicability` may set applicability to `MaybeIncorrect` for
+        // macro span, so we check applicability manually by comparing `recv` is not default.
+        let recv = snippet(cx, recv.span, default_snip);
+
+        let applicability = if recv == default_snip {
+            Applicability::HasPlaceholders
+        } else {
+            Applicability::MachineApplicable
+        };
+
+        span_lint_and_sugg(
+            cx,
+            MANUAL_IS_ASCII_CHECK,
+            span,
+            "manual check for common ascii range",
+            "try",
+            format!("{recv}.{sugg}()"),
+            applicability,
+        );
+    }
 }
 
 fn check_pat(pat_kind: &PatKind<'_>) -> CharRange {

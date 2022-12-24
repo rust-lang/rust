@@ -8,7 +8,7 @@ assert-text-false: (".fqn", "Struct test_docs::Foo")
 // We now check that we land on the search result page if "go_to_first" isn't set.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=struct%3AFoo"
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-text-false: (".fqn", "Struct test_docs::Foo")
 // Ensure that the search results are displayed, not the "normal" content.
 assert-css: ("#main-content", {"display": "none"})

@@ -15,8 +15,8 @@ use std::sync::Arc;
 
 use crate::errors::DebugVisualizerUnreadable;
 
-fn check_for_debugger_visualizer<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn check_for_debugger_visualizer(
+    tcx: TyCtxt<'_>,
     hir_id: HirId,
     debugger_visualizers: &mut FxHashSet<DebuggerVisualizerFile>,
 ) {
@@ -69,7 +69,7 @@ fn check_for_debugger_visualizer<'tcx>(
 }
 
 /// Traverses and collects the debugger visualizers for a specific crate.
-fn debugger_visualizers<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> Vec<DebuggerVisualizerFile> {
+fn debugger_visualizers(tcx: TyCtxt<'_>, cnum: CrateNum) -> Vec<DebuggerVisualizerFile> {
     assert_eq!(cnum, LOCAL_CRATE);
 
     // Initialize the collector.

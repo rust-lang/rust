@@ -41,6 +41,8 @@ session_unsupported_dwarf_version = requested DWARF version {$dwarf_version} is 
 
 session_target_stack_protector_not_supported = `-Z stack-protector={$stack_protector}` is not supported for target {$target_triple} and will be ignored
 
+session_branch_protection_requires_aarch64 = `-Zbranch-protection` is only supported on aarch64
+
 session_split_debuginfo_unstable_platform = `-Csplit-debuginfo={$debuginfo}` is unstable on this platform
 
 session_file_is_not_writeable = output file {$file} is not writeable -- check its permissions
