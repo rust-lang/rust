@@ -5,8 +5,8 @@ standard library, and documentation.
 
 [Rust]: https://www.rust-lang.org
 
-**Note: this README is for _users_ rather than _contributors_.
-If you wish to _contribute_ to the compiler, you should read [CONTRIBUTING.md](CONTRIBUTING.md) instead.**
+**Note: this README is for _users_ rather than _contributors_.**
+If you wish to _contribute_ to the compiler, you should read [CONTRIBUTING.md](CONTRIBUTING.md) instead.
 
 ## Quick Start
 
