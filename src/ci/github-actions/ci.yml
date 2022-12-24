@@ -286,6 +286,8 @@ jobs:
     name: PR
     env:
       RUST_BACKTRACE: 1
+      RUST_CONFIGURE_ARGS: --set llvm.download-ci-llvm=if-available
+
       <<: [*shared-ci-variables, *public-variables]
     if: github.event_name == 'pull_request'
     strategy:

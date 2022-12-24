@@ -37,6 +37,7 @@ jobs:
     name: PR
     env:
       RUST_BACKTRACE: 1
+      RUST_CONFIGURE_ARGS: "--set llvm.download-ci-llvm=if-available"
       CI_JOB_NAME: "${{ matrix.name }}"
       SCCACHE_BUCKET: rust-lang-ci-sccache2
       TOOLSTATE_REPO: "https://github.com/rust-lang-nursery/rust-toolstate"
