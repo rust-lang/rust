@@ -93,14 +93,12 @@ fn parse(entry: TopEntryPoint, text: &str) -> (String, bool) {
         crate::StrStep::Token { kind, text } => {
             assert!(depth > 0);
             len += text.len();
-            write!(buf, "{indent}").unwrap();
-            write!(buf, "{kind:?} {text:?}\n").unwrap();
+            writeln!(buf, "{indent}{kind:?} {text:?}").unwrap();
         }
         crate::StrStep::Enter { kind } => {
             assert!(depth > 0 || len == 0);
             depth += 1;
-            write!(buf, "{indent}").unwrap();
-            write!(buf, "{kind:?}\n").unwrap();
+            writeln!(buf, "{indent}{kind:?}").unwrap();
             indent.push_str("  ");
         }
         crate::StrStep::Exit => {

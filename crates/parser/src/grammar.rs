@@ -51,7 +51,7 @@ pub(crate) mod entry {
         use super::*;
 
         pub(crate) fn vis(p: &mut Parser<'_>) {
-            let _ = opt_visibility(p, false);
+            opt_visibility(p, false);
         }
 
         pub(crate) fn block(p: &mut Parser<'_>) {
@@ -70,10 +70,10 @@ pub(crate) mod entry {
             types::type_(p);
         }
         pub(crate) fn expr(p: &mut Parser<'_>) {
-            let _ = expressions::expr(p);
+            expressions::expr(p);
         }
         pub(crate) fn path(p: &mut Parser<'_>) {
-            let _ = paths::type_path(p);
+            paths::type_path(p);
         }
         pub(crate) fn item(p: &mut Parser<'_>) {
             items::item_or_macro(p, true);

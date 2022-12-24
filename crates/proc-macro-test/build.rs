@@ -63,7 +63,7 @@ fn main() {
     };
 
     cmd.current_dir(&staging_dir)
-        .args(&["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
+        .args(["build", "-p", "proc-macro-test-impl", "--message-format", "json"])
         // Explicit override the target directory to avoid using the same one which the parent
         // cargo is using, or we'll deadlock.
         // This can happen when `CARGO_TARGET_DIR` is set or global config forces all cargo

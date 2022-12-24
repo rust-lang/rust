@@ -119,7 +119,7 @@ impl Expr {
     fn binding_power(&self) -> (u8, u8) {
         use ast::{ArithOp::*, BinaryOp::*, Expr::*, LogicOp::*};
 
-        let dps = match self {
+        match self {
             // (0, 0)   -- paren-like/nullary
             // (0, N)   -- prefix
             // (N, 0)   -- postfix
@@ -170,9 +170,7 @@ impl Expr {
             ArrayExpr(_) | TupleExpr(_) | Literal(_) | PathExpr(_) | ParenExpr(_) | IfExpr(_)
             | WhileExpr(_) | ForExpr(_) | LoopExpr(_) | MatchExpr(_) | BlockExpr(_)
             | RecordExpr(_) | UnderscoreExpr(_) => (0, 0),
-        };
-
-        dps
+        }
     }
 
     fn is_paren_like(&self) -> bool {

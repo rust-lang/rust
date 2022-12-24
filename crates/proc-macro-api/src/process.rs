@@ -67,7 +67,7 @@ impl Process {
         args: impl IntoIterator<Item = impl AsRef<OsStr>>,
     ) -> io::Result<Process> {
         let args: Vec<OsString> = args.into_iter().map(|s| s.as_ref().into()).collect();
-        let child = JodChild(mk_child(&path, &args)?);
+        let child = JodChild(mk_child(&path, args)?);
         Ok(Process { child })
     }
 

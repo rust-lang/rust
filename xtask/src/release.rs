@@ -65,7 +65,7 @@ impl flags::Release {
 
         let contents = changelog::get_changelog(sh, changelog_n, &commit, prev_tag, &today)?;
         let path = changelog_dir.join(format!("{today}-changelog-{changelog_n}.adoc"));
-        sh.write_file(&path, &contents)?;
+        sh.write_file(path, contents)?;
 
         Ok(())
     }
