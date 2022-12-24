@@ -12,8 +12,8 @@ note: type in trait
    |
 LL |     fn bar(&mut self, other: &mut dyn Foo);
    |                              ^^^^^^^^^^^^
-   = note: expected fn pointer `fn(&mut Baz, &mut dyn Foo)`
-              found fn pointer `fn(&mut Baz, &dyn Foo)`
+   = note: expected signature `fn(&mut Baz, &mut dyn Foo)`
+              found signature `fn(&mut Baz, &dyn Foo)`
 
 error: aborting due to previous error
 

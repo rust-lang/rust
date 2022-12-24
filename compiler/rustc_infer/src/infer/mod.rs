@@ -361,6 +361,7 @@ pub enum ValuePairs<'tcx> {
     Terms(ExpectedFound<ty::Term<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
+    Sigs(ExpectedFound<ty::FnSig<'tcx>>),
 }
 
 impl<'tcx> ValuePairs<'tcx> {

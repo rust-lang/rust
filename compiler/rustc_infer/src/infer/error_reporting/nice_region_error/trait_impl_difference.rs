@@ -3,7 +3,7 @@
 use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
-use crate::infer::Subtype;
+use crate::infer::{Subtype, ValuePairs};
 use crate::traits::ObligationCauseCode::CompareImplItemObligation;
 use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
@@ -11,6 +11,7 @@ use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
 use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::error::ExpectedFound;
 use rustc_middle::ty::print::RegionHighlightMode;
 use rustc_middle::ty::{self, Ty, TyCtxt, TypeSuperVisitable, TypeVisitor};
 use rustc_span::Span;
@@ -23,22 +24,27 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let error = self.error.as_ref()?;
         debug!("try_report_impl_not_conforming_to_trait {:?}", error);
         if let RegionResolutionError::SubSupConflict(
-                _,
-                var_origin,
-                sub_origin,
-                _sub,
-                sup_origin,
-                _sup,
-                _,
-            ) = error.clone()
+            _,
+            var_origin,
+            sub_origin,
+            _sub,
+            sup_origin,
+            _sup,
+            _,
+        ) = error.clone()
             && let (Subtype(sup_trace), Subtype(sub_trace)) = (&sup_origin, &sub_origin)
-            && let sub_expected_found @ Some((sub_expected, sub_found)) = sub_trace.values.ty()
-            && let sup_expected_found @ Some(_) = sup_trace.values.ty()
             && let CompareImplItemObligation { trait_item_def_id, .. } = sub_trace.cause.code()
-            && sup_expected_found == sub_expected_found
+            && sub_trace.values == sup_trace.values
+            && let ValuePairs::Sigs(ExpectedFound { expected, found }) = sub_trace.values
         {
-            let guar =
-                self.emit_err(var_origin.span(), sub_expected, sub_found, *trait_item_def_id);
+            // FIXME(compiler-errors): Don't like that this needs `Ty`s, but
+            // all of the region highlighting machinery only deals with those.
+            let guar = self.emit_err(
+                var_origin.span(),
+                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(expected)),
+                self.cx.tcx.mk_fn_ptr(ty::Binder::dummy(found)),
+                *trait_item_def_id,
+            );
             return Some(guar);
         }
         None
