@@ -34,7 +34,7 @@ use std::iter;
 /// - `impl_m_span`: span to use for reporting errors
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-pub(crate) fn compare_impl_method<'tcx>(
+pub(super) fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
@@ -442,7 +442,7 @@ fn compare_asyncness<'tcx>(
 }
 
 #[instrument(skip(tcx), level = "debug", ret)]
-pub fn collect_trait_impl_trait_tys<'tcx>(
+pub(super) fn collect_trait_impl_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
@@ -1517,7 +1517,7 @@ fn compare_generic_param_kinds<'tcx>(
 }
 
 /// Use `tcx.compare_impl_const` instead
-pub(crate) fn compare_impl_const_raw(
+pub(super) fn compare_impl_const_raw(
     tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
@@ -1623,7 +1623,7 @@ pub(crate) fn compare_impl_const_raw(
     Ok(())
 }
 
-pub(crate) fn compare_impl_ty<'tcx>(
+pub(super) fn compare_impl_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,
@@ -1749,7 +1749,7 @@ fn compare_type_predicate_entailment<'tcx>(
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
 #[instrument(level = "debug", skip(tcx))]
-pub fn check_type_bounds<'tcx>(
+pub(super) fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
     impl_ty: &ty::AssocItem,
