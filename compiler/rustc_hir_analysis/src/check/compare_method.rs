@@ -1516,8 +1516,8 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-/// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
-pub(crate) fn raw_compare_const_impl(
+/// Use `tcx.compare_impl_const` instead
+pub(crate) fn compare_impl_const_raw(
     tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
@@ -1623,7 +1623,7 @@ pub(crate) fn raw_compare_const_impl(
     Ok(())
 }
 
-pub(crate) fn compare_ty_impl<'tcx>(
+pub(crate) fn compare_impl_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,

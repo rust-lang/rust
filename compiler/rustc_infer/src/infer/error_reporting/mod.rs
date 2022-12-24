@@ -1836,7 +1836,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
         // it's an actual definition. According to the comments (e.g. in
-        // rustc_hir_analysis/check/compare_method.rs:compare_predicate_entailment) the latter
+        // rustc_hir_analysis/check/compare_method.rs:compare_method_predicate_entailment) the latter
         // is relied upon by some other code. This might (or might not) need cleanup.
         let body_owner_def_id =
             self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
