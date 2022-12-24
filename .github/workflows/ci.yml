@@ -48,23 +48,16 @@ jobs:
       matrix:
         include:
           - name: mingw-check
-<<<<<<< HEAD
-            os: ubuntu-latest
-            env: {}
-          - name: x86_64-gnu-llvm-13
-            os: ubuntu-latest
-=======
             tidy: false
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: mingw-check-tidy
             tidy: true
-            os: ubuntu-20.04-xl
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-llvm-13
             tidy: false
-            os: ubuntu-20.04-xl
->>>>>>> 4f4d0586ad20c66a16d547581ca379beafece93a
+            os: ubuntu-latest
             env: {}
           - name: x86_64-gnu-tools
             tidy: false
