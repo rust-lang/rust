@@ -5,11 +5,6 @@ mir_build_unconditional_recursion = function cannot return without recursing
 mir_build_unconditional_recursion_call_site_label = recursive call site
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe =
-    call to unsafe function `{$function}` is unsafe and requires unsafe block (error E0133)
-    .note = consult the function's documentation for information on how to avoid undefined behavior
-    .label = call to unsafe function
-
-mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless =
     call to unsafe function is unsafe and requires unsafe block (error E0133)
     .note = consult the function's documentation for information on how to avoid undefined behavior
     .label = call to unsafe function
@@ -56,7 +51,7 @@ mir_build_unsafe_op_in_unsafe_fn_borrow_of_layout_constrained_field_requires_uns
     .label = borrow of layout constrained field with interior mutability
 
 mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe =
-    call to function `{$function}` with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
+    call to function with `#[target_feature]` is unsafe and requires unsafe block (error E0133)
     .note = can only be called if the required target features are available
     .label = call to function with `#[target_feature]`
 

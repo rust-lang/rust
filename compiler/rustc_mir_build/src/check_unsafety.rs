@@ -525,20 +525,15 @@ impl UnsafeOpKind {
         span: Span,
     ) {
         match self {
-            CallToUnsafeFunction(did) if did.is_some() => tcx.emit_spanned_lint(
+            // The current linting API doesn't allow us to delay calling `def_path_str`
+            // until the lint is actually emitted, which risks triggering a "good path ICE"
+            // if the lint gets cancelled (for example, inside an external macro).
+            // For now, don't include the function name in the diagnostic.
+            CallToUnsafeFunction(_) => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
-                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
-                    span,
-                    function: &tcx.def_path_str(did.unwrap()),
-                },
-            ),
-            CallToUnsafeFunction(..) => tcx.emit_spanned_lint(
-                UNSAFE_OP_IN_UNSAFE_FN,
-                hir_id,
-                span,
-                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless { span },
+                UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe { span },
             ),
             UseOfInlineAssembly => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
@@ -588,14 +583,12 @@ impl UnsafeOpKind {
                 span,
                 UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe { span },
             ),
-            CallToFunctionWith(did) => tcx.emit_spanned_lint(
+            // We don't use the provided `DefId` for the same reason as `CallToUnsafeFunction` above.
+            CallToFunctionWith(_) => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
-                UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
-                    span,
-                    function: &tcx.def_path_str(*did),
-                },
+                UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe { span },
             ),
         }
     }
@@ -607,24 +600,24 @@ impl UnsafeOpKind {
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
         match self {
-            CallToUnsafeFunction(did) if did.is_some() && unsafe_op_in_unsafe_fn_allowed => {
+            CallToUnsafeFunction(Some(did)) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
-                    function: &tcx.def_path_str(did.unwrap()),
+                    function: &tcx.def_path_str(*did),
                 });
             }
-            CallToUnsafeFunction(did) if did.is_some() => {
+            CallToUnsafeFunction(Some(did)) => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafe {
                     span,
-                    function: &tcx.def_path_str(did.unwrap()),
+                    function: &tcx.def_path_str(*did),
                 });
             }
-            CallToUnsafeFunction(..) if unsafe_op_in_unsafe_fn_allowed => {
+            CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(
                     CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed { span },
                 );
             }
-            CallToUnsafeFunction(..) => {
+            CallToUnsafeFunction(None) => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless { span });
             }
             UseOfInlineAssembly if unsafe_op_in_unsafe_fn_allowed => {

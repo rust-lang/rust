@@ -20,16 +20,7 @@ pub struct UnconditionalRecursion {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe)]
 #[note]
-pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe<'a> {
-    #[label]
-    pub span: Span,
-    pub function: &'a str,
-}
-
-#[derive(LintDiagnostic)]
-#[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_unsafe_fn_requires_unsafe_nameless)]
-#[note]
-pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafeNameless {
+pub struct UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
     #[label]
     pub span: Span,
 }
@@ -100,10 +91,9 @@ pub struct UnsafeOpInUnsafeFnBorrowOfLayoutConstrainedFieldRequiresUnsafe {
 #[derive(LintDiagnostic)]
 #[diag(mir_build_unsafe_op_in_unsafe_fn_call_to_fn_with_requires_unsafe)]
 #[note]
-pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe<'a> {
+pub struct UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
     #[label]
     pub span: Span,
-    pub function: &'a str,
 }
 
 #[derive(Diagnostic)]
