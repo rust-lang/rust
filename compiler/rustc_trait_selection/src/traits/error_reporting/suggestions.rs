@@ -3472,7 +3472,7 @@ fn hint_missing_borrow<'tcx>(
 
     let arg_spans = fn_decl.inputs.iter().map(|ty| ty.span);
 
-    fn get_deref_type_and_refs<'tcx>(mut ty: Ty<'tcx>) -> (Ty<'tcx>, usize) {
+    fn get_deref_type_and_refs(mut ty: Ty<'_>) -> (Ty<'_>, usize) {
         let mut refs = 0;
 
         while let ty::Ref(_, new_ty, _) = ty.kind() {

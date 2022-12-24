@@ -18,7 +18,7 @@ use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 #[inline]
-pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
+pub fn associated_body(node: Node<'_>) -> Option<BodyId> {
     match node {
         Node::Item(Item {
             kind: ItemKind::Const(_, body) | ItemKind::Static(.., body) | ItemKind::Fn(.., body),
@@ -41,7 +41,7 @@ pub fn associated_body<'hir>(node: Node<'hir>) -> Option<BodyId> {
     }
 }
 
-fn is_body_owner<'hir>(node: Node<'hir>, hir_id: HirId) -> bool {
+fn is_body_owner(node: Node<'_>, hir_id: HirId) -> bool {
     match associated_body(node) {
         Some(b) => b.hir_id == hir_id,
         None => false,

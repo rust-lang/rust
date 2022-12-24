@@ -1248,7 +1248,7 @@ pub fn needs_drop_components<'tcx>(
     }
 }
 
-pub fn is_trivially_const_drop<'tcx>(ty: Ty<'tcx>) -> bool {
+pub fn is_trivially_const_drop(ty: Ty<'_>) -> bool {
     match *ty.kind() {
         ty::Bool
         | ty::Char

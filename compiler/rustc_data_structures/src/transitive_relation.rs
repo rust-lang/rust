@@ -199,7 +199,7 @@ impl<T: Eq + Hash + Copy> TransitiveRelation<T> {
     /// Viewing the relation as a graph, computes the "mutual
     /// immediate postdominator" of a set of points (if one
     /// exists). See `postdom_upper_bound` for details.
-    pub fn mutual_immediate_postdominator<'a>(&'a self, mut mubs: Vec<T>) -> Option<T> {
+    pub fn mutual_immediate_postdominator(&self, mut mubs: Vec<T>) -> Option<T> {
         loop {
             match mubs.len() {
                 0 => return None,

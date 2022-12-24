@@ -607,21 +607,21 @@ fn link_dwarf_object<'a>(
     }
 
     impl<Relocations> ThorinSession<Relocations> {
-        fn alloc_mmap<'arena>(&'arena self, data: Mmap) -> &'arena Mmap {
+        fn alloc_mmap(&self, data: Mmap) -> &Mmap {
             (*self.arena_mmap.alloc(data)).borrow()
         }
     }
 
     impl<Relocations> thorin::Session<Relocations> for ThorinSession<Relocations> {
-        fn alloc_data<'arena>(&'arena self, data: Vec<u8>) -> &'arena [u8] {
+        fn alloc_data(&self, data: Vec<u8>) -> &[u8] {
             (*self.arena_data.alloc(data)).borrow()
         }
 
-        fn alloc_relocation<'arena>(&'arena self, data: Relocations) -> &'arena Relocations {
+        fn alloc_relocation(&self, data: Relocations) -> &Relocations {
             (*self.arena_relocations.alloc(data)).borrow()
         }
 
-        fn read_input<'arena>(&'arena self, path: &Path) -> std::io::Result<&'arena [u8]> {
+        fn read_input(&self, path: &Path) -> std::io::Result<&[u8]> {
             let file = File::open(&path)?;
             let mmap = (unsafe { Mmap::map(file) })?;
             Ok(self.alloc_mmap(mmap))

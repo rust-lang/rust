@@ -340,9 +340,9 @@ where
 /// which will be used if the query is not in the cache and we need
 /// to compute it.
 #[inline]
-pub fn try_get_cached<'a, Tcx, C, R, OnHit>(
+pub fn try_get_cached<Tcx, C, R, OnHit>(
     tcx: Tcx,
-    cache: &'a C,
+    cache: &C,
     key: &C::Key,
     // `on_hit` can be called while holding a lock to the query cache
     on_hit: OnHit,

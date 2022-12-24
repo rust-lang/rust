@@ -579,8 +579,6 @@ ul.block, .block li {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
@@ -1261,14 +1259,14 @@ a.test-arrow:hover {
 	margin-right: auto;
 }
 
-#titles {
+#search-tabs {
 	display: flex;
 	flex-direction: row;
 	gap: 1px;
 	margin-bottom: 4px;
 }
 
-#titles > button {
+#search-tabs button {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -1278,8 +1276,7 @@ a.test-arrow:hover {
 	color: inherit;
 }
 
-#titles > button > div.count {
-	display: inline-block;
+#search-tabs .count {
 	font-size: 1rem;
 	color: var(--search-tab-title-count-color);
 }
@@ -1706,7 +1703,7 @@ in storage.js
 		display: none !important;
 	}
 
-	#titles > button > div.count {
+	#search-tabs .count {
 		display: block;
 	}
 
