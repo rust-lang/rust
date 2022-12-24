@@ -6,7 +6,6 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
-use rustc_hir_analysis::hir_ty_to_ty;
 use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
@@ -1137,7 +1136,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             && Some(def.did()) == self.infcx.tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
                             // FIXME: this is a hack because we can't call `can_eq`
-                            && ty.to_string() ==    
+                            && ty.to_string() ==
                                 tcx.fn_sig(method_did).input(0).skip_binder().to_string()
                         {
                             err.span_suggestion_verbose(
@@ -1155,22 +1154,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 if let Some(def_id) = impl_def_id.as_local()
                                     && let hir_id = tcx.hir().local_def_id_to_hir_id(def_id)
                                     && let hir::Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Impl(hir::Impl {
-                                            self_ty,
-                                            ..
-                                        }),
+                                        kind: hir::ItemKind::Impl(_),
                                         ..
                                     }) = tcx.hir().get(hir_id)
+                                    && tcx.type_of(impl_def_id) == ty
                                 {
-                                    if ty == hir_ty_to_ty(tcx, self_ty) {
-                                        err.span_suggestion_verbose(
-                                            fn_call_span.shrink_to_lo(),
-                                            "you can `clone` the value and consume it, but this \
-                                             might not be your desired behavior",
-                                            "clone().".to_string(),
-                                            Applicability::MaybeIncorrect,
-                                        );
-                                    }
+                                    err.span_suggestion_verbose(
+                                        fn_call_span.shrink_to_lo(),
+                                        "you can `clone` the value and consume it, but this might \
+                                         not be your desired behavior",
+                                        "clone().".to_string(),
+                                        Applicability::MaybeIncorrect,
+                                    );
                                 }
                             }
                         }
