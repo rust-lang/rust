@@ -81,6 +81,8 @@
 	--source-sidebar-background-hover: #e0e0e0;
 	--table-alt-row-background-color: #F5F5F5;
 	--codeblock-link-background: #eee;
+	--scrape-example-toggle-line-background: #ccc;
+	--scrape-example-toggle-line-hover-background: #999;
 }
 
 #titles > button:not(.selected) {
@@ -112,10 +114,4 @@
 }
 .scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
-}
-.toggle-line-inner {
-	background: #ccc;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #999;
 }

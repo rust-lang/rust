@@ -89,6 +89,8 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--source-sidebar-background-hover: #14191f;
 	--table-alt-row-background-color: #191f26;
 	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
 }
 
 h1, h2, h3, h4 {
@@ -219,10 +221,4 @@ pre.rust .kw-2, pre.rust .prelude-ty {}
 }
 .scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
-}
-.toggle-line-inner {
-	background: #999;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #c5c5c5;
 }

@@ -84,6 +84,8 @@
 	--source-sidebar-background-hover: #444;
 	--table-alt-row-background-color: #2A2A2A;
 	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
 }
 
 #titles > button:not(.selected) {
@@ -115,10 +117,4 @@
 }
 .scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
-}
-.toggle-line-inner {
-	background: #999;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #c5c5c5;
 }
