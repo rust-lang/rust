@@ -956,6 +956,7 @@ impl<'mir, 'tcx> Machine<'mir, 'tcx> for MiriMachine<'mir, 'tcx> {
                 &ecx.machine.threads,
                 alloc.size(),
                 kind,
+                ecx.machine.current_span(),
             )
         });
         let buffer_alloc = ecx.machine.weak_memory.then(weak_memory::AllocState::new_allocation);
