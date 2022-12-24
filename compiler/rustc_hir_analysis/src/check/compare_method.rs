@@ -425,7 +425,7 @@ fn compare_asyncness<'tcx>(
             ty::Alias(ty::Opaque, ..) => {
                 // allow both `async fn foo()` and `fn foo() -> impl Future`
             }
-            ty::Error(rustc_errors::ErrorGuaranteed { .. }) => {
+            ty::Error(_) => {
                 // We don't know if it's ok, but at least it's already an error.
             }
             _ => {
@@ -1945,22 +1945,6 @@ pub fn check_type_bounds<'tcx>(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
     )?;
-
-    let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
-    for (key, value) in constraints {
-        infcx
-            .err_ctxt()
-            .report_mismatched_types(
-                &ObligationCause::misc(
-                    value.hidden_type.span,
-                    tcx.hir().local_def_id_to_hir_id(impl_ty.def_id.expect_local()),
-                ),
-                tcx.mk_opaque(key.def_id.to_def_id(), key.substs),
-                value.hidden_type.ty,
-                TypeError::Mismatch,
-            )
-            .emit();
-    }
 
     Ok(())
 }
