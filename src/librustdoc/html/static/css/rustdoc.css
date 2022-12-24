@@ -347,6 +347,9 @@ pre {
 .source .content pre {
 	padding: 20px;
 }
+.rustdoc.source .example-wrap > pre.src-line-numbers  {
+	padding: 20px 0 20px 4px;
+}
 
 img {
 	max-width: 100%;
@@ -519,10 +522,6 @@ ul.block, .block li {
 	display: none;
 }
 
-.source .content pre.rust {
-	padding-left: 0;
-}
-
 .rustdoc .example-wrap {
 	display: flex;
 	position: relative;
@@ -550,23 +549,21 @@ ul.block, .block li {
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+	padding: 14px 8px;
+	color: var(--src-line-numbers-span-color);
 }
 
-.example-line-numbers {
-	border: 1px solid;
-	padding: 13px 8px;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-	border-color: var(--example-line-numbers-border-color);
+.rustdoc .example-wrap > pre.src-line-numbers {
+	padding: 14px 0;
 }
-
 .src-line-numbers a, .src-line-numbers span {
 	color: var(--src-line-numbers-span-color);
+	padding: 0 8px;
 }
 .src-line-numbers :target {
 	background-color: transparent;
 	border-right: none;
-	padding-right: 0;
+	padding: 0 8px;
 }
 .src-line-numbers .line-highlighted {
 	background-color: var(--src-line-number-highlighted-background-color);
@@ -1956,15 +1953,6 @@ in storage.js
 }
 .scraped-example:not(.expanded) .code-wrapper:after {
 	bottom: 0;
-}
-
-.scraped-example .code-wrapper .src-line-numbers {
-	padding: 14px 0;
-}
-
-.scraped-example .code-wrapper .src-line-numbers a,
-.scraped-example .code-wrapper .src-line-numbers span {
-	padding: 0 14px;
 }
 
 .scraped-example .code-wrapper .example-wrap {
