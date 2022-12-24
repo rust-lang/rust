@@ -208,6 +208,12 @@ pub fn is_panic(cx: &LateContext<'_>, def_id: DefId) -> bool {
     )
 }
 
+/// Is `def_id` of `assert!` or `debug_assert!`
+pub fn is_assert_macro(cx: &LateContext<'_>, def_id: DefId) -> bool {
+    let Some(name) = cx.tcx.get_diagnostic_name(def_id) else { return false };
+    matches!(name, sym::assert_macro | sym::debug_assert_macro)
+}
+
 pub enum PanicExpn<'a> {
     /// No arguments - `panic!()`
     Empty,

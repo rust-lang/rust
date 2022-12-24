@@ -405,7 +405,7 @@ impl<'a> Arguments<'a> {
     /// 1. The `pieces` slice must be at least as long as `fmt`.
     /// 2. Every [`rt::v1::Argument::position`] value within `fmt` must be a
     ///    valid index of `args`.
-    /// 3. Every [`Count::Param`] within `fmt` must contain a valid index of
+    /// 3. Every [`rt::v1::Count::Param`] within `fmt` must contain a valid index of
     ///    `args`.
     #[doc(hidden)]
     #[inline]
@@ -2471,8 +2471,8 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter<'_>) -> Result {
-        // Cast is needed here because `.addr()` requires `T: Sized`.
-        pointer_fmt_inner((*self as *const ()).addr(), f)
+        // Cast is needed here because `.expose_addr()` requires `T: Sized`.
+        pointer_fmt_inner((*self as *const ()).expose_addr(), f)
     }
 }
 

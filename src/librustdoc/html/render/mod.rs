@@ -467,9 +467,10 @@ fn document_short(
         return;
     }
     if let Some(s) = item.doc_value() {
-        let mut summary_html = MarkdownSummaryLine(&s, &item.links(cx)).into_string();
+        let (mut summary_html, has_more_content) =
+            MarkdownSummaryLine(&s, &item.links(cx)).into_string_with_has_more_content();
 
-        if s.contains('\n') {
+        if has_more_content {
             let link = format!(r#" <a{}>Read more</a>"#, assoc_href_attr(item, link, cx));
 
             if let Some(idx) = summary_html.rfind("</p>") {
@@ -3004,8 +3005,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
                   </summary>\
                   <div class=\"hide-more\">Hide additional examples</div>\
                   <div class=\"more-scraped-examples\">\
-                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>\
-                    <div class=\"more-scraped-examples-inner\">"
+                    <div class=\"toggle-line\"><div class=\"toggle-line-inner\"></div></div>"
         );
 
         // Only generate inline code for MAX_FULL_EXAMPLES number of examples. Otherwise we could
@@ -3029,7 +3029,7 @@ fn render_call_locations(w: &mut Buffer, cx: &mut Context<'_>, item: &clean::Ite
             write!(w, "</ul></div>");
         }
 
-        write!(w, "</div></div></details>");
+        write!(w, "</div></details>");
     }
 
     write!(w, "</div>");

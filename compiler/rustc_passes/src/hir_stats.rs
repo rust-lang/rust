@@ -121,7 +121,7 @@ impl<'k> StatCollector<'k> {
 
     fn print(&self, title: &str, prefix: &str) {
         let mut nodes: Vec<_> = self.nodes.iter().collect();
-        nodes.sort_by_key(|&(_, ref node)| node.stats.count * node.stats.size);
+        nodes.sort_by_key(|(_, node)| node.stats.count * node.stats.size);
 
         let total_size = nodes.iter().map(|(_, node)| node.stats.count * node.stats.size).sum();
 
@@ -147,7 +147,7 @@ impl<'k> StatCollector<'k> {
             );
             if !node.subnodes.is_empty() {
                 let mut subnodes: Vec<_> = node.subnodes.iter().collect();
-                subnodes.sort_by_key(|&(_, ref subnode)| subnode.count * subnode.size);
+                subnodes.sort_by_key(|(_, subnode)| subnode.count * subnode.size);
 
                 for (label, subnode) in subnodes {
                     let size = subnode.count * subnode.size;

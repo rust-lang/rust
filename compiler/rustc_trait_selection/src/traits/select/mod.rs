@@ -1171,19 +1171,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     where
         I: Iterator<Item = ty::Predicate<'tcx>>,
     {
-        cycle.all(|predicate| self.coinductive_predicate(predicate))
-    }
-
-    fn coinductive_predicate(&self, predicate: ty::Predicate<'tcx>) -> bool {
-        let result = match predicate.kind().skip_binder() {
-            ty::PredicateKind::Clause(ty::Clause::Trait(ref data)) => {
-                self.tcx().trait_is_coinductive(data.def_id())
-            }
-            ty::PredicateKind::WellFormed(_) => true,
-            _ => false,
-        };
-        debug!(?predicate, ?result, "coinductive_predicate");
-        result
+        cycle.all(|predicate| predicate.is_coinductive(self.tcx()))
     }
 
     /// Further evaluates `candidate` to decide whether all type parameters match and whether nested

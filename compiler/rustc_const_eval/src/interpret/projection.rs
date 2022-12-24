@@ -363,7 +363,7 @@ where
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(&n)?.to_machine_usize(self)?;
+                let n = self.read_machine_usize(&n)?;
                 self.place_index(base, n)?
             }
             ConstantIndex { offset, min_length, from_end } => {
@@ -392,7 +392,7 @@ where
             Index(local) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
                 let n = self.local_to_op(self.frame(), local, Some(layout))?;
-                let n = self.read_scalar(&n)?.to_machine_usize(self)?;
+                let n = self.read_machine_usize(&n)?;
                 self.operand_index(base, n)?
             }
             ConstantIndex { offset, min_length, from_end } => {

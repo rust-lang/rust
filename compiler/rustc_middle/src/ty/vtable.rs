@@ -88,8 +88,8 @@ pub(super) fn vtable_allocation_provider<'tcx>(
                 let fn_ptr = Pointer::from(fn_alloc_id);
                 Scalar::from_pointer(fn_ptr, &tcx)
             }
-            VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size).into(),
-            VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size).into(),
+            VtblEntry::MetadataSize => Scalar::from_uint(size, ptr_size),
+            VtblEntry::MetadataAlign => Scalar::from_uint(align, ptr_size),
             VtblEntry::Vacant => continue,
             VtblEntry::Method(instance) => {
                 // Prepare the fn ptr we write into the vtable.

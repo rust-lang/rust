@@ -42,7 +42,7 @@ impl<T> StaticRef<T> {
 impl<T> std::ops::Deref for StaticRef<T> {
     type Target = T;
 
-    fn deref(&self) -> &'static T {
+    fn deref(&self) -> &T {
         unsafe { &*self.ptr }
     }
 }

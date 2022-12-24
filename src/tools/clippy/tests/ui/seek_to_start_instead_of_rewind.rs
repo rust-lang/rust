@@ -70,6 +70,12 @@ fn seek_to_end<T: Seek>(t: &mut T) {
     t.seek(SeekFrom::End(0));
 }
 
+// This should NOT trigger clippy warning because
+// expr is used here
+fn seek_to_start_in_let<T: Seek>(t: &mut T) {
+    let a = t.seek(SeekFrom::Start(0)).unwrap();
+}
+
 fn main() {
     let mut f = OpenOptions::new()
         .write(true)

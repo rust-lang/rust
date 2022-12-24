@@ -12,8 +12,8 @@ write: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-css: ("#titles > button", {"cursor": "pointer"})
+wait-for: "#search-tabs"
+assert-css: ("#search-tabs > button", {"cursor": "pointer"})
 
 // mobile sidebar toggle button
 size: (500, 700)
@@ -21,4 +21,4 @@ assert-css: (".sidebar-menu-toggle", {"cursor": "pointer"})
 
 // the sidebar toggle button on the source code pages
 goto: "file://" + |DOC_PATH| + "/src/lib2/lib.rs.html"
-assert-css: ("#sidebar-toggle > button", {"cursor": "pointer"})
+assert-css: ("#src-sidebar-toggle > button", {"cursor": "pointer"})

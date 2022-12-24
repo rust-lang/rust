@@ -15,7 +15,15 @@ use rustc_span::{Span, DUMMY_SP};
 /// The `Key` trait controls what types can legally be used as the key
 /// for a query.
 pub trait Key: Sized {
-    type CacheSelector = DefaultCacheSelector<Self>;
+    // N.B. Most of the keys down below have `type CacheSelector = DefaultCacheSelector<Self>;`,
+    //      it would be reasonable to use associated type defaults, to remove the duplication...
+    //
+    //      ...But r-a doesn't support them yet and using a default here causes r-a to not infer
+    //      return types of queries which is very annoying. Thus, until r-a support associated
+    //      type defaults, plese restrain from using them here <3
+    //
+    //      r-a issue: <https://github.com/rust-lang/rust-analyzer/issues/13693>
+    type CacheSelector;
 
     /// Given an instance of this key, what crate is it referring to?
     /// This is used to find the provider.
@@ -37,6 +45,8 @@ pub trait Key: Sized {
 }
 
 impl Key for () {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -48,6 +58,8 @@ impl Key for () {
 }
 
 impl<'tcx> Key for ty::InstanceDef<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -59,6 +71,8 @@ impl<'tcx> Key for ty::InstanceDef<'tcx> {
 }
 
 impl<'tcx> Key for ty::Instance<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -70,6 +84,8 @@ impl<'tcx> Key for ty::Instance<'tcx> {
 }
 
 impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -81,6 +97,8 @@ impl<'tcx> Key for mir::interpret::GlobalId<'tcx> {
 }
 
 impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -92,6 +110,8 @@ impl<'tcx> Key for (Ty<'tcx>, Option<ty::PolyExistentialTraitRef<'tcx>>) {
 }
 
 impl<'tcx> Key for mir::interpret::LitToConstInput<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -145,6 +165,8 @@ impl Key for LocalDefId {
 }
 
 impl Key for DefId {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.krate == LOCAL_CRATE
@@ -159,6 +181,8 @@ impl Key for DefId {
 }
 
 impl Key for ty::WithOptConstParam<LocalDefId> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -169,6 +193,8 @@ impl Key for ty::WithOptConstParam<LocalDefId> {
 }
 
 impl Key for SimplifiedType {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -179,6 +205,8 @@ impl Key for SimplifiedType {
 }
 
 impl Key for (DefId, DefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -189,6 +217,8 @@ impl Key for (DefId, DefId) {
 }
 
 impl<'tcx> Key for (ty::Instance<'tcx>, LocalDefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -199,6 +229,8 @@ impl<'tcx> Key for (ty::Instance<'tcx>, LocalDefId) {
 }
 
 impl Key for (DefId, LocalDefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -209,6 +241,8 @@ impl Key for (DefId, LocalDefId) {
 }
 
 impl Key for (LocalDefId, DefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -219,6 +253,8 @@ impl Key for (LocalDefId, DefId) {
 }
 
 impl Key for (LocalDefId, LocalDefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -229,6 +265,8 @@ impl Key for (LocalDefId, LocalDefId) {
 }
 
 impl Key for (DefId, Option<Ident>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -243,6 +281,8 @@ impl Key for (DefId, Option<Ident>) {
 }
 
 impl Key for (DefId, LocalDefId, Ident) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -253,6 +293,8 @@ impl Key for (DefId, LocalDefId, Ident) {
 }
 
 impl Key for (CrateNum, DefId) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0 == LOCAL_CRATE
@@ -263,6 +305,8 @@ impl Key for (CrateNum, DefId) {
 }
 
 impl Key for (CrateNum, SimplifiedType) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0 == LOCAL_CRATE
@@ -273,6 +317,8 @@ impl Key for (CrateNum, SimplifiedType) {
 }
 
 impl Key for (DefId, SimplifiedType) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -283,6 +329,8 @@ impl Key for (DefId, SimplifiedType) {
 }
 
 impl<'tcx> Key for SubstsRef<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -293,6 +341,8 @@ impl<'tcx> Key for SubstsRef<'tcx> {
 }
 
 impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.krate == LOCAL_CRATE
@@ -303,6 +353,8 @@ impl<'tcx> Key for (DefId, SubstsRef<'tcx>) {
 }
 
 impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         (self.0).def.did.krate == LOCAL_CRATE
@@ -313,6 +365,8 @@ impl<'tcx> Key for (ty::UnevaluatedConst<'tcx>, ty::UnevaluatedConst<'tcx>) {
 }
 
 impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -323,6 +377,8 @@ impl<'tcx> Key for (LocalDefId, DefId, SubstsRef<'tcx>) {
 }
 
 impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.1.def_id().krate == LOCAL_CRATE
@@ -333,6 +389,8 @@ impl<'tcx> Key for (ty::ParamEnv<'tcx>, ty::PolyTraitRef<'tcx>) {
 }
 
 impl<'tcx> Key for (ty::Const<'tcx>, mir::Field) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -343,6 +401,8 @@ impl<'tcx> Key for (ty::Const<'tcx>, mir::Field) {
 }
 
 impl<'tcx> Key for mir::interpret::ConstAlloc<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -353,6 +413,8 @@ impl<'tcx> Key for mir::interpret::ConstAlloc<'tcx> {
 }
 
 impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.def_id().krate == LOCAL_CRATE
@@ -363,6 +425,8 @@ impl<'tcx> Key for ty::PolyTraitRef<'tcx> {
 }
 
 impl<'tcx> Key for ty::PolyExistentialTraitRef<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.def_id().krate == LOCAL_CRATE
@@ -373,6 +437,8 @@ impl<'tcx> Key for ty::PolyExistentialTraitRef<'tcx> {
 }
 
 impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.0.def_id().krate == LOCAL_CRATE
@@ -383,6 +449,8 @@ impl<'tcx> Key for (ty::PolyTraitRef<'tcx>, ty::PolyTraitRef<'tcx>) {
 }
 
 impl<'tcx> Key for GenericArg<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -393,6 +461,8 @@ impl<'tcx> Key for GenericArg<'tcx> {
 }
 
 impl<'tcx> Key for mir::ConstantKind<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -403,6 +473,8 @@ impl<'tcx> Key for mir::ConstantKind<'tcx> {
 }
 
 impl<'tcx> Key for ty::Const<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -413,6 +485,8 @@ impl<'tcx> Key for ty::Const<'tcx> {
 }
 
 impl<'tcx> Key for Ty<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -429,6 +503,8 @@ impl<'tcx> Key for Ty<'tcx> {
 }
 
 impl<'tcx> Key for TyAndLayout<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -439,6 +515,8 @@ impl<'tcx> Key for TyAndLayout<'tcx> {
 }
 
 impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -449,6 +527,8 @@ impl<'tcx> Key for (Ty<'tcx>, Ty<'tcx>) {
 }
 
 impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -459,6 +539,8 @@ impl<'tcx> Key for &'tcx ty::List<ty::Predicate<'tcx>> {
 }
 
 impl<'tcx> Key for ty::ParamEnv<'tcx> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -469,6 +551,8 @@ impl<'tcx> Key for ty::ParamEnv<'tcx> {
 }
 
 impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         self.value.query_crate_is_local()
@@ -479,6 +563,8 @@ impl<'tcx, T: Key> Key for ty::ParamEnvAnd<'tcx, T> {
 }
 
 impl Key for Symbol {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -489,6 +575,8 @@ impl Key for Symbol {
 }
 
 impl Key for Option<Symbol> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -501,6 +589,8 @@ impl Key for Option<Symbol> {
 /// Canonical query goals correspond to abstract trait operations that
 /// are not tied to any crate in particular.
 impl<'tcx, T> Key for Canonical<'tcx, T> {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -512,6 +602,8 @@ impl<'tcx, T> Key for Canonical<'tcx, T> {
 }
 
 impl Key for (Symbol, u32, u32) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -523,6 +615,8 @@ impl Key for (Symbol, u32, u32) {
 }
 
 impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -534,6 +628,8 @@ impl<'tcx> Key for (DefId, Ty<'tcx>, SubstsRef<'tcx>, ty::ParamEnv<'tcx>) {
 }
 
 impl<'tcx> Key for (ty::Predicate<'tcx>, traits::WellFormedLoc) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -545,6 +641,8 @@ impl<'tcx> Key for (ty::Predicate<'tcx>, traits::WellFormedLoc) {
 }
 
 impl<'tcx> Key for (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -556,6 +654,8 @@ impl<'tcx> Key for (ty::PolyFnSig<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
 }
 
 impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -567,6 +667,8 @@ impl<'tcx> Key for (ty::Instance<'tcx>, &'tcx ty::List<Ty<'tcx>>) {
 }
 
 impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true
@@ -578,6 +680,8 @@ impl<'tcx> Key for (Ty<'tcx>, ty::ValTree<'tcx>) {
 }
 
 impl Key for HirId {
+    type CacheSelector = DefaultCacheSelector<Self>;
+
     #[inline(always)]
     fn query_crate_is_local(&self) -> bool {
         true

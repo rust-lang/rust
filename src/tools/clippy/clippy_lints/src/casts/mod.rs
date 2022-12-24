@@ -641,7 +641,7 @@ declare_clippy_lint! {
     /// ```rust,ignore
     /// let _: = 0_u64;
     /// ```
-    #[clippy::version = "1.64.0"]
+    #[clippy::version = "1.66.0"]
     pub CAST_NAN_TO_INT,
     suspicious,
     "casting a known floating-point NaN into an integer"

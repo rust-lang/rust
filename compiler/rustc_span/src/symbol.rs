@@ -164,7 +164,6 @@ symbols! {
         Capture,
         Center,
         Clone,
-        Context,
         Continue,
         Copy,
         Count,
@@ -264,6 +263,7 @@ symbols! {
         Relaxed,
         Release,
         Result,
+        ResumeTy,
         Return,
         Right,
         Rust,
@@ -376,9 +376,9 @@ symbols! {
         assert_eq_macro,
         assert_inhabited,
         assert_macro,
+        assert_mem_uninitialized_valid,
         assert_ne_macro,
         assert_receiver_is_total_eq,
-        assert_uninit_valid,
         assert_zero_valid,
         asserting,
         associated_const_equality,
@@ -753,6 +753,7 @@ symbols! {
         generic_associated_types_extended,
         generic_const_exprs,
         generic_param_attrs,
+        get_context,
         global_allocator,
         global_asm,
         globs,
@@ -1801,7 +1802,7 @@ impl fmt::Display for MacroRulesNormalizedIdent {
 pub struct Symbol(SymbolIndex);
 
 rustc_index::newtype_index! {
-    struct SymbolIndex { .. }
+    struct SymbolIndex {}
 }
 
 impl Symbol {

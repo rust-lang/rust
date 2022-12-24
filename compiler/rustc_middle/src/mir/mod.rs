@@ -654,10 +654,10 @@ impl SourceInfo {
 // Variables and temps
 
 rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[debug_format = "_{}"]
     pub struct Local {
-        derive [HashStable]
-        DEBUG_FORMAT = "_{}",
-        const RETURN_PLACE = 0,
+        const RETURN_PLACE = 0;
     }
 }
 
@@ -1146,10 +1146,10 @@ rustc_index::newtype_index! {
     ///     https://rustc-dev-guide.rust-lang.org/appendix/background.html#what-is-a-dataflow-analysis
     /// [`CriticalCallEdges`]: ../../rustc_const_eval/transform/add_call_guards/enum.AddCallGuards.html#variant.CriticalCallEdges
     /// [guide-mir]: https://rustc-dev-guide.rust-lang.org/mir/
+    #[derive(HashStable)]
+    #[debug_format = "bb{}"]
     pub struct BasicBlock {
-        derive [HashStable]
-        DEBUG_FORMAT = "bb{}",
-        const START_BLOCK = 0,
+        const START_BLOCK = 0;
     }
 }
 
@@ -1530,10 +1530,9 @@ rustc_index::newtype_index! {
     /// [wrapper]: https://rustc-dev-guide.rust-lang.org/appendix/glossary.html#newtype
     /// [CFG]: https://rustc-dev-guide.rust-lang.org/appendix/background.html#cfg
     /// [mir-datatypes]: https://rustc-dev-guide.rust-lang.org/mir/index.html#mir-data-types
-    pub struct Field {
-        derive [HashStable]
-        DEBUG_FORMAT = "field[{}]"
-    }
+    #[derive(HashStable)]
+    #[debug_format = "field[{}]"]
+    pub struct Field {}
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -1757,10 +1756,10 @@ impl Debug for Place<'_> {
 // Scopes
 
 rustc_index::newtype_index! {
+    #[derive(HashStable)]
+    #[debug_format = "scope[{}]"]
     pub struct SourceScope {
-        derive [HashStable]
-        DEBUG_FORMAT = "scope[{}]",
-        const OUTERMOST_SOURCE_SCOPE = 0,
+        const OUTERMOST_SOURCE_SCOPE = 0;
     }
 }
 
@@ -1768,9 +1767,9 @@ impl SourceScope {
     /// Finds the original HirId this MIR item came from.
     /// This is necessary after MIR optimizations, as otherwise we get a HirId
     /// from the function that was inlined instead of the function call site.
-    pub fn lint_root<'tcx>(
+    pub fn lint_root(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
+        source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
     ) -> Option<HirId> {
         let mut data = &source_scopes[self];
         // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
@@ -2755,10 +2754,9 @@ impl<'tcx> TypeVisitable<'tcx> for UserTypeProjection {
 }
 
 rustc_index::newtype_index! {
-    pub struct Promoted {
-        derive [HashStable]
-        DEBUG_FORMAT = "promoted[{}]"
-    }
+    #[derive(HashStable)]
+    #[debug_format = "promoted[{}]"]
+    pub struct Promoted {}
 }
 
 impl<'tcx> Debug for Constant<'tcx> {

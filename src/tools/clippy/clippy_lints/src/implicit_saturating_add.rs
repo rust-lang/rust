@@ -31,7 +31,7 @@ declare_clippy_lint! {
     ///
     /// u = u.saturating_add(1);
     /// ```
-    #[clippy::version = "1.65.0"]
+    #[clippy::version = "1.66.0"]
     pub IMPLICIT_SATURATING_ADD,
     style,
     "Perform saturating addition instead of implicitly checking max bound of data type"

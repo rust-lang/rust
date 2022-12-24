@@ -5,21 +5,21 @@ write: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Names", STARTS_WITH)
+wait-for: "#search-tabs"
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Names", STARTS_WITH)
 assert: "input.search-input:focus"
 // Use left-right keys
 press-key: "ArrowDown"
 assert: "#results > .search-results.active > a:nth-of-type(1):focus"
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(2)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(2)", {"class": "selected"})
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(3)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(3)", {"class": "selected"})
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 press-key: "ArrowLeft"
-wait-for-attribute: ("#titles > button:nth-of-type(3)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(3)", {"class": "selected"})
 
 // Now try search-by-return
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -27,21 +27,21 @@ write: (".search-input", "-> String")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
+wait-for: "#search-tabs"
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 assert: "input.search-input:focus"
 // Use left-right keys
 press-key: "ArrowDown"
 assert: "#results > .search-results.active > a:nth-of-type(1):focus"
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 press-key: "ArrowRight"
-wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 press-key: "ArrowLeft"
-wait-for-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
+wait-for-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
 
 // Try with a search-by-return with no results
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -49,9 +49,9 @@ write: (".search-input", "-> Something")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
+wait-for: "#search-tabs"
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Return Types", STARTS_WITH)
 
 // Try with a search-by-parameter
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -59,9 +59,9 @@ write: (".search-input", "usize pattern")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Parameters", STARTS_WITH)
+wait-for: "#search-tabs"
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Parameters", STARTS_WITH)
 
 // Try with a search-by-parameter-and-return
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
@@ -69,6 +69,6 @@ write: (".search-input", "pattern -> str")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
-assert-attribute: ("#titles > button:nth-of-type(1)", {"class": "selected"})
-assert-text: ("#titles > button:nth-of-type(1)", "In Function Signatures", STARTS_WITH)
+wait-for: "#search-tabs"
+assert-attribute: ("#search-tabs > button:nth-of-type(1)", {"class": "selected"})
+assert-text: ("#search-tabs > button:nth-of-type(1)", "In Function Signatures", STARTS_WITH)

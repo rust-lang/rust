@@ -322,10 +322,6 @@ main {
 	margin-right: auto;
 }
 
-.source .width-limiter {
-	max-width: unset;
-}
-
 details:not(.rustdoc-toggle) summary {
 	margin-bottom: .6em;
 }
@@ -342,6 +338,7 @@ code, pre, a.test-arrow, .code-header {
 }
 pre {
 	padding: 14px;
+	line-height: 1.5; /* https://github.com/rust-lang/rust/issues/105906 */
 }
 .item-decl pre {
 	overflow-x: auto;
@@ -396,15 +393,15 @@ img {
 	overflow-y: hidden;
 }
 
-.source .sidebar, #sidebar-toggle, #source-sidebar {
+.source .sidebar, #src-sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
-#sidebar-toggle > button:hover, #sidebar-toggle > button:focus {
+#src-sidebar-toggle > button:hover, #src-sidebar-toggle > button:focus {
 	background-color: var(--sidebar-background-color-hover);
 }
 
-.source .sidebar > *:not(#sidebar-toggle) {
+.source .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: hidden;
 }
 
@@ -413,7 +410,7 @@ img {
 	flex-basis: 300px;
 }
 
-.source-sidebar-expanded .source .sidebar > *:not(#sidebar-toggle) {
+.source-sidebar-expanded .source .sidebar > *:not(#src-sidebar-toggle) {
 	visibility: visible;
 }
 
@@ -546,6 +543,7 @@ ul.block, .block li {
 .rustdoc .example-wrap > pre.example-line-numbers,
 .rustdoc .example-wrap > pre.src-line-numbers {
 	flex-grow: 0;
+	min-width: fit-content; /* prevent collapsing into nothing in truncated scraped examples */
 	overflow: initial;
 	text-align: right;
 	-webkit-user-select: none;
@@ -581,8 +579,6 @@ ul.block, .block li {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
@@ -692,13 +688,9 @@ a {
 	position: relative;
 }
 
-.small-section-header:hover > .anchor {
+.small-section-header:hover > .anchor, .impl:hover > .anchor,
+.trait-impl:hover > .anchor, .variant:hover > .anchor {
 	display: initial;
-}
-
-.impl:hover > .anchor, .trait-impl:hover > .anchor, .variant:hover > .anchor {
-	display: inline-block;
-	position: absolute;
 }
 .anchor {
 	display: none;
@@ -1118,8 +1110,7 @@ pre.rust .doccomment {
 	top: 5px;
 }
 
-.example-wrap .tooltip::after {
-	display: none;
+.example-wrap .tooltip:hover::after {
 	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
@@ -1134,33 +1125,28 @@ pre.rust .doccomment {
 	color: var(--tooltip-color);
 }
 
-.example-wrap .tooltip::before {
+.example-wrap .tooltip:hover::before {
 	content: " ";
 	position: absolute;
 	top: 50%;
 	left: 16px;
 	margin-top: -5px;
-	display: none;
 	z-index: 1;
 	border: 5px solid transparent;
 	border-right-color: var(--tooltip-background-color);
 }
 
-.example-wrap.ignore .tooltip::after {
+.example-wrap.ignore .tooltip:hover::after {
 	content: "This example is not tested";
 }
-.example-wrap.compile_fail .tooltip::after {
+.example-wrap.compile_fail .tooltip:hover::after {
 	content: "This example deliberately fails to compile";
 }
-.example-wrap.should_panic .tooltip::after {
+.example-wrap.should_panic .tooltip:hover::after {
 	content: "This example panics";
 }
-.example-wrap.edition .tooltip::after {
+.example-wrap.edition .tooltip:hover::after {
 	content: "This code runs with edition " attr(data-edition);
-}
-
-.example-wrap .tooltip:hover::before, .example-wrap .tooltip:hover::after {
-	display: inline;
 }
 
 .example-wrap.compile_fail .tooltip,
@@ -1273,14 +1259,14 @@ a.test-arrow:hover {
 	margin-right: auto;
 }
 
-#titles {
+#search-tabs {
 	display: flex;
 	flex-direction: row;
 	gap: 1px;
 	margin-bottom: 4px;
 }
 
-#titles > button {
+#search-tabs button {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -1290,12 +1276,12 @@ a.test-arrow:hover {
 	color: inherit;
 }
 
-#titles > button > div.count {
-	display: inline-block;
+#search-tabs .count {
 	font-size: 1rem;
+	color: var(--search-tab-title-count-color);
 }
 
-#sidebar-toggle {
+#src-sidebar-toggle {
 	position: sticky;
 	top: 0;
 	left: 0;
@@ -1324,7 +1310,7 @@ a.test-arrow:hover {
 #source-sidebar div.files > a.selected {
 	background-color: var(--source-sidebar-background-selected);
 }
-#sidebar-toggle > button {
+#src-sidebar-toggle > button {
 	font-size: inherit;
 	font-weight: bold;
 	background: none;
@@ -1717,7 +1703,7 @@ in storage.js
 		display: none !important;
 	}
 
-	#titles > button > div.count {
+	#search-tabs .count {
 		display: block;
 	}
 
@@ -1726,7 +1712,7 @@ in storage.js
 		left: -11px;
 	}
 
-	#sidebar-toggle {
+	#src-sidebar-toggle {
 		position: fixed;
 		left: 1px;
 		top: 100px;
@@ -1740,7 +1726,7 @@ in storage.js
 		border-left: 0;
 	}
 
-	.source-sidebar-expanded #sidebar-toggle {
+	.source-sidebar-expanded #src-sidebar-toggle {
 		left: unset;
 		top: unset;
 		width: unset;
@@ -1851,10 +1837,10 @@ in storage.js
 		width: 35px;
 	}
 
-	#sidebar-toggle {
+	#src-sidebar-toggle {
 		top: 10px;
 	}
-	.source-sidebar-expanded #sidebar-toggle {
+	.source-sidebar-expanded #src-sidebar-toggle {
 		top: unset;
 	}
 }
@@ -1982,10 +1968,7 @@ in storage.js
 }
 
 .scraped-example .code-wrapper .example-wrap {
-	display: grid;
-	grid-template-columns: max-content auto;
 	width: 100%;
-	overflow-x: auto;
 	overflow-y: hidden;
 	margin-bottom: 0;
 }
@@ -1993,13 +1976,6 @@ in storage.js
 .scraped-example:not(.expanded) .code-wrapper .example-wrap {
 	overflow-x: hidden;
 }
-
-.scraped-example .code-wrapper .example-wrap pre.rust {
-	overflow-x: inherit;
-	width: inherit;
-	overflow-y: hidden;
-}
-
 
 .more-examples-toggle {
 	max-width: calc(100% + 25px);
@@ -2009,25 +1985,19 @@ in storage.js
 
 .more-examples-toggle .hide-more {
 	margin-left: 25px;
-	margin-bottom: 5px;
 	cursor: pointer;
 }
 
 .more-scraped-examples {
-	margin-left: 5px;
-	display: flex;
-	flex-direction: row;
-}
-
-.more-scraped-examples-inner {
-	/* 20px is width of toggle-line + toggle-line-inner */
-	width: calc(100% - 20px);
+	margin-left: 25px;
+	position: relative;
 }
 
 .toggle-line {
-	align-self: stretch;
-	margin-right: 10px;
-	margin-top: 5px;
+	position: absolute;
+	top: 5px;
+	bottom: 0;
+	right: calc(100% + 10px);
 	padding: 0 4px;
 	cursor: pointer;
 }
@@ -2037,16 +2007,12 @@ in storage.js
 	height: 100%;
 }
 
-.more-scraped-examples .scraped-example {
-	margin-bottom: 20px;
-}
-
-.more-scraped-examples .scraped-example:last-child {
-	margin-bottom: 0;
-}
-
-.example-links a {
+.more-scraped-examples .scraped-example, .example-links {
 	margin-top: 20px;
+}
+
+.more-scraped-examples .scraped-example:first-child {
+	margin-top: 5px;
 }
 
 .example-links ul {

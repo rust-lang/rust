@@ -3,10 +3,10 @@ use crate::code_stats::CodeStats;
 pub use crate::code_stats::{DataTypeKind, FieldInfo, SizeKind, VariantInfo};
 use crate::config::{self, CrateType, InstrumentCoverage, OptLevel, OutputType, SwitchWithOptPath};
 use crate::errors::{
-    CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers, LinkerPluginToWindowsNotSupported,
-    NotCircumventFeature, ProfileSampleUseFileDoesNotExist, ProfileUseFileDoesNotExist,
-    SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported, SkippingConstChecks,
-    SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
+    BranchProtectionRequiresAArch64, CannotEnableCrtStaticLinux, CannotMixAndMatchSanitizers,
+    LinkerPluginToWindowsNotSupported, NotCircumventFeature, ProfileSampleUseFileDoesNotExist,
+    ProfileUseFileDoesNotExist, SanitizerCfiEnabled, SanitizerNotSupported, SanitizersNotSupported,
+    SkippingConstChecks, SplitDebugInfoUnstablePlatform, StackProtectorNotSupportedForTarget,
     TargetRequiresUnwindTables, UnleashedFeatureHelp, UnstableVirtualFunctionElimination,
     UnsupportedDwarfVersion,
 };
@@ -1323,7 +1323,7 @@ pub fn build_session(
     let warnings_allow = sopts
         .lint_opts
         .iter()
-        .rfind(|&&(ref key, _)| *key == "warnings")
+        .rfind(|&(key, _)| *key == "warnings")
         .map_or(false, |&(_, level)| level == lint::Allow);
     let cap_lints_allow = sopts.lint_cap.map_or(false, |cap| cap == lint::Allow);
     let can_emit_warnings = !(warnings_allow || cap_lints_allow);
@@ -1563,6 +1563,10 @@ fn validate_commandline_args_with_session_available(sess: &Session) {
                 target_triple: &sess.opts.target_triple,
             });
         }
+    }
+
+    if sess.opts.unstable_opts.branch_protection.is_some() && sess.target.arch != "aarch64" {
+        sess.emit_err(BranchProtectionRequiresAArch64);
     }
 
     if let Some(dwarf_version) = sess.opts.unstable_opts.dwarf_version {

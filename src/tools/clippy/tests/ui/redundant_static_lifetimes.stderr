@@ -97,10 +97,16 @@ LL | static STATIC_VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removin
    |                          -^^^^^^^-------- help: consider removing `'static`: `&[u8; 1]`
 
 error: statics have by default a `'static` lifetime
-  --> $DIR/redundant_static_lifetimes.rs:65:16
+  --> $DIR/redundant_static_lifetimes.rs:42:31
+   |
+LL | static mut STATIC_MUT_SLICE: &'static mut [u32] = &mut [0];
+   |                              -^^^^^^^---------- help: consider removing `'static`: `&mut [u32]`
+
+error: statics have by default a `'static` lifetime
+  --> $DIR/redundant_static_lifetimes.rs:71:16
    |
 LL |     static V: &'static u8 = &17;
    |               -^^^^^^^--- help: consider removing `'static`: `&u8`
 
-error: aborting due to 17 previous errors
+error: aborting due to 18 previous errors
 

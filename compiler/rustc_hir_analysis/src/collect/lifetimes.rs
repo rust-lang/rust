@@ -276,7 +276,7 @@ fn resolve_lifetimes(tcx: TyCtxt<'_>, local_def_id: hir::OwnerId) -> ResolveLife
     rl
 }
 
-fn late_region_as_bound_region<'tcx>(tcx: TyCtxt<'tcx>, region: &Region) -> ty::BoundVariableKind {
+fn late_region_as_bound_region(tcx: TyCtxt<'_>, region: &Region) -> ty::BoundVariableKind {
     match region {
         Region::LateBound(_, _, def_id) => {
             let name = tcx.hir().name(tcx.hir().local_def_id_to_hir_id(def_id.expect_local()));
@@ -1018,7 +1018,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
     }
 }
 
-fn object_lifetime_default<'tcx>(tcx: TyCtxt<'tcx>, param_def_id: DefId) -> ObjectLifetimeDefault {
+fn object_lifetime_default(tcx: TyCtxt<'_>, param_def_id: DefId) -> ObjectLifetimeDefault {
     debug_assert_eq!(tcx.def_kind(param_def_id), DefKind::TyParam);
     let param_def_id = param_def_id.expect_local();
     let parent_def_id = tcx.local_parent(param_def_id);

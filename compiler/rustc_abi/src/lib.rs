@@ -774,6 +774,18 @@ impl Integer {
         }
     }
 
+    /// Returns the largest signed value that can be represented by this Integer.
+    #[inline]
+    pub fn signed_max(self) -> i128 {
+        match self {
+            I8 => i8::MAX as i128,
+            I16 => i16::MAX as i128,
+            I32 => i32::MAX as i128,
+            I64 => i64::MAX as i128,
+            I128 => i128::MAX,
+        }
+    }
+
     /// Finds the smallest Integer type which can represent the signed value.
     #[inline]
     pub fn fit_signed(x: i128) -> Integer {

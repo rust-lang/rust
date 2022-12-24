@@ -144,7 +144,7 @@ impl<'ll, 'tcx> AsmBuilderMethods<'tcx> for Builder<'_, 'll, 'tcx> {
                     // We prefer the latter because it matches the behavior of
                     // Clang.
                     if late && matches!(reg, InlineAsmRegOrRegClass::Reg(_)) {
-                        constraints.push(format!("{}", reg_to_llvm(reg, Some(&in_value.layout))));
+                        constraints.push(reg_to_llvm(reg, Some(&in_value.layout)).to_string());
                     } else {
                         constraints.push(format!("{}", op_idx[&idx]));
                     }

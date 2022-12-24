@@ -23,6 +23,35 @@ use std::cmp::min;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn emit_type_mismatch_suggestions(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        _error: Option<TypeError<'tcx>>,
+    ) {
+        if expr_ty == expected {
+            return;
+        }
+
+        // Use `||` to give these suggestions a precedence
+        let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
+            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
+            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
+            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_into(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
+    }
+
     pub fn emit_coerce_suggestions(
         &self,
         err: &mut Diagnostic,
@@ -37,21 +66,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         self.annotate_expected_due_to_let_ty(err, expr, error);
-
-        // Use `||` to give these suggestions a precedence
-        let _ = self.suggest_missing_parentheses(err, expr)
-            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
-            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
-            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
-            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
-            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
-            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
-            || self.suggest_into(err, expr, expr_ty, expected)
-            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
-            || self.suggest_floating_point_literal(err, expr, expected);
-
+        self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
@@ -163,7 +178,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e.clone());
+        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
 
         let is_insufficiently_polymorphic =
             matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));
@@ -406,7 +421,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
-                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
+                        .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
@@ -1275,7 +1290,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         match (&expected_ty.kind(), &checked_ty.kind()) {
-            (&ty::Int(ref exp), &ty::Int(ref found)) => {
+            (ty::Int(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -1288,7 +1303,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
+            (ty::Uint(exp), ty::Uint(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -1321,7 +1336,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Float(ref exp), &ty::Float(ref found)) => {
+            (ty::Float(exp), ty::Float(found)) => {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
@@ -1357,7 +1372,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Uint(ref found)) => {
+            (ty::Float(exp), ty::Uint(found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
@@ -1386,7 +1401,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Int(ref found)) => {
+            (ty::Float(exp), ty::Int(found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(

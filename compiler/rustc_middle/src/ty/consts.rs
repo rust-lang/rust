@@ -14,10 +14,10 @@ pub use int::*;
 pub use kind::*;
 pub use valtree::*;
 
-/// Use this rather than `ConstS`, whenever possible.
+/// Use this rather than `ConstData, whenever possible.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, HashStable)]
 #[rustc_pass_by_value]
-pub struct Const<'tcx>(pub Interned<'tcx, ConstS<'tcx>>);
+pub struct Const<'tcx>(pub(super) Interned<'tcx, ConstData<'tcx>>);
 
 impl<'tcx> fmt::Debug for Const<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -30,13 +30,13 @@ impl<'tcx> fmt::Debug for Const<'tcx> {
 
 /// Typed constant value.
 #[derive(PartialEq, Eq, PartialOrd, Ord, Hash, HashStable, TyEncodable, TyDecodable)]
-pub struct ConstS<'tcx> {
+pub struct ConstData<'tcx> {
     pub ty: Ty<'tcx>,
     pub kind: ConstKind<'tcx>,
 }
 
 #[cfg(all(target_arch = "x86_64", target_pointer_width = "64"))]
-static_assert_size!(ConstS<'_>, 40);
+static_assert_size!(ConstData<'_>, 40);
 
 impl<'tcx> Const<'tcx> {
     #[inline]
@@ -239,7 +239,7 @@ impl<'tcx> Const<'tcx> {
     }
 }
 
-pub fn const_param_default<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> Const<'tcx> {
+pub fn const_param_default(tcx: TyCtxt<'_>, def_id: DefId) -> Const<'_> {
     let default_def_id = match tcx.hir().get_by_def_id(def_id.expect_local()) {
         hir::Node::GenericParam(hir::GenericParam {
             kind: hir::GenericParamKind::Const { default: Some(ac), .. },

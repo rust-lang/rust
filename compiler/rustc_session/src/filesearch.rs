@@ -122,7 +122,7 @@ pub fn sysroot_candidates() -> SmallVec<[PathBuf; 2]> {
     let target = crate::config::host_triple();
     let mut sysroot_candidates: SmallVec<[PathBuf; 2]> =
         smallvec![get_or_default_sysroot().expect("Failed finding sysroot")];
-    let path = current_dll_path().and_then(|s| Ok(s.canonicalize().map_err(|e| e.to_string())?));
+    let path = current_dll_path().and_then(|s| s.canonicalize().map_err(|e| e.to_string()));
     if let Ok(dll) = path {
         // use `parent` twice to chop off the file name and then also the
         // directory containing the dll which should be either `lib` or `bin`.
@@ -165,7 +165,7 @@ pub fn get_or_default_sysroot() -> Result<PathBuf, String> {
     }
 
     fn default_from_rustc_driver_dll() -> Result<PathBuf, String> {
-        let dll = current_dll_path().and_then(|s| Ok(canonicalize(s)))?;
+        let dll = current_dll_path().map(|s| canonicalize(s))?;
 
         // `dll` will be in one of the following two:
         // - compiler's libdir: $sysroot/lib/*.dll

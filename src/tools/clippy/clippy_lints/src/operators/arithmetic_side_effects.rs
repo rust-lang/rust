@@ -5,25 +5,26 @@ use clippy_utils::{
     peel_hir_expr_refs,
 };
 use rustc_ast as ast;
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_hir as hir;
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty::Ty;
 use rustc_session::impl_lint_pass;
 use rustc_span::source_map::{Span, Spanned};
 
-const HARD_CODED_ALLOWED: &[&str] = &[
-    "&str",
-    "f32",
-    "f64",
-    "std::num::Saturating",
-    "std::num::Wrapping",
-    "std::string::String",
+const HARD_CODED_ALLOWED_BINARY: &[[&str; 2]] = &[
+    ["f32", "f32"],
+    ["f64", "f64"],
+    ["std::num::Saturating", "std::num::Saturating"],
+    ["std::num::Wrapping", "std::num::Wrapping"],
+    ["std::string::String", "&str"],
 ];
+const HARD_CODED_ALLOWED_UNARY: &[&str] = &["f32", "f64", "std::num::Saturating", "std::num::Wrapping"];
 
 #[derive(Debug)]
 pub struct ArithmeticSideEffects {
-    allowed: FxHashSet<String>,
+    allowed_binary: FxHashMap<String, FxHashSet<String>>,
+    allowed_unary: FxHashSet<String>,
     // Used to check whether expressions are constants, such as in enum discriminants and consts
     const_span: Option<Span>,
     expr_span: Option<Span>,
@@ -33,19 +34,55 @@ impl_lint_pass!(ArithmeticSideEffects => [ARITHMETIC_SIDE_EFFECTS]);
 
 impl ArithmeticSideEffects {
     #[must_use]
-    pub fn new(mut allowed: FxHashSet<String>) -> Self {
-        allowed.extend(HARD_CODED_ALLOWED.iter().copied().map(String::from));
+    pub fn new(user_allowed_binary: Vec<[String; 2]>, user_allowed_unary: Vec<String>) -> Self {
+        let mut allowed_binary: FxHashMap<String, FxHashSet<String>> = <_>::default();
+        for [lhs, rhs] in user_allowed_binary.into_iter().chain(
+            HARD_CODED_ALLOWED_BINARY
+                .iter()
+                .copied()
+                .map(|[lhs, rhs]| [lhs.to_string(), rhs.to_string()]),
+        ) {
+            allowed_binary.entry(lhs).or_default().insert(rhs);
+        }
+        let allowed_unary = user_allowed_unary
+            .into_iter()
+            .chain(HARD_CODED_ALLOWED_UNARY.iter().copied().map(String::from))
+            .collect();
         Self {
-            allowed,
+            allowed_binary,
+            allowed_unary,
             const_span: None,
             expr_span: None,
         }
     }
 
-    /// Checks if the given `expr` has any of the inner `allowed` elements.
-    fn is_allowed_ty(&self, ty: Ty<'_>) -> bool {
-        self.allowed
-            .contains(ty.to_string().split('<').next().unwrap_or_default())
+    /// Checks if the lhs and the rhs types of a binary operation like "addition" or
+    /// "multiplication" are present in the inner set of allowed types.
+    fn has_allowed_binary(&self, lhs_ty: Ty<'_>, rhs_ty: Ty<'_>) -> bool {
+        let lhs_ty_string = lhs_ty.to_string();
+        let lhs_ty_string_elem = lhs_ty_string.split('<').next().unwrap_or_default();
+        let rhs_ty_string = rhs_ty.to_string();
+        let rhs_ty_string_elem = rhs_ty_string.split('<').next().unwrap_or_default();
+        if let Some(rhs_from_specific) = self.allowed_binary.get(lhs_ty_string_elem)
+            && {
+                let rhs_has_allowed_ty = rhs_from_specific.contains(rhs_ty_string_elem);
+                rhs_has_allowed_ty || rhs_from_specific.contains("*")
+            }
+        {
+           true
+        } else if let Some(rhs_from_glob) = self.allowed_binary.get("*") {
+            rhs_from_glob.contains(rhs_ty_string_elem)
+        } else {
+            false
+        }
+    }
+
+    /// Checks if the type of an unary operation like "negation" is present in the inner set of
+    /// allowed types.
+    fn has_allowed_unary(&self, ty: Ty<'_>) -> bool {
+        let ty_string = ty.to_string();
+        let ty_string_elem = ty_string.split('<').next().unwrap_or_default();
+        self.allowed_unary.contains(ty_string_elem)
     }
 
     // For example, 8i32 or &i64::MAX.
@@ -97,8 +134,7 @@ impl ArithmeticSideEffects {
         };
         let lhs_ty = cx.typeck_results().expr_ty(lhs);
         let rhs_ty = cx.typeck_results().expr_ty(rhs);
-        let lhs_and_rhs_have_the_same_ty = lhs_ty == rhs_ty;
-        if lhs_and_rhs_have_the_same_ty && self.is_allowed_ty(lhs_ty) && self.is_allowed_ty(rhs_ty) {
+        if self.has_allowed_binary(lhs_ty, rhs_ty) {
             return;
         }
         let has_valid_op = if Self::is_integral(lhs_ty) && Self::is_integral(rhs_ty) {
@@ -137,7 +173,7 @@ impl ArithmeticSideEffects {
             return;
         }
         let ty = cx.typeck_results().expr_ty(expr).peel_refs();
-        if self.is_allowed_ty(ty) {
+        if self.has_allowed_unary(ty) {
             return;
         }
         let actual_un_expr = peel_hir_expr_refs(un_expr).0;

@@ -1491,7 +1491,7 @@ impl<'a> Resolver<'a> {
             label_res_map: self.label_res_map.clone(),
             lifetimes_res_map: self.lifetimes_res_map.clone(),
             extra_lifetime_params_map: self.extra_lifetime_params_map.clone(),
-            next_node_id: self.next_node_id.clone(),
+            next_node_id: self.next_node_id,
             node_id_to_def_id: self.node_id_to_def_id.clone(),
             def_id_to_node_id: self.def_id_to_node_id.clone(),
             trait_map: self.trait_map.clone(),
@@ -1686,6 +1686,24 @@ impl<'a> Resolver<'a> {
             .or_insert_with(|| self.arenas.alloc_name_resolution())
     }
 
+    /// Test if AmbiguityError ambi is any identical to any one inside ambiguity_errors
+    fn matches_previous_ambiguity_error(&mut self, ambi: &AmbiguityError<'_>) -> bool {
+        for ambiguity_error in &self.ambiguity_errors {
+            // if the span location and ident as well as its span are the same
+            if ambiguity_error.kind == ambi.kind
+                && ambiguity_error.ident == ambi.ident
+                && ambiguity_error.ident.span == ambi.ident.span
+                && ambiguity_error.b1.span == ambi.b1.span
+                && ambiguity_error.b2.span == ambi.b2.span
+                && ambiguity_error.misc1 == ambi.misc1
+                && ambiguity_error.misc2 == ambi.misc2
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     fn record_use(
         &mut self,
         ident: Ident,
@@ -1693,14 +1711,18 @@ impl<'a> Resolver<'a> {
         is_lexical_scope: bool,
     ) {
         if let Some((b2, kind)) = used_binding.ambiguity {
-            self.ambiguity_errors.push(AmbiguityError {
+            let ambiguity_error = AmbiguityError {
                 kind,
                 ident,
                 b1: used_binding,
                 b2,
                 misc1: AmbiguityErrorMisc::None,
                 misc2: AmbiguityErrorMisc::None,
-            });
+            };
+            if !self.matches_previous_ambiguity_error(&ambiguity_error) {
+                // avoid dumplicated span information to be emitt out
+                self.ambiguity_errors.push(ambiguity_error);
+            }
         }
         if let NameBindingKind::Import { import, binding, ref used } = used_binding.kind {
             // Avoid marking `extern crate` items that refer to a name from extern prelude,

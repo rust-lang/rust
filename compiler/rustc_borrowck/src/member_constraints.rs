@@ -55,9 +55,8 @@ pub(crate) struct NllMemberConstraint<'tcx> {
 }
 
 rustc_index::newtype_index! {
-    pub(crate) struct NllMemberConstraintIndex {
-        DEBUG_FORMAT = "MemberConstraintIndex({})"
-    }
+    #[debug_format = "MemberConstraintIndex({})"]
+    pub(crate) struct NllMemberConstraintIndex {}
 }
 
 impl Default for MemberConstraintSet<'_, ty::RegionVid> {

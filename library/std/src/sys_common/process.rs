@@ -4,7 +4,9 @@
 use crate::collections::BTreeMap;
 use crate::env;
 use crate::ffi::{OsStr, OsString};
-use crate::sys::process::EnvKey;
+use crate::io;
+use crate::sys::pipe::read2;
+use crate::sys::process::{EnvKey, ExitStatus, Process, StdioPipes};
 
 // Stores a set of changes to an environment
 #[derive(Clone, Debug)]
@@ -116,4 +118,31 @@ impl<'a> ExactSizeIterator for CommandEnvs<'a> {
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
+}
+
+pub fn wait_with_output(
+    mut process: Process,
+    mut pipes: StdioPipes,
+) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+    drop(pipes.stdin.take());
+
+    let (mut stdout, mut stderr) = (Vec::new(), Vec::new());
+    match (pipes.stdout.take(), pipes.stderr.take()) {
+        (None, None) => {}
+        (Some(out), None) => {
+            let res = out.read_to_end(&mut stdout);
+            res.unwrap();
+        }
+        (None, Some(err)) => {
+            let res = err.read_to_end(&mut stderr);
+            res.unwrap();
+        }
+        (Some(out), Some(err)) => {
+            let res = read2(out, &mut stdout, err, &mut stderr);
+            res.unwrap();
+        }
+    }
+
+    let status = process.wait()?;
+    Ok((status, stdout, stderr))
 }

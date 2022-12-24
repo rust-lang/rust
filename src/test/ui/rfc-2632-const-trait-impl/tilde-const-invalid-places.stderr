@@ -1,40 +1,8 @@
-error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:9:19
-   |
-LL | fn rpit() -> impl ~const T { S }
-   |                   ^^^^^^^^
-   |
-   = note: `impl Trait`s cannot have `~const` trait bounds
-
-error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:12:17
-   |
-LL | fn apit(_: impl ~const T) {}
-   |                 ^^^^^^^^
-   |
-   = note: `impl Trait`s cannot have `~const` trait bounds
-
-error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:15:50
-   |
-LL | fn rpit_assoc_bound() -> impl IntoIterator<Item: ~const T> { Some(S) }
-   |                                                  ^^^^^^^^
-   |
-   = note: `impl Trait`s cannot have `~const` trait bounds
-
-error: `~const` is not allowed here
-  --> $DIR/tilde-const-invalid-places.rs:18:48
-   |
-LL | fn apit_assoc_bound(_: impl IntoIterator<Item: ~const T>) {}
-   |                                                ^^^^^^^^
-   |
-   = note: `impl Trait`s cannot have `~const` trait bounds
-
 error: `~const` and `?` are mutually exclusive
-  --> $DIR/tilde-const-invalid-places.rs:21:25
+  --> $DIR/tilde-const-invalid-places.rs:4:25
    |
 LL | struct TildeQuestion<T: ~const ?Sized>(std::marker::PhantomData<T>);
    |                         ^^^^^^^^^^^^^
 
-error: aborting due to 5 previous errors
+error: aborting due to previous error
 

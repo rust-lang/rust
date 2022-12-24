@@ -28,7 +28,7 @@ use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::visit::TypeVisitable;
 use rustc_middle::ty::{self, DefIdTree, IsSuggestable, Ty, TypeSuperVisitable, TypeVisitor};
 use rustc_session::Session;
-use rustc_span::symbol::Ident;
+use rustc_span::symbol::{kw, Ident};
 use rustc_span::{self, sym, Span};
 use rustc_trait_selection::traits::{self, ObligationCauseCode, SelectionContext};
 
@@ -214,7 +214,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "cannot use call notation; the first type parameter \
                          for the function trait is neither a tuple nor unit"
                     )
-                    .delay_as_bug();
+                    .emit();
                     (self.err_args(provided_args.len()), None)
                 }
             }
@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             } else {
                                 args_span
                             };
-                            labels.push((span, format!("multiple arguments are missing")));
+                            labels.push((span, "multiple arguments are missing".to_string()));
                             suggestion_text = match suggestion_text {
                                 SuggestionText::None | SuggestionText::Provide(_) => {
                                     SuggestionText::Provide(true)
@@ -1141,6 +1141,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         "()".to_string()
                     } else if expected_ty.is_suggestable(tcx, false) {
                         format!("/* {} */", expected_ty)
+                    } else if let Some(fn_def_id) = fn_def_id
+                        && self.tcx.def_kind(fn_def_id).is_fn_like()
+                        && let self_implicit = matches!(call_expr.kind, hir::ExprKind::MethodCall(..)) as usize
+                        && let Some(arg) = self.tcx.fn_arg_names(fn_def_id).get(expected_idx.as_usize() + self_implicit)
+                        && arg.name != kw::SelfLower
+                    {
+                        format!("/* {} */", arg.name)
                     } else {
                         "/* value */".to_string()
                     }

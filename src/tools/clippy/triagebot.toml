@@ -1,7 +1,7 @@
 [relabel]
 allow-unauthenticated = [
     "A-*", "C-*", "E-*", "I-*", "L-*", "P-*", "S-*", "T-*",
-    "good-first-issue"
+    "good-first-issue", "beta-nominated"
 ]
 
 # Allows shortcuts like `@rustbot ready`

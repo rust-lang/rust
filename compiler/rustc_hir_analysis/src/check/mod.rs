@@ -115,10 +115,10 @@ fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
 
 /// Given a `DefId` for an opaque type in return position, find its parent item's return
 /// expressions.
-fn get_owner_return_paths<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn get_owner_return_paths(
+    tcx: TyCtxt<'_>,
     def_id: LocalDefId,
-) -> Option<(LocalDefId, ReturnsVisitor<'tcx>)> {
+) -> Option<(LocalDefId, ReturnsVisitor<'_>)> {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let parent_id = tcx.hir().get_parent_item(hir_id).def_id;
     tcx.hir().find_by_def_id(parent_id).and_then(|node| node.body_id()).map(|body_id| {

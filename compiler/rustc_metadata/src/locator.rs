@@ -1011,11 +1011,7 @@ impl CrateError {
                 sess.emit_err(SymbolConflictsOthers { span, crate_name: root_name });
             }
             CrateError::StableCrateIdCollision(crate_name0, crate_name1) => {
-                sess.emit_err(StableCrateIdCollision {
-                    span,
-                    crate_name0: crate_name0,
-                    crate_name1: crate_name1,
-                });
+                sess.emit_err(StableCrateIdCollision { span, crate_name0, crate_name1 });
             }
             CrateError::DlOpen(s) | CrateError::DlSym(s) => {
                 sess.emit_err(DlError { span, err: s });
@@ -1074,7 +1070,7 @@ impl CrateError {
                     }
                     sess.emit_err(NoCrateWithTriple {
                         span,
-                        crate_name: crate_name,
+                        crate_name,
                         locator_triple: locator.triple.triple(),
                         add_info,
                         found_crates,

@@ -243,15 +243,13 @@ struct InnerReadDir {
 
 pub struct ReadDir {
     inner: Arc<InnerReadDir>,
-    #[cfg(not(any(
-        target_os = "android",
-        target_os = "linux",
-        target_os = "solaris",
-        target_os = "illumos",
-        target_os = "fuchsia",
-        target_os = "redox",
-    )))]
     end_of_stream: bool,
+}
+
+impl ReadDir {
+    fn new(inner: InnerReadDir) -> Self {
+        Self { inner: Arc::new(inner), end_of_stream: false }
+    }
 }
 
 struct Dir(*mut libc::DIR);
@@ -594,6 +592,10 @@ impl Iterator for ReadDir {
         target_os = "illumos"
     ))]
     fn next(&mut self) -> Option<io::Result<DirEntry>> {
+        if self.end_of_stream {
+            return None;
+        }
+
         unsafe {
             loop {
                 // As of POSIX.1-2017, readdir() is not required to be thread safe; only
@@ -604,8 +606,12 @@ impl Iterator for ReadDir {
                 super::os::set_errno(0);
                 let entry_ptr = readdir64(self.inner.dirp.0);
                 if entry_ptr.is_null() {
-                    // null can mean either the end is reached or an error occurred.
-                    // So we had to clear errno beforehand to check for an error now.
+                    // We either encountered an error, or reached the end.  Either way,
+                    // the next call to next() should return None.
+                    self.end_of_stream = true;
+
+                    // To distinguish between errors and end-of-directory, we had to clear
+                    // errno beforehand to check for an error now.
                     return match super::os::errno() {
                         0 => None,
                         e => Some(Err(Error::from_raw_os_error(e))),
@@ -1363,18 +1369,7 @@ pub fn readdir(path: &Path) -> io::Result<ReadDir> {
     } else {
         let root = path.to_path_buf();
         let inner = InnerReadDir { dirp: Dir(ptr), root };
-        Ok(ReadDir {
-            inner: Arc::new(inner),
-            #[cfg(not(any(
-                target_os = "android",
-                target_os = "linux",
-                target_os = "solaris",
-                target_os = "illumos",
-                target_os = "fuchsia",
-                target_os = "redox",
-            )))]
-            end_of_stream: false,
-        })
+        Ok(ReadDir::new(inner))
     }
 }
 
@@ -1755,7 +1750,6 @@ mod remove_dir_impl {
     use crate::os::unix::io::{AsRawFd, FromRawFd, IntoRawFd};
     use crate::os::unix::prelude::{OwnedFd, RawFd};
     use crate::path::{Path, PathBuf};
-    use crate::sync::Arc;
     use crate::sys::common::small_c_string::run_path_with_cstr;
     use crate::sys::{cvt, cvt_r};
 
@@ -1832,21 +1826,8 @@ mod remove_dir_impl {
         // a valid root is not needed because we do not call any functions involving the full path
         // of the DirEntrys.
         let dummy_root = PathBuf::new();
-        Ok((
-            ReadDir {
-                inner: Arc::new(InnerReadDir { dirp, root: dummy_root }),
-                #[cfg(not(any(
-                    target_os = "android",
-                    target_os = "linux",
-                    target_os = "solaris",
-                    target_os = "illumos",
-                    target_os = "fuchsia",
-                    target_os = "redox",
-                )))]
-                end_of_stream: false,
-            },
-            new_parent_fd,
-        ))
+        let inner = InnerReadDir { dirp, root: dummy_root };
+        Ok((ReadDir::new(inner), new_parent_fd))
     }
 
     #[cfg(any(

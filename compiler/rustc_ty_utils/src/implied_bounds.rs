@@ -6,7 +6,7 @@ pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { assumed_wf_types, ..*providers };
 }
 
-fn assumed_wf_types<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx ty::List<Ty<'tcx>> {
+fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {
     match tcx.def_kind(def_id) {
         DefKind::Fn => {
             let sig = tcx.fn_sig(def_id);

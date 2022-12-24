@@ -2,7 +2,6 @@
 #![warn(rust_2018_idioms, unused_lifetimes)]
 #![allow(clippy::single_match_else)]
 
-use rustc_tools_util::VersionInfo;
 use std::fs;
 
 #[test]

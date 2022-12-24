@@ -352,7 +352,7 @@ pub fn parse_asm_args<'a>(
 ///
 /// This function must be called immediately after the option token is parsed.
 /// Otherwise, the suggestion will be incorrect.
-fn err_duplicate_option<'a>(p: &mut Parser<'a>, symbol: Symbol, span: Span) {
+fn err_duplicate_option(p: &mut Parser<'_>, symbol: Symbol, span: Span) {
     let mut err = p
         .sess
         .span_diagnostic

@@ -19,7 +19,6 @@ extern crate rustc_span;
 use rustc_interface::interface;
 use rustc_session::parse::ParseSess;
 use rustc_span::symbol::Symbol;
-use rustc_tools_util::VersionInfo;
 
 use std::borrow::Cow;
 use std::env;

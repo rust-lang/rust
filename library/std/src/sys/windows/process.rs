@@ -351,6 +351,11 @@ impl Command {
             ))
         }
     }
+
+    pub fn output(&mut self) -> io::Result<(ExitStatus, Vec<u8>, Vec<u8>)> {
+        let (proc, pipes) = self.spawn(Stdio::MakePipe, false)?;
+        crate::sys_common::process::wait_with_output(proc, pipes)
+    }
 }
 
 impl fmt::Debug for Command {

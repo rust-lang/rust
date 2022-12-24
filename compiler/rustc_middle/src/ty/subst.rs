@@ -90,7 +90,7 @@ impl<'tcx> GenericArgKind<'tcx> {
             GenericArgKind::Const(ct) => {
                 // Ensure we can use the tag bits.
                 assert_eq!(mem::align_of_val(&*ct.0.0) & TAG_MASK, 0);
-                (CONST_TAG, ct.0.0 as *const ty::ConstS<'tcx> as usize)
+                (CONST_TAG, ct.0.0 as *const ty::ConstData<'tcx> as usize)
             }
         };
 
@@ -166,7 +166,7 @@ impl<'tcx> GenericArg<'tcx> {
                     &*((ptr & !TAG_MASK) as *const WithCachedTypeInfo<ty::TyKind<'tcx>>),
                 ))),
                 CONST_TAG => GenericArgKind::Const(ty::Const(Interned::new_unchecked(
-                    &*((ptr & !TAG_MASK) as *const ty::ConstS<'tcx>),
+                    &*((ptr & !TAG_MASK) as *const ty::ConstData<'tcx>),
                 ))),
                 _ => intrinsics::unreachable(),
             }
@@ -348,7 +348,7 @@ impl<'tcx> InternalSubsts<'tcx> {
         substs.reserve(defs.params.len());
         for param in &defs.params {
             let kind = mk_kind(param, substs);
-            assert_eq!(param.index as usize, substs.len());
+            assert_eq!(param.index as usize, substs.len(), "{substs:#?}, {defs:#?}");
             substs.push(kind);
         }
     }
@@ -400,6 +400,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn type_at(&self, i: usize) -> Ty<'tcx> {
         if let GenericArgKind::Type(ty) = self[i].unpack() {
             ty
@@ -409,6 +410,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn region_at(&self, i: usize) -> ty::Region<'tcx> {
         if let GenericArgKind::Lifetime(lt) = self[i].unpack() {
             lt
@@ -418,6 +420,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn const_at(&self, i: usize) -> ty::Const<'tcx> {
         if let GenericArgKind::Const(ct) = self[i].unpack() {
             ct
@@ -427,6 +430,7 @@ impl<'tcx> InternalSubsts<'tcx> {
     }
 
     #[inline]
+    #[track_caller]
     pub fn type_for_def(&self, def: &ty::GenericParamDef) -> GenericArg<'tcx> {
         self.type_at(def.index as usize).into()
     }
@@ -572,6 +576,10 @@ impl<T> EarlyBinder<T> {
 
     pub fn rebind<U>(&self, value: U) -> EarlyBinder<U> {
         EarlyBinder(value)
+    }
+
+    pub fn skip_binder(self) -> T {
+        self.0
     }
 }
 

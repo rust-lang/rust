@@ -99,12 +99,6 @@ impl<'tcx> fmt::Debug for ty::ConstVid<'tcx> {
     }
 }
 
-impl fmt::Debug for ty::RegionVid {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "'_#{}r", self.index())
-    }
-}
-
 impl<'tcx> fmt::Debug for ty::TraitRef<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         with_no_trimmed_paths!(fmt::Display::fmt(self, f))

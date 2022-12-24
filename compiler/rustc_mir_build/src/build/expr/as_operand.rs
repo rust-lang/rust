@@ -72,7 +72,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     /// will actually provide a pointer to the interior of the box, and not move the `dyn Debug`
     /// value to the stack.
     ///
-    /// See #68034 for more details.
+    /// See #68304 for more details.
     pub(crate) fn as_local_call_operand(
         &mut self,
         block: BasicBlock,

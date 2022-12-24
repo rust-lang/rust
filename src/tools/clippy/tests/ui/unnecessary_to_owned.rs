@@ -454,3 +454,23 @@ mod issue_9771b {
         Key(v.to_vec())
     }
 }
+
+// This is a watered down version of the code in: https://github.com/oxigraph/rio
+// The ICE is triggered by the call to `to_owned` on this line:
+// https://github.com/oxigraph/rio/blob/66635b9ff8e5423e58932353fa40d6e64e4820f7/testsuite/src/parser_evaluator.rs#L116
+mod issue_10021 {
+    #![allow(unused)]
+
+    pub struct Iri<T>(T);
+
+    impl<T: AsRef<str>> Iri<T> {
+        pub fn parse(iri: T) -> Result<Self, ()> {
+            unimplemented!()
+        }
+    }
+
+    pub fn parse_w3c_rdf_test_file(url: &str) -> Result<(), ()> {
+        let base_iri = Iri::parse(url.to_owned())?;
+        Ok(())
+    }
+}

@@ -562,7 +562,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let mir_def_id = body.source.def_id();
         self.propagate_constraints(body);
 
-        let mut errors_buffer = RegionErrors::new();
+        let mut errors_buffer = RegionErrors::new(infcx.tcx);
 
         // If this is a closure, we can propagate unsatisfied
         // `outlives_requirements` to our creator, so create a vector
@@ -831,7 +831,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             if self.eval_verify_bound(
                 infcx,
                 param_env,
-                body,
                 generic_ty,
                 type_test.lower_bound,
                 &type_test.verify_bound,
@@ -962,14 +961,7 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             // where `ur` is a local bound -- we are sometimes in a
             // position to prove things that our caller cannot.  See
             // #53570 for an example.
-            if self.eval_verify_bound(
-                infcx,
-                param_env,
-                body,
-                generic_ty,
-                ur,
-                &type_test.verify_bound,
-            ) {
+            if self.eval_verify_bound(infcx, param_env, generic_ty, ur, &type_test.verify_bound) {
                 continue;
             }
 
@@ -1190,7 +1182,6 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         &self,
         infcx: &InferCtxt<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
-        body: &Body<'tcx>,
         generic_ty: Ty<'tcx>,
         lower_bound: RegionVid,
         verify_bound: &VerifyBound<'tcx>,
@@ -1213,25 +1204,11 @@ impl<'tcx> RegionInferenceContext<'tcx> {
             }
 
             VerifyBound::AnyBound(verify_bounds) => verify_bounds.iter().any(|verify_bound| {
-                self.eval_verify_bound(
-                    infcx,
-                    param_env,
-                    body,
-                    generic_ty,
-                    lower_bound,
-                    verify_bound,
-                )
+                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
             }),
 
             VerifyBound::AllBounds(verify_bounds) => verify_bounds.iter().all(|verify_bound| {
-                self.eval_verify_bound(
-                    infcx,
-                    param_env,
-                    body,
-                    generic_ty,
-                    lower_bound,
-                    verify_bound,
-                )
+                self.eval_verify_bound(infcx, param_env, generic_ty, lower_bound, verify_bound)
             }),
         }
     }
@@ -1670,26 +1647,29 @@ impl<'tcx> RegionInferenceContext<'tcx> {
         let longer_fr_scc = self.constraint_sccs.scc(longer_fr);
         debug!("check_bound_universal_region: longer_fr_scc={:?}", longer_fr_scc,);
 
-        // If we have some bound universal region `'a`, then the only
-        // elements it can contain is itself -- we don't know anything
-        // else about it!
-        let Some(error_element) = ({
-            self.scc_values.elements_contained_in(longer_fr_scc).find(|element| match element {
-                RegionElement::Location(_) => true,
-                RegionElement::RootUniversalRegion(_) => true,
-                RegionElement::PlaceholderRegion(placeholder1) => placeholder != *placeholder1,
-            })
-        }) else {
-            return;
-        };
-        debug!("check_bound_universal_region: error_element = {:?}", error_element);
+        for error_element in self.scc_values.elements_contained_in(longer_fr_scc) {
+            match error_element {
+                RegionElement::Location(_) | RegionElement::RootUniversalRegion(_) => {}
+                // If we have some bound universal region `'a`, then the only
+                // elements it can contain is itself -- we don't know anything
+                // else about it!
+                RegionElement::PlaceholderRegion(placeholder1) => {
+                    if placeholder == placeholder1 {
+                        continue;
+                    }
+                }
+            }
 
-        // Find the region that introduced this `error_element`.
-        errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
-            longer_fr,
-            error_element,
-            placeholder,
-        });
+            errors_buffer.push(RegionErrorKind::BoundUniversalRegionError {
+                longer_fr,
+                error_element,
+                placeholder,
+            });
+
+            // Stop after the first error, it gets too noisy otherwise, and does not provide more information.
+            break;
+        }
+        debug!("check_bound_universal_region: all bounds satisfied");
     }
 
     #[instrument(level = "debug", skip(self, infcx, errors_buffer))]

@@ -5,7 +5,7 @@ use crate::infer::{GenericKind, VerifyBound};
 use rustc_data_structures::sso::SsoHashSet;
 use rustc_hir::def_id::DefId;
 use rustc_middle::ty::GenericArg;
-use rustc_middle::ty::{self, EarlyBinder, OutlivesPredicate, SubstsRef, Ty, TyCtxt};
+use rustc_middle::ty::{self, OutlivesPredicate, SubstsRef, Ty, TyCtxt};
 
 use smallvec::smallvec;
 
@@ -304,14 +304,13 @@ impl<'cx, 'tcx> VerifyBoundCx<'cx, 'tcx> {
         substs: SubstsRef<'tcx>,
     ) -> impl Iterator<Item = ty::Region<'tcx>> {
         let tcx = self.tcx;
-        let bounds = tcx.item_bounds(def_id);
-        trace!("{:#?}", bounds);
+        let bounds = tcx.bound_item_bounds(def_id);
+        trace!("{:#?}", bounds.0);
         bounds
-            .into_iter()
+            .subst_iter(tcx, substs)
             .filter_map(|p| p.to_opt_type_outlives())
             .filter_map(|p| p.no_bound_vars())
-            .map(|b| b.1)
-            .map(move |r| EarlyBinder(r).subst(tcx, substs))
+            .map(|OutlivesPredicate(_, r)| r)
     }
 
     /// Searches through a predicate list for a predicate `T: 'a`.

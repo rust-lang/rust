@@ -638,6 +638,7 @@ define_config! {
         dist_stage: Option<u32> = "dist-stage",
         bench_stage: Option<u32> = "bench-stage",
         patch_binaries_for_nix: Option<bool> = "patch-binaries-for-nix",
+        // NOTE: only parsed by bootstrap.py, `--feature build-metrics` enables metrics unconditionally
         metrics: Option<bool> = "metrics",
     }
 }
@@ -1608,6 +1609,10 @@ impl Config {
 
     pub fn submodules(&self, rust_info: &GitInfo) -> bool {
         self.submodules.unwrap_or(rust_info.is_managed_git_subrepository())
+    }
+
+    pub fn default_codegen_backend(&self) -> Option<Interned<String>> {
+        self.rust_codegen_backends.get(0).cloned()
     }
 
     /// Returns the commit to download, or `None` if we shouldn't download CI artifacts.

@@ -535,12 +535,13 @@ impl<T> VecDeque<T> {
     ///
     /// let deque: VecDeque<u32> = VecDeque::new();
     /// ```
-    // FIXME: This should probably be const
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[rustc_const_stable(feature = "const_vec_deque_new", since = "CURRENT_RUSTC_VERSION")]
     #[must_use]
-    pub fn new() -> VecDeque<T> {
-        VecDeque::new_in(Global)
+    pub const fn new() -> VecDeque<T> {
+        // FIXME: This should just be `VecDeque::new_in(Global)` once that hits stable.
+        VecDeque { head: 0, len: 0, buf: RawVec::NEW }
     }
 
     /// Creates an empty deque with space for at least `capacity` elements.
@@ -2541,7 +2542,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// The deque is assumed to be partitioned according to the given predicate.
     /// This means that all elements for which the predicate returns true are at the start of the deque
     /// and all elements for which the predicate returns false are at the end.
-    /// For example, [7, 15, 3, 5, 4, 12, 6] is a partitioned under the predicate x % 2 != 0
+    /// For example, `[7, 15, 3, 5, 4, 12, 6]` is partitioned under the predicate `x % 2 != 0`
     /// (all odd numbers are at the start, all even at the end).
     ///
     /// If the deque is not partitioned, the returned result is unspecified and meaningless,
