@@ -6,11 +6,7 @@ standard library, and documentation.
 [Rust]: https://www.rust-lang.org
 
 **Note: this README is for _users_ rather than _contributors_.
-If you wish to _contribute_ to the compiler, you should read the
-[Getting Started][gettingstarted] section of the rustc-dev-guide instead.
-You can ask for help in the [#new members Zulip stream][new-members].**
-
-[new-members]: https://rust-lang.zulipchat.com/#narrow/stream/122652-new-members
+If you wish to _contribute_ to the compiler, you should read [CONTRIBUTING.md](CONTRIBUTING.md) instead.
 
 ## Quick Start
 
@@ -48,20 +44,37 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
-### Building on a Unix-like system
-1. Make sure you have installed the dependencies:
+### Dependencies
 
-   * `g++` 5.1 or later or `clang++` 3.5 or later
+Make sure you have installed the dependencies:
+
    * `python` 3 or 2.7
-   * GNU `make` 3.81 or later
-   * `cmake` 3.13.4 or later
-   * `ninja`
-   * `curl`
    * `git`
-   * `ssl` which comes in `libssl-dev` or `openssl-devel`
+   * A C compiler (when building for the host, `cc` is enough; cross-compiling may need additional compilers)
+   * `curl` (not needed on Windows)
    * `pkg-config` if you are compiling on Linux and targeting Linux
+   * `libiconv` (already included with glibc on Debian-based distros)
 
-2. Clone the [source] with `git`:
+To build cargo, you'll also need OpenSSL (`libssl-dev` or `openssl-devel` on most Unix distros).
+
+If building LLVM from source, you'll need additional tools:
+
+* `g++`, `clang++`, or MSVC with versions listed on
+  [LLVM's documentation](https://llvm.org/docs/GettingStarted.html#host-c-toolchain-both-compiler-and-standard-library)
+* `ninja`, or GNU `make` 3.81 or later (ninja is recommended, especially on Windows)
+* `cmake` 3.13.4 or later
+* `libstdc++-static` may be required on some Linux distributions such as Fedora and Ubuntu
+
+On tier 1 or tier 2 with host tools platforms, you can also choose to download LLVM by setting `llvm.download-ci-llvm = true`.
+Otherwise, you'll need LLVM installed and `llvm-config` in your path.
+See [the rustc-dev-guide for more info][sysllvm].
+
+[sysllvm]: https://rustc-dev-guide.rust-lang.org/building/new-target.html#using-pre-built-llvm
+
+
+### Building on a Unix-like system
+
+1. Clone the [source] with `git`:
 
    ```sh
    git clone https://github.com/rust-lang/rust.git
@@ -70,22 +83,21 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 
 [source]: https://github.com/rust-lang/rust
 
-3. Configure the build settings:
+2. Configure the build settings:
 
     The Rust build system uses a file named `config.toml` in the root of the
     source tree to determine various configuration settings for the build.
-    Copy the default `config.toml.example` to `config.toml` to get started.
+    Set up the defaults intended for distros to get started. You can see a full list of options
+    in `config.toml.example`.
 
     ```sh
-    cp config.toml.example config.toml
+    printf 'profile = "user" \nchangelog-seen = 2 \n' > config.toml
     ```
 
     If you plan to use `x.py install` to create an installation, it is recommended
     that you set the `prefix` value in the `[install]` section to a directory.
 
-    Create an install directory if you are not installing in the default directory.
-
-4. Build and install:
+3. Build and install:
 
     ```sh
     ./x.py build && ./x.py install
@@ -93,14 +105,26 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 
     When complete, `./x.py install` will place several programs into
     `$PREFIX/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
-    API-documentation tool. This install does not include [Cargo],
-    Rust's package manager. To build and install Cargo, you may
-    run `./x.py install cargo` or set the `build.extended` key in
-    `config.toml` to `true` to build and install all tools.
+    API-documentation tool. If you've set `profile = "user"` or `build.extended = true`, it will
+    also include [Cargo], Rust's package manager.
 
 [Cargo]: https://github.com/rust-lang/cargo
 
 ### Building on Windows
+
+On Windows, we suggest using [winget] to install dependencies by running the following in a terminal:
+
+```powershell
+winget install -e Python.Python.3
+winget install -e Kitware.CMake
+winget install -e Git.Git
+```
+
+Then edit your system's `PATH` variable and add: `C:\Program Files\CMake\bin`. See
+[this guide on editing the system `PATH`](https://www.java.com/en/download/help/path.html) from the
+Java documentation.
+
+[winget]: https://github.com/microsoft/winget-cli
 
 There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
 Visual Studio and the GNU ABI used by the GCC toolchain. Which version of Rust
@@ -190,7 +214,7 @@ Windows build triples are:
     - `x86_64-pc-windows-msvc`
 
 The build triple can be specified by either specifying `--build=<triple>` when
-invoking `x.py` commands, or by copying the `config.toml` file (as described
+invoking `x.py` commands, or by creating a `config.toml` file (as described
 in [Installing From Source](#installing-from-source)), and modifying the
 `build` option under the `[build]` section.
 
@@ -204,9 +228,7 @@ configure script and makefile (the latter of which just invokes `x.py`).
 make && sudo make install
 ```
 
-When using the configure script, the generated `config.mk` file may override the
-`config.toml` file. To go back to the `config.toml` file, delete the generated
-`config.mk` file.
+`configure` generates a `config.toml` which can also be used with normal `x.py` invocations.
 
 ## Building Documentation
 
@@ -227,41 +249,20 @@ precompiled "snapshot" version of itself (made in an earlier stage of
 development). As such, source builds require an Internet connection to
 fetch snapshots, and an OS that can execute the available snapshot binaries.
 
-Snapshot binaries are currently built and tested on several platforms:
-
-| Platform / Architecture                     | x86 | x86_64 |
-|---------------------------------------------|-----|--------|
-| Windows (7, 8, 10, ...)                     | ✓   | ✓      |
-| Linux (kernel 3.2, glibc 2.17 or later)     | ✓   | ✓      |
-| macOS (10.7 Lion or later)                  | (\*) | ✓      |
-
-(\*): Apple dropped support for running 32-bit binaries starting from macOS 10.15 and iOS 11.
-Due to this decision from Apple, the targets are no longer useful to our users.
-Please read [our blog post][macx32] for more info.
-
-[macx32]: https://blog.rust-lang.org/2020/01/03/reducing-support-for-32-bit-apple-targets.html
+See https://doc.rust-lang.org/nightly/rustc/platform-support.html for a list of supported platforms.
+Only "host tools" platforms have a pre-compiled snapshot binary available; to compile for a platform
+without host tools you must cross-compile.
 
 You may find that other platforms work, but these are our officially
 supported build environments that are most likely to work.
 
 ## Getting Help
 
-The Rust community congregates in a few places:
-
-* [Stack Overflow] - Direct questions about using the language.
-* [users.rust-lang.org] - General discussion and broader questions.
-* [/r/rust] - News and general discussion.
-
-[Stack Overflow]: https://stackoverflow.com/questions/tagged/rust
-[/r/rust]: https://reddit.com/r/rust
-[users.rust-lang.org]: https://users.rust-lang.org/
+See https://www.rust-lang.org/community for a list of chat platforms and forums.
 
 ## Contributing
 
-If you are interested in contributing to the Rust project, please take a look
-at the [Getting Started][gettingstarted] guide in the [rustc-dev-guide].
-
-[rustc-dev-guide]: https://rustc-dev-guide.rust-lang.org
+See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 
