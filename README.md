@@ -87,10 +87,11 @@ See [the rustc-dev-guide for more info][sysllvm].
 
     The Rust build system uses a file named `config.toml` in the root of the
     source tree to determine various configuration settings for the build.
-    Copy the default `config.toml.example` to `config.toml` to get started.
+    Set up the defaults intended for distros to get started. You can see a full list of options
+    in `config.toml.example`.
 
     ```sh
-    cp config.toml.example config.toml
+    printf 'profile = "user" \nchangelog-seen = 2 \n' > config.toml
     ```
 
     If you plan to use `x.py install` to create an installation, it is recommended
@@ -104,10 +105,8 @@ See [the rustc-dev-guide for more info][sysllvm].
 
     When complete, `./x.py install` will place several programs into
     `$PREFIX/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
-    API-documentation tool. This install does not include [Cargo],
-    Rust's package manager. To build and install Cargo, you may
-    run `./x.py install cargo` or set the `build.extended` key in
-    `config.toml` to `true` to build and install all tools.
+    API-documentation tool. If you've set `profile = "user"` or `build.extended = true`, it will
+    also include [Cargo], Rust's package manager.
 
 [Cargo]: https://github.com/rust-lang/cargo
 
@@ -215,7 +214,7 @@ Windows build triples are:
     - `x86_64-pc-windows-msvc`
 
 The build triple can be specified by either specifying `--build=<triple>` when
-invoking `x.py` commands, or by copying the `config.toml` file (as described
+invoking `x.py` commands, or by creating a `config.toml` file (as described
 in [Installing From Source](#installing-from-source)), and modifying the
 `build` option under the `[build]` section.
 
