@@ -2,7 +2,6 @@ use crate::check::intrinsicck::InlineAsmCtxt;
 use crate::errors::LinkageType;
 
 use super::compare_impl_item::check_type_bounds;
-use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
@@ -780,25 +779,16 @@ fn check_impl_items_against_trait<'tcx>(
                 ));
             }
             hir::ImplItemKind::Fn(..) => {
-                let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                compare_impl_method(
-                    tcx,
-                    &ty_impl_item,
-                    &ty_trait_item,
-                    impl_trait_ref,
-                    opt_trait_span,
-                );
+                let _ = tcx.compare_impl_method((
+                    impl_item.id.owner_id.def_id,
+                    ty_impl_item.trait_item_def_id.unwrap(),
+                ));
             }
-            hir::ImplItemKind::Type(impl_ty) => {
-                let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                compare_impl_ty(
-                    tcx,
-                    &ty_impl_item,
-                    impl_ty.span,
-                    &ty_trait_item,
-                    impl_trait_ref,
-                    opt_trait_span,
-                );
+            hir::ImplItemKind::Type(..) => {
+                let _ = tcx.compare_impl_ty((
+                    impl_item.id.owner_id.def_id,
+                    ty_impl_item.trait_item_def_id.unwrap(),
+                ));
             }
         }
 

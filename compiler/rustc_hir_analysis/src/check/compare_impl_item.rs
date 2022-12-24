@@ -12,6 +12,7 @@ use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKi
 use rustc_infer::infer::{self, InferCtxt, TyCtxtInferExt};
 use rustc_infer::traits::util;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
+use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::util::ExplicitSelf;
 use rustc_middle::ty::{
     self, DefIdTree, InternalSubsts, Ty, TypeFoldable, TypeFolder, TypeSuperFoldable, TypeVisitable,
@@ -25,62 +26,52 @@ use rustc_trait_selection::traits::{
 };
 use std::iter;
 
+pub(super) fn provide(providers: &mut Providers) {
+    *providers = Providers {
+        compare_impl_const: compare_impl_const_raw,
+        compare_impl_method: compare_impl_method_raw,
+        compare_impl_ty: compare_impl_ty_raw,
+        collect_trait_impl_trait_tys,
+        ..*providers
+    };
+}
+
 /// Checks that a method from an impl conforms to the signature of
 /// the same method as declared in the trait.
-///
-/// # Parameters
-///
-/// - `impl_m`: type of the method we are checking
-/// - `impl_m_span`: span to use for reporting errors
-/// - `trait_m`: the method in the trait
-/// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-pub(super) fn compare_impl_method<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    impl_m: &ty::AssocItem,
-    trait_m: &ty::AssocItem,
-    impl_trait_ref: ty::TraitRef<'tcx>,
-    trait_item_span: Option<Span>,
-) {
+fn compare_impl_method_raw(
+    tcx: TyCtxt<'_>,
+    (impl_m_def_id, trait_m_def_id): (LocalDefId, DefId),
+) -> Result<(), ErrorGuaranteed> {
+    let impl_m = tcx.associated_item(impl_m_def_id);
+    let impl_m_span = tcx.def_span(impl_m_def_id);
+    let trait_m = tcx.associated_item(trait_m_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_m.container_id(tcx)).unwrap();
+    let trait_item_span = tcx.hir().span_if_local(trait_m_def_id);
+
     debug!("compare_impl_method(impl_trait_ref={:?})", impl_trait_ref);
 
-    let impl_m_span = tcx.def_span(impl_m.def_id);
+    compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)?;
 
-    if let Err(_) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref) {
-        return;
-    }
+    compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span, false)?;
 
-    if let Err(_) = compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span, false) {
-        return;
-    }
+    compare_generic_param_kinds(tcx, impl_m, trait_m, false)?;
 
-    if let Err(_) = compare_generic_param_kinds(tcx, impl_m, trait_m, false) {
-        return;
-    }
+    compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)?;
 
-    if let Err(_) =
-        compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
-    {
-        return;
-    }
+    compare_synthetic_generics(tcx, impl_m, trait_m)?;
 
-    if let Err(_) = compare_synthetic_generics(tcx, impl_m, trait_m) {
-        return;
-    }
+    compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span)?;
 
-    if let Err(_) = compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
-        return;
-    }
-
-    if let Err(_) = compare_method_predicate_entailment(
+    compare_method_predicate_entailment(
         tcx,
         impl_m,
         impl_m_span,
         trait_m,
         impl_trait_ref,
         CheckImpliedWfMode::Check,
-    ) {
-        return;
-    }
+    )?;
+
+    Ok(())
 }
 
 /// This function is best explained by example. Consider a trait:
@@ -442,13 +433,13 @@ fn compare_asyncness<'tcx>(
 }
 
 #[instrument(skip(tcx), level = "debug", ret)]
-pub(super) fn collect_trait_impl_trait_tys<'tcx>(
+fn collect_trait_impl_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
-    let impl_m = tcx.opt_associated_item(def_id).unwrap();
-    let trait_m = tcx.opt_associated_item(impl_m.trait_item_def_id.unwrap()).unwrap();
-    let impl_trait_ref = tcx.impl_trait_ref(impl_m.impl_container(tcx).unwrap()).unwrap();
+    let impl_m = tcx.associated_item(def_id);
+    let trait_m = tcx.associated_item(impl_m.trait_item_def_id.unwrap());
+    let impl_trait_ref = tcx.impl_trait_ref(impl_m.container_id(tcx)).unwrap();
     let param_env = tcx.param_env(def_id);
 
     // First, check a few of the same thing as `compare_impl_method`, just so we don't ICE during substitutions later.
@@ -1517,7 +1508,7 @@ fn compare_generic_param_kinds<'tcx>(
 }
 
 /// Use `tcx.compare_impl_const` instead
-pub(super) fn compare_impl_const_raw(
+fn compare_impl_const_raw(
     tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
@@ -1623,26 +1614,28 @@ pub(super) fn compare_impl_const_raw(
     Ok(())
 }
 
-pub(super) fn compare_impl_ty<'tcx>(
+fn compare_impl_ty_raw<'tcx>(
     tcx: TyCtxt<'tcx>,
-    impl_ty: &ty::AssocItem,
-    impl_ty_span: Span,
-    trait_ty: &ty::AssocItem,
-    impl_trait_ref: ty::TraitRef<'tcx>,
-    trait_item_span: Option<Span>,
-) {
-    debug!("compare_impl_type(impl_trait_ref={:?})", impl_trait_ref);
+    (impl_ty_def_id, trait_ty_def_id): (LocalDefId, DefId),
+) -> Result<(), ErrorGuaranteed> {
+    let impl_ty = tcx.associated_item(impl_ty_def_id);
+    let impl_ty_span = tcx.def_span(impl_ty_def_id);
+    let trait_ty = tcx.associated_item(trait_ty_def_id);
+    let impl_trait_ref = tcx.impl_trait_ref(impl_ty.container_id(tcx)).unwrap();
+    let trait_item_span = tcx.hir().span_if_local(trait_ty_def_id);
 
-    let _: Result<(), ErrorGuaranteed> = (|| {
-        compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span, false)?;
+    debug!("compare_impl_ty(impl_trait_ref={:?})", impl_trait_ref);
 
-        compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
+    compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span, false)?;
 
-        let sp = tcx.def_span(impl_ty.def_id);
-        compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
+    compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
 
-        check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
-    })();
+    let sp = tcx.def_span(impl_ty.def_id);
+    compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
+
+    check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)?;
+
+    Ok(())
 }
 
 /// The equivalent of [compare_method_predicate_entailment], but for associated types

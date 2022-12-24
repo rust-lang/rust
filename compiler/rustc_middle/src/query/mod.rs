@@ -2120,7 +2120,19 @@ rustc_queries! {
     query compare_impl_const(
         key: (LocalDefId, DefId)
     ) -> Result<(), ErrorGuaranteed> {
-        desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }
+        desc { |tcx| "checking associated const `{}` is compatible with trait item", tcx.def_path_str(key.0.to_def_id()) }
+    }
+
+    query compare_impl_method(
+        key: (LocalDefId, DefId)
+    ) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx| "checking associated method `{}` is compatible with trait item", tcx.def_path_str(key.0.to_def_id()) }
+    }
+
+    query compare_impl_ty(
+        key: (LocalDefId, DefId)
+    ) -> Result<(), ErrorGuaranteed> {
+        desc { |tcx| "checking associated type `{}` is compatible with trait item", tcx.def_path_str(key.0.to_def_id()) }
     }
 
     query deduced_param_attrs(def_id: DefId) -> &'tcx [ty::DeducedParamAttrs] {

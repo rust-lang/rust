@@ -94,19 +94,13 @@ use std::num::NonZeroU32;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::compare_impl_item::collect_trait_impl_trait_tys;
 use self::region::region_scope_tree;
 
 pub fn provide(providers: &mut Providers) {
     wfcheck::provide(providers);
-    *providers = Providers {
-        adt_destructor,
-        check_mod_item_types,
-        region_scope_tree,
-        collect_trait_impl_trait_tys,
-        compare_impl_const: compare_impl_item::compare_impl_const_raw,
-        ..*providers
-    };
+    compare_impl_item::provide(providers);
+    *providers =
+        Providers { adt_destructor, check_mod_item_types, region_scope_tree, ..*providers };
 }
 
 fn adt_destructor(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::Destructor> {
