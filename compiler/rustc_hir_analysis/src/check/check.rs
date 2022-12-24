@@ -1,8 +1,8 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
 use crate::errors::LinkageType;
 
-use super::compare_method::check_type_bounds;
-use super::compare_method::{compare_impl_method, compare_impl_ty};
+use super::compare_impl_item::check_type_bounds;
+use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};

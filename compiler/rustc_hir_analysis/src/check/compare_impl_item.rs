@@ -71,7 +71,7 @@ pub(super) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_predicate_entailment(
+    if let Err(_) = compare_method_predicate_entailment(
         tcx,
         impl_m,
         impl_m_span,
@@ -150,7 +150,7 @@ pub(super) fn compare_impl_method<'tcx>(
 /// Finally we register each of these predicates as an obligation and check that
 /// they hold.
 #[instrument(level = "debug", skip(tcx, impl_m_span, impl_trait_ref))]
-fn compare_predicate_entailment<'tcx>(
+fn compare_method_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     impl_m_span: Span,
@@ -337,7 +337,7 @@ fn compare_predicate_entailment<'tcx>(
     if !errors.is_empty() {
         match check_implied_wf {
             CheckImpliedWfMode::Check => {
-                return compare_predicate_entailment(
+                return compare_method_predicate_entailment(
                     tcx,
                     impl_m,
                     impl_m_span,
@@ -374,7 +374,7 @@ fn compare_predicate_entailment<'tcx>(
         // becomes a hard error (i.e. ideally we'd just call `resolve_regions_and_report_errors`
         match check_implied_wf {
             CheckImpliedWfMode::Check => {
-                return compare_predicate_entailment(
+                return compare_method_predicate_entailment(
                     tcx,
                     impl_m,
                     impl_m_span,
@@ -407,7 +407,7 @@ enum CheckImpliedWfMode {
     /// re-check with `Skip`, and emit a lint if it succeeds.
     Check,
     /// Skips checking implied well-formedness of the impl method, but will emit
-    /// a lint if the `compare_predicate_entailment` succeeded. This means that
+    /// a lint if the `compare_method_predicate_entailment` succeeded. This means that
     /// the reason that we had failed earlier during `Check` was due to the impl
     /// having stronger requirements than the trait.
     Skip,
@@ -550,13 +550,13 @@ pub(super) fn collect_trait_impl_trait_tys<'tcx>(
     // Unify the whole function signature. We need to do this to fully infer
     // the lifetimes of the return type, but do this after unifying just the
     // return types, since we want to avoid duplicating errors from
-    // `compare_predicate_entailment`.
+    // `compare_method_predicate_entailment`.
     match ocx.eq(&cause, param_env, trait_fty, impl_fty) {
         Ok(()) => {}
         Err(terr) => {
-            // This function gets called during `compare_predicate_entailment` when normalizing a
+            // This function gets called during `compare_method_predicate_entailment` when normalizing a
             // signature that contains RPITIT. When the method signatures don't match, we have to
-            // emit an error now because `compare_predicate_entailment` will not report the error
+            // emit an error now because `compare_method_predicate_entailment` will not report the error
             // when normalization fails.
             let emitted = report_trait_method_mismatch(
                 infcx,
@@ -1645,7 +1645,7 @@ pub(super) fn compare_impl_ty<'tcx>(
     })();
 }
 
-/// The equivalent of [compare_predicate_entailment], but for associated types
+/// The equivalent of [compare_method_predicate_entailment], but for associated types
 /// instead of associated functions.
 fn compare_type_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
