@@ -228,9 +228,7 @@ configure script and makefile (the latter of which just invokes `x.py`).
 make && sudo make install
 ```
 
-When using the configure script, the generated `config.mk` file may override the
-`config.toml` file. To go back to the `config.toml` file, delete the generated
-`config.mk` file.
+`configure` generates a `config.toml` which can also be used with normal `x.py` invocations.
 
 ## Building Documentation
 
