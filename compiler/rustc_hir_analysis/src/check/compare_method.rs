@@ -589,7 +589,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_m.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     let mut collected_tys = FxHashMap::default();
     for (def_id, (ty, substs)) in collector.types {
@@ -1617,9 +1617,9 @@ pub(crate) fn compare_impl_const_raw(
         return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
     }
 
-    // FIXME return `ErrorReported` if region obligations error?
     let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment);
+    infcx.check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
+
     Ok(())
 }
 
@@ -1730,7 +1730,7 @@ fn compare_type_predicate_entailment<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     Ok(())
 }
@@ -1944,7 +1944,7 @@ pub fn check_type_bounds<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
     for (key, value) in constraints {
