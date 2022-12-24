@@ -38,6 +38,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Use `||` to give these suggestions a precedence
         let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)

@@ -653,9 +653,9 @@ pub mod guard {
 ))]
 #[cfg_attr(test, allow(dead_code))]
 pub mod guard {
-    #[cfg(not(target_os = "linux"))]
+    #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
     use libc::{mmap as mmap64, mprotect};
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{mmap64, mprotect};
     use libc::{MAP_ANON, MAP_FAILED, MAP_FIXED, MAP_PRIVATE, PROT_NONE, PROT_READ, PROT_WRITE};
 
