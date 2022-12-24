@@ -62,7 +62,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #788797;
 	--code-highlight-doc-comment-color: #a1ac88;
-	--example-line-numbers-border-color: none;
 	--src-line-numbers-span-color: #5c6773;
 	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
 	--test-arrow-color: #788797;
@@ -132,7 +131,7 @@ pre, .rustdoc.source .example-wrap {
 
 .src-line-numbers .line-highlighted {
 	color: #708090;
-	padding-right: 4px;
+	padding-right: 7px;
 	border-right: 1px solid #ffb44c;
 }
 
