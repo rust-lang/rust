@@ -63,7 +63,7 @@ a type parameter).
 */
 
 mod check;
-mod compare_method;
+mod compare_impl_item;
 pub mod dropck;
 pub mod intrinsic;
 pub mod intrinsicck;
@@ -94,7 +94,7 @@ use std::num::NonZeroU32;
 use crate::require_c_abi_if_c_variadic;
 use crate::util::common::indenter;
 
-use self::compare_method::collect_trait_impl_trait_tys;
+use self::compare_impl_item::collect_trait_impl_trait_tys;
 use self::region::region_scope_tree;
 
 pub fn provide(providers: &mut Providers) {
@@ -104,7 +104,7 @@ pub fn provide(providers: &mut Providers) {
         check_mod_item_types,
         region_scope_tree,
         collect_trait_impl_trait_tys,
-        compare_impl_const: compare_method::compare_impl_const_raw,
+        compare_impl_const: compare_impl_item::compare_impl_const_raw,
         ..*providers
     };
 }
