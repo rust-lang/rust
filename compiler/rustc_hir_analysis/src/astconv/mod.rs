@@ -2626,7 +2626,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let e = self
                     .tcx()
                     .sess
-                    .delay_span_bug(path.span, "path with `Res:Err` but no error emitted");
+                    .delay_span_bug(path.span, "path with `Res::Err` but no error emitted");
                 self.set_tainted_by_errors(e);
                 self.tcx().ty_error_with_guaranteed(e)
             }
