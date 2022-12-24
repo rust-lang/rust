@@ -2705,7 +2705,7 @@ public:
             applyChainRule(orig_op1->getType(), Builder2, rule, dif[0], dif[1]),
             Builder2);
       } else if (!constantval0) {
-        setDiffe(&BO, dif[1], Builder2);
+        setDiffe(&BO, dif[0], Builder2);
       } else if (!constantval1) {
         auto rule = [&](Value *dif1) {
           return Builder2.CreateFMul(dif1, round);
