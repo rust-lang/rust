@@ -1179,7 +1179,7 @@ fn item_union(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, s: &clean:
 fn print_tuple_struct_fields(w: &mut Buffer, cx: &Context<'_>, s: &[clean::Item]) {
     for (i, ty) in s.iter().enumerate() {
         if i > 0 {
-            w.write_str(",&nbsp;");
+            w.write_str(", ");
         }
         match *ty.kind {
             clean::StrippedItem(box clean::StructFieldItem(_)) => w.write_str("_"),
@@ -1327,7 +1327,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 "<div class=\"sub-variant-field\">\
                                  <span id=\"{id}\" class=\"small-section-header\">\
                                      <a href=\"#{id}\" class=\"anchor field\">§</a>\
-                                     <code>{f}:&nbsp;{t}</code>\
+                                     <code>{f}: {t}</code>\
                                  </span>",
                                 id = id,
                                 f = field.name.unwrap(),
