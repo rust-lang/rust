@@ -44,20 +44,37 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 [gettingstarted]: https://rustc-dev-guide.rust-lang.org/getting-started.html
 [rustcguidebuild]: https://rustc-dev-guide.rust-lang.org/building/how-to-build-and-run.html
 
-### Building on a Unix-like system
-1. Make sure you have installed the dependencies:
+### Dependencies
 
-   * `g++` 5.1 or later or `clang++` 3.5 or later
+Make sure you have installed the dependencies:
+
    * `python` 3 or 2.7
-   * GNU `make` 3.81 or later
-   * `cmake` 3.13.4 or later
-   * `ninja`
-   * `curl`
    * `git`
-   * `ssl` which comes in `libssl-dev` or `openssl-devel`
+   * A C compiler (when building for the host, `cc` is enough; cross-compiling may need additional compilers)
+   * `curl` (not needed on Windows)
    * `pkg-config` if you are compiling on Linux and targeting Linux
+   * `libiconv` (already included with glibc on Debian-based distros)
 
-2. Clone the [source] with `git`:
+To build cargo, you'll also need OpenSSL (`libssl-dev` or `openssl-devel` on most Unix distros).
+
+If building LLVM from source, you'll need additional tools:
+
+* `g++`, `clang++`, or MSVC with versions listed on
+  [LLVM's documentation](https://llvm.org/docs/GettingStarted.html#host-c-toolchain-both-compiler-and-standard-library)
+* `ninja`, or GNU `make` 3.81 or later (ninja is recommended, especially on Windows)
+* `cmake` 3.13.4 or later
+* `libstdc++-static` may be required on some Linux distributions such as Fedora and Ubuntu
+
+On tier 1 or tier 2 with host tools platforms, you can also choose to download LLVM by setting `llvm.download-ci-llvm = true`.
+Otherwise, you'll need LLVM installed and `llvm-config` in your path.
+See [the rustc-dev-guide for more info][sysllvm].
+
+[sysllvm]: https://rustc-dev-guide.rust-lang.org/building/new-target.html#using-pre-built-llvm
+
+
+### Building on a Unix-like system
+
+1. Clone the [source] with `git`:
 
    ```sh
    git clone https://github.com/rust-lang/rust.git
@@ -66,7 +83,7 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 
 [source]: https://github.com/rust-lang/rust
 
-3. Configure the build settings:
+2. Configure the build settings:
 
     The Rust build system uses a file named `config.toml` in the root of the
     source tree to determine various configuration settings for the build.
@@ -79,9 +96,7 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
     If you plan to use `x.py install` to create an installation, it is recommended
     that you set the `prefix` value in the `[install]` section to a directory.
 
-    Create an install directory if you are not installing in the default directory.
-
-4. Build and install:
+3. Build and install:
 
     ```sh
     ./x.py build && ./x.py install
@@ -97,6 +112,20 @@ by running it with the `--help` flag or reading the [rustc dev guide][rustcguide
 [Cargo]: https://github.com/rust-lang/cargo
 
 ### Building on Windows
+
+On Windows, we suggest using [winget] to install dependencies by running the following in a terminal:
+
+```powershell
+winget install -e Python.Python.3
+winget install -e Kitware.CMake
+winget install -e Git.Git
+```
+
+Then edit your system's `PATH` variable and add: `C:\Program Files\CMake\bin`. See
+[this guide on editing the system `PATH`](https://www.java.com/en/download/help/path.html) from the
+Java documentation.
+
+[winget]: https://github.com/microsoft/winget-cli
 
 There are two prominent ABIs in use on Windows: the native (MSVC) ABI used by
 Visual Studio and the GNU ABI used by the GCC toolchain. Which version of Rust
