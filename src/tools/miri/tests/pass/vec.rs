@@ -48,7 +48,7 @@ fn vec_into_iter_zst() {
     assert_eq!(v, 0);
 
     let mut it = vec![[0u64; 0], [0u64; 0]].into_iter();
-    it.advance_by(1);
+    it.advance_by(1).unwrap();
     drop(it);
 
     let mut it = vec![[0u64; 0], [0u64; 0]].into_iter();
