@@ -259,8 +259,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                         body.as_deref(),
                     );
 
-                    let mut itctx = ImplTraitContext::Universal;
-                    let (generics, decl) = this.lower_generics(generics, id, &mut itctx, |this| {
+                    let itctx = ImplTraitContext::Universal;
+                    let (generics, decl) = this.lower_generics(generics, id, &itctx, |this| {
                         let ret_id = asyncness.opt_return_id();
                         this.lower_fn_decl(&decl, id, *fn_sig_span, FnDeclKind::Fn, ret_id)
                     });
@@ -369,9 +369,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 // method, it will not be considered an in-band
                 // lifetime to be added, but rather a reference to a
                 // parent lifetime.
-                let mut itctx = ImplTraitContext::Universal;
+                let itctx = ImplTraitContext::Universal;
                 let (generics, (trait_ref, lowered_ty)) =
-                    self.lower_generics(ast_generics, id, &mut itctx, |this| {
+                    self.lower_generics(ast_generics, id, &itctx, |this| {
                         let trait_ref = trait_ref.as_ref().map(|trait_ref| {
                             this.lower_trait_ref(
                                 trait_ref,
@@ -590,9 +590,9 @@ impl<'hir> LoweringContext<'_, 'hir> {
             kind: match &i.kind {
                 ForeignItemKind::Fn(box Fn { sig, generics, .. }) => {
                     let fdec = &sig.decl;
-                    let mut itctx = ImplTraitContext::Universal;
+                    let itctx = ImplTraitContext::Universal;
                     let (generics, (fn_dec, fn_args)) =
-                        self.lower_generics(generics, i.id, &mut itctx, |this| {
+                        self.lower_generics(generics, i.id, &itctx, |this| {
                             (
                                 // Disallow `impl Trait` in foreign items.
                                 this.lower_fn_decl(
@@ -1184,8 +1184,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         is_async: Option<(NodeId, Span)>,
     ) -> (&'hir hir::Generics<'hir>, hir::FnSig<'hir>) {
         let header = self.lower_fn_header(sig.header);
-        let mut itctx = ImplTraitContext::Universal;
-        let (generics, decl) = self.lower_generics(generics, id, &mut itctx, |this| {
+        let itctx = ImplTraitContext::Universal;
+        let (generics, decl) = self.lower_generics(generics, id, &itctx, |this| {
             this.lower_fn_decl(&sig.decl, id, sig.span, kind, is_async)
         });
         (generics, hir::FnSig { header, decl, span: self.lower_span(sig.span) })

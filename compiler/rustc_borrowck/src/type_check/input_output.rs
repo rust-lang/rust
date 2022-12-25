@@ -37,31 +37,30 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
         // those.
         //
         // e.g., `|x: FxHashMap<_, &'static u32>| ...`
-        let user_provided_sig;
-        if !self.tcx().is_closure(mir_def_id.to_def_id()) {
-            user_provided_sig = None;
+        let user_provided_sig = if !self.tcx().is_closure(mir_def_id.to_def_id()) {
+            None
         } else {
             let typeck_results = self.tcx().typeck(mir_def_id);
-            user_provided_sig =
-                typeck_results.user_provided_sigs.get(&mir_def_id).map(|user_provided_poly_sig| {
-                    // Instantiate the canonicalized variables from
-                    // user-provided signature (e.g., the `_` in the code
-                    // above) with fresh variables.
-                    let poly_sig = self.instantiate_canonical_with_fresh_inference_vars(
-                        body.span,
-                        &user_provided_poly_sig,
-                    );
 
-                    // Replace the bound items in the fn sig with fresh
-                    // variables, so that they represent the view from
-                    // "inside" the closure.
-                    self.infcx.replace_bound_vars_with_fresh_vars(
-                        body.span,
-                        LateBoundRegionConversionTime::FnCall,
-                        poly_sig,
-                    )
-                });
-        }
+            typeck_results.user_provided_sigs.get(&mir_def_id).map(|user_provided_poly_sig| {
+                // Instantiate the canonicalized variables from
+                // user-provided signature (e.g., the `_` in the code
+                // above) with fresh variables.
+                let poly_sig = self.instantiate_canonical_with_fresh_inference_vars(
+                    body.span,
+                    &user_provided_poly_sig,
+                );
+
+                // Replace the bound items in the fn sig with fresh
+                // variables, so that they represent the view from
+                // "inside" the closure.
+                self.infcx.replace_bound_vars_with_fresh_vars(
+                    body.span,
+                    LateBoundRegionConversionTime::FnCall,
+                    poly_sig,
+                )
+            })
+        };
 
         debug!(?normalized_input_tys, ?body.local_decls);
 

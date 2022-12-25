@@ -410,10 +410,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_hir_id,
-                            tcx.explicit_item_bounds(item_def_id)
-                                .iter()
-                                .copied()
-                                .collect::<Vec<_>>(),
+                            tcx.explicit_item_bounds(item_def_id).to_vec(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,

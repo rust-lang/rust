@@ -1212,8 +1212,8 @@ impl HandlerInner {
         self.taught_diagnostics.insert(code.clone())
     }
 
-    fn force_print_diagnostic(&mut self, mut db: Diagnostic) {
-        self.emitter.emit_diagnostic(&mut db);
+    fn force_print_diagnostic(&mut self, db: Diagnostic) {
+        self.emitter.emit_diagnostic(&db);
     }
 
     /// Emit all stashed diagnostics.

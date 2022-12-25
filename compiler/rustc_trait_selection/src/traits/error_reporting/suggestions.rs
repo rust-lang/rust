@@ -1291,29 +1291,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
             let hir = self.tcx.hir();
-            if let Some(node) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
-                if let hir::Node::Expr(expr) = node {
-                    // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
-                    // and if not maybe suggest doing something else? If we kept the expression around we
-                    // could also check if it is an fn call (very likely) and suggest changing *that*, if
-                    // it is from the local crate.
-                    err.span_suggestion(
-                        span,
-                        "remove the `.await`",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
-                    // FIXME: account for associated `async fn`s.
-                    if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
-                        if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
-                            obligation.predicate.kind().skip_binder()
-                        {
-                            err.span_label(
-                                *span,
-                                &format!("this call returns `{}`", pred.self_ty()),
-                            );
-                        }
-                        if let Some(typeck_results) = &self.typeck_results
+            if let Some(hir::Node::Expr(expr)) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
+                // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
+                // and if not maybe suggest doing something else? If we kept the expression around we
+                // could also check if it is an fn call (very likely) and suggest changing *that*, if
+                // it is from the local crate.
+                err.span_suggestion(
+                    span,
+                    "remove the `.await`",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+                // FIXME: account for associated `async fn`s.
+                if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
+                    if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                        obligation.predicate.kind().skip_binder()
+                    {
+                        err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
+                    }
+                    if let Some(typeck_results) = &self.typeck_results
                             && let ty = typeck_results.expr_ty_adjusted(base)
                             && let ty::FnDef(def_id, _substs) = ty.kind()
                             && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
@@ -1339,7 +1335,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 );
                             }
                         }
-                    }
                 }
             }
         }
