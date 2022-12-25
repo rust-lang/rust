@@ -15,7 +15,7 @@ impl FileDescriptor for SocketPair {
         "socketpair"
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(SocketPair))
     }
 

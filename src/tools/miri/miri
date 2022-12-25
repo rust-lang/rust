@@ -243,7 +243,7 @@ if [ -z "$CARGO_PROFILE_DEV_OPT_LEVEL" ]; then
     export CARGO_PROFILE_DEV_OPT_LEVEL=2
 fi
 # Enable rustc-specific lints (ignored without `-Zunstable-options`).
-export RUSTFLAGS="-Zunstable-options -Wrustc::internal $RUSTFLAGS"
+export RUSTFLAGS="-Zunstable-options -Wrustc::internal -Wrust_2018_idioms -Wunused_lifetimes -Wsemicolon_in_expressions_from_macros $RUSTFLAGS"
 # We set the rpath so that Miri finds the private rustc libraries it needs.
 export RUSTFLAGS="-C link-args=-Wl,-rpath,$LIBDIR $RUSTFLAGS"
 
