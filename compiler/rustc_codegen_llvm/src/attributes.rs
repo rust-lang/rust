@@ -102,10 +102,10 @@ pub fn uwtable_attr(llcx: &llvm::Context) -> &Attribute {
 
 pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
     let mut fp = cx.sess().target.frame_pointer;
+    let opts = &cx.sess().opts;
     // "mcount" function relies on stack pointer.
     // See <https://sourceware.org/binutils/docs/gprof/Implementation.html>.
-    if cx.sess().instrument_mcount() || matches!(cx.sess().opts.cg.force_frame_pointers, Some(true))
-    {
+    if opts.unstable_opts.instrument_mcount || matches!(opts.cg.force_frame_pointers, Some(true)) {
         fp = FramePointer::Always;
     }
     let attr_value = match fp {
@@ -119,7 +119,7 @@ pub fn frame_pointer_type_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attr
 /// Tell LLVM what instrument function to insert.
 #[inline]
 fn instrument_function_attr<'ll>(cx: &CodegenCx<'ll, '_>) -> Option<&'ll Attribute> {
-    if cx.sess().instrument_mcount() {
+    if cx.sess().opts.unstable_opts.instrument_mcount {
         // Similar to `clang -pg` behavior. Handled by the
         // `post-inline-ee-instrument` LLVM pass.
 

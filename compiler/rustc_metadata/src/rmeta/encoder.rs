@@ -713,7 +713,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let computed_total_bytes: usize = stats.iter().map(|(_, size)| size).sum();
         assert_eq!(total_bytes, computed_total_bytes);
 
-        if tcx.sess.meta_stats() {
+        if tcx.sess.opts.unstable_opts.meta_stats {
             self.opaque.flush();
 
             // Rewind and re-read all the metadata to count the zero bytes we wrote.

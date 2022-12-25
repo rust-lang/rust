@@ -1214,7 +1214,6 @@ options! {
         "only allow the listed language features to be enabled in code (space separated)"),
     always_encode_mir: bool = (false, parse_bool, [TRACKED],
         "encode MIR of all functions into the crate metadata (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::asm_comments` instead of this field")]
     asm_comments: bool = (false, parse_bool, [TRACKED],
         "generate comments into the assembly (may change behavior) (default: no)"),
     assert_incr_state: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1363,7 +1362,6 @@ options! {
         `=except-unused-generics`
         `=except-unused-functions`
         `=off` (default)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::instrument_mcount` instead of this field")]
     instrument_mcount: bool = (false, parse_bool, [TRACKED],
         "insert function instrument code for mcount-based tracing (default: no)"),
     keep_hygiene_data: bool = (false, parse_bool, [UNTRACKED],
@@ -1392,7 +1390,6 @@ options! {
     merge_functions: Option<MergeFunctions> = (None, parse_merge_functions, [TRACKED],
         "control the operation of the MergeFunctions LLVM pass, taking \
         the same values as the target option of the same name"),
-    #[rustc_lint_opt_deny_field_access("use `Session::meta_stats` instead of this field")]
     meta_stats: bool = (false, parse_bool, [UNTRACKED],
         "gather metadata statistics (default: no)"),
     mir_emit_retag: bool = (false, parse_bool, [TRACKED],
@@ -1469,7 +1466,6 @@ options! {
         See #77382 and #74551."),
     print_fuel: Option<String> = (None, parse_opt_string, [TRACKED],
         "make rustc print the total optimization fuel used by a crate"),
-    #[rustc_lint_opt_deny_field_access("use `Session::print_llvm_passes` instead of this field")]
     print_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "print the LLVM optimization passes being run (default: no)"),
     print_mono_items: Option<String> = (None, parse_opt_string, [UNTRACKED],
@@ -1583,10 +1579,8 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::threads` instead of this field")]
     threads: usize = (1, parse_threads, [UNTRACKED],
         "use a thread pool with N threads"),
-    #[rustc_lint_opt_deny_field_access("use `Session::time_llvm_passes` instead of this field")]
     time_llvm_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each LLVM pass (default: no)"),
-    #[rustc_lint_opt_deny_field_access("use `Session::time_passes` instead of this field")]
     time_passes: bool = (false, parse_bool, [UNTRACKED],
         "measure time of each rustc pass (default: no)"),
     #[rustc_lint_opt_deny_field_access("use `Session::tls_model` instead of this field")]
