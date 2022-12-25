@@ -1564,7 +1564,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    if let Some(mut an) = trait_def.ancestors(self.tcx, def_id).ok() {
+                    if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
                             self.tables.impl_parent.set(def_id.index, parent.into());
                         }

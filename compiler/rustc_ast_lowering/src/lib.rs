@@ -2029,7 +2029,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         output: &FnRetTy,
         span: Span,
-        mut nested_impl_trait_context: ImplTraitContext,
+        nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
@@ -2037,7 +2037,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
                 // `impl Future` opaque type that `async fn` implicitly
                 // generates.
-                self.lower_ty(ty, &mut nested_impl_trait_context)
+                self.lower_ty(ty, &nested_impl_trait_context)
             }
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };

@@ -653,7 +653,7 @@ fn print_crate_info(
     for req in &sess.opts.prints {
         match *req {
             TargetList => {
-                let mut targets = rustc_target::spec::TARGETS.iter().copied().collect::<Vec<_>>();
+                let mut targets = rustc_target::spec::TARGETS.to_vec();
                 targets.sort_unstable();
                 println!("{}", targets.join("\n"));
             }

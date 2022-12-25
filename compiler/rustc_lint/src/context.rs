@@ -355,14 +355,12 @@ impl LintStore {
                     sub: RequestedLevel { level, lint_name },
                 });
             }
-            CheckLintNameResult::Tool(result) => {
-                if let Err((Some(_), new_name)) = result {
-                    sess.emit_warning(CheckNameDeprecated {
-                        lint_name: lint_name.clone(),
-                        new_name,
-                        sub: RequestedLevel { level, lint_name },
-                    });
-                }
+            CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
+                sess.emit_warning(CheckNameDeprecated {
+                    lint_name: lint_name.clone(),
+                    new_name,
+                    sub: RequestedLevel { level, lint_name },
+                });
             }
             CheckLintNameResult::NoTool => {
                 sess.emit_err(CheckNameUnknownTool {

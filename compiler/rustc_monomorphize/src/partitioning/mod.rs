@@ -305,7 +305,7 @@ where
                 );
             }
 
-            let _ = writeln!(s, "");
+            let _ = writeln!(s);
         }
 
         std::mem::take(s)

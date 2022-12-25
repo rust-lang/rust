@@ -1166,11 +1166,7 @@ fn check_matcher_core<'tt>(
                                     err.note(&format!(
                                         "{}{} or {}",
                                         msg,
-                                        ts[..ts.len() - 1]
-                                            .iter()
-                                            .copied()
-                                            .collect::<Vec<_>>()
-                                            .join(", "),
+                                        ts[..ts.len() - 1].to_vec().join(", "),
                                         ts[ts.len() - 1],
                                     ));
                                 }
