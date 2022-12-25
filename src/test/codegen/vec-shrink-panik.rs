@@ -18,11 +18,11 @@ pub fn shrink_to_fit(vec: &mut Vec<u32>) {
 pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
     // CHECK-NOT: panic
 
-    // Call to panic_no_unwind in case of double-panic is expected,
+    // Call to panic_cannot_unwind in case of double-panic is expected,
     // but other panics are not.
     // CHECK: cleanup
-    // CHECK-NEXT: ; call core::panicking::panic_no_unwind
-    // CHECK-NEXT: panic_no_unwind
+    // CHECK-NEXT: ; call core::panicking::panic_cannot_unwind
+    // CHECK-NEXT: panic_cannot_unwind
 
     // CHECK-NOT: panic
     vec.into_boxed_slice()
@@ -33,15 +33,15 @@ pub fn issue71861(vec: Vec<u32>) -> Box<[u32]> {
 pub fn issue75636<'a>(iter: &[&'a str]) -> Box<[&'a str]> {
     // CHECK-NOT: panic
 
-    // Call to panic_no_unwind in case of double-panic is expected,
+    // Call to panic_cannot_unwind in case of double-panic is expected,
     // but other panics are not.
     // CHECK: cleanup
-    // CHECK-NEXT: ; call core::panicking::panic_no_unwind
-    // CHECK-NEXT: panic_no_unwind
+    // CHECK-NEXT: ; call core::panicking::panic_cannot_unwind
+    // CHECK-NEXT: panic_cannot_unwind
 
     // CHECK-NOT: panic
     iter.iter().copied().collect()
 }
 
-// CHECK: ; core::panicking::panic_no_unwind
-// CHECK: declare void @{{.*}}panic_no_unwind
+// CHECK: ; core::panicking::panic_cannot_unwind
+// CHECK: declare void @{{.*}}panic_cannot_unwind

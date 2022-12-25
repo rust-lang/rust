@@ -146,7 +146,7 @@ pub fn extract(attrs: &[ast::Attribute]) -> Option<(Symbol, Span)> {
 }
 
 language_item_table! {
-//  Variant name,            Name,                     Method name,                Target                  Generic requirements;
+//  Variant name,            Name,                     Getter method name,         Target                  Generic requirements;
     Sized,                   sym::sized,               sized_trait,                Target::Trait,          GenericRequirement::Exact(0);
     Unsize,                  sym::unsize,              unsize_trait,               Target::Trait,          GenericRequirement::Minimum(1);
     /// Trait injected by `#[derive(PartialEq)]`, (i.e. "Partial EQ").
@@ -232,6 +232,7 @@ language_item_table! {
     // is required to define it somewhere. Additionally, there are restrictions on crates that use
     // a weak lang item, but do not have it defined.
     Panic,                   sym::panic,               panic_fn,                   Target::Fn,             GenericRequirement::Exact(0);
+    PanicNounwind,           sym::panic_nounwind,      panic_nounwind,             Target::Fn,             GenericRequirement::Exact(0);
     PanicFmt,                sym::panic_fmt,           panic_fmt,                  Target::Fn,             GenericRequirement::None;
     PanicDisplay,            sym::panic_display,       panic_display,              Target::Fn,             GenericRequirement::None;
     ConstPanicFmt,           sym::const_panic_fmt,     const_panic_fmt,            Target::Fn,             GenericRequirement::None;
@@ -239,7 +240,7 @@ language_item_table! {
     PanicInfo,               sym::panic_info,          panic_info,                 Target::Struct,         GenericRequirement::None;
     PanicLocation,           sym::panic_location,      panic_location,             Target::Struct,         GenericRequirement::None;
     PanicImpl,               sym::panic_impl,          panic_impl,                 Target::Fn,             GenericRequirement::None;
-    PanicNoUnwind,           sym::panic_no_unwind,     panic_no_unwind,            Target::Fn,             GenericRequirement::Exact(0);
+    PanicCannotUnwind,       sym::panic_cannot_unwind, panic_cannot_unwind,        Target::Fn,             GenericRequirement::Exact(0);
     /// libstd panic entry point. Necessary for const eval to be able to catch it
     BeginPanic,              sym::begin_panic,         begin_panic_fn,             Target::Fn,             GenericRequirement::None;
 
