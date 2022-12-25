@@ -7432,7 +7432,7 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
   if (shadowpromotable && !isConstantValue(V)) {
     for (auto LI : shadowPointerLoads) {
       // Is there a store which could occur after the load.
-      // In other words
+      // This subsequent store would invalidate any loads being re-performed.
       SmallVector<Instruction *, 2> results;
       mayExecuteAfter(results, LI, storingOps, outer);
       for (auto res : results) {
@@ -7446,6 +7446,28 @@ void GradientUtils::computeForwardingProperties(Instruction *V) {
           goto exitL;
         }
       }
+    }
+    // If there is a store not reproduced in the reverse pass (e.g. as part
+    // of a write in a call), and this store is necessary to a pointer load of
+    // the shadow, this is not materializable since the load will not return
+    // the same value.
+    {
+      SmallVector<Instruction *, 2> nonReproducedStores;
+      for (auto S : storingOps)
+        if (!stores.count(S)) {
+          SmallVector<Instruction *, 2> results;
+          SmallPtrSet<Instruction *, 2> shadowPtrLoadSet(
+              shadowPointerLoads.begin(), shadowPointerLoads.end());
+          mayExecuteAfter(results, S, shadowPtrLoadSet, outer);
+          if (results.size()) {
+            EmitWarning("NotPromotable", *results[0],
+                        " Could not promote shadow allocation ", *V,
+                        " due to non-reproduced store ", *S,
+                        " which may impact pointer load ", *results[0]);
+            shadowpromotable = false;
+            goto exitL;
+          }
+        }
     }
   exitL:;
     if (shadowpromotable) {

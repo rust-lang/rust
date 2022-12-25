@@ -43,11 +43,13 @@ define double @dsquare({} addrspace(10)* %x, {} addrspace(10)* %dx) {
 
 ; CHECK: define internal void @diffesquare({} addrspace(10)* %x, {} addrspace(10)* %"x'", double %differeturn)
 ; CHECK-NEXT: entry:
-; CHECK-NEXT:   %m = call fast double @augmented_mid({} addrspace(10)* %x, {} addrspace(10)* %"x'")
+; CHECK-NEXT:   %m_augmented = call { {} addrspace(10)*, double } @augmented_mid({} addrspace(10)* %x, {} addrspace(10)* %"x'")
+; CHECK-NEXT:   %subcache = extractvalue { {} addrspace(10)*, double } %m_augmented, 0
+; CHECK-NEXT:   %m = extractvalue { {} addrspace(10)*, double } %m_augmented, 1
 ; CHECK-NEXT:   %m0diffem = fmul fast double %differeturn, %m
 ; CHECK-NEXT:   %m1diffem = fmul fast double %differeturn, %m
 ; CHECK-NEXT:   %0 = fadd fast double %m0diffem, %m1diffem
-; CHECK-NEXT:   call void @diffemid({} addrspace(10)* %x, {} addrspace(10)* %"x'", double %0)
+; CHECK-NEXT:   call void @diffemid({} addrspace(10)* %x, {} addrspace(10)* %"x'", double %0, {} addrspace(10)* %subcache)
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
@@ -58,32 +60,43 @@ define double @dsquare({} addrspace(10)* %x, {} addrspace(10)* %dx) {
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
 
-; CHECK: define internal double @augmented_mid({} addrspace(10)* %x, {} addrspace(10)* %"x'") 
+; CHECK: define internal { {} addrspace(10)*, double } @augmented_mid({} addrspace(10)* %x, {} addrspace(10)* %"x'")
+; CHECK-NEXT:   %1 = alloca { {} addrspace(10)*, double }
+; CHECK-NEXT:   %2 = getelementptr inbounds { {} addrspace(10)*, double }, { {} addrspace(10)*, double }* %1, i32 0, i32 0
+; CHECK-NEXT:   store {} addrspace(10)* null, {} addrspace(10)** %2
 ; CHECK-NEXT:   %r = alloca {} addrspace(10)*, i64 1, align 8
 ; CHECK-NEXT:   %pg = call {}*** @julia.get_pgcstack()
-; CHECK-NEXT:   %"r'ai" = alloca {} addrspace(10)*, i64 1, align 8
-; CHECK-NEXT:   %1 = bitcast {} addrspace(10)** %"r'ai" to {}*
-; CHECK-NEXT:   %2 = bitcast {}* %1 to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %2, i8 0, i64 8, i1 false)
-; CHECK-NEXT:   call void @augmented_subsq({} addrspace(10)** %r, {} addrspace(10)** %"r'ai", {} addrspace(10)* %x, {} addrspace(10)* %"x'")
+; CHECK-NEXT:   %p3 = bitcast {}*** %pg to {}**
+; CHECK-NEXT:   %p4 = getelementptr inbounds {}*, {}** %p3, i64 -12
+; CHECK-NEXT:   %p5 = getelementptr inbounds {}*, {}** %p4, i64 14
+; CHECK-NEXT:   %p6 = bitcast {}** %p5 to i8**
+; CHECK-NEXT:   %p7 = load i8*, i8** %p6, align 8
+; CHECK-NEXT:   %"al'mi" = call noalias nonnull dereferenceable(8) dereferenceable_or_null(8) {} addrspace(10)* @jl_gc_alloc_typed(i8* %p7, i64 8, {} addrspace(10)* addrspacecast ({}* inttoptr (i64 139806792221568 to {}*) to {} addrspace(10)*))
+; CHECK-NEXT:   store {} addrspace(10)* %"al'mi", {} addrspace(10)** %2
+; CHECK-NEXT:   %3 = bitcast {} addrspace(10)* %"al'mi" to i8 addrspace(10)*
+; CHECK-NEXT:   call void @llvm.memset.p10i8.i64(i8 addrspace(10)* nonnull dereferenceable(8) dereferenceable_or_null(8) %3, i8 0, i64 8, i1 false)
+; CHECK-NEXT:   %"r'ipc" = bitcast {} addrspace(10)* %"al'mi" to {} addrspace(10)* addrspace(10)*
+; CHECK-NEXT:   %"addr'ipc" = addrspacecast {} addrspace(10)* addrspace(10)* %"r'ipc" to {} addrspace(10)**
+; CHECK-NEXT:   call void @augmented_subsq({} addrspace(10)** %r, {} addrspace(10)** %"addr'ipc", {} addrspace(10)* %x, {} addrspace(10)* %"x'")
 ; CHECK-NEXT:   %l = load {} addrspace(10)*, {} addrspace(10)** %r, align 8
 ; CHECK-NEXT:   %bc = bitcast {} addrspace(10)* %l to double addrspace(10)*
 ; CHECK-NEXT:   %ld = load double, double addrspace(10)* %bc
-; CHECK-NEXT:   ret double %ld
+; CHECK-NEXT:   %4 = getelementptr inbounds { {} addrspace(10)*, double }, { {} addrspace(10)*, double }* %1, i32 0, i32 1
+; CHECK-NEXT:   store double %ld, double* %4
+; CHECK-NEXT:   %5 = load { {} addrspace(10)*, double }, { {} addrspace(10)*, double }* %1
+; CHECK-NEXT:   ret { {} addrspace(10)*, double } %5
 ; CHECK-NEXT: }
 
-; CHECK: define internal void @diffemid({} addrspace(10)* %x, {} addrspace(10)* %"x'", double %differeturn)
+; CHECK: define internal void @diffemid({} addrspace(10)* %x, {} addrspace(10)* %"x'", double %differeturn, {} addrspace(10)* %"al'mi")
 ; CHECK-NEXT: invert:
 ; CHECK-NEXT:   %pg = call {}*** @julia.get_pgcstack()
-; CHECK-NEXT:   %"r'ai" = alloca {} addrspace(10)*, i64 1, align 8
-; CHECK-NEXT:   %0 = bitcast {} addrspace(10)** %"r'ai" to {}*
-; CHECK-NEXT:   %1 = bitcast {}* %0 to i8*
-; CHECK-NEXT:   call void @llvm.memset.p0i8.i64(i8* nonnull dereferenceable(8) dereferenceable_or_null(8) %1, i8 0, i64 8, i1 false)
-; CHECK-NEXT:   %"l'ipl" = load {} addrspace(10)*, {} addrspace(10)** %"r'ai", align 8
+; CHECK-NEXT:   %"r'ipc" = bitcast {} addrspace(10)* %"al'mi" to {} addrspace(10)* addrspace(10)*
+; CHECK-NEXT:   %"addr'ipc" = addrspacecast {} addrspace(10)* addrspace(10)* %"r'ipc" to {} addrspace(10)**
+; CHECK-NEXT:   %"l'ipl" = load {} addrspace(10)*, {} addrspace(10)** %"addr'ipc", align 8
 ; CHECK-NEXT:   %"bc'ipc" = bitcast {} addrspace(10)* %"l'ipl" to double addrspace(10)*
-; CHECK-NEXT:   %2 = load double, double addrspace(10)* %"bc'ipc"
-; CHECK-NEXT:   %3 = fadd fast double %2, %differeturn
-; CHECK-NEXT:   store double %3, double addrspace(10)* %"bc'ipc"
+; CHECK-NEXT:   %0 = load double, double addrspace(10)* %"bc'ipc"
+; CHECK-NEXT:   %1 = fadd fast double %0, %differeturn
+; CHECK-NEXT:   store double %1, double addrspace(10)* %"bc'ipc"
 ; CHECK-NEXT:   call void @diffesubsq({} addrspace(10)** null, {} addrspace(10)** null, {} addrspace(10)* %x, {} addrspace(10)* %"x'")
 ; CHECK-NEXT:   ret void
 ; CHECK-NEXT: }
