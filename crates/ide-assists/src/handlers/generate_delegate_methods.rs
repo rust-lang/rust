@@ -81,7 +81,7 @@ pub(crate) fn generate_delegate_methods(acc: &mut Assists, ctx: &AssistContext<'
         acc.add_group(
             &GroupLabel("Generate delegate methods…".to_owned()),
             AssistId("generate_delegate_methods", AssistKind::Generate),
-            format!("Generate delegate for `{}.{}()`", field_name, method.name(ctx.db())),
+            format!("Generate delegate for `{field_name}.{}()`", method.name(ctx.db())),
             target,
             |builder| {
                 // Create the function

@@ -37,7 +37,7 @@ impl fmt::Debug for CfgOptions {
             .iter()
             .map(|atom| match atom {
                 CfgAtom::Flag(it) => it.to_string(),
-                CfgAtom::KeyValue { key, value } => format!("{}={}", key, value),
+                CfgAtom::KeyValue { key, value } => format!("{key}={value}"),
             })
             .collect::<Vec<_>>();
         items.sort();
@@ -175,7 +175,7 @@ impl fmt::Display for InactiveReason {
                 atom.fmt(f)?;
             }
             let is_are = if self.enabled.len() == 1 { "is" } else { "are" };
-            write!(f, " {} enabled", is_are)?;
+            write!(f, " {is_are} enabled")?;
 
             if !self.disabled.is_empty() {
                 f.write_str(" and ")?;
@@ -194,7 +194,7 @@ impl fmt::Display for InactiveReason {
                 atom.fmt(f)?;
             }
             let is_are = if self.disabled.len() == 1 { "is" } else { "are" };
-            write!(f, " {} disabled", is_are)?;
+            write!(f, " {is_are} disabled")?;
         }
 
         Ok(())

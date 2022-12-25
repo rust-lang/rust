@@ -133,7 +133,7 @@ impl Completions {
                 if incomplete_let && snippet.ends_with('}') {
                     // complete block expression snippets with a trailing semicolon, if inside an incomplete let
                     cov_mark::hit!(let_semi);
-                    item.insert_snippet(cap, format!("{};", snippet));
+                    item.insert_snippet(cap, format!("{snippet};"));
                 } else {
                     item.insert_snippet(cap, snippet);
                 }

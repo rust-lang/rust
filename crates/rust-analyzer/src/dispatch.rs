@@ -145,7 +145,7 @@ impl<'a> RequestDispatcher<'a> {
         match res {
             Ok(params) => {
                 let panic_context =
-                    format!("\nversion: {}\nrequest: {} {:#?}", version(), R::METHOD, params);
+                    format!("\nversion: {}\nrequest: {} {params:#?}", version(), R::METHOD);
                 Some((req, params, panic_context))
             }
             Err(err) => {

@@ -444,7 +444,7 @@ fn macro_expand(db: &dyn AstDatabase, id: MacroCallId) -> ExpandResult<Option<Ar
         // be reported at the definition site (when we construct a def map).
         Err(err) => {
             return ExpandResult::only_err(ExpandError::Other(
-                format!("invalid macro definition: {}", err).into(),
+                format!("invalid macro definition: {err}").into(),
             ))
         }
     };

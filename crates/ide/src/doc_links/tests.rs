@@ -40,7 +40,7 @@ fn check_doc_links(ra_fixture: &str) {
         .into_iter()
         .map(|(_, link, ns)| {
             let def = resolve_doc_path_for_def(sema.db, cursor_def, &link, ns)
-                .unwrap_or_else(|| panic!("Failed to resolve {}", link));
+                .unwrap_or_else(|| panic!("Failed to resolve {link}"));
             let nav_target = def.try_to_nav(sema.db).unwrap();
             let range =
                 FileRange { file_id: nav_target.file_id, range: nav_target.focus_or_full_range() };

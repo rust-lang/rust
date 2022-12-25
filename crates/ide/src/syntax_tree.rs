@@ -32,7 +32,7 @@ pub(crate) fn syntax_tree(
             }
         };
 
-        format!("{:#?}", node)
+        format!("{node:#?}")
     } else {
         format!("{:#?}", parse.tree().syntax())
     }

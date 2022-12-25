@@ -205,7 +205,7 @@ mod tests {
     fn check(input: &str, expect: &Expect) {
         let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_string(), vec![]));
         let outcome_repr = if !exprs.is_empty() {
-            format!("{}; {}", output, with_placeholders(exprs).join(", "))
+            format!("{output}; {}", with_placeholders(exprs).join(", "))
         } else {
             output
         };

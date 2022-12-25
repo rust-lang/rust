@@ -1017,7 +1017,7 @@ impl DefCollector<'_> {
                         None => true,
                         Some(old_vis) => {
                             let max_vis = old_vis.max(vis, &self.def_map).unwrap_or_else(|| {
-                                panic!("`Tr as _` imports with unrelated visibilities {:?} and {:?} (trait {:?})", old_vis, vis, tr);
+                                panic!("`Tr as _` imports with unrelated visibilities {old_vis:?} and {vis:?} (trait {tr:?})");
                             });
 
                             if max_vis == old_vis {

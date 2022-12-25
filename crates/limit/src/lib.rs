@@ -59,7 +59,7 @@ impl Limit {
                     .compare_exchange_weak(old_max, other, Ordering::Relaxed, Ordering::Relaxed)
                     .is_ok()
                 {
-                    eprintln!("new max: {}", other);
+                    eprintln!("new max: {other}");
                 }
             }
 

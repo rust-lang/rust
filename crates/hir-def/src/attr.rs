@@ -712,7 +712,7 @@ impl AttrSourceMap {
         self.source
             .get(ast_idx)
             .map(|it| InFile::new(file_id, it))
-            .unwrap_or_else(|| panic!("cannot find attr at index {:?}", id))
+            .unwrap_or_else(|| panic!("cannot find attr at index {id:?}"))
     }
 }
 

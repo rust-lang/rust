@@ -121,7 +121,7 @@ fn print_match_debug_info(match_finder: &MatchFinder<'_>, file_id: FileId, snipp
         snippet
     );
     for (index, d) in debug_info.iter().enumerate() {
-        println!("Node #{}\n{:#?}\n", index, d);
+        println!("Node #{index}\n{d:#?}\n");
     }
 }
 
@@ -144,7 +144,7 @@ fn assert_no_match(pattern: &str, code: &str) {
     let matches = match_finder.matches().flattened().matches;
     if !matches.is_empty() {
         print_match_debug_info(&match_finder, position.file_id, &matches[0].matched_text());
-        panic!("Got {} matches when we expected none: {:#?}", matches.len(), matches);
+        panic!("Got {} matches when we expected none: {matches:#?}", matches.len());
     }
 }
 

@@ -237,7 +237,7 @@ fn convert_tokens<C: TokenConverter>(conv: &mut C) -> tt::Subtree {
             let char = match token.to_char(conv) {
                 Some(c) => c,
                 None => {
-                    panic!("Token from lexer must be single char: token = {:#?}", token);
+                    panic!("Token from lexer must be single char: token = {token:#?}");
                 }
             };
             tt::Leaf::from(tt::Punct { char, spacing, id: conv.id_alloc().alloc(range, synth_id) })

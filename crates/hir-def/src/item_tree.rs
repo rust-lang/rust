@@ -105,7 +105,7 @@ pub struct ItemTree {
 
 impl ItemTree {
     pub(crate) fn file_item_tree_query(db: &dyn DefDatabase, file_id: HirFileId) -> Arc<ItemTree> {
-        let _p = profile::span("file_item_tree_query").detail(|| format!("{:?}", file_id));
+        let _p = profile::span("file_item_tree_query").detail(|| format!("{file_id:?}"));
         let syntax = match db.parse_or_expand(file_id) {
             Some(node) => node,
             None => return Default::default(),
@@ -132,7 +132,7 @@ impl ItemTree {
                     ctx.lower_macro_stmts(stmts)
                 },
                 _ => {
-                    panic!("cannot create item tree from {:?} {}", syntax, syntax);
+                    panic!("cannot create item tree from {syntax:?} {syntax}");
                 },
             }
         };

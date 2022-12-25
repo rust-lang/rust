@@ -161,7 +161,7 @@ pub fn expand_eager_macro(
 
         Ok(Ok(db.intern_macro_call(loc)))
     } else {
-        panic!("called `expand_eager_macro` on non-eager macro def {:?}", def);
+        panic!("called `expand_eager_macro` on non-eager macro def {def:?}");
     }
 }
 

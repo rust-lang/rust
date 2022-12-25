@@ -453,10 +453,10 @@ impl Builder {
             // snippets can have multiple imports, but normal completions only have up to one
             if let Some(original_path) = import_edit.original_path.as_ref() {
                 lookup = lookup.or_else(|| Some(label.clone()));
-                label = SmolStr::from(format!("{} (use {})", label, original_path));
+                label = SmolStr::from(format!("{label} (use {original_path})"));
             }
         } else if let Some(trait_name) = self.trait_name {
-            label = SmolStr::from(format!("{} (as {})", label, trait_name));
+            label = SmolStr::from(format!("{label} (as {trait_name})"));
         }
 
         let text_edit = match self.text_edit {

@@ -112,7 +112,7 @@ mod tests {
         "#;
 
         let completions = completion_list(fixture);
-        assert!(completions.is_empty(), "Completions weren't empty: {}", completions);
+        assert!(completions.is_empty(), "Completions weren't empty: {completions}");
     }
 
     #[test]
@@ -129,7 +129,7 @@ mod tests {
         "#;
 
         let completions = completion_list(fixture);
-        assert!(completions.is_empty(), "Completions weren't empty: {}", completions);
+        assert!(completions.is_empty(), "Completions weren't empty: {completions}");
     }
 
     #[test]
@@ -145,6 +145,6 @@ mod tests {
         "#;
 
         let completions = completion_list(fixture);
-        assert!(completions.is_empty(), "Completions weren't empty: {}", completions)
+        assert!(completions.is_empty(), "Completions weren't empty: {completions}")
     }
 }

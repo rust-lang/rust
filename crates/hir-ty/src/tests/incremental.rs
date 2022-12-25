@@ -24,7 +24,7 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
                 db.infer(def);
             });
         });
-        assert!(format!("{:?}", events).contains("infer"))
+        assert!(format!("{events:?}").contains("infer"))
     }
 
     let new_text = "
@@ -46,6 +46,6 @@ fn typing_whitespace_inside_a_function_should_not_invalidate_types() {
                 db.infer(def);
             });
         });
-        assert!(!format!("{:?}", events).contains("infer"), "{:#?}", events)
+        assert!(!format!("{events:?}").contains("infer"), "{events:#?}")
     }
 }

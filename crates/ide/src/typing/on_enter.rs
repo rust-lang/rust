@@ -108,7 +108,7 @@ fn on_enter_in_comment(
     }
 
     let indent = node_indent(file, comment.syntax())?;
-    let inserted = format!("\n{}{} $0", indent, prefix);
+    let inserted = format!("\n{indent}{prefix} $0");
     let delete = if remove_trailing_whitespace {
         let trimmed_len = comment.text().trim_end().len() as u32;
         let trailing_whitespace_len = comment.text().len() as u32 - trimmed_len;
@@ -129,7 +129,7 @@ fn on_enter_in_block(block: ast::BlockExpr, position: FilePosition) -> Option<Te
 
     let indent = IndentLevel::from_node(block.syntax());
     let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
-    edit.union(TextEdit::insert(contents.text_range().end(), format!("\n{}", indent))).ok()?;
+    edit.union(TextEdit::insert(contents.text_range().end(), format!("\n{indent}"))).ok()?;
     Some(edit)
 }
 
@@ -140,11 +140,8 @@ fn on_enter_in_use_tree_list(list: ast::UseTreeList, position: FilePosition) -> 
 
     let indent = IndentLevel::from_node(list.syntax());
     let mut edit = TextEdit::insert(position.offset, format!("\n{}$0", indent + 1));
-    edit.union(TextEdit::insert(
-        list.r_curly_token()?.text_range().start(),
-        format!("\n{}", indent),
-    ))
-    .ok()?;
+    edit.union(TextEdit::insert(list.r_curly_token()?.text_range().start(), format!("\n{indent}")))
+        .ok()?;
     Some(edit)
 }
 

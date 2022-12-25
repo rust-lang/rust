@@ -13,7 +13,7 @@ pub(crate) fn unresolved_macro_call(
     let bang = if d.is_bang { "!" } else { "" };
     Diagnostic::new(
         "unresolved-macro-call",
-        format!("unresolved macro `{}{}`", d.path, bang),
+        format!("unresolved macro `{}{bang}`", d.path),
         display_range,
     )
     .experimental()

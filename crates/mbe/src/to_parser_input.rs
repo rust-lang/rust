@@ -60,7 +60,7 @@ pub(crate) fn to_parser_input(buffer: &TokenBuffer<'_>) -> parser::Input {
                     },
                     tt::Leaf::Punct(punct) => {
                         let kind = SyntaxKind::from_char(punct.char)
-                            .unwrap_or_else(|| panic!("{:#?} is not a valid punct", punct));
+                            .unwrap_or_else(|| panic!("{punct:#?} is not a valid punct"));
                         res.push(kind);
                         if punct.spacing == tt::Spacing::Joint {
                             res.was_joint();

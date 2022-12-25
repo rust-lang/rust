@@ -14,7 +14,7 @@ fn check_number(ra_fixture: &str, answer: i128) {
     match r {
         ComputedExpr::Literal(Literal::Int(r, _)) => assert_eq!(r, answer),
         ComputedExpr::Literal(Literal::Uint(r, _)) => assert_eq!(r, answer as u128),
-        x => panic!("Expected number but found {:?}", x),
+        x => panic!("Expected number but found {x:?}"),
     }
 }
 
@@ -126,7 +126,7 @@ fn enums() {
             assert_eq!(name, "E::A");
             assert_eq!(val, 1);
         }
-        x => panic!("Expected enum but found {:?}", x),
+        x => panic!("Expected enum but found {x:?}"),
     }
 }
 

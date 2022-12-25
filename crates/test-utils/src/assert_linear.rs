@@ -83,7 +83,7 @@ impl Round {
 
         let a = mean_y - b * mean_x;
 
-        self.plot = format!("y_pred = {:.3} + {:.3} * x\n\nx     y     y_pred\n", a, b);
+        self.plot = format!("y_pred = {a:.3} + {b:.3} * x\n\nx     y     y_pred\n");
 
         let mut se = 0.0;
         let mut max_error = 0.0f64;

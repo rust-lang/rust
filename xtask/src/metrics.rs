@@ -87,7 +87,7 @@ impl Metrics {
         self.measure_analysis_stats_path(
             sh,
             bench,
-            &format!("./target/rustc-perf/collector/benchmarks/{}", bench),
+            &format!("./target/rustc-perf/collector/benchmarks/{bench}"),
         )
     }
     fn measure_analysis_stats_path(

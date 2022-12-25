@@ -618,8 +618,8 @@ impl CyclicDependenciesError {
 impl fmt::Display for CyclicDependenciesError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let render = |(id, name): &(CrateId, Option<CrateDisplayName>)| match name {
-            Some(it) => format!("{}({:?})", it, id),
-            None => format!("{:?}", id),
+            Some(it) => format!("{it}({id:?})"),
+            None => format!("{id:?}"),
         };
         let path = self.path.iter().rev().map(render).collect::<Vec<String>>().join(" -> ");
         write!(

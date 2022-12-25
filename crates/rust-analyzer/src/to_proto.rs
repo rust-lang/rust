@@ -342,7 +342,7 @@ fn completion_item(
         // by the client. Hex format is used because it is easier to
         // visually compare very large values, which the sort text
         // tends to be since it is the opposite of the score.
-        res.sort_text = Some(format!("{:08x}", sort_score));
+        res.sort_text = Some(format!("{sort_score:08x}"));
     }
 }
 
@@ -1113,7 +1113,7 @@ pub(crate) fn code_action(
         (Some(it), _) => res.edit = Some(snippet_workspace_edit(snap, it)?),
         (None, Some((index, code_action_params))) => {
             res.data = Some(lsp_ext::CodeActionData {
-                id: format!("{}:{}:{}", assist.id.0, assist.id.1.name(), index),
+                id: format!("{}:{}:{index}", assist.id.0, assist.id.1.name()),
                 code_action_params,
             });
         }
@@ -1352,7 +1352,7 @@ pub(crate) fn implementation_title(count: usize) -> String {
     if count == 1 {
         "1 implementation".into()
     } else {
-        format!("{} implementations", count)
+        format!("{count} implementations")
     }
 }
 
@@ -1360,7 +1360,7 @@ pub(crate) fn reference_title(count: usize) -> String {
     if count == 1 {
         "1 reference".into()
     } else {
-        format!("{} references", count)
+        format!("{count} references")
     }
 }
 

@@ -28,7 +28,7 @@ impl flags::Scip {
         let now = Instant::now();
         let cargo_config = CargoConfig::default();
 
-        let no_progress = &|s| (eprintln!("rust-analyzer: Loading {}", s));
+        let no_progress = &|s| (eprintln!("rust-analyzer: Loading {s}"));
         let load_cargo_config = LoadCargoConfig {
             load_out_dirs_from_check: true,
             with_proc_macro: true,
@@ -209,7 +209,7 @@ fn new_descriptor_str(
 fn new_descriptor(name: Name, suffix: scip_types::descriptor::Suffix) -> scip_types::Descriptor {
     let mut name = name.to_string();
     if name.contains("'") {
-        name = format!("`{}`", name);
+        name = format!("`{name}`");
     }
 
     new_descriptor_str(name.as_str(), suffix)
@@ -303,11 +303,11 @@ mod test {
         }
 
         if expected == "" {
-            assert!(found_symbol.is_none(), "must have no symbols {:?}", found_symbol);
+            assert!(found_symbol.is_none(), "must have no symbols {found_symbol:?}");
             return;
         }
 
-        assert!(found_symbol.is_some(), "must have one symbol {:?}", found_symbol);
+        assert!(found_symbol.is_some(), "must have one symbol {found_symbol:?}");
         let res = found_symbol.unwrap();
         let formatted = format_symbol(res);
         assert_eq!(formatted, expected);

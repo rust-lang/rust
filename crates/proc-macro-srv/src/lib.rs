@@ -48,7 +48,7 @@ impl ProcMacroSrv {
     pub fn expand(&mut self, task: ExpandMacro) -> Result<FlatTree, PanicMessage> {
         let expander = self.expander(task.lib.as_ref()).map_err(|err| {
             debug_assert!(false, "should list macros before asking to expand");
-            PanicMessage(format!("failed to load macro: {}", err))
+            PanicMessage(format!("failed to load macro: {err}"))
         })?;
 
         let prev_env = EnvSnapshot::new();
@@ -59,7 +59,7 @@ impl ProcMacroSrv {
             Some(dir) => {
                 let prev_working_dir = std::env::current_dir().ok();
                 if let Err(err) = std::env::set_current_dir(&dir) {
-                    eprintln!("Failed to set the current working dir to {}. Error: {:?}", dir, err)
+                    eprintln!("Failed to set the current working dir to {dir}. Error: {err:?}")
                 }
                 prev_working_dir
             }
@@ -112,14 +112,16 @@ impl ProcMacroSrv {
     }
 
     fn expander(&mut self, path: &Path) -> Result<&dylib::Expander, String> {
-        let time = fs::metadata(path).and_then(|it| it.modified()).map_err(|err| {
-            format!("Failed to get file metadata for {}: {}", path.display(), err)
-        })?;
+        let time = fs::metadata(path)
+            .and_then(|it| it.modified())
+            .map_err(|err| format!("Failed to get file metadata for {}: {err}", path.display()))?;
 
         Ok(match self.expanders.entry((path.to_path_buf(), time)) {
-            Entry::Vacant(v) => v.insert(dylib::Expander::new(path).map_err(|err| {
-                format!("Cannot create expander for {}: {}", path.display(), err)
-            })?),
+            Entry::Vacant(v) => {
+                v.insert(dylib::Expander::new(path).map_err(|err| {
+                    format!("Cannot create expander for {}: {err}", path.display())
+                })?)
+            }
             Entry::Occupied(e) => e.into_mut(),
         })
     }

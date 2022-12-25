@@ -1378,7 +1378,7 @@ impl<'db> SemanticsImpl<'db> {
                 self.cache
                     .borrow()
                     .keys()
-                    .map(|it| format!("{:?}", it))
+                    .map(|it| format!("{it:?}"))
                     .collect::<Vec<_>>()
                     .join(", ")
             )

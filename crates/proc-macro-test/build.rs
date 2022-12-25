@@ -71,7 +71,7 @@ fn main() {
         .arg("--target-dir")
         .arg(&target_dir);
 
-    println!("Running {:?}", cmd);
+    println!("Running {cmd:?}");
 
     let output = cmd.output().unwrap();
     if !output.status.success() {
@@ -87,7 +87,7 @@ fn main() {
     for message in Message::parse_stream(output.stdout.as_slice()) {
         if let Message::CompilerArtifact(artifact) = message.unwrap() {
             if artifact.target.kind.contains(&"proc-macro".to_string()) {
-                let repr = format!("{} {}", name, version);
+                let repr = format!("{name} {version}");
                 if artifact.package_id.repr.starts_with(&repr) {
                     artifact_path = Some(PathBuf::from(&artifact.filenames[0]));
                 }

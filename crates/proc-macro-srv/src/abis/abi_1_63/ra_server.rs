@@ -563,13 +563,13 @@ impl server::Literal for RustAnalyzer {
 
     fn f32(&mut self, n: &str) -> Self::Literal {
         let n: f32 = n.parse().unwrap();
-        let text = format!("{}f32", n);
+        let text = format!("{n}f32");
         Literal { text: text.into(), id: tt::TokenId::unspecified() }
     }
 
     fn f64(&mut self, n: &str) -> Self::Literal {
         let n: f64 = n.parse().unwrap();
-        let text = format!("{}f64", n);
+        let text = format!("{n}f64");
         Literal { text: text.into(), id: tt::TokenId::unspecified() }
     }
 
@@ -578,11 +578,11 @@ impl server::Literal for RustAnalyzer {
         for ch in string.chars() {
             escaped.extend(ch.escape_debug());
         }
-        Literal { text: format!("\"{}\"", escaped).into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("\"{escaped}\"").into(), id: tt::TokenId::unspecified() }
     }
 
     fn character(&mut self, ch: char) -> Self::Literal {
-        Literal { text: format!("'{}'", ch).into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("'{ch}'").into(), id: tt::TokenId::unspecified() }
     }
 
     fn byte_string(&mut self, bytes: &[u8]) -> Self::Literal {
@@ -593,7 +593,7 @@ impl server::Literal for RustAnalyzer {
             .map(Into::<char>::into)
             .collect::<String>();
 
-        Literal { text: format!("b\"{}\"", string).into(), id: tt::TokenId::unspecified() }
+        Literal { text: format!("b\"{string}\"").into(), id: tt::TokenId::unspecified() }
     }
 
     fn span(&mut self, literal: &Self::Literal) -> Self::Span {

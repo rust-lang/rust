@@ -233,13 +233,13 @@ mod tests {
             for (range, _) in f.tokens {
                 let x = FileRange { file_id: f.file_id, range };
                 if !range_set.contains(&x) {
-                    panic!("additional range {:?}", x);
+                    panic!("additional range {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound ranges {:?}", range_set);
+            panic!("unfound ranges {range_set:?}");
         }
     }
 
@@ -254,13 +254,13 @@ mod tests {
                     continue;
                 }
                 if !range_set.contains(&x) {
-                    panic!("additional definition {:?}", x);
+                    panic!("additional definition {x:?}");
                 }
                 range_set.remove(&x);
             }
         }
         if !range_set.is_empty() {
-            panic!("unfound definitions {:?}", range_set);
+            panic!("unfound definitions {range_set:?}");
         }
     }
 

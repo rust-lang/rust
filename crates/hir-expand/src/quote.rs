@@ -233,7 +233,7 @@ mod tests {
 
         let quoted = quote!(#a);
         assert_eq!(quoted.to_string(), "hello");
-        let t = format!("{:?}", quoted);
+        let t = format!("{quoted:?}");
         assert_eq!(t, "SUBTREE $\n  IDENT   hello 4294967295");
     }
 

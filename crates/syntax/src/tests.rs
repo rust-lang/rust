@@ -108,7 +108,7 @@ fn self_hosting_parsing() {
             .into_iter()
             .map(|(path, err)| format!("{}: {:?}\n", path.display(), err[0]))
             .collect::<String>();
-        panic!("Parsing errors:\n{}\n", errors);
+        panic!("Parsing errors:\n{errors}\n");
     }
 }
 
@@ -181,6 +181,6 @@ fn rust_files_in_dir(dir: &Path) -> Vec<PathBuf> {
 /// so this should always be correct.
 fn read_text(path: &Path) -> String {
     fs::read_to_string(path)
-        .unwrap_or_else(|_| panic!("File at {:?} should be valid", path))
+        .unwrap_or_else(|_| panic!("File at {path:?} should be valid"))
         .replace("\r\n", "\n")
 }

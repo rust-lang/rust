@@ -273,7 +273,7 @@ mod tests {
     fn no_moniker(ra_fixture: &str) {
         let (analysis, position) = fixture::position(ra_fixture);
         if let Some(x) = analysis.moniker(position).unwrap() {
-            assert_eq!(x.info.len(), 0, "Moniker founded but no moniker expected: {:?}", x);
+            assert_eq!(x.info.len(), 0, "Moniker founded but no moniker expected: {x:?}");
         }
     }
 

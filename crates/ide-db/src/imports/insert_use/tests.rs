@@ -1014,7 +1014,7 @@ fn check_with_config(
         .and_then(|it| ImportScope::find_insert_use_container(&it, sema))
         .or_else(|| ImportScope::from(syntax))
         .unwrap();
-    let path = ast::SourceFile::parse(&format!("use {};", path))
+    let path = ast::SourceFile::parse(&format!("use {path};"))
         .tree()
         .syntax()
         .descendants()

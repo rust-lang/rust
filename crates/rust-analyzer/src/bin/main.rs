@@ -30,7 +30,7 @@ fn main() {
         let code = match rustc_wrapper::run_rustc_skipping_cargo_checking(rustc, args.collect()) {
             Ok(rustc_wrapper::ExitCode(code)) => code.unwrap_or(102),
             Err(err) => {
-                eprintln!("{}", err);
+                eprintln!("{err}");
                 101
             }
         };
@@ -40,7 +40,7 @@ fn main() {
     let flags = flags::RustAnalyzer::from_env_or_exit();
     if let Err(err) = try_main(flags) {
         tracing::error!("Unexpected error: {}", err);
-        eprintln!("{}", err);
+        eprintln!("{err}");
         process::exit(101);
     }
 }

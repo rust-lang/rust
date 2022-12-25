@@ -453,7 +453,7 @@ fn get_doc_base_url(db: &RootDatabase, def: Definition) -> Option<Url> {
             })?
         }
     };
-    Url::parse(&base).ok()?.join(&format!("{}/", display_name)).ok()
+    Url::parse(&base).ok()?.join(&format!("{display_name}/")).ok()
 }
 
 /// Get the filename and extension generated for a symbol by rustdoc.
@@ -488,7 +488,7 @@ fn filename_and_frag_for_def(
                 Some(kw) => {
                     format!("keyword.{}.html", kw.trim_matches('"'))
                 }
-                None => format!("{}/index.html", name),
+                None => format!("{name}/index.html"),
             },
             None => String::from("index.html"),
         },

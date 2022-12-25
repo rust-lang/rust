@@ -345,7 +345,7 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture_before);
         let rename_result = analysis
             .rename(position, new_name)
-            .unwrap_or_else(|err| panic!("Rename to '{}' was cancelled: {}", new_name, err));
+            .unwrap_or_else(|err| panic!("Rename to '{new_name}' was cancelled: {err}"));
         match rename_result {
             Ok(source_change) => {
                 let mut text_edit_builder = TextEdit::builder();
@@ -371,7 +371,7 @@ mod tests {
                         .collect::<String>();
                     assert_eq!(error_message.trim(), err.to_string());
                 } else {
-                    panic!("Rename to '{}' failed unexpectedly: {}", new_name, err)
+                    panic!("Rename to '{new_name}' failed unexpectedly: {err}")
                 }
             }
         };
@@ -397,11 +397,11 @@ mod tests {
         let (analysis, position) = fixture::position(ra_fixture);
         let result = analysis
             .prepare_rename(position)
-            .unwrap_or_else(|err| panic!("PrepareRename was cancelled: {}", err));
+            .unwrap_or_else(|err| panic!("PrepareRename was cancelled: {err}"));
         match result {
             Ok(RangeInfo { range, info: () }) => {
                 let source = analysis.file_text(position.file_id).unwrap();
-                expect.assert_eq(&format!("{:?}: {}", range, &source[range]))
+                expect.assert_eq(&format!("{range:?}: {}", &source[range]))
             }
             Err(RenameError(err)) => expect.assert_eq(&err),
         };

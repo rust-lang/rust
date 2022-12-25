@@ -25,7 +25,7 @@ impl PanicContext {
                 if !ctx.is_empty() {
                     eprintln!("Panic context:");
                     for frame in ctx.iter() {
-                        eprintln!("> {}\n", frame);
+                        eprintln!("> {frame}\n");
                     }
                 }
                 default_hook(panic_info);

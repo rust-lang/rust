@@ -417,8 +417,8 @@ pub(super) fn definition(
         Definition::Variant(it) => label_value_and_docs(db, it, |&it| {
             if !it.parent_enum(db).is_data_carrying(db) {
                 match it.eval(db) {
-                    Ok(x) => Some(format!("{}", x)),
-                    Err(_) => it.value(db).map(|x| format!("{:?}", x)),
+                    Ok(x) => Some(format!("{x}")),
+                    Err(_) => it.value(db).map(|x| format!("{x:?}")),
                 }
             } else {
                 None
@@ -427,7 +427,7 @@ pub(super) fn definition(
         Definition::Const(it) => label_value_and_docs(db, it, |it| {
             let body = it.eval(db);
             match body {
-                Ok(x) => Some(format!("{}", x)),
+                Ok(x) => Some(format!("{x}")),
                 Err(_) => {
                     let source = it.source(db)?;
                     let mut body = source.value.body()?.syntax().clone();
@@ -483,7 +483,7 @@ pub(super) fn definition(
 
 fn render_builtin_attr(db: &RootDatabase, attr: hir::BuiltinAttr) -> Option<Markup> {
     let name = attr.name(db);
-    let desc = format!("#[{}]", name);
+    let desc = format!("#[{name}]");
 
     let AttributeTemplate { word, list, name_value_str } = match attr.template(db) {
         Some(template) => template,
@@ -522,7 +522,7 @@ where
     V: Display,
 {
     let label = if let Some(value) = value_extractor(&def) {
-        format!("{} // {}", def.display(db), value)
+        format!("{} // {value}", def.display(db))
     } else {
         def.display(db).to_string()
     };
@@ -541,7 +541,7 @@ where
     V: Display,
 {
     let label = if let Some(value) = value_extractor(&def) {
-        format!("{} = {}", def.display(db), value)
+        format!("{} = {value}", def.display(db))
     } else {
         def.display(db).to_string()
     };
@@ -605,9 +605,9 @@ fn local(db: &RootDatabase, it: hir::Local) -> Option<Markup> {
             } else {
                 ""
             };
-            format!("{}{}{}: {}", let_kw, is_mut, name, ty)
+            format!("{let_kw}{is_mut}{name}: {ty}")
         }
-        Either::Right(_) => format!("{}self: {}", is_mut, ty),
+        Either::Right(_) => format!("{is_mut}self: {ty}"),
     };
     markup(None, desc, None)
 }

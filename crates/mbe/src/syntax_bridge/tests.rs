@@ -19,7 +19,7 @@ fn check_punct_spacing(fixture: &str) {
             let spacing = match annotation.as_str() {
                 "Alone" => Spacing::Alone,
                 "Joint" => Spacing::Joint,
-                a => panic!("unknown annotation: {}", a),
+                a => panic!("unknown annotation: {a}"),
             };
             (token, spacing)
         })
@@ -39,7 +39,7 @@ fn check_punct_spacing(fixture: &str) {
         cursor = cursor.bump();
     }
 
-    assert!(annotations.is_empty(), "unchecked annotations: {:?}", annotations);
+    assert!(annotations.is_empty(), "unchecked annotations: {annotations:?}");
 }
 
 #[test]
