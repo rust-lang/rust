@@ -39,7 +39,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "pre 1.29.0"]
     pub MUTEX_ATOMIC,
-    nursery,
+    restriction,
     "using a mutex where an atomic value could be used instead"
 }
 
