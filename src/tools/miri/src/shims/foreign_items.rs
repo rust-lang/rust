@@ -1,4 +1,4 @@
-use std::{collections::hash_map::Entry, io::Write, iter};
+use std::{collections::hash_map::Entry, io::Write, iter, path::Path};
 
 use log::trace;
 
@@ -441,6 +441,21 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     throw_unsup_format!("pointer passed to miri_static_root must point to beginning of an allocated block");
                 }
                 this.machine.static_roots.push(alloc_id);
+            }
+            "miri_host_to_target_path" => {
+                let [ptr, out, out_size] = this.check_shim(abi, Abi::Rust, link_name, args)?;
+                let ptr = this.read_pointer(ptr)?;
+                let out = this.read_pointer(out)?;
+                let out_size = this.read_scalar(out_size)?.to_machine_usize(this)?;
+
+                // The host affects program behavior here, so this requires isolation to be disabled.
+                this.check_no_isolation("`miri_host_to_target_path`")?;
+
+                // We read this as a plain OsStr and write it as a path, which will convert it to the target.
+                let path = this.read_os_str_from_c_str(ptr)?.to_owned();
+                let (success, needed_size) = this.write_path_to_c_str(Path::new(&path), out, out_size)?;
+                // Return value: 0 on success, otherwise the size it would have needed.
+                this.write_int(if success { 0 } else { needed_size }, dest)?;
             }
 
             // Obtains the size of a Miri backtrace. See the README for details.

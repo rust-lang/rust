@@ -160,6 +160,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn init_once_complete(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
+        let current_span = this.machine.current_span();
         let init_once = &mut this.machine.threads.sync.init_onces[id];
 
         assert_eq!(
@@ -172,7 +173,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_release(&mut init_once.data_race, current_thread);
+            data_race.validate_lock_release(&mut init_once.data_race, current_thread, current_span);
         }
 
         // Wake up everyone.
@@ -188,6 +189,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn init_once_fail(&mut self, id: InitOnceId) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
+        let current_span = this.machine.current_span();
         let init_once = &mut this.machine.threads.sync.init_onces[id];
         assert_eq!(
             init_once.status,
@@ -197,7 +199,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Each complete happens-before the end of the wait
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_release(&mut init_once.data_race, current_thread);
+            data_race.validate_lock_release(&mut init_once.data_race, current_thread, current_span);
         }
 
         // Wake up one waiting thread, so they can go ahead and try to init this.

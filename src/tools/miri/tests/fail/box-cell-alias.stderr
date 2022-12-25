@@ -19,7 +19,7 @@ help: <TAG> was later invalidated at offsets [0x0..0x1] by a Unique retag
    |
 LL |     let res = helper(val, ptr);
    |                      ^^^
-   = note: BACKTRACE:
+   = note: BACKTRACE (of the first span):
    = note: inside `helper` at $DIR/box-cell-alias.rs:LL:CC
 note: inside `main`
   --> $DIR/box-cell-alias.rs:LL:CC

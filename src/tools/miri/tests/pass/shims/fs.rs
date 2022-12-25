@@ -15,6 +15,7 @@ use std::io::{Error, ErrorKind, IsTerminal, Read, Result, Seek, SeekFrom, Write}
 use std::path::{Path, PathBuf};
 
 fn main() {
+    test_path_conversion();
     test_file();
     test_file_clone();
     test_file_create_new();
@@ -30,21 +31,28 @@ fn main() {
     test_from_raw_os_error();
 }
 
+fn host_to_target_path(path: String) -> PathBuf {
+    use std::ffi::{CStr, CString};
+
+    let path = CString::new(path).unwrap();
+    let mut out = Vec::with_capacity(1024);
+
+    unsafe {
+        extern "Rust" {
+            fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+        }
+        let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
+        assert_eq!(ret, 0);
+        let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
+        PathBuf::from(out)
+    }
+}
+
 fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP")
-        .map(|tmp| {
-            // MIRI_TEMP is set outside of our emulated
-            // program, so it may have path separators that don't
-            // correspond to our target platform. We normalize them here
-            // before constructing a `PathBuf`
-
-            #[cfg(windows)]
-            return PathBuf::from(tmp.replace("/", "\\"));
-
-            #[cfg(not(windows))]
-            return PathBuf::from(tmp.replace("\\", "/"));
-        })
-        .unwrap_or_else(|_| std::env::temp_dir())
+    let path = std::env::var("MIRI_TEMP")
+        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
+    // These are host paths. We need to convert them to the target.
+    host_to_target_path(path)
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -69,6 +77,12 @@ fn prepare_with_content(filename: &str, content: &[u8]) -> PathBuf {
     let mut file = File::create(&path).unwrap();
     file.write(content).unwrap();
     path
+}
+
+fn test_path_conversion() {
+    let tmp = tmp();
+    assert!(tmp.is_absolute(), "{:?} is not absolute", tmp);
+    assert!(tmp.is_dir(), "{:?} is not a directory", tmp);
 }
 
 fn test_file() {

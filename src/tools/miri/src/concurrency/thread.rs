@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_index::vec::{Idx, IndexVec};
 use rustc_middle::mir::Mutability;
 use rustc_middle::ty::layout::TyAndLayout;
+use rustc_span::Span;
 use rustc_target::spec::abi::Abi;
 
 use crate::concurrency::data_race;
@@ -617,6 +618,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
     fn thread_terminated(
         &mut self,
         mut data_race: Option<&mut data_race::GlobalState>,
+        current_span: Span,
     ) -> Vec<Pointer<Provenance>> {
         let mut free_tls_statics = Vec::new();
         {
@@ -634,7 +636,7 @@ impl<'mir, 'tcx: 'mir> ThreadManager<'mir, 'tcx> {
         }
         // Set the thread into a terminated state in the data-race detector.
         if let Some(ref mut data_race) = data_race {
-            data_race.thread_terminated(self);
+            data_race.thread_terminated(self, current_span);
         }
         // Check if we need to unblock any threads.
         let mut joined_threads = vec![]; // store which threads joined, we'll need it
@@ -813,8 +815,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             let mut state = tls::TlsDtorsState::default();
             Box::new(move |m| state.on_stack_empty(m))
         });
+        let current_span = this.machine.current_span();
         if let Some(data_race) = &mut this.machine.data_race {
-            data_race.thread_created(&this.machine.threads, new_thread_id);
+            data_race.thread_created(&this.machine.threads, new_thread_id, current_span);
         }
 
         // Write the current thread-id, switch to the next thread later
@@ -1041,7 +1044,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         assert!(thread.stack.is_empty(), "only threads with an empty stack can be terminated");
         thread.state = ThreadState::Terminated;
 
-        for ptr in this.machine.threads.thread_terminated(this.machine.data_race.as_mut()) {
+        let current_span = this.machine.current_span();
+        for ptr in
+            this.machine.threads.thread_terminated(this.machine.data_race.as_mut(), current_span)
+        {
             this.deallocate_ptr(ptr.into(), None, MiriMemoryKind::Tls.into())?;
         }
         Ok(())

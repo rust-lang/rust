@@ -39,7 +39,7 @@ pub fn main() {
 
             sleep(Duration::from_millis(200));
 
-            stack_var = 1usize; //~ ERROR: Data race detected between Write on thread `<unnamed>` and Write on thread `<unnamed>`
+            stack_var = 1usize; //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Write on thread `<unnamed>`
 
             // read to silence errors
             stack_var

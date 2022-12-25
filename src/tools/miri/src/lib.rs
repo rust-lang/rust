@@ -27,6 +27,7 @@
     clippy::single_element_loop,
     clippy::needless_return,
     clippy::bool_to_int_with_if,
+    clippy::box_default,
     // We are not implementing queries here so it's fine
     rustc::potential_query_instability
 )]
@@ -107,7 +108,7 @@ pub use crate::helpers::EvalContextExt as _;
 pub use crate::intptrcast::ProvenanceMode;
 pub use crate::machine::{
     AllocExtra, FrameExtra, MiriInterpCx, MiriInterpCxExt, MiriMachine, MiriMemoryKind,
-    PrimitiveLayouts, Provenance, ProvenanceExtra, PAGE_SIZE, STACK_ADDR, STACK_SIZE,
+    PrimitiveLayouts, Provenance, ProvenanceExtra,
 };
 pub use crate::mono_hash_map::MonoHashMap;
 pub use crate::operator::EvalContextExt as _;

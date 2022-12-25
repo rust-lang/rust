@@ -51,12 +51,12 @@ impl VisitTags for GlobalStateInner {
 }
 
 impl GlobalStateInner {
-    pub fn new(config: &MiriConfig) -> Self {
+    pub fn new(config: &MiriConfig, stack_addr: u64) -> Self {
         GlobalStateInner {
             int_to_ptr_map: Vec::default(),
             base_addr: FxHashMap::default(),
             exposed: FxHashSet::default(),
-            next_base_addr: STACK_ADDR,
+            next_base_addr: stack_addr,
             provenance_mode: config.provenance_mode,
         }
     }

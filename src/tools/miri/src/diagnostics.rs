@@ -35,6 +35,17 @@ pub enum TerminationInfo {
         link_name: Symbol,
         span: SpanData,
     },
+    DataRace {
+        op1: RacingOp,
+        op2: RacingOp,
+        ptr: Pointer,
+    },
+}
+
+pub struct RacingOp {
+    pub action: String,
+    pub thread_info: String,
+    pub span: SpanData,
 }
 
 impl fmt::Display for TerminationInfo {
@@ -55,6 +66,12 @@ impl fmt::Display for TerminationInfo {
                 write!(f, "multiple definitions of symbol `{link_name}`"),
             SymbolShimClashing { link_name, .. } =>
                 write!(f, "found `{link_name}` symbol definition that clashes with a built-in shim",),
+            DataRace { ptr, op1, op2 } =>
+                write!(
+                    f,
+                    "Data race detected between (1) {} on {} and (2) {} on {} at {ptr:?}. (2) just happened here",
+                    op1.action, op1.thread_info, op2.action, op2.thread_info
+                ),
         }
     }
 }
@@ -167,7 +184,7 @@ pub fn report_error<'tcx, 'mir>(
             Abort(_) => Some("abnormal termination"),
             UnsupportedInIsolation(_) | Int2PtrWithStrictProvenance =>
                 Some("unsupported operation"),
-            StackedBorrowsUb { .. } => Some("Undefined Behavior"),
+            StackedBorrowsUb { .. } | DataRace { .. } => Some("Undefined Behavior"),
             Deadlock => Some("deadlock"),
             MultipleSymbolDefinitions { .. } | SymbolShimClashing { .. } => None,
         };
@@ -205,6 +222,12 @@ pub fn report_error<'tcx, 'mir>(
                 vec![(Some(*span), format!("the `{link_name}` symbol is defined here"))],
             Int2PtrWithStrictProvenance =>
                 vec![(None, format!("use Strict Provenance APIs (https://doc.rust-lang.org/nightly/std/ptr/index.html#strict-provenance, https://crates.io/crates/sptr) instead"))],
+            DataRace { op1, .. } =>
+                vec![
+                    (Some(op1.span), format!("and (1) occurred earlier here")),
+                    (None, format!("this indicates a bug in the program: it performed an invalid operation, and caused Undefined Behavior")),
+                    (None, format!("see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information")),
+                ],
             _ => vec![],
         };
         (title, helps)
@@ -339,9 +362,11 @@ fn report_msg<'tcx>(
     }
 
     // Show note and help messages.
+    let mut extra_span = false;
     for (span_data, note) in &notes {
         if let Some(span_data) = span_data {
             err.span_note(span_data.span(), note);
+            extra_span = true;
         } else {
             err.note(note);
         }
@@ -349,13 +374,14 @@ fn report_msg<'tcx>(
     for (span_data, help) in &helps {
         if let Some(span_data) = span_data {
             err.span_help(span_data.span(), help);
+            extra_span = true;
         } else {
             err.help(help);
         }
     }
     if notes.len() + helps.len() > 0 {
         // Add visual separator before backtrace.
-        err.note("BACKTRACE:");
+        err.note(if extra_span { "BACKTRACE (of the first span):" } else { "BACKTRACE:" });
     }
     // Add backtrace
     for (idx, frame_info) in stacktrace.iter().enumerate() {
@@ -395,7 +421,8 @@ impl<'mir, 'tcx> MiriMachine<'mir, 'tcx> {
 
         let msg = match &e {
             CreatedPointerTag(tag, None, _) => format!("created base tag {tag:?}"),
-            CreatedPointerTag(tag, Some(perm), None) => format!("created {tag:?} with {perm} derived from unknown tag"),
+            CreatedPointerTag(tag, Some(perm), None) =>
+                format!("created {tag:?} with {perm} derived from unknown tag"),
             CreatedPointerTag(tag, Some(perm), Some((alloc_id, range, orig_tag))) =>
                 format!(
                     "created tag {tag:?} with {perm} at {alloc_id:?}{range:?} derived from {orig_tag:?}"

@@ -170,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 ))
             }
             None => {
-                let envvar_not_found = this.eval_windows("c", "ERROR_ENVVAR_NOT_FOUND")?;
+                let envvar_not_found = this.eval_windows("c", "ERROR_ENVVAR_NOT_FOUND");
                 this.set_last_error(envvar_not_found)?;
                 Scalar::from_u32(0) // return zero upon failure
             }
@@ -240,7 +240,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Ok(0) // return zero on success
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL")?;
+            let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             Ok(-1)
         }
@@ -274,7 +274,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
                 this.update_environ()?;
             }
-            Ok(this.eval_windows("c", "TRUE")?)
+            Ok(this.eval_windows("c", "TRUE"))
         } else {
             let value = this.read_os_str_from_wide_str(value_ptr)?;
             let var_ptr = alloc_env_var_as_wide_str(&name, &value, this)?;
@@ -282,7 +282,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.deallocate_ptr(var, None, MiriMemoryKind::Runtime.into())?;
             }
             this.update_environ()?;
-            Ok(this.eval_windows("c", "TRUE")?)
+            Ok(this.eval_windows("c", "TRUE"))
         }
     }
 
@@ -306,7 +306,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Ok(0)
         } else {
             // name argument is a null pointer, points to an empty string, or points to a string containing an '=' character.
-            let einval = this.eval_libc("EINVAL")?;
+            let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             Ok(-1)
         }
@@ -335,7 +335,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 if this.write_path_to_c_str(&cwd, buf, size)?.0 {
                     return Ok(buf);
                 }
-                let erange = this.eval_libc("ERANGE")?;
+                let erange = this.eval_libc("ERANGE");
                 this.set_last_error(erange)?;
             }
             Err(e) => this.set_last_error_from_io_error(e.kind())?,
@@ -411,14 +411,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.reject_in_isolation("`SetCurrentDirectoryW`", reject_with)?;
             this.set_last_error_from_io_error(ErrorKind::PermissionDenied)?;
 
-            return this.eval_windows("c", "FALSE");
+            return Ok(this.eval_windows("c", "FALSE"));
         }
 
         match env::set_current_dir(path) {
-            Ok(()) => this.eval_windows("c", "TRUE"),
+            Ok(()) => Ok(this.eval_windows("c", "TRUE")),
             Err(e) => {
                 this.set_last_error_from_io_error(e.kind())?;
-                this.eval_windows("c", "FALSE")
+                Ok(this.eval_windows("c", "FALSE"))
             }
         }
     }

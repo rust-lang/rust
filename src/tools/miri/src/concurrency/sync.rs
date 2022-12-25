@@ -359,6 +359,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// return `None`.
     fn mutex_unlock(&mut self, id: MutexId, expected_owner: ThreadId) -> Option<usize> {
         let this = self.eval_context_mut();
+        let current_span = this.machine.current_span();
         let mutex = &mut this.machine.threads.sync.mutexes[id];
         if let Some(current_owner) = mutex.owner {
             // Mutex is locked.
@@ -375,7 +376,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // The mutex is completely unlocked. Try transfering ownership
                 // to another thread.
                 if let Some(data_race) = &this.machine.data_race {
-                    data_race.validate_lock_release(&mut mutex.data_race, current_owner);
+                    data_race.validate_lock_release(
+                        &mut mutex.data_race,
+                        current_owner,
+                        current_span,
+                    );
                 }
                 this.mutex_dequeue_and_lock(id);
             }
@@ -454,6 +459,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     /// Returns `true` if succeeded, `false` if this `reader` did not hold the lock.
     fn rwlock_reader_unlock(&mut self, id: RwLockId, reader: ThreadId) -> bool {
         let this = self.eval_context_mut();
+        let current_span = this.machine.current_span();
         let rwlock = &mut this.machine.threads.sync.rwlocks[id];
         match rwlock.readers.entry(reader) {
             Entry::Occupied(mut entry) => {
@@ -470,7 +476,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             Entry::Vacant(_) => return false, // we did not even own this lock
         }
         if let Some(data_race) = &this.machine.data_race {
-            data_race.validate_lock_release_shared(&mut rwlock.data_race_reader, reader);
+            data_race.validate_lock_release_shared(
+                &mut rwlock.data_race_reader,
+                reader,
+                current_span,
+            );
         }
 
         // The thread was a reader. If the lock is not held any more, give it to a writer.
@@ -511,6 +521,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     #[inline]
     fn rwlock_writer_unlock(&mut self, id: RwLockId, expected_writer: ThreadId) -> bool {
         let this = self.eval_context_mut();
+        let current_span = this.machine.current_span();
         let rwlock = &mut this.machine.threads.sync.rwlocks[id];
         if let Some(current_writer) = rwlock.writer {
             if current_writer != expected_writer {
@@ -523,8 +534,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             //  since this writer happens-before both the union of readers once they are finished
             //  and the next writer
             if let Some(data_race) = &this.machine.data_race {
-                data_race.validate_lock_release(&mut rwlock.data_race, current_writer);
-                data_race.validate_lock_release(&mut rwlock.data_race_reader, current_writer);
+                data_race.validate_lock_release(
+                    &mut rwlock.data_race,
+                    current_writer,
+                    current_span,
+                );
+                data_race.validate_lock_release(
+                    &mut rwlock.data_race_reader,
+                    current_writer,
+                    current_span,
+                );
             }
             // The thread was a writer.
             //
@@ -595,12 +614,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn condvar_signal(&mut self, id: CondvarId) -> Option<(ThreadId, CondvarLock)> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
+        let current_span = this.machine.current_span();
         let condvar = &mut this.machine.threads.sync.condvars[id];
         let data_race = &this.machine.data_race;
 
         // Each condvar signal happens-before the end of the condvar wake
         if let Some(data_race) = data_race {
-            data_race.validate_lock_release(&mut condvar.data_race, current_thread);
+            data_race.validate_lock_release(&mut condvar.data_race, current_thread, current_span);
         }
         condvar.waiters.pop_front().map(|waiter| {
             if let Some(data_race) = data_race {
@@ -628,12 +648,13 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
     fn futex_wake(&mut self, addr: u64, bitset: u32) -> Option<ThreadId> {
         let this = self.eval_context_mut();
         let current_thread = this.get_active_thread();
+        let current_span = this.machine.current_span();
         let futex = &mut this.machine.threads.sync.futexes.get_mut(&addr)?;
         let data_race = &this.machine.data_race;
 
         // Each futex-wake happens-before the end of the futex wait
         if let Some(data_race) = data_race {
-            data_race.validate_lock_release(&mut futex.data_race, current_thread);
+            data_race.validate_lock_release(&mut futex.data_race, current_thread, current_span);
         }
 
         // Wake up the first thread in the queue that matches any of the bits in the bitset.

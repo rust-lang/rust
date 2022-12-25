@@ -84,7 +84,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         // Comparing with `>=` to account for null terminator.
         if name.len() >= max_name_len {
-            return this.eval_libc("ERANGE");
+            return Ok(this.eval_libc("ERANGE"));
         }
 
         this.set_thread_name(thread, name);
@@ -107,7 +107,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let name = this.get_thread_name(thread).to_owned();
         let (success, _written) = this.write_c_str(&name, name_out, len)?;
 
-        if success { Ok(Scalar::from_u32(0)) } else { this.eval_libc("ERANGE") }
+        Ok(if success { Scalar::from_u32(0) } else { this.eval_libc("ERANGE") })
     }
 
     fn sched_yield(&mut self) -> InterpResult<'tcx, i32> {

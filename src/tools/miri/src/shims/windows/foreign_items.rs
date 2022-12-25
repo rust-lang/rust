@@ -76,7 +76,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.read_machine_isize(handle)?;
                 let flags = this.read_scalar(flags)?.to_u32()?;
                 let size = this.read_machine_usize(size)?;
-                let zero_init = (flags & 0x00000008) != 0; // HEAP_ZERO_MEMORY
+                let heap_zero_memory = 0x00000008; // HEAP_ZERO_MEMORY
+                let zero_init = (flags & heap_zero_memory) == heap_zero_memory;
                 let res = this.malloc(size, zero_init, MiriMemoryKind::WinHeap)?;
                 this.write_pointer(res, dest)?;
             }
@@ -158,7 +159,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Set page size.
                 let page_size = system_info.offset(field_offsets[2], dword_layout, &this.tcx)?;
                 this.write_scalar(
-                    Scalar::from_int(PAGE_SIZE, dword_layout.size),
+                    Scalar::from_int(this.machine.page_size, dword_layout.size),
                     &page_size.into(),
                 )?;
                 // Set number of processors.

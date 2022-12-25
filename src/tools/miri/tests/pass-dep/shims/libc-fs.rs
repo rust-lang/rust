@@ -5,8 +5,8 @@
 #![feature(io_error_uncategorized)]
 
 use std::convert::TryInto;
-use std::ffi::CString;
-use std::fs::{canonicalize, remove_file, File};
+use std::ffi::{CStr, CString};
+use std::fs::{canonicalize, remove_dir_all, remove_file, File};
 use std::io::{Error, ErrorKind, Write};
 use std::os::unix::ffi::OsStrExt;
 use std::path::PathBuf;
@@ -18,23 +18,26 @@ fn main() {
     test_file_open_unix_allow_two_args();
     test_file_open_unix_needs_three_args();
     test_file_open_unix_extra_third_arg();
+    #[cfg(target_os = "linux")]
+    test_o_tmpfile_flag();
 }
 
 fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP")
-        .map(|tmp| {
-            // MIRI_TEMP is set outside of our emulated
-            // program, so it may have path separators that don't
-            // correspond to our target platform. We normalize them here
-            // before constructing a `PathBuf`
+    let path = std::env::var("MIRI_TEMP")
+        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
+    // These are host paths. We need to convert them to the target.
+    let path = CString::new(path).unwrap();
+    let mut out = Vec::with_capacity(1024);
 
-            #[cfg(windows)]
-            return PathBuf::from(tmp.replace("/", "\\"));
-
-            #[cfg(not(windows))]
-            return PathBuf::from(tmp.replace("\\", "/"));
-        })
-        .unwrap_or_else(|_| std::env::temp_dir())
+    unsafe {
+        extern "Rust" {
+            fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+        }
+        let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
+        assert_eq!(ret, 0);
+        let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
+        PathBuf::from(out)
+    }
 }
 
 /// Prepare: compute filename and make sure the file does not exist.
@@ -42,6 +45,15 @@ fn prepare(filename: &str) -> PathBuf {
     let path = tmp().join(filename);
     // Clean the paths for robustness.
     remove_file(&path).ok();
+    path
+}
+
+/// Prepare directory: compute directory name and make sure it does not exist.
+#[allow(unused)]
+fn prepare_dir(dirname: &str) -> PathBuf {
+    let path = tmp().join(&dirname);
+    // Clean the directory for robustness.
+    remove_dir_all(&path).ok();
     path
 }
 
@@ -134,4 +146,23 @@ fn test_readlink() {
     };
     assert_eq!(res, -1);
     assert_eq!(Error::last_os_error().kind(), ErrorKind::NotFound);
+}
+
+#[cfg(target_os = "linux")]
+fn test_o_tmpfile_flag() {
+    use std::fs::{create_dir, OpenOptions};
+    use std::os::unix::fs::OpenOptionsExt;
+    let dir_path = prepare_dir("miri_test_fs_dir");
+    create_dir(&dir_path).unwrap();
+    // test that the `O_TMPFILE` custom flag gracefully errors instead of stopping execution
+    assert_eq!(
+        Some(libc::EOPNOTSUPP),
+        OpenOptions::new()
+            .read(true)
+            .write(true)
+            .custom_flags(libc::O_TMPFILE)
+            .open(dir_path)
+            .unwrap_err()
+            .raw_os_error(),
+    );
 }
