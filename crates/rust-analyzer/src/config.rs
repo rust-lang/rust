@@ -160,7 +160,9 @@ config_data! {
         check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = "null",
         /// Override the command rust-analyzer uses instead of `cargo check` for
         /// diagnostics on save. The command is required to output json and
-        /// should therefore include `--message-format=json` or a similar option.
+        /// should therefore include `--message-format=json` or a similar option
+        /// (for colored diagnostics, use
+        /// `--message-format=json-diagnostic-rendered-ansi`).
         ///
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
