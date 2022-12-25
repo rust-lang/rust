@@ -36,7 +36,7 @@ impl FileDescriptor for Epoll {
         Ok(self)
     }
 
-    fn dup<'tcx>(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
+    fn dup(&mut self) -> io::Result<Box<dyn FileDescriptor>> {
         Ok(Box::new(self.clone()))
     }
 
