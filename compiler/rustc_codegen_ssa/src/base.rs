@@ -681,7 +681,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
     });
 
     let mut total_codegen_time = Duration::new(0, 0);
-    let start_rss = tcx.sess.time_passes().then(|| get_resident_set_size());
+    let start_rss = tcx.sess.opts.unstable_opts.time_passes.then(|| get_resident_set_size());
 
     // The non-parallel compiler can only translate codegen units to LLVM IR
     // on a single thread, leading to a staircase effect where the N LLVM
@@ -781,7 +781,7 @@ pub fn codegen_crate<B: ExtraBackendMethods>(
 
     // Since the main thread is sometimes blocked during codegen, we keep track
     // -Ztime-passes output manually.
-    if tcx.sess.time_passes() {
+    if tcx.sess.opts.unstable_opts.time_passes {
         let end_rss = get_resident_set_size();
 
         print_time_passes_entry(
