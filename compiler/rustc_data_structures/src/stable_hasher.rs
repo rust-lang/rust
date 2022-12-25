@@ -223,7 +223,7 @@ pub trait ToStableHashKey<HCX> {
 /// stable across compilation session boundaries. More formally:
 ///
 /// ```txt
-/// Ord::cmp(a1, b1) == Ord:cmp(a2, b2)
+/// Ord::cmp(a1, b1) == Ord::cmp(a2, b2)
 ///    where a2 = decode(encode(a1, context1), context2)
 ///          b2 = decode(encode(b1, context1), context2)
 /// ```

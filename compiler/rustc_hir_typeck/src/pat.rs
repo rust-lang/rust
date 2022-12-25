@@ -1013,7 +1013,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let (res, opt_ty, segments) =
             self.resolve_ty_and_res_fully_qualified_call(qpath, pat.hir_id, pat.span);
         if res == Res::Err {
-            let e = tcx.sess.delay_span_bug(pat.span, "`Res:Err` but no error emitted");
+            let e = tcx.sess.delay_span_bug(pat.span, "`Res::Err` but no error emitted");
             self.set_tainted_by_errors(e);
             on_error(e);
             return tcx.ty_error_with_guaranteed(e);
