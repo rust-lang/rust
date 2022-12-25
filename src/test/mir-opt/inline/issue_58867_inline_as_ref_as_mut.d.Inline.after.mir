@@ -5,7 +5,7 @@ fn d(_1: &Box<T>) -> &T {
     let mut _0: &T;                      // return place in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:28: +0:30
     let _2: &T;                          // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
     let mut _3: &std::boxed::Box<T>;     // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:18:5: 18:15
+    scope 1 (inlined <Box<T> as AsRef<T>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:18:7: 18:15
         debug self => _3;                // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         let mut _4: std::boxed::Box<T>;  // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL
         let mut _5: *const T;            // in scope 1 at $SRC_DIR/alloc/src/boxed.rs:LL:COL

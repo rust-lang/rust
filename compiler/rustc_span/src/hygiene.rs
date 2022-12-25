@@ -316,6 +316,7 @@ impl ExpnId {
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
                 || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+                || expn_data.kind == ExpnKind::Inlined
             {
                 break;
             }

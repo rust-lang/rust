@@ -5,7 +5,7 @@ fn c(_1: &[T]) -> &[T] {
     let mut _0: &[T];                    // return place in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+0:25: +0:29
     let _2: &[T];                        // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
     let mut _3: &[T];                    // in scope 0 at $DIR/issue_58867_inline_as_ref_as_mut.rs:+1:5: +1:15
-    scope 1 (inlined <[T] as AsRef<[T]>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:13:5: 13:15
+    scope 1 (inlined <[T] as AsRef<[T]>>::as_ref) { // at $DIR/issue_58867_inline_as_ref_as_mut.rs:13:7: 13:15
         debug self => _3;                // in scope 1 at $SRC_DIR/core/src/convert/mod.rs:LL:COL
     }
 
