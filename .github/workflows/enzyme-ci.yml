@@ -41,7 +41,7 @@ jobs:
             sudo sed -i 's/add_executable(llvm-omp-device-info IMPORTED)//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
             sudo sed -i 's/llvm-omp-device-info//g' /usr/lib/llvm-${{matrix.llvm}}/lib/cmake/llvm/LLVMExports*.cmake
           fi
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
@@ -78,7 +78,7 @@ jobs:
           brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
           sudo python3 -m pip install --upgrade pip setuptools
           sudo python3 -m pip install lit requests
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake
@@ -115,7 +115,7 @@ jobs:
           brew install llvm@${{ matrix.llvm }} autoconf make cmake gcc libtool
           sudo python3 -m pip install --upgrade pip setuptools
           sudo python3 -m pip install lit
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
     - name: mkdir
       run: cd enzyme && rm -rf build && mkdir build
     - name: cmake

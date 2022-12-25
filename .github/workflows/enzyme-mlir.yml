@@ -27,8 +27,8 @@ jobs:
           sudo rm -f /etc/apt/sources.list.d/*llvm*.list
           sudo apt-get update
           sudo apt-get install -y ninja-build git autoconf cmake gcc g++ libtool gfortran python3 python3-dev 
-    - uses: actions/checkout@v2
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
+    - uses: actions/checkout@v3
       with:
         repository: 'llvm/Polygeist'
         path: 'Polygeist'
