@@ -1316,6 +1316,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 param.id,
                 &param.kind,
                 &param.bounds,
+                param.colon_span,
+                generics.span,
                 itctx,
                 PredicateOrigin::GenericParam,
             )
@@ -1365,6 +1367,8 @@ impl<'hir> LoweringContext<'_, 'hir> {
         id: NodeId,
         kind: &GenericParamKind,
         bounds: &[GenericBound],
+        colon_span: Option<Span>,
+        parent_span: Span,
         itctx: &ImplTraitContext,
         origin: PredicateOrigin,
     ) -> Option<hir::WherePredicate<'hir>> {
@@ -1377,8 +1381,17 @@ impl<'hir> LoweringContext<'_, 'hir> {
 
         let ident = self.lower_ident(ident);
         let param_span = ident.span;
-        let span =
-            bounds.iter().fold(param_span.shrink_to_hi(), |span, bound| span.to(bound.span()));
+
+        // Reconstruct the span of the entire predicate from the individual generic bounds.
+        let span_start = colon_span.unwrap_or_else(|| param_span.shrink_to_hi());
+        let span = bounds.iter().fold(span_start, |span_accum, bound| {
+            match bound.span().find_ancestor_inside(parent_span) {
+                Some(bound_span) => span_accum.to(bound_span),
+                None => span_accum,
+            }
+        });
+        let span = self.lower_span(span);
+
         match kind {
             GenericParamKind::Const { .. } => None,
             GenericParamKind::Type { .. } => {
