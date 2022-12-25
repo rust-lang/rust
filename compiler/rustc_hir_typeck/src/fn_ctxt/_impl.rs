@@ -392,6 +392,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty.normalized
     }
 
+    pub(super) fn user_substs_for_adt(ty: RawTy<'tcx>) -> UserSubsts<'tcx> {
+        match (ty.raw.kind(), ty.normalized.kind()) {
+            (ty::Adt(_, substs), _) => UserSubsts { substs, user_self_ty: None },
+            (_, ty::Adt(adt, substs)) => UserSubsts {
+                substs,
+                user_self_ty: Some(UserSelfTy { impl_def_id: adt.did(), self_ty: ty.raw }),
+            },
+            _ => bug!("non-adt type {:?}", ty),
+        }
+    }
+
     pub fn array_length_to_const(&self, length: &hir::ArrayLen) -> ty::Const<'tcx> {
         match length {
             &hir::ArrayLen::Infer(_, span) => self.ct_infer(self.tcx.types.usize, None, span),
@@ -1082,20 +1093,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .unwrap_or(false);
 
         let (res, self_ctor_substs) = if let Res::SelfCtor(impl_def_id) = res {
-            let ty = tcx.at(span).type_of(impl_def_id);
-            let ty = self.normalize(span, ty);
-            match *ty.kind() {
-                ty::Adt(adt_def, substs) if adt_def.has_ctor() => {
-                    let variant = adt_def.non_enum_variant();
-                    let (ctor_kind, ctor_def_id) = variant.ctor.unwrap();
-                    (Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id), Some(substs))
+            let ty = self.handle_raw_ty(span, tcx.at(span).type_of(impl_def_id));
+            match ty.normalized.ty_adt_def() {
+                Some(adt_def) if adt_def.has_ctor() => {
+                    let (ctor_kind, ctor_def_id) = adt_def.non_enum_variant().ctor.unwrap();
+                    let new_res = Res::Def(DefKind::Ctor(CtorOf::Struct, ctor_kind), ctor_def_id);
+                    let user_substs = Self::user_substs_for_adt(ty);
+                    user_self_ty = user_substs.user_self_ty;
+                    (new_res, Some(user_substs.substs))
                 }
                 _ => {
                     let mut err = tcx.sess.struct_span_err(
                         span,
                         "the `Self` constructor can only be used with tuple or unit structs",
                     );
-                    if let Some(adt_def) = ty.ty_adt_def() {
+                    if let Some(adt_def) = ty.normalized.ty_adt_def() {
                         match adt_def.adt_kind() {
                             AdtKind::Enum => {
                                 err.help("did you mean to use one of the enum's variants?");
