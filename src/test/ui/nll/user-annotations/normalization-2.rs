@@ -23,8 +23,18 @@ enum MyTy<T> {
 }
 
 impl<T> MyTy<T> {
+    const CONST: () = ();
     fn method<X>() {}
     fn method2<X>(&self) {}
+}
+
+trait TraitAssoc {
+    const TRAIT_CONST: ();
+    fn trait_method<X>(&self);
+}
+impl<T> TraitAssoc for T {
+    const TRAIT_CONST: () = ();
+    fn trait_method<X>(&self) {}
 }
 
 type Ty<'a> = <&'a () as Trait>::Assoc;
@@ -41,13 +51,30 @@ fn test_closure_sig<'a, 'b>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_path<'a, 'b, 'c, 'd>() {
+fn test_path<'a, 'b, 'c, 'd, 'e, 'f, 'g, 'h>() {
     <Ty<'a>>::method::<Ty<'static>>;
     //~^ ERROR lifetime may not live long enough
     <Ty<'static>>::method::<Ty<'b>>;
     //~^ ERROR lifetime may not live long enough
 
-    MyTy::Unit::<Ty<'c>>;
+    <Ty<'c>>::trait_method::<Ty<'static>>;
+    //~^ ERROR lifetime may not live long enough
+    <Ty<'static>>::trait_method::<Ty<'d>>;
+    //~^ ERROR lifetime may not live long enough
+
+    <Ty<'e>>::CONST;
+    //~^ ERROR lifetime may not live long enough
+    <Ty<'f>>::TRAIT_CONST;
+    //~^ ERROR lifetime may not live long enough
+
+    <Ty<'static>>::method::<Ty<'static>>;
+    <Ty<'static>>::trait_method::<Ty<'static>>;
+    <Ty<'static>>::CONST;
+    <Ty<'static>>::TRAIT_CONST;
+
+    MyTy::Unit::<Ty<'g>>;
+    //~^ ERROR lifetime may not live long enough
+    MyTy::<Ty<'h>>::Unit;
     //~^ ERROR lifetime may not live long enough
 }
 
@@ -67,8 +94,10 @@ fn test_variants<'a, 'b, 'c>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_method_call<'a>(x: MyTy<()>) {
+fn test_method_call<'a, 'b>(x: MyTy<()>) {
     x.method2::<Ty<'a>>();
+    //~^ ERROR lifetime may not live long enough
+    x.trait_method::<Ty<'b>>();
     //~^ ERROR lifetime may not live long enough
 }
 
@@ -97,7 +126,7 @@ fn test_struct_path<'a, 'b, 'c, 'd>() {
     //~^ ERROR lifetime may not live long enough
 }
 
-fn test_pattern<'a, 'b, 'c>() {
+fn test_pattern<'a, 'b, 'c, 'd, 'e, 'f>() {
     use MyTy::*;
     match MyTy::Unit {
         Struct::<Ty<'a>> {..} => {},
@@ -105,6 +134,15 @@ fn test_pattern<'a, 'b, 'c>() {
         Tuple::<Ty<'b>> (..) => {},
         //~^ ERROR lifetime may not live long enough
         Unit::<Ty<'c>> => {},
+        //~^ ERROR lifetime may not live long enough
+        Dumb(_) => {},
+    };
+    match MyTy::Unit {
+        <Ty<'d>>::Struct {..} => {},
+        //~^ ERROR lifetime may not live long enough
+        <Ty<'e>>::Tuple (..) => {},
+        //~^ ERROR lifetime may not live long enough
+        <Ty<'f>>::Unit => {},
         //~^ ERROR lifetime may not live long enough
         Dumb(_) => {},
     };
