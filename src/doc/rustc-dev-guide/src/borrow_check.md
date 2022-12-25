@@ -27,7 +27,7 @@ HIR. Doing borrow checking on MIR has several advantages:
 ### Major phases of the borrow checker
 
 The borrow checker source is found in
-[the `rustc_borrow_ck` crate][b_c]. The main entry point is
+[the `rustc_borrowck` crate][b_c]. The main entry point is
 the [`mir_borrowck`] query.
 
 [b_c]: https://doc.rust-lang.org/nightly/nightly-rustc/rustc_borrowck/index.html
