@@ -440,31 +440,22 @@ impl<T: Copy> SpecArrayClone for T {
     }
 }
 
-// The Default impls cannot be done with const generics because `[T; 0]` doesn't
-// require Default to be implemented, and having different impl blocks for
-// different numbers isn't supported yet.
-
-macro_rules! array_impl_default {
-    {$n:expr, $t:ident $($ts:ident)*} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T> const Default for [T; $n] where T: ~const Default {
-            fn default() -> [T; $n] {
-                [$t::default(), $($ts::default()),*]
-            }
+#[stable(since = "1.67.0", feature = "array_default")]
+impl<T, const N: usize> Default for [T; N]
+where
+    T: Default,
+{
+    fn default() -> Self {
+        // SAFETY: Array is initialized in the following line.
+        let mut arr: [MaybeUninit<T>; N] = unsafe { MaybeUninit::uninit().assume_init() };
+        for elem in &mut arr[..] {
+            elem.write(T::default());
         }
-        array_impl_default!{($n - 1), $($ts)*}
-    };
-    {$n:expr,} => {
-        #[stable(since = "1.4.0", feature = "array_default")]
-        #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
-        impl<T> const Default for [T; $n] {
-            fn default() -> [T; $n] { [] }
-        }
-    };
+        // SAFETY: Manually drop the MaybeUninit array before returning the 
+        // newly defaulted and initialized array.
+        unsafe { mem::transmute_copy(&mem::ManuallyDrop::new(arr)) }
+    }
 }
-
-array_impl_default! {32, T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T T}
 
 impl<T, const N: usize> [T; N] {
     /// Returns an array of the same size as `self`, with function `f` applied to each element

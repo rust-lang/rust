@@ -306,6 +306,18 @@ fn empty_array_is_always_default() {
 }
 
 #[test]
+fn all_arrays_are_generic_also_default() {
+    let _arr = <[u8; 1]>::default();
+    let _arr = <[u8; 2]>::default();
+    let _arr = <[u8; 4]>::default();
+    let _arr = <[u8; 8]>::default();
+    let _arr = <[u8; 16]>::default();
+    let _arr = <[u8; 32]>::default();
+    let _arr = <[u8; 64]>::default();
+    let _arr = <[u8; 1337]>::default();
+}
+
+#[test]
 fn array_map() {
     let a = [1, 2, 3];
     let b = a.map(|v| v + 1);
