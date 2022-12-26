@@ -753,6 +753,9 @@ class RustBuild(object):
             target_features += ["-crt-static"]
         if target_features:
             env["RUSTFLAGS"] += " -C target-feature=" + (",".join(target_features))
+        target_linker = self.get_toml("linker", build_section)
+        if target_linker is not None:
+            env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
         env["RUSTFLAGS"] += " -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
