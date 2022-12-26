@@ -193,8 +193,24 @@ impl<'tcx> TyCtxt<'tcx> {
         self_ty: Ty<'tcx>,
     ) -> impl Iterator<Item = DefId> + 'tcx {
         let impls = self.trait_impls_of(trait_def_id);
-        if let Some(simp) = fast_reject::simplify_type(self, self_ty, TreatParams::AsCandidateKey) {
-            if let Some(impls) = impls.non_blanket_impls.get(&simp) {
+
+        // Non-blanket impls are grouped into two different maps:
+        // 1) impls for references to simplifiable types
+        if let TyKind::Ref(_, ref_ty, _) = self_ty.kind() {
+            if let Some(simplified_ref_ty) =
+                fast_reject::simplify_type(self, *ref_ty, TreatParams::AsCandidateKey)
+            {
+                if let Some(impls) = impls.impls_for_ref_x.get(&simplified_ref_ty) {
+                    return impls.iter().copied();
+                }
+            }
+        }
+
+        // 2) the other non-blanket impls
+        if let Some(simplified_self_ty) =
+            fast_reject::simplify_type(self, self_ty, TreatParams::AsCandidateKey)
+        {
+            if let Some(impls) = impls.non_blanket_impls.get(&simplified_self_ty) {
                 return impls.iter().copied();
             }
         }
