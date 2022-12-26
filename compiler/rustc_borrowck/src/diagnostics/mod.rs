@@ -1135,16 +1135,14 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             ),
                         );
                         let infcx = tcx.infer_ctxt().build();
-                        let ty = infcx.freshen(moved_place.ty(self.body, tcx).ty);
+                        let ty = tcx.erase_regions(moved_place.ty(self.body, tcx).ty);
                         if let ty::Adt(def, substs) = ty.kind()
                             && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
-                            && let self_ty = infcx.freshen(
-                                infcx.replace_bound_vars_with_fresh_vars(
-                                    fn_call_span,
-                                    LateBoundRegionConversionTime::FnCall,
-                                    tcx.fn_sig(method_did).input(0),
-                                )
+                            && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
+                                fn_call_span,
+                                LateBoundRegionConversionTime::FnCall,
+                                tcx.fn_sig(method_did).input(0),
                             )
                             && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
                         {
