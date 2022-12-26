@@ -165,12 +165,13 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                 <dyn AstConv<'_>>::add_implicitly_sized(
                     &icx,
                     &mut bounds,
+                    param_ty,
                     &[],
                     Some((param.def_id, ast_generics.predicates)),
                     param.span,
                 );
                 trace!(?bounds);
-                predicates.extend(bounds.predicates(tcx, param_ty));
+                predicates.extend(bounds.predicates());
                 trace!(?predicates);
             }
             GenericParamKind::Const { .. } => {
@@ -217,7 +218,7 @@ fn gather_explicit_predicates_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::GenericP
                     &mut bounds,
                     bound_vars,
                 );
-                predicates.extend(bounds.predicates(tcx, ty));
+                predicates.extend(bounds.predicates());
             }
 
             hir::WherePredicate::RegionPredicate(region_pred) => {
@@ -536,7 +537,7 @@ pub(super) fn super_predicates_that_define_assoc_type(
             <dyn AstConv<'_>>::compute_bounds(&icx, self_param_ty, bounds)
         };
 
-        let superbounds1 = superbounds1.predicates(tcx, self_param_ty);
+        let superbounds1 = superbounds1.predicates();
 
         // Convert any explicit superbounds in the where-clause,
         // e.g., `trait Foo where Self: Bar`.
@@ -745,5 +746,5 @@ fn predicates_from_bound<'tcx>(
 ) -> Vec<(ty::Predicate<'tcx>, Span)> {
     let mut bounds = Bounds::default();
     astconv.add_bounds(param_ty, [bound].into_iter(), &mut bounds, bound_vars);
-    bounds.predicates(astconv.tcx(), param_ty).collect()
+    bounds.predicates().collect()
 }

@@ -682,7 +682,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             ty::Binder::bind_with_vars(tcx.mk_trait_ref(trait_def_id, substs), bound_vars);
 
         debug!(?poly_trait_ref, ?assoc_bindings);
-        bounds.trait_bounds.push((poly_trait_ref, span, constness));
+        bounds.push_trait_bound(tcx, poly_trait_ref, span, constness);
 
         let mut dup_bindings = FxHashMap::default();
         for binding in &assoc_bindings {
@@ -853,18 +853,19 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     }
 
     /// Sets `implicitly_sized` to true on `Bounds` if necessary
-    pub(crate) fn add_implicitly_sized<'hir>(
+    pub(crate) fn add_implicitly_sized(
         &self,
-        bounds: &mut Bounds<'hir>,
-        ast_bounds: &'hir [hir::GenericBound<'hir>],
-        self_ty_where_predicates: Option<(LocalDefId, &'hir [hir::WherePredicate<'hir>])>,
+        bounds: &mut Bounds<'tcx>,
+        self_ty: Ty<'tcx>,
+        ast_bounds: &'tcx [hir::GenericBound<'tcx>],
+        self_ty_where_predicates: Option<(LocalDefId, &'tcx [hir::WherePredicate<'tcx>])>,
         span: Span,
     ) {
         let tcx = self.tcx();
 
         // Try to find an unbound in bounds.
         let mut unbound = None;
-        let mut search_bounds = |ast_bounds: &'hir [hir::GenericBound<'hir>]| {
+        let mut search_bounds = |ast_bounds: &'tcx [hir::GenericBound<'tcx>]| {
             for ab in ast_bounds {
                 if let hir::GenericBound::Trait(ptr, hir::TraitBoundModifier::Maybe) = ab {
                     if unbound.is_none() {
@@ -912,7 +913,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             // No lang item for `Sized`, so we can't add it as a bound.
             return;
         }
-        bounds.implicitly_sized = Some(span);
+        bounds.push_sized(tcx, self_ty, span);
     }
 
     /// This helper takes a *converted* parameter type (`param_ty`)
@@ -963,10 +964,14 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 }
                 hir::GenericBound::Outlives(lifetime) => {
                     let region = self.ast_region_to_region(lifetime, None);
-                    bounds.region_bounds.push((
-                        ty::Binder::bind_with_vars(region, bound_vars),
+                    bounds.push_region_bound(
+                        self.tcx(),
+                        ty::Binder::bind_with_vars(
+                            ty::OutlivesPredicate(param_ty, region),
+                            bound_vars,
+                        ),
                         lifetime.ident.span,
-                    ));
+                    );
                 }
             }
         }
@@ -1225,13 +1230,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         };
                     }
                 }
-                bounds.projection_bounds.push((
-                    projection_ty.map_bound(|projection_ty| ty::ProjectionPredicate {
-                        projection_ty,
-                        term: term,
-                    }),
+                bounds.push_projection_bound(
+                    tcx,
+                    projection_ty
+                        .map_bound(|projection_ty| ty::ProjectionPredicate { projection_ty, term }),
                     binding.span,
-                ));
+                );
             }
             ConvertedBindingKind::Constraint(ast_bounds) => {
                 // "Desugar" a constraint like `T: Iterator<Item: Debug>` to
@@ -1260,7 +1264,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
     fn conv_object_ty_poly_trait_ref(
         &self,
         span: Span,
-        trait_bounds: &[hir::PolyTraitRef<'_>],
+        hir_trait_bounds: &[hir::PolyTraitRef<'_>],
         lifetime: &hir::Lifetime,
         borrowed: bool,
         representation: DynKind,
@@ -1270,7 +1274,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let mut bounds = Bounds::default();
         let mut potential_assoc_types = Vec::new();
         let dummy_self = self.tcx().types.trait_object_dummy_self;
-        for trait_bound in trait_bounds.iter().rev() {
+        for trait_bound in hir_trait_bounds.iter().rev() {
             if let GenericArgCountResult {
                 correct:
                     Err(GenericArgCountMismatch { invalid_args: cur_potential_assoc_types, .. }),
@@ -1287,10 +1291,45 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
+        let mut trait_bounds = vec![];
+        let mut projection_bounds = vec![];
+        for (pred, span) in bounds.predicates() {
+            let bound_pred = pred.kind();
+            match bound_pred.skip_binder() {
+                ty::PredicateKind::Clause(clause) => match clause {
+                    ty::Clause::Trait(trait_pred) => {
+                        assert_eq!(trait_pred.polarity, ty::ImplPolarity::Positive);
+                        trait_bounds.push((
+                            bound_pred.rebind(trait_pred.trait_ref),
+                            span,
+                            trait_pred.constness,
+                        ));
+                    }
+                    ty::Clause::Projection(proj) => {
+                        projection_bounds.push((bound_pred.rebind(proj), span));
+                    }
+                    ty::Clause::TypeOutlives(_) => {
+                        // Do nothing, we deal with regions separately
+                    }
+                    ty::Clause::RegionOutlives(_) => bug!(),
+                },
+                ty::PredicateKind::WellFormed(_)
+                | ty::PredicateKind::ObjectSafe(_)
+                | ty::PredicateKind::ClosureKind(_, _, _)
+                | ty::PredicateKind::Subtype(_)
+                | ty::PredicateKind::Coerce(_)
+                | ty::PredicateKind::ConstEvaluatable(_)
+                | ty::PredicateKind::ConstEquate(_, _)
+                | ty::PredicateKind::TypeWellFormedFromEnv(_)
+                | ty::PredicateKind::Ambiguous => bug!(),
+            }
+        }
+
         // Expand trait aliases recursively and check that only one regular (non-auto) trait
         // is used and no 'maybe' bounds are used.
         let expanded_traits =
-            traits::expand_trait_aliases(tcx, bounds.trait_bounds.iter().map(|&(a, b, _)| (a, b)));
+            traits::expand_trait_aliases(tcx, trait_bounds.iter().map(|&(a, b, _)| (a, b)));
+
         let (mut auto_traits, regular_traits): (Vec<_>, Vec<_>) = expanded_traits
             .filter(|i| i.trait_ref().self_ty().skip_binder() == dummy_self)
             .partition(|i| tcx.trait_is_auto(i.trait_ref().def_id()));
@@ -1327,8 +1366,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         }
 
         if regular_traits.is_empty() && auto_traits.is_empty() {
-            let trait_alias_span = bounds
-                .trait_bounds
+            let trait_alias_span = trait_bounds
                 .iter()
                 .map(|&(trait_ref, _, _)| trait_ref.def_id())
                 .find(|&trait_ref| tcx.is_trait_alias(trait_ref))
@@ -1359,8 +1397,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         // Use a `BTreeSet` to keep output in a more consistent order.
         let mut associated_types: FxHashMap<Span, BTreeSet<DefId>> = FxHashMap::default();
 
-        let regular_traits_refs_spans = bounds
-            .trait_bounds
+        let regular_traits_refs_spans = trait_bounds
             .into_iter()
             .filter(|(trait_ref, _, _)| !tcx.trait_is_auto(trait_ref.def_id()));
 
@@ -1414,7 +1451,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                         // the discussion in #56288 for alternatives.
                         if !references_self {
                             // Include projections defined on supertraits.
-                            bounds.projection_bounds.push((pred, span));
+                            projection_bounds.push((pred, span));
                         }
                     }
                     _ => (),
@@ -1422,7 +1459,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             }
         }
 
-        for (projection_bound, _) in &bounds.projection_bounds {
+        for (projection_bound, _) in &projection_bounds {
             for def_ids in associated_types.values_mut() {
                 def_ids.remove(&projection_bound.projection_def_id());
             }
@@ -1431,7 +1468,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         self.complain_about_missing_associated_types(
             associated_types,
             potential_assoc_types,
-            trait_bounds,
+            hir_trait_bounds,
         );
 
         // De-duplicate auto traits so that, e.g., `dyn Trait + Send + Send` is the same as
@@ -1473,7 +1510,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                 let substs = tcx.intern_substs(&substs[..]);
 
                 let span = i.bottom().1;
-                let empty_generic_args = trait_bounds.iter().any(|hir_bound| {
+                let empty_generic_args = hir_trait_bounds.iter().any(|hir_bound| {
                     hir_bound.trait_ref.path.res == Res::Def(DefKind::Trait, trait_ref.def_id)
                         && hir_bound.span.contains(span)
                 });
@@ -1505,7 +1542,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
             })
         });
 
-        let existential_projections = bounds.projection_bounds.iter().map(|(bound, _)| {
+        let existential_projections = projection_bounds.iter().map(|(bound, _)| {
             bound.map_bound(|mut b| {
                 assert_eq!(b.projection_ty.self_ty(), dummy_self);
 
