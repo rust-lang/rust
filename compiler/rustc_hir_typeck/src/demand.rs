@@ -392,7 +392,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     ),
                     match &args[..] {
                         [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
-                        [first, ..] => (base.span.until(first.span), String::new()),
+                        [first, ..] => (base.span.between(first.span), ", ".to_string()),
                     },
                 ]
             })
