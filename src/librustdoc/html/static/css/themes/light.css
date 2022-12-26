@@ -85,12 +85,12 @@
 	--scrape-example-toggle-line-hover-background: #999;
 }
 
-#titles > button:not(.selected) {
+#search-tabs > button:not(.selected) {
 	background-color: #e6e6e6;
 	border-top-color: #e6e6e6;
 }
 
-#titles > button:hover, #titles > button.selected {
+#search-tabs > button:hover, #search-tabs > button.selected {
 	background-color: #ffffff;
 	border-top-color: #0089ff;
 }
