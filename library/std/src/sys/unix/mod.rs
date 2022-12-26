@@ -184,12 +184,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 sigpipe::SIG_DFL => (true, Some(libc::SIG_DFL)),
                 _ => unreachable!(),
             };
-            // The bootstrap compiler doesn't know about sigpipe::DEFAULT, and always passes in
-            // SIG_IGN. This causes some tests to fail because they expect SIGPIPE to be reset to
-            // default on process spawning (which doesn't happen if #[unix_sigpipe] is specified).
-            // Since we can't differentiate between the cases here, treat SIG_IGN as DEFAULT
-            // unconditionally.
-            if sigpipe_attr_specified && !(cfg!(bootstrap) && sigpipe == sigpipe::SIG_IGN) {
+            if sigpipe_attr_specified {
                 UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
             }
             if let Some(handler) = handler {

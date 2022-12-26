@@ -3,7 +3,6 @@
 #![cfg_attr(
     any(
         all(target_arch = "arm", any(target_os = "linux", target_os = "android")),
-        all(bootstrap, target_arch = "aarch64", any(target_os = "linux", target_os = "android")),
         all(target_arch = "powerpc", target_os = "linux"),
         all(target_arch = "powerpc64", target_os = "linux"),
     ),
