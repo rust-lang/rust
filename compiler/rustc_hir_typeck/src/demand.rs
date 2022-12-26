@@ -31,7 +31,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
-        _error: Option<TypeError<'tcx>>,
+        error: Option<TypeError<'tcx>>,
     ) {
         if expr_ty == expected {
             return;
