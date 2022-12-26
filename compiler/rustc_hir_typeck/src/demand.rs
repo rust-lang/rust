@@ -335,8 +335,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else { return; };
         let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else { return; };
-        let self_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(base).unwrap();
-        let pick = self
+        let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else { return; };
+
+        let Ok(pick) = self
             .probe_for_name(
                 probe::Mode::MethodCall,
                 path.ident,
@@ -344,9 +345,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self_ty,
                 deref.hir_id,
                 probe::ProbeScope::TraitsInScope,
-            )
-            .unwrap();
-        let methods = self.probe_for_name_many(
+            ) else {
+                return;
+            };
+        let in_scope_methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::TraitsInScope,
+        );
+        let other_methods_in_scope: Vec<_> =
+            in_scope_methods.iter().filter(|c| c.item.def_id != pick.item.def_id).collect();
+
+        let all_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
             probe::IsSuggestion(true),
@@ -354,10 +367,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             deref.hir_id,
             probe::ProbeScope::AllTraits,
         );
-        let suggestions: Vec<_> = methods
+        let suggestions: Vec<_> = all_methods
             .into_iter()
-            .filter(|m| m.def_id != pick.item.def_id)
-            .map(|m| {
+            .filter(|c| c.item.def_id != pick.item.def_id)
+            .map(|c| {
+                let m = c.item;
                 let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
                     self.var_for_def(deref.span, param)
                 });
@@ -389,21 +403,74 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut path_span: MultiSpan = path.ident.span.into();
         path_span.push_span_label(
             path.ident.span,
-            format!(
+            with_no_trimmed_paths!(format!(
                 "refers to `{}`",
-                with_no_trimmed_paths!(self.tcx.def_path_str(pick.item.def_id)),
-            ),
+                self.tcx.def_path_str(pick.item.def_id),
+            )),
         );
+        let container_id = pick.item.container_id(self.tcx);
+        let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
+        for def_id in pick.import_ids {
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+            path_span.push_span_label(
+                self.tcx.hir().span(hir_id),
+                format!("`{container}` imported here"),
+            );
+        }
+        let tail = with_no_trimmed_paths!(match &other_methods_in_scope[..] {
+            [] => return,
+            [candidate] => format!(
+                "the method of the same name on {} `{}`",
+                match candidate.kind {
+                    probe::CandidateKind::InherentImplCandidate(..) => "the inherent impl for",
+                    _ => "trait",
+                },
+                self.tcx.def_path_str(candidate.item.container_id(self.tcx))
+            ),
+            [.., last] if other_methods_in_scope.len() < 5 => {
+                format!(
+                    "the methods of the same name on {} and `{}`",
+                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
+                        .iter()
+                        .map(|c| format!(
+                            "`{}`",
+                            self.tcx.def_path_str(c.item.container_id(self.tcx))
+                        ))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                )
+            }
+            _ => format!(
+                "the methods of the same name on {} other traits",
+                other_methods_in_scope.len()
+            ),
+        });
         err.span_note(
             path_span,
             &format!(
-            "there are multiple methods with the same name, `{}` refers to `{}` in the method call",
-            path.ident,
-            with_no_trimmed_paths!(self.tcx.def_path_str(pick.item.def_id)),
-        ));
+                "the `{}` call is resolved to the method in `{container}`, shadowing {tail}",
+                path.ident,
+            ),
+        );
+        if suggestions.len() > other_methods_in_scope.len() {
+            err.note(&format!(
+                "additionally, there are {} other available methods that aren't in scope",
+                suggestions.len() - other_methods_in_scope.len()
+            ));
+        }
         err.multipart_suggestions(
-            "you might have meant to invoke a different method, you can use the fully-qualified path",
-        suggestions,
+            &format!(
+                "you might have meant to call {}; you can use the fully-qualified path to call {} \
+                 explicitly",
+                if suggestions.len() == 1 {
+                    "the other method"
+                } else {
+                    "one of the other methods"
+                },
+                if suggestions.len() == 1 { "it" } else { "one of them" },
+            ),
+            suggestions,
             Applicability::MaybeIncorrect,
         );
     }
