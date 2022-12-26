@@ -24,7 +24,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use std::mem;
 use thin_vec::ThinVec;
-use tracing::debug;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
