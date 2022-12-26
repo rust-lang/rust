@@ -1,7 +1,7 @@
 use crate::traits::specialization_graph;
 use crate::ty::fast_reject::{self, SimplifiedType, TreatParams, TreatProjections};
 use crate::ty::visit::TypeVisitableExt;
-use crate::ty::{Ident, Ty, TyCtxt};
+use crate::ty::{Ident, Ty, TyCtxt, TyKind};
 use hir::def_id::LOCAL_CRATE;
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -77,6 +77,10 @@ pub struct TraitImpls {
     blanket_impls: Vec<DefId>,
     /// Impls indexed by their simplified self type, for fast lookup.
     non_blanket_impls: FxIndexMap<SimplifiedType, Vec<DefId>>,
+
+    /// Impls for references to simplifiable types, indexed by the referenced simplified type, for
+    /// fast lookup.
+    impls_for_ref_x: FxIndexMap<SimplifiedType, Vec<DefId>>,
 }
 
 impl TraitImpls {
@@ -144,14 +148,10 @@ impl<'tcx> TyCtxt<'tcx> {
         //
         // If we want to be faster, we could have separate queries for
         // blanket and non-blanket impls, and compare them separately.
-        let impls = self.trait_impls_of(trait_def_id);
 
-        for &impl_def_id in impls.blanket_impls.iter() {
-            f(impl_def_id);
-        }
-
-        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` while using
-        // `TreatParams::AsCandidateKey` while actually adding them.
+        // Note that we're using `TreatParams::ForLookup` to query `non_blanket_impls` and
+        // `impls_for_ref_x`, while using `TreatParams::AsCandidateKey` while actually adding them
+        // (in `trait_impls_of_provider`).
         let treat_params = match treat_projections {
             TreatProjections::NextSolverLookup => TreatParams::NextSolverLookup,
             TreatProjections::ForLookup => TreatParams::ForLookup,
@@ -161,13 +161,36 @@ impl<'tcx> TyCtxt<'tcx> {
         // `T: Clone` this is incredibly useful as we would otherwise look at all the impls
         // of `Clone` for `Option<T>`, `Vec<T>`, `ConcreteType` and so on.
         if let Some(simp) = fast_reject::simplify_type(self, self_ty, treat_params) {
+            let impls = self.trait_impls_of(trait_def_id);
+
+            for &impl_def_id in impls.blanket_impls.iter() {
+                f(impl_def_id);
+            }
+
             if let Some(impls) = impls.non_blanket_impls.get(&simp) {
                 for &impl_def_id in impls {
                     f(impl_def_id);
                 }
             }
+
+            // We separate impls for references to simplifiable types to allow for faster lookups:
+            // the set of possibly matching impls is smaller than if we stored them all as
+            // `SimplifiedType::RefSimplifiedType`.
+            if let TyKind::Ref(_, ref_ty, _) = self_ty.kind() {
+                if let Some(ref_simp) = fast_reject::simplify_type(self, *ref_ty, treat_params) {
+                    if let Some(impls) = impls.impls_for_ref_x.get(&ref_simp) {
+                        for &impl_def_id in impls {
+                            f(impl_def_id);
+                        }
+                    }
+                } else {
+                    for &impl_def_id in impls.impls_for_ref_x.values().flatten() {
+                        f(impl_def_id);
+                    }
+                }
+            }
         } else {
-            for &impl_def_id in impls.non_blanket_impls.values().flatten() {
+            for impl_def_id in self.all_impls(trait_def_id) {
                 f(impl_def_id);
             }
         }
@@ -193,9 +216,14 @@ impl<'tcx> TyCtxt<'tcx> {
     ///
     /// `trait_def_id` MUST BE the `DefId` of a trait.
     pub fn all_impls(self, trait_def_id: DefId) -> impl Iterator<Item = DefId> + 'tcx {
-        let TraitImpls { blanket_impls, non_blanket_impls } = self.trait_impls_of(trait_def_id);
+        let TraitImpls { blanket_impls, non_blanket_impls, impls_for_ref_x } =
+            self.trait_impls_of(trait_def_id);
 
-        blanket_impls.iter().chain(non_blanket_impls.iter().flat_map(|(_, v)| v)).cloned()
+        blanket_impls
+            .iter()
+            .chain(non_blanket_impls.iter().flat_map(|(_, v)| v))
+            .chain(impls_for_ref_x.iter().flat_map(|(_, v)| v))
+            .copied()
     }
 }
 
@@ -229,6 +257,17 @@ pub(super) fn trait_impls_of_provider(tcx: TyCtxt<'_>, trait_id: DefId) -> Trait
         let impl_self_ty = tcx.type_of(impl_def_id).subst_identity();
         if impl_self_ty.references_error() {
             continue;
+        }
+
+        // Store impls for references to simplifiable types separately from other impls, for faster
+        // lookups.
+        if let TyKind::Ref(_, ref_ty, _) = impl_self_ty.kind() {
+            if let Some(simplified_ref_ty) =
+                fast_reject::simplify_type(tcx, *ref_ty, TreatParams::AsCandidateKey)
+            {
+                impls.impls_for_ref_x.entry(simplified_ref_ty).or_default().push(impl_def_id);
+                continue;
+            }
         }
 
         if let Some(simplified_self_ty) =
