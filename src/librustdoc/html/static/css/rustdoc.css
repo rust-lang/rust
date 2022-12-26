@@ -364,6 +364,10 @@ img {
 	line-height: 0;
 }
 
+.sub-logo-container {
+	margin-right: 32px;
+}
+
 .sub-logo-container > img {
 	height: 60px;
 	width: 60px;
@@ -670,9 +674,6 @@ nav.sub {
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
-}
-.source .search-form {
-	margin-left: 32px;
 }
 
 a {
@@ -1832,13 +1833,6 @@ in storage.js
 	.sub-logo-container > img {
 		height: 35px;
 		width: 35px;
-	}
-
-	#src-sidebar-toggle {
-		top: 10px;
-	}
-	.source-sidebar-expanded #src-sidebar-toggle {
-		top: unset;
 	}
 }
 
