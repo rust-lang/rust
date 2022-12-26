@@ -81,7 +81,6 @@ use rustc_span::Span;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt;
 use rustc_trait_selection::traits::outlives_bounds::InferCtxtExt as _;
 use rustc_trait_selection::traits::{self, translate_substs, wf, ObligationCtxt};
-use tracing::instrument;
 
 pub(super) fn check_min_specialization(tcx: TyCtxt<'_>, impl_def_id: LocalDefId) {
     if let Some(node) = parent_specialization_node(tcx, impl_def_id) {
