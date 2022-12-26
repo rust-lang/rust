@@ -162,10 +162,6 @@ LL |     touch(&x);
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let _y = x.clone().into_iter().next().unwrap();
-   |               ++++++++
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = x.clone().into_iter().next().unwrap();
@@ -183,10 +179,6 @@ LL |     touch(&x);
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     let _y = [x.clone().into_iter().next().unwrap(); 1];
-   |                ++++++++
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     let _y = [x.clone().into_iter().next().unwrap(); 1];

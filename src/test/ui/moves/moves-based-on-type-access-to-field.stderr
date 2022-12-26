@@ -10,10 +10,6 @@ LL |     touch(&x[0]);
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `x`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     consume(x.clone().into_iter().next().unwrap());
-   |              ++++++++
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     consume(x.clone().into_iter().next().unwrap());

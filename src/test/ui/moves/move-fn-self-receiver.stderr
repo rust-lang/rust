@@ -97,10 +97,6 @@ note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc
    |
 LL |     fn use_rc_self(self: Rc<Self>) {}
    |                    ^^^^
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     rc_foo.clone().use_rc_self();
-   |           ++++++++
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     rc_foo.clone().use_rc_self();
@@ -144,10 +140,6 @@ LL |     for _val in explicit_into_iter.into_iter() {}
 LL |     explicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
    |
-help: consider cloning the value if the performance cost is acceptable
-   |
-LL |     for _val in explicit_into_iter.clone().into_iter() {}
-   |                                   ++++++++
 help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     for _val in explicit_into_iter.clone().into_iter() {}
