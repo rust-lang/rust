@@ -35,6 +35,10 @@
 +         _5 = const false;                // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
           _6 = const false;                // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
           _7 = const false;                // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
+          goto -> bb2;                     // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
+      }
+  
+      bb2: {
 -         _2 = Rem(const 1_i32, move _3);  // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
 +         _2 = Rem(const 1_i32, const 0_i32); // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:14: +2:19
           StorageDead(_3);                 // scope 1 at $DIR/bad_op_mod_by_zero.rs:+2:18: +2:19

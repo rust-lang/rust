@@ -9,6 +9,21 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
           _1 = const _;                    // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
+          goto -> bb2;                     // scope 0 at $DIR/control_flow_simplification.rs:+1:8: +1:21
+      }
+  
+      bb1: {
+          StorageLive(_2);                 // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
+          _2 = begin_panic::<&str>(const "explicit panic"); // scope 0 at $SRC_DIR/std/src/panic.rs:LL:COL
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/panic.rs:LL:COL
+                                           // + literal: Const { ty: fn(&str) -> ! {begin_panic::<&str>}, val: Value(<ZST>) }
+                                           // mir::Constant
+                                           // + span: $SRC_DIR/std/src/panic.rs:LL:COL
+                                           // + literal: Const { ty: &str, val: Value(Slice(..)) }
+      }
+  
+      bb2: {
           nop;                             // scope 0 at $DIR/control_flow_simplification.rs:+3:6: +3:6
           StorageDead(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+3:5: +3:6
           return;                          // scope 0 at $DIR/control_flow_simplification.rs:+4:2: +4:2

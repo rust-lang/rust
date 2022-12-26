@@ -9,7 +9,15 @@
       bb0: {
           StorageLive(_1);                 // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
           _1 = const false;                // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
+          goto -> bb1;                     // scope 0 at $DIR/simplify_if.rs:+1:8: +1:13
+      }
+  
+      bb1: {
           nop;                             // scope 0 at $DIR/simplify_if.rs:+3:6: +3:6
+          goto -> bb2;                     // scope 0 at $DIR/simplify_if.rs:+1:5: +3:6
+      }
+  
+      bb2: {
           StorageDead(_1);                 // scope 0 at $DIR/simplify_if.rs:+3:5: +3:6
           return;                          // scope 0 at $DIR/simplify_if.rs:+4:2: +4:2
       }

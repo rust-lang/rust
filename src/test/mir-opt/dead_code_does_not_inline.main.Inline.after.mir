@@ -1,0 +1,37 @@
+// MIR for `main` after Inline
+
+fn main() -> () {
+    let mut _0: ();                      // return place in scope 0 at $DIR/dead_code_does_not_inline.rs:+0:15: +0:15
+    let mut _1: bool;                    // in scope 0 at $DIR/dead_code_does_not_inline.rs:+1:8: +1:13
+    let _2: ();                          // in scope 0 at $DIR/dead_code_does_not_inline.rs:+2:9: +2:17
+
+    bb0: {
+        StorageLive(_1);                 // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:8: +1:13
+        _1 = const false;                // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:8: +1:13
+        goto -> bb3;                     // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:8: +1:13
+    }
+
+    bb1: {
+        StorageLive(_2);                 // scope 0 at $DIR/dead_code_does_not_inline.rs:+2:9: +2:17
+        _2 = callee() -> bb2;            // scope 0 at $DIR/dead_code_does_not_inline.rs:+2:9: +2:17
+                                         // mir::Constant
+                                         // + span: $DIR/dead_code_does_not_inline.rs:4:9: 4:15
+                                         // + literal: Const { ty: fn() {callee}, val: Value(<ZST>) }
+    }
+
+    bb2: {
+        StorageDead(_2);                 // scope 0 at $DIR/dead_code_does_not_inline.rs:+2:17: +2:18
+        _0 = const ();                   // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:14: +3:6
+        goto -> bb4;                     // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:5: +3:6
+    }
+
+    bb3: {
+        _0 = const ();                   // scope 0 at $DIR/dead_code_does_not_inline.rs:+3:6: +3:6
+        goto -> bb4;                     // scope 0 at $DIR/dead_code_does_not_inline.rs:+1:5: +3:6
+    }
+
+    bb4: {
+        StorageDead(_1);                 // scope 0 at $DIR/dead_code_does_not_inline.rs:+3:5: +3:6
+        return;                          // scope 0 at $DIR/dead_code_does_not_inline.rs:+4:2: +4:2
+    }
+}
