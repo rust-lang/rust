@@ -613,6 +613,25 @@ impl<'a> Parser<'a> {
     /// Parses an `impl B0 + ... + Bn` type.
     fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         // Always parse bounds greedily for better error recovery.
+        if self.token.is_lifetime() {
+            self.look_ahead(1, |t| {
+                if let token::Ident(symname, _) = t.kind {
+                    // parse pattern with "'a Sized" we're supposed to give suggestion like
+                    // "'a + Sized"
+                    self.struct_span_err(
+                        self.token.span,
+                        &format!("expected `+` between lifetime and {}", symname),
+                    )
+                    .span_suggestion_verbose(
+                        self.token.span.shrink_to_hi(),
+                        "add `+`",
+                        " +",
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+                }
+            })
+        }
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
