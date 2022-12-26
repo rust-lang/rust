@@ -57,7 +57,14 @@ macro_rules! throw_machine_stop_str {
     }};
 }
 
-pub struct ConstProp;
+pub struct ConstProp {
+    only_bools: bool,
+}
+impl ConstProp {
+    pub fn new(only_bools: bool) -> Self {
+        ConstProp { only_bools }
+    }
+}
 
 impl<'tcx> MirPass<'tcx> for ConstProp {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
@@ -149,7 +156,7 @@ impl<'tcx> MirPass<'tcx> for ConstProp {
         // constants, instead of just checking for const-folding succeeding.
         // That would require a uniform one-def no-mutation analysis
         // and RPO (or recursing when needing the value of a local).
-        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx);
+        let mut optimization_finder = ConstPropagator::new(body, dummy_body, tcx, self.only_bools);
         optimization_finder.visit_body(body);
 
         trace!("ConstProp done for {:?}", def_id);
@@ -373,12 +380,13 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         body: &Body<'tcx>,
         dummy_body: &'mir Body<'tcx>,
         tcx: TyCtxt<'tcx>,
+        only_bools: bool,
     ) -> ConstPropagator<'mir, 'tcx> {
         let def_id = body.source.def_id();
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-        let can_const_prop = CanConstProp::check(tcx, param_env, body);
+        let can_const_prop = CanConstProp::check(tcx, param_env, body, only_bools);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
             if *mode == ConstPropMode::OnlyInsideOwnBlock {
@@ -858,6 +866,7 @@ impl CanConstProp {
         tcx: TyCtxt<'tcx>,
         param_env: ParamEnv<'tcx>,
         body: &Body<'tcx>,
+        only_bools: bool,
     ) -> IndexVec<Local, ConstPropMode> {
         let mut cpv = CanConstProp {
             can_const_prop: IndexVec::from_elem(ConstPropMode::FullConstProp, &body.local_decls),
@@ -869,6 +878,12 @@ impl CanConstProp {
         };
         for (local, val) in cpv.can_const_prop.iter_enumerated_mut() {
             let ty = body.local_decls[local].ty;
+            if only_bools {
+                if ty != tcx.types.bool {
+                    *val = ConstPropMode::NoPropagation;
+                    continue;
+                }
+            }
             match tcx.layout_of(param_env.and(ty)) {
                 Ok(layout) if layout.size < Size::from_bytes(MAX_ALLOC_LIMIT) => {}
                 // Either the layout fails to compute, then we can't use this local anyway

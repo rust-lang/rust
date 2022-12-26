@@ -11,24 +11,20 @@
       let mut _14: u32;                    // in scope 0 at $DIR/const_debuginfo.rs:+13:13: +13:16
       let mut _15: u32;                    // in scope 0 at $DIR/const_debuginfo.rs:+13:19: +13:22
       scope 1 {
--         debug x => _1;                   // in scope 1 at $DIR/const_debuginfo.rs:+1:9: +1:10
-+         debug x => const 1_u8;           // in scope 1 at $DIR/const_debuginfo.rs:+1:9: +1:10
+          debug x => const 1_u8;           // in scope 1 at $DIR/const_debuginfo.rs:+1:9: +1:10
           let _2: u8;                      // in scope 1 at $DIR/const_debuginfo.rs:+2:9: +2:10
           scope 2 {
--             debug y => _2;               // in scope 2 at $DIR/const_debuginfo.rs:+2:9: +2:10
-+             debug y => const 2_u8;       // in scope 2 at $DIR/const_debuginfo.rs:+2:9: +2:10
+              debug y => const 2_u8;       // in scope 2 at $DIR/const_debuginfo.rs:+2:9: +2:10
               let _3: u8;                  // in scope 2 at $DIR/const_debuginfo.rs:+3:9: +3:10
               scope 3 {
--                 debug z => _3;           // in scope 3 at $DIR/const_debuginfo.rs:+3:9: +3:10
-+                 debug z => const 3_u8;   // in scope 3 at $DIR/const_debuginfo.rs:+3:9: +3:10
+                  debug z => const 3_u8;   // in scope 3 at $DIR/const_debuginfo.rs:+3:9: +3:10
                   let _4: u8;              // in scope 3 at $DIR/const_debuginfo.rs:+4:9: +4:12
                   scope 4 {
 -                     debug sum => _4;     // in scope 4 at $DIR/const_debuginfo.rs:+4:9: +4:12
 +                     debug sum => const 6_u8; // in scope 4 at $DIR/const_debuginfo.rs:+4:9: +4:12
                       let _9: &str;        // in scope 4 at $DIR/const_debuginfo.rs:+6:9: +6:10
                       scope 5 {
--                         debug s => _9;   // in scope 5 at $DIR/const_debuginfo.rs:+6:9: +6:10
-+                         debug s => const "hello, world!"; // in scope 5 at $DIR/const_debuginfo.rs:+6:9: +6:10
+                          debug s => const "hello, world!"; // in scope 5 at $DIR/const_debuginfo.rs:+6:9: +6:10
                           let _10: (bool, bool, u32); // in scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10
                           let _16: bool;   // in scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10
                           let _17: bool;   // in scope 5 at $DIR/const_debuginfo.rs:+8:9: +8:10

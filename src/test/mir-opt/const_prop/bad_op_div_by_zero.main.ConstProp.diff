@@ -31,11 +31,10 @@
   
       bb1: {
 -         _5 = Eq(_3, const -1_i32);       // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
--         _6 = Eq(const 1_i32, const i32::MIN); // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
++         _5 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
+          _6 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 -         _7 = BitAnd(move _5, move _6);   // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 -         assert(!move _7, "attempt to compute `{} / {}`, which would overflow", const 1_i32, _3) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-+         _5 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
-+         _6 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         _7 = const false;                // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
 +         assert(!const false, "attempt to compute `{} / {}`, which would overflow", const 1_i32, _3) -> bb2; // scope 1 at $DIR/bad_op_div_by_zero.rs:+2:14: +2:19
       }

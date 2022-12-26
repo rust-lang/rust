@@ -182,7 +182,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
         let substs = &InternalSubsts::identity_for_item(tcx, def_id);
         let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-        let can_const_prop = CanConstProp::check(tcx, param_env, body);
+        let can_const_prop = CanConstProp::check(tcx, param_env, body, false);
         let mut only_propagate_inside_block_locals = BitSet::new_empty(can_const_prop.len());
         for (l, mode) in can_const_prop.iter_enumerated() {
             if *mode == ConstPropMode::OnlyInsideOwnBlock {

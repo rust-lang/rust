@@ -410,7 +410,7 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
             pm::run_passes(
                 tcx,
                 &mut body,
-                &[&const_prop::ConstProp],
+                &[&const_prop::ConstProp::new(false)],
                 Some(MirPhase::Runtime(RuntimePhase::Optimized)),
             );
         }
@@ -555,7 +555,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &unreachable_prop::UnreachablePropagation,
             &uninhabited_enum_branching::UninhabitedEnumBranching,
             &o1(simplify::SimplifyCfg::new("after-uninhabited-enum-branching")),
-            &const_prop::ConstProp,
+            &const_prop::ConstProp::new(true),
             &const_debuginfo::ConstDebugInfo,
             &o1(simplify_branches::SimplifyConstCondition::new("before-inline")),
             &o1(simplify::SimplifyCfg::new("before-inline")),
@@ -572,7 +572,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &separate_const_switch::SeparateConstSwitch,
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
-            &const_prop::ConstProp,
+            &const_prop::ConstProp::new(false),
             &dataflow_const_prop::DataflowConstProp,
             //
             // Const-prop runs unconditionally, but doesn't mutate the MIR at mir-opt-level=0.
