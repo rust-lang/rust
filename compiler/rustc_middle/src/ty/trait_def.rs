@@ -105,17 +105,9 @@ impl<'tcx> TraitDef {
 
 impl<'tcx> TyCtxt<'tcx> {
     /// `trait_def_id` MUST BE the `DefId` of a trait.
-    pub fn for_each_impl<F: FnMut(DefId)>(self, trait_def_id: DefId, mut f: F) {
-        let impls = self.trait_impls_of(trait_def_id);
-
-        for &impl_def_id in impls.blanket_impls.iter() {
+    pub fn for_each_impl(self, trait_def_id: DefId, mut f: impl FnMut(DefId)) {
+        for impl_def_id in self.all_impls(trait_def_id) {
             f(impl_def_id);
-        }
-
-        for v in impls.non_blanket_impls.values() {
-            for &impl_def_id in v {
-                f(impl_def_id);
-            }
         }
     }
 
@@ -190,9 +182,7 @@ impl<'tcx> TyCtxt<'tcx> {
                 }
             }
         } else {
-            for impl_def_id in self.all_impls(trait_def_id) {
-                f(impl_def_id);
-            }
+            self.for_each_impl(trait_def_id, f);
         }
     }
 
