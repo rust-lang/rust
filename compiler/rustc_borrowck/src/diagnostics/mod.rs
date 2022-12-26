@@ -6,7 +6,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{LateBoundRegionConversionTime, TyCtxtInferExt};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
@@ -18,7 +18,10 @@ use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{
+    type_known_to_meet_bound_modulo_regions, Obligation, ObligationCause,
+};
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -1131,13 +1134,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
-                        let ty = tcx.erase_regions(moved_place.ty(self.body, self.infcx.tcx).ty);
+                        let infcx = tcx.infer_ctxt().build();
+                        let ty = infcx.freshen(moved_place.ty(self.body, tcx).ty);
                         if let ty::Adt(def, substs) = ty.kind()
-                            && Some(def.did()) == self.infcx.tcx.lang_items().pin_type()
+                            && Some(def.did()) == tcx.lang_items().pin_type()
                             && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
-                            // FIXME: this is a hack because we can't call `can_eq`
-                            && ty.to_string() ==
-                                tcx.fn_sig(method_did).input(0).skip_binder().to_string()
+                            && let self_ty = infcx.freshen(
+                                infcx.replace_bound_vars_with_fresh_vars(
+                                    fn_call_span,
+                                    LateBoundRegionConversionTime::FnCall,
+                                    tcx.fn_sig(method_did).input(0),
+                                )
+                            )
+                            && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
                         {
                             err.span_suggestion_verbose(
                                 fn_call_span.shrink_to_lo(),
@@ -1146,28 +1155,23 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 Applicability::MaybeIncorrect,
                             );
                         }
-                        if let Some(clone_trait) = tcx.lang_items().clone_trait() {
-                            // We can't use `predicate_may_hold` or `can_eq` without ICEs in
-                            // borrowck because of the inference context, so we do a poor-man's
-                            // version here.
-                            for impl_def_id in tcx.all_impls(clone_trait) {
-                                if let Some(def_id) = impl_def_id.as_local()
-                                    && let hir_id = tcx.hir().local_def_id_to_hir_id(def_id)
-                                    && let hir::Node::Item(hir::Item {
-                                        kind: hir::ItemKind::Impl(_),
-                                        ..
-                                    }) = tcx.hir().get(hir_id)
-                                    && tcx.type_of(impl_def_id) == ty
-                                {
-                                    err.span_suggestion_verbose(
-                                        fn_call_span.shrink_to_lo(),
-                                        "you can `clone` the value and consume it, but this might \
-                                         not be your desired behavior",
-                                        "clone().".to_string(),
-                                        Applicability::MaybeIncorrect,
-                                    );
-                                }
-                            }
+                        if let Some(clone_trait) = tcx.lang_items().clone_trait()
+                            && let trait_ref = tcx.mk_trait_ref(clone_trait, [ty])
+                            && let o = Obligation::new(
+                                tcx,
+                                ObligationCause::dummy(),
+                                self.param_env,
+                                ty::Binder::dummy(trait_ref),
+                            )
+                            && infcx.predicate_must_hold_modulo_regions(&o)
+                        {
+                            err.span_suggestion_verbose(
+                                fn_call_span.shrink_to_lo(),
+                                "you can `clone` the value and consume it, but this might not be \
+                                 your desired behavior",
+                                "clone().".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
                         }
                     }
                     // Avoid pointing to the same function in multiple different

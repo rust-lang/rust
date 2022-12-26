@@ -16,6 +16,10 @@ help: consider cloning the value if the performance cost is acceptable
    |
 LL |     some_vec.clone().into_iter();
    |             ++++++++
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     some_vec.clone().into_iter();
+   |              ++++++++
 
 error: aborting due to previous error
 

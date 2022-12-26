@@ -9,6 +9,10 @@ LL |     let _x = Rc::new(vec![1, 2]).into_iter();
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves value
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     let _x = Rc::new(vec![1, 2]).clone().into_iter();
+   |                                  ++++++++
 
 error: aborting due to previous error
 
