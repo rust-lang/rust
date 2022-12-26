@@ -2653,7 +2653,10 @@ pub trait Iterator {
     /// argument is a double reference. You can see this effect in the
     /// examples below, with `&&x`.
     ///
+    /// If you need the index of the element, see [`position()`].
+    ///
     /// [`Some(element)`]: Some
+    /// [`position()`]: Iterator::position
     ///
     /// # Examples
     ///
