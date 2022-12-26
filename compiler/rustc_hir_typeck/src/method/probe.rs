@@ -322,6 +322,38 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )
     }
 
+    #[instrument(level = "debug", skip(self))]
+    pub fn probe_for_name_many(
+        &self,
+        mode: Mode,
+        item_name: Ident,
+        is_suggestion: IsSuggestion,
+        self_ty: Ty<'tcx>,
+        scope_expr_id: hir::HirId,
+        scope: ProbeScope,
+    ) -> Vec<ty::AssocItem> {
+        self.probe_op(
+            item_name.span,
+            mode,
+            Some(item_name),
+            None,
+            is_suggestion,
+            self_ty,
+            scope_expr_id,
+            scope,
+            |probe_cx| {
+                Ok(probe_cx
+                    .inherent_candidates
+                    .iter()
+                    .chain(&probe_cx.extension_candidates)
+                    // .filter(|candidate| candidate_filter(&candidate.item))
+                    .map(|candidate| candidate.item)
+                    .collect())
+            },
+        )
+        .unwrap()
+    }
+
     fn probe_op<OP, R>(
         &'a self,
         span: Span,

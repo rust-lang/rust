@@ -1,5 +1,6 @@
 use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
+use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -35,6 +36,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if expr_ty == expected {
             return;
         }
+
+        self.annotate_alternative_method_deref(err, expr, error);
 
         // Use `||` to give these suggestions a precedence
         let _ = self.suggest_missing_parentheses(err, expr)
@@ -314,6 +317,95 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn annotate_alternative_method_deref(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) {
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
+        let Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+                })) = self.tcx.hir().find(parent) else {return; };
+        if rhs.hir_id != expr.hir_id || expected.is_closure() {
+            return;
+        }
+        let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else { return; };
+        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else { return; };
+        let self_ty = self.typeck_results.borrow().expr_ty_adjusted_opt(base).unwrap();
+        let pick = self
+            .probe_for_name(
+                probe::Mode::MethodCall,
+                path.ident,
+                probe::IsSuggestion(true),
+                self_ty,
+                deref.hir_id,
+                probe::ProbeScope::TraitsInScope,
+            )
+            .unwrap();
+        let methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::AllTraits,
+        );
+        let suggestions: Vec<_> = methods
+            .into_iter()
+            .filter(|m| m.def_id != pick.item.def_id)
+            .map(|m| {
+                let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
+                    self.var_for_def(deref.span, param)
+                });
+                vec![
+                    (
+                        deref.span.until(base.span),
+                        format!(
+                            "{}({}",
+                            with_no_trimmed_paths!(
+                                self.tcx.def_path_str_with_substs(m.def_id, substs,)
+                            ),
+                            match self.tcx.fn_sig(m.def_id).input(0).skip_binder().kind() {
+                                ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                                ty::Ref(_, _, _) => "&",
+                                _ => "",
+                            },
+                        ),
+                    ),
+                    match &args[..] {
+                        [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
+                        [first, ..] => (base.span.until(first.span), String::new()),
+                    },
+                ]
+            })
+            .collect();
+        if suggestions.is_empty() {
+            return;
+        }
+        let mut path_span: MultiSpan = path.ident.span.into();
+        path_span.push_span_label(
+            path.ident.span,
+            format!(
+                "refers to `{}`",
+                with_no_trimmed_paths!(self.tcx.def_path_str(pick.item.def_id)),
+            ),
+        );
+        err.span_note(
+            path_span,
+            &format!(
+            "there are multiple methods with the same name, `{}` refers to `{}` in the method call",
+            path.ident,
+            with_no_trimmed_paths!(self.tcx.def_path_str(pick.item.def_id)),
+        ));
+        err.multipart_suggestions(
+            "you might have meant to invoke a different method, you can use the fully-qualified path",
+        suggestions,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
