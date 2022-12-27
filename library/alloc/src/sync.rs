@@ -886,11 +886,11 @@ impl<T: ?Sized> Arc<T> {
     /// Constructs an `Arc<T>` from a raw pointer.
     ///
     /// The raw pointer must have been previously returned by a call to
-    /// [`Arc<U>::into_raw`][into_raw] where `U` must have the same size and
-    /// alignment as `T`. This is trivially true if `U` is `T`.
-    /// Note that if `U` is not `T` but has the same size and alignment, this is
-    /// basically like transmuting references of different types. See
-    /// [`mem::transmute`][transmute] for more information on what
+    /// [`Arc<U>::into_raw`][into_raw] or [`Arc::<U>::as_ptr`][as_ptr] where `U`
+    /// must have the same size and alignment as `T`. This is trivially true
+    /// if `U` is `T`. Note that if `U` is not `T` but has the same size and
+    /// alignment, this is basically like transmuting references of different
+    /// types. See [`mem::transmute`][transmute] for more information on what
     /// restrictions apply in this case.
     ///
     /// The user of `from_raw` has to make sure a specific value of `T` is only
@@ -900,6 +900,7 @@ impl<T: ?Sized> Arc<T> {
     /// even if the returned `Arc<T>` is never accessed.
     ///
     /// [into_raw]: Arc::into_raw
+    /// [as_ptr]: Arc::as_ptr
     /// [transmute]: core::mem::transmute
     ///
     /// # Examples
