@@ -4,10 +4,7 @@ error[E0618]: expected function, found enum variant `Alias::Unit`
 LL |        Unit,
    |        ---- enum variant `Alias::Unit` defined here
 ...
-LL |        Alias::
-   |  ______^
-   | | _____|
-   | ||
+LL | //     Alias::
 LL | ||     Unit();
    | ||________^_- call expression requires function
    |  |________|
