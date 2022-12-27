@@ -964,45 +964,40 @@ impl SourceMap {
 
     /// Finds the width of the character, either before or after the end of provided span,
     /// depending on the `forwards` parameter.
+    #[instrument(skip(self, sp))]
     fn find_width_of_character_at_span(&self, sp: Span, forwards: bool) -> u32 {
         let sp = sp.data();
 
         if sp.lo == sp.hi && !forwards {
-            debug!("find_width_of_character_at_span: early return empty span");
+            debug!("early return empty span");
             return 1;
         }
 
         let local_begin = self.lookup_byte_offset(sp.lo);
         let local_end = self.lookup_byte_offset(sp.hi);
-        debug!(
-            "find_width_of_character_at_span: local_begin=`{:?}`, local_end=`{:?}`",
-            local_begin, local_end
-        );
+        debug!("local_begin=`{:?}`, local_end=`{:?}`", local_begin, local_end);
 
         if local_begin.sf.start_pos != local_end.sf.start_pos {
-            debug!("find_width_of_character_at_span: begin and end are in different files");
+            debug!("begin and end are in different files");
             return 1;
         }
 
         let start_index = local_begin.pos.to_usize();
         let end_index = local_end.pos.to_usize();
-        debug!(
-            "find_width_of_character_at_span: start_index=`{:?}`, end_index=`{:?}`",
-            start_index, end_index
-        );
+        debug!("start_index=`{:?}`, end_index=`{:?}`", start_index, end_index);
 
         // Disregard indexes that are at the start or end of their spans, they can't fit bigger
         // characters.
         if (!forwards && end_index == usize::MIN) || (forwards && start_index == usize::MAX) {
-            debug!("find_width_of_character_at_span: start or end of span, cannot be multibyte");
+            debug!("start or end of span, cannot be multibyte");
             return 1;
         }
 
         let source_len = (local_begin.sf.end_pos - local_begin.sf.start_pos).to_usize();
-        debug!("find_width_of_character_at_span: source_len=`{:?}`", source_len);
+        debug!("source_len=`{:?}`", source_len);
         // Ensure indexes are also not malformed.
         if start_index > end_index || end_index > source_len - 1 {
-            debug!("find_width_of_character_at_span: source indexes are malformed");
+            debug!("source indexes are malformed");
             return 1;
         }
 
@@ -1017,10 +1012,10 @@ impl SourceMap {
         } else {
             return 1;
         };
-        debug!("find_width_of_character_at_span: snippet=`{:?}`", snippet);
+        debug!("snippet=`{:?}`", snippet);
 
         let mut target = if forwards { end_index + 1 } else { end_index - 1 };
-        debug!("find_width_of_character_at_span: initial target=`{:?}`", target);
+        debug!("initial target=`{:?}`", target);
 
         while !snippet.is_char_boundary(target - start_index) && target < source_len {
             target = if forwards {
@@ -1033,9 +1028,9 @@ impl SourceMap {
                     }
                 }
             };
-            debug!("find_width_of_character_at_span: target=`{:?}`", target);
+            debug!("target=`{:?}`", target);
         }
-        debug!("find_width_of_character_at_span: final target=`{:?}`", target);
+        debug!("final target=`{:?}`", target);
 
         if forwards { (target - end_index) as u32 } else { (end_index - target) as u32 }
     }
