@@ -411,6 +411,11 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.diagnostics.useRustcErrorCode": {
+                    "markdownDescription": "Whether to use the rustc error code.",
+                    "default": false,
+                    "type": "boolean"
+                },
                 "$generated-start": {},
                 "rust-analyzer.assist.emitMustUse": {
                     "markdownDescription": "Whether to insert #[must_use] when generating `as_` methods\nfor enum variants.",
