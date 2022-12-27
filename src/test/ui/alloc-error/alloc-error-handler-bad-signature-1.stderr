@@ -3,10 +3,7 @@ error[E0308]: mismatched types
    |
 LL |    #[alloc_error_handler]
    |    ---------------------- in this procedural macro expansion
-LL |    fn oom(
-   |  __^
-   | | _|
-   | ||
+LL | // fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______- arguments to this function are incorrect
@@ -29,10 +26,7 @@ error[E0308]: mismatched types
    |
 LL |    #[alloc_error_handler]
    |    ---------------------- in this procedural macro expansion
-LL |    fn oom(
-   |  __^
-   | | _|
-   | ||
+LL | // fn oom(
 LL | ||     info: &Layout,
 LL | || ) -> ()
    | ||_______^ expected `!`, found `()`
