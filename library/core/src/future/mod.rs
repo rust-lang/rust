@@ -44,7 +44,7 @@ pub use poll_fn::{poll_fn, PollFn};
 ///    non-Send/Sync as well, and we don't want that.
 ///
 /// It also simplifies the HIR lowering of `.await`.
-// FIXME(swatinem): This type can be removed when bumping the bootstrap compiler
+#[cfg_attr(not(bootstrap), lang = "ResumeTy")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Debug, Copy, Clone)]
@@ -61,7 +61,6 @@ unsafe impl Sync for ResumeTy {}
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
 // This is `const` to avoid extra errors after we recover from `const async fn`
-// FIXME(swatinem): This fn can be removed when bumping the bootstrap compiler
 #[cfg_attr(bootstrap, lang = "from_generator")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
@@ -103,8 +102,7 @@ where
     GenFuture(gen)
 }
 
-// FIXME(swatinem): This fn can be removed when bumping the bootstrap compiler
-#[cfg_attr(bootstrap, lang = "get_context")]
+#[lang = "get_context"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[must_use]
@@ -115,10 +113,6 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     unsafe { &mut *cx.0.as_ptr().cast() }
 }
 
-// FIXME(swatinem): This fn is currently needed to work around shortcomings
-// in type and lifetime inference.
-// See the comment at the bottom of `LoweringContext::make_async_expr` and
-// <https://github.com/rust-lang/rust/issues/104826>.
 #[cfg_attr(not(bootstrap), lang = "identity_future")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]

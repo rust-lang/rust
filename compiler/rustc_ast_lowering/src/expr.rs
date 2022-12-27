@@ -16,7 +16,7 @@ use rustc_hir::def::Res;
 use rustc_hir::definitions::DefPathData;
 use rustc_session::errors::report_lit_error;
 use rustc_span::source_map::{respan, DesugaringKind, Span, Spanned};
-use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::symbol::{sym, Ident};
 use rustc_span::DUMMY_SP;
 use thin_vec::thin_vec;
 
@@ -585,38 +585,14 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ) -> hir::ExprKind<'hir> {
         let output = ret_ty.unwrap_or_else(|| hir::FnRetTy::DefaultReturn(self.lower_span(span)));
 
-        // Resume argument type, which should be `&mut Context<'_>`.
-        // NOTE: Using the `'static` lifetime here is technically cheating.
-        // The `Future::poll` argument really is `&'a mut Context<'b>`, but we cannot
-        // express the fact that we are not storing it across yield-points yet,
-        // and we would thus run into lifetime errors.
-        // See <https://github.com/rust-lang/rust/issues/68923>.
-        // Our lowering makes sure we are not mis-using the `_task_context` input type
-        // in the sense that we are indeed not using it across yield points. We
-        // get a fresh `&mut Context` for each resume / call of `Future::poll`.
-        // This "cheating" was previously done with a `ResumeTy` that contained a raw
-        // pointer, and a `get_context` accessor that pulled the `Context` lifetimes
-        // out of thin air.
-        let context_lifetime_ident = Ident::with_dummy_span(kw::StaticLifetime);
-        let context_lifetime = self.arena.alloc(hir::Lifetime {
-            hir_id: self.next_id(),
-            ident: context_lifetime_ident,
-            res: hir::LifetimeName::Static,
-        });
-        let context_path =
-            hir::QPath::LangItem(hir::LangItem::Context, self.lower_span(span), None);
-        let context_ty = hir::MutTy {
-            ty: self.arena.alloc(hir::Ty {
-                hir_id: self.next_id(),
-                kind: hir::TyKind::Path(context_path),
-                span: self.lower_span(span),
-            }),
-            mutbl: hir::Mutability::Mut,
-        };
+        // Resume argument type: `ResumeTy`
+        let unstable_span =
+            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
+        let resume_ty = hir::QPath::LangItem(hir::LangItem::ResumeTy, unstable_span, None);
         let input_ty = hir::Ty {
             hir_id: self.next_id(),
-            kind: hir::TyKind::Rptr(context_lifetime, context_ty),
-            span: self.lower_span(span),
+            kind: hir::TyKind::Path(resume_ty),
+            span: unstable_span,
         };
 
         // The closure/generator `FnDecl` takes a single (resume) argument of type `input_ty`.
@@ -674,9 +650,12 @@ impl<'hir> LoweringContext<'_, 'hir> {
             .map_or(false, |attrs| attrs.into_iter().any(|attr| attr.has_name(sym::track_caller)));
 
         let hir_id = self.lower_node_id(closure_node_id);
-        let unstable_span =
-            self.mark_span_with_reason(DesugaringKind::Async, span, self.allow_gen_future.clone());
         if track_caller {
+            let unstable_span = self.mark_span_with_reason(
+                DesugaringKind::Async,
+                span,
+                self.allow_gen_future.clone(),
+            );
             self.lower_attrs(
                 hir_id,
                 &[Attribute {
@@ -719,7 +698,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
     ///     mut __awaitee => loop {
     ///         match unsafe { ::std::future::Future::poll(
     ///             <::std::pin::Pin>::new_unchecked(&mut __awaitee),
-    ///             task_context,
+    ///             ::std::future::get_context(task_context),
     ///         ) } {
     ///             ::std::task::Poll::Ready(result) => break result,
     ///             ::std::task::Poll::Pending => {}
@@ -760,7 +739,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
         // unsafe {
         //     ::std::future::Future::poll(
         //         ::std::pin::Pin::new_unchecked(&mut __awaitee),
-        //         task_context,
+        //         ::std::future::get_context(task_context),
         //     )
         // }
         let poll_expr = {
@@ -778,10 +757,16 @@ impl<'hir> LoweringContext<'_, 'hir> {
                 arena_vec![self; ref_mut_awaitee],
                 Some(expr_hir_id),
             );
+            let get_context = self.expr_call_lang_item_fn_mut(
+                gen_future_span,
+                hir::LangItem::GetContext,
+                arena_vec![self; task_context],
+                Some(expr_hir_id),
+            );
             let call = self.expr_call_lang_item_fn(
                 span,
                 hir::LangItem::FuturePoll,
-                arena_vec![self; new_unchecked, task_context],
+                arena_vec![self; new_unchecked, get_context],
                 Some(expr_hir_id),
             );
             self.arena.alloc(self.expr_unsafe(call))
