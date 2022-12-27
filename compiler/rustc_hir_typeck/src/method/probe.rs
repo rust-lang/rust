@@ -97,7 +97,7 @@ impl<'a, 'tcx> Deref for ProbeContext<'a, 'tcx> {
 }
 
 #[derive(Debug, Clone)]
-struct Candidate<'tcx> {
+pub(crate) struct Candidate<'tcx> {
     // Candidates are (I'm not quite sure, but they are mostly) basically
     // some metadata on top of a `ty::AssocItem` (without substs).
     //
@@ -131,13 +131,13 @@ struct Candidate<'tcx> {
     // if `T: Sized`.
     xform_self_ty: Ty<'tcx>,
     xform_ret_ty: Option<Ty<'tcx>>,
-    item: ty::AssocItem,
-    kind: CandidateKind<'tcx>,
-    import_ids: SmallVec<[LocalDefId; 1]>,
+    pub(crate) item: ty::AssocItem,
+    pub(crate) kind: CandidateKind<'tcx>,
+    pub(crate) import_ids: SmallVec<[LocalDefId; 1]>,
 }
 
 #[derive(Debug, Clone)]
-enum CandidateKind<'tcx> {
+pub(crate) enum CandidateKind<'tcx> {
     InherentImplCandidate(
         SubstsRef<'tcx>,
         // Normalize obligations
@@ -320,6 +320,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             scope,
             |probe_cx| probe_cx.pick(),
         )
+    }
+
+    #[instrument(level = "debug", skip(self))]
+    pub(crate) fn probe_for_name_many(
+        &self,
+        mode: Mode,
+        item_name: Ident,
+        is_suggestion: IsSuggestion,
+        self_ty: Ty<'tcx>,
+        scope_expr_id: hir::HirId,
+        scope: ProbeScope,
+    ) -> Vec<Candidate<'tcx>> {
+        self.probe_op(
+            item_name.span,
+            mode,
+            Some(item_name),
+            None,
+            is_suggestion,
+            self_ty,
+            scope_expr_id,
+            scope,
+            |probe_cx| {
+                Ok(probe_cx
+                    .inherent_candidates
+                    .into_iter()
+                    .chain(probe_cx.extension_candidates)
+                    .collect())
+            },
+        )
+        .unwrap()
     }
 
     fn probe_op<OP, R>(
