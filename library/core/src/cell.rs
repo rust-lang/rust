@@ -1783,7 +1783,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// until the reference expires. As a special exception, given an `&T`, any part of it that is
 /// inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
 /// last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-/// of what a reference points to, this means the memory an `&T` points to can be deallocted only if
+/// of what a reference points to, this means the memory an `&T` points to can be deallocated only if
 /// *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
 ///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
