@@ -11,7 +11,6 @@ use rustc_hir::{
     Expr, ExprKind, GenericBound, Node, Path, QPath, Stmt, StmtKind, TyKind, WherePredicate,
 };
 use rustc_hir_analysis::astconv::AstConv;
-use rustc_infer::infer;
 use rustc_infer::traits::{self, StatementAsExpression};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::{
@@ -23,9 +22,9 @@ use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
+use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt;
 use rustc_trait_selection::traits::error_reporting::DefIdOrName;
 use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt as _;
-use rustc_trait_selection::traits::NormalizeExt;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn body_fn_sig(&self) -> Option<ty::FnSig<'tcx>> {
@@ -94,7 +93,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(expr, found)
+        let Some((def_id_or_name, output, inputs)) = self.extract_callable_info(found)
             else { return false; };
         if can_satisfy(output) {
             let (sugg_call, mut applicability) = match inputs.len() {
@@ -163,99 +162,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// because the callable type must also be well-formed to be called.
     pub(in super::super) fn extract_callable_info(
         &self,
-        expr: &Expr<'_>,
-        found: Ty<'tcx>,
+        ty: Ty<'tcx>,
     ) -> Option<(DefIdOrName, Ty<'tcx>, Vec<Ty<'tcx>>)> {
-        // Autoderef is useful here because sometimes we box callables, etc.
-        let Some((def_id_or_name, output, inputs)) = self.autoderef(expr.span, found).silence_errors().find_map(|(found, _)| {
-            match *found.kind() {
-                ty::FnPtr(fn_sig) =>
-                    Some((DefIdOrName::Name("function pointer"), fn_sig.output(), fn_sig.inputs())),
-                ty::FnDef(def_id, _) => {
-                    let fn_sig = found.fn_sig(self.tcx);
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs()))
-                }
-                ty::Closure(def_id, substs) => {
-                    let fn_sig = substs.as_closure().sig();
-                    Some((DefIdOrName::DefId(def_id), fn_sig.output(), fn_sig.inputs().map_bound(|inputs| &inputs[1..])))
-                }
-                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                    self.tcx.bound_item_bounds(def_id).subst(self.tcx, substs).iter().find_map(|pred| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                        // args tuple will always be substs[1]
-                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                        {
-                            Some((
-                                DefIdOrName::DefId(def_id),
-                                pred.kind().rebind(proj.term.ty().unwrap()),
-                                pred.kind().rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                ty::Dynamic(data, _, ty::Dyn) => {
-                    data.iter().find_map(|pred| {
-                        if let ty::ExistentialPredicate::Projection(proj) = pred.skip_binder()
-                        && Some(proj.def_id) == self.tcx.lang_items().fn_once_output()
-                        // for existential projection, substs are shifted over by 1
-                        && let ty::Tuple(args) = proj.substs.type_at(0).kind()
-                        {
-                            Some((
-                                DefIdOrName::Name("trait object"),
-                                pred.rebind(proj.term.ty().unwrap()),
-                                pred.rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                ty::Param(param) => {
-                    let def_id = self.tcx.generics_of(self.body_id.owner).type_param(&param, self.tcx).def_id;
-                    self.tcx.predicates_of(self.body_id.owner).predicates.iter().find_map(|(pred, _)| {
-                        if let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = pred.kind().skip_binder()
-                        && Some(proj.projection_ty.def_id) == self.tcx.lang_items().fn_once_output()
-                        && proj.projection_ty.self_ty() == found
-                        // args tuple will always be substs[1]
-                        && let ty::Tuple(args) = proj.projection_ty.substs.type_at(1).kind()
-                        {
-                            Some((
-                                DefIdOrName::DefId(def_id),
-                                pred.kind().rebind(proj.term.ty().unwrap()),
-                                pred.kind().rebind(args.as_slice()),
-                            ))
-                        } else {
-                            None
-                        }
-                    })
-                }
-                _ => None,
-            }
-        }) else { return None; };
-
-        let output = self.replace_bound_vars_with_fresh_vars(expr.span, infer::FnCall, output);
-        let inputs = inputs
-            .skip_binder()
-            .iter()
-            .map(|ty| {
-                self.replace_bound_vars_with_fresh_vars(
-                    expr.span,
-                    infer::FnCall,
-                    inputs.rebind(*ty),
-                )
-            })
-            .collect();
-
-        // We don't want to register any extra obligations, which should be
-        // implied by wf, but also because that would possibly result in
-        // erroneous errors later on.
-        let infer::InferOk { value: output, obligations: _ } =
-            self.at(&self.misc(expr.span), self.param_env).normalize(output);
-
-        if output.is_ty_var() { None } else { Some((def_id_or_name, output, inputs)) }
+        self.err_ctxt().extract_callable_info(self.body_id, self.param_env, ty)
     }
 
     pub fn suggest_two_fn_call(
@@ -267,9 +176,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         rhs_ty: Ty<'tcx>,
         can_satisfy: impl FnOnce(Ty<'tcx>, Ty<'tcx>) -> bool,
     ) -> bool {
-        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_expr, lhs_ty)
+        let Some((_, lhs_output_ty, lhs_inputs)) = self.extract_callable_info(lhs_ty)
             else { return false; };
-        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_expr, rhs_ty)
+        let Some((_, rhs_output_ty, rhs_inputs)) = self.extract_callable_info(rhs_ty)
             else { return false; };
 
         if can_satisfy(lhs_output_ty, rhs_output_ty) {
