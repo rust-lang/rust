@@ -55,6 +55,7 @@ use crate::infer::ExpectedFound;
 use crate::traits::error_reporting::report_object_safety_error;
 use crate::traits::{
     IfExpressionCause, MatchExpressionArmCause, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
 };
 
 use rustc_data_structures::fx::{FxIndexMap, FxIndexSet};
@@ -91,8 +92,12 @@ pub mod nice_region_error;
 pub struct TypeErrCtxt<'a, 'tcx> {
     pub infcx: &'a InferCtxt<'tcx>,
     pub typeck_results: Option<std::cell::Ref<'a, ty::TypeckResults<'tcx>>>,
-    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
     pub fallback_has_occurred: bool,
+
+    pub normalize_fn_sig: Box<dyn Fn(ty::PolyFnSig<'tcx>) -> ty::PolyFnSig<'tcx> + 'a>,
+
+    pub autoderef_steps:
+        Box<dyn Fn(Ty<'tcx>) -> Vec<(Ty<'tcx>, Vec<PredicateObligation<'tcx>>)> + 'a>,
 }
 
 impl TypeErrCtxt<'_, '_> {

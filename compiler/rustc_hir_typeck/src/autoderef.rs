@@ -2,11 +2,11 @@
 use super::method::MethodCallee;
 use super::{FnCtxt, PlaceOp};
 
+use rustc_hir_analysis::autoderef::{Autoderef, AutoderefKind};
 use rustc_infer::infer::InferOk;
 use rustc_middle::ty::adjustment::{Adjust, Adjustment, OverloadedDeref};
 use rustc_middle::ty::{self, Ty};
 use rustc_span::Span;
-use rustc_trait_selection::autoderef::{Autoderef, AutoderefKind};
 
 use std::iter;
 

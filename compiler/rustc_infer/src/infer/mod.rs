@@ -688,6 +688,10 @@ impl<'tcx> InferCtxt<'tcx> {
             typeck_results: None,
             fallback_has_occurred: false,
             normalize_fn_sig: Box::new(|fn_sig| fn_sig),
+            autoderef_steps: Box::new(|ty| {
+                debug_assert!(false, "shouldn't be using autoderef_steps outside of typeck");
+                vec![(ty, vec![])]
+            }),
         }
     }
 
