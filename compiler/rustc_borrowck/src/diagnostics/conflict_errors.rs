@@ -194,7 +194,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 if !seen_spans.contains(&move_span) {
                     if !closure {
-                        self.suggest_ref_or_clone(mpi, move_span, &mut err, &mut in_pattern);
+                        self.suggest_ref_or_clone(
+                            mpi,
+                            move_span,
+                            &mut err,
+                            &mut in_pattern,
+                            move_spans,
+                        );
                     }
 
                     self.explain_captures(
@@ -312,6 +318,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_span: Span,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
         in_pattern: &mut bool,
+        move_spans: UseSpans<'_>,
     ) {
         struct ExpressionFinder<'hir> {
             expr_span: Span,
@@ -440,6 +447,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ) = call_expr.kind
                     {
                         // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
+                    } else if let UseSpans::FnSelfUse {
+                        kind: CallKind::Normal { .. },
+                        ..
+                    } = move_spans {
+                        // We already suggest cloning for these cases in `explain_captures`.
                     } else {
                         self.suggest_cloning(err, ty, move_span);
                     }
