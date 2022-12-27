@@ -378,10 +378,6 @@ img {
 	filter: var(--rust-logo-filter);
 }
 
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: var(--sidebar-background-color);
-}
-
 .sidebar {
 	font-size: 0.875rem;
 	flex: 0 0 200px;
@@ -400,7 +396,8 @@ img {
 	overflow-y: hidden;
 }
 
-.source .sidebar, #src-sidebar-toggle, #source-sidebar {
+.sidebar, .mobile-topbar, .sidebar-menu-toggle,
+#src-sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 

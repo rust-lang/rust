@@ -2,6 +2,50 @@
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 assert-property: (".sidebar", {"clientWidth": "200"})
 show-text: true
+
+// First, check the sidebar colors.
+define-function: (
+    "check-colors",
+    (theme, color, background_color),
+    [
+        ("local-storage", {
+            "rustdoc-theme": |theme|,
+            "rustdoc-use-system-theme": "false",
+        }),
+        ("reload"),
+        // Checking results colors.
+        ("assert-css", (".sidebar", {
+        	"color": |color|,
+        	"background-color": |background_color|
+        }, ALL)),
+    ],
+)
+
+call-function: (
+	"check-colors",
+	{
+		"theme": "ayu",
+		"color": "rgb(197, 197, 197)",
+		"background_color": "rgb(20, 25, 31)",
+	}
+)
+call-function: (
+	"check-colors",
+	{
+		"theme": "dark",
+		"color": "rgb(221, 221, 221)",
+		"background_color": "rgb(80, 80, 80)",
+	}
+)
+call-function: (
+	"check-colors",
+	{
+		"theme": "light",
+		"color": "rgb(0, 0, 0)",
+		"background_color": "rgb(245, 245, 245)",
+	}
+)
+
 local-storage: {"rustdoc-theme": "light"}
 // We reload the page so the local storage settings are being used.
 reload:
