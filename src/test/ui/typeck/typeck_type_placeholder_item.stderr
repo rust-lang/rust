@@ -443,7 +443,7 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `Map<Filter<std::ops::Range<i32>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>, [closure@$DIR/typeck_type_placeholder_item.rs:229:49: 229:52]>` cannot be named
+note: however, the inferred type `Map<Filter<Range<i32>, [closure@typeck_type_placeholder_item.rs:229:29]>, [closure@typeck_type_placeholder_item.rs:229:49]>` cannot be named
   --> $DIR/typeck_type_placeholder_item.rs:229:14
    |
 LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
