@@ -727,10 +727,6 @@ impl Build {
             return format::format(&builder::Builder::new(&self), *check, &paths);
         }
 
-        if let Subcommand::Clean { all } = self.config.cmd {
-            return clean::clean(self, all);
-        }
-
         // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
 

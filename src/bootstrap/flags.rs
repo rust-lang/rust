@@ -130,6 +130,7 @@ pub enum Subcommand {
         test_args: Vec<String>,
     },
     Clean {
+        paths: Vec<PathBuf>,
         all: bool,
     },
     Dist {
@@ -611,14 +612,7 @@ Arguments:
                 open: matches.opt_present("open"),
                 json: matches.opt_present("json"),
             },
-            Kind::Clean => {
-                if !paths.is_empty() {
-                    println!("\nclean does not take a path argument\n");
-                    usage(1, &opts, verbose, &subcommand_help);
-                }
-
-                Subcommand::Clean { all: matches.opt_present("all") }
-            }
+            Kind::Clean => Subcommand::Clean { all: matches.opt_present("all"), paths },
             Kind::Format => Subcommand::Format { check: matches.opt_present("check"), paths },
             Kind::Dist => Subcommand::Dist { paths },
             Kind::Install => Subcommand::Install { paths },
