@@ -351,7 +351,17 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            let config = Config::parse(&["setup".to_string()]);
+            // We have an unfortunate situation here: some Steps use `builder.in_tree_crates` to determine their paths.
+            // To determine those crates, we need to run `cargo metadata`, which means we need all submodules to be checked out.
+            // That takes a while to run, so only do it when paths were explicitly requested, not on all CLI errors.
+            // `Build::new` won't load submodules for the `setup` command.
+            let cmd = if verbose {
+                println!("note: updating submodules before printing available paths");
+                "build"
+            } else {
+                "setup"
+            };
+            let config = Config::parse(&[cmd.to_string()]);
             let build = Build::new(config);
             let paths = Builder::get_help(&build, subcommand);
 

@@ -1400,7 +1400,10 @@ impl Build {
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
-            let krate = &self.crates[&krate];
+            let krate = self
+                .crates
+                .get(&krate)
+                .unwrap_or_else(|| panic!("metadata missing for {krate}: {:?}", self.crates));
             ret.push(krate);
             for dep in &krate.deps {
                 if !self.crates.contains_key(dep) {
