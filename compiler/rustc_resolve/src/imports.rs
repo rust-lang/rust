@@ -896,7 +896,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
                 let names = resolutions
                     .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                        if *i == ident {
+                        if i.name == ident.name {
                             return None;
                         } // Never suggest the same name
                         match *resolution.borrow() {

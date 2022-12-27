@@ -2,10 +2,7 @@ error[E0432]: unresolved import `main`
   --> $DIR/inaccessible-test-modules.rs:5:5
    |
 LL | use main as x;
-   |     ----^^^^^
-   |     |
-   |     no `main` in the root
-   |     help: a similar name exists in the module: `main`
+   |     ^^^^^^^^^ no `main` in the root
 
 error[E0432]: unresolved import `test`
   --> $DIR/inaccessible-test-modules.rs:6:5
@@ -13,10 +10,6 @@ error[E0432]: unresolved import `test`
 LL | use test as y;
    |     ^^^^^^^^^ no `test` in the root
    |
-help: a similar name exists in the module
-   |
-LL | use test as y;
-   |     ~~~~
 help: consider importing this module instead
    |
 LL | use test::test as y;
