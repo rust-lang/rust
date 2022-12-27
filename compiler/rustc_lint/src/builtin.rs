@@ -2184,6 +2184,7 @@ impl ExplicitOutlivesRequirements {
         tcx: TyCtxt<'tcx>,
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
+        predicate_span: Span,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_lifetime::Region;
 
@@ -2191,23 +2192,28 @@ impl ExplicitOutlivesRequirements {
             .iter()
             .enumerate()
             .filter_map(|(i, bound)| {
-                if let hir::GenericBound::Outlives(lifetime) = bound {
-                    let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::EarlyBound(def_id)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = **r {
-                                ebr.def_id == def_id
-                            } else {
-                                false
-                            }
-                        }),
-                        _ => false,
-                    };
-                    is_inferred.then_some((i, bound.span()))
-                } else {
-                    None
+                let hir::GenericBound::Outlives(lifetime) = bound else {
+                    return None;
+                };
+
+                let is_inferred = match tcx.named_region(lifetime.hir_id) {
+                    Some(Region::EarlyBound(def_id)) => inferred_outlives
+                        .iter()
+                        .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
+                    _ => false,
+                };
+
+                if !is_inferred {
+                    return None;
                 }
+
+                let span = bound.span().find_ancestor_inside(predicate_span)?;
+                if in_external_macro(tcx.sess, span) {
+                    return None;
+                }
+
+                Some((i, span))
             })
-            .filter(|(_, span)| !in_external_macro(tcx.sess, *span))
             .collect()
     }
 
@@ -2273,9 +2279,9 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
         use rustc_middle::middle::resolve_lifetime::Region;
 
         let def_id = item.owner_id.def_id;
-        if let hir::ItemKind::Struct(_, ref hir_generics)
-        | hir::ItemKind::Enum(_, ref hir_generics)
-        | hir::ItemKind::Union(_, ref hir_generics) = item.kind
+        if let hir::ItemKind::Struct(_, hir_generics)
+        | hir::ItemKind::Enum(_, hir_generics)
+        | hir::ItemKind::Union(_, hir_generics) = item.kind
         {
             let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
             if inferred_outlives.is_empty() {
@@ -2290,53 +2296,58 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             let mut dropped_predicate_count = 0;
             let num_predicates = hir_generics.predicates.len();
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
-                let (relevant_lifetimes, bounds, span, in_where_clause) = match where_predicate {
-                    hir::WherePredicate::RegionPredicate(predicate) => {
-                        if let Some(Region::EarlyBound(region_def_id)) =
-                            cx.tcx.named_region(predicate.lifetime.hir_id)
-                        {
-                            (
-                                Self::lifetimes_outliving_lifetime(
-                                    inferred_outlives,
-                                    region_def_id,
-                                ),
-                                &predicate.bounds,
-                                predicate.span,
-                                predicate.in_where_clause,
-                            )
-                        } else {
-                            continue;
-                        }
-                    }
-                    hir::WherePredicate::BoundPredicate(predicate) => {
-                        // FIXME we can also infer bounds on associated types,
-                        // and should check for them here.
-                        match predicate.bounded_ty.kind {
-                            hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                                let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                    continue
-                                };
-                                let index = ty_generics.param_def_id_to_index[&def_id];
+                let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
+                    match where_predicate {
+                        hir::WherePredicate::RegionPredicate(predicate) => {
+                            if let Some(Region::EarlyBound(region_def_id)) =
+                                cx.tcx.named_region(predicate.lifetime.hir_id)
+                            {
                                 (
-                                    Self::lifetimes_outliving_type(inferred_outlives, index),
+                                    Self::lifetimes_outliving_lifetime(
+                                        inferred_outlives,
+                                        region_def_id,
+                                    ),
                                     &predicate.bounds,
                                     predicate.span,
-                                    predicate.origin == PredicateOrigin::WhereClause,
+                                    predicate.in_where_clause,
                                 )
-                            }
-                            _ => {
+                            } else {
                                 continue;
                             }
                         }
-                    }
-                    _ => continue,
-                };
+                        hir::WherePredicate::BoundPredicate(predicate) => {
+                            // FIXME we can also infer bounds on associated types,
+                            // and should check for them here.
+                            match predicate.bounded_ty.kind {
+                                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+                                    let Res::Def(DefKind::TyParam, def_id) = path.res else {
+                                    continue;
+                                };
+                                    let index = ty_generics.param_def_id_to_index[&def_id];
+                                    (
+                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        &predicate.bounds,
+                                        predicate.span,
+                                        predicate.origin == PredicateOrigin::WhereClause,
+                                    )
+                                }
+                                _ => {
+                                    continue;
+                                }
+                            }
+                        }
+                        _ => continue,
+                    };
                 if relevant_lifetimes.is_empty() {
                     continue;
                 }
 
-                let bound_spans =
-                    self.collect_outlives_bound_spans(cx.tcx, bounds, &relevant_lifetimes);
+                let bound_spans = self.collect_outlives_bound_spans(
+                    cx.tcx,
+                    bounds,
+                    &relevant_lifetimes,
+                    predicate_span,
+                );
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();
@@ -2345,15 +2356,15 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 }
 
                 if drop_predicate && !in_where_clause {
-                    lint_spans.push(span);
+                    lint_spans.push(predicate_span);
                 } else if drop_predicate && i + 1 < num_predicates {
                     // If all the bounds on a predicate were inferable and there are
                     // further predicates, we want to eat the trailing comma.
                     let next_predicate_span = hir_generics.predicates[i + 1].span();
-                    where_lint_spans.push(span.to(next_predicate_span.shrink_to_lo()));
+                    where_lint_spans.push(predicate_span.to(next_predicate_span.shrink_to_lo()));
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
-                        span.shrink_to_lo(),
+                        predicate_span.shrink_to_lo(),
                         bounds,
                         bound_spans,
                     ));
@@ -2374,12 +2385,26 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     } else {
                         hir_generics.span.shrink_to_hi().to(where_span)
                     };
-                lint_spans.push(full_where_span);
+
+                // Due to macro expansions, the `full_where_span` might not actually contain all predicates.
+                if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
+                    lint_spans.push(full_where_span);
+                } else {
+                    lint_spans.extend(where_lint_spans);
+                }
             } else {
                 lint_spans.extend(where_lint_spans);
             }
 
             if !lint_spans.is_empty() {
+                // Do not automatically delete outlives requirements from macros.
+                let applicability = if lint_spans.iter().all(|sp| sp.can_be_used_for_suggestions())
+                {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                };
+
                 cx.struct_span_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
@@ -2387,11 +2412,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     |lint| {
                         lint.set_arg("count", bound_count).multipart_suggestion(
                             fluent::suggestion,
-                            lint_spans
-                                .into_iter()
-                                .map(|span| (span, String::new()))
-                                .collect::<Vec<_>>(),
-                            Applicability::MachineApplicable,
+                            lint_spans.into_iter().map(|span| (span, String::new())).collect(),
+                            applicability,
                         )
                     },
                 );
