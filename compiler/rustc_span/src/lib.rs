@@ -142,10 +142,11 @@ pub fn set_session_globals_then<R>(session_globals: &SessionGlobals, f: impl FnO
     SESSION_GLOBALS.set(session_globals, f)
 }
 
-pub fn create_session_if_not_set_then<R, F>(edition: Edition, f: F) -> R
-where
-    F: FnOnce(&SessionGlobals) -> R,
-{
+
+pub fn create_session_if_not_set_then<R>(
+    edition: Edition,
+    f: impl FnOnce(&SessionGlobals) -> R,
+) -> R {
     if !SESSION_GLOBALS.is_set() {
         let session_globals = SessionGlobals::new(edition);
         SESSION_GLOBALS.set(&session_globals, || SESSION_GLOBALS.with(f))
@@ -160,7 +161,14 @@ where
 {
     SESSION_GLOBALS.with(f)
 }
+pub struct NotSet;
 
+#[inline]
+pub fn try_with_session_globals<R>(f: impl FnOnce(&SessionGlobals) -> R) -> Result<R, NotSet> {
+    if SESSION_GLOBALS.is_set() { Ok(SESSION_GLOBALS.with(f)) } else { Err(NotSet) }
+}
+
+#[inline]
 pub fn create_default_session_globals_then<R>(f: impl FnOnce() -> R) -> R {
     create_session_globals_then(edition::DEFAULT_EDITION, f)
 }

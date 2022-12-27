@@ -1,6 +1,6 @@
 use crate::def_id::{DefIndex, LocalDefId};
 use crate::hygiene::SyntaxContext;
-use crate::SPAN_TRACK;
+use crate::{try_with_session_globals, NotSet, Pos, SPAN_TRACK};
 use crate::{BytePos, SpanData};
 
 use rustc_data_structures::fx::FxIndexSet;
@@ -103,6 +103,40 @@ impl Span {
         ctxt: SyntaxContext,
         parent: Option<LocalDefId>,
     ) -> Self {
+        // Make sure that the byte positions are at char boundaries.
+        // Only do this if the session globals are set correctly, which they aren't in some unit tests.
+        if cfg!(debug_assertions) {
+            let _: Result<(), NotSet> = try_with_session_globals(|sess| {
+                let sm = sess.source_map.lock();
+                if let Some(sm) = &*sm {
+                    let offset = sm.lookup_byte_offset(lo);
+                    if let Some(file) = &offset.sf.src {
+                        // `is_char_boundary` already checks this, but asserting it seperately gives a better panic message.
+                        assert!(
+                            file.len() >= offset.pos.to_usize(),
+                            "start of span is out of bounds"
+                        );
+                        assert!(
+                            file.is_char_boundary(offset.pos.to_usize()),
+                            "start of span not on char boundary"
+                        );
+                    }
+
+                    let offset = sm.lookup_byte_offset(hi);
+                    if let Some(file) = &offset.sf.src {
+                        assert!(
+                            file.len() >= offset.pos.to_usize(),
+                            "end of span is out of bounds"
+                        );
+                        assert!(
+                            file.is_char_boundary(offset.pos.to_usize()),
+                            "end of span not on char boundary"
+                        );
+                    }
+                }
+            });
+        }
+
         if lo > hi {
             std::mem::swap(&mut lo, &mut hi);
         }
