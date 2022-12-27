@@ -29,9 +29,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{
-    self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeVisitable,
-};
+use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
@@ -1270,7 +1268,7 @@ fn suggest_impl_iterator<'tcx>(
     if !tcx
         .infer_ctxt()
         .build()
-        .type_implements_trait(iter_trait, [ret_ty], tcx.param_env(iter_trait))
+        .type_implements_trait(iter_trait, [ret_ty], tcx.param_env(def_id))
         .must_apply_modulo_regions()
     {
         return None;
@@ -1296,8 +1294,7 @@ fn suggest_impl_iterator<'tcx>(
     ));
     if ocx.select_where_possible().is_empty()
         && let item_ty = infcx.resolve_vars_if_possible(ty_var)
-        && !item_ty.references_error()
-        && !item_ty.has_placeholders()
+        && item_ty.is_suggestable(tcx, false)
     {
         return Some(item_ty);
     }
