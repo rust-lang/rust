@@ -134,7 +134,13 @@ fn expand_subtree(
     let mut err = None;
     for op in template.iter() {
         match op {
-            Op::Leaf(tt) => arena.push(tt.clone().into()),
+            Op::Literal(it) => arena.push(tt::Leaf::from(it.clone()).into()),
+            Op::Ident(it) => arena.push(tt::Leaf::from(it.clone()).into()),
+            Op::Punct(puncts) => {
+                for punct in puncts {
+                    arena.push(tt::Leaf::from(punct.clone()).into());
+                }
+            }
             Op::Subtree { tokens, delimiter } => {
                 let ExpandResult { value: tt, err: e } =
                     expand_subtree(ctx, tokens, *delimiter, arena);

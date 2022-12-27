@@ -68,7 +68,7 @@ use crate::{
     expander::{Binding, Bindings, ExpandResult, Fragment},
     parser::{MetaVarKind, Op, RepeatKind, Separator},
     tt_iter::TtIter,
-    ExpandError, MetaTemplate,
+    ExpandError, MetaTemplate, ValueResult,
 };
 
 impl Bindings {
@@ -500,18 +500,69 @@ fn match_loop_inner<'t>(
                     }
                 }
             }
-            OpDelimited::Op(Op::Leaf(leaf)) => {
-                if let Err(err) = match_leaf(leaf, &mut src.clone()) {
-                    res.add_err(err);
-                    item.is_error = true;
+            OpDelimited::Op(Op::Literal(lhs)) => {
+                if let Ok(rhs) = src.clone().expect_leaf() {
+                    if matches!(rhs, tt::Leaf::Literal(it) if it.text == lhs.text) {
+                        item.dot.next();
+                    } else {
+                        res.add_err(ExpandError::UnexpectedToken);
+                        item.is_error = true;
+                    }
                 } else {
-                    item.dot.next();
+                    res.add_err(ExpandError::binding_error(format!("expected literal: `{lhs}`")));
+                    item.is_error = true;
                 }
                 try_push!(next_items, item);
             }
+            OpDelimited::Op(Op::Ident(lhs)) => {
+                if let Ok(rhs) = src.clone().expect_leaf() {
+                    if matches!(rhs, tt::Leaf::Ident(it) if it.text == lhs.text) {
+                        item.dot.next();
+                    } else {
+                        res.add_err(ExpandError::UnexpectedToken);
+                        item.is_error = true;
+                    }
+                } else {
+                    res.add_err(ExpandError::binding_error(format!("expected ident: `{lhs}`")));
+                    item.is_error = true;
+                }
+                try_push!(next_items, item);
+            }
+            OpDelimited::Op(Op::Punct(lhs)) => {
+                let mut fork = src.clone();
+                let error = if let Ok(rhs) = fork.expect_glued_punct() {
+                    let first_is_single_quote = rhs[0].char == '\'';
+                    let lhs = lhs.iter().map(|it| it.char);
+                    let rhs = rhs.iter().map(|it| it.char);
+                    if lhs.clone().eq(rhs) {
+                        // HACK: here we use `meta_result` to pass `TtIter` back to caller because
+                        // it might have been advanced multiple times. `ValueResult` is
+                        // insignificant.
+                        item.meta_result = Some((fork, ValueResult::ok(None)));
+                        item.dot.next();
+                        next_items.push(item);
+                        continue;
+                    }
+
+                    if first_is_single_quote {
+                        // If the first punct token is a single quote, that's a part of a lifetime
+                        // ident, not a punct.
+                        ExpandError::UnexpectedToken
+                    } else {
+                        let lhs: SmolStr = lhs.collect();
+                        ExpandError::binding_error(format!("expected punct: `{lhs}`"))
+                    }
+                } else {
+                    ExpandError::UnexpectedToken
+                };
+
+                res.add_err(error);
+                item.is_error = true;
+                error_items.push(item);
+            }
             OpDelimited::Op(Op::Ignore { .. } | Op::Index { .. }) => {}
             OpDelimited::Open => {
-                if matches!(src.clone().next(), Some(tt::TokenTree::Subtree(..))) {
+                if matches!(src.peek_n(0), Some(tt::TokenTree::Subtree(..))) {
                     item.dot.next();
                     try_push!(next_items, item);
                 }
@@ -616,21 +667,33 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         }
         // Dump all possible `next_items` into `cur_items` for the next iteration.
         else if !next_items.is_empty() {
+            if let Some((iter, _)) = next_items[0].meta_result.take() {
+                // We've matched a possibly "glued" punct. The matched punct (hence
+                // `meta_result` also) must be the same for all items.
+                // FIXME: If there are multiple items, it's definitely redundant (and it's hacky!
+                // `meta_result` isn't supposed to be used this way).
+
+                // We already bumped, so no need to call `.next()` like in the other branch.
+                src = iter;
+                for item in next_items.iter_mut() {
+                    item.meta_result = None;
+                }
+            } else {
+                match src.next() {
+                    Some(tt::TokenTree::Subtree(subtree)) => {
+                        stack.push(src.clone());
+                        src = TtIter::new(subtree);
+                    }
+                    None => {
+                        if let Some(iter) = stack.pop() {
+                            src = iter;
+                        }
+                    }
+                    _ => (),
+                }
+            }
             // Now process the next token
             cur_items.extend(next_items.drain(..));
-
-            match src.next() {
-                Some(tt::TokenTree::Subtree(subtree)) => {
-                    stack.push(src.clone());
-                    src = TtIter::new(subtree);
-                }
-                None => {
-                    if let Some(iter) = stack.pop() {
-                        src = iter;
-                    }
-                }
-                _ => (),
-            }
         }
         // Finally, we have the case where we need to call the black-box parser to get some
         // nonterminal.
@@ -660,27 +723,6 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
             cur_items.push(item);
         }
         stdx::always!(!cur_items.is_empty());
-    }
-}
-
-fn match_leaf(lhs: &tt::Leaf, src: &mut TtIter<'_>) -> Result<(), ExpandError> {
-    let rhs = src
-        .expect_leaf()
-        .map_err(|()| ExpandError::binding_error(format!("expected leaf: `{lhs}`")))?;
-    match (lhs, rhs) {
-        (
-            tt::Leaf::Punct(tt::Punct { char: lhs, .. }),
-            tt::Leaf::Punct(tt::Punct { char: rhs, .. }),
-        ) if lhs == rhs => Ok(()),
-        (
-            tt::Leaf::Ident(tt::Ident { text: lhs, .. }),
-            tt::Leaf::Ident(tt::Ident { text: rhs, .. }),
-        ) if lhs == rhs => Ok(()),
-        (
-            tt::Leaf::Literal(tt::Literal { text: lhs, .. }),
-            tt::Leaf::Literal(tt::Literal { text: rhs, .. }),
-        ) if lhs == rhs => Ok(()),
-        _ => Err(ExpandError::UnexpectedToken),
     }
 }
 
@@ -756,10 +798,10 @@ fn collect_vars(collector_fun: &mut impl FnMut(SmolStr), pattern: &MetaTemplate)
     for op in pattern.iter() {
         match op {
             Op::Var { name, .. } => collector_fun(name.clone()),
-            Op::Leaf(_) => (),
             Op::Subtree { tokens, .. } => collect_vars(collector_fun, tokens),
             Op::Repeat { tokens, .. } => collect_vars(collector_fun, tokens),
-            Op::Ignore { .. } | Op::Index { .. } => {}
+            Op::Ignore { .. } | Op::Index { .. } | Op::Literal(_) | Op::Ident(_) | Op::Punct(_) => {
+            }
         }
     }
 }

@@ -88,6 +88,10 @@ impl<'a> TtIter<'a> {
         }
     }
 
+    /// Returns consecutive `Punct`s that can be glued together.
+    ///
+    /// This method currently may return a single quotation, which is part of lifetime ident and
+    /// conceptually not a punct in the context of mbe. Callers should handle this.
     pub(crate) fn expect_glued_punct(&mut self) -> Result<SmallVec<[tt::Punct; 3]>, ()> {
         let tt::TokenTree::Leaf(tt::Leaf::Punct(first)) = self.next().ok_or(())?.clone() else {
             return Err(());
@@ -182,7 +186,7 @@ impl<'a> TtIter<'a> {
         ExpandResult { value: res, err }
     }
 
-    pub(crate) fn peek_n(&self, n: usize) -> Option<&tt::TokenTree> {
+    pub(crate) fn peek_n(&self, n: usize) -> Option<&'a tt::TokenTree> {
         self.inner.as_slice().get(n)
     }
 }
