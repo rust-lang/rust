@@ -166,7 +166,7 @@ mod spec_extend;
 /// vec[0] = 7;
 /// assert_eq!(vec[0], 7);
 ///
-/// vec.extend([1, 2, 3].iter().copied());
+/// vec.extend([1, 2, 3]);
 ///
 /// for x in &vec {
 ///     println!("{x}");
