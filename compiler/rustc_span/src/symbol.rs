@@ -213,6 +213,7 @@ symbols! {
         Is,
         ItemContext,
         Iterator,
+        IteratorItem,
         Layout,
         Left,
         LinkedList,

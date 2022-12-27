@@ -24,14 +24,20 @@ use rustc_hir as hir;
 use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::{GenericParamKind, Node};
+use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
+use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::hir::nested_filter;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::util::{Discr, IntTypeExt};
-use rustc_middle::ty::{self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt};
+use rustc_middle::ty::{
+    self, AdtKind, Const, IsSuggestable, ToPredicate, Ty, TyCtxt, TypeVisitable,
+};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::Span;
 use rustc_target::spec::abi;
+use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::NextTypeParamName;
+use rustc_trait_selection::traits::ObligationCtxt;
 use std::iter;
 
 mod generics_of;
@@ -1224,7 +1230,17 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                 // to prevent the user from getting a papercut while trying to use the unique closure
                 // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
                 diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
-                diag.note("for more information on `Fn` traits and closure types, see https://doc.rust-lang.org/book/ch13-01-closures.html");
+                diag.note(
+                    "for more information on `Fn` traits and closure types, see \
+                     https://doc.rust-lang.org/book/ch13-01-closures.html",
+                );
+            } else if let Some(i_ty) = suggest_impl_iterator(tcx, ret_ty, ty.span, hir_id, def_id) {
+                diag.span_suggestion(
+                    ty.span,
+                    "replace with an appropriate return type",
+                    format!("impl Iterator<Item = {}>", i_ty),
+                    Applicability::MachineApplicable,
+                );
             }
             diag.emit();
 
@@ -1240,6 +1256,52 @@ fn infer_return_ty_for_fn_sig<'tcx>(
             None,
         ),
     }
+}
+
+fn suggest_impl_iterator<'tcx>(
+    tcx: TyCtxt<'tcx>,
+    ret_ty: Ty<'tcx>,
+    span: Span,
+    hir_id: hir::HirId,
+    def_id: LocalDefId,
+) -> Option<Ty<'tcx>> {
+    let Some(iter_trait) = tcx.get_diagnostic_item(sym::Iterator) else { return None; };
+    let Some(iterator_item) = tcx.get_diagnostic_item(sym::IteratorItem) else { return None; };
+    if !tcx
+        .infer_ctxt()
+        .build()
+        .type_implements_trait(iter_trait, [ret_ty], tcx.param_env(iter_trait))
+        .must_apply_modulo_regions()
+    {
+        return None;
+    }
+    let infcx = tcx.infer_ctxt().build();
+    let ocx = ObligationCtxt::new_in_snapshot(&infcx);
+    // Find the type of `Iterator::Item`.
+    let origin = TypeVariableOrigin { kind: TypeVariableOriginKind::TypeInference, span };
+    let ty_var = infcx.next_ty_var(origin);
+    let projection = ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::Projection(
+        ty::ProjectionPredicate {
+            projection_ty: tcx.mk_alias_ty(iterator_item, tcx.mk_substs([ret_ty.into()].iter())),
+            term: ty_var.into(),
+        },
+    )));
+    // Add `<ret_ty as Iterator>::Item = _` obligation.
+    ocx.register_obligation(crate::traits::Obligation::misc(
+        tcx,
+        span,
+        hir_id,
+        tcx.param_env(def_id),
+        projection,
+    ));
+    if ocx.select_where_possible().is_empty()
+        && let item_ty = infcx.resolve_vars_if_possible(ty_var)
+        && !item_ty.references_error()
+        && !item_ty.has_placeholders()
+    {
+        return Some(item_ty);
+    }
+    None
 }
 
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::TraitRef<'_>> {

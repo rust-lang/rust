@@ -428,6 +428,27 @@ LL | const _: Option<_> = map(value);
    |          not allowed in type signatures
    |          help: replace with the correct type: `Option<u8>`
 
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for return types
+  --> $DIR/typeck_type_placeholder_item.rs:224:31
+   |
+LL | fn evens_squared(n: usize) -> _ {
+   |                               ^
+   |                               |
+   |                               not allowed in type signatures
+   |                               help: replace with an appropriate return type: `impl Iterator<Item = usize>`
+
+error[E0121]: the placeholder `_` is not allowed within types on item signatures for constants
+  --> $DIR/typeck_type_placeholder_item.rs:229:10
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |          ^ not allowed in type signatures
+   |
+note: however, the inferred type `Map<Filter<std::ops::Range<i32>, [closure@$DIR/typeck_type_placeholder_item.rs:229:29: 229:32]>, [closure@$DIR/typeck_type_placeholder_item.rs:229:49: 229:52]>` cannot be named
+  --> $DIR/typeck_type_placeholder_item.rs:229:14
+   |
+LL | const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
 error[E0121]: the placeholder `_` is not allowed within types on item signatures for functions
   --> $DIR/typeck_type_placeholder_item.rs:140:31
    |
@@ -636,7 +657,7 @@ LL |     const D: _ = 42;
    |              not allowed in type signatures
    |              help: replace with the correct type: `i32`
 
-error: aborting due to 69 previous errors
+error: aborting due to 71 previous errors
 
 Some errors have detailed explanations: E0121, E0282, E0403.
 For more information about an error, try `rustc --explain E0121`.
