@@ -475,12 +475,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     errors = vec![];
                 }
                 if seen_spans.insert(err.span) {
-                    let path = import_path_to_string(
-                        &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                        &import.kind,
-                        err.span,
-                    );
-                    errors.push((path, err));
+                    errors.push((import, err));
                     prev_root_id = import.root_id;
                 }
             } else if is_indeterminate {
@@ -496,8 +491,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     suggestion: None,
                     candidate: None,
                 };
+                // FIXME: there should be a better way of doing this than
+                // formatting this as a string then checking for `::`
                 if path.contains("::") {
-                    errors.push((path, err))
+                    errors.push((import, err))
                 }
             }
         }
@@ -507,7 +504,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
     }
 
-    fn throw_unresolved_import_error(&self, errors: Vec<(String, UnresolvedImportError)>) {
+    fn throw_unresolved_import_error(&self, errors: Vec<(&Import<'_>, UnresolvedImportError)>) {
         if errors.is_empty() {
             return;
         }
@@ -516,7 +513,17 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         const MAX_LABEL_COUNT: usize = 10;
 
         let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
-        let paths = errors.iter().map(|(path, _)| format!("`{}`", path)).collect::<Vec<_>>();
+        let paths = errors
+            .iter()
+            .map(|(import, err)| {
+                let path = import_path_to_string(
+                    &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
+                    &import.kind,
+                    err.span,
+                );
+                format!("`{path}`")
+            })
+            .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
         let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
@@ -525,7 +532,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             diag.note(note);
         }
 
-        for (_, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
             if let Some(label) = err.label {
                 diag.span_label(err.span, label);
             }
@@ -539,13 +546,16 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             }
 
             if let Some(candidate) = &err.candidate {
-                import_candidates(
-                    self.r.session,
-                    &self.r.untracked.source_span,
-                    &mut diag,
-                    Some(err.span),
-                    &candidate,
-                )
+                match &import.kind {
+                    ImportKind::Single { nested: false, .. } => import_candidates(
+                        self.r.session,
+                        &self.r.untracked.source_span,
+                        &mut diag,
+                        Some(err.span),
+                        &candidate,
+                    ),
+                    _ => {}
+                }
             }
         }
 
