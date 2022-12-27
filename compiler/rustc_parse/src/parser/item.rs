@@ -22,6 +22,7 @@ use rustc_span::lev_distance::lev_distance;
 use rustc_span::source_map::{self, Span};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
+use std::fmt::Write;
 use std::mem;
 use thin_vec::ThinVec;
 
@@ -1109,7 +1110,7 @@ impl<'a> Parser<'a> {
             let fixed_name_sp = ident.span.to(idents.last().unwrap().span);
             let mut fixed_name = ident.name.to_string();
             for part in idents {
-                fixed_name.push_str(&format!("_{}", part.name));
+                write!(fixed_name, "_{}", part.name).unwrap();
             }
             ident = Ident::from_str_and_span(&fixed_name, fixed_name_sp);
 
