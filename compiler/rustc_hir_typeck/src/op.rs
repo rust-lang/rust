@@ -12,14 +12,16 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::{
+    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::FulfillmentError;
+use rustc_trait_selection::traits::{self, FulfillmentError};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -486,6 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
+                                                && output_ty.is_suggestable(self.tcx, false)
                                             {
                                                 Some(("Output", *output_ty))
                                             } else {
@@ -735,12 +738,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
+            self.tcx
+                .sess
+                .delay_span_bug(span, "operator didn't have the right number of generic args");
             return Err(vec![]);
         }
 
         let opname = Ident::with_dummy_span(opname);
+        let input_types =
+            opt_rhs.as_ref().map(|(_, ty)| std::slice::from_ref(ty)).unwrap_or_default();
+        let cause = self.cause(
+            span,
+            traits::BinOp {
+                rhs_span: opt_rhs.map(|(expr, _)| expr.span),
+                is_lit: opt_rhs
+                    .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                output_ty: expected.only_has_type(self),
+            },
+        );
+
         let method = trait_did.and_then(|trait_did| {
-            self.lookup_op_method_in_trait(span, opname, trait_did, lhs_ty, opt_rhs, expected)
+            self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, Some(input_types))
         });
 
         match (method, trait_did) {
@@ -752,7 +770,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (None, None) => Err(vec![]),
             (None, Some(trait_did)) => {
                 let (obligation, _) =
-                    self.obligation_for_op_method(span, trait_did, lhs_ty, opt_rhs, expected);
+                    self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
                 Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
             }
         }
