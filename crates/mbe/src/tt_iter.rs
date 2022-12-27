@@ -112,10 +112,9 @@ impl<'a> TtIter<'a> {
 
         match (first.char, second.char, third.map(|it| it.char)) {
             ('.', '.', Some('.' | '=')) | ('<', '<', Some('=')) | ('>', '>', Some('=')) => {
-                let puncts = smallvec![first, second.clone(), third.unwrap().clone()];
                 let _ = self.next().unwrap();
                 let _ = self.next().unwrap();
-                Ok(puncts)
+                Ok(smallvec![first, second.clone(), third.unwrap().clone()])
             }
             ('-' | '!' | '*' | '/' | '&' | '%' | '^' | '+' | '<' | '=' | '>' | '|', '=', _)
             | ('-' | '=' | '>', '>', _)
@@ -125,9 +124,8 @@ impl<'a> TtIter<'a> {
             | ('&', '&', _)
             | ('<', '<', _)
             | ('|', '|', _) => {
-                let puncts = smallvec![first, second.clone()];
                 let _ = self.next().unwrap();
-                Ok(puncts)
+                Ok(smallvec![first, second.clone()])
             }
             _ => Ok(smallvec![first]),
         }

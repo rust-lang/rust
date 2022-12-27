@@ -110,16 +110,6 @@ impl PartialEq for Separator {
     }
 }
 
-impl Separator {
-    pub(crate) fn tt_count(&self) -> usize {
-        match self {
-            Separator::Literal(_) => 1,
-            Separator::Ident(_) => 1,
-            Separator::Puncts(it) => it.len(),
-        }
-    }
-}
-
 #[derive(Clone, Copy)]
 enum Mode {
     Pattern,

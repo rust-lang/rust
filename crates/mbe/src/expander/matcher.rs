@@ -321,8 +321,8 @@ struct MatchState<'t> {
     /// The KleeneOp of this sequence if we are in a repetition.
     sep_kind: Option<RepeatKind>,
 
-    /// Number of tokens of separator parsed
-    sep_parsed: Option<usize>,
+    /// Whether we already matched separator token.
+    sep_matched: bool,
 
     /// Matched meta variables bindings
     bindings: BindingsIdx,
@@ -387,7 +387,7 @@ fn match_loop_inner<'t>(
             None => {
                 // We are at or past the end of the matcher of `item`.
                 if let Some(up) = &item.up {
-                    if item.sep_parsed.is_none() {
+                    if !item.sep_matched {
                         // Get the `up` matcher
                         let mut new_pos = (**up).clone();
                         new_pos.bindings = bindings_builder.copy(&new_pos.bindings);
@@ -401,14 +401,17 @@ fn match_loop_inner<'t>(
                     }
 
                     // Check if we need a separator.
-                    // We check the separator one by one
-                    let sep_idx = item.sep_parsed.unwrap_or(0);
-                    let sep_len = item.sep.as_ref().map_or(0, Separator::tt_count);
-                    if item.sep.is_some() && sep_idx != sep_len {
+                    if item.sep.is_some() && !item.sep_matched {
                         let sep = item.sep.as_ref().unwrap();
-                        if src.clone().expect_separator(sep, sep_idx) {
+                        let mut fork = src.clone();
+                        if fork.expect_separator(sep) {
+                            // HACK: here we use `meta_result` to pass `TtIter` back to caller because
+                            // it might have been advanced multiple times. `ValueResult` is
+                            // insignificant.
+                            item.meta_result = Some((fork, ValueResult::ok(None)));
                             item.dot.next();
-                            item.sep_parsed = Some(sep_idx + 1);
+                            // item.sep_parsed = Some(sep_len);
+                            item.sep_matched = true;
                             try_push!(next_items, item);
                         }
                     }
@@ -416,7 +419,7 @@ fn match_loop_inner<'t>(
                     // and try to match again UNLESS we are only allowed to have _one_ repetition.
                     else if item.sep_kind != Some(RepeatKind::ZeroOrOne) {
                         item.dot = item.dot.reset();
-                        item.sep_parsed = None;
+                        item.sep_matched = false;
                         bindings_builder.push_default(&mut item.bindings);
                         cur_items.push(item);
                     }
@@ -451,7 +454,7 @@ fn match_loop_inner<'t>(
                     up: Some(Box::new(item)),
                     sep: separator.clone(),
                     sep_kind: Some(*kind),
-                    sep_parsed: None,
+                    sep_matched: false,
                     bindings: bindings_builder.alloc(),
                     meta_result: None,
                     is_error: false,
@@ -592,7 +595,7 @@ fn match_loop(pattern: &MetaTemplate, src: &tt::Subtree) -> Match {
         up: None,
         sep: None,
         sep_kind: None,
-        sep_parsed: None,
+        sep_matched: false,
         bindings: bindings_builder.alloc(),
         is_error: false,
         meta_result: None,
@@ -864,14 +867,14 @@ impl<'a> Iterator for OpDelimitedIter<'a> {
 }
 
 impl<'a> TtIter<'a> {
-    fn expect_separator(&mut self, separator: &Separator, idx: usize) -> bool {
+    fn expect_separator(&mut self, separator: &Separator) -> bool {
         let mut fork = self.clone();
         let ok = match separator {
-            Separator::Ident(lhs) if idx == 0 => match fork.expect_ident_or_underscore() {
+            Separator::Ident(lhs) => match fork.expect_ident_or_underscore() {
                 Ok(rhs) => rhs.text == lhs.text,
                 Err(_) => false,
             },
-            Separator::Literal(lhs) if idx == 0 => match fork.expect_literal() {
+            Separator::Literal(lhs) => match fork.expect_literal() {
                 Ok(rhs) => match rhs {
                     tt::Leaf::Literal(rhs) => rhs.text == lhs.text,
                     tt::Leaf::Ident(rhs) => rhs.text == lhs.text,
@@ -879,11 +882,14 @@ impl<'a> TtIter<'a> {
                 },
                 Err(_) => false,
             },
-            Separator::Puncts(lhss) if idx < lhss.len() => match fork.expect_single_punct() {
-                Ok(rhs) => rhs.char == lhss[idx].char,
+            Separator::Puncts(lhs) => match fork.expect_glued_punct() {
+                Ok(rhs) => {
+                    let lhs = lhs.iter().map(|it| it.char);
+                    let rhs = rhs.iter().map(|it| it.char);
+                    lhs.eq(rhs)
+                }
                 Err(_) => false,
             },
-            _ => false,
         };
         if ok {
             *self = fork;
