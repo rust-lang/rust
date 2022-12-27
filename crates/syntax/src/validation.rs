@@ -196,7 +196,7 @@ pub(crate) fn validate_block_structure(root: &SyntaxNode) {
 
 fn validate_numeric_name(name_ref: Option<ast::NameRef>, errors: &mut Vec<SyntaxError>) {
     if let Some(int_token) = int_token(name_ref) {
-        if int_token.text().chars().any(|c| !c.is_digit(10)) {
+        if int_token.text().chars().any(|c| !c.is_ascii_digit()) {
             errors.push(SyntaxError::new(
                 "Tuple (struct) field access is only allowed through \
                 decimal integers with no underscores or suffix",

@@ -23,7 +23,7 @@ pub(crate) fn get_changelog(
     let mut others = String::new();
     for line in git_log.lines() {
         let line = line.trim_start();
-        if let Some(pr_num) = parse_pr_number(&line) {
+        if let Some(pr_num) = parse_pr_number(line) {
             let accept = "Accept: application/vnd.github.v3+json";
             let authorization = format!("Authorization: token {token}");
             let pr_url = "https://api.github.com/repos/rust-lang/rust-analyzer/issues";
