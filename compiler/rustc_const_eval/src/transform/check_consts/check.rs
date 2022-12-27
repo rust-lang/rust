@@ -11,7 +11,7 @@ use rustc_middle::mir::*;
 use rustc_middle::ty::subst::{GenericArgKind, InternalSubsts};
 use rustc_middle::ty::{self, adjustment::PointerCast, Instance, InstanceDef, Ty, TyCtxt};
 use rustc_middle::ty::{Binder, TraitRef, TypeVisitable};
-use rustc_mir_dataflow::{self, Analysis};
+use rustc_mir_dataflow::{self, Analysis, Blocks};
 use rustc_span::{sym, Span, Symbol};
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
 use rustc_trait_selection::traits::{self, ObligationCauseCode, ObligationCtxt, SelectionContext};
@@ -58,7 +58,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsDrop, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, Blocks::All)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -85,7 +85,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(NeedsNonConstDrop, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, Blocks::All)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -115,7 +115,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
             let ConstCx { tcx, body, .. } = *ccx;
 
             FlowSensitiveAnalysis::new(HasMutInterior, ccx)
-                .into_engine(tcx, &body)
+                .into_engine(tcx, &body, Blocks::All)
                 .iterate_to_fixpoint()
                 .into_results_cursor(&body)
         });
@@ -163,7 +163,7 @@ impl<'mir, 'tcx> Qualifs<'mir, 'tcx> {
 
             hir::ConstContext::Const | hir::ConstContext::Static(_) => {
                 let mut cursor = FlowSensitiveAnalysis::new(CustomEq, ccx)
-                    .into_engine(ccx.tcx, &ccx.body)
+                    .into_engine(ccx.tcx, &ccx.body, Blocks::All)
                     .iterate_to_fixpoint()
                     .into_results_cursor(&ccx.body);
 

@@ -9,7 +9,9 @@ use rustc_middle::mir::visit::{MutVisitor, Visitor};
 use rustc_middle::mir::*;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_mir_dataflow::value_analysis::{Map, State, TrackElem, ValueAnalysis, ValueOrPlace};
-use rustc_mir_dataflow::{lattice::FlatSet, Analysis, ResultsVisitor, SwitchIntEdgeEffects};
+use rustc_mir_dataflow::{
+    lattice::FlatSet, Analysis, Blocks, ResultsVisitor, SwitchIntEdgeEffects,
+};
 use rustc_span::DUMMY_SP;
 use rustc_target::abi::Align;
 
@@ -53,7 +55,7 @@ impl<'tcx> MirPass<'tcx> for DataflowConstProp {
         // Perform the actual dataflow analysis.
         let analysis = ConstAnalysis::new(tcx, body, map);
         let results = debug_span!("analyze")
-            .in_scope(|| analysis.wrap().into_engine(tcx, body).iterate_to_fixpoint());
+            .in_scope(|| analysis.wrap().into_engine(tcx, body, Blocks::All).iterate_to_fixpoint());
 
         // Collect results and patch the body afterwards.
         let mut visitor = CollectAndPatch::new(tcx, &results.analysis.0.map);

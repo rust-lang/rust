@@ -13,7 +13,7 @@ use rustc_mir_dataflow::on_lookup_result_bits;
 use rustc_mir_dataflow::un_derefer::UnDerefer;
 use rustc_mir_dataflow::MoveDataParamEnv;
 use rustc_mir_dataflow::{on_all_children_bits, on_all_drop_children_bits};
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, Blocks, ResultsCursor};
 use rustc_span::Span;
 use rustc_target::abi::VariantIdx;
 use std::fmt;
@@ -43,7 +43,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
             let dead_unwinds = find_dead_unwinds(tcx, body, &env, &un_derefer);
 
             let inits = MaybeInitializedPlaces::new(tcx, body, &env)
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, Blocks::Reachable)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -51,7 +51,7 @@ impl<'tcx> MirPass<'tcx> for ElaborateDrops {
 
             let uninits = MaybeUninitializedPlaces::new(tcx, body, &env)
                 .mark_inactive_variants_as_uninit()
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, Blocks::Reachable)
                 .dead_unwinds(&dead_unwinds)
                 .pass_name("elaborate_drops")
                 .iterate_to_fixpoint()
@@ -87,7 +87,7 @@ fn find_dead_unwinds<'tcx>(
     // reach cleanup blocks, which can't have unwind edges themselves.
     let mut dead_unwinds = BitSet::new_empty(body.basic_blocks.len());
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, body, &env)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, Blocks::Reachable)
         .pass_name("find_dead_unwinds")
         .iterate_to_fixpoint()
         .into_results_cursor(body);

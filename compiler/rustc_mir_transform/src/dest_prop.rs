@@ -141,7 +141,7 @@ use rustc_middle::mir::{
 };
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::MaybeLiveLocals;
-use rustc_mir_dataflow::{Analysis, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, Blocks, ResultsCursor};
 
 pub struct DestinationPropagation;
 
@@ -189,7 +189,7 @@ impl<'tcx> MirPass<'tcx> for DestinationPropagation {
             );
             trace!(?candidates);
             let mut live = MaybeLiveLocals
-                .into_engine(tcx, body)
+                .into_engine(tcx, body, Blocks::All)
                 .iterate_to_fixpoint()
                 .into_results_cursor(body);
             dest_prop_mir_dump(tcx, body, &mut live, round_count);

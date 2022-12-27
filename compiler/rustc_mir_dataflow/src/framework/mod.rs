@@ -47,7 +47,7 @@ mod visitor;
 
 pub use self::cursor::{ResultsCursor, ResultsRefCursor};
 pub use self::direction::{Backward, Direction, Forward};
-pub use self::engine::{Engine, Results};
+pub use self::engine::{Blocks, Engine, Results};
 pub use self::lattice::{JoinSemiLattice, MeetSemiLattice};
 pub use self::visitor::{visit_results, ResultsVisitable, ResultsVisitor};
 
@@ -261,11 +261,12 @@ pub trait Analysis<'tcx>: AnalysisDomain<'tcx> {
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
+        blocks: Blocks,
     ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_generic(tcx, body, self)
+        Engine::new_generic(tcx, body, self, blocks)
     }
 }
 
@@ -419,11 +420,12 @@ where
         self,
         tcx: TyCtxt<'tcx>,
         body: &'mir mir::Body<'tcx>,
+        blocks: Blocks,
     ) -> Engine<'mir, 'tcx, Self>
     where
         Self: Sized,
     {
-        Engine::new_gen_kill(tcx, body, self)
+        Engine::new_gen_kill(tcx, body, self, blocks)
     }
 }
 

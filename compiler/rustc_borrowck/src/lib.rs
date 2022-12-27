@@ -48,8 +48,8 @@ use rustc_mir_dataflow::impls::{
 };
 use rustc_mir_dataflow::move_paths::{InitIndex, MoveOutIndex, MovePathIndex};
 use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult, MoveData, MoveError};
-use rustc_mir_dataflow::Analysis;
 use rustc_mir_dataflow::MoveDataParamEnv;
+use rustc_mir_dataflow::{Analysis, Blocks};
 
 use crate::session_diagnostics::VarNeedNotMut;
 
@@ -234,7 +234,7 @@ fn do_mir_borrowck<'tcx>(
     let mdpe = MoveDataParamEnv { move_data, param_env };
 
     let mut flow_inits = MaybeInitializedPlaces::new(tcx, &body, &mdpe)
-        .into_engine(tcx, &body)
+        .into_engine(tcx, &body, Blocks::All)
         .pass_name("borrowck")
         .iterate_to_fixpoint()
         .into_results_cursor(&body);
@@ -290,15 +290,15 @@ fn do_mir_borrowck<'tcx>(
     let regioncx = Rc::new(regioncx);
 
     let flow_borrows = Borrows::new(tcx, body, &regioncx, &borrow_set)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, Blocks::All)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_uninits = MaybeUninitializedPlaces::new(tcx, body, &mdpe)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, Blocks::All)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
     let flow_ever_inits = EverInitializedPlaces::new(tcx, body, &mdpe)
-        .into_engine(tcx, body)
+        .into_engine(tcx, body, Blocks::All)
         .pass_name("borrowck")
         .iterate_to_fixpoint();
 
