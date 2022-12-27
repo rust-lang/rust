@@ -371,10 +371,14 @@ pub mod panic_count {
     #[must_use]
     #[inline]
     pub fn count_is_zero() -> bool {
-        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) & !ALWAYS_ABORT_FLAG == 0 {
+        if GLOBAL_PANIC_COUNT.load(Ordering::Relaxed) == 0 {
             // Fast path: if `GLOBAL_PANIC_COUNT` is zero, all threads
             // (including the current one) will have `LOCAL_PANIC_COUNT`
             // equal to zero, so TLS access can be avoided.
+            //
+            // `ALWAYS_ABORT_FLAG` is ignored intentionally to improve the common
+            // case. If `ALWAYS_ABORT_FLAG` is set, then `GLOBAL_PANIC_COUNT` will
+            // not be equal to zero, and the slow path will be taken.
             //
             // In terms of performance, a relaxed atomic load is similar to a normal
             // aligned memory read (e.g., a mov instruction in x86), but with some
