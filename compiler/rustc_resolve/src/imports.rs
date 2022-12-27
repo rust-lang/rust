@@ -547,15 +547,16 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
 
             if let Some(candidates) = &err.candidates {
                 match &import.kind {
-                    ImportKind::Single { nested: false, .. } => import_candidates(
+                    ImportKind::Single { nested: false, source, target, .. } => import_candidates(
                         self.r.session,
                         &self.r.untracked.source_span,
                         &mut diag,
                         Some(err.span),
                         &candidates,
                         DiagnosticMode::Import,
+                        (source != target).then(|| format!(" as {target}")).as_deref(),
                     ),
-                    ImportKind::Single { nested: true, .. } => {
+                    ImportKind::Single { nested: true, source, target, .. } => {
                         import_candidates(
                             self.r.session,
                             &self.r.untracked.source_span,
@@ -563,6 +564,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             None,
                             &candidates,
                             DiagnosticMode::Normal,
+                            (source != target).then(|| format!(" as {target}")).as_deref(),
                         );
                     }
                     _ => {}

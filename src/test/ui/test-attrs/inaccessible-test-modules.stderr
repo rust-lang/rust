@@ -19,8 +19,8 @@ LL | use test as y;
    |     ~~~~
 help: consider importing this module instead
    |
-LL | use test::test;
-   |     ~~~~~~~~~~~
+LL | use test::test as y;
+   |     ~~~~~~~~~~~~~~~~
 
 error: aborting due to 2 previous errors
 
