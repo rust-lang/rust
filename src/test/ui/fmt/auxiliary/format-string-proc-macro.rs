@@ -5,7 +5,8 @@
 
 extern crate proc_macro;
 
-use proc_macro::{Literal, Span, TokenStream, TokenTree};
+use proc_macro::{Delimiter, Group, Ident, Literal, Punct, Spacing, Span, TokenStream, TokenTree};
+use std::iter::FromIterator;
 
 #[proc_macro]
 pub fn foo_with_input_span(input: TokenStream) -> TokenStream {
@@ -25,4 +26,15 @@ pub fn err_with_input_span(input: TokenStream) -> TokenStream {
     lit.set_span(span);
 
     TokenStream::from(TokenTree::Literal(lit))
+}
+
+#[proc_macro]
+pub fn respan_to_invalid_format_literal(input: TokenStream) -> TokenStream {
+    let mut s = Literal::string("{");
+    s.set_span(input.into_iter().next().unwrap().span());
+    TokenStream::from_iter([
+        TokenTree::from(Ident::new("format", Span::call_site())),
+        TokenTree::from(Punct::new('!', Spacing::Alone)),
+        TokenTree::from(Group::new(Delimiter::Parenthesis, TokenTree::from(s).into())),
+    ])
 }
