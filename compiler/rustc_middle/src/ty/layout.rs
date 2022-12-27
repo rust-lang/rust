@@ -833,32 +833,17 @@ where
                     })
                 }
                 ty::Ref(_, ty, mt) if offset.bytes() == 0 => {
-                    let kind = if tcx.sess.opts.optimize == OptLevel::No {
-                        // Use conservative pointer kind if not optimizing. This saves us the
-                        // Freeze/Unpin queries, and can save time in the codegen backend (noalias
-                        // attributes in LLVM have compile-time cost even in unoptimized builds).
-                        PointerKind::SharedMutable
-                    } else {
-                        match mt {
-                            hir::Mutability::Not => {
-                                if ty.is_freeze(tcx, cx.param_env()) {
-                                    PointerKind::Frozen
-                                } else {
-                                    PointerKind::SharedMutable
-                                }
-                            }
-                            hir::Mutability::Mut => {
-                                // References to self-referential structures should not be considered
-                                // noalias, as another pointer to the structure can be obtained, that
-                                // is not based-on the original reference. We consider all !Unpin
-                                // types to be potentially self-referential here.
-                                if ty.is_unpin(tcx, cx.param_env()) {
-                                    PointerKind::UniqueBorrowed
-                                } else {
-                                    PointerKind::UniqueBorrowedPinned
-                                }
-                            }
-                        }
+                    // Use conservative pointer kind if not optimizing. This saves us the
+                    // Freeze/Unpin queries, and can save time in the codegen backend (noalias
+                    // attributes in LLVM have compile-time cost even in unoptimized builds).
+                    let optimize = tcx.sess.opts.optimize != OptLevel::No;
+                    let kind = match mt {
+                        hir::Mutability::Not => PointerKind::SharedRef {
+                            frozen: optimize && ty.is_freeze(tcx, cx.param_env()),
+                        },
+                        hir::Mutability::Mut => PointerKind::MutableRef {
+                            unpin: optimize && ty.is_unpin(tcx, cx.param_env()),
+                        },
                     };
 
                     tcx.layout_of(param_env.and(ty)).ok().map(|layout| PointeeInfo {
@@ -929,7 +914,7 @@ where
                     if let Some(ref mut pointee) = result {
                         if let ty::Adt(def, _) = this.ty.kind() {
                             if def.is_box() && offset.bytes() == 0 {
-                                pointee.safe = Some(PointerKind::UniqueOwned);
+                                pointee.safe = Some(PointerKind::Box);
                             }
                         }
                     }

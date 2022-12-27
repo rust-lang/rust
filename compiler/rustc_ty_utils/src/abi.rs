@@ -254,15 +254,15 @@ fn adjust_for_rust_scalar<'tcx>(
         if let Some(kind) = pointee.safe {
             attrs.pointee_align = Some(pointee.align);
 
-            // `Box` (`UniqueBorrowed`) are not necessarily dereferenceable
-            // for the entire duration of the function as they can be deallocated
-            // at any time. Same for shared mutable references. If LLVM had a
-            // way to say "dereferenceable on entry" we could use it here.
+            // `Box` are not necessarily dereferenceable for the entire duration of the function as
+            // they can be deallocated at any time. Same for non-frozen shared references (see
+            // <https://github.com/rust-lang/rust/pull/98017>). If LLVM had a way to say
+            // "dereferenceable on entry" we could use it here.
             attrs.pointee_size = match kind {
-                PointerKind::UniqueBorrowed
-                | PointerKind::UniqueBorrowedPinned
-                | PointerKind::Frozen => pointee.size,
-                PointerKind::SharedMutable | PointerKind::UniqueOwned => Size::ZERO,
+                PointerKind::Box | PointerKind::SharedRef { frozen: false } => Size::ZERO,
+                PointerKind::SharedRef { frozen: true } | PointerKind::MutableRef { .. } => {
+                    pointee.size
+                }
             };
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
@@ -278,15 +278,14 @@ fn adjust_for_rust_scalar<'tcx>(
             // `&mut` pointer parameters never alias other parameters,
             // or mutable global data
             //
-            // `&T` where `T` contains no `UnsafeCell<U>` is immutable,
-            // and can be marked as both `readonly` and `noalias`, as
-            // LLVM's definition of `noalias` is based solely on memory
-            // dependencies rather than pointer equality
+            // `&T` where `T` contains no `UnsafeCell<U>` is immutable, and can be marked as both
+            // `readonly` and `noalias`, as LLVM's definition of `noalias` is based solely on memory
+            // dependencies rather than pointer equality. However this only applies to arguments,
+            // not return values.
             let no_alias = match kind {
-                PointerKind::SharedMutable | PointerKind::UniqueBorrowedPinned => false,
-                PointerKind::UniqueBorrowed => noalias_mut_ref,
-                PointerKind::UniqueOwned => noalias_for_box,
-                PointerKind::Frozen => true,
+                PointerKind::SharedRef { frozen } => frozen,
+                PointerKind::MutableRef { unpin } => unpin && noalias_mut_ref,
+                PointerKind::Box => noalias_for_box,
             };
             // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
             // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
@@ -294,7 +293,7 @@ fn adjust_for_rust_scalar<'tcx>(
                 attrs.set(ArgAttribute::NoAlias);
             }
 
-            if kind == PointerKind::Frozen && !is_return {
+            if matches!(kind, PointerKind::SharedRef { frozen: true }) && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
             }
         }

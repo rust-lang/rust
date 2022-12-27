@@ -29,6 +29,12 @@ pub fn borrow(x: &i32) -> &i32 {
   x
 }
 
+// CHECK: align 4 {{i32\*|ptr}} @borrow_mut({{i32\*|ptr}} align 4 %x)
+#[no_mangle]
+pub fn borrow_mut(x: &mut i32) -> &mut i32 {
+  x
+}
+
 // CHECK-LABEL: @borrow_call
 #[no_mangle]
 pub fn borrow_call(x: &i32, f: fn(&i32) -> &i32) -> &i32 {
