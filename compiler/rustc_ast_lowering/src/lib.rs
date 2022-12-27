@@ -2245,6 +2245,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>) {
         // Add a definition for the in-band `Param`.
         let def_id = self.local_def_id(node_id);
+        let span = self.lower_span(span);
 
         // Set the name to `impl Bound1 + Bound2`.
         let param = hir::GenericParam {
@@ -2252,7 +2253,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             def_id,
             name: ParamName::Plain(self.lower_ident(ident)),
             pure_wrt_drop: false,
-            span: self.lower_span(span),
+            span,
             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
             colon_span: None,
         };
@@ -2262,6 +2263,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             node_id,
             &GenericParamKind::Type { default: None },
             bounds,
+            /* colon_span */ None,
+            span,
             &ImplTraitContext::Universal,
             hir::PredicateOrigin::ImplTrait,
         );
@@ -2271,7 +2274,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ty = hir::TyKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
-                span: self.lower_span(span),
+                span,
                 res,
                 segments:
                     arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],

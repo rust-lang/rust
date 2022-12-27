@@ -106,6 +106,12 @@ fn lazy_new() {
     assert_eq!(called.get(), 1);
 }
 
+// Check that we can infer `T` from closure's type.
+#[test]
+fn lazy_type_inference() {
+    let _ = LazyCell::new(|| ());
+}
+
 #[test]
 fn aliasing_in_get() {
     let x = OnceCell::new();

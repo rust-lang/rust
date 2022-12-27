@@ -46,17 +46,14 @@ pub struct LazyLock<T, F = fn() -> T> {
     cell: OnceLock<T>,
     init: Cell<Option<F>>,
 }
-
-impl<T, F> LazyLock<T, F> {
+impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Creates a new lazy value with the given initializing
     /// function.
     #[unstable(feature = "once_cell", issue = "74465")]
     pub const fn new(f: F) -> LazyLock<T, F> {
         LazyLock { cell: OnceLock::new(), init: Cell::new(Some(f)) }
     }
-}
 
-impl<T, F: FnOnce() -> T> LazyLock<T, F> {
     /// Forces the evaluation of this lazy value and
     /// returns a reference to result. This is equivalent
     /// to the `Deref` impl, but is explicit.

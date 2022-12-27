@@ -19,6 +19,7 @@ use rustc_middle::ty::{
     TypeVisitable,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -1255,6 +1256,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expr.span.until(end.span),
                     "remove the unnecessary `.` operator and add an integer part for a floating point literal",
                     "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Lit(Spanned {
+                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed),
+                span,
+            }) => {
+                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) else { return false; };
+                if !(snippet.starts_with("0x") || snippet.starts_with("0X")) {
+                    return false;
+                }
+                if snippet.len() <= 5 || !snippet.is_char_boundary(snippet.len() - 3) {
+                    return false;
+                }
+                let (_, suffix) = snippet.split_at(snippet.len() - 3);
+                let value = match suffix {
+                    "f32" => (lit - 0xf32) / (16 * 16 * 16),
+                    "f64" => (lit - 0xf64) / (16 * 16 * 16),
+                    _ => return false,
+                };
+                err.span_suggestions(
+                    expr.span,
+                    "rewrite this as a decimal floating point literal, or use `as` to turn a hex literal into a float",
+                    [format!("0x{value:X} as {suffix}"), format!("{value}_{suffix}")],
                     Applicability::MaybeIncorrect,
                 );
                 true
