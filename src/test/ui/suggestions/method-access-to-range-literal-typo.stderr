@@ -4,7 +4,7 @@ error[E0425]: cannot find function `foo` in this scope
 LL |         self.option..foo().get(0)
    |                      ^^^ not found in this scope
    |
-help: you might have meant to write a method call instead of a range
+help: you might have meant to write `.` instead of `..`
    |
 LL -         self.option..foo().get(0)
 LL +         self.option.foo().get(0)

@@ -3354,7 +3354,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                     }
                     Some((
                         span,
-                        "you might have meant to write a method call instead of a range",
+                        "you might have meant to write `.` instead of `..`",
                         sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
