@@ -276,10 +276,10 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                     {
                         let def_id = trait_ref.def_id;
                         is_def_must_use(cx, def_id, span)
+                            .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
                     } else {
                         None
                     }
-                    .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
                 }),
                 ty::Tuple(tys) => {
                     let elem_exprs = if let hir::ExprKind::Tup(elem_exprs) = expr.kind {

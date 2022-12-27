@@ -535,12 +535,12 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // x += 1;
             // ```
             !i.contains(span)
-                    // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
-                        && !visitor
-                            .errors
-                            .iter()
-                            .map(|(sp, _)| *sp)
-                            .any(|sp| span < sp && !sp.contains(span))
+            // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
+            && !visitor
+                .errors
+                .iter()
+                .map(|(sp, _)| *sp)
+                .any(|sp| span < sp && !sp.contains(span))
         }) {
             show_assign_sugg = true;
             "isn't initialized"
