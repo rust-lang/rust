@@ -221,7 +221,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let ty_str = self.ty_to_string(rcvr_ty);
+        let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let lev_candidate = no_match_data.lev_candidate;
@@ -523,7 +523,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let term = pred.skip_binder().term;
 
                         let obligation = format!("{} = {}", projection_ty, term);
-                        let quiet = format!("{} = {}", quiet_projection_ty, term);
+                        let quiet = with_forced_trimmed_paths!(format!(
+                            "{} = {}",
+                            quiet_projection_ty, term
+                        ));
 
                         bound_span_label(projection_ty.self_ty(), &obligation, &quiet);
                         Some((obligation, projection_ty.self_ty()))
@@ -533,7 +536,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let self_ty = p.self_ty();
                         let path = p.print_only_trait_path();
                         let obligation = format!("{}: {}", self_ty, path);
-                        let quiet = format!("_: {}", path);
+                        let quiet = with_forced_trimmed_paths!(format!("_: {}", path));
                         bound_span_label(self_ty, &obligation, &quiet);
                         Some((obligation, self_ty))
                     }
@@ -636,6 +639,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let entry = spanned_predicates.entry(spans);
                         entry.or_insert_with(|| (path, tr_self_ty, Vec::new())).2.push(p);
                     }
+                    Some(Node::Item(hir::Item {
+                        kind: hir::ItemKind::Trait(rustc_ast::ast::IsAuto::Yes, ..),
+                        span: item_span,
+                        ..
+                    })) => {
+                        tcx.sess.delay_span_bug(
+                            *item_span,
+                            "auto trait is invoked with no method error, but no error reported?",
+                        );
+                    }
                     Some(_) => unreachable!(),
                     None => (),
                 }
@@ -731,9 +744,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     (None, None)
                 };
-                let primary_message = primary_message.unwrap_or_else(|| format!(
-                    "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, but its trait bounds were not satisfied"
-                ));
+                let primary_message = primary_message.unwrap_or_else(|| {
+                    format!(
+                        "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, \
+                    but its trait bounds were not satisfied"
+                    )
+                });
                 err.set_primary_message(&primary_message);
                 if let Some(label) = label {
                     custom_span_label = true;
@@ -826,11 +842,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
                 }
             } else {
+                let ty_str =
+                    if ty_str.len() > 50 { String::new() } else { format!("on `{ty_str}` ") };
                 err.span_label(
                     span,
-                    format!(
-                        "{item_kind} cannot be called on `{ty_str}` due to unsatisfied trait bounds"
-                    ),
+                    format!("{item_kind} cannot be called {ty_str}due to unsatisfied trait bounds"),
                 );
             }
         };
@@ -922,7 +938,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if def_kind == DefKind::AssocFn && lev_candidate.fn_has_self_parameter {
                     err.span_suggestion(
                         span,
-                        &format!("there is a method with a similar name",),
+                        "there is a method with a similar name",
                         lev_candidate.name,
                         Applicability::MaybeIncorrect,
                     );
@@ -966,11 +982,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     // Provide the best span we can. Use the item, if local to crate, else
                     // the impl, if local to crate (item may be defaulted), else nothing.
                     let Some(item) = self.associated_value(impl_did, item_name).or_else(|| {
-                            let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
-                            self.associated_value(impl_trait_ref.def_id, item_name)
-                        }) else {
-                            continue;
-                        };
+                        let impl_trait_ref = self.tcx.impl_trait_ref(impl_did)?;
+                        self.associated_value(impl_trait_ref.def_id, item_name)
+                    }) else {
+                        continue;
+                    };
 
                     let note_span = if item.def_id.is_local() {
                         Some(self.tcx.def_span(item.def_id))
@@ -1015,35 +1031,35 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err.note(&note_str);
                     }
                     if let Some(sugg_span) = sugg_span
-                            && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
-                            let path = self.tcx.def_path_str(trait_ref.def_id);
+                        && let Some(trait_ref) = self.tcx.impl_trait_ref(impl_did) {
+                        let path = self.tcx.def_path_str(trait_ref.def_id);
 
-                            let ty = match item.kind {
-                                ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
-                                ty::AssocKind::Fn => self
-                                    .tcx
-                                    .fn_sig(item.def_id)
-                                    .inputs()
-                                    .skip_binder()
-                                    .get(0)
-                                    .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
-                                    .copied()
-                                    .unwrap_or(rcvr_ty),
-                            };
-                            print_disambiguation_help(
-                                item_name,
-                                args,
-                                err,
-                                path,
-                                ty,
-                                item.kind,
-                                item.def_id,
-                                sugg_span,
-                                idx,
-                                self.tcx.sess.source_map(),
-                                item.fn_has_self_parameter,
-                            );
-                        }
+                        let ty = match item.kind {
+                            ty::AssocKind::Const | ty::AssocKind::Type => rcvr_ty,
+                            ty::AssocKind::Fn => self
+                                .tcx
+                                .fn_sig(item.def_id)
+                                .inputs()
+                                .skip_binder()
+                                .get(0)
+                                .filter(|ty| ty.is_region_ptr() && !rcvr_ty.is_region_ptr())
+                                .copied()
+                                .unwrap_or(rcvr_ty),
+                        };
+                        print_disambiguation_help(
+                            item_name,
+                            args,
+                            err,
+                            path,
+                            ty,
+                            item.kind,
+                            item.def_id,
+                            sugg_span,
+                            idx,
+                            self.tcx.sess.source_map(),
+                            item.fn_has_self_parameter,
+                        );
+                    }
                 }
                 CandidateSource::Trait(trait_did) => {
                     let Some(item) = self.associated_value(trait_did, item_name) else { continue };
