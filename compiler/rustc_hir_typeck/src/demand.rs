@@ -71,6 +71,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.check_for_range_as_method_call(err, expr, expr_ty, expected);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -1449,14 +1450,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    /// Identify when the user has written `foo..bar()` instead of `foo.bar()`.
     pub fn check_for_range_as_method_call(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         checked_ty: Ty<'tcx>,
-        // FIXME: We should do analysis to see if we can synthesize an expresion that produces
-        // this type for always accurate suggestions, or at least marking the suggestion as
-        // machine applicable.
         expected_ty: Ty<'tcx>,
     ) {
         if !hir::is_range_literal(expr) {
@@ -1467,13 +1466,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [start, end],
             _,
         ) = expr.kind else { return; };
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
+            // Ignore `Foo { field: a..Default::default() }`
+            return;
+        }
         let mut expr = end.expr;
         while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
             // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
             // `src/test/ui/methods/issues/issue-90315.stderr`.
             expr = rcvr;
         }
-        let hir::ExprKind::Call(..) = expr.kind else { return; };
+        let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
         let ty::Adt(adt, _) = checked_ty.kind() else { return; };
         if self.tcx.lang_items().range_struct() != Some(adt.did()) {
             return;
@@ -1483,11 +1487,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         {
             return;
         }
+        // Check if start has method named end.
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
+        let [hir::PathSegment { ident, .. }] = p.segments else { return; };
+        let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
+        let Ok(_pick) = self.probe_for_name(
+            probe::Mode::MethodCall,
+            *ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            expr.hir_id,
+            probe::ProbeScope::AllTraits,
+        ) else { return; };
+        let mut sugg = ".";
+        let mut span = start.expr.span.between(end.expr.span);
+        if span.lo() + BytePos(2) == span.hi() {
+            // There's no space between the start, the range op and the end, suggest removal which
+            // will be more noticeable than the replacement of `..` with `.`.
+            span = span.with_lo(span.lo() + BytePos(1));
+            sugg = "";
+        }
         err.span_suggestion_verbose(
-            start.expr.span.between(end.expr.span),
-            "you might have meant to write a method call instead of a range",
-            ".".to_string(),
-            Applicability::MaybeIncorrect,
+            span,
+            "you likely meant to write a method call instead of a range",
+            sugg,
+            Applicability::MachineApplicable,
         );
     }
 }

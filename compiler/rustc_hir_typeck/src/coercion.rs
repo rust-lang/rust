@@ -1604,7 +1604,6 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         None,
                         Some(coercion_error),
                     );
-                    fcx.check_for_range_as_method_call(&mut err, expr, found, expected);
                 }
 
                 if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {

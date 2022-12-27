@@ -3344,10 +3344,18 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 let suggestion = if let Some((start, end)) = this.diagnostic_metadata.in_range
                     && path[0].ident.span.lo() == end.span.lo()
                 {
+                    let mut sugg = ".";
+                    let mut span = start.span.between(end.span);
+                    if span.lo() + BytePos(2) == span.hi() {
+                        // There's no space between the start, the range op and the end, suggest
+                        // removal which will look better.
+                        span = span.with_lo(span.lo() + BytePos(1));
+                        sugg = "";
+                    }
                     Some((
-                        start.span.between(end.span),
+                        span,
                         "you might have meant to write a method call instead of a range",
-                        ".".to_string(),
+                        sugg.to_string(),
                         Applicability::MaybeIncorrect,
                     ))
                 } else if res.is_none() {
