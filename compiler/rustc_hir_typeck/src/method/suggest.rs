@@ -2306,6 +2306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         _ => false,
                     }
                 }) && (type_is_local || info.def_id.is_local())
+                    && !self.tcx.trait_is_auto(info.def_id)
                     && self
                         .associated_value(info.def_id, item_name)
                         .filter(|item| {
