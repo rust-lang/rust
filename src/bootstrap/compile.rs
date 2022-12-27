@@ -46,17 +46,6 @@ impl Std {
     }
 }
 
-/// Return a `-p=x -p=y` string suitable for passing to a cargo invocation.
-fn build_crates_in_set(run: &RunConfig<'_>) -> Interned<Vec<String>> {
-    let mut crates = Vec::new();
-    for krate in &run.paths {
-        let path = krate.assert_single_path();
-        let crate_name = run.builder.crate_paths[&path.path];
-        crates.push(format!("-p={crate_name}"));
-    }
-    INTERNER.intern_list(crates)
-}
-
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -76,7 +65,7 @@ impl Step for Std {
         // Build all crates anyway, as if they hadn't passed the other args.
         let has_library =
             run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { build_crates_in_set(&run) };
+        let crates = if has_library { Default::default() } else { run.cargo_crates_in_set() };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -603,7 +592,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = build_crates_in_set(&run);
+        let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,

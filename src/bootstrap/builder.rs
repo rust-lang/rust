@@ -13,7 +13,6 @@ use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
 use crate::config::{SplitDebuginfo, TargetSelection};
-use crate::dist;
 use crate::doc;
 use crate::flags::{Color, Subcommand};
 use crate::install;
@@ -25,6 +24,7 @@ use crate::tool::{self, SourceType};
 use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{check, compile, Crate};
+use crate::{clean, dist};
 use crate::{Build, CLang, DocTests, GitRepo, Mode};
 
 pub use crate::Compiler;
@@ -95,6 +95,17 @@ pub struct RunConfig<'a> {
 impl RunConfig<'_> {
     pub fn build_triple(&self) -> TargetSelection {
         self.builder.build.build
+    }
+
+    /// Return a `-p=x -p=y` string suitable for passing to a cargo invocation.
+    pub fn cargo_crates_in_set(&self) -> Interned<Vec<String>> {
+        let mut crates = Vec::new();
+        for krate in &self.paths {
+            let path = krate.assert_single_path();
+            let crate_name = self.builder.crate_paths[&path.path];
+            crates.push(format!("-p={crate_name}"));
+        }
+        INTERNER.intern_list(crates)
     }
 }
 
@@ -764,8 +775,9 @@ impl<'a> Builder<'a> {
                 run::GenerateCopyright,
             ),
             Kind::Setup => describe!(setup::Profile),
-            // These commands either don't use paths, or they're special-cased in Build::build()
-            Kind::Clean | Kind::Format => vec![],
+            Kind::Clean => describe!(clean::CleanAll, clean::Rustc, clean::Std),
+            // special-cased in Build::build()
+            Kind::Format => vec![],
         }
     }
 
@@ -827,14 +839,12 @@ impl<'a> Builder<'a> {
             Subcommand::Dist { ref paths } => (Kind::Dist, &paths[..]),
             Subcommand::Install { ref paths } => (Kind::Install, &paths[..]),
             Subcommand::Run { ref paths, .. } => (Kind::Run, &paths[..]),
+            Subcommand::Clean { ref paths, .. } => (Kind::Clean, &paths[..]),
             Subcommand::Format { .. } => (Kind::Format, &[][..]),
             Subcommand::Setup { profile: ref path } => (
                 Kind::Setup,
                 path.as_ref().map_or([].as_slice(), |path| std::slice::from_ref(path)),
             ),
-            Subcommand::Clean { .. } => {
-                panic!()
-            }
         };
 
         Self::new_internal(build, kind, paths.to_owned())
@@ -1077,63 +1087,21 @@ impl<'a> Builder<'a> {
         None
     }
 
-    /// Prepares an invocation of `cargo` to be run.
-    ///
-    /// This will create a `Command` that represents a pending execution of
-    /// Cargo. This cargo will be configured to use `compiler` as the actual
-    /// rustc compiler, its output will be scoped by `mode`'s output directory,
-    /// it will pass the `--target` flag for the specified `target`, and will be
-    /// executing the Cargo command `cmd`.
-    pub fn cargo(
+    /// Like `cargo`, but only passes flags that are valid for all commands.
+    pub fn bare_cargo(
         &self,
         compiler: Compiler,
         mode: Mode,
-        source_type: SourceType,
         target: TargetSelection,
         cmd: &str,
-    ) -> Cargo {
+    ) -> Command {
         let mut cargo = Command::new(&self.initial_cargo);
-        let out_dir = self.stage_out(compiler, mode);
         // Run cargo from the source root so it can find .cargo/config.
         // This matters when using vendoring and the working directory is outside the repository.
         cargo.current_dir(&self.src);
 
-        // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
-        // so we need to explicitly clear out if they've been updated.
-        for backend in self.codegen_backends(compiler) {
-            self.clear_if_dirty(&out_dir, &backend);
-        }
-
-        if cmd == "doc" || cmd == "rustdoc" {
-            let my_out = match mode {
-                // This is the intended out directory for compiler documentation.
-                Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
-                Mode::Std => {
-                    if self.config.cmd.json() {
-                        out_dir.join(target.triple).join("json-doc")
-                    } else {
-                        out_dir.join(target.triple).join("doc")
-                    }
-                }
-                _ => panic!("doc mode {:?} not expected", mode),
-            };
-            let rustdoc = self.rustdoc(compiler);
-            self.clear_if_dirty(&my_out, &rustdoc);
-        }
-
+        let out_dir = self.stage_out(compiler, mode);
         cargo.env("CARGO_TARGET_DIR", &out_dir).arg(cmd);
-
-        let profile_var = |name: &str| {
-            let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
-            format!("CARGO_PROFILE_{}_{}", profile, name)
-        };
-
-        // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
-        // needs to not accidentally link to libLLVM in stage0/lib.
-        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
-        if let Some(e) = env::var_os(util::dylib_path_var()) {
-            cargo.env("REAL_LIBRARY_PATH", e);
-        }
 
         // Found with `rg "init_env_logger\("`. If anyone uses `init_env_logger`
         // from out of tree it shouldn't matter, since x.py is only used for
@@ -1159,6 +1127,73 @@ impl<'a> Builder<'a> {
             cargo.arg("--target").arg(target.rustc_target_arg());
         } else {
             assert_eq!(target, compiler.host);
+        }
+
+        if self.config.rust_optimize {
+            // FIXME: cargo bench/install do not accept `--release`
+            if cmd != "bench" && cmd != "install" {
+                cargo.arg("--release");
+            }
+        }
+
+        // Remove make-related flags to ensure Cargo can correctly set things up
+        cargo.env_remove("MAKEFLAGS");
+        cargo.env_remove("MFLAGS");
+
+        cargo
+    }
+
+    /// Prepares an invocation of `cargo` to be run.
+    ///
+    /// This will create a `Command` that represents a pending execution of
+    /// Cargo. This cargo will be configured to use `compiler` as the actual
+    /// rustc compiler, its output will be scoped by `mode`'s output directory,
+    /// it will pass the `--target` flag for the specified `target`, and will be
+    /// executing the Cargo command `cmd`.
+    pub fn cargo(
+        &self,
+        compiler: Compiler,
+        mode: Mode,
+        source_type: SourceType,
+        target: TargetSelection,
+        cmd: &str,
+    ) -> Cargo {
+        let mut cargo = self.bare_cargo(compiler, mode, target, cmd);
+        let out_dir = self.stage_out(compiler, mode);
+
+        // Codegen backends are not yet tracked by -Zbinary-dep-depinfo,
+        // so we need to explicitly clear out if they've been updated.
+        for backend in self.codegen_backends(compiler) {
+            self.clear_if_dirty(&out_dir, &backend);
+        }
+
+        if cmd == "doc" || cmd == "rustdoc" {
+            let my_out = match mode {
+                // This is the intended out directory for compiler documentation.
+                Mode::Rustc | Mode::ToolRustc => self.compiler_doc_out(target),
+                Mode::Std => {
+                    if self.config.cmd.json() {
+                        out_dir.join(target.triple).join("json-doc")
+                    } else {
+                        out_dir.join(target.triple).join("doc")
+                    }
+                }
+                _ => panic!("doc mode {:?} not expected", mode),
+            };
+            let rustdoc = self.rustdoc(compiler);
+            self.clear_if_dirty(&my_out, &rustdoc);
+        }
+
+        let profile_var = |name: &str| {
+            let profile = if self.config.rust_optimize { "RELEASE" } else { "DEV" };
+            format!("CARGO_PROFILE_{}_{}", profile, name)
+        };
+
+        // See comment in rustc_llvm/build.rs for why this is necessary, largely llvm-config
+        // needs to not accidentally link to libLLVM in stage0/lib.
+        cargo.env("REAL_LIBRARY_PATH_VAR", &util::dylib_path_var());
+        if let Some(e) = env::var_os(util::dylib_path_var()) {
+            cargo.env("REAL_LIBRARY_PATH", e);
         }
 
         // Set a flag for `check`/`clippy`/`fix`, so that certain build
@@ -1341,9 +1376,6 @@ impl<'a> Builder<'a> {
         }
 
         cargo.arg("-j").arg(self.jobs().to_string());
-        // Remove make-related flags to ensure Cargo can correctly set things up
-        cargo.env_remove("MAKEFLAGS");
-        cargo.env_remove("MFLAGS");
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
         // Force cargo to output binaries with disambiguating hashes in the name
@@ -1824,13 +1856,6 @@ impl<'a> Builder<'a> {
             }
             _ => {
                 // Don't set anything
-            }
-        }
-
-        if self.config.rust_optimize {
-            // FIXME: cargo bench/install do not accept `--release`
-            if cmd != "bench" && cmd != "install" {
-                cargo.arg("--release");
             }
         }
 
