@@ -81,21 +81,18 @@ impl NewPermission {
                         protector: None,
                     }
                 } else if pointee.is_unpin(*cx.tcx, cx.param_env()) {
-                    // A regular full mutable reference.
+                    // A regular full mutable reference. On `FnEntry` this is `noalias` and `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::Unique,
                         access: Some(AccessKind::Write),
                         protector,
                     }
                 } else {
+                    // `!Unpin` dereferences do not get `noalias` nor `dereferenceable`.
                     NewPermission::Uniform {
                         perm: Permission::SharedReadWrite,
-                        // FIXME: We emit `dereferenceable` for `!Unpin` mutable references, so we
-                        // should do fake accesses here. But then we run into
-                        // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
-                        // we don't do that.
                         access: None,
-                        protector,
+                        protector: None,
                     }
                 }
             }
@@ -109,6 +106,7 @@ impl NewPermission {
                 }
             }
             ty::Ref(_, _pointee, Mutability::Not) => {
+                // Shared references. If frozen, these get `noalias` and `dereferenceable`; otherwise neither.
                 NewPermission::FreezeSensitive {
                     freeze_perm: Permission::SharedReadOnly,
                     freeze_access: Some(AccessKind::Read),

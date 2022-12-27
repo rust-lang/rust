@@ -256,13 +256,16 @@ fn adjust_for_rust_scalar<'tcx>(
 
             // `Box` are not necessarily dereferenceable for the entire duration of the function as
             // they can be deallocated at any time. Same for non-frozen shared references (see
-            // <https://github.com/rust-lang/rust/pull/98017>). If LLVM had a way to say
-            // "dereferenceable on entry" we could use it here.
+            // <https://github.com/rust-lang/rust/pull/98017>), and for mutable references to
+            // potentially self-referential types (see
+            // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>). If LLVM had a way
+            // to say "dereferenceable on entry" we could use it here.
             attrs.pointee_size = match kind {
-                PointerKind::Box | PointerKind::SharedRef { frozen: false } => Size::ZERO,
-                PointerKind::SharedRef { frozen: true } | PointerKind::MutableRef { .. } => {
-                    pointee.size
-                }
+                PointerKind::Box
+                | PointerKind::SharedRef { frozen: false }
+                | PointerKind::MutableRef { unpin: false } => Size::ZERO,
+                PointerKind::SharedRef { frozen: true }
+                | PointerKind::MutableRef { unpin: true } => pointee.size,
             };
 
             // The aliasing rules for `Box<T>` are still not decided, but currently we emit
