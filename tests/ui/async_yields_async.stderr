@@ -3,8 +3,7 @@ error: an async construct yields a type which is itself awaitable
    |
 LL |        let _h = async {
    |  _____________________-
-LL | |          async {
-   | | _________^
+LL | |/         async {
 LL | ||             3
 LL | ||         }
    | ||_________^ awaitable value not awaited
@@ -37,8 +36,7 @@ error: an async construct yields a type which is itself awaitable
    |
 LL |        let _j = async || {
    |  ________________________-
-LL | |          async {
-   | | _________^
+LL | |/         async {
 LL | ||             3
 LL | ||         }
    | ||_________^ awaitable value not awaited
