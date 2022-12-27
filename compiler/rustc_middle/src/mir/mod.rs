@@ -1444,6 +1444,7 @@ impl Debug for Statement<'_> {
                 "Retag({}{:?})",
                 match kind {
                     RetagKind::FnEntry => "[fn entry] ",
+                    RetagKind::FnReturn => "[fn return] ",
                     RetagKind::TwoPhase => "[2phase] ",
                     RetagKind::Raw => "[raw] ",
                     RetagKind::Default => "",

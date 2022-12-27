@@ -112,7 +112,7 @@ impl<'tcx> MirPass<'tcx> for AddRetag {
                 0,
                 Statement {
                     source_info,
-                    kind: StatementKind::Retag(RetagKind::Default, Box::new(dest_place)),
+                    kind: StatementKind::Retag(RetagKind::FnReturn, Box::new(dest_place)),
                 },
             );
         }

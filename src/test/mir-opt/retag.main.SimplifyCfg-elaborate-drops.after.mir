@@ -76,7 +76,7 @@ fn main() -> () {
     }
 
     bb1: {
-        Retag(_3);                       // scope 1 at $DIR/retag.rs:+3:17: +3:36
+        Retag([fn return] _3);           // scope 1 at $DIR/retag.rs:+3:17: +3:36
         StorageDead(_6);                 // scope 1 at $DIR/retag.rs:+3:35: +3:36
         StorageDead(_4);                 // scope 1 at $DIR/retag.rs:+3:35: +3:36
         StorageDead(_7);                 // scope 1 at $DIR/retag.rs:+3:36: +3:37
@@ -122,7 +122,7 @@ fn main() -> () {
     }
 
     bb3: {
-        Retag(_15);                      // scope 6 at $DIR/retag.rs:+15:14: +15:19
+        Retag([fn return] _15);          // scope 6 at $DIR/retag.rs:+15:14: +15:19
         StorageDead(_17);                // scope 6 at $DIR/retag.rs:+15:18: +15:19
         StorageDead(_16);                // scope 6 at $DIR/retag.rs:+15:18: +15:19
         StorageDead(_18);                // scope 6 at $DIR/retag.rs:+15:19: +15:20
@@ -148,7 +148,7 @@ fn main() -> () {
     }
 
     bb4: {
-        Retag(_19);                      // scope 7 at $DIR/retag.rs:+18:5: +18:24
+        Retag([fn return] _19);          // scope 7 at $DIR/retag.rs:+18:5: +18:24
         StorageDead(_22);                // scope 7 at $DIR/retag.rs:+18:23: +18:24
         StorageDead(_20);                // scope 7 at $DIR/retag.rs:+18:23: +18:24
         StorageDead(_23);                // scope 7 at $DIR/retag.rs:+18:24: +18:25

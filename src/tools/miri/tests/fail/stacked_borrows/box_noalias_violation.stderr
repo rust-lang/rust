@@ -1,28 +1,31 @@
-error: Undefined Behavior: not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected because it is an argument of call ID
+error: Undefined Behavior: attempting a read access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
 LL |     *y
-   |     ^^ not granting access to tag <TAG> because that would remove [Unique for <TAG>] which is weakly protected because it is an argument of call ID
+   |     ^^
+   |     |
+   |     attempting a read access using <TAG> at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   |     this error occurs as part of an access at ALLOC[0x0..0x4]
    |
    = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
    = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
-help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x4]
+help: <TAG> was created by a SharedReadOnly retag at offsets [0x0..0x4]
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
-LL |         let ptr = &mut v as *mut i32;
-   |                   ^^^^^^
-help: <TAG> is this argument
+LL |         let ptr = &*b as *const i32;
+   |                   ^^^
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique retag
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
-LL | unsafe fn test(mut x: Box<i32>, y: *const i32) -> i32 {
-   |                ^^^^^
+LL |         test(b, ptr);
+   |              ^
    = note: BACKTRACE (of the first span):
    = note: inside `test` at $DIR/box_noalias_violation.rs:LL:CC
 note: inside `main`
   --> $DIR/box_noalias_violation.rs:LL:CC
    |
-LL |         test(Box::from_raw(ptr), ptr);
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+LL |         test(b, ptr);
+   |         ^^^^^^^^^^^^
 
 note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
 

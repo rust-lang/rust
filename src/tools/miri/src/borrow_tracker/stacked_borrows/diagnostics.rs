@@ -193,7 +193,7 @@ struct RetagOp {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RetagCause {
     Normal,
-    FnReturn,
+    FnReturnPlace,
     FnEntry,
     TwoPhase,
 }
@@ -496,7 +496,7 @@ impl RetagCause {
         match self {
             RetagCause::Normal => "retag",
             RetagCause::FnEntry => "FnEntry retag",
-            RetagCause::FnReturn => "FnReturn retag",
+            RetagCause::FnReturnPlace => "return-place retag",
             RetagCause::TwoPhase => "two-phase retag",
         }
         .to_string()

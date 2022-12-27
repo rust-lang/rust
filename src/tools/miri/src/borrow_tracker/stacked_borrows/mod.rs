@@ -48,6 +48,8 @@ pub struct Stacks {
 enum NewPermission {
     Uniform {
         perm: Permission,
+        /// If true, indicates that the stack should be cleared of all other tags.
+        clear: bool,
         access: Option<AccessKind>,
         protector: Option<ProtectorKind>,
     },
@@ -77,6 +79,7 @@ impl NewPermission {
                     assert!(protector.is_none()); // RetagKind can't be both FnEntry and TwoPhase.
                     NewPermission::Uniform {
                         perm: Permission::SharedReadWrite,
+                        clear: false,
                         access: None,
                         protector: None,
                     }
@@ -84,12 +87,14 @@ impl NewPermission {
                     // A regular full mutable reference.
                     NewPermission::Uniform {
                         perm: Permission::Unique,
+                        clear: false,
                         access: Some(AccessKind::Write),
                         protector,
                     }
                 } else {
                     NewPermission::Uniform {
                         perm: Permission::SharedReadWrite,
+                        clear: false,
                         // FIXME: We emit `dereferenceable` for `!Unpin` mutable references, so we
                         // should do fake accesses here. But then we run into
                         // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
@@ -104,6 +109,7 @@ impl NewPermission {
                 // Mutable raw pointer. No access, not protected.
                 NewPermission::Uniform {
                     perm: Permission::SharedReadWrite,
+                    clear: false,
                     access: None,
                     protector: None,
                 }
@@ -371,11 +377,13 @@ impl<'tcx> Stack {
 
     /// Derive a new pointer from one with the given tag.
     ///
+    /// `clear` indicates whether everything else should be removed from the stack.
     /// `access` indicates which kind of memory access this retag itself should correspond to.
     fn grant(
         &mut self,
         derived_from: ProvenanceExtra,
         new: Item,
+        clear: bool,
         access: Option<AccessKind>,
         global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, 'tcx>,
@@ -392,6 +400,15 @@ impl<'tcx> Stack {
             // This ensures F2b for `Unique`, by removing offending `SharedReadOnly`.
             self.access(access, derived_from, global, dcx, exposed_tags)?;
 
+            if clear {
+                // Remove all items, also checking their protectors.
+                for idx in (0..self.len()).rev() {
+                    let item = self.get(idx).unwrap();
+                    Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
+                }
+                self.clear();
+            }
+
             // We insert "as far up as possible": We know only compatible items are remaining
             // on top of `derived_from`, and we want the new item at the top so that we
             // get the strongest possible guarantees.
@@ -400,6 +417,7 @@ impl<'tcx> Stack {
         } else {
             // The tricky case: creating a new SRW permission without actually being an access.
             assert!(new.perm() == Permission::SharedReadWrite);
+            assert!(!clear);
 
             // First we figure out which item grants our parent (`derived_from`) this kind of access.
             // We use that to determine where to put the new item.
@@ -723,7 +741,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
 
         // Update the stacks, according to the new permission information we are given.
         match new_perm {
-            NewPermission::Uniform { perm, access, protector } => {
+            NewPermission::Uniform { perm, clear, access, protector } => {
                 assert!(perm != Permission::SharedReadOnly);
                 // Here we can avoid `borrow()` calls because we have mutable references.
                 // Note that this asserts that the allocation is mutable -- but since we are creating a
@@ -741,7 +759,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     alloc_range(base_offset, size),
                 );
                 stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-                    stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
+                    stack.grant(orig_tag, item, clear, access, &global, dcx, exposed_tags)
                 })?;
                 drop(global);
                 if let Some(access) = access {
@@ -784,7 +802,8 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                         alloc_range(base_offset, size),
                     );
                     stacked_borrows.for_each(range, dcx, |stack, dcx, exposed_tags| {
-                        stack.grant(orig_tag, item, access, &global, dcx, exposed_tags)
+                        let clear = false;
+                        stack.grant(orig_tag, item, clear, access, &global, dcx, exposed_tags)
                     })?;
                     drop(global);
                     if let Some(access) = access {
@@ -862,7 +881,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let new_perm = NewPermission::from_ref_ty(val.layout.ty, kind, this);
         let retag_cause = match kind {
             RetagKind::TwoPhase { .. } => RetagCause::TwoPhase,
-            RetagKind::FnEntry => unreachable!(),
+            RetagKind::FnEntry | RetagKind::FnReturn => unreachable!(),
             RetagKind::Raw | RetagKind::Default => RetagCause::Normal,
         };
         this.sb_retag_reference(val, new_perm, retag_cause)
@@ -878,7 +897,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let retag_cause = match kind {
             RetagKind::Raw | RetagKind::TwoPhase { .. } => unreachable!(), // these can only happen in `retag_ptr_value`
             RetagKind::FnEntry => RetagCause::FnEntry,
-            RetagKind::Default => RetagCause::Normal,
+            RetagKind::Default | RetagKind::FnReturn => RetagCause::Normal,
         };
         let mut visitor = RetagVisitor { ecx: this, kind, retag_cause, retag_fields };
         return visitor.visit_value(place);
@@ -915,12 +934,17 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
-                // Boxes get a weak protectors, since they may be deallocated.
+                // We cannot protect boxes since they might get invalidated if passed to an `id`
+                // function (due to the return-position `noalias`). However, doing a `clear` on
+                // `FnEntry` also has the effect that using any other pointer to access this memory
+                // is *immediate* UB.
+                // FIXME: should we `clear` on *all* `Box` retags? Currently (2022-12-27) this leads
+                // to UB somewhere in thread-local dtor handling.
                 let new_perm = NewPermission::Uniform {
                     perm: Permission::Unique,
+                    clear: matches!(self.kind, RetagKind::FnEntry | RetagKind::FnReturn),
                     access: Some(AccessKind::Write),
-                    protector: (self.kind == RetagKind::FnEntry)
-                        .then_some(ProtectorKind::WeakProtector),
+                    protector: None,
                 };
                 self.retag_ptr_inplace(place, new_perm, self.retag_cause)
             }
@@ -995,10 +1019,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Reborrow it. With protection! That is part of the point.
         let new_perm = NewPermission::Uniform {
             perm: Permission::Unique,
+            clear: false,
             access: Some(AccessKind::Write),
             protector: Some(ProtectorKind::StrongProtector),
         };
-        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturn)?;
+        let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturnPlace)?;
         // And use reborrowed pointer for return place.
         let return_place = this.ref_to_mplace(&val)?;
         this.frame_mut().return_place = return_place.into();

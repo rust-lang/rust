@@ -1,0 +1,24 @@
+error: Undefined Behavior: trying to retag from <TAG> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+  --> $DIR/return-noalias.rs:LL:CC
+   |
+LL |     println!("{}", m);
+   |                    ^
+   |                    |
+   |                    trying to retag from <TAG> for SharedReadOnly permission at ALLOC[0x0], but that tag does not exist in the borrow stack for this location
+   |                    this error occurs as part of retag at ALLOC[0x0..0x4]
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created here, as the base tag for ALLOC
+  --> $DIR/return-noalias.rs:LL:CC
+   |
+LL |     let b = unsafe { Box::from_raw(&mut m) };
+   |                                    ^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `main` at $DIR/return-noalias.rs:LL:CC
+   = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

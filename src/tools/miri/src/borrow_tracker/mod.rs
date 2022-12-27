@@ -87,7 +87,7 @@ pub struct GlobalStateInner {
     /// Table storing the "base" tag for each allocation.
     /// The base tag is the one used for the initial pointer.
     /// We need this in a separate table to handle cyclic statics.
-    pub base_ptr_tags: FxHashMap<AllocId, BorTag>,
+    base_ptr_tags: FxHashMap<AllocId, BorTag>,
     /// Next unused call ID (for protectors).
     pub next_call_id: CallId,
     /// All currently protected tags.

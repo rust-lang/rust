@@ -252,8 +252,8 @@ impl<'tcx> Stack {
         // and this check actually ensures we do not access an invalid cache.
         // When a stack is created and when items are removed from the top of the borrow stack, we
         // need some valid value to populate the cache. In both cases, we try to use the bottom
-        // item. But when the stack is cleared in `set_unknown_bottom` there is nothing we could
-        // place in the cache that is correct. But due to the way we populate the cache in
+        // item. But when the stack is cleared in `clear` or `set_unknown_bottom` there is nothing
+        // we could place in the cache that is correct. But due to the way we populate the cache in
         // `StackCache::add`, we know that when the borrow stack has grown larger than the cache,
         // every slot in the cache is valid.
         if self.borrows.len() <= CACHE_LEN {
@@ -362,6 +362,19 @@ impl<'tcx> Stack {
         // cache when it has been cleared and not yet refilled.
         self.borrows.clear();
         self.unknown_bottom = Some(tag);
+        #[cfg(feature = "stack-cache")]
+        {
+            self.unique_range = 0..0;
+        }
+    }
+
+    // Empty the stack.
+    pub fn clear(&mut self) {
+        // We clear the borrow stack but the lookup cache doesn't support clearing per se. Instead,
+        // there is a check explained in `find_granting_cache` which protects against accessing the
+        // cache when it has been cleared and not yet refilled.
+        self.borrows.clear();
+        self.unknown_bottom = None;
         #[cfg(feature = "stack-cache")]
         {
             self.unique_range = 0..0;

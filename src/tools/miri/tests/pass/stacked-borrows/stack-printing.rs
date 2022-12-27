@@ -29,7 +29,7 @@ fn main() {
     unsafe { *ptr = 42 };
     print_borrow_stacks(alloc_id);
 
-    let _b = unsafe { ManuallyDrop::new(Box::from_raw(ptr)) };
+    let _b = unsafe { &mut *ptr };
     print_borrow_stacks(alloc_id);
 
     let _ptr = unsafe { &*ptr };

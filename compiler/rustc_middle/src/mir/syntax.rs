@@ -323,7 +323,7 @@ pub enum StatementKind<'tcx> {
     /// For code that is not specific to stacked borrows, you should consider retags to read and
     /// modify the place in an opaque way.
     ///
-    /// Only `RetagKind::Default` and `RetagKind::FnEntry` are permitted.
+    /// Only `RetagKind::Default`, `RetagKind::FnEntry`, `RetagKind::FnReturn` are permitted.
     Retag(RetagKind, Box<Place<'tcx>>),
 
     /// Encodes a user's type ascription. These need to be preserved
@@ -412,6 +412,8 @@ impl std::fmt::Display for NonDivergingIntrinsic<'_> {
 pub enum RetagKind {
     /// The initial retag of arguments when entering a function.
     FnEntry,
+    /// The retag of a value that was just returned from another function.
+    FnReturn,
     /// Retag preparing for a two-phase borrow.
     TwoPhase,
     /// Retagging raw pointers.
