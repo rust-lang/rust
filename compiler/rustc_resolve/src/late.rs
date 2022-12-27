@@ -16,7 +16,7 @@ use rustc_ast::ptr::P;
 use rustc_ast::visit::{self, AssocCtxt, BoundKind, FnCtxt, FnKind, Visitor};
 use rustc_ast::*;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet, FxIndexMap};
-use rustc_errors::{DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
+use rustc_errors::{Applicability, DiagnosticArgValue, DiagnosticId, IntoDiagnosticArg};
 use rustc_hir::def::Namespace::{self, *};
 use rustc_hir::def::{self, CtorKind, DefKind, LifetimeRes, PartialRes, PerNS};
 use rustc_hir::def_id::{DefId, LocalDefId, CRATE_DEF_ID, LOCAL_CRATE};
@@ -535,6 +535,9 @@ struct DiagnosticMetadata<'ast> {
     /// Used to detect possible new binding written without `let` and to provide structured suggestion.
     in_assignment: Option<&'ast Expr>,
     is_assign_rhs: bool,
+
+    /// Used to detect possible `.` -> `..` typo when calling methods.
+    in_range: Option<(&'ast Expr, &'ast Expr)>,
 
     /// If we are currently in a trait object definition. Used to point at the bounds when
     /// encountering a struct or enum.
@@ -3320,6 +3323,7 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         );
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn smart_resolve_path_fragment(
         &mut self,
         qself: &Option<P<QSelf>>,
@@ -3327,10 +3331,6 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
         source: PathSource<'ast>,
         finalize: Finalize,
     ) -> PartialRes {
-        debug!(
-            "smart_resolve_path_fragment(qself={:?}, path={:?}, finalize={:?})",
-            qself, path, finalize,
-        );
         let ns = source.namespace();
 
         let Finalize { node_id, path_span, .. } = finalize;
@@ -3341,8 +3341,28 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
 
                 let def_id = this.parent_scope.module.nearest_parent_mod();
                 let instead = res.is_some();
-                let suggestion =
-                    if res.is_none() { this.report_missing_type_error(path) } else { None };
+                let suggestion = if let Some((start, end)) = this.diagnostic_metadata.in_range
+                    && path[0].ident.span.lo() == end.span.lo()
+                {
+                    let mut sugg = ".";
+                    let mut span = start.span.between(end.span);
+                    if span.lo() + BytePos(2) == span.hi() {
+                        // There's no space between the start, the range op and the end, suggest
+                        // removal which will look better.
+                        span = span.with_lo(span.lo() + BytePos(1));
+                        sugg = "";
+                    }
+                    Some((
+                        span,
+                        "you might have meant to write `.` instead of `..`",
+                        sugg.to_string(),
+                        Applicability::MaybeIncorrect,
+                    ))
+                } else if res.is_none() {
+                    this.report_missing_type_error(path)
+                } else {
+                    None
+                };
 
                 this.r.use_injections.push(UseError {
                     err,
@@ -4004,6 +4024,12 @@ impl<'a: 'ast, 'b, 'ast> LateResolutionVisitor<'a, 'b, 'ast> {
                 self.diagnostic_metadata.in_assignment = None;
                 self.visit_expr(rhs);
                 self.diagnostic_metadata.is_assign_rhs = false;
+            }
+            ExprKind::Range(Some(ref start), Some(ref end), RangeLimits::HalfOpen) => {
+                self.diagnostic_metadata.in_range = Some((start, end));
+                self.resolve_expr(start, Some(expr));
+                self.resolve_expr(end, Some(expr));
+                self.diagnostic_metadata.in_range = None;
             }
             _ => {
                 visit::walk_expr(self, expr);
