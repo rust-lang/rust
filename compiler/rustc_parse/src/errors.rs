@@ -1229,3 +1229,11 @@ pub(crate) struct FnTypoWithImpl {
     #[suggestion(applicability = "maybe-incorrect", code = "impl", style = "verbose")]
     pub fn_span: Span,
 }
+
+#[derive(Diagnostic)]
+#[diag(parse_expected_fn_path_found_fn_keyword)]
+pub(crate) struct ExpectedFnPathFoundFnKeyword {
+    #[primary_span]
+    #[suggestion(applicability = "machine-applicable", code = "Fn", style = "verbose")]
+    pub fn_token_span: Span,
+}

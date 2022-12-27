@@ -1,8 +1,9 @@
 use super::{Parser, PathStyle, TokenType};
 
-use crate::errors::{FnPtrWithGenerics, FnPtrWithGenericsSugg};
+use crate::errors::{ExpectedFnPathFoundFnKeyword, FnPtrWithGenerics, FnPtrWithGenericsSugg};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
+use ast::DUMMY_NODE_ID;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
 use rustc_ast::util::case::Case;
@@ -12,7 +13,9 @@ use rustc_ast::{
 };
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Symbol;
+use thin_vec::thin_vec;
 
 /// Any `?` or `~const` modifiers that appear at the start of a bound.
 struct BoundModifiers {
@@ -912,7 +915,14 @@ impl<'a> Parser<'a> {
         modifiers: BoundModifiers,
     ) -> PResult<'a, GenericBound> {
         let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-        let path = self.parse_path(PathStyle::Type)?;
+        let path = if self.token.is_keyword(kw::Fn)
+            && self.look_ahead(1, |tok| tok.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && let Some(path) = self.recover_path_from_fn()
+        {
+            path
+        } else {
+            self.parse_path(PathStyle::Type)?
+        };
         if has_parens {
             if self.token.is_like_plus() {
                 // Someone has written something like `&dyn (Trait + Other)`. The correct code
@@ -939,6 +949,38 @@ impl<'a> Parser<'a> {
         let modifier = modifiers.to_trait_bound_modifier();
         let poly_trait = PolyTraitRef::new(lifetime_defs, path, lo.to(self.prev_token.span));
         Ok(GenericBound::Trait(poly_trait, modifier))
+    }
+
+    // recovers a `Fn(..)` parenthesized-style path from `fn(..)`
+    fn recover_path_from_fn(&mut self) -> Option<ast::Path> {
+        let fn_token_span = self.token.span;
+        self.bump();
+        let args_lo = self.token.span;
+        let snapshot = self.create_snapshot_for_diagnostic();
+        match self.parse_fn_decl(|_| false, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
+            Ok(decl) => {
+                self.sess.emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
+                Some(ast::Path {
+                    span: fn_token_span.to(self.prev_token.span),
+                    segments: thin_vec![ast::PathSegment {
+                        ident: Ident::new(Symbol::intern("Fn"), fn_token_span),
+                        id: DUMMY_NODE_ID,
+                        args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
+                            span: args_lo.to(self.prev_token.span),
+                            inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
+                            inputs_span: args_lo.until(decl.output.span()),
+                            output: decl.output.clone(),
+                        }))),
+                    }],
+                    tokens: None,
+                })
+            }
+            Err(diag) => {
+                diag.cancel();
+                self.restore_snapshot(snapshot);
+                None
+            }
+        }
     }
 
     /// Optionally parses `for<$generic_params>`.
