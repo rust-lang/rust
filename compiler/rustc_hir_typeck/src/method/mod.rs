@@ -306,8 +306,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        opt_input_type: Option<Ty<'tcx>>,
-        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+        opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
         expected: Expectation<'tcx>,
     ) -> (traits::Obligation<'tcx, ty::Predicate<'tcx>>, &'tcx ty::List<ty::subst::GenericArg<'tcx>>)
     {
@@ -318,7 +317,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 GenericParamDefKind::Type { .. } => {
                     if param.index == 0 {
                         return self_ty.into();
-                    } else if let Some(input_type) = opt_input_type {
+                    } else if let Some((_, input_type)) = opt_rhs {
                         return input_type.into();
                     }
                 }
@@ -339,9 +338,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     span,
                     self.body_id,
                     traits::BinOp {
-                        rhs_span: opt_input_expr.map(|expr| expr.span),
-                        is_lit: opt_input_expr
-                            .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                        rhs_span: opt_rhs.map(|(expr, _)| expr.span),
+                        is_lit: opt_rhs
+                            .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
                         output_ty,
                     },
                 ),
@@ -368,15 +367,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         let (obligation, substs) =
             self.obligation_for_method(span, trait_def_id, self_ty, opt_input_types);
-        self.construct_obligation_for_trait(
-            span,
-            m_name,
-            trait_def_id,
-            obligation,
-            substs,
-            None,
-            false,
-        )
+        self.construct_obligation_for_trait(span, m_name, trait_def_id, obligation, substs)
     }
 
     pub(super) fn lookup_op_method_in_trait(
@@ -385,27 +376,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         m_name: Ident,
         trait_def_id: DefId,
         self_ty: Ty<'tcx>,
-        opt_input_type: Option<Ty<'tcx>>,
-        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
+        opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
         expected: Expectation<'tcx>,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
-        let (obligation, substs) = self.obligation_for_op_method(
-            span,
-            trait_def_id,
-            self_ty,
-            opt_input_type,
-            opt_input_expr,
-            expected,
-        );
-        self.construct_obligation_for_trait(
-            span,
-            m_name,
-            trait_def_id,
-            obligation,
-            substs,
-            opt_input_expr,
-            true,
-        )
+        let (obligation, substs) =
+            self.obligation_for_op_method(span, trait_def_id, self_ty, opt_rhs, expected);
+        self.construct_obligation_for_trait(span, m_name, trait_def_id, obligation, substs)
     }
 
     // FIXME(#18741): it seems likely that we can consolidate some of this
@@ -418,8 +394,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         trait_def_id: DefId,
         obligation: traits::PredicateObligation<'tcx>,
         substs: &'tcx ty::List<ty::subst::GenericArg<'tcx>>,
-        opt_input_expr: Option<&'tcx hir::Expr<'tcx>>,
-        is_op: bool,
     ) -> Option<InferOk<'tcx, MethodCallee<'tcx>>> {
         debug!(?obligation);
 
@@ -463,22 +437,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let fn_sig = fn_sig.subst(self.tcx, substs);
         let fn_sig = self.replace_bound_vars_with_fresh_vars(span, infer::FnCall, fn_sig);
 
-        let cause = if is_op {
-            ObligationCause::new(
-                span,
-                self.body_id,
-                traits::BinOp {
-                    rhs_span: opt_input_expr.map(|expr| expr.span),
-                    is_lit: opt_input_expr
-                        .map_or(false, |expr| matches!(expr.kind, hir::ExprKind::Lit(_))),
-                    output_ty: None,
-                },
-            )
-        } else {
-            traits::ObligationCause::misc(span, self.body_id)
-        };
-
-        let InferOk { value, obligations: o } = self.at(&cause, self.param_env).normalize(fn_sig);
+        let InferOk { value, obligations: o } =
+            self.at(&obligation.cause, self.param_env).normalize(fn_sig);
         let fn_sig = {
             obligations.extend(o);
             value
@@ -494,7 +454,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // any late-bound regions appearing in its bounds.
         let bounds = self.tcx.predicates_of(def_id).instantiate(self.tcx, substs);
 
-        let InferOk { value, obligations: o } = self.at(&cause, self.param_env).normalize(bounds);
+        let InferOk { value, obligations: o } =
+            self.at(&obligation.cause, self.param_env).normalize(bounds);
         let bounds = {
             obligations.extend(o);
             value
@@ -502,7 +463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         assert!(!bounds.has_escaping_bound_vars());
 
-        let predicates_cause = cause.clone();
+        let predicates_cause = obligation.cause.clone();
         obligations.extend(traits::predicates_for_generics(
             move |_, _| predicates_cause.clone(),
             self.param_env,
@@ -517,7 +478,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         );
         obligations.push(traits::Obligation::new(
             tcx,
-            cause,
+            obligation.cause,
             self.param_env,
             ty::Binder::dummy(ty::PredicateKind::WellFormed(method_ty.into())),
         ));
