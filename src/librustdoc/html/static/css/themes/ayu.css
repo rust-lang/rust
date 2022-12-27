@@ -183,11 +183,7 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-pre.rust .lifetime {}
-pre.rust .kw {}
 #search-tabs > button:hover, #search-tabs > button.selected {}
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
-pre.rust .kw-2, pre.rust .prelude-ty {}
 
 #settings-menu > a img {
 	filter: invert(100);
