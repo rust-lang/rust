@@ -1,6 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, Suggestion};
+use crate::diagnostics::{import_candidates, DiagnosticMode, Suggestion};
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
@@ -402,7 +402,7 @@ struct UnresolvedImportError {
     label: Option<String>,
     note: Option<String>,
     suggestion: Option<Suggestion>,
-    candidate: Option<Vec<ImportSuggestion>>,
+    candidates: Option<Vec<ImportSuggestion>>,
 }
 
 pub struct ImportResolver<'a, 'b> {
@@ -489,7 +489,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     label: None,
                     note: None,
                     suggestion: None,
-                    candidate: None,
+                    candidates: None,
                 };
                 // FIXME: there should be a better way of doing this than
                 // formatting this as a string then checking for `::`
@@ -545,15 +545,26 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 diag.multipart_suggestion(&msg, suggestions, applicability);
             }
 
-            if let Some(candidate) = &err.candidate {
+            if let Some(candidates) = &err.candidates {
                 match &import.kind {
                     ImportKind::Single { nested: false, .. } => import_candidates(
                         self.r.session,
                         &self.r.untracked.source_span,
                         &mut diag,
                         Some(err.span),
-                        &candidate,
+                        &candidates,
+                        DiagnosticMode::Import,
                     ),
+                    ImportKind::Single { nested: true, .. } => {
+                        import_candidates(
+                            self.r.session,
+                            &self.r.untracked.source_span,
+                            &mut diag,
+                            None,
+                            &candidates,
+                            DiagnosticMode::Normal,
+                        );
+                    }
                     _ => {}
                 }
             }
@@ -717,14 +728,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 String::from("a similar path exists"),
                                 Applicability::MaybeIncorrect,
                             )),
-                            candidate: None,
+                            candidates: None,
                         },
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
                             note: None,
                             suggestion,
-                            candidate: None,
+                            candidates: None,
                         },
                     };
                     return Some(err);
@@ -771,7 +782,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 )),
                                 note: None,
                                 suggestion: None,
-                                candidate: None,
+                                candidates: None,
                             });
                         }
                     }
@@ -953,7 +964,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     label: Some(label),
                     note,
                     suggestion,
-                    candidate: if !parent_suggestion.is_empty() {
+                    candidates: if !parent_suggestion.is_empty() {
                         Some(parent_suggestion)
                     } else {
                         None

@@ -2309,7 +2309,7 @@ enum FoundUse {
 }
 
 /// Whether a binding is part of a pattern or a use statement. Used for diagnostics.
-enum DiagnosticMode {
+pub(crate) enum DiagnosticMode {
     Normal,
     /// The binding is part of a pattern
     Pattern,
@@ -2324,6 +2324,7 @@ pub(crate) fn import_candidates(
     // This is `None` if all placement locations are inside expansions
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
+    mode: DiagnosticMode,
 ) {
     show_candidates(
         session,
@@ -2333,7 +2334,7 @@ pub(crate) fn import_candidates(
         candidates,
         Instead::Yes,
         FoundUse::Yes,
-        DiagnosticMode::Import,
+        mode,
         vec![],
     );
 }
