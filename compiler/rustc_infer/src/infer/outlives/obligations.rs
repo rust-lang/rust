@@ -68,6 +68,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
@@ -177,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
+    ) -> Option<ErrorGuaranteed> {
         self.process_registered_region_obligations(
             outlives_env.region_bound_pairs(),
             outlives_env.param_env,
