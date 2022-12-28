@@ -89,11 +89,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         // to try to eagerly statically link all dependencies. This is normally
         // done for end-product dylibs, not intermediate products.
         //
-        // Treat cdylibs similarly. If `-C prefer-dynamic` is set, the caller may
-        // be code-size conscious, but without it, it makes sense to statically
-        // link a cdylib.
-        CrateType::Dylib | CrateType::Cdylib if !sess.opts.cg.prefer_dynamic => Linkage::Static,
-        CrateType::Dylib | CrateType::Cdylib => Linkage::Dynamic,
+        // Treat cdylibs and staticlibs similarly. If `-C prefer-dynamic` is set,
+        // the caller may be code-size conscious, but without it, it makes sense
+        // to statically link a cdylib or staticlib.
+        CrateType::Dylib | CrateType::Cdylib | CrateType::Staticlib => {
+            if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
+        }
 
         // If the global prefer_dynamic switch is turned off, or the final
         // executable will be statically linked, prefer static crate linkage.
@@ -108,9 +109,6 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         // No linkage happens with rlibs, we just needed the metadata (which we
         // got long ago), so don't bother with anything.
         CrateType::Rlib => Linkage::NotLinked,
-
-        // staticlibs must have all static dependencies.
-        CrateType::Staticlib => Linkage::Static,
     };
 
     match preferred_linkage {
@@ -123,12 +121,11 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                 return v;
             }
 
-            // Staticlibs and static executables must have all static dependencies.
+            // Static executables must have all static dependencies.
             // If any are not found, generate some nice pretty errors.
-            if ty == CrateType::Staticlib
-                || (ty == CrateType::Executable
-                    && sess.crt_static(Some(ty))
-                    && !sess.target.crt_static_allows_dylibs)
+            if ty == CrateType::Executable
+                && sess.crt_static(Some(ty))
+                && !sess.target.crt_static_allows_dylibs
             {
                 for &cnum in tcx.crates(()).iter() {
                     if tcx.dep_kind(cnum).macros_only() {
