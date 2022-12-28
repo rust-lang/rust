@@ -505,7 +505,7 @@ mod cgroups {
                     let limit = raw_quota.next()?;
                     let period = raw_quota.next()?;
                     match (limit.parse::<usize>(), period.parse::<usize>()) {
-                        (Ok(limit), Ok(period)) => {
+                        (Ok(limit), Ok(period)) if period > 0 => {
                             quota = quota.min(limit / period);
                         }
                         _ => {}
@@ -565,7 +565,7 @@ mod cgroups {
                 let period = parse_file("cpu.cfs_period_us");
 
                 match (limit, period) {
-                    (Some(limit), Some(period)) => quota = quota.min(limit / period),
+                    (Some(limit), Some(period)) if period > 0 => quota = quota.min(limit / period),
                     _ => {}
                 }
 

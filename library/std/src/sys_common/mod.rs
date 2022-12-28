@@ -27,7 +27,6 @@ pub mod lazy_box;
 pub mod memchr;
 pub mod once;
 pub mod process;
-pub mod remutex;
 pub mod thread;
 pub mod thread_info;
 pub mod thread_local_dtor;

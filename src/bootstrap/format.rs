@@ -1,7 +1,7 @@
 //! Runs rustfmt on the repository.
 
 use crate::builder::Builder;
-use crate::util::{output, t};
+use crate::util::{output, program_out_of_date, t};
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -42,6 +42,90 @@ fn rustfmt(src: &Path, rustfmt: &Path, paths: &[PathBuf], check: bool) -> impl F
         }
         true
     }
+}
+
+fn get_rustfmt_version(build: &Builder<'_>) -> Option<(String, PathBuf)> {
+    let stamp_file = build.out.join("rustfmt.stamp");
+
+    let mut cmd = Command::new(match build.initial_rustfmt() {
+        Some(p) => p,
+        None => return None,
+    });
+    cmd.arg("--version");
+    let output = match cmd.output() {
+        Ok(status) => status,
+        Err(_) => return None,
+    };
+    if !output.status.success() {
+        return None;
+    }
+    Some((String::from_utf8(output.stdout).unwrap(), stamp_file))
+}
+
+/// Return whether the format cache can be reused.
+fn verify_rustfmt_version(build: &Builder<'_>) -> bool {
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return false;};
+    !program_out_of_date(&stamp_file, &version)
+}
+
+/// Updates the last rustfmt version used
+fn update_rustfmt_version(build: &Builder<'_>) {
+    let Some((version, stamp_file)) = get_rustfmt_version(build) else {return;};
+    t!(std::fs::write(stamp_file, version))
+}
+
+/// Returns the files modified between the `merge-base` of HEAD and
+/// rust-lang/master and what is now on the disk.
+///
+/// Returns `None` if all files should be formatted.
+fn get_modified_files(build: &Builder<'_>) -> Option<Vec<String>> {
+    let Ok(remote) = get_rust_lang_rust_remote() else {return None;};
+    if !verify_rustfmt_version(build) {
+        return None;
+    }
+    Some(
+        output(
+            build
+                .config
+                .git()
+                .arg("diff-index")
+                .arg("--name-only")
+                .arg("--merge-base")
+                .arg(&format!("{remote}/master")),
+        )
+        .lines()
+        .map(|s| s.trim().to_owned())
+        .collect(),
+    )
+}
+
+/// Finds the remote for rust-lang/rust.
+/// For example for these remotes it will return `upstream`.
+/// ```text
+/// origin  https://github.com/Nilstrieb/rust.git (fetch)
+/// origin  https://github.com/Nilstrieb/rust.git (push)
+/// upstream        https://github.com/rust-lang/rust (fetch)
+/// upstream        https://github.com/rust-lang/rust (push)
+/// ```
+fn get_rust_lang_rust_remote() -> Result<String, String> {
+    let mut git = Command::new("git");
+    git.args(["config", "--local", "--get-regex", "remote\\..*\\.url"]);
+
+    let output = git.output().map_err(|err| format!("{err:?}"))?;
+    if !output.status.success() {
+        return Err("failed to execute git config command".to_owned());
+    }
+
+    let stdout = String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?;
+
+    let rust_lang_remote = stdout
+        .lines()
+        .find(|remote| remote.contains("rust-lang"))
+        .ok_or_else(|| "rust-lang/rust remote not found".to_owned())?;
+
+    let remote_name =
+        rust_lang_remote.split('.').nth(1).ok_or_else(|| "remote name not found".to_owned())?;
+    Ok(remote_name.into())
 }
 
 #[derive(serde::Deserialize)]
@@ -109,6 +193,14 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 // against anything like `compiler/rustc_foo/src/foo.rs`,
                 // preventing the latter from being formatted.
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
+            }
+            if !check && paths.is_empty() {
+                if let Some(files) = get_modified_files(build) {
+                    for file in files {
+                        println!("formatting modified file {file}");
+                        ignore_fmt.add(&format!("/{file}")).expect(&file);
+                    }
+                }
             }
         } else {
             println!("Not in git tree. Skipping git-aware format checks");
@@ -187,4 +279,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     drop(tx);
 
     thread.join().unwrap();
+    if !check {
+        update_rustfmt_version(build);
+    }
 }
