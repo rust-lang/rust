@@ -19,7 +19,7 @@ error[E0121]: the placeholder `_` is not allowed within types on item signatures
 LL | const C: _ = || 42;
    |          ^ not allowed in type signatures
    |
-note: however, the inferred type `[closure@$DIR/unnamable-types.rs:17:14: 17:16]` cannot be named
+note: however, the inferred type `[closure@unnamable-types.rs:17:14]` cannot be named
   --> $DIR/unnamable-types.rs:17:14
    |
 LL | const C: _ = || 42;
@@ -31,7 +31,7 @@ error: missing type for `const` item
 LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
    |        ^
    |
-note: however, the inferred type `S<[closure@$DIR/unnamable-types.rs:23:31: 23:45]>` cannot be named
+note: however, the inferred type `S<[closure@unnamable-types.rs:23:31]>` cannot be named
   --> $DIR/unnamable-types.rs:23:11
    |
 LL | const D = S { t: { let i = 0; move || -> i32 { i } } };
