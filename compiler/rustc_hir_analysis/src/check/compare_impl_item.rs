@@ -34,7 +34,7 @@ use std::iter;
 /// - `impl_m_span`: span to use for reporting errors
 /// - `trait_m`: the method in the trait
 /// - `impl_trait_ref`: the TraitRef corresponding to the trait implementation
-pub(crate) fn compare_impl_method<'tcx>(
+pub(super) fn compare_impl_method<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     trait_m: &ty::AssocItem,
@@ -71,7 +71,7 @@ pub(crate) fn compare_impl_method<'tcx>(
         return;
     }
 
-    if let Err(_) = compare_predicate_entailment(
+    if let Err(_) = compare_method_predicate_entailment(
         tcx,
         impl_m,
         impl_m_span,
@@ -150,7 +150,7 @@ pub(crate) fn compare_impl_method<'tcx>(
 /// Finally we register each of these predicates as an obligation and check that
 /// they hold.
 #[instrument(level = "debug", skip(tcx, impl_m_span, impl_trait_ref))]
-fn compare_predicate_entailment<'tcx>(
+fn compare_method_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_m: &ty::AssocItem,
     impl_m_span: Span,
@@ -337,7 +337,7 @@ fn compare_predicate_entailment<'tcx>(
     if !errors.is_empty() {
         match check_implied_wf {
             CheckImpliedWfMode::Check => {
-                return compare_predicate_entailment(
+                return compare_method_predicate_entailment(
                     tcx,
                     impl_m,
                     impl_m_span,
@@ -374,7 +374,7 @@ fn compare_predicate_entailment<'tcx>(
         // becomes a hard error (i.e. ideally we'd just call `resolve_regions_and_report_errors`
         match check_implied_wf {
             CheckImpliedWfMode::Check => {
-                return compare_predicate_entailment(
+                return compare_method_predicate_entailment(
                     tcx,
                     impl_m,
                     impl_m_span,
@@ -407,7 +407,7 @@ enum CheckImpliedWfMode {
     /// re-check with `Skip`, and emit a lint if it succeeds.
     Check,
     /// Skips checking implied well-formedness of the impl method, but will emit
-    /// a lint if the `compare_predicate_entailment` succeeded. This means that
+    /// a lint if the `compare_method_predicate_entailment` succeeded. This means that
     /// the reason that we had failed earlier during `Check` was due to the impl
     /// having stronger requirements than the trait.
     Skip,
@@ -441,8 +441,41 @@ fn compare_asyncness<'tcx>(
     Ok(())
 }
 
+/// Given a method def-id in an impl, compare the method signature of the impl
+/// against the trait that it's implementing. In doing so, infer the hidden types
+/// that this method's signature provides to satisfy each return-position `impl Trait`
+/// in the trait signature.
+///
+/// The method is also responsible for making sure that the hidden types for each
+/// RPITIT actually satisfy the bounds of the `impl Trait`, i.e. that if we infer
+/// `impl Trait = Foo`, that `Foo: Trait` holds.
+///
+/// For example, given the sample code:
+///
+/// ```
+/// #![feature(return_position_impl_trait_in_trait)]
+///
+/// use std::ops::Deref;
+///
+/// trait Foo {
+///     fn bar() -> impl Deref<Target = impl Sized>;
+///              // ^- RPITIT #1        ^- RPITIT #2
+/// }
+///
+/// impl Foo for () {
+///     fn bar() -> Box<String> { Box::new(String::new()) }
+/// }
+/// ```
+///
+/// The hidden types for the RPITITs in `bar` would be inferred to:
+///     * `impl Deref` (RPITIT #1) = `Box<String>`
+///     * `impl Sized` (RPITIT #2) = `String`
+///
+/// The relationship between these two types is straightforward in this case, but
+/// may be more tenuously connected via other `impl`s and normalization rules for
+/// cases of more complicated nested RPITITs.
 #[instrument(skip(tcx), level = "debug", ret)]
-pub fn collect_trait_impl_trait_tys<'tcx>(
+pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
@@ -550,13 +583,13 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     // Unify the whole function signature. We need to do this to fully infer
     // the lifetimes of the return type, but do this after unifying just the
     // return types, since we want to avoid duplicating errors from
-    // `compare_predicate_entailment`.
+    // `compare_method_predicate_entailment`.
     match ocx.eq(&cause, param_env, trait_fty, impl_fty) {
         Ok(()) => {}
         Err(terr) => {
-            // This function gets called during `compare_predicate_entailment` when normalizing a
+            // This function gets called during `compare_method_predicate_entailment` when normalizing a
             // signature that contains RPITIT. When the method signatures don't match, we have to
-            // emit an error now because `compare_predicate_entailment` will not report the error
+            // emit an error now because `compare_method_predicate_entailment` will not report the error
             // when normalization fails.
             let emitted = report_trait_method_mismatch(
                 infcx,
@@ -589,7 +622,7 @@ pub fn collect_trait_impl_trait_tys<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_m.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     let mut collected_tys = FxHashMap::default();
     for (def_id, (ty, substs)) in collector.types {
@@ -1516,8 +1549,8 @@ fn compare_generic_param_kinds<'tcx>(
     Ok(())
 }
 
-/// Use `tcx.compare_assoc_const_impl_item_with_trait_item` instead
-pub(crate) fn raw_compare_const_impl(
+/// Use `tcx.compare_impl_const` instead
+pub(super) fn compare_impl_const_raw(
     tcx: TyCtxt<'_>,
     (impl_const_item_def, trait_const_item_def): (LocalDefId, DefId),
 ) -> Result<(), ErrorGuaranteed> {
@@ -1617,13 +1650,13 @@ pub(crate) fn raw_compare_const_impl(
         return Err(infcx.err_ctxt().report_fulfillment_errors(&errors, None));
     }
 
-    // FIXME return `ErrorReported` if region obligations error?
     let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment);
+    infcx.check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
+
     Ok(())
 }
 
-pub(crate) fn compare_ty_impl<'tcx>(
+pub(super) fn compare_impl_ty<'tcx>(
     tcx: TyCtxt<'tcx>,
     impl_ty: &ty::AssocItem,
     impl_ty_span: Span,
@@ -1645,7 +1678,7 @@ pub(crate) fn compare_ty_impl<'tcx>(
     })();
 }
 
-/// The equivalent of [compare_predicate_entailment], but for associated types
+/// The equivalent of [compare_method_predicate_entailment], but for associated types
 /// instead of associated functions.
 fn compare_type_predicate_entailment<'tcx>(
     tcx: TyCtxt<'tcx>,
@@ -1730,7 +1763,7 @@ fn compare_type_predicate_entailment<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     Ok(())
 }
@@ -1749,7 +1782,7 @@ fn compare_type_predicate_entailment<'tcx>(
 /// from the impl could be overridden). We also can't normalize generic
 /// associated types (yet) because they contain bound parameters.
 #[instrument(level = "debug", skip(tcx))]
-pub fn check_type_bounds<'tcx>(
+pub(super) fn check_type_bounds<'tcx>(
     tcx: TyCtxt<'tcx>,
     trait_ty: &ty::AssocItem,
     impl_ty: &ty::AssocItem,
@@ -1944,7 +1977,7 @@ pub fn check_type_bounds<'tcx>(
     infcx.check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
-    );
+    )?;
 
     let constraints = infcx.inner.borrow_mut().opaque_type_storage.take_opaque_types();
     for (key, value) in constraints {

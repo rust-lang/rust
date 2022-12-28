@@ -16,28 +16,8 @@ LL |     type B<'a, 'b> where 'a: 'b;
 LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
    |                                                ^^ impl has extra requirement `'b: 'a`
 
-error[E0478]: lifetime bound not satisfied
-  --> $DIR/impl_bounds.rs:16:22
-   |
-LL |     type B<'a, 'b> where 'a: 'b;
-   |     -------------- definition of `B` from trait
-...
-LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |                      ^^^^^^^^^^^^^^^             - help: try copying this clause from the trait: `, 'a: 'b`
-   |
-note: lifetime parameter instantiated with the lifetime `'a` as defined here
-  --> $DIR/impl_bounds.rs:16:12
-   |
-LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |            ^^
-note: but lifetime parameter must outlive the lifetime `'b` as defined here
-  --> $DIR/impl_bounds.rs:16:16
-   |
-LL |     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
-   |                ^^
-
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:19:33
+  --> $DIR/impl_bounds.rs:18:33
    |
 LL |     type C = String where Self: Copy;
    |                                 ^^^^ the trait `Copy` is not implemented for `T`
@@ -62,7 +42,7 @@ LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
 error[E0277]: the trait bound `T: Copy` is not satisfied
-  --> $DIR/impl_bounds.rs:21:24
+  --> $DIR/impl_bounds.rs:20:24
    |
 LL |     fn d() where Self: Copy {}
    |                        ^^^^ the trait `Copy` is not implemented for `T`
@@ -86,7 +66,7 @@ help: consider restricting type parameter `T`
 LL | impl<T: std::marker::Copy> Foo for Fooy<T> {
    |       +++++++++++++++++++
 
-error: aborting due to 5 previous errors
+error: aborting due to 4 previous errors
 
-Some errors have detailed explanations: E0276, E0277, E0478.
+Some errors have detailed explanations: E0276, E0277.
 For more information about an error, try `rustc --explain E0276`.

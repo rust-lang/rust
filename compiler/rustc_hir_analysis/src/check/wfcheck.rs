@@ -115,7 +115,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
-    infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
+    let _ = infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {

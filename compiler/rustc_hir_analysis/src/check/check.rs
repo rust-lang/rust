@@ -1,8 +1,8 @@
 use crate::check::intrinsicck::InlineAsmCtxt;
 use crate::errors::LinkageType;
 
-use super::compare_method::check_type_bounds;
-use super::compare_method::{compare_impl_method, compare_ty_impl};
+use super::compare_impl_item::check_type_bounds;
+use super::compare_impl_item::{compare_impl_method, compare_impl_ty};
 use super::*;
 use rustc_attr as attr;
 use rustc_errors::{Applicability, ErrorGuaranteed, MultiSpan};
@@ -468,7 +468,7 @@ fn check_opaque_meets_bounds<'tcx>(
         // Can have different predicates to their defining use
         hir::OpaqueTyOrigin::TyAlias => {
             let outlives_environment = OutlivesEnvironment::new(param_env);
-            infcx.check_region_obligations_and_report_errors(
+            let _ = infcx.check_region_obligations_and_report_errors(
                 defining_use_anchor,
                 &outlives_environment,
             );
@@ -774,7 +774,7 @@ fn check_impl_items_against_trait<'tcx>(
         let impl_item_full = tcx.hir().impl_item(impl_item.id);
         match impl_item_full.kind {
             hir::ImplItemKind::Const(..) => {
-                let _ = tcx.compare_assoc_const_impl_item_with_trait_item((
+                let _ = tcx.compare_impl_const((
                     impl_item.id.owner_id.def_id,
                     ty_impl_item.trait_item_def_id.unwrap(),
                 ));
@@ -791,7 +791,7 @@ fn check_impl_items_against_trait<'tcx>(
             }
             hir::ImplItemKind::Type(impl_ty) => {
                 let opt_trait_span = tcx.hir().span_if_local(ty_trait_item.def_id);
-                compare_ty_impl(
+                compare_impl_ty(
                     tcx,
                     &ty_impl_item,
                     impl_ty.span,

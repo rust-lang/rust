@@ -178,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Option<ErrorGuaranteed> {
+    ) -> Result<(), ErrorGuaranteed> {
         self.process_registered_region_obligations(
             outlives_env.region_bound_pairs(),
             outlives_env.param_env,

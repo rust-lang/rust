@@ -1693,7 +1693,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         &self,
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Option<ErrorGuaranteed> {
+    ) -> Result<(), ErrorGuaranteed> {
         let errors = self.resolve_regions(outlives_env);
 
         if let None = self.tainted_by_errors() {
@@ -1705,9 +1705,14 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             self.report_region_errors(generic_param_scope, &errors);
         }
 
-        (!errors.is_empty()).then(|| {
-            self.tcx.sess.delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted")
-        })
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(self
+                .tcx
+                .sess
+                .delay_span_bug(rustc_span::DUMMY_SP, "error should have been emitted"))
+        }
     }
 
     // [Note-Type-error-reporting]

@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.params_in_repr[def_id] <- params_in_repr);
             }
             if should_encode_trait_impl_trait_tys(tcx, def_id)
-                && let Ok(table) = self.tcx.collect_trait_impl_trait_tys(def_id)
+                && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
