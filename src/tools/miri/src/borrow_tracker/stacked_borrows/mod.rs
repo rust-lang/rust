@@ -221,6 +221,7 @@ impl<'tcx> Stack {
         if !global.tracked_pointer_tags.is_empty() {
             dcx.check_tracked_tag_popped(item, global);
         }
+        dcx.log_invalidation(item.tag());
 
         if !item.protected() {
             return Ok(());
@@ -281,7 +282,6 @@ impl<'tcx> Stack {
             };
             self.pop_items_after(first_incompatible_idx, |item| {
                 Stack::item_invalidated(&item, global, dcx)?;
-                dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
         } else {
@@ -302,7 +302,6 @@ impl<'tcx> Stack {
             };
             self.disable_uniques_starting_at(first_incompatible_idx, |item| {
                 Stack::item_invalidated(&item, global, dcx)?;
-                dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
         }
@@ -928,7 +927,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     access: Some(AccessKind::Write),
                     protector: false,
                 };
-                self.retag_ptr_inplace(place, new_perm, self.retag_cause)
+                self.retag_ptr_inplace(place, new_perm, RetagCause::Box)
             }
 
             fn visit_value(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {

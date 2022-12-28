@@ -14,6 +14,11 @@ help: <TAG> was created here, as the base tag for ALLOC
    |
 LL |     let b = unsafe { Box::from_raw(&mut m) };
    |                                    ^^^^^^
+help: <TAG> was later invalidated at offsets [0x0..0x4] by a Unique Box retag
+  --> $DIR/return-noalias.rs:LL:CC
+   |
+LL |     let b = unsafe { Box::from_raw(&mut m) };
+   |                      ^^^^^^^^^^^^^^^^^^^^^
    = note: BACKTRACE (of the first span):
    = note: inside `main` at $DIR/return-noalias.rs:LL:CC
    = note: this error originates in the macro `$crate::format_args_nl` which comes from the expansion of the macro `println` (in Nightly builds, run with -Z macro-backtrace for more info)
