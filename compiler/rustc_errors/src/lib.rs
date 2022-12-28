@@ -370,7 +370,7 @@ pub struct GoodPathBug;
 
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
-    DiagnosticStyledString, HelpUseLatestEdition, IntoDiagnosticArg, SubDiagnostic,
+    DiagnosticStyledString, IntoDiagnosticArg, SubDiagnostic,
 };
 pub use diagnostic_builder::{DiagnosticBuilder, EmissionGuarantee, Noted};
 pub use diagnostic_impls::{DiagnosticArgFromDisplay, DiagnosticSymbolList};

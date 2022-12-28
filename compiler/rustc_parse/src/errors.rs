@@ -1,10 +1,9 @@
 use rustc_ast::token::Token;
 use rustc_ast::{Path, Visibility};
-use rustc_errors::{
-    fluent, AddToDiagnostic, Applicability, EmissionGuarantee, HelpUseLatestEdition, IntoDiagnostic,
-};
+use rustc_errors::{fluent, AddToDiagnostic, Applicability, EmissionGuarantee, IntoDiagnostic};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_span::edition::{Edition, LATEST_STABLE_EDITION};
 use rustc_span::symbol::Ident;
 use rustc_span::{Span, Symbol};
 
@@ -1840,4 +1839,25 @@ pub(crate) struct NegativeBoundsNotSupportedSugg {
     pub bound_list: Span,
     pub num_bounds: usize,
     pub fixed: String,
+}
+
+#[derive(Subdiagnostic)]
+pub enum HelpUseLatestEdition {
+    #[help(parse_help_set_edition_cargo)]
+    #[note(parse_note_edition_guide)]
+    Cargo { edition: Edition },
+    #[help(parse_help_set_edition_standalone)]
+    #[note(parse_note_edition_guide)]
+    Standalone { edition: Edition },
+}
+
+impl HelpUseLatestEdition {
+    pub fn new() -> Self {
+        let edition = LATEST_STABLE_EDITION;
+        if std::env::var_os("CARGO").is_some() {
+            Self::Cargo { edition }
+        } else {
+            Self::Standalone { edition }
+        }
+    }
 }

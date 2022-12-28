@@ -3,7 +3,7 @@ use crate::errors::{
     BoundsNotAllowedOnTraitAliases, ConstGlobalCannotBeMutable, ConstLetMutuallyExclusive,
     DefaultNotFollowedByItem, DocCommentDoesNotDocumentAnything, EnumStructMutuallyExclusive,
     ExpectedTraitInTraitImplFoundType, ExternCrateNameWithDashes, ExternCrateNameWithDashesSugg,
-    ExternItemCannotBeConst, MissingConstType, MissingForInTraitImpl,
+    ExternItemCannotBeConst, HelpUseLatestEdition, MissingConstType, MissingForInTraitImpl,
     MissingKeywordForItemDefinition, MissingTraitInTraitImpl, SelfArgumentPointer,
     TraitAliasCannotBeAuto, TraitAliasCannotBeUnsafe, UnexpectedTokenAfterStructName,
     UseEmptyBlockNotSemi, VisibilityNotFollowedByItem,
@@ -26,8 +26,8 @@ use rustc_ast::{FnHeader, ForeignItem, Path, PathSegment, Visibility, Visibility
 use rustc_ast::{MacCall, MacDelimiter};
 use rustc_ast_pretty::pprust;
 use rustc_errors::{
-    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, HelpUseLatestEdition,
-    IntoDiagnostic, PResult, StashKey,
+    struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed, IntoDiagnostic, PResult,
+    StashKey,
 };
 use rustc_span::edition::Edition;
 use rustc_span::lev_distance::lev_distance;

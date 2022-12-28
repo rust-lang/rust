@@ -2,7 +2,11 @@
 use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, MultiSpan, SubdiagnosticMessage};
 use rustc_macros::{Diagnostic, Subdiagnostic};
 use rustc_middle::ty::Ty;
-use rustc_span::{symbol::Ident, Span};
+use rustc_span::{
+    edition::{Edition, LATEST_STABLE_EDITION},
+    symbol::Ident,
+    Span,
+};
 
 #[derive(Diagnostic)]
 #[diag(hir_typeck_field_multiply_specified_in_initializer, code = "E0062")]
@@ -170,5 +174,26 @@ impl AddToDiagnostic for TypeMismatchFruTypo {
             ", ",
             Applicability::MaybeIncorrect,
         );
+    }
+}
+
+#[derive(Subdiagnostic)]
+pub enum HelpUseLatestEdition {
+    #[help(hir_typeck_help_set_edition_cargo)]
+    #[note(hir_typeck_note_edition_guide)]
+    Cargo { edition: Edition },
+    #[help(hir_typeck_help_set_edition_standalone)]
+    #[note(hir_typeck_note_edition_guide)]
+    Standalone { edition: Edition },
+}
+
+impl HelpUseLatestEdition {
+    pub fn new() -> Self {
+        let edition = LATEST_STABLE_EDITION;
+        if std::env::var_os("CARGO").is_some() {
+            Self::Cargo { edition }
+        } else {
+            Self::Standalone { edition }
+        }
     }
 }
