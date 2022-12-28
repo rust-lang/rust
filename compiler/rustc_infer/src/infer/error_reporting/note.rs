@@ -324,13 +324,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     &format!("`{}: {}`", sup, sub),
                 );
                 // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
-                if self
-                    .tcx
-                    .hir()
-                    .get_generics(impl_item_def_id)
-                    .unwrap()
-                    .where_clause_span
-                    .contains(span)
+                if let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id)
+                    && generics.where_clause_span.contains(span)
                 {
                     self.suggest_copy_trait_method_bounds(
                         trait_item_def_id,
@@ -390,12 +385,13 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         // but right now it's not really very smart when it comes to implicit `Sized`
         // predicates and bounds on the trait itself.
 
-        let impl_def_id =
-            self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx).unwrap();
-        let trait_substs = self
+        let Some(impl_def_id) =
+            self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx) else { return; };
+        let Some(trait_ref) = self
             .tcx
             .impl_trait_ref(impl_def_id)
-            .unwrap()
+            else { return; };
+        let trait_substs = trait_ref
             // Replace the explicit self type with `Self` for better suggestion rendering
             .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
             .substs;
@@ -403,39 +399,37 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id.to_def_id())
                 .rebase_onto(self.tcx, impl_def_id, trait_substs);
 
-        let mut is_suggestable = true;
-        let trait_predicates = self
+        let Ok(trait_predicates) = self
             .tcx
             .bound_explicit_predicates_of(trait_item_def_id)
             .map_bound(|p| p.predicates)
             .subst_iter_copied(self.tcx, trait_item_substs)
             .map(|(pred, _)| {
-                if !pred.is_suggestable(self.tcx, false) {
-                    is_suggestable = false;
+                if pred.is_suggestable(self.tcx, false) {
+                    Ok(pred.to_string())
+                } else {
+                    Err(())
                 }
-                pred.to_string()
             })
-            .collect::<Vec<_>>();
+            .collect::<Result<Vec<_>, ()>>() else { return; };
 
-        let generics = self.tcx.hir().get_generics(impl_item_def_id).unwrap();
+        let Some(generics) = self.tcx.hir().get_generics(impl_item_def_id) else { return; };
 
-        if is_suggestable {
-            if trait_predicates.is_empty() {
-                err.span_suggestion_verbose(
-                    generics.where_clause_span,
-                    "remove the `where` clause",
-                    String::new(),
-                    Applicability::MachineApplicable,
-                );
-            } else {
-                let space = if generics.where_clause_span.is_empty() { " " } else { "" };
-                err.span_suggestion_verbose(
-                    generics.where_clause_span,
-                    "copy the `where` clause predicates from the trait",
-                    format!("{space}where {}", trait_predicates.join(", ")),
-                    Applicability::MachineApplicable,
-                );
-            }
+        if trait_predicates.is_empty() {
+            err.span_suggestion_verbose(
+                generics.where_clause_span,
+                "remove the `where` clause",
+                String::new(),
+                Applicability::MachineApplicable,
+            );
+        } else {
+            let space = if generics.where_clause_span.is_empty() { " " } else { "" };
+            err.span_suggestion_verbose(
+                generics.where_clause_span,
+                "copy the `where` clause predicates from the trait",
+                format!("{space}where {}", trait_predicates.join(", ")),
+                Applicability::MachineApplicable,
+            );
         }
     }
 
