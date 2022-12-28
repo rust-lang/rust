@@ -223,7 +223,7 @@ provide! { tcx, def_id, other, cdata,
     generator_kind => { table }
     trait_def => { table }
     deduced_param_attrs => { table }
-    collect_trait_impl_trait_tys => {
+    collect_return_position_impl_trait_in_trait_tys => {
         Ok(cdata
             .root
             .tables

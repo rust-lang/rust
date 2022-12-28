@@ -441,8 +441,41 @@ fn compare_asyncness<'tcx>(
     Ok(())
 }
 
+/// Given a method def-id in an impl, compare the method signature of the impl
+/// against the trait that it's implementing. In doing so, infer the hidden types
+/// that this method's signature provides to satisfy each return-position `impl Trait`
+/// in the trait signature.
+///
+/// The method is also responsible for making sure that the hidden types for each
+/// RPITIT actually satisfy the bounds of the `impl Trait`, i.e. that if we infer
+/// `impl Trait = Foo`, that `Foo: Trait` holds.
+///
+/// For example, given the sample code:
+///
+/// ```
+/// #![feature(return_position_impl_trait_in_trait)]
+///
+/// use std::ops::Deref;
+///
+/// trait Foo {
+///     fn bar() -> impl Deref<Target = impl Sized>;
+///              // ^- RPITIT #1        ^- RPITIT #2
+/// }
+///
+/// impl Foo for () {
+///     fn bar() -> Box<String> { Box::new(String::new()) }
+/// }
+/// ```
+///
+/// The hidden types for the RPITITs in `bar` would be inferred to:
+///     * `impl Deref` (RPITIT #1) = `Box<String>`
+///     * `impl Sized` (RPITIT #2) = `String`
+///
+/// The relationship between these two types is straightforward in this case, but
+/// may be more tenuously connected via other `impl`s and normalization rules for
+/// cases of more complicated nested RPITITs.
 #[instrument(skip(tcx), level = "debug", ret)]
-pub(super) fn collect_trait_impl_trait_tys<'tcx>(
+pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
     tcx: TyCtxt<'tcx>,
     def_id: DefId,
 ) -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed> {
