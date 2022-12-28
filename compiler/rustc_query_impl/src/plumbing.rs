@@ -205,6 +205,9 @@ macro_rules! handle_cycle_error {
     ([]) => {{
         rustc_query_system::HandleCycleError::Error
     }};
+    ([(recover_cycle) $($rest:tt)*]) => {{
+        rustc_query_system::HandleCycleError::Recover
+    }};
     ([(fatal_cycle) $($rest:tt)*]) => {{
         rustc_query_system::HandleCycleError::Fatal
     }};

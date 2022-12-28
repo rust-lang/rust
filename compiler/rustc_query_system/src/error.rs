@@ -12,6 +12,7 @@ pub struct CycleStack {
 
 #[derive(Copy, Clone)]
 pub enum HandleCycleError {
+    Recover,
     Error,
     Fatal,
     DelayBug,

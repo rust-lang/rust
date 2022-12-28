@@ -162,6 +162,11 @@ where
             error.delay_as_bug();
             Value::from_cycle_error(tcx, &cycle_error.cycle)
         }
+        Recover => {
+            // FIXME: We don't really want to create the error in the first place.
+            error.cancel();
+            Value::from_cycle_error(tcx, &cycle_error.cycle)
+        }
     }
 }
 

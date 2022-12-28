@@ -1846,6 +1846,7 @@ rustc_queries! {
                 tcx.def_path_str(key.def_id())
         }
         separate_provide_extern
+        recover_cycle
     }
 
     query backend_optimization_level(_: ()) -> OptLevel {
