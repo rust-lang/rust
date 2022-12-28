@@ -328,7 +328,8 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::WhileExpr(_)
         | ast::Expr::LetExpr(_)
         | ast::Expr::UnderscoreExpr(_)
-        | ast::Expr::YieldExpr(_) => cb(expr),
+        | ast::Expr::YieldExpr(_)
+        | ast::Expr::YeetExpr(_) => cb(expr),
     }
 }
 

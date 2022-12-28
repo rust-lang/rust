@@ -465,6 +465,12 @@ impl<'a> InferenceContext<'a> {
                     TyKind::Error.intern(Interner)
                 }
             }
+            Expr::Yeet { expr } => {
+                if let &Some(expr) = expr {
+                    self.infer_expr_inner(expr, &Expectation::None);
+                }
+                TyKind::Never.intern(Interner)
+            }
             Expr::RecordLit { path, fields, spread, .. } => {
                 let (ty, def_id) = self.resolve_variant(path.as_deref(), false);
                 if let Some(variant) = def_id {

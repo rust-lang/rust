@@ -137,6 +137,9 @@ pub enum Expr {
     Yield {
         expr: Option<ExprId>,
     },
+    Yeet {
+        expr: Option<ExprId>,
+    },
     RecordLit {
         path: Option<Box<Path>>,
         fields: Box<[RecordLitField]>,
@@ -313,7 +316,10 @@ impl Expr {
                 arms.iter().map(|arm| arm.expr).for_each(f);
             }
             Expr::Continue { .. } => {}
-            Expr::Break { expr, .. } | Expr::Return { expr } | Expr::Yield { expr } => {
+            Expr::Break { expr, .. }
+            | Expr::Return { expr }
+            | Expr::Yield { expr }
+            | Expr::Yeet { expr } => {
                 if let &Some(expr) = expr {
                     f(expr);
                 }
