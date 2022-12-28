@@ -1307,7 +1307,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type check the initializer.
         if let Some(ref init) = decl.init {
             let init_ty = self.check_decl_initializer(decl.hir_id, decl.pat, &init);
-            self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, decl_ty, init_ty);
+            self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, init_ty);
         }
 
         // Does the expected pattern type originate from an expression and what is the span?
@@ -1322,7 +1322,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Type check the pattern. Override if necessary to avoid knock-on errors.
         self.check_pat_top(&decl.pat, decl_ty, ty_span, origin_expr);
         let pat_ty = self.node_ty(decl.pat.hir_id);
-        self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, decl_ty, pat_ty);
+        self.overwrite_local_ty_if_err(decl.hir_id, decl.pat, pat_ty);
 
         if let Some(blk) = decl.els {
             let previous_diverges = self.diverges.get();
@@ -1627,14 +1627,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         hir_id: hir::HirId,
         pat: &'tcx hir::Pat<'tcx>,
-        decl_ty: Ty<'tcx>,
         ty: Ty<'tcx>,
     ) {
         if ty.references_error() {
             // Override the types everywhere with `err()` to avoid knock on errors.
-            self.write_ty(hir_id, ty);
-            self.write_ty(pat.hir_id, ty);
-            let local_ty = LocalTy { decl_ty, revealed_ty: ty };
+            let err = self.tcx.ty_error();
+            self.write_ty(hir_id, err);
+            self.write_ty(pat.hir_id, err);
+            let local_ty = LocalTy { decl_ty: err, revealed_ty: err };
             self.locals.borrow_mut().insert(hir_id, local_ty);
             self.locals.borrow_mut().insert(pat.hir_id, local_ty);
         }

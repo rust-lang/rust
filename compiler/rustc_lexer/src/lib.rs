@@ -851,7 +851,7 @@ impl Cursor<'_> {
     }
 
     // Eats the identifier. Note: succeeds on `_`, which isn't a valid
-    // identifer.
+    // identifier.
     fn eat_identifier(&mut self) {
         if !is_id_start(self.first()) {
             return;

@@ -220,3 +220,11 @@ fn value() -> Option<&'static _> {
 
 const _: Option<_> = map(value);
 //~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants
+
+fn evens_squared(n: usize) -> _ {
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for return types
+    (1..n).filter(|x| x % 2 == 0).map(|x| x * x)
+}
+
+const _: _ = (1..10).filter(|x| x % 2 == 0).map(|x| x * x);
+//~^ ERROR the placeholder `_` is not allowed within types on item signatures for constants

@@ -241,7 +241,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             });
 
             if let Some(ok) = self.lookup_method_in_trait(
-                call_expr.span,
+                self.misc(call_expr.span),
                 method_name,
                 trait_def_id,
                 adjusted_ty,
