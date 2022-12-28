@@ -152,11 +152,20 @@ impl<'a> InferenceContext<'a> {
                 .1
             }
             Expr::TryBlock { body } => {
-                self.with_breakable_ctx(BreakableKind::Block, self.err_ty(), None, |this| {
-                    let _inner = this.infer_expr(*body, expected);
+                // The type that is returned from the try block
+                let try_ty = self.table.new_type_var();
+                if let Some(ty) = expected.only_has_type(&mut self.table) {
+                    self.unify(&try_ty, &ty);
+                }
+
+                // The ok-ish type that is expected from the last expression
+                let ok_ty = self.resolve_associated_type(try_ty.clone(), self.resolve_ops_try_ok());
+
+                self.with_breakable_ctx(BreakableKind::Block, ok_ty.clone(), None, |this| {
+                    this.infer_expr(*body, &Expectation::has_type(ok_ty));
                 });
-                // FIXME should be std::result::Result<{inner}, _>
-                self.err_ty()
+
+                try_ty
             }
             Expr::Async { body } => {
                 let ret_ty = self.table.new_type_var();
