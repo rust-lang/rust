@@ -310,7 +310,8 @@ pub(crate) enum ParseResult<T> {
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
-    Failure(Token, &'static str),
+    /// The usize is the approximate position of the token in the input token stream.
+    Failure(Token, usize, &'static str),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(rustc_span::Span, String),
     ErrorReported(ErrorGuaranteed),
@@ -455,6 +456,7 @@ impl TtParser {
         &mut self,
         matcher: &'matcher [MatcherLoc],
         token: &Token,
+        approx_position: usize,
         track: &mut T,
     ) -> Option<NamedParseResult> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
@@ -598,6 +600,7 @@ impl TtParser {
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
                     ),
+                    approx_position,
                     "missing tokens in macro arguments",
                 ),
             })
@@ -627,7 +630,12 @@ impl TtParser {
 
             // Process `cur_mps` until either we have finished the input or we need to get some
             // parsing from the black-box parser done.
-            let res = self.parse_tt_inner(matcher, &parser.token, track);
+            let res = self.parse_tt_inner(
+                matcher,
+                &parser.token,
+                parser.approx_token_stream_pos(),
+                track,
+            );
             if let Some(res) = res {
                 return res;
             }
@@ -642,6 +650,7 @@ impl TtParser {
                     // parser: syntax error.
                     return Failure(
                         parser.token.clone(),
+                        parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
                     );
                 }
