@@ -1,4 +1,4 @@
-//@error-pattern: /deallocating while item \[SharedReadWrite for .*\] is strongly protected/
+//@error-pattern: /deallocating while item \[SharedReadWrite for .*\] is protected/
 use std::alloc::{dealloc, Layout};
 use std::marker::PhantomPinned;
 

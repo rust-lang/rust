@@ -1,4 +1,4 @@
-//@error-pattern: /deallocating while item \[Unique for .*\] is strongly protected/
+//@error-pattern: /deallocating while item \[Unique for .*\] is protected/
 use std::alloc::{dealloc, Layout};
 
 fn inner(x: &mut i32, f: fn(&mut i32)) {

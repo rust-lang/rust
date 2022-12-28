@@ -20,7 +20,7 @@ use rustc_target::abi::{Abi, Size};
 
 use crate::borrow_tracker::{
     stacked_borrows::diagnostics::{AllocHistory, DiagnosticCx, DiagnosticCxBuilder, TagHistory},
-    AccessKind, GlobalStateInner, ProtectorKind, RetagFields,
+    AccessKind, GlobalStateInner, RetagFields,
 };
 use crate::*;
 
@@ -51,12 +51,12 @@ enum NewPermission {
         /// If true, indicates that the stack should be cleared of all other tags.
         clear: bool,
         access: Option<AccessKind>,
-        protector: Option<ProtectorKind>,
+        protector: bool,
     },
     FreezeSensitive {
         freeze_perm: Permission,
         freeze_access: Option<AccessKind>,
-        freeze_protector: Option<ProtectorKind>,
+        freeze_protector: bool,
         nonfreeze_perm: Permission,
         nonfreeze_access: Option<AccessKind>,
         // nonfreeze_protector must always be None
@@ -71,17 +71,15 @@ impl NewPermission {
         kind: RetagKind,
         cx: &crate::MiriInterpCx<'_, 'tcx>,
     ) -> Self {
-        let protector = (kind == RetagKind::FnEntry).then_some(ProtectorKind::StrongProtector);
         match ty.kind() {
             ty::Ref(_, pointee, Mutability::Mut) => {
                 if kind == RetagKind::TwoPhase {
                     // We mostly just give up on 2phase-borrows, and treat these exactly like raw pointers.
-                    assert!(protector.is_none()); // RetagKind can't be both FnEntry and TwoPhase.
                     NewPermission::Uniform {
                         perm: Permission::SharedReadWrite,
                         clear: false,
                         access: None,
-                        protector: None,
+                        protector: false,
                     }
                 } else if pointee.is_unpin(*cx.tcx, cx.param_env()) {
                     // A regular full mutable reference.
@@ -89,7 +87,7 @@ impl NewPermission {
                         perm: Permission::Unique,
                         clear: false,
                         access: Some(AccessKind::Write),
-                        protector,
+                        protector: kind == RetagKind::FnEntry,
                     }
                 } else {
                     NewPermission::Uniform {
@@ -100,25 +98,24 @@ impl NewPermission {
                         // <https://github.com/rust-lang/unsafe-code-guidelines/issues/381>, so for now
                         // we don't do that.
                         access: None,
-                        protector,
+                        protector: kind == RetagKind::FnEntry,
                     }
                 }
             }
             ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Mut, .. }) => {
-                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // Mutable raw pointer. No access, not protected.
                 NewPermission::Uniform {
                     perm: Permission::SharedReadWrite,
                     clear: false,
                     access: None,
-                    protector: None,
+                    protector: false,
                 }
             }
             ty::Ref(_, _pointee, Mutability::Not) => {
                 NewPermission::FreezeSensitive {
                     freeze_perm: Permission::SharedReadOnly,
                     freeze_access: Some(AccessKind::Read),
-                    freeze_protector: protector,
+                    freeze_protector: kind == RetagKind::FnEntry,
                     nonfreeze_perm: Permission::SharedReadWrite,
                     // Inside UnsafeCell, this does *not* count as an access, as there
                     // might actually be mutable references further up the stack that
@@ -129,12 +126,11 @@ impl NewPermission {
                 }
             }
             ty::RawPtr(ty::TypeAndMut { mutbl: Mutability::Not, .. }) => {
-                assert!(protector.is_none()); // RetagKind can't be both FnEntry and Raw.
                 // `*const T`, when freshly created, are read-only in the frozen part.
                 NewPermission::FreezeSensitive {
                     freeze_perm: Permission::SharedReadOnly,
                     freeze_access: Some(AccessKind::Read),
-                    freeze_protector: None,
+                    freeze_protector: false,
                     nonfreeze_perm: Permission::SharedReadWrite,
                     nonfreeze_access: None,
                 }
@@ -143,7 +139,7 @@ impl NewPermission {
         }
     }
 
-    fn protector(&self) -> Option<ProtectorKind> {
+    fn protector(&self) -> bool {
         match self {
             NewPermission::Uniform { protector, .. } => *protector,
             NewPermission::FreezeSensitive { freeze_protector, .. } => *freeze_protector,
@@ -186,13 +182,6 @@ impl Permission {
     }
 }
 
-/// Determines whether an item was invalidated by a conflicting access, or by deallocation.
-#[derive(Copy, Clone, Debug)]
-enum ItemInvalidationCause {
-    Conflict,
-    Dealloc,
-}
-
 /// Core per-location operations: access, dealloc, reborrow.
 impl<'tcx> Stack {
     /// Find the first write-incompatible item above the given one --
@@ -228,7 +217,6 @@ impl<'tcx> Stack {
         item: &Item,
         global: &GlobalStateInner,
         dcx: &mut DiagnosticCx<'_, '_, '_, 'tcx>,
-        cause: ItemInvalidationCause,
     ) -> InterpResult<'tcx> {
         if !global.tracked_pointer_tags.is_empty() {
             dcx.check_tracked_tag_popped(item, global);
@@ -251,14 +239,8 @@ impl<'tcx> Stack {
         // 2. Most frames protect only one or two tags. So this duplicative global turns a search
         //    which ends up about linear in the number of protected tags in the program into a
         //    constant time check (and a slow linear, because the tags in the frames aren't contiguous).
-        if let Some(&protector_kind) = global.protected_tags.get(&item.tag()) {
-            // The only way this is okay is if the protector is weak and we are deallocating with
-            // the right pointer.
-            let allowed = matches!(cause, ItemInvalidationCause::Dealloc)
-                && matches!(protector_kind, ProtectorKind::WeakProtector);
-            if !allowed {
-                return Err(dcx.protector_error(item, protector_kind).into());
-            }
+        if global.protected_tags.contains(&item.tag()) {
+            return Err(dcx.protector_error(item).into());
         }
         Ok(())
     }
@@ -298,7 +280,7 @@ impl<'tcx> Stack {
                 0
             };
             self.pop_items_after(first_incompatible_idx, |item| {
-                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
+                Stack::item_invalidated(&item, global, dcx)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -319,7 +301,7 @@ impl<'tcx> Stack {
                 0
             };
             self.disable_uniques_starting_at(first_incompatible_idx, |item| {
-                Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
+                Stack::item_invalidated(&item, global, dcx)?;
                 dcx.log_invalidation(item.tag());
                 Ok(())
             })?;
@@ -366,10 +348,10 @@ impl<'tcx> Stack {
         // As part of this we do regular protector checking, i.e. even weakly protected items cause UB when popped.
         self.access(AccessKind::Write, tag, global, dcx, exposed_tags)?;
 
-        // Step 2: Pretend we remove the remaining items, checking if any are strongly protected.
+        // Step 2: Pretend we remove the remaining items, checking if any are protected.
         for idx in (0..self.len()).rev() {
             let item = self.get(idx).unwrap();
-            Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Dealloc)?;
+            Stack::item_invalidated(&item, global, dcx)?;
         }
 
         Ok(())
@@ -404,7 +386,7 @@ impl<'tcx> Stack {
                 // Remove all items, also checking their protectors.
                 for idx in (0..self.len()).rev() {
                     let item = self.get(idx).unwrap();
-                    Stack::item_invalidated(&item, global, dcx, ItemInvalidationCause::Conflict)?;
+                    Stack::item_invalidated(&item, global, dcx)?;
                 }
                 self.clear();
             }
@@ -669,7 +651,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     );
                     let mut dcx = dcx.build(&mut stacked_borrows.history, base_offset);
                     dcx.log_creation();
-                    if new_perm.protector().is_some() {
+                    if new_perm.protector() {
                         dcx.log_protector();
                     }
                 },
@@ -727,7 +709,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
             size.bytes()
         );
 
-        if let Some(protect) = new_perm.protector() {
+        if new_perm.protector() {
             // See comment in `Stack::item_invalidated` for why we store the tag twice.
             this.frame_mut().extra.borrow_tracker.as_mut().unwrap().protected_tags.push(new_tag);
             this.machine
@@ -736,7 +718,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 .unwrap()
                 .get_mut()
                 .protected_tags
-                .insert(new_tag, protect);
+                .insert(new_tag);
         }
 
         // Update the stacks, according to the new permission information we are given.
@@ -748,7 +730,7 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                 // mutable pointer, that seems reasonable.
                 let (alloc_extra, machine) = this.get_alloc_extra_mut(alloc_id)?;
                 let stacked_borrows = alloc_extra.borrow_tracker_sb_mut().get_mut();
-                let item = Item::new(new_tag, perm, protector.is_some());
+                let item = Item::new(new_tag, perm, protector);
                 let range = alloc_range(base_offset, size);
                 let global = machine.borrow_tracker.as_ref().unwrap().borrow();
                 let dcx = DiagnosticCxBuilder::retag(
@@ -790,9 +772,9 @@ trait EvalContextPrivExt<'mir: 'ecx, 'tcx: 'mir, 'ecx>: crate::MiriInterpCxExt<'
                     let (perm, access, protector) = if frozen {
                         (freeze_perm, freeze_access, freeze_protector)
                     } else {
-                        (nonfreeze_perm, nonfreeze_access, None)
+                        (nonfreeze_perm, nonfreeze_access, /*protector*/ false)
                     };
-                    let item = Item::new(new_tag, perm, protector.is_some());
+                    let item = Item::new(new_tag, perm, protector);
                     let global = this.machine.borrow_tracker.as_ref().unwrap().borrow();
                     let dcx = DiagnosticCxBuilder::retag(
                         &this.machine,
@@ -937,14 +919,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // We cannot protect boxes since they might get invalidated if passed to an `id`
                 // function (due to the return-position `noalias`). However, doing a `clear` on
                 // `FnEntry` also has the effect that using any other pointer to access this memory
-                // is *immediate* UB.
+                // is *immediate* UB, thus ensuring `noalias` scoped for this function.
                 // FIXME: should we `clear` on *all* `Box` retags? Currently (2022-12-27) this leads
                 // to UB somewhere in thread-local dtor handling.
                 let new_perm = NewPermission::Uniform {
                     perm: Permission::Unique,
                     clear: matches!(self.kind, RetagKind::FnEntry | RetagKind::FnReturn),
                     access: Some(AccessKind::Write),
-                    protector: None,
+                    protector: false,
                 };
                 self.retag_ptr_inplace(place, new_perm, self.retag_cause)
             }
@@ -1021,7 +1003,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             perm: Permission::Unique,
             clear: false,
             access: Some(AccessKind::Write),
-            protector: Some(ProtectorKind::StrongProtector),
+            protector: true,
         };
         let val = this.sb_retag_reference(&val, new_perm, RetagCause::FnReturnPlace)?;
         // And use reborrowed pointer for return place.

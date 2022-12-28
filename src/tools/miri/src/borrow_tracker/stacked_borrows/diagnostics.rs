@@ -6,8 +6,7 @@ use rustc_span::{Span, SpanData};
 use rustc_target::abi::Size;
 
 use crate::borrow_tracker::{
-    stacked_borrows::{err_sb_ub, Permission},
-    AccessKind, GlobalStateInner, ProtectorKind,
+    stacked_borrows::{err_sb_ub, Permission}, AccessKind, GlobalStateInner,
 };
 use crate::*;
 
@@ -398,11 +397,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
     }
 
     #[inline(never)] // This is only called on fatal code paths
-    pub(super) fn protector_error(&self, item: &Item, kind: ProtectorKind) -> InterpError<'tcx> {
-        let protected = match kind {
-            ProtectorKind::WeakProtector => "weakly protected",
-            ProtectorKind::StrongProtector => "strongly protected",
-        };
+    pub(super) fn protector_error(&self, item: &Item) -> InterpError<'tcx> {
         let call_id = self
             .machine
             .threads
@@ -417,7 +412,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
         match self.operation {
             Operation::Dealloc(_) =>
                 err_sb_ub(
-                    format!("deallocating while item {item:?} is {protected} by call {call_id:?}",),
+                    format!("deallocating while item {item:?} is protected by call {call_id:?}",),
                     None,
                     None,
                 ),
@@ -425,7 +420,7 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             | Operation::Access(AccessOp { tag, .. }) =>
                 err_sb_ub(
                     format!(
-                        "not granting access to tag {tag:?} because that would remove {item:?} which is {protected} because it is an argument of call {call_id:?}",
+                        "not granting access to tag {tag:?} because that would remove {item:?} which is protected because it is an argument of call {call_id:?}",
                     ),
                     None,
                     tag.and_then(|tag| self.get_logs_relevant_to(tag, Some(item.tag()))),

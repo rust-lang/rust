@@ -95,7 +95,7 @@ pub struct GlobalStateInner {
     /// We add tags to this when they are created with a protector in `reborrow`, and
     /// we remove tags from this when the call which is protecting them returns, in
     /// `GlobalStateInner::end_call`. See `Stack::item_popped` for more details.
-    pub protected_tags: FxHashMap<BorTag, ProtectorKind>,
+    pub protected_tags: FxHashSet<BorTag>,
     /// The pointer ids to trace
     pub tracked_pointer_tags: FxHashSet<BorTag>,
     /// The call ids to trace
@@ -142,26 +142,6 @@ pub enum RetagFields {
     OnlyScalar,
 }
 
-/// The flavor of the protector.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-pub enum ProtectorKind {
-    /// Protected against aliasing violations from other pointers.
-    ///
-    /// Items protected like this cause UB when they are invalidated, *but* the pointer itself may
-    /// still be used to issue a deallocation.
-    ///
-    /// This is required for LLVM IR pointers that are `noalias` but *not* `dereferenceable`.
-    WeakProtector,
-
-    /// Protected against any kind of invalidation.
-    ///
-    /// Items protected like this cause UB when they are invalidated or the memory is deallocated.
-    /// This is strictly stronger protection than `WeakProtector`.
-    ///
-    /// This is required for LLVM IR pointers that are `dereferenceable` (and also allows `noalias`).
-    StrongProtector,
-}
-
 /// Utilities for initialization and ID generation
 impl GlobalStateInner {
     pub fn new(
@@ -175,7 +155,7 @@ impl GlobalStateInner {
             next_ptr_tag: BorTag::one(),
             base_ptr_tags: FxHashMap::default(),
             next_call_id: NonZeroU64::new(1).unwrap(),
-            protected_tags: FxHashMap::default(),
+            protected_tags: FxHashSet::default(),
             tracked_pointer_tags,
             tracked_call_ids,
             retag_fields,
