@@ -824,7 +824,12 @@ impl SourceMap {
     }
 
     /// Returns a new span representing just the first character of the given span.
+    /// When the span is empty, the same empty span is returned.
     pub fn start_point(&self, sp: Span) -> Span {
+        if sp.is_empty() {
+            return sp;
+        }
+
         let width = {
             let sp = sp.data();
             let local_begin = self.lookup_byte_offset(sp.lo);
