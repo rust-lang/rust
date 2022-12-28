@@ -44,7 +44,8 @@ unsafe fn wait_timeout(
         target_os = "macos",
         target_os = "ios",
         target_os = "watchos",
-        target_os = "espidf"
+        target_os = "espidf",
+        target_os = "horizon",
     ))]
     let (now, dur) = {
         use crate::cmp::min;
@@ -70,7 +71,8 @@ unsafe fn wait_timeout(
         target_os = "macos",
         target_os = "ios",
         target_os = "watchos",
-        target_os = "espidf"
+        target_os = "espidf",
+        target_os = "horizon",
     )))]
     let (now, dur) = {
         use crate::sys::time::Timespec;
