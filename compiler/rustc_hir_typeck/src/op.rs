@@ -12,14 +12,16 @@ use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability,
 };
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
+use rustc_middle::ty::{
+    self, DefIdTree, IsSuggestable, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_session::errors::ExprParenthesesNeeded;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::Span;
 use rustc_trait_selection::infer::InferCtxtExt;
 use rustc_trait_selection::traits::error_reporting::suggestions::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::FulfillmentError;
+use rustc_trait_selection::traits::{self, FulfillmentError};
 use rustc_type_ir::sty::TyKind::*;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -48,8 +50,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if self
                     .lookup_op_method(
                         lhs_deref_ty,
-                        Some(rhs_ty),
-                        Some(rhs),
+                        Some((rhs, rhs_ty)),
                         Op::Binary(op, IsAssign::Yes),
                         expected,
                     )
@@ -60,8 +61,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self
                         .lookup_op_method(
                             lhs_ty,
-                            Some(rhs_ty),
-                            Some(rhs),
+                            Some((rhs, rhs_ty)),
                             Op::Binary(op, IsAssign::Yes),
                             expected,
                         )
@@ -248,8 +248,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let result = self.lookup_op_method(
             lhs_ty,
-            Some(rhs_ty_var),
-            Some(rhs_expr),
+            Some((rhs_expr, rhs_ty_var)),
             Op::Binary(op, is_assign),
             expected,
         );
@@ -382,8 +381,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     if self
                         .lookup_op_method(
                             lhs_deref_ty,
-                            Some(rhs_ty),
-                            Some(rhs_expr),
+                            Some((rhs_expr, rhs_ty)),
                             Op::Binary(op, is_assign),
                             expected,
                         )
@@ -410,8 +408,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let is_compatible = |lhs_ty, rhs_ty| {
                     self.lookup_op_method(
                         lhs_ty,
-                        Some(rhs_ty),
-                        Some(rhs_expr),
+                        Some((rhs_expr, rhs_ty)),
                         Op::Binary(op, is_assign),
                         expected,
                     )
@@ -471,8 +468,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         let errors = self
                             .lookup_op_method(
                                 lhs_ty,
-                                Some(rhs_ty),
-                                Some(rhs_expr),
+                                Some((rhs_expr, rhs_ty)),
                                 Op::Binary(op, is_assign),
                                 expected,
                             )
@@ -492,6 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                             if let Some(output_def_id) = output_def_id
                                                 && let Some(trait_def_id) = trait_def_id
                                                 && self.tcx.parent(output_def_id) == trait_def_id
+                                                && output_ty.is_suggestable(self.tcx, false)
                                             {
                                                 Some(("Output", *output_ty))
                                             } else {
@@ -625,7 +622,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected: Expectation<'tcx>,
     ) -> Ty<'tcx> {
         assert!(op.is_by_value());
-        match self.lookup_op_method(operand_ty, None, None, Op::Unary(op, ex.span), expected) {
+        match self.lookup_op_method(operand_ty, None, Op::Unary(op, ex.span), expected) {
             Ok(method) => {
                 self.write_method_call(ex.hir_id, method);
                 method.sig.output()
@@ -712,8 +709,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn lookup_op_method(
         &self,
         lhs_ty: Ty<'tcx>,
-        other_ty: Option<Ty<'tcx>>,
-        other_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        opt_rhs: Option<(&'tcx hir::Expr<'tcx>, Ty<'tcx>)>,
         op: Op,
         expected: Expectation<'tcx>,
     ) -> Result<MethodCallee<'tcx>, Vec<FulfillmentError<'tcx>>> {
@@ -742,20 +738,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 Op::Unary(..) => 0,
             },
         ) {
+            self.tcx
+                .sess
+                .delay_span_bug(span, "operator didn't have the right number of generic args");
             return Err(vec![]);
         }
 
         let opname = Ident::with_dummy_span(opname);
+        let input_types =
+            opt_rhs.as_ref().map(|(_, ty)| std::slice::from_ref(ty)).unwrap_or_default();
+        let cause = self.cause(
+            span,
+            traits::BinOp {
+                rhs_span: opt_rhs.map(|(expr, _)| expr.span),
+                is_lit: opt_rhs
+                    .map_or(false, |(expr, _)| matches!(expr.kind, hir::ExprKind::Lit(_))),
+                output_ty: expected.only_has_type(self),
+            },
+        );
+
         let method = trait_did.and_then(|trait_did| {
-            self.lookup_op_method_in_trait(
-                span,
-                opname,
-                trait_did,
-                lhs_ty,
-                other_ty,
-                other_ty_expr,
-                expected,
-            )
+            self.lookup_method_in_trait(cause.clone(), opname, trait_did, lhs_ty, Some(input_types))
         });
 
         match (method, trait_did) {
@@ -766,14 +769,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             (None, None) => Err(vec![]),
             (None, Some(trait_did)) => {
-                let (obligation, _) = self.obligation_for_op_method(
-                    span,
-                    trait_did,
-                    lhs_ty,
-                    other_ty,
-                    other_ty_expr,
-                    expected,
-                );
+                let (obligation, _) =
+                    self.obligation_for_method(cause, trait_did, lhs_ty, Some(input_types));
                 Err(rustc_trait_selection::traits::fully_solve_obligation(self, obligation))
             }
         }
