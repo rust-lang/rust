@@ -26,6 +26,7 @@ pub fn used_binding<const T: usize>() -> usize {
 // Function uses generic parameter in substitutions to another function.
 #[rustc_polymorphize_error]
 pub fn used_substs<const T: usize>() {
+    //~^ ERROR item has unused generic parameters
     unused::<T>()
 }
 

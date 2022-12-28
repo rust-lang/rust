@@ -53,7 +53,9 @@ pub fn unused_upvar<const T: usize>() -> usize {
 // Closure uses generic parameter in substitutions to another function.
 #[rustc_polymorphize_error]
 pub fn used_substs<const T: usize>() -> usize {
+    //~^ ERROR item has unused generic parameters
     let x = || unused::<T>();
+    //~^ ERROR item has unused generic parameters
     x()
 }
 

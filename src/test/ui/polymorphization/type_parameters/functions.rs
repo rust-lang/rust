@@ -34,6 +34,7 @@ pub fn used_argument<T>(_: T) {}
 // Function uses generic parameter in substitutions to another function.
 #[rustc_polymorphize_error]
 pub fn used_substs<T>() {
+    //~^ ERROR item has unused generic parameters
     unused::<T>()
 }
 
@@ -75,6 +76,7 @@ impl<F: Default> Foo<F> {
     // Function uses generic parameter in substitutions to another function.
     #[rustc_polymorphize_error]
     pub fn used_substs() {
+        //~^ ERROR item has unused generic parameters
         unused::<F>()
     }
 }

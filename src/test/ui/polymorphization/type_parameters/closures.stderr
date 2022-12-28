@@ -23,7 +23,22 @@ LL |     let add_one = |x: u32| x + 1;
    |                   ^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:94:23
+  --> $DIR/closures.rs:84:13
+   |
+LL | pub fn used_substs<T>() -> u32 {
+   |                    - generic parameter `T` is unused
+LL |
+LL |     let x = || unused::<T>();
+   |             ^^
+
+error: item has unused generic parameters
+  --> $DIR/closures.rs:82:8
+   |
+LL | pub fn used_substs<T>() -> u32 {
+   |        ^^^^^^^^^^^ - generic parameter `T` is unused
+
+error: item has unused generic parameters
+  --> $DIR/closures.rs:96:23
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -35,7 +50,7 @@ LL |         let add_one = |x: u32| x + 1;
    |                       ^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:92:12
+  --> $DIR/closures.rs:94:12
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -44,7 +59,7 @@ LL |     pub fn unused_all<G: Default>() -> u32 {
    |            ^^^^^^^^^^ - generic parameter `G` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:128:23
+  --> $DIR/closures.rs:130:23
    |
 LL |     pub fn used_impl<G: Default>() -> u32 {
    |                      - generic parameter `G` is unused
@@ -53,13 +68,13 @@ LL |         let add_one = |x: u32| {
    |                       ^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:126:12
+  --> $DIR/closures.rs:128:12
    |
 LL |     pub fn used_impl<G: Default>() -> u32 {
    |            ^^^^^^^^^ - generic parameter `G` is unused
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:115:23
+  --> $DIR/closures.rs:117:23
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -68,7 +83,7 @@ LL |         let add_one = |x: u32| {
    |                       ^^^^^^^^
 
 error: item has unused generic parameters
-  --> $DIR/closures.rs:113:12
+  --> $DIR/closures.rs:115:12
    |
 LL | impl<F: Default> Foo<F> {
    |      - generic parameter `F` is unused
@@ -76,5 +91,23 @@ LL | impl<F: Default> Foo<F> {
 LL |     pub fn used_fn<G: Default>() -> u32 {
    |            ^^^^^^^
 
-error: aborting due to 9 previous errors
+error: item has unused generic parameters
+  --> $DIR/closures.rs:143:17
+   |
+LL | impl<F: Default> Foo<F> {
+   |      - generic parameter `F` is unused
+...
+LL |         let x = || unused::<F>();
+   |                 ^^
+
+error: item has unused generic parameters
+  --> $DIR/closures.rs:141:12
+   |
+LL | impl<F: Default> Foo<F> {
+   |      - generic parameter `F` is unused
+...
+LL |     pub fn used_substs() -> u32 {
+   |            ^^^^^^^^^^^
+
+error: aborting due to 13 previous errors
 

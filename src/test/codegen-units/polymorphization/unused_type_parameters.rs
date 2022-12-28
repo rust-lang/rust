@@ -41,12 +41,11 @@ mod functions {
 //~ MONO_ITEM fn functions::used_argument::<u64>
 //
     // Function uses type parameter in substitutions to another function.
-    pub fn used_substs<T>() {
+    pub fn forwarded<T>() {
         unused::<T>()
     }
 
-//~ MONO_ITEM fn functions::used_substs::<u32>
-//~ MONO_ITEM fn functions::used_substs::<u64>
+//~ MONO_ITEM fn functions::forwarded::<T>
 }
 
 
@@ -144,15 +143,13 @@ mod closures {
 //~ MONO_ITEM fn closures::used_upvar::<u64>
 
     // Closure uses type parameter in substitutions to another function.
-    pub fn used_substs<T>() {
+    pub fn forwarded<T>() {
         let x = || super::functions::unused::<T>();
         x()
     }
 
-//~ MONO_ITEM fn closures::used_substs::<u32>::{closure#0}
-//~ MONO_ITEM fn closures::used_substs::<u64>::{closure#0}
-//~ MONO_ITEM fn closures::used_substs::<u32>
-//~ MONO_ITEM fn closures::used_substs::<u64>
+//~ MONO_ITEM fn closures::forwarded::<T>::{closure#0}
+//~ MONO_ITEM fn closures::forwarded::<T>
 }
 
 mod methods {
@@ -197,12 +194,11 @@ mod methods {
 //~ MONO_ITEM fn methods::Foo::<u64>::used_both::<u64>
 
         // Function uses type parameter in substitutions to another function.
-        pub fn used_substs() {
+        pub fn forwarded() {
             super::functions::unused::<F>()
         }
 
-//~ MONO_ITEM fn methods::Foo::<u32>::used_substs
-//~ MONO_ITEM fn methods::Foo::<u64>::used_substs
+//~ MONO_ITEM fn methods::Foo::<F>::forwarded
 
         // Function has an unused type parameter from impl and fn.
         pub fn closure_unused_all<G: Default>() -> u32 {
@@ -260,15 +256,13 @@ mod methods {
 //~ MONO_ITEM fn methods::Foo::<u64>::closure_used_impl::<G>
 
         // Closure uses type parameter in substitutions to another function.
-        pub fn closure_used_substs() {
+        pub fn closure_forwarded() {
             let x = || super::functions::unused::<F>();
             x()
         }
 
-//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs::{closure#0}
-//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs::{closure#0}
-//~ MONO_ITEM fn methods::Foo::<u32>::closure_used_substs
-//~ MONO_ITEM fn methods::Foo::<u64>::closure_used_substs
+//~ MONO_ITEM fn methods::Foo::<F>::closure_forwarded::{closure#0}
+//~ MONO_ITEM fn methods::Foo::<F>::closure_forwarded
     }
 }
 
@@ -280,7 +274,7 @@ fn dispatch<T: Default>() {
     functions::used_binding_value::<T>();
     functions::used_binding_type::<T>();
     functions::used_argument::<T>(Default::default());
-    functions::used_substs::<T>();
+    functions::forwarded::<T>();
 
     closures::no_parameters();
     let _ = closures::unused::<T>();
@@ -290,19 +284,19 @@ fn dispatch<T: Default>() {
     let _ = closures::used_argument::<T>(Default::default());
     let _ = closures::used_argument_closure::<T>();
     let _ = closures::used_upvar::<T>();
-    let _ = closures::used_substs::<T>();
+    let _ = closures::forwarded::<T>();
 
     methods::Foo::<T>::unused_impl();
     methods::Foo::<T>::unused_both::<T>();
     methods::Foo::<T>::used_impl();
     methods::Foo::<T>::used_fn::<T>();
     methods::Foo::<T>::used_both::<T>();
-    methods::Foo::<T>::used_substs();
+    methods::Foo::<T>::forwarded();
     let _ = methods::Foo::<T>::closure_unused_all::<T>();
     let _ = methods::Foo::<T>::closure_used_both::<T>();
     let _ = methods::Foo::<T>::closure_used_impl::<T>();
     let _ = methods::Foo::<T>::closure_used_fn::<T>();
-    let _ = methods::Foo::<T>::closure_used_substs();
+    let _ = methods::Foo::<T>::closure_forwarded();
 }
 
 //~ MONO_ITEM fn dispatch::<u32>

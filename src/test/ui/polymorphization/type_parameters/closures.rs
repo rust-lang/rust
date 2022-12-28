@@ -80,7 +80,9 @@ pub fn used_upvar<T: Default>() -> T {
 // Closure uses generic parameter in substitutions to another function.
 #[rustc_polymorphize_error]
 pub fn used_substs<T>() -> u32 {
+    //~^ ERROR item has unused generic parameters
     let x = || unused::<T>();
+    //~^ ERROR item has unused generic parameters
     x()
 }
 
@@ -137,7 +139,9 @@ impl<F: Default> Foo<F> {
     // Closure uses generic parameter in substitutions to another function.
     #[rustc_polymorphize_error]
     pub fn used_substs() -> u32 {
+        //~^ ERROR item has unused generic parameters
         let x = || unused::<F>();
+        //~^ ERROR item has unused generic parameters
         x()
     }
 }

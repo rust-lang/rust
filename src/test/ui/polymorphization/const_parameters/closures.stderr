@@ -40,5 +40,20 @@ LL |     let x: usize = T;
 LL |     let y = || x;
    |             ^^
 
-error: aborting due to 4 previous errors; 1 warning emitted
+error: item has unused generic parameters
+  --> $DIR/closures.rs:57:13
+   |
+LL | pub fn used_substs<const T: usize>() -> usize {
+   |                    -------------- generic parameter `T` is unused
+LL |
+LL |     let x = || unused::<T>();
+   |             ^^
+
+error: item has unused generic parameters
+  --> $DIR/closures.rs:55:8
+   |
+LL | pub fn used_substs<const T: usize>() -> usize {
+   |        ^^^^^^^^^^^ -------------- generic parameter `T` is unused
+
+error: aborting due to 6 previous errors; 1 warning emitted
 
