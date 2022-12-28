@@ -310,7 +310,7 @@ protected:
 
   /// Perform the final load from the cache, applying requisite invariant
   /// group and alignment
-  llvm::Value *loadFromCachePointer(llvm::IRBuilder<> &BuilderM,
+  llvm::Value *loadFromCachePointer(llvm::Type *T, llvm::IRBuilder<> &BuilderM,
                                     llvm::Value *cptr, llvm::Value *cache);
 
 public:
@@ -387,10 +387,13 @@ public:
 
   /// Given an allocation specified by the LimitContext ctx and cache, lookup
   /// the underlying cached value.
-  llvm::Value *lookupValueFromCache(
-      bool inForwardPass, llvm::IRBuilder<> &BuilderM, LimitContext ctx,
-      llvm::Value *cache, bool isi1, const llvm::ValueToValueMapTy &available,
-      llvm::Value *extraSize = nullptr, llvm::Value *extraOffset = nullptr);
+  llvm::Value *lookupValueFromCache(llvm::Type *T, bool inForwardPass,
+                                    llvm::IRBuilder<> &BuilderM,
+                                    LimitContext ctx, llvm::Value *cache,
+                                    bool isi1,
+                                    const llvm::ValueToValueMapTy &available,
+                                    llvm::Value *extraSize = nullptr,
+                                    llvm::Value *extraOffset = nullptr);
 
 protected:
   // List of values loaded from the cache

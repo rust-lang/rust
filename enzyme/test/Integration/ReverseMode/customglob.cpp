@@ -6,6 +6,14 @@
 // RUN: if [ %llvmver -ge 12 ]; then %clang++ -O1 %s -S -emit-llvm -o - %loadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
 // RUN: if [ %llvmver -ge 12 ]; then %clang++ -O2 %s -S -emit-llvm -o - %loadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
 // RUN: if [ %llvmver -ge 12 ]; then %clang++ -O3 %s -S -emit-llvm -o - %loadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O0 %s -S -emit-llvm -o - %newLoadClangEnzyme | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O1 %s -S -emit-llvm -o - %newLoadClangEnzyme | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O2 %s -S -emit-llvm -o - %newLoadClangEnzyme | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O3 %s -S -emit-llvm -o - %newLoadClangEnzyme | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O0 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O1 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O2 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang++ -O3 %s -S -emit-llvm -o - %newLoadClangEnzyme -mllvm -enzyme-inline=1 -S | %lli - ; fi
 
 #include "test_utils.h"
 

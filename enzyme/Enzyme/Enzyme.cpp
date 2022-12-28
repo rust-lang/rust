@@ -610,7 +610,12 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
     } else if (CI->hasStructRetAttr()) {
       Value *sret = CI->getArgOperand(0);
       PointerType *stype = cast<PointerType>(sret->getType());
-      StructType *st = dyn_cast<StructType>(stype->getPointerElementType());
+#if LLVM_VERSION_MAJOR >= 15
+      auto sret_ty = CI->getParamStructRetType(0);
+#else
+      auto sret_ty = stype->getPointerElementType();
+#endif
+      StructType *st = dyn_cast<StructType>(sret_ty);
 
       // Assign results to struct allocated at the call site.
       if (st && st->isLayoutIdentical(diffretsty)) {
@@ -625,7 +630,7 @@ static bool replaceOriginalCall(CallInst *CI, Function *fn, Value *diffret,
         }
       } else {
         auto &DL = fn->getParent()->getDataLayout();
-        if (DL.getTypeSizeInBits(stype->getPointerElementType()) !=
+        if (DL.getTypeSizeInBits(sret_ty) !=
             DL.getTypeSizeInBits(diffret->getType())) {
           EmitFailure("IllegalReturnCast", CI->getDebugLoc(), CI,
                       "Cannot cast return type of gradient ",
@@ -2547,10 +2552,82 @@ public:
 
 AnalysisKey EnzymeNewPM::Key;
 
+#ifdef ENZYME_RUNPASS
+#include "PreserveNVVM.h"
+#include "llvm/Passes/PassBuilder.h"
+#include "llvm/Transforms/IPO/GlobalOpt.h"
+#include "llvm/Transforms/Scalar/GVN.h"
+#include "llvm/Transforms/Scalar/LoopDeletion.h"
+#include "llvm/Transforms/Scalar/SROA.h"
+#endif
+
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
 llvmGetPassPluginInfo() {
   return {LLVM_PLUGIN_API_VERSION, "EnzymeNewPM", "v0.1",
           [](llvm::PassBuilder &PB) {
+#ifdef ENZYME_RUNPASS
+#if LLVM_VERSION_MAJOR < 14
+            using OptimizationLevel = llvm::PassBuilder::OptimizationLevel;
+#endif
+#if LLVM_VERSION_MAJOR >= 12
+            auto loadPass = [](ModulePassManager &MPM, OptimizationLevel)
+#else
+            auto loadPass = [](ModulePassManager &MPM)
+#endif
+            {
+              MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true));
+              FunctionPassManager OptimizerPM;
+              FunctionPassManager OptimizerPM2;
+#if LLVM_VERSION_MAJOR >= 14
+              OptimizerPM.addPass(llvm::GVNPass());
+              OptimizerPM.addPass(llvm::SROAPass());
+#else
+              OptimizerPM.addPass(llvm::GVN());
+              OptimizerPM.addPass(llvm::SROA());
+#endif
+              MPM.addPass(
+                  createModuleToFunctionPassAdaptor(std::move(OptimizerPM)));
+              MPM.addPass(EnzymeNewPM(/*PostOpt=*/true));
+              MPM.addPass(PreserveNVVMNewPM(/*Begin*/ false));
+#if LLVM_VERSION_MAJOR >= 14
+              OptimizerPM2.addPass(llvm::GVNPass());
+              OptimizerPM2.addPass(llvm::SROAPass());
+#else
+              OptimizerPM2.addPass(llvm::GVN());
+              OptimizerPM2.addPass(llvm::SROA());
+#endif
+
+              LoopPassManager LPM1;
+              LPM1.addPass(LoopDeletionPass());
+              OptimizerPM2.addPass(
+                  createFunctionToLoopPassAdaptor(std::move(LPM1)));
+
+              MPM.addPass(
+                  createModuleToFunctionPassAdaptor(std::move(OptimizerPM2)));
+              MPM.addPass(GlobalOptPass());
+            };
+// TODO need for perf reasons to move Enzyme pass to the pre vectorization.
+#if LLVM_VERSION_MAJOR >= 12
+            PB.registerPipelineEarlySimplificationEPCallback(loadPass);
+#else
+            PB.registerPipelineStartEPCallback(loadPass);
+#endif
+
+#if LLVM_VERSION_MAJOR >= 12
+            auto loadNVVM = [](ModulePassManager &MPM, OptimizationLevel)
+#else
+            auto loadNVVM = [](ModulePassManager &MPM)
+#endif
+            { MPM.addPass(PreserveNVVMNewPM(/*Begin*/ true)); };
+
+            // We should register at vectorizer start for consistency, however,
+            // that requires a functionpass, and we have a modulepass.
+            // PB.registerVectorizerStartEPCallback(loadPass);
+            PB.registerPipelineStartEPCallback(loadNVVM);
+#if LLVM_VERSION_MAJOR >= 15
+            PB.registerFullLinkTimeOptimizationEarlyEPCallback(loadNVVM);
+#endif
+#endif
             PB.registerPipelineParsingCallback(
                 [](llvm::StringRef Name, llvm::ModulePassManager &MPM,
                    llvm::ArrayRef<llvm::PassBuilder::PipelineElement>) {

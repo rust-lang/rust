@@ -2,6 +2,10 @@
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O1 %s -S -emit-llvm -o -  %loadClangEnzyme -Xclang -verify; fi
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O2 %s -S -emit-llvm -o -  %loadClangEnzyme -Xclang -verify; fi
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O3 %s -S -emit-llvm -o -  %loadClangEnzyme -Xclang -verify; fi
+// RUN: if [ %llvmver -ge 12 ]; then %clang -std=c11 -g -O0 %s -S -emit-llvm -o -  %newLoadClangEnzyme -Xclang -verify; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O1 %s -S -emit-llvm -o -  %newLoadClangEnzyme -Xclang -verify; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O2 %s -S -emit-llvm -o -  %newLoadClangEnzyme -Xclang -verify; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O3 %s -S -emit-llvm -o -  %newLoadClangEnzyme -Xclang -verify; fi
 
 extern void __enzyme_autodiff(void*);
 

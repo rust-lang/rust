@@ -8,6 +8,16 @@
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g0 -O2 %s -S -emit-llvm -o /dev/null %loadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
 // RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g0 -O3 %s -S -emit-llvm -o /dev/null %loadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
 
+// RUN: if [ %llvmver -ge 12 ]; then %clang -std=c11 -g -O0 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O1 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O2 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g -O3 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+
+// RUN: if [ %llvmver -ge 12 ]; then %clang -std=c11 -g0 -O0 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g0 -O1 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g0 -O2 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+// RUN: if [ %llvmver -ge 10 ]; then %clang -std=c11 -g0 -O3 %s -S -emit-llvm -o /dev/null %newLoadClangEnzyme -Xclang -verify -Rpass=enzyme -mllvm -enzyme-postopt=0; fi
+
 extern void __enzyme_autodiff(void*, ...);
 
 void g(double* in, int N) {

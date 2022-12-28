@@ -4278,7 +4278,11 @@ public:
         auto *PowF = CI.getCalledValue();
 #endif
         assert(PowF);
-        auto FT = cast<FunctionType>(PowF->getType()->getPointerElementType());
+        FunctionType *FT = nullptr;
+        if (auto F = dyn_cast<Function>(PowF))
+          FT = F->getFunctionType();
+        else
+          cast<FunctionType>(PowF->getType()->getPointerElementType());
 
         if (vdiff && !gutils->isConstantValue(orig_ops[0])) {
 
@@ -12089,8 +12093,11 @@ public:
               "whose runtime value is inactive",
               gutils->getNewFromOriginal(orig->getDebugLoc()), orig);
 
-        auto ft =
-            cast<FunctionType>(callval->getType()->getPointerElementType());
+        FunctionType *ft = nullptr;
+        if (auto F = dyn_cast<Function>(callval))
+          ft = F->getFunctionType();
+        else
+          ft = cast<FunctionType>(callval->getType()->getPointerElementType());
 
         std::set<llvm::Type *> seen;
         DIFFE_TYPE subretType = whatType(orig->getType(), Mode,
@@ -12165,8 +12172,11 @@ public:
       // sub_index_map = fnandtapetype.tapeIndices;
 
       assert(newcalled);
-      FunctionType *FT =
-          cast<FunctionType>(newcalled->getType()->getPointerElementType());
+      FunctionType *FT = nullptr;
+      if (auto F = dyn_cast<Function>(newcalled))
+        FT = F->getFunctionType();
+      else
+        FT = cast<FunctionType>(newcalled->getType()->getPointerElementType());
 
       // llvm::errs() << "seeing sub_index_map of " << sub_index_map->size()
       // << " in ap " << cast<Function>(called)->getName() << "\n";
@@ -12545,8 +12555,12 @@ public:
 
     assert(newcalled);
     // if (auto NC = dyn_cast<Function>(newcalled)) {
-    FunctionType *FT =
-        cast<FunctionType>(newcalled->getType()->getPointerElementType());
+    FunctionType *FT = nullptr;
+    if (auto F = dyn_cast<Function>(newcalled))
+      FT = F->getFunctionType();
+    else {
+      FT = cast<FunctionType>(newcalled->getType()->getPointerElementType());
+    }
 
     if (false) {
     badfn:;

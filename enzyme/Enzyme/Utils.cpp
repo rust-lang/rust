@@ -360,7 +360,16 @@ Value *CreateAllocation(IRBuilder<> &Builder, llvm::Type *T, Value *Count,
   if (ZeroMem) {
     auto PT = cast<PointerType>(malloccall->getType());
     Value *tozero = malloccall;
-    if (!PT->getPointerElementType()->isIntegerTy(8))
+
+    bool needsCast = false;
+#if LLVM_VERSION_MAJOR >= 15
+    if (PT->getContext().supportsTypedPointers()) {
+#endif
+      needsCast = !PT->getPointerElementType()->isIntegerTy(8);
+#if LLVM_VERSION_MAJOR >= 15
+    }
+#endif
+    if (needsCast)
       tozero = Builder.CreatePointerCast(
           tozero, PointerType::get(Type::getInt8Ty(PT->getContext()),
                                    PT->getAddressSpace()));
@@ -585,10 +594,8 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     idx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateInBoundsGEP(dst->getType()->getPointerElementType(),
-                                      dst, idx, "dst.i");
-    LoadInst *dstl =
-        B.CreateLoad(dsti->getType()->getPointerElementType(), dsti, "dst.i.l");
+    Value *dsti = B.CreateInBoundsGEP(elementType, dst, idx, "dst.i");
+    LoadInst *dstl = B.CreateLoad(elementType, dsti, "dst.i.l");
 #else
     Value *dsti = B.CreateInBoundsGEP(dst, idx, "dst.i");
     LoadInst *dstl = B.CreateLoad(dsti, "dst.i.l");
@@ -605,10 +612,8 @@ Function *getOrInsertDifferentialFloatMemcpy(Module &M, Type *elementType,
     }
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *srci = B.CreateInBoundsGEP(src->getType()->getPointerElementType(),
-                                      src, idx, "src.i");
-    LoadInst *srcl =
-        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
+    Value *srci = B.CreateInBoundsGEP(elementType, src, idx, "src.i");
+    LoadInst *srcl = B.CreateLoad(elementType, srci, "src.i.l");
 #else
     Value *srci = B.CreateInBoundsGEP(src, idx, "src.i");
     LoadInst *srcl = B.CreateLoad(srci, "src.i.l");
@@ -694,12 +699,9 @@ Function *getOrInsertMemcpyStrided(Module &M, PointerType *T, Type *IT,
     sidx->addIncoming(ConstantInt::get(num->getType(), 0), entry);
 
 #if LLVM_VERSION_MAJOR > 7
-    Value *dsti = B.CreateInBoundsGEP(dst->getType()->getPointerElementType(),
-                                      dst, idx, "dst.i");
-    Value *srci = B.CreateInBoundsGEP(src->getType()->getPointerElementType(),
-                                      src, sidx, "src.i");
-    LoadInst *srcl =
-        B.CreateLoad(srci->getType()->getPointerElementType(), srci, "src.i.l");
+    Value *dsti = B.CreateInBoundsGEP(elementType, dst, idx, "dst.i");
+    Value *srci = B.CreateInBoundsGEP(elementType, src, sidx, "src.i");
+    LoadInst *srcl = B.CreateLoad(elementType, srci, "src.i.l");
 #else
     Value *dsti = B.CreateInBoundsGEP(dst, idx, "dst.i");
     Value *srci = B.CreateInBoundsGEP(src, sidx, "src.i");

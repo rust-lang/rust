@@ -986,6 +986,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
           LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                             lc.preheader);
           Value *lim = lookupValueFromCache(
+              lc.var->getType(),
               /*forwardPass*/ false, BuilderM, lctx,
               getDynamicLoopLimit(LI.getLoopFor(lc.header)),
               /*isi1*/ false, available);
@@ -1413,6 +1414,7 @@ Value *GradientUtils::unwrapM(Value *const val, IRBuilder<> &BuilderM,
                 LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                                   ctx.preheader);
                 lim = lookupValueFromCache(
+                    ctx.var->getType(),
                     /*forwardPass*/ false, BuilderM, lctx,
                     getDynamicLoopLimit(LI.getLoopFor(ctx.header)),
                     /*isi1*/ false, /*available*/ prevAvailable);
@@ -2022,8 +2024,9 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
       assert(cache->getType()->getPointerElementType() == ret->getType());
       entryBuilder.CreateStore(ret, cache);
 
-      auto v = lookupValueFromCache(/*forwardPass*/ true, BuilderQ, lctx, cache,
-                                    isi1, /*available*/ ValueToValueMapTy());
+      auto v =
+          lookupValueFromCache(innerType, /*forwardPass*/ true, BuilderQ, lctx,
+                               cache, isi1, /*available*/ ValueToValueMapTy());
       if (!ignoreType && malloc) {
         assert(v->getType() == malloc->getType());
       }
@@ -2249,8 +2252,7 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
                              malloc->getName() + "_malloccache");
 #if LLVM_VERSION_MAJOR > 7
         Value *tPtr = entryBuilder.CreateInBoundsGEP(
-            firstallocation->getType()->getPointerElementType(),
-            firstallocation, ArrayRef<Value *>(tid));
+            malloc->getType(), firstallocation, ArrayRef<Value *>(tid));
 #else
         Value *tPtr = entryBuilder.CreateInBoundsGEP(firstallocation,
                                                      ArrayRef<Value *>(tid));
@@ -2285,32 +2287,38 @@ Value *GradientUtils::cacheForReverse(IRBuilder<> &BuilderQ, Value *malloc,
 
     // llvm::errs() << " malloc: " << *malloc << "\n";
     // llvm::errs() << " toadd: " << *toadd << "\n";
-    Type *innerType = toadd->getType();
-    for (size_t
-             i = 0,
-             limit = getSubLimits(
-                         /*inForwardPass*/ true, nullptr,
-                         LimitContext(/*ReverseLimit*/ reverseBlocks.size() > 0,
-                                      BuilderQ.GetInsertBlock()))
-                         .size();
-         i < limit; ++i) {
-      innerType = innerType->getPointerElementType();
-    }
-    assert(!ignoreType);
-    if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
-        toadd->getType() != innerType &&
-        cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
-      assert(innerType == Type::getInt8Ty(toadd->getContext()));
-    } else {
-      if (innerType != malloc->getType()) {
-        llvm::errs() << "oldFunc:" << *oldFunc << "\n";
-        llvm::errs() << "newFunc: " << *newFunc << "\n";
-        llvm::errs() << " toadd: " << *toadd << "\n";
-        llvm::errs() << "innerType: " << *innerType << "\n";
-        llvm::errs() << "malloc: " << *malloc << "\n";
+#if LLVM_VERSION_MAJOR >= 15
+    if (toadd->getContext().supportsTypedPointers()) {
+#endif
+      Type *innerType = toadd->getType();
+      for (size_t i = 0,
+                  limit = getSubLimits(
+                              /*inForwardPass*/ true, nullptr,
+                              LimitContext(
+                                  /*ReverseLimit*/ reverseBlocks.size() > 0,
+                                  BuilderQ.GetInsertBlock()))
+                              .size();
+           i < limit; ++i) {
+        innerType = innerType->getPointerElementType();
       }
-      assert(innerType == malloc->getType());
+      assert(!ignoreType);
+      if (EfficientBoolCache && malloc->getType()->isIntegerTy() &&
+          toadd->getType() != innerType &&
+          cast<IntegerType>(malloc->getType())->getBitWidth() == 1) {
+        assert(innerType == Type::getInt8Ty(toadd->getContext()));
+      } else {
+        if (innerType != malloc->getType()) {
+          llvm::errs() << "oldFunc:" << *oldFunc << "\n";
+          llvm::errs() << "newFunc: " << *newFunc << "\n";
+          llvm::errs() << " toadd: " << *toadd << "\n";
+          llvm::errs() << "innerType: " << *innerType << "\n";
+          llvm::errs() << "malloc: " << *malloc << "\n";
+        }
+        assert(innerType == malloc->getType());
+      }
+#if LLVM_VERSION_MAJOR >= 15
     }
+#endif
     addedTapeVals.push_back(toadd);
     return malloc;
   }
@@ -3058,6 +3066,7 @@ BasicBlock *GradientUtils::getReverseOrLatchMerge(BasicBlock *BB,
           LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                             lc.preheader);
           lim = lookupValueFromCache(
+              lc.var->getType(),
               /*forwardPass*/ false, tbuild, lctx,
               getDynamicLoopLimit(LI.getLoopFor(lc.header)),
               /*isi1*/ false, /*available*/ ValueToValueMapTy());
@@ -5279,10 +5288,10 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
         assert(/*ReverseLimit*/ reverseBlocks.size() > 0);
         LimitContext lctx(/*ReverseLimit*/ reverseBlocks.size() > 0,
                           lc.preheader);
-        lim =
-            lookupValueFromCache(/*forwardPass*/ false, BuilderM, lctx,
-                                 getDynamicLoopLimit(LI.getLoopFor(lc.header)),
-                                 /*isi1*/ false, available);
+        lim = lookupValueFromCache(
+            lc.var->getType(), /*forwardPass*/ false, BuilderM, lctx,
+            getDynamicLoopLimit(LI.getLoopFor(lc.header)),
+            /*isi1*/ false, available);
       } else {
         lim = lookupM(lc.trueLimit, BuilderM);
       }
@@ -5810,16 +5819,17 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
                                            tryLegalRecomputeCheck));
                   }
 
+                  auto OT = outer->getType()->getPointerElementType();
 #if LLVM_VERSION_MAJOR > 7
-                  auto cptr = BuilderM.CreateGEP(
-                      outer->getType()->getPointerElementType(), outer, idxs);
+                  auto cptr = BuilderM.CreateGEP(OT, outer, idxs);
 #else
                   auto cptr = BuilderM.CreateGEP(outer, idxs);
 #endif
                   cast<GetElementPtrInst>(cptr)->setIsInBounds(true);
 
                   // Retrieve the actual result
-                  auto result = loadFromCachePointer(BuilderM, cptr, cache);
+                  auto result = loadFromCachePointer(val->getType(), BuilderM,
+                                                     cptr, cache);
 
                   assert(result->getType() == inst->getType());
                   lookup_cache[BuilderM.GetInsertBlock()][val] = result;
@@ -6067,6 +6077,7 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
 
             assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
             Value *result = lookupValueFromCache(
+                inst->getType(),
                 /*isForwardPass*/ false, BuilderM, lctx, cache, isi1, available,
                 /*extraSize*/ lim, offset);
             assert(result->getType() == inst->getType());
@@ -6139,8 +6150,8 @@ Value *GradientUtils::lookupM(Value *val, IRBuilder<> &BuilderM,
   assert(!isOriginalBlock(*BuilderM.GetInsertBlock()));
   auto found = findInMap(scopeMap, (Value *)inst);
   Value *result =
-      lookupValueFromCache(/*isForwardPass*/ false, BuilderM, found->second,
-                           found->first, isi1, available);
+      lookupValueFromCache(inst->getType(), /*isForwardPass*/ false, BuilderM,
+                           found->second, found->first, isi1, available);
   if (auto LI2 = dyn_cast<LoadInst>(result))
     if (auto LI1 = dyn_cast<LoadInst>(inst)) {
       llvm::SmallVector<unsigned int, 9> ToCopy2(MD_ToCopy);
@@ -6683,6 +6694,7 @@ nofast:;
 
   bool isi1 = T->isIntegerTy() && cast<IntegerType>(T)->getBitWidth() == 1;
   Value *which = lookupValueFromCache(
+      T,
       /*forwardPass*/ isOriginalBlock(*BuilderM.GetInsertBlock()), BuilderM,
       LimitContext(/*reversePass*/ reverseBlocks.size() > 0, ctx), cache, isi1,
       /*available*/ ValueToValueMapTy());

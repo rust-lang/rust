@@ -60,14 +60,13 @@ config.substitutions.append(('%loadBC', ''
                                  + ' @ENZYME_BINARY_DIR@/BCLoad/BCPass-' + config.llvm_ver + config.llvm_shlib_ext
                                  ))
 config.substitutions.append(('%BClibdir', '@ENZYME_SOURCE_DIR@/bclib/'))
-config.substitutions.append(('%loadClangEnzyme', ''
-                                 + (" -fno-experimental-new-pass-manager" if int(config.llvm_ver) >= 13 else "")
-                                 + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
-                                 ))
-config.substitutions.append(('%newLoadClangEnzyme', ''
-                                 + (" -fexperimental-new-pass-manager" if int(config.llvm_ver) < 13 else "")
-                                 + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
-                                 ))
+oldPM = (((" -fno-experimental-new-pass-manager" if int(config.llvm_ver) <= 14 else "-flegacy-pass-manager") if int(config.llvm_ver) >= 13 else "")
+          + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext)
+newPM = ((" -fexperimental-new-pass-manager" if int(config.llvm_ver) < 13 else "")
+          + ' -fpass-plugin=@ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext
+          + ' -Xclang -load -Xclang @ENZYME_BINARY_DIR@/Enzyme/ClangEnzyme-' + config.llvm_ver + config.llvm_shlib_ext)
+config.substitutions.append(('%loadClangEnzyme', oldPM if int(config.llvm_ver) <= 15 else newPM))
+config.substitutions.append(('%newLoadClangEnzyme', newPM))
 
 # Let the main config do the real work.
 lit_config.load_config(config, "@ENZYME_SOURCE_DIR@/test/lit.cfg.py")
