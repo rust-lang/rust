@@ -1354,7 +1354,8 @@ fn print_native_static_libs(sess: &Session, all_native_libs: &[NativeLib]) {
     if !lib_args.is_empty() {
         sess.emit_note(errors::StaticLibraryNativeArtifacts);
         // Prefix for greppability
-        sess.emit_note(errors::NativeStaticLibs { arguments: lib_args.join(" ") });
+        // Note: This must not be translated as tools are allowed to depend on this exact string.
+        sess.note_without_error(&format!("native-static-libs: {}", &lib_args.join(" ")));
     }
 }
 

@@ -157,8 +157,6 @@ codegen_ssa_linker_file_stem = couldn't extract file stem from specified linker
 
 codegen_ssa_static_library_native_artifacts = Link against the following native artifacts when linking against this static library. The order and any duplication can be significant on some platforms.
 
-codegen_ssa_native_static_libs = native-static-libs: {$arguments}
-
 codegen_ssa_link_script_unavailable = can only use link script when linking with GNU-like linker
 
 codegen_ssa_link_script_write_failure = failed to write link script to {$path}: {$error}
