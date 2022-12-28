@@ -2,11 +2,14 @@ use crate::errors::RegionOriginNote;
 use crate::infer::error_reporting::{note_and_explain_region, TypeErrCtxt};
 use crate::infer::{self, SubregionOrigin};
 use rustc_errors::{
-    fluent, struct_span_err, AddToDiagnostic, Diagnostic, DiagnosticBuilder, ErrorGuaranteed,
+    fluent, struct_span_err, AddToDiagnostic, Applicability, Diagnostic, DiagnosticBuilder,
+    ErrorGuaranteed,
 };
+use rustc_hir::def_id::{DefId, LocalDefId};
 use rustc_middle::traits::ObligationCauseCode;
 use rustc_middle::ty::error::TypeError;
-use rustc_middle::ty::{self, Region};
+use rustc_middle::ty::{self, IsSuggestable, Region};
+use rustc_span::symbol::kw;
 
 use super::ObligationCauseAsDiagArg;
 
@@ -313,55 +316,43 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 );
                 err
             }
-            infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => self
-                .report_extra_impl_obligation(
+            infer::CompareImplItemObligation { span, impl_item_def_id, trait_item_def_id } => {
+                let mut err = self.report_extra_impl_obligation(
                     span,
                     impl_item_def_id,
                     trait_item_def_id,
                     &format!("`{}: {}`", sup, sub),
-                ),
+                );
+                // We should only suggest rewriting the `where` clause if the predicate is within that `where` clause
+                if self
+                    .tcx
+                    .hir()
+                    .get_generics(impl_item_def_id)
+                    .unwrap()
+                    .where_clause_span
+                    .contains(span)
+                {
+                    self.suggest_copy_trait_method_bounds(
+                        trait_item_def_id,
+                        impl_item_def_id,
+                        &mut err,
+                    );
+                }
+                err
+            }
             infer::CheckAssociatedTypeBounds { impl_item_def_id, trait_item_def_id, parent } => {
                 let mut err = self.report_concrete_failure(*parent, sub, sup);
-
                 let trait_item_span = self.tcx.def_span(trait_item_def_id);
                 let item_name = self.tcx.item_name(impl_item_def_id.to_def_id());
                 err.span_label(
                     trait_item_span,
                     format!("definition of `{}` from trait", item_name),
                 );
-
-                let trait_predicates = self.tcx.explicit_predicates_of(trait_item_def_id);
-                let impl_predicates = self.tcx.explicit_predicates_of(impl_item_def_id);
-
-                let impl_predicates: rustc_data_structures::fx::FxHashSet<_> =
-                    impl_predicates.predicates.into_iter().map(|(pred, _)| pred).collect();
-                let clauses: Vec<_> = trait_predicates
-                    .predicates
-                    .into_iter()
-                    .filter(|&(pred, _)| !impl_predicates.contains(pred))
-                    .map(|(pred, _)| format!("{}", pred))
-                    .collect();
-
-                if !clauses.is_empty() {
-                    let generics = self.tcx.hir().get_generics(impl_item_def_id).unwrap();
-                    let where_clause_span = generics.tail_span_for_predicate_suggestion();
-
-                    let suggestion = format!(
-                        "{} {}",
-                        generics.add_where_or_trailing_comma(),
-                        clauses.join(", "),
-                    );
-                    err.span_suggestion(
-                        where_clause_span,
-                        &format!(
-                            "try copying {} from the trait",
-                            if clauses.len() > 1 { "these clauses" } else { "this clause" }
-                        ),
-                        suggestion,
-                        rustc_errors::Applicability::MaybeIncorrect,
-                    );
-                }
-
+                self.suggest_copy_trait_method_bounds(
+                    trait_item_def_id,
+                    impl_item_def_id,
+                    &mut err,
+                );
                 err
             }
             infer::AscribeUserTypeProvePredicate(span) => {
@@ -384,6 +375,66 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     None,
                 );
                 err
+            }
+        }
+    }
+
+    pub fn suggest_copy_trait_method_bounds(
+        &self,
+        trait_item_def_id: DefId,
+        impl_item_def_id: LocalDefId,
+        err: &mut Diagnostic,
+    ) {
+        // FIXME(compiler-errors): Right now this is only being used for region
+        // predicate mismatches. Ideally, we'd use it for *all* predicate mismatches,
+        // but right now it's not really very smart when it comes to implicit `Sized`
+        // predicates and bounds on the trait itself.
+
+        let impl_def_id =
+            self.tcx.associated_item(impl_item_def_id).impl_container(self.tcx).unwrap();
+        let trait_substs = self
+            .tcx
+            .impl_trait_ref(impl_def_id)
+            .unwrap()
+            // Replace the explicit self type with `Self` for better suggestion rendering
+            .with_self_ty(self.tcx, self.tcx.mk_ty_param(0, kw::SelfUpper))
+            .substs;
+        let trait_item_substs =
+            ty::InternalSubsts::identity_for_item(self.tcx, impl_item_def_id.to_def_id())
+                .rebase_onto(self.tcx, impl_def_id, trait_substs);
+
+        let mut is_suggestable = true;
+        let trait_predicates = self
+            .tcx
+            .bound_explicit_predicates_of(trait_item_def_id)
+            .map_bound(|p| p.predicates)
+            .subst_iter_copied(self.tcx, trait_item_substs)
+            .map(|(pred, _)| {
+                if !pred.is_suggestable(self.tcx, false) {
+                    is_suggestable = false;
+                }
+                pred.to_string()
+            })
+            .collect::<Vec<_>>();
+
+        let generics = self.tcx.hir().get_generics(impl_item_def_id).unwrap();
+
+        if is_suggestable {
+            if trait_predicates.is_empty() {
+                err.span_suggestion_verbose(
+                    generics.where_clause_span,
+                    "remove the `where` clause",
+                    String::new(),
+                    Applicability::MachineApplicable,
+                );
+            } else {
+                let space = if generics.where_clause_span.is_empty() { " " } else { "" };
+                err.span_suggestion_verbose(
+                    generics.where_clause_span,
+                    "copy the `where` clause predicates from the trait",
+                    format!("{space}where {}", trait_predicates.join(", ")),
+                    Applicability::MachineApplicable,
+                );
             }
         }
     }
