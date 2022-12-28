@@ -297,8 +297,12 @@ impl FlycheckActor {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
-                cmd.args(["--workspace", "--message-format=json", "--manifest-path"])
-                    .arg(self.root.join("Cargo.toml").as_os_str());
+                cmd.args([
+                    "--workspace",
+                    "--message-format=json-diagnostic-rendered-ansi",
+                    "--manifest-path",
+                ])
+                .arg(self.root.join("Cargo.toml").as_os_str());
 
                 for target in target_triples {
                     cmd.args(["--target", target.as_str()]);
