@@ -11,7 +11,7 @@ use rustc_metadata::find_native_static_library;
 use rustc_metadata::fs::{emit_wrapper_file, METADATA_FILENAME};
 use rustc_middle::middle::dependency_format::Linkage;
 use rustc_middle::middle::exported_symbols::SymbolExportKind;
-use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Lto, Strip};
+use rustc_session::config::{self, CFGuard, CrateType, DebugInfo, LdImpl, Strip};
 use rustc_session::config::{OutputFilenames, OutputType, PrintRequest, SplitDwarfKind};
 use rustc_session::cstore::DllImport;
 use rustc_session::output::{check_file_is_writeable, invalid_output_for_target, out_filename};
@@ -208,16 +208,16 @@ pub fn link_binary<'a>(
     Ok(())
 }
 
+// Crate type is not passed when calculating the dylibs to include for LTO. In that case all
+// crate types must use the same dependency formats.
 pub fn each_linked_rlib(
-    sess: &Session,
     info: &CrateInfo,
+    crate_type: Option<CrateType>,
     f: &mut dyn FnMut(CrateNum, &Path),
 ) -> Result<(), errors::LinkRlibError> {
     let crates = info.used_crates.iter();
-    let mut fmts = None;
 
-    let lto_active = matches!(sess.lto(), Lto::Fat | Lto::Thin);
-    if lto_active {
+    let fmts = if crate_type.is_none() {
         for combination in info.dependency_formats.iter().combinations(2) {
             let (ty1, list1) = &combination[0];
             let (ty2, list2) = &combination[1];
@@ -230,27 +230,20 @@ pub fn each_linked_rlib(
                 });
             }
         }
-    }
+        &info.dependency_formats[0].1
+    } else {
+        let fmts = info
+            .dependency_formats
+            .iter()
+            .find_map(|&(ty, ref list)| if Some(ty) == crate_type { Some(list) } else { None });
 
-    for (ty, list) in info.dependency_formats.iter() {
-        match ty {
-            CrateType::Executable
-            | CrateType::Staticlib
-            | CrateType::Cdylib
-            | CrateType::ProcMacro => {
-                fmts = Some(list);
-                break;
-            }
-            CrateType::Dylib if lto_active => {
-                fmts = Some(list);
-                break;
-            }
-            _ => {}
-        }
-    }
-    let Some(fmts) = fmts else {
-        return Err(errors::LinkRlibError::MissingFormat);
+        let Some(fmts) = fmts else {
+            return Err(errors::LinkRlibError::MissingFormat);
+        };
+
+        fmts
     };
+
     for &cnum in crates {
         match fmts.get(cnum.as_usize() - 1) {
             Some(&Linkage::NotLinked | &Linkage::Dynamic | &Linkage::IncludedFromDylib) => continue,
@@ -516,64 +509,71 @@ fn link_staticlib<'a>(
     )?;
     let mut all_native_libs = vec![];
 
-    let res = each_linked_rlib(sess, &codegen_results.crate_info, &mut |cnum, path| {
-        let name = codegen_results.crate_info.crate_name[&cnum];
-        let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
+    let res = each_linked_rlib(
+        &codegen_results.crate_info,
+        Some(CrateType::Staticlib),
+        &mut |cnum, path| {
+            let name = codegen_results.crate_info.crate_name[&cnum];
+            let native_libs = &codegen_results.crate_info.native_libraries[&cnum];
 
-        // Here when we include the rlib into our staticlib we need to make a
-        // decision whether to include the extra object files along the way.
-        // These extra object files come from statically included native
-        // libraries, but they may be cfg'd away with #[link(cfg(..))].
-        //
-        // This unstable feature, though, only needs liblibc to work. The only
-        // use case there is where musl is statically included in liblibc.rlib,
-        // so if we don't want the included version we just need to skip it. As
-        // a result the logic here is that if *any* linked library is cfg'd away
-        // we just skip all object files.
-        //
-        // Clearly this is not sufficient for a general purpose feature, and
-        // we'd want to read from the library's metadata to determine which
-        // object files come from where and selectively skip them.
-        let skip_object_files = native_libs.iter().any(|lib| {
-            matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
-                && !relevant_lib(sess, lib)
-        });
+            // Here when we include the rlib into our staticlib we need to make a
+            // decision whether to include the extra object files along the way.
+            // These extra object files come from statically included native
+            // libraries, but they may be cfg'd away with #[link(cfg(..))].
+            //
+            // This unstable feature, though, only needs liblibc to work. The only
+            // use case there is where musl is statically included in liblibc.rlib,
+            // so if we don't want the included version we just need to skip it. As
+            // a result the logic here is that if *any* linked library is cfg'd away
+            // we just skip all object files.
+            //
+            // Clearly this is not sufficient for a general purpose feature, and
+            // we'd want to read from the library's metadata to determine which
+            // object files come from where and selectively skip them.
+            let skip_object_files = native_libs.iter().any(|lib| {
+                matches!(lib.kind, NativeLibKind::Static { bundle: None | Some(true), .. })
+                    && !relevant_lib(sess, lib)
+            });
 
-        let lto = are_upstream_rust_objects_already_included(sess)
-            && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
+            let lto = are_upstream_rust_objects_already_included(sess)
+                && !ignored_for_lto(sess, &codegen_results.crate_info, cnum);
 
-        // Ignoring obj file starting with the crate name
-        // as simple comparison is not enough - there
-        // might be also an extra name suffix
-        let obj_start = name.as_str().to_owned();
+            // Ignoring obj file starting with the crate name
+            // as simple comparison is not enough - there
+            // might be also an extra name suffix
+            let obj_start = name.as_str().to_owned();
 
-        ab.add_archive(
-            path,
-            Box::new(move |fname: &str| {
-                // Ignore metadata files, no matter the name.
-                if fname == METADATA_FILENAME {
-                    return true;
-                }
+            ab.add_archive(
+                path,
+                Box::new(move |fname: &str| {
+                    // Ignore metadata files, no matter the name.
+                    if fname == METADATA_FILENAME {
+                        return true;
+                    }
 
-                // Don't include Rust objects if LTO is enabled
-                if lto && looks_like_rust_object_file(fname) {
-                    return true;
-                }
+                    // Don't include Rust objects if LTO is enabled
+                    if lto && looks_like_rust_object_file(fname) {
+                        return true;
+                    }
 
-                // Otherwise if this is *not* a rust object and we're skipping
-                // objects then skip this file
-                if skip_object_files && (!fname.starts_with(&obj_start) || !fname.ends_with(".o")) {
-                    return true;
-                }
+                    // Otherwise if this is *not* a rust object and we're skipping
+                    // objects then skip this file
+                    if skip_object_files
+                        && (!fname.starts_with(&obj_start) || !fname.ends_with(".o"))
+                    {
+                        return true;
+                    }
 
-                // ok, don't skip this
-                false
-            }),
-        )
-        .unwrap();
+                    // ok, don't skip this
+                    false
+                }),
+            )
+            .unwrap();
 
-        all_native_libs.extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
-    });
+            all_native_libs
+                .extend(codegen_results.crate_info.native_libraries[&cnum].iter().cloned());
+        },
+    );
     if let Err(e) = res {
         sess.emit_fatal(e);
     }

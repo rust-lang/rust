@@ -1002,7 +1002,7 @@ fn start_executing_work<B: ExtraBackendMethods>(
     let sess = tcx.sess;
 
     let mut each_linked_rlib_for_lto = Vec::new();
-    drop(link::each_linked_rlib(sess, crate_info, &mut |cnum, path| {
+    drop(link::each_linked_rlib(crate_info, None, &mut |cnum, path| {
         if link::ignored_for_lto(sess, crate_info, cnum) {
             return;
         }
