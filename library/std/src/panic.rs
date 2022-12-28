@@ -114,6 +114,9 @@ where
 /// aborting the process as well. This function *only* catches unwinding panics,
 /// not those that abort the process.
 ///
+/// Note that if a custom panic hook has been set, it will be invoked before
+/// the panic is caught, before unwinding.
+///
 /// Also note that unwinding into Rust code with a foreign exception (e.g.
 /// an exception thrown from C++ code) is undefined behavior.
 ///
