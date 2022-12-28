@@ -14,6 +14,12 @@ function Get-Application($app) {
     return Get-Command $app -ErrorAction SilentlyContinue -CommandType Application
 }
 
+function Invoke-Application($application, $arguments) {
+    $process = Start-Process -NoNewWindow -PassThru $application $arguments
+    $process.WaitForExit()
+    Exit $process.ExitCode
+}
+
 foreach ($python in "py", "python3", "python", "python2") {
     # NOTE: this only tests that the command exists in PATH, not that it's actually
     # executable. The latter is not possible in a portable way, see
@@ -23,17 +29,14 @@ foreach ($python in "py", "python3", "python", "python2") {
             # Use python3, not python2
             $xpy_args = @("-3") + $xpy_args
         }
-        $process = Start-Process -NoNewWindow -PassThru $python $xpy_args
-        $process.WaitForExit()
-        Exit $process.ExitCode
+        Invoke-Application $python $xpy_args
     }
 }
 
 $found = (Get-Application "python*" | Where-Object {$_.name -match '^python[2-3]\.[0-9]+(\.exe)?$'})
 if (($null -ne $found) -and ($found.Length -ge 1)) {
     $python = $found[0]
-    $process = Start-Process -NoNewWindow -Wait -PassThru $python $xpy_args
-    Exit $process.ExitCode
+    Invoke-Application $python $xpy_args
 }
 
 Write-Error "${PSCommandPath}: error: did not find python installed"
