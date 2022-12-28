@@ -777,7 +777,7 @@ pub struct TraitPlaceholderMismatch<'tcx> {
     pub def_id: String,
     pub trait_def_id: String,
 
-    #[subdiagnostic(eager)]
+    #[subdiagnostic]
     pub actual_impl_expl_notes: Vec<ActualImplExplNotes<'tcx>>,
 }
 
