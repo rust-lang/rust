@@ -94,6 +94,7 @@ fn clean_default(build: &Build, all: bool) {
         rm_rf(&build.out.join("tmp"));
         rm_rf(&build.out.join("dist"));
         rm_rf(&build.out.join("bootstrap"));
+        rm_rf(&build.out.join("rustfmt.stamp"));
 
         for host in &build.hosts {
             let entries = match build.out.join(host.triple).read_dir() {
