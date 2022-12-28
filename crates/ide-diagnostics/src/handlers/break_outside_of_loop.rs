@@ -65,7 +65,7 @@ fn foo() {
             r#"
 fn foo() {
     'a: loop {
-        try {
+        || {
                 break;
               //^^^^^ error: break outside of loop
                 break 'a;
