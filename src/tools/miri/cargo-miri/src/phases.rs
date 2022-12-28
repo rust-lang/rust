@@ -265,15 +265,7 @@ pub fn phase_rustc(mut args: impl Iterator<Item = String>, phase: RustcPhase) {
             );
             let output =
                 String::from_utf8(output.stdout).expect("rustc returned non-UTF-8 filename");
-            output
-                .lines()
-                .filter(|l| !l.is_empty())
-                .map(|l| {
-                    let mut p = path.clone();
-                    p.push(l);
-                    p
-                })
-                .collect()
+            output.lines().filter(|l| !l.is_empty()).map(|l| path.join(l)).collect()
         }
     }
 
