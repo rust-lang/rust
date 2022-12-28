@@ -13,7 +13,7 @@ pub(super) fn match_borrows_parameter(_cx: &LateContext<'_>, qpath: &QPath<'_>) 
             GenericArg::Type(ty) => Some(ty),
             _ => None,
         });
-        if let TyKind::Rptr(..) = ty.kind;
+        if let TyKind::Ref(..) = ty.kind;
         then {
             return Some(ty.span);
         }
