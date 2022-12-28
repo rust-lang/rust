@@ -48,6 +48,7 @@ pub(super) const ATOM_EXPR_FIRST: TokenSet =
         T![unsafe],
         T![return],
         T![yield],
+        T![do],
         T![break],
         T![continue],
         T![async],
@@ -93,6 +94,7 @@ pub(super) fn atom_expr(
         T![match] => match_expr(p),
         T![return] => return_expr(p),
         T![yield] => yield_expr(p),
+        T![do] if p.nth_at_contextual_kw(1, T![yeet]) => yeet_expr(p),
         T![continue] => continue_expr(p),
         T![break] => break_expr(p, r),
 
@@ -533,6 +535,7 @@ fn return_expr(p: &mut Parser<'_>) -> CompletedMarker {
     }
     m.complete(p, RETURN_EXPR)
 }
+
 // test yield_expr
 // fn foo() {
 //     yield;
@@ -546,6 +549,23 @@ fn yield_expr(p: &mut Parser<'_>) -> CompletedMarker {
         expr(p);
     }
     m.complete(p, YIELD_EXPR)
+}
+
+// test yeet_expr
+// fn foo() {
+//     do yeet;
+//     do yeet 1
+// }
+fn yeet_expr(p: &mut Parser<'_>) -> CompletedMarker {
+    assert!(p.at(T![do]));
+    assert!(p.nth_at_contextual_kw(1, T![yeet]));
+    let m = p.start();
+    p.bump(T![do]);
+    p.bump_remap(T![yeet]);
+    if p.at_ts(EXPR_FIRST) {
+        expr(p);
+    }
+    m.complete(p, YEET_EXPR)
 }
 
 // test continue_expr

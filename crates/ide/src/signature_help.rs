@@ -646,7 +646,7 @@ pub fn add_one(x: i32) -> i32 {
     x + 1
 }
 
-pub fn do() {
+pub fn r#do() {
     add_one($0
 }"#,
             expect![[r##"
