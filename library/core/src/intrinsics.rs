@@ -2274,22 +2274,27 @@ extern "rust-intrinsic" {
 #[allow_internal_unstable(const_eval_select)] // permit this to be called in stably-const fn
 macro_rules! assert_unsafe_precondition {
     ($name:expr, $([$($tt:tt)*])?($($i:ident:$ty:ty),*$(,)?) => $e:expr) => {
-        if cfg!(debug_assertions) {
+        {
             // allow non_snake_case to allow capturing const generics
             #[allow(non_snake_case)]
             #[inline(always)]
             fn runtime$(<$($tt)*>)?($($i:$ty),*) {
-                if !$e {
-                    // don't unwind to reduce impact on code size
-                    ::core::panicking::panic_nounwind(
-                        concat!("unsafe precondition(s) violated: ", $name)
-                    );
+                if cfg!(debug_assertions) {
+                    if !$e {
+                        // don't unwind to reduce impact on code size
+                        $crate::panicking::panic_nounwind(
+                            concat!("unsafe precondition(s) violated: ", $name)
+                        );
+                    }
+                } else {
+                    // SAFETY: the caller must ensure this
+                    unsafe { $crate::intrinsics::assume($e) };
                 }
             }
             #[allow(non_snake_case)]
             const fn comptime$(<$($tt)*>)?($(_:$ty),*) {}
 
-            ::core::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
+            $crate::intrinsics::const_eval_select(($($i,)*), comptime, runtime);
         }
     };
 }
