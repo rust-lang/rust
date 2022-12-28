@@ -1,6 +1,6 @@
+use super::{ReentrantMutex, ReentrantMutexGuard};
 use crate::cell::RefCell;
 use crate::sync::Arc;
-use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 use crate::thread;
 
 #[test]
