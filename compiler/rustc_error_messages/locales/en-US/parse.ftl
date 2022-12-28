@@ -574,3 +574,7 @@ parse_negative_bounds_not_supported = negative bounds are not supported
             [one] remove the bound
            *[other] remove the bounds
         }
+
+parse_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
+parse_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+parse_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide

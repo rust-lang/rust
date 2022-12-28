@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -1069,41 +1068,5 @@ impl Hash for Diagnostic {
 impl PartialEq for Diagnostic {
     fn eq(&self, other: &Self) -> bool {
         self.keys() == other.keys()
-    }
-}
-
-pub enum HelpUseLatestEdition {
-    Cargo,
-    Standalone,
-}
-
-impl HelpUseLatestEdition {
-    pub fn new() -> Self {
-        if std::env::var_os("CARGO").is_some() { Self::Cargo } else { Self::Standalone }
-    }
-}
-
-impl AddToDiagnostic for HelpUseLatestEdition {
-    fn add_to_diagnostic_with<F>(self, diag: &mut Diagnostic, f: F)
-    where
-        F: Fn(&mut Diagnostic, SubdiagnosticMessage) -> SubdiagnosticMessage,
-    {
-        let msg = f(
-            diag,
-            match self {
-                Self::Cargo => {
-                    format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION)
-                }
-                Self::Standalone => {
-                    format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION)
-                }
-            }
-            .into(),
-        );
-        diag.help(msg);
-
-        let msg =
-            f(diag, "for more on editions, read https://doc.rust-lang.org/edition-guide".into());
-        diag.note(msg);
     }
 }
