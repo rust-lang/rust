@@ -23,7 +23,8 @@ foreach ($python in "py", "python3", "python", "python2") {
             # Use python3, not python2
             $xpy_args = @("-3") + $xpy_args
         }
-        $process = Start-Process -NoNewWindow -Wait -PassThru $python $xpy_args
+        $process = Start-Process -NoNewWindow -PassThru $python $xpy_args
+        $process.WaitForExit()
         Exit $process.ExitCode
     }
 }
