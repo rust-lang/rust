@@ -1048,7 +1048,7 @@ impl Step for RustdocGUI {
                 if entry.file_name() == "link_to_definition" {
                     cargo.env("RUSTDOCFLAGS", "-Zunstable-options --generate-link-to-definition");
                 } else if entry.file_name() == "scrape_examples" {
-                    cargo.arg("-Zrustdoc-scrape-examples=examples");
+                    cargo.arg("-Zrustdoc-scrape-examples");
                 }
                 builder.run(&mut cargo);
             }
