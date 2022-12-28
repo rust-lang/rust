@@ -1374,6 +1374,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     FutureCandidate => {}
                     // FnDef where the function is const
                     FnPointerCandidate { is_const: true } => {}
+                    FnPointerCandidate { is_const: false } => {
+                        if let ty::FnDef(def_id, _) = obligation.self_ty().skip_binder().kind() && tcx.trait_of_item(*def_id).is_some() {
+                            // Trait methods are not seen as const unless the trait is implemented as const.
+                            // We do not filter that out in here, but nested obligations will be needed to confirm this.
+                        } else {
+                            continue
+                        }
+                    }
                     ConstDestructCandidate(_) => {}
                     _ => {
                         // reject all other types of candidates
