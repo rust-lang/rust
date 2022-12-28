@@ -1109,7 +1109,6 @@ pre.rust .doccomment {
 }
 
 .example-wrap .tooltip:hover::after {
-	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
