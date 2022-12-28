@@ -225,7 +225,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         imm_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
-                span,
+                self.misc(span),
                 Ident::with_dummy_span(imm_op),
                 trait_did,
                 base_ty,
@@ -264,7 +264,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         mut_tr.and_then(|trait_did| {
             self.lookup_method_in_trait(
-                span,
+                self.misc(span),
                 Ident::with_dummy_span(mut_op),
                 trait_did,
                 base_ty,
