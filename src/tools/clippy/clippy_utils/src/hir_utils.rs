@@ -430,7 +430,7 @@ impl HirEqInterExpr<'_, '_, '_> {
             (&TyKind::Slice(l_vec), &TyKind::Slice(r_vec)) => self.eq_ty(l_vec, r_vec),
             (&TyKind::Array(lt, ll), &TyKind::Array(rt, rl)) => self.eq_ty(lt, rt) && self.eq_array_length(ll, rl),
             (TyKind::Ptr(l_mut), TyKind::Ptr(r_mut)) => l_mut.mutbl == r_mut.mutbl && self.eq_ty(l_mut.ty, r_mut.ty),
-            (TyKind::Rptr(_, l_rmut), TyKind::Rptr(_, r_rmut)) => {
+            (TyKind::Ref(_, l_rmut), TyKind::Ref(_, r_rmut)) => {
                 l_rmut.mutbl == r_rmut.mutbl && self.eq_ty(l_rmut.ty, r_rmut.ty)
             },
             (TyKind::Path(l), TyKind::Path(r)) => self.eq_qpath(l, r),
@@ -950,7 +950,7 @@ impl<'a, 'tcx> SpanlessHash<'a, 'tcx> {
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);
             },
-            TyKind::Rptr(lifetime, ref mut_ty) => {
+            TyKind::Ref(lifetime, ref mut_ty) => {
                 self.hash_lifetime(lifetime);
                 self.hash_ty(mut_ty.ty);
                 mut_ty.mutbl.hash(&mut self.s);

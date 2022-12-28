@@ -124,7 +124,7 @@ impl EarlyLintPass for NeedlessArbitrarySelfType {
                     check_param_inner(cx, path, p.span.to(p.ty.span), &Mode::Value, mutbl);
                 }
             },
-            TyKind::Rptr(lifetime, mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty) => {
                 if_chain! {
                 if let TyKind::Path(None, path) = &mut_ty.ty.kind;
                 if let PatKind::Ident(BindingAnnotation::NONE, _, _) = p.pat.kind;

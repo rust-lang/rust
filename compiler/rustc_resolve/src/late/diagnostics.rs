@@ -1554,7 +1554,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
         fn extract_node_id(t: &Ty) -> Option<NodeId> {
             match t.kind {
                 TyKind::Path(None, _) => Some(t.id),
-                TyKind::Rptr(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
+                TyKind::Ref(_, ref mut_ty) => extract_node_id(&mut_ty.ty),
                 // This doesn't handle the remaining `Ty` variants as they are not
                 // that commonly the self_type, it might be interesting to provide
                 // support for those in future.
@@ -2189,7 +2189,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                 Some(LifetimeUseSet::One { use_span, use_ctxt }) => {
                     debug!(?param.ident, ?param.ident.span, ?use_span);
 
-                    let elidable = matches!(use_ctxt, LifetimeCtxt::Rptr);
+                    let elidable = matches!(use_ctxt, LifetimeCtxt::Ref);
 
                     let deletion_span = deletion_span();
                     self.r.lint_buffer.buffer_lint_with_diagnostic(

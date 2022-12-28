@@ -1238,7 +1238,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Err => hir::TyKind::Err,
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
-            TyKind::Rptr(region, mt) => {
+            TyKind::Ref(region, mt) => {
                 let region = region.unwrap_or_else(|| {
                     let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
                         self.resolver.get_lifetime_res(t.id)
@@ -1252,7 +1252,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
-                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
+                hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
@@ -1771,7 +1771,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Given we are only considering `ImplicitSelf` types, we needn't consider
                     // the case where we have a mutable pattern to a reference as that would
                     // no longer be an `ImplicitSelf`.
-                    TyKind::Rptr(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
+                    TyKind::Ref(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
                         hir::Mutability::Not => hir::ImplicitSelfKind::ImmRef,
                         hir::Mutability::Mut => hir::ImplicitSelfKind::MutRef,
                     },

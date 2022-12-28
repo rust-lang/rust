@@ -1059,7 +1059,7 @@ fn is_suggestable_infer_ty(ty: &hir::Ty<'_>) -> bool {
             is_suggestable_infer_ty(ty) || matches!(length, hir::ArrayLen::Infer(_, _))
         }
         Tup(tys) => tys.iter().any(is_suggestable_infer_ty),
-        Ptr(mut_ty) | Rptr(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
+        Ptr(mut_ty) | Ref(_, mut_ty) => is_suggestable_infer_ty(mut_ty.ty),
         OpaqueDef(_, generic_args, _) => are_suggestable_generic_args(generic_args),
         Path(hir::QPath::TypeRelative(ty, segment)) => {
             is_suggestable_infer_ty(ty) || are_suggestable_generic_args(segment.args().args)

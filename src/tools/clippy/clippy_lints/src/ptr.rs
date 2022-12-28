@@ -421,7 +421,7 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
                 if let ty::Ref(_, ty, mutability) = *ty.kind();
                 if let ty::Adt(adt, substs) = *ty.kind();
 
-                if let TyKind::Rptr(lt, ref ty) = hir_ty.kind;
+                if let TyKind::Ref(lt, ref ty) = hir_ty.kind;
                 if let TyKind::Path(QPath::Resolved(None, path)) = ty.ty.kind;
 
                 // Check that the name as typed matches the actual name of the type.
@@ -503,14 +503,14 @@ fn check_fn_args<'cx, 'tcx: 'cx>(
 
 fn check_mut_from_ref<'tcx>(cx: &LateContext<'tcx>, sig: &FnSig<'_>, body: Option<&'tcx Body<'_>>) {
     if let FnRetTy::Return(ty) = sig.decl.output
-        && let Some((out, Mutability::Mut, _)) = get_rptr_lm(ty)
+        && let Some((out, Mutability::Mut, _)) = get_ref_lm(ty)
     {
         let out_region = cx.tcx.named_region(out.hir_id);
         let args: Option<Vec<_>> = sig
             .decl
             .inputs
             .iter()
-            .filter_map(get_rptr_lm)
+            .filter_map(get_ref_lm)
             .filter(|&(lt, _, _)| cx.tcx.named_region(lt.hir_id) == out_region)
             .map(|(_, mutability, span)| (mutability == Mutability::Not).then_some(span))
             .collect();
@@ -704,8 +704,8 @@ fn matches_preds<'tcx>(
     })
 }
 
-fn get_rptr_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
-    if let TyKind::Rptr(lt, ref m) = ty.kind {
+fn get_ref_lm<'tcx>(ty: &'tcx hir::Ty<'tcx>) -> Option<(&'tcx Lifetime, Mutability, Span)> {
+    if let TyKind::Ref(lt, ref m) = ty.kind {
         Some((lt, m.mutbl, ty.span))
     } else {
         None
