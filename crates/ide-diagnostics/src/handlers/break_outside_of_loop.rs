@@ -43,7 +43,7 @@ fn foo() {
             r#"
 fn foo() {
     'a: loop {
-        try {
+        async {
                 break;
               //^^^^^ error: break outside of loop
                 break 'a;
