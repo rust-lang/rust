@@ -152,7 +152,7 @@ impl<'a> InferenceContext<'a> {
                 .1
             }
             Expr::TryBlock { body } => {
-                self.with_breakable_ctx(BreakableKind::Border, self.err_ty(), None, |this| {
+                self.with_breakable_ctx(BreakableKind::Block, self.err_ty(), None, |this| {
                     let _inner = this.infer_expr(*body, expected);
                 });
                 // FIXME should be std::result::Result<{inner}, _>
