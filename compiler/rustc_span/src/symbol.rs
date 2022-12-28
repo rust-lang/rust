@@ -943,6 +943,7 @@ symbols! {
         mul,
         mul_assign,
         mul_with_overflow,
+        multiple_supertrait_upcastable,
         must_not_suspend,
         must_use,
         naked,

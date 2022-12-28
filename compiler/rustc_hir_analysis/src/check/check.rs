@@ -1060,10 +1060,8 @@ pub(super) fn check_transparent<'tcx>(tcx: TyCtxt<'tcx>, adt: ty::AdtDef<'tcx>) 
 
     if adt.variants().len() != 1 {
         bad_variant_count(tcx, adt, tcx.def_span(adt.did()), adt.did());
-        if adt.variants().is_empty() {
-            // Don't bother checking the fields. No variants (and thus no fields) exist.
-            return;
-        }
+        // Don't bother checking the fields.
+        return;
     }
 
     // For each field, figure out if it's known to be a ZST and align(1), with "known"
