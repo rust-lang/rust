@@ -1,0 +1,14 @@
+error: `C` is object-safe and has multiple supertraits
+  --> $DIR/multiple_supertrait_upcastable.rs:7:1
+   |
+LL | trait C: A + B {}
+   | ^^^^^^^^^^^^^^
+   |
+note: the lint level is defined here
+  --> $DIR/multiple_supertrait_upcastable.rs:2:9
+   |
+LL | #![deny(multiple_supertrait_upcastable)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: aborting due to previous error
+
