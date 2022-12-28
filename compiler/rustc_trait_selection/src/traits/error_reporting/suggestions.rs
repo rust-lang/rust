@@ -2683,7 +2683,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Don't print the tuple of capture types
                 'print: {
                     if !is_upvar_tys_infer_tuple {
-                        let msg = format!("required because it appears within the type `{}`", ty);
+                        let msg = with_forced_trimmed_paths!(format!(
+                            "required because it appears within the type `{ty}`",
+                        ));
                         match ty.kind() {
                             ty::Adt(def, _) => match self.tcx.opt_item_ident(def.did()) {
                                 Some(ident) => err.span_note(ident.span, &msg),
@@ -2724,7 +2726,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let mut msg =
                                     "required because it captures the following types: ".to_owned();
                                 for ty in bound_tys.skip_binder() {
-                                    write!(msg, "`{}`, ", ty).unwrap();
+                                    with_forced_trimmed_paths!(write!(msg, "`{}`, ", ty).unwrap());
                                 }
                                 err.note(msg.trim_end_matches(", "))
                             }
@@ -2735,7 +2737,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let kind = tcx.generator_kind(def_id).unwrap().descr();
                                 err.span_note(
                                     sp,
-                                    &format!("required because it's used within this {}", kind),
+                                    with_forced_trimmed_paths!(&format!(
+                                        "required because it's used within this {kind}",
+                                    )),
                                 )
                             }
                             ty::Closure(def_id, _) => err.span_note(
@@ -2959,7 +2963,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
                     err.span_label(
                         expr_span,
-                        format!("return type was inferred to be `{expr_ty}` here"),
+                        with_forced_trimmed_paths!(format!(
+                            "return type was inferred to be `{expr_ty}` here",
+                        )),
                     );
                 }
             }
