@@ -506,7 +506,11 @@ impl Step for Std {
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for requested_crate in requested_crates {
-            if STD_PUBLIC_CRATES.iter().any(|k| *k == requested_crate.as_str()) {
+            if requested_crate == "library" {
+                // For `x.py doc library --open`, open `std` by default.
+                let index = out.join("std").join("index.html");
+                builder.open_in_browser(index);
+            } else if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
                 let index = out.join(requested_crate).join("index.html");
                 builder.open_in_browser(index);
             }
