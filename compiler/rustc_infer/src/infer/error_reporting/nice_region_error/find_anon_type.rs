@@ -96,8 +96,8 @@ impl<'tcx> Visitor<'tcx> for FindNestedTypeVisitor<'tcx> {
                 }
             }
 
-            hir::TyKind::Rptr(ref lifetime, _) => {
-                // the lifetime of the TyRptr
+            hir::TyKind::Ref(ref lifetime, _) => {
+                // the lifetime of the Ref
                 let hir_id = lifetime.hir_id;
                 match (self.tcx.named_region(hir_id), self.bound_region) {
                     // Find the index of the named region that was part of the

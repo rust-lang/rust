@@ -30,7 +30,7 @@ pub fn expand_option_env<'cx>(
                 sp,
                 true,
                 cx.std_path(&[sym::option, sym::Option, sym::None]),
-                vec![GenericArg::Type(cx.ty_rptr(
+                vec![GenericArg::Type(cx.ty_ref(
                     sp,
                     cx.ty_ident(sp, Ident::new(sym::str, sp)),
                     Some(lt),

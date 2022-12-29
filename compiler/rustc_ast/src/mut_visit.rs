@@ -459,7 +459,7 @@ pub fn noop_visit_ty<T: MutVisitor>(ty: &mut P<Ty>, vis: &mut T) {
         TyKind::Infer | TyKind::ImplicitSelf | TyKind::Err | TyKind::Never | TyKind::CVarArgs => {}
         TyKind::Slice(ty) => vis.visit_ty(ty),
         TyKind::Ptr(mt) => vis.visit_mt(mt),
-        TyKind::Rptr(lt, mt) => {
+        TyKind::Ref(lt, mt) => {
             visit_opt(lt, |lt| noop_visit_lifetime(lt, vis));
             vis.visit_mt(mt);
         }

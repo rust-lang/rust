@@ -1229,7 +1229,7 @@ impl<'a> Parser<'a> {
         let sum_span = ty.span.to(self.prev_token.span);
 
         let sub = match &ty.kind {
-            TyKind::Rptr(lifetime, mut_ty) => {
+            TyKind::Ref(lifetime, mut_ty) => {
                 let sum_with_parens = pprust::to_string(|s| {
                     s.s.word("&");
                     s.print_opt_lifetime(lifetime);
