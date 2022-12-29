@@ -102,7 +102,7 @@ use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::{DefIdSet, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
@@ -417,7 +417,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
         if let Err(err) =
-            dump_mono_items_stats(tcx, &codegen_units, path, tcx.sess.opts.crate_name.as_deref())
+            dump_mono_items_stats(tcx, &codegen_units, path, tcx.crate_name(LOCAL_CRATE))
         {
             tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
@@ -483,7 +483,7 @@ fn dump_mono_items_stats<'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_units: &[CodegenUnit<'tcx>],
     output_directory: &Option<PathBuf>,
-    crate_name: Option<&str>,
+    crate_name: Symbol,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let output_directory = if let Some(ref directory) = output_directory {
         fs::create_dir_all(directory)?;
@@ -494,7 +494,7 @@ fn dump_mono_items_stats<'tcx>(
 
     let format = tcx.sess.opts.unstable_opts.dump_mono_stats_format;
     let ext = format.extension();
-    let filename = format!("{}.mono_items.{ext}", crate_name.unwrap_or("unknown-crate"));
+    let filename = format!("{crate_name}.mono_items.{ext}");
     let output_path = output_directory.join(&filename);
     let file = File::create(&output_path)?;
     let mut file = BufWriter::new(file);
