@@ -1955,6 +1955,13 @@ in storage.js
 	overflow-x: hidden;
 }
 
+.scraped-example .example-wrap .rust span.highlight {
+	background: var(--scrape-example-code-line-highlight);
+}
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: var(--scrape-example-code-line-highlight-focus);
+}
+
 .more-examples-toggle {
 	max-width: calc(100% + 25px);
 	margin-top: 10px;
