@@ -57,31 +57,17 @@ impl<'a, T, A: Allocator> Drain<'a, T, A> {
     unsafe fn as_slices(&self) -> (*mut [T], *mut [T]) {
         unsafe {
             let deque = self.deque.as_ref();
-            // FIXME: This is doing almost exactly the same thing as the else branch in `VecDeque::slice_ranges`.
-            // Unfortunately, we can't just call `slice_ranges` here, as the deque's `len` is currently
-            // just `drain_start`, so the range check would (almost) always panic. Between temporarily
-            // adjusting the deques `len` to call `slice_ranges`, and just copy pasting the `slice_ranges`
-            // implementation, this seemed like the less hacky solution, though it might be good to
-            // find a better one in the future.
 
-            // because `self.remaining != 0`, we know that `self.idx < deque.original_len`, so it's a valid
-            // logical index.
-            let wrapped_start = deque.to_physical_idx(self.idx);
+            let start = self.idx;
+            // We know that `self.idx + self.remaining <= deque.len <= usize::MAX`, so this won't overflow.
+            let end = start + self.remaining;
 
-            let head_len = deque.capacity() - wrapped_start;
-
-            let (a_range, b_range) = if head_len >= self.remaining {
-                (wrapped_start..wrapped_start + self.remaining, 0..0)
-            } else {
-                let tail_len = self.remaining - head_len;
-                (wrapped_start..deque.capacity(), 0..tail_len)
-            };
-
-            // SAFETY: the range `self.idx..self.idx+self.remaining` lies strictly inside
-            // the range `0..deque.original_len`. because of this, and because of the fact
-            // that we acquire `a_range` and `b_range` exactly like `slice_ranges` would,
+            // SAFETY: the range `start..end` lies strictly inside
+            // the range `0..deque.original_len`. Because of this, and because
+            // we haven't touched the elements inside this range yet,
             // it's guaranteed that `a_range` and `b_range` represent valid ranges into
             // the deques buffer.
+            let (a_range, b_range) = deque.slice_ranges(start..end, end);
             (deque.buffer_range(a_range), deque.buffer_range(b_range))
         }
     }

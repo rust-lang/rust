@@ -1147,7 +1147,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_slices(&self) -> (&[T], &[T]) {
-        let (a_range, b_range) = self.slice_ranges(..);
+        let (a_range, b_range) = self.slice_ranges(.., self.len);
         // SAFETY: `slice_ranges` always returns valid ranges into
         // the physical buffer.
         unsafe { (&*self.buffer_range(a_range), &*self.buffer_range(b_range)) }
@@ -1181,7 +1181,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     #[inline]
     #[stable(feature = "deque_extras_15", since = "1.5.0")]
     pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
-        let (a_range, b_range) = self.slice_ranges(..);
+        let (a_range, b_range) = self.slice_ranges(.., self.len);
         // SAFETY: `slice_ranges` always returns valid ranges into
         // the physical buffer.
         unsafe { (&mut *self.buffer_range(a_range), &mut *self.buffer_range(b_range)) }
@@ -1223,19 +1223,21 @@ impl<T, A: Allocator> VecDeque<T, A> {
 
     /// Given a range into the logical buffer of the deque, this function
     /// return two ranges into the physical buffer that correspond to
-    /// the given range.
-    fn slice_ranges<R>(&self, range: R) -> (Range<usize>, Range<usize>)
+    /// the given range. The `len` parameter should usually just be `self.len`;
+    /// the reason it's passed explicitly is that if the deque is wrapped in
+    /// a `Drain`, then `self.len` is not actually the length of the deque.
+    fn slice_ranges<R>(&self, range: R, len: usize) -> (Range<usize>, Range<usize>)
     where
         R: RangeBounds<usize>,
     {
-        let Range { start, end } = slice::range(range, ..self.len);
+        let Range { start, end } = slice::range(range, ..len);
         let len = end - start;
 
         if len == 0 {
             (0..0, 0..0)
         } else {
             // `slice::range` guarantees that `start <= end <= self.len`.
-            // because `len != 0`, we know that `start < end`, so `start < self.len`
+            // because `len != 0`, we know that `start < end`, so `start < len`
             // and the indexing is valid.
             let wrapped_start = self.to_physical_idx(start);
 
@@ -1281,7 +1283,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let (a_range, b_range) = self.slice_ranges(range);
+        let (a_range, b_range) = self.slice_ranges(range, self.len);
         // SAFETY: The ranges returned by `slice_ranges`
         // are valid ranges into the physical buffer, so
         // it's ok to pass them to `buffer_range` and
@@ -1321,7 +1323,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     where
         R: RangeBounds<usize>,
     {
-        let (a_range, b_range) = self.slice_ranges(range);
+        let (a_range, b_range) = self.slice_ranges(range, self.len);
         // SAFETY: The ranges returned by `slice_ranges`
         // are valid ranges into the physical buffer, so
         // it's ok to pass them to `buffer_range` and
