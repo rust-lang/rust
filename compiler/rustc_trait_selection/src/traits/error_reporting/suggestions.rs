@@ -2514,6 +2514,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);
                 match self.tcx.hir().find(parent_node) {
+                    Some(Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                        err.span_suggestion_verbose(
+                            ty.span.shrink_to_lo(),
+                            "consider borrowing here",
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                        err.note("all local variables must have a statically known size");
+                    }
                     Some(Node::Local(hir::Local {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
                         ..
