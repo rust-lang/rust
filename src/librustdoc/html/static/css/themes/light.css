@@ -83,6 +83,8 @@
 	--codeblock-link-background: #eee;
 	--scrape-example-toggle-line-background: #ccc;
 	--scrape-example-toggle-line-hover-background: #999;
+	--scrape-example-code-line-highlight: #fcffd6;
+	--scrape-example-code-line-highlight-focus: #f6fdb0;
 }
 
 #search-tabs > button:not(.selected) {
@@ -102,12 +104,6 @@
 .scraped-example-list .scrape-help:hover {
 	border-color: black;
 	color: black;
-}
-.scraped-example .example-wrap .rust span.highlight {
-	background: #fcffd6;
-}
-.scraped-example .example-wrap .rust span.highlight.focus {
-	background: #f6fdb0;
 }
 .scraped-example:not(.expanded) .code-wrapper::before {
 	background: linear-gradient(to bottom, rgba(255, 255, 255, 1), rgba(255, 255, 255, 0));
