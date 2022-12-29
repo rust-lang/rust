@@ -48,8 +48,8 @@ Current stable, released 2022-12-15
   [#8518](https://github.com/rust-lang/rust-clippy/pull/8518)
 * Moved [`implicit_saturating_sub`] to `style` (Now warn-by-default)
   [#9584](https://github.com/rust-lang/rust-clippy/pull/9584)
-* Moved [`derive_partial_eq_without_eq`] to `nursery` (now allow-by-default)
-  [#9535](https://github.com/rust-lang/rust-clippy/pull/9535)
+* Moved `derive_partial_eq_without_eq` to `nursery` (now allow-by-default)
+  [#9536](https://github.com/rust-lang/rust-clippy/pull/9536)
 
 ### Enhancements
 
