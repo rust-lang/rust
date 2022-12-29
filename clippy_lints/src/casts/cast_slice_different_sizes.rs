@@ -54,7 +54,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &Expr<'tcx>, msrv: &Msrv
 
                         diag.span_suggestion(
                             expr.span,
-                            &format!("replace with `ptr::slice_from_raw_parts{mutbl_fn_str}`"),
+                            format!("replace with `ptr::slice_from_raw_parts{mutbl_fn_str}`"),
                             sugg,
                             rustc_errors::Applicability::HasPlaceholders,
                         );

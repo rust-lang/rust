@@ -377,7 +377,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgsExpn<'_>, macro_c
                     // print!("\n"), write!(f, "\n")
 
                     diag.multipart_suggestion(
-                        &format!("use `{name}ln!` instead"),
+                        format!("use `{name}ln!` instead"),
                         vec![(name_span, format!("{name}ln")), (format_string_span, String::new())],
                         Applicability::MachineApplicable,
                     );
@@ -388,7 +388,7 @@ fn check_newline(cx: &LateContext<'_>, format_args: &FormatArgsExpn<'_>, macro_c
                     let newline_span = format_string_span.with_lo(hi - BytePos(3)).with_hi(hi - BytePos(1));
 
                     diag.multipart_suggestion(
-                        &format!("use `{name}ln!` instead"),
+                        format!("use `{name}ln!` instead"),
                         vec![(name_span, format!("{name}ln")), (newline_span, String::new())],
                         Applicability::MachineApplicable,
                     );
