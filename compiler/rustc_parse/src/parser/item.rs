@@ -1583,7 +1583,7 @@ impl<'a> Parser<'a> {
             p.collect_tokens_trailing_token(attrs, ForceCollect::No, |p, attrs| {
                 let mut snapshot = None;
                 if p.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
-                    // Account for `<<<<<<<` diff markers. We can't proactivelly error here because
+                    // Account for `<<<<<<<` diff markers. We can't proactively error here because
                     // that can be a valid type start, so we snapshot and reparse only we've
                     // encountered another parse error.
                     snapshot = Some(p.create_snapshot_for_diagnostic());

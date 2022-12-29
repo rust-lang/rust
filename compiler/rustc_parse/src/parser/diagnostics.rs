@@ -2586,7 +2586,6 @@ impl<'a> Parser<'a> {
                 break;
             }
             if let Some(span) = self.diff_marker(&TokenKind::EqEq, &TokenKind::Eq) {
-                spans.push(span);
                 middle = Some(span);
             }
             if let Some(span) = self.diff_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt) {
@@ -2597,13 +2596,25 @@ impl<'a> Parser<'a> {
             self.bump();
         }
         let mut err = self.struct_span_err(spans, "encountered diff marker");
-        err.span_label(start, "start");
+        err.span_label(start, "after this is the code before the merge");
         if let Some(middle) = middle {
-            err.span_label(middle, "middle");
+            err.span_label(middle, "");
         }
         if let Some(end) = end {
-            err.span_label(end, "end");
+            err.span_label(end, "above this are the incoming code changes");
         }
+        err.help(
+            "if you're having merge conflicts after pulling new code, the top section is the code \
+             you already had and the bottom section is the remote code",
+        );
+        err.help(
+            "if you're in the middle of a rebase, the top section is the code being rebased onto \
+             and the bottom section is the code coming from the current commit being rebased",
+        );
+        err.note(
+            "for an explanation on these markers from the `git` documentation, visit \
+             <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>",
+        );
         err.emit();
         FatalError.raise()
     }
