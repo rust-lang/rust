@@ -18,8 +18,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'_>, arg: &'t
     // Catching transmute over constants that resolve to `null`.
     let mut const_eval_context = constant_context(cx, cx.typeck_results());
     if let ExprKind::Path(ref _qpath) = arg.kind &&
-        let Some(Constant::RawPtr(x)) = const_eval_context.expr(arg) &&
-        x == 0
+        let Some(Constant::RawPtr(0)) = const_eval_context.expr(arg)
     {
         span_lint(cx, TRANSMUTING_NULL, expr.span, LINT_MSG);
         return true;

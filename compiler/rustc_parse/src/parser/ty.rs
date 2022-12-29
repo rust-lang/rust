@@ -933,8 +933,8 @@ impl<'a> Parser<'a> {
         has_parens: bool,
         modifiers: BoundModifiers,
     ) -> PResult<'a, GenericBound> {
-        let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-        let path = if self.token.is_keyword(kw::Fn)
+        let mut lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+        let mut path = if self.token.is_keyword(kw::Fn)
             && self.look_ahead(1, |tok| tok.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
             && let Some(path) = self.recover_path_from_fn()
         {
@@ -942,6 +942,11 @@ impl<'a> Parser<'a> {
         } else {
             self.parse_path(PathStyle::Type)?
         };
+
+        if self.may_recover() && self.token == TokenKind::OpenDelim(Delimiter::Parenthesis) {
+            self.recover_fn_trait_with_lifetime_params(&mut path, &mut lifetime_defs)?;
+        }
+
         if has_parens {
             if self.token.is_like_plus() {
                 // Someone has written something like `&dyn (Trait + Other)`. The correct code
@@ -1014,6 +1019,92 @@ impl<'a> Parser<'a> {
         } else {
             Ok(Vec::new())
         }
+    }
+
+    /// Recover from `Fn`-family traits (Fn, FnMut, FnOnce) with lifetime arguments
+    /// (e.g. `FnOnce<'a>(&'a str) -> bool`). Up to generic arguments have already
+    /// been eaten.
+    fn recover_fn_trait_with_lifetime_params(
+        &mut self,
+        fn_path: &mut ast::Path,
+        lifetime_defs: &mut Vec<GenericParam>,
+    ) -> PResult<'a, ()> {
+        let fn_path_segment = fn_path.segments.last_mut().unwrap();
+        let generic_args = if let Some(p_args) = &fn_path_segment.args {
+            p_args.clone().into_inner()
+        } else {
+            // Normally it wouldn't come here because the upstream should have parsed
+            // generic parameters (otherwise it's impossible to call this function).
+            return Ok(());
+        };
+        let lifetimes =
+            if let ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs { span: _, args }) =
+                &generic_args
+            {
+                args.into_iter()
+                    .filter_map(|arg| {
+                        if let ast::AngleBracketedArg::Arg(generic_arg) = arg
+                            && let ast::GenericArg::Lifetime(lifetime) = generic_arg {
+                            Some(lifetime)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+        // Only try to recover if the trait has lifetime params.
+        if lifetimes.is_empty() {
+            return Ok(());
+        }
+
+        // Parse `(T, U) -> R`.
+        let inputs_lo = self.token.span;
+        let inputs: Vec<_> =
+            self.parse_fn_params(|_| false)?.into_iter().map(|input| input.ty).collect();
+        let inputs_span = inputs_lo.to(self.prev_token.span);
+        let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
+        let args = ast::ParenthesizedArgs {
+            span: fn_path_segment.span().to(self.prev_token.span),
+            inputs,
+            inputs_span,
+            output,
+        }
+        .into();
+        *fn_path_segment =
+            ast::PathSegment { ident: fn_path_segment.ident, args, id: ast::DUMMY_NODE_ID };
+
+        // Convert parsed `<'a>` in `Fn<'a>` into `for<'a>`.
+        let mut generic_params = lifetimes
+            .iter()
+            .map(|lt| GenericParam {
+                id: lt.id,
+                ident: lt.ident,
+                attrs: ast::AttrVec::new(),
+                bounds: Vec::new(),
+                is_placeholder: false,
+                kind: ast::GenericParamKind::Lifetime,
+                colon_span: None,
+            })
+            .collect::<Vec<GenericParam>>();
+        lifetime_defs.append(&mut generic_params);
+
+        let generic_args_span = generic_args.span();
+        let mut err =
+            self.struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters");
+        let snippet = format!(
+            "for<{}> ",
+            lifetimes.iter().map(|lt| lt.ident.as_str()).intersperse(", ").collect::<String>(),
+        );
+        let before_fn_path = fn_path.span.shrink_to_lo();
+        err.multipart_suggestion(
+            "consider using a higher-ranked trait bound instead",
+            vec![(generic_args_span, "".to_owned()), (before_fn_path, snippet)],
+            Applicability::MaybeIncorrect,
+        )
+        .emit();
+        Ok(())
     }
 
     pub(super) fn check_lifetime(&mut self) -> bool {

@@ -111,7 +111,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeEnumVariant {
                         );
                         diag.span_label(
                             def.variants[variants_size[1].ind].span,
-                            &if variants_size[1].fields_size.is_empty() {
+                            if variants_size[1].fields_size.is_empty() {
                                 "the second-largest variant carries no data at all".to_owned()
                             } else {
                                 format!(

@@ -22,71 +22,101 @@ error: useless conversion to the same type: `i32`
 LL |         let _: i32 = 0i32.into();
    |                      ^^^^^^^^^^^ help: consider removing `.into()`: `0i32`
 
+error: useless conversion to the same type: `std::str::Lines<'_>`
+  --> $DIR/useless_conversion.rs:45:22
+   |
+LL |     if Some("ok") == lines.into_iter().next() {}
+   |                      ^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `lines`
+
+error: useless conversion to the same type: `std::str::Lines<'_>`
+  --> $DIR/useless_conversion.rs:50:21
+   |
+LL |     let mut lines = text.lines().into_iter();
+   |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `text.lines()`
+
+error: useless conversion to the same type: `std::str::Lines<'_>`
+  --> $DIR/useless_conversion.rs:56:22
+   |
+LL |     if Some("ok") == text.lines().into_iter().next() {}
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `text.lines()`
+
+error: useless conversion to the same type: `std::ops::Range<i32>`
+  --> $DIR/useless_conversion.rs:62:13
+   |
+LL |     let _ = NUMBERS.into_iter().next();
+   |             ^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `NUMBERS`
+
+error: useless conversion to the same type: `std::ops::Range<i32>`
+  --> $DIR/useless_conversion.rs:67:17
+   |
+LL |     let mut n = NUMBERS.into_iter();
+   |                 ^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `NUMBERS`
+
 error: useless conversion to the same type: `std::string::String`
-  --> $DIR/useless_conversion.rs:61:21
+  --> $DIR/useless_conversion.rs:128:21
    |
 LL |     let _: String = "foo".to_string().into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> $DIR/useless_conversion.rs:62:21
+  --> $DIR/useless_conversion.rs:129:21
    |
 LL |     let _: String = From::from("foo".to_string());
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `From::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> $DIR/useless_conversion.rs:63:13
+  --> $DIR/useless_conversion.rs:130:13
    |
 LL |     let _ = String::from("foo".to_string());
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `"foo".to_string()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> $DIR/useless_conversion.rs:64:13
+  --> $DIR/useless_conversion.rs:131:13
    |
 LL |     let _ = String::from(format!("A: {:04}", 123));
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `String::from()`: `format!("A: {:04}", 123)`
 
 error: useless conversion to the same type: `std::str::Lines<'_>`
-  --> $DIR/useless_conversion.rs:65:13
+  --> $DIR/useless_conversion.rs:132:13
    |
 LL |     let _ = "".lines().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `"".lines()`
 
 error: useless conversion to the same type: `std::vec::IntoIter<i32>`
-  --> $DIR/useless_conversion.rs:66:13
+  --> $DIR/useless_conversion.rs:133:13
    |
 LL |     let _ = vec![1, 2, 3].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![1, 2, 3].into_iter()`
 
 error: useless conversion to the same type: `std::string::String`
-  --> $DIR/useless_conversion.rs:67:21
+  --> $DIR/useless_conversion.rs:134:21
    |
 LL |     let _: String = format!("Hello {}", "world").into();
    |                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into()`: `format!("Hello {}", "world")`
 
 error: useless conversion to the same type: `i32`
-  --> $DIR/useless_conversion.rs:72:13
+  --> $DIR/useless_conversion.rs:139:13
    |
 LL |     let _ = i32::from(a + b) * 3;
    |             ^^^^^^^^^^^^^^^^ help: consider removing `i32::from()`: `(a + b)`
 
 error: useless conversion to the same type: `Foo<'a'>`
-  --> $DIR/useless_conversion.rs:78:23
+  --> $DIR/useless_conversion.rs:145:23
    |
 LL |     let _: Foo<'a'> = s2.into();
    |                       ^^^^^^^^^ help: consider removing `.into()`: `s2`
 
 error: useless conversion to the same type: `Foo<'a'>`
-  --> $DIR/useless_conversion.rs:80:13
+  --> $DIR/useless_conversion.rs:147:13
    |
 LL |     let _ = Foo::<'a'>::from(s3);
    |             ^^^^^^^^^^^^^^^^^^^^ help: consider removing `Foo::<'a'>::from()`: `s3`
 
 error: useless conversion to the same type: `std::vec::IntoIter<Foo<'a'>>`
-  --> $DIR/useless_conversion.rs:82:13
+  --> $DIR/useless_conversion.rs:149:13
    |
 LL |     let _ = vec![s4, s4, s4].into_iter().into_iter();
    |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: consider removing `.into_iter()`: `vec![s4, s4, s4].into_iter()`
 
-error: aborting due to 14 previous errors
+error: aborting due to 19 previous errors
 

@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![feature(lint_reasons)]
+#![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
@@ -280,6 +281,10 @@ mod issue9416 {
     pub fn oneline() {
         let _ = 42; return;
     }
+}
+
+fn issue9947() -> Result<(), String> {
+    do yeet "hello";
 }
 
 fn main() {}

@@ -1317,15 +1317,11 @@ a.test-arrow:hover {
 	-webkit-appearance: none;
 	opacity: 1;
 }
+
 #settings-menu, #help-button {
 	margin-left: 4px;
 	display: flex;
 }
-
-#settings-menu > a, #help-button > a, #copy-path {
-	width: 33px;
-}
-
 #settings-menu > a, #help-button > a {
 	display: flex;
 	align-items: center;
@@ -1337,6 +1333,7 @@ a.test-arrow:hover {
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
 	font-size: 20px;
+	width: 33px;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
@@ -1352,6 +1349,7 @@ a.test-arrow:hover {
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
+	width: 33px;
 }
 #copy-path > img {
 	filter: var(--copy-path-img-filter);

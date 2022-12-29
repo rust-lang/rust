@@ -845,7 +845,10 @@ impl EmitterWriter {
         // 3 | |
         // 4 | | }
         //   | |_^ test
-        if let [ann] = &line.annotations[..] {
+        let mut buffer_ops = vec![];
+        let mut annotations = vec![];
+        let mut short_start = true;
+        for ann in &line.annotations {
             if let AnnotationType::MultilineStart(depth) = ann.annotation_type {
                 if source_string.chars().take(ann.start_col).all(|c| c.is_whitespace()) {
                     let style = if ann.is_primary {
@@ -853,10 +856,23 @@ impl EmitterWriter {
                     } else {
                         Style::UnderlineSecondary
                     };
-                    buffer.putc(line_offset, width_offset + depth - 1, '/', style);
-                    return vec![(depth, style)];
+                    annotations.push((depth, style));
+                    buffer_ops.push((line_offset, width_offset + depth - 1, '/', style));
+                } else {
+                    short_start = false;
+                    break;
                 }
+            } else if let AnnotationType::MultilineLine(_) = ann.annotation_type {
+            } else {
+                short_start = false;
+                break;
             }
+        }
+        if short_start {
+            for (y, x, c, s) in buffer_ops {
+                buffer.putc(y, x, c, s);
+            }
+            return annotations;
         }
 
         // We want to display like this:
