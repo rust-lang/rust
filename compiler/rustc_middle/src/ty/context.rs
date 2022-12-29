@@ -1215,11 +1215,77 @@ pub mod tls {
     use std::mem;
     use thin_vec::ThinVec;
 
-    #[cfg(not(parallel_compiler))]
-    use std::cell::Cell;
-
     #[cfg(parallel_compiler)]
-    use rustc_rayon_core as rayon_core;
+    mod tls_impl {
+        use rustc_rayon_core as rayon_core;
+
+        /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
+        /// to `value` during the call to `f`. It is restored to its previous value after.
+        /// This is used to set the pointer to the new `ImplicitCtxt`.
+        #[inline]
+        pub(super) fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+            rayon_core::tlv::with(value, f)
+        }
+
+        /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
+        /// This is used to get the pointer to the current `ImplicitCtxt`.
+        #[inline]
+        pub fn get_tlv() -> usize {
+            rayon_core::tlv::get()
+        }
+    }
+
+    #[cfg(all(not(parallel_compiler), target_thread_local))]
+    mod tls_impl {
+        use std::cell::Cell;
+
+        /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
+        #[thread_local]
+        static TLV: Cell<usize> = Cell::new(0);
+
+        /// Sets TLV to `value` during the call to `f`.
+        /// It is restored to its previous value after.
+        /// This is used to set the pointer to the new `ImplicitCtxt`.
+        #[inline]
+        pub(super) fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+            let old = get_tlv();
+            let _reset = rustc_data_structures::OnDrop(move || TLV.set(old));
+            TLV.set(value);
+            f()
+        }
+
+        /// Gets the pointer to the current `ImplicitCtxt`.
+        #[inline]
+        pub(super) fn get_tlv() -> usize {
+            TLV.get()
+        }
+    }
+
+    #[cfg(all(not(parallel_compiler), not(target_thread_local)))]
+    /// Ideally this wouldn't be necessary, but `#[thread_local]` uses OS built-ins which don't work on every platform.
+    /// The reason we use `#[thread_local]` at all is to avoid monomorphizing `LocalKey::with` for each `F` passed to `set_tlv`.
+    mod tls_impl {
+        use std::cell::Cell;
+
+        thread_local! {
+            static TLV: Cell<usize> = Cell::new(0);
+        }
+
+        #[inline]
+        pub(super) fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+            let old = get_tlv();
+            let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
+            TLV.with(|tlv| tlv.set(value));
+            f()
+        }
+
+        #[inline]
+        pub(super) fn get_tlv() -> usize {
+            TLV.with(|tlv| tlv.get())
+        }
+    }
+
+    use tls_impl::{get_tlv, set_tlv};
 
     /// This is the implicit state of rustc. It contains the current
     /// `TyCtxt` and query. It is updated when creating a local interner or
@@ -1258,48 +1324,6 @@ pub mod tls {
                 task_deps: TaskDepsRef::Ignore,
             }
         }
-    }
-
-    /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
-    /// to `value` during the call to `f`. It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[cfg(parallel_compiler)]
-    #[inline]
-    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
-        rayon_core::tlv::with(value, f)
-    }
-
-    /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
-    /// This is used to get the pointer to the current `ImplicitCtxt`.
-    #[cfg(parallel_compiler)]
-    #[inline]
-    pub fn get_tlv() -> usize {
-        rayon_core::tlv::get()
-    }
-
-    #[cfg(not(parallel_compiler))]
-    thread_local! {
-        /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-        static TLV: Cell<usize> = const { Cell::new(0) };
-    }
-
-    /// Sets TLV to `value` during the call to `f`.
-    /// It is restored to its previous value after.
-    /// This is used to set the pointer to the new `ImplicitCtxt`.
-    #[cfg(not(parallel_compiler))]
-    #[inline]
-    fn set_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
-        let old = get_tlv();
-        let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
-        TLV.with(|tlv| tlv.set(value));
-        f()
-    }
-
-    /// Gets the pointer to the current `ImplicitCtxt`.
-    #[cfg(not(parallel_compiler))]
-    #[inline]
-    fn get_tlv() -> usize {
-        TLV.with(|tlv| tlv.get())
     }
 
     /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
