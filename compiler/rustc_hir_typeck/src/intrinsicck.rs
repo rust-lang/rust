@@ -84,6 +84,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let skeleton_string = |ty: Ty<'tcx>, sk| match sk {
             Ok(SizeSkeleton::Known(size)) => format!("{} bits", size.bits()),
             Ok(SizeSkeleton::Pointer { tail, .. }) => format!("pointer to `{tail}`"),
+            Ok(SizeSkeleton::Generic(size)) => {
+                if let Some(size) = size.try_eval_target_usize(tcx, self.param_env) {
+                    format!("{size} bytes")
+                } else {
+                    format!("generic size")
+                }
+            }
             Err(LayoutError::Unknown(bad)) => {
                 if bad == ty {
                     "this type does not have a fixed size".to_owned()
