@@ -4,7 +4,7 @@ use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt, VariantDef};
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
 use rustc_mir_dataflow::move_paths::{LookupResult, MoveData, MovePathIndex};
-use rustc_mir_dataflow::{self, move_path_children_matching, Analysis, Blocks, MoveDataParamEnv};
+use rustc_mir_dataflow::{self, move_path_children_matching, Analysis, MoveDataParamEnv};
 
 use crate::MirPass;
 
@@ -30,7 +30,7 @@ impl<'tcx> MirPass<'tcx> for RemoveUninitDrops {
 
         let mdpe = MoveDataParamEnv { move_data, param_env };
         let mut maybe_inits = MaybeInitializedPlaces::new(tcx, body, &mdpe)
-            .into_engine(tcx, body, Blocks::All)
+            .into_engine(tcx, body)
             .pass_name("remove_uninit_drops")
             .iterate_to_fixpoint()
             .into_results_cursor(body);

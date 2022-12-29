@@ -25,10 +25,9 @@ pub use self::drop_flag_effects::{
     on_lookup_result_bits,
 };
 pub use self::framework::{
-    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, Blocks,
-    CallReturnPlaces, Direction, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice,
-    Results, ResultsCursor, ResultsRefCursor, ResultsVisitable, ResultsVisitor,
-    SwitchIntEdgeEffects,
+    fmt, graphviz, lattice, visit_results, Analysis, AnalysisDomain, Backward, CallReturnPlaces,
+    Direction, Engine, Forward, GenKill, GenKillAnalysis, JoinSemiLattice, Results, ResultsCursor,
+    ResultsRefCursor, ResultsVisitable, ResultsVisitor, SwitchIntEdgeEffects,
 };
 
 use self::move_paths::MoveData;

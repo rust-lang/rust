@@ -16,7 +16,7 @@ use rustc_index::bit_set::BitSet;
 use rustc_middle::mir::*;
 use rustc_middle::ty::TyCtxt;
 use rustc_mir_dataflow::impls::{borrowed_locals, MaybeTransitiveLiveLocals};
-use rustc_mir_dataflow::{Analysis, Blocks};
+use rustc_mir_dataflow::Analysis;
 
 /// Performs the optimization on the body
 ///
@@ -24,7 +24,7 @@ use rustc_mir_dataflow::{Analysis, Blocks};
 /// can be generated via the [`borrowed_locals`] function.
 pub fn eliminate<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>, borrowed: &BitSet<Local>) {
     let mut live = MaybeTransitiveLiveLocals::new(borrowed)
-        .into_engine(tcx, body, Blocks::All)
+        .into_engine(tcx, body)
         .iterate_to_fixpoint()
         .into_results_cursor(body);
 

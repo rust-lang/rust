@@ -15,7 +15,7 @@ use rustc_middle::mir::{
 use rustc_middle::ty::{self, InstanceDef, ParamEnv, Ty, TyCtxt, TypeVisitable};
 use rustc_mir_dataflow::impls::MaybeStorageLive;
 use rustc_mir_dataflow::storage::always_storage_live_locals;
-use rustc_mir_dataflow::{Analysis, Blocks, ResultsCursor};
+use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
 
 #[derive(Copy, Clone, Debug)]
@@ -53,7 +53,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
 
         let always_live_locals = always_storage_live_locals(body);
         let storage_liveness = MaybeStorageLive::new(std::borrow::Cow::Owned(always_live_locals))
-            .into_engine(tcx, body, Blocks::All)
+            .into_engine(tcx, body)
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
