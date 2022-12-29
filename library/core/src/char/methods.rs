@@ -140,7 +140,7 @@ impl char {
     /// assert_eq!(None, c);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_u32(i: u32) -> Option<char> {
@@ -241,7 +241,7 @@ impl char {
     /// let _c = char::from_digit(1, 37);
     /// ```
     #[stable(feature = "assoc_char_funcs", since = "1.52.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use]
     #[inline]
     pub const fn from_digit(num: u32, radix: u32) -> Option<char> {
@@ -338,7 +338,7 @@ impl char {
     /// let _ = '1'.to_digit(37);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    #[rustc_const_stable(feature = "const_char_convert", since = "CURRENT_RUSTC_VERSION")]
+    #[rustc_const_stable(feature = "const_char_convert", since = "1.67.0")]
     #[must_use = "this returns the result of the operation, \
                   without modifying the original"]
     #[inline]

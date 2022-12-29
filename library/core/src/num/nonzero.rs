@@ -462,8 +462,8 @@ macro_rules! nonzero_unsigned_operations {
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(8).unwrap().ilog2(), 3);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(9).unwrap().ilog2(), 3);")]
                 /// ```
-                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "int_log", since = "1.67.0")]
+                #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -486,8 +486,8 @@ macro_rules! nonzero_unsigned_operations {
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(100).unwrap().ilog10(), 2);")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::new(101).unwrap().ilog10(), 2);")]
                 /// ```
-                #[stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
-                #[rustc_const_stable(feature = "int_log", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "int_log", since = "1.67.0")]
+                #[rustc_const_stable(feature = "int_log", since = "1.67.0")]
                 #[must_use = "this returns the result of the operation, \
                               without modifying the original"]
                 #[inline]
@@ -1253,7 +1253,7 @@ macro_rules! nonzero_bits {
                 ///
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::BITS, ", stringify!($Int), "::BITS);")]
                 /// ```
-                #[stable(feature = "nonzero_bits", since = "CURRENT_RUSTC_VERSION")]
+                #[stable(feature = "nonzero_bits", since = "1.67.0")]
                 pub const BITS: u32 = <$Int>::BITS;
             }
         )+

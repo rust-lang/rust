@@ -3609,16 +3609,9 @@ mod size_asserts {
     static_assert_size!(Res, 12);
     static_assert_size!(Stmt<'_>, 32);
     static_assert_size!(StmtKind<'_>, 16);
-    // tidy-alphabetical-end
-    // FIXME: move the tidy directive to the end after the next bootstrap bump
-    #[cfg(bootstrap)]
-    static_assert_size!(TraitItem<'_>, 88);
-    #[cfg(not(bootstrap))]
     static_assert_size!(TraitItem<'_>, 80);
-    #[cfg(bootstrap)]
-    static_assert_size!(TraitItemKind<'_>, 48);
-    #[cfg(not(bootstrap))]
     static_assert_size!(TraitItemKind<'_>, 40);
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
+    // tidy-alphabetical-end
 }

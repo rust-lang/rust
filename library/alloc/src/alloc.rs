@@ -404,19 +404,6 @@ pub mod __alloc_error_handler {
     pub unsafe fn __rdl_oom(size: usize, _align: usize) -> ! {
         panic!("memory allocation of {size} bytes failed")
     }
-
-    #[cfg(bootstrap)]
-    #[rustc_std_internal_symbol]
-    pub unsafe fn __rg_oom(size: usize, align: usize) -> ! {
-        use crate::alloc::Layout;
-
-        let layout = unsafe { Layout::from_size_align_unchecked(size, align) };
-        extern "Rust" {
-            #[lang = "oom"]
-            fn oom_impl(layout: Layout) -> !;
-        }
-        unsafe { oom_impl(layout) }
-    }
 }
 
 /// Specialize clones into pre-allocated, uninitialized memory.

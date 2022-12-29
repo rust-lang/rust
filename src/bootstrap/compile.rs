@@ -691,7 +691,8 @@ impl Step for Rustc {
             ));
         }
 
-        // cfg(bootstrap): remove if condition once the bootstrap compiler supports dylib LTO
+        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+        // and may just be a time sink.
         if compiler.stage != 0 {
             match builder.config.rust_lto {
                 RustcLto::Thin | RustcLto::Fat => {

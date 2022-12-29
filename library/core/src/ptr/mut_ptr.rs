@@ -1618,26 +1618,6 @@ impl<T: ?Sized> *mut T {
             panic!("align_offset: align is not a power-of-two");
         }
 
-        #[cfg(bootstrap)]
-        {
-            fn rt_impl<T>(p: *mut T, align: usize) -> usize {
-                // SAFETY: `align` has been checked to be a power of 2 above
-                unsafe { align_offset(p, align) }
-            }
-
-            const fn ctfe_impl<T>(_: *mut T, _: usize) -> usize {
-                usize::MAX
-            }
-
-            // SAFETY:
-            // It is permissible for `align_offset` to always return `usize::MAX`,
-            // algorithm correctness can not depend on `align_offset` returning non-max values.
-            //
-            // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-            unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
-        }
-
-        #[cfg(not(bootstrap))]
         {
             // SAFETY: `align` has been checked to be a power of 2 above
             unsafe { align_offset(self, align) }
@@ -1674,8 +1654,7 @@ impl<T: ?Sized> *mut T {
     /// is never aligned if cast to a type with a stricter alignment than the reference's
     /// underlying allocation.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     /// #![feature(const_mut_refs)]
@@ -1702,8 +1681,7 @@ impl<T: ?Sized> *mut T {
     /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1730,8 +1708,7 @@ impl<T: ?Sized> *mut T {
     /// If a pointer is created from a fixed address, this function behaves the same during
     /// runtime and compiletime.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1807,8 +1784,7 @@ impl<T: ?Sized> *mut T {
     /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
     /// cannot be stricter aligned than the reference's underlying allocation.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     /// #![feature(const_mut_refs)]
@@ -1834,8 +1810,7 @@ impl<T: ?Sized> *mut T {
     /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1860,8 +1835,7 @@ impl<T: ?Sized> *mut T {
     /// If a pointer is created from a fixed address, this function behaves the same during
     /// runtime and compiletime.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///

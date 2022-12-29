@@ -9,7 +9,7 @@ use crate::task::Ready;
 /// scheduled to receive a wakeup instead.
 #[must_use = "this `Poll` may be a `Pending` variant, which should be handled"]
 #[derive(Copy, Clone, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
-#[cfg_attr(not(bootstrap), lang = "Poll")]
+#[lang = "Poll"]
 #[stable(feature = "futures_api", since = "1.36.0")]
 pub enum Poll<T> {
     /// Represents that a value is immediately ready.
