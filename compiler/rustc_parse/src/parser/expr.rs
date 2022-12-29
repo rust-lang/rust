@@ -3039,6 +3039,7 @@ impl<'a> Parser<'a> {
     /// Parses `ident (COLON expr)?`.
     fn parse_expr_field(&mut self) -> PResult<'a, ExprField> {
         let attrs = self.parse_outer_attributes()?;
+        self.recover_diff_marker();
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
 

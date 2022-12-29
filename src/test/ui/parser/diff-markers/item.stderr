@@ -1,0 +1,18 @@
+error: encountered diff marker
+  --> $DIR/item.rs:1:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ after this is the code before the merge
+LL | fn foo() {}
+LL | =======
+   | -------
+LL | fn bar() {}
+LL | >>>>>>> branch
+   | ^^^^^^^ above this are the incoming code changes
+   |
+   = help: if you're having merge conflicts after pulling new code, the top section is the code you already had and the bottom section is the remote code
+   = help: if you're in the middle of a rebase, the top section is the code being rebased onto and the bottom section is the code coming from the current commit being rebased
+   = note: for an explanation on these markers from the `git` documentation, visit <https://git-scm.com/book/en/v2/Git-Tools-Advanced-Merging#_checking_out_conflicts>
+
+error: aborting due to previous error
+
