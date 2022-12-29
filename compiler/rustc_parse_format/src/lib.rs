@@ -20,6 +20,7 @@ pub use Flag::*;
 pub use Piece::*;
 pub use Position::*;
 
+use rustc_lexer::unescape;
 use std::iter;
 use std::str;
 use std::string;
@@ -54,6 +55,13 @@ impl InnerWidthMapping {
     pub fn new(position: usize, before: usize, after: usize) -> InnerWidthMapping {
         InnerWidthMapping { position, before, after }
     }
+}
+
+/// Whether the input string is a literal. If yes, it contains the inner width mappings.
+#[derive(Clone, PartialEq, Eq)]
+enum InputStringKind {
+    NotALiteral,
+    Literal { width_mappings: Vec<InnerWidthMapping> },
 }
 
 /// The type of format string that we are parsing.
@@ -306,7 +314,11 @@ impl<'a> Parser<'a> {
         append_newline: bool,
         mode: ParseMode,
     ) -> Parser<'a> {
-        let (width_map, is_literal) = find_width_map_from_snippet(snippet, style);
+        let input_string_kind = find_width_map_from_snippet(s, snippet, style);
+        let (width_map, is_literal) = match input_string_kind {
+            InputStringKind::Literal { width_mappings } => (width_mappings, true),
+            InputStringKind::NotALiteral => (Vec::new(), false),
+        };
         Parser {
             mode,
             input: s,
@@ -844,19 +856,39 @@ impl<'a> Parser<'a> {
 /// written code (code snippet) and the `InternedString` that gets processed in the `Parser`
 /// in order to properly synthesise the intra-string `Span`s for error diagnostics.
 fn find_width_map_from_snippet(
+    input: &str,
     snippet: Option<string::String>,
     str_style: Option<usize>,
-) -> (Vec<InnerWidthMapping>, bool) {
+) -> InputStringKind {
     let snippet = match snippet {
         Some(ref s) if s.starts_with('"') || s.starts_with("r\"") || s.starts_with("r#") => s,
-        _ => return (vec![], false),
+        _ => return InputStringKind::NotALiteral,
     };
 
     if str_style.is_some() {
-        return (vec![], true);
+        return InputStringKind::Literal { width_mappings: Vec::new() };
     }
 
+    // Strip quotes.
     let snippet = &snippet[1..snippet.len() - 1];
+
+    // Macros like `println` add a newline at the end. That technically doens't make them "literals" anymore, but it's fine
+    // since we will never need to point our spans there, so we lie about it here by ignoring it.
+    // Since there might actually be newlines in the source code, we need to normalize away all trailing newlines.
+    // If we only trimmed it off the input, `format!("\n")` would cause a mismatch as here we they actually match up.
+    // Alternatively, we could just count the trailing newlines and only trim one from the input if they don't match up.
+    let input_no_nl = input.trim_end_matches('\n');
+    let Ok(unescaped) = unescape_string(snippet) else {
+        return InputStringKind::NotALiteral;
+    };
+
+    let unescaped_no_nl = unescaped.trim_end_matches('\n');
+
+    if unescaped_no_nl != input_no_nl {
+        // The source string that we're pointing at isn't our input, so spans pointing at it will be incorrect.
+        // This can for example happen with proc macros that respan generated literals.
+        return InputStringKind::NotALiteral;
+    }
 
     let mut s = snippet.char_indices();
     let mut width_mappings = vec![];
@@ -936,7 +968,21 @@ fn find_width_map_from_snippet(
             _ => {}
         }
     }
-    (width_mappings, true)
+
+    InputStringKind::Literal { width_mappings }
+}
+
+fn unescape_string(string: &str) -> Result<string::String, unescape::EscapeError> {
+    let mut buf = string::String::new();
+    let mut error = Ok(());
+    unescape::unescape_literal(string, unescape::Mode::Str, &mut |_, unescaped_char| {
+        match unescaped_char {
+            Ok(c) => buf.push(c),
+            Err(err) => error = Err(err),
+        }
+    });
+
+    error.map(|_| buf)
 }
 
 // Assert a reasonable size for `Piece`
