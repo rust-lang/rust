@@ -88,6 +88,10 @@
 	--scrape-example-toggle-line-hover-background: #c5c5c5;
 	--scrape-example-code-line-highlight: rgb(91, 59, 1);
 	--scrape-example-code-line-highlight-focus: rgb(124, 75, 15);
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
 }
 
 #search-tabs > button:not(.selected) {
@@ -100,14 +104,6 @@
 	background-color: #353535;
 }
 
-.scraped-example-list .scrape-help {
-	border-color: #aaa;
-	color: #eee;
-}
-.scraped-example-list .scrape-help:hover {
-	border-color: white;
-	color: white;
-}
 .scraped-example:not(.expanded) .code-wrapper::before {
 	background: linear-gradient(to bottom, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }
