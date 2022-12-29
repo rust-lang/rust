@@ -62,7 +62,7 @@ pub(super) fn check<'tcx>(
                     span_lint_and_then(cx, UNNECESSARY_LAZY_EVALUATIONS, expr.span, msg, |diag| {
                         diag.span_suggestion(
                             span,
-                            &format!("use `{simplify_using}(..)` instead"),
+                            format!("use `{simplify_using}(..)` instead"),
                             format!("{simplify_using}({})", snippet(cx, body_expr.span, "..")),
                             applicability,
                         );

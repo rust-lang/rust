@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
-                                    &help,
+                                    help,
                                     format!("async {}{ret_snip}", &header_snip[..ret_pos]),
                                     Applicability::MachineApplicable
                                 );
