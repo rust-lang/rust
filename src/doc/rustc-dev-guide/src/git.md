@@ -103,7 +103,7 @@ Here are some common issues you might run into:
 
 Git has two ways to update your branch with the newest changes: merging and rebasing.
 Rust [uses rebasing][no-merge-policy]. If you make a merge commit, it's not too hard to fix:
-`git rebase -i origin/master`.
+`git rebase -i upstream/master`.
 
 See [Rebasing][#rebasing] for more about rebasing.
 
@@ -114,16 +114,16 @@ it will say something like this:
 
 ```
 $ git remote -v
-origin	https://github.com//rust-lang/rust (fetch)
-origin	https://github.com//rust-lang/rust (push)
-personal	https://github.com/jyn514/rust (fetch)
-personal	https://github.com/jyn514/rust (push)
+origin  git@github.com:jyn514/rust.git (fetch)
+origin  git@github.com:jyn514/rust.git (push)
+upstream        https://github.com/rust-lang/rust (fetch)
+upstream        https://github.com/rust-lang/rust (fetch)
 ```
 
 If you renamed your fork, you can change the URL like this:
 
 ```console
-git remote set-url personal <URL>
+git remote set-url origin <URL>
 ```
 
 where the `<URL>` is your new fork.
@@ -173,6 +173,24 @@ and just want to get a clean copy of the repository back, you can use `git reset
 # WARNING: this throws out any local changes you've made! Consider resolving the conflicts instead.
 git reset --hard master
 ```
+
+### Git is trying to rebase commits I didn't write?
+
+If you see many commits in your rebase list, or merge commits, or commits by other people that you
+didn't write, it likely means you're trying to rebase over the wrong branch. For example, you may
+have a `rust-lang/rust` remote `upstream`, but ran `git rebase origin/master` instead of `git rebase
+upstream/master`. The fix is to abort the rebase and use the correct branch instead:
+
+```
+git rebase --abort
+git rebase -i upstream/master
+```
+
+<details><summary>Click here to see an example of rebasing over the wrong branch</summary>
+
+![Interactive rebase over the wrong branch](img/other-peoples-commits.png)
+
+</details>
 
 ### Quick note about submodules
 
@@ -308,9 +326,8 @@ and rebase them:
 ```
 git checkout master
 git pull upstream master --ff-only # to make certain there are no merge commits
-git checkout feature_branch
-git rebase master
-git push --force-with-lease (set origin to be the same as local)
+git rebase master feature_branch
+git push --force-with-lease # (set origin to be the same as local)
 ```
 
 To avoid merges as per the [No-Merge Policy](#no-merge-policy), you may want to use
@@ -318,7 +335,7 @@ To avoid merges as per the [No-Merge Policy](#no-merge-policy), you may want to 
 to ensure that Git doesn't create merge commits when `git pull`ing, without
 needing to pass `--ff-only` or `--rebase` every time.
 
-You can also `git push --force-with-lease` from master to keep your origin's master in sync with
+You can also `git push --force-with-lease` from master to keep your fork's master in sync with
 upstream.
 
 ## Advanced Rebasing
