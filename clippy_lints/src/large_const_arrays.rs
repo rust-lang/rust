@@ -34,12 +34,12 @@ declare_clippy_lint! {
 }
 
 pub struct LargeConstArrays {
-    maximum_allowed_size: u64,
+    maximum_allowed_size: u128,
 }
 
 impl LargeConstArrays {
     #[must_use]
-    pub fn new(maximum_allowed_size: u64) -> Self {
+    pub fn new(maximum_allowed_size: u128) -> Self {
         Self { maximum_allowed_size }
     }
 }
@@ -56,7 +56,7 @@ impl<'tcx> LateLintPass<'tcx> for LargeConstArrays {
             if let ConstKind::Value(ty::ValTree::Leaf(element_count)) = cst.kind();
             if let Ok(element_count) = element_count.try_to_machine_usize(cx.tcx);
             if let Ok(element_size) = cx.layout_of(*element_type).map(|l| l.size.bytes());
-            if self.maximum_allowed_size < element_count * element_size;
+            if self.maximum_allowed_size < u128::from(element_count) * u128::from(element_size);
 
             then {
                 let hi_pos = item.ident.span.lo() - BytePos::from_usize(1);

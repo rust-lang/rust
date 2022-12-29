@@ -55,11 +55,11 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
             if matches!(cx.tcx.def_kind(id.owner_id), DefKind::Impl)
                 && let item = cx.tcx.hir().item(id)
                 && let ItemKind::Impl(Impl {
-                  items,
-                  of_trait,
-                  self_ty,
-                  ..
-                                      }) = &item.kind
+                    items,
+                    of_trait,
+                    self_ty,
+                    ..
+                }) = &item.kind
                 && let TyKind::Path(QPath::Resolved(_, Path { res, .. })) = self_ty.kind
             {
                 if !map.contains_key(res) {
@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                     |diag| {
                                         diag.span_note(
                                             trait_method_span,
-                                            &format!("existing `{method_name}` defined here"),
+                                            format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );
@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         // iterate on trait_spans?
                                         diag.span_note(
                                             trait_spans[0],
-                                            &format!("existing `{method_name}` defined here"),
+                                            format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );

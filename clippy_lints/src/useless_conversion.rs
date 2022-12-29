@@ -1,11 +1,11 @@
 use clippy_utils::diagnostics::{span_lint_and_help, span_lint_and_sugg};
 use clippy_utils::source::{snippet, snippet_with_macro_callsite};
 use clippy_utils::sugg::Sugg;
-use clippy_utils::ty::{is_type_diagnostic_item, same_type_and_consts};
-use clippy_utils::{get_parent_expr, is_trait_method, match_def_path, paths};
+use clippy_utils::ty::{is_copy, is_type_diagnostic_item, same_type_and_consts};
+use clippy_utils::{get_parent_expr, is_trait_method, match_def_path, path_to_local, paths};
 use if_chain::if_chain;
 use rustc_errors::Applicability;
-use rustc_hir::{Expr, ExprKind, HirId, MatchSource};
+use rustc_hir::{BindingAnnotation, Expr, ExprKind, HirId, MatchSource, Node, PatKind};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_middle::ty;
 use rustc_session::{declare_tool_lint, impl_lint_pass};
@@ -81,16 +81,24 @@ impl<'tcx> LateLintPass<'tcx> for UselessConversion {
                     }
                 }
                 if is_trait_method(cx, e, sym::IntoIterator) && name.ident.name == sym::into_iter {
-                    if let Some(parent_expr) = get_parent_expr(cx, e) {
-                        if let ExprKind::MethodCall(parent_name, ..) = parent_expr.kind {
-                            if parent_name.ident.name != sym::into_iter {
-                                return;
-                            }
-                        }
+                    if get_parent_expr(cx, e).is_some() &&
+                       let Some(id) = path_to_local(recv) &&
+                       let Node::Pat(pat) = cx.tcx.hir().get(id) &&
+                       let PatKind::Binding(ann, ..) = pat.kind &&
+                       ann != BindingAnnotation::MUT
+                    {
+                        // Do not remove .into_iter() applied to a non-mutable local variable used in
+                        // a larger expression context as it would differ in mutability.
+                        return;
                     }
+
                     let a = cx.typeck_results().expr_ty(e);
                     let b = cx.typeck_results().expr_ty(recv);
-                    if same_type_and_consts(a, b) {
+
+                    // If the types are identical then .into_iter() can be removed, unless the type
+                    // implements Copy, in which case .into_iter() returns a copy of the receiver and
+                    // cannot be safely omitted.
+                    if same_type_and_consts(a, b) && !is_copy(cx, b) {
                         let sugg = snippet(cx, recv.span, "<expr>").into_owned();
                         span_lint_and_sugg(
                             cx,

@@ -7,7 +7,7 @@ use rustc_errors::Applicability;
 use rustc_hir as hir;
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, Ty};
-use rustc_span::symbol::{Symbol, sym};
+use rustc_span::symbol::{sym, Symbol};
 
 use super::INEFFICIENT_TO_STRING;
 
@@ -36,7 +36,7 @@ pub fn check(
                 expr.span,
                 &format!("calling `to_string` on `{arg_ty}`"),
                 |diag| {
-                    diag.help(&format!(
+                    diag.help(format!(
                         "`{self_ty}` implements `ToString` through a slower blanket impl, but `{deref_self_ty}` has a fast specialization of `ToString`"
                     ));
                     let mut applicability = Applicability::MachineApplicable;

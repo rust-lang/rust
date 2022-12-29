@@ -14,6 +14,15 @@ fn main() {
     let _ = (y as f32).mul_add(y as f32, x);
     let _ = x.mul_add(x, y).sqrt();
     let _ = y.mul_add(y, x).sqrt();
+
+    let _ = (x - 1.0).mul_add(x - 1.0, -y);
+    let _ = (x - 1.0).mul_add(x - 1.0, -y) + 3.0;
+    let _ = (x - 1.0).mul_add(x - 1.0, -(y + 3.0));
+    let _ = (y + 1.0).mul_add(-(y + 1.0), x);
+    let _ = (3.0 * y).mul_add(-(3.0 * y), x);
+    let _ = (y + 1.0 + x).mul_add(-(y + 1.0 + x), x);
+    let _ = (y + 1.0 + 2.0).mul_add(-(y + 1.0 + 2.0), x);
+
     // Cases where the lint shouldn't be applied
     let _ = x.powi(2);
     let _ = x.powi(1 + 1);
