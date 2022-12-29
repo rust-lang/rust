@@ -4,9 +4,12 @@ error: encountered diff marker
 LL | <<<<<<< HEAD
    | ^^^^^^^ after this is the code before the merge
 LL |         x: u8,
+LL | |||||||
+   | -------
+LL |         z: (),
 LL | =======
    | -------
-LL |         x: i8,
+LL |         y: i8,
 LL | >>>>>>> branch
    | ^^^^^^^ above this are the incoming code changes
    |

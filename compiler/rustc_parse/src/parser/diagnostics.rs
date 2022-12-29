@@ -2579,11 +2579,15 @@ impl<'a> Parser<'a> {
         };
         let mut spans = Vec::with_capacity(3);
         spans.push(start);
+        let mut middlediff3 = None;
         let mut middle = None;
         let mut end = None;
         loop {
             if self.token.kind == TokenKind::Eof {
                 break;
+            }
+            if let Some(span) = self.diff_marker(&TokenKind::OrOr, &TokenKind::BinOp(token::Or)) {
+                middlediff3 = Some(span);
             }
             if let Some(span) = self.diff_marker(&TokenKind::EqEq, &TokenKind::Eq) {
                 middle = Some(span);
@@ -2597,6 +2601,9 @@ impl<'a> Parser<'a> {
         }
         let mut err = self.struct_span_err(spans, "encountered diff marker");
         err.span_label(start, "after this is the code before the merge");
+        if let Some(middle) = middlediff3 {
+            err.span_label(middle, "");
+        }
         if let Some(middle) = middle {
             err.span_label(middle, "");
         }
