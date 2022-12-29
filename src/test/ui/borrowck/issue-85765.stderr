@@ -10,11 +10,13 @@ LL |     rofl.push(Vec::new());
 error[E0594]: cannot assign to `*r`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:12:5
    |
-LL |     let r = &mutvar;
-   |             ------- help: consider changing this to be a mutable reference: `&mut mutvar`
-LL |
 LL |     *r = 0;
    |     ^^^^^^ `r` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let r = &mut mutvar;
+   |             ~~~~~~~~~~~
 
 error[E0594]: cannot assign to `*x`, which is behind a `&` reference
   --> $DIR/issue-85765.rs:19:5

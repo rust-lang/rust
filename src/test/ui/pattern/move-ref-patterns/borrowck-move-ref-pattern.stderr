@@ -104,20 +104,24 @@ LL |     *_x0 = U;
 error[E0594]: cannot assign to `*_x0`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:26:5
    |
-LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
-   |          ------- help: consider changing this to be a mutable reference: `ref mut _x0`
-...
 LL |     *_x0 = U;
    |     ^^^^^^^^ `_x0` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let (ref mut _x0, _x1, ref _x2, ..) = tup;
+   |          ~~~~~~~~~~~
 
 error[E0594]: cannot assign to `*_x2`, which is behind a `&` reference
   --> $DIR/borrowck-move-ref-pattern.rs:27:5
    |
-LL |     let (ref _x0, _x1, ref _x2, ..) = tup;
-   |                        ------- help: consider changing this to be a mutable reference: `ref mut _x2`
-...
 LL |     *_x2 = U;
    |     ^^^^^^^^ `_x2` is a `&` reference, so the data it refers to cannot be written
+   |
+help: consider changing this to be a mutable reference
+   |
+LL |     let (ref _x0, _x1, ref mut _x2, ..) = tup;
+   |                        ~~~~~~~~~~~
 
 error[E0382]: use of moved value: `tup.1`
   --> $DIR/borrowck-move-ref-pattern.rs:28:10
