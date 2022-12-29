@@ -30,7 +30,7 @@ pub(crate) fn check(cx: &LateContext<'_>, ex: &Expr<'_>, arms: &[Arm<'_>]) {
     let mut has_non_wild = false;
     for arm in arms {
         match peel_hir_pat_refs(arm.pat).0.kind {
-            PatKind::Wild => wildcard_span = Some(arm.pat.span),
+            PatKind::Wild if arm.guard.is_none() => wildcard_span = Some(arm.pat.span),
             PatKind::Binding(_, _, ident, None) => {
                 wildcard_span = Some(arm.pat.span);
                 wildcard_ident = Some(ident);
