@@ -212,6 +212,7 @@ target | std | host | notes
 `aarch64-apple-tvos` | * |  | ARM64 tvOS
 [`aarch64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ |  | ARM64 Apple WatchOS Simulator
 [`aarch64-kmc-solid_asp3`](platform-support/kmc-solid.md) | ✓ |  | ARM64 SOLID with TOPPERS/ASP3
+`aarch64-openwrt-linux-musl` | ✓ | ✓ | OpenWRT Linux MUSL
 [`aarch64-nintendo-switch-freestanding`](platform-support/aarch64-nintendo-switch-freestanding.md) | * |  | ARM64 Nintendo Switch, Horizon
 [`aarch64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 [`aarch64-unknown-nto-qnx710`](platform-support/nto-qnx.md) | ? |  | ARM64 QNX Neutrino 7.1 RTOS |
@@ -235,6 +236,8 @@ target | std | host | notes
 `armv6-unknown-netbsd-eabihf` | ? |  |
 [`armv6k-nintendo-3ds`](platform-support/armv6k-nintendo-3ds.md) | ? |  | ARMv6K Nintendo 3DS, Horizon (Requires devkitARM toolchain)
 `armv7-apple-ios` | ✓ |  | ARMv7 iOS, Cortex-a8
+`armv7-openwrt-linux-musleabi` | ✓ | ✓ | ARMv7 OpenWRT Linux MUSL
+`armv7-openwrt-linux-musleabihf` | ✓ | ✓ | ARMv7 + hardfloat OpenWRT Linux MUSL
 [`armv7-sony-vita-newlibeabihf`](platform-support/armv7-sony-vita-newlibeabihf.md) | ? |  | ARM Cortex-A9 Sony PlayStation Vita (requires VITASDK toolchain)
 [`armv7-unknown-linux-uclibceabi`](platform-support/armv7-unknown-linux-uclibceabi.md) | ✓ | ✓ | ARMv7 Linux with uClibc, softfloat
 [`armv7-unknown-linux-uclibceabihf`](platform-support/armv7-unknown-linux-uclibceabihf.md) | ✓ | ? | ARMv7 Linux with uClibc, hardfloat
@@ -261,7 +264,9 @@ target | std | host | notes
 `i686-wrs-vxworks` | ? |  |
 [`m68k-unknown-linux-gnu`](platform-support/m68k-unknown-linux-gnu.md) | ? |  | Motorola 680x0 Linux
 `mips-unknown-linux-uclibc` | ✓ |  | MIPS Linux with uClibc
+`mips-openwrt-linux-musl` | ✓ | ✓ | OpenWRT Linux MUSL
 [`mips64-openwrt-linux-musl`](platform-support/mips64-openwrt-linux-musl.md) | ? |  | MIPS64 for OpenWrt Linux MUSL
+`mipsel-openwrt-linux-musl` | ✓ | ✓ | OpenWRT Linux MUSL
 `mipsel-sony-psp` | * |  | MIPS (LE) Sony PlayStation Portable (PSP)
 [`mipsel-sony-psx`](platform-support/mipsel-sony-psx.md) | * |  | MIPS (LE) Sony PlayStation 1 (PSX)
 `mipsel-unknown-linux-uclibc` | ✓ |  | MIPS (LE) Linux with uClibc
@@ -275,6 +280,7 @@ target | std | host | notes
 `powerpc-unknown-linux-musl` | ? |  |
 `powerpc-unknown-netbsd` | ✓ | ✓ |
 `powerpc-unknown-openbsd` | ? |  |
+`powerpc64-openwrt-linux-musl` | ✓ | ✓ | OpenWRT Linux MUSL
 `powerpc-wrs-vxworks-spe` | ? |  |
 `powerpc-wrs-vxworks` | ? |  |
 `powerpc64-unknown-freebsd` | ✓ | ✓ | PPC64 FreeBSD (ELFv1 and ELFv2)
@@ -306,6 +312,7 @@ target | std | host | notes
 `x86_64-apple-ios-macabi` | ✓ |  | Apple Catalyst on x86_64
 `x86_64-apple-tvos` | * | | x86 64-bit tvOS
 [`x86_64-apple-watchos-sim`](platform-support/apple-watchos.md) | ✓ | | x86 64-bit Apple WatchOS simulator
+`x86_64-openwrt-linux-musl` | ✓ | ✓ | OpenWRT Linux MUSL
 [`x86_64-pc-nto-qnx710`](platform-support/nto-qnx.md) | ? |  | x86 64-bit QNX Neutrino 7.1 RTOS |
 [`x86_64-pc-windows-gnullvm`](platform-support/pc-windows-gnullvm.md) | ✓ | ✓ |
 `x86_64-pc-windows-msvc` | * |  | 64-bit Windows XP support

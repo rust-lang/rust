@@ -981,15 +981,17 @@ impl fmt::Display for StackProtector {
 }
 
 macro_rules! supported_targets {
-    ( $(($triple:literal, $module:ident ),)+ ) => {
+    ( $(($triple:literal, $module:ident ),)+
+      $((alias $triple_alias:literal, $module_alias:ident ),)+ ) => {
         $(mod $module;)+
 
         /// List of supported targets
-        pub const TARGETS: &[&str] = &[$($triple),+];
+        pub const TARGETS: &[&str] = &[$($triple),+, $($triple_alias),+];
 
         fn load_builtin(target: &str) -> Option<Target> {
             let mut t = match target {
                 $( $triple => $module::target(), )+
+                $( $triple_alias => $module_alias::target(), )+
                 _ => return None,
             };
             t.is_builtin = true;
@@ -1252,6 +1254,13 @@ supported_targets! {
 
     ("aarch64-unknown-nto-qnx710", aarch64_unknown_nto_qnx_710),
     ("x86_64-pc-nto-qnx710", x86_64_pc_nto_qnx710),
+    (alias "mips-openwrt-linux-musl", mips_unknown_linux_musl),
+    (alias "mipsel-openwrt-linux-musl", mipsel_unknown_linux_musl),
+    (alias "aarch64-openwrt-linux-musl", aarch64_unknown_linux_musl),
+    (alias "armv7-openwrt-linux-musleabi", armv7_unknown_linux_musleabi),
+    (alias "armv7-openwrt-linux-musleabihf", armv7_unknown_linux_musleabihf),
+    (alias "powerpc64-openwrt-linux-musl", powerpc64_unknown_linux_musl),
+    (alias "x86_64-openwrt-linux-musl", x86_64_unknown_linux_musl),
 }
 
 /// Cow-Vec-Str: Cow<'static, [Cow<'static, str>]>
