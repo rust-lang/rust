@@ -1119,6 +1119,8 @@ impl<T, E> Result<T, E> {
     /// If the result is [`Err`], the default value for the type that would
     /// be contained on success is returned.
     ///
+    /// Unlike [`unwrap`], this function will not panic.
+    ///
     /// # Examples
     ///
     /// Converts a string to an integer, turning poorly-formed strings
