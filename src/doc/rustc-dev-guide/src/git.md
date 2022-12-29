@@ -16,6 +16,10 @@ started sections of [this tutorial from Atlassian][atlassian-git]. GitHub also
 provides [documentation] and [guides] for beginners, or you can consult the
 more in depth [book from Git].
 
+This guide is incomplete. If you run into trouble with git that this page doesn't help with,
+please [open an issue] so we can document how to fix it.
+
+[open an issue]: https://github.com/rust-lang/rustc-dev-guide/issues/new
 [book from Git]: https://git-scm.com/book/en/v2/
 [atlassian-git]: https://www.atlassian.com/git/tutorials/what-is-version-control
 [documentation]: https://docs.github.com/en/get-started/quickstart/set-up-git
@@ -58,7 +62,7 @@ and PRs:
  1. Ensure that you're making your changes on top of master:
  `git checkout master`.
  2. Get the latest changes from the Rust repo: `git pull upstream master --ff-only`.
- (see [No-Merge Policy](#keeping-things-up-to-date) for more info about this).
+ (see [No-Merge Policy][no-merge-policy] for more info about this).
  3. Make a new branch for your change: `git checkout -b issue-12345-fix`.
  4. Make some changes to the repo and test them.
  5. Stage your changes via `git add src/changed/file.rs src/another/change.rs`
@@ -76,7 +80,7 @@ pulling-and-rebasing, you can use `git push --force-with-lease`).
 
 If you end up needing to rebase and are hitting conflicts, see [Rebasing](#rebasing).
 If you want to track upstream while working on long-running feature/issue, see
-[Keeping things up to date](#keeping-things-up-to-date).
+[Keeping things up to date][no-merge-policy].
 
 If your reviewer requests changes, the procedure for those changes looks much
 the same, with some steps skipped:
@@ -86,12 +90,22 @@ the same, with some steps skipped:
  2. Make, stage, and commit your additional changes just like before.
  3. Push those changes to your fork: `git push`.
 
+ [no-merge-policy]: #keeping-things-up-to-date
+
 ## Troubleshooting git issues
 
 You don't need to clone `rust-lang/rust` from scratch if it's out of date!
 Even if you think you've messed it up beyond repair, there are ways to fix
 the git state that don't require downloading the whole repository again.
 Here are some common issues you might run into:
+
+### I made a merge commit by accident.
+
+Git has two ways to update your branch with the newest changes: merging and rebasing.
+Rust [uses rebasing][no-merge-policy]. If you make a merge commit, it's not too hard to fix:
+`git rebase -i origin/master`.
+
+See [Rebasing][#rebasing] for more about rebasing.
 
 ### I deleted my fork on GitHub!
 
@@ -113,6 +127,31 @@ git remote set-url personal <URL>
 ```
 
 where the `<URL>` is your new fork.
+
+### I see "error: cannot rebase" when I try to rebase
+
+These are two common errors to see when rebasing:
+```
+error: cannot rebase: Your index contains uncommitted changes.
+error: Please commit or stash them.
+```
+```
+error: cannot rebase: You have unstaged changes.
+error: Please commit or stash them.
+```
+
+(See https://git-scm.com/book/en/v2/Getting-Started-What-is-Git%3F#_the_three_states for the difference between the two.)
+
+This means you have made changes since the last time you made a commit. To be able to rebase, either
+commit your changes, or make a temporary commit called a "stash" to have them still not be commited
+when you finish rebasing. You may want to configure git to make this "stash" automatically, which
+will prevent the "cannot rebase" error in nearly all cases:
+
+```
+git config --global rebase.autostash true
+```
+
+See https://git-scm.com/book/en/v2/Git-Tools-Stashing-and-Cleaning for more info about stashing.
 
 ### I see 'Untracked Files: src/stdarch'?
 
