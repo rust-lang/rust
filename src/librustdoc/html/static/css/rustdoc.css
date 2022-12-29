@@ -355,10 +355,6 @@ img {
 	max-width: 100%;
 }
 
-.source .content {
-	overflow: visible;
-}
-
 .sub-logo-container, .logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
