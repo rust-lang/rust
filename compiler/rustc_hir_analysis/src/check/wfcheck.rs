@@ -291,7 +291,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
         // Do some rudimentary sanity checking to avoid an ICE later (issue #83471).
         if let Some(hir::FnSig { decl, span, .. }) = method_sig {
             if let [self_ty, _] = decl.inputs {
-                if !matches!(self_ty.kind, hir::TyKind::Rptr(_, _)) {
+                if !matches!(self_ty.kind, hir::TyKind::Ref(_, _)) {
                     tcx.sess
                         .struct_span_err(
                             self_ty.span,

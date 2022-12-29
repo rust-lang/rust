@@ -625,7 +625,7 @@ pub fn eq_ty(l: &Ty, r: &Ty) -> bool {
         (Slice(l), Slice(r)) => eq_ty(l, r),
         (Array(le, ls), Array(re, rs)) => eq_ty(le, re) && eq_expr(&ls.value, &rs.value),
         (Ptr(l), Ptr(r)) => l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty),
-        (Rptr(ll, l), Rptr(rl, r)) => {
+        (Ref(ll, l), Ref(rl, r)) => {
             both(ll, rl, |l, r| eq_id(l.ident, r.ident)) && l.mutbl == r.mutbl && eq_ty(&l.ty, &r.ty)
         },
         (BareFn(l), BareFn(r)) => {
