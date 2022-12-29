@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/tuple-struct.rs:2:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL |     u8,
+LL | =======
+   | ^^^^^^^ middle
+LL |     i8,
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+

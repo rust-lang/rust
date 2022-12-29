@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/struct-expr.rs:6:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL |         x: 42,
+LL | =======
+   | ^^^^^^^ middle
+LL |         x: 0,
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+

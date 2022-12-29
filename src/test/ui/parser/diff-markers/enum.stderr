@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/enum.rs:2:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL |     Foo(u8),
+LL | =======
+   | ^^^^^^^ middle
+LL |     Bar(i8),
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+
