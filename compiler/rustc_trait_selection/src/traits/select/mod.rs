@@ -1123,29 +1123,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // unbound variable. When we evaluate this trait-reference, we
         // will unify `$0` with `Vec<$1>` (for some fresh variable
         // `$1`), on the condition that `$1 : Eq`. We will then wind
-        // up with many candidates (since that are other `Eq` impls
+        // up with many candidates (since there are other `Eq` impls
         // that apply) and try to winnow things down. This results in
         // a recursive evaluation that `$1 : Eq` -- as you can
         // imagine, this is just where we started. To avoid that, we
-        // check for unbound variables and return an ambiguous (hence possible)
-        // match if we've seen this trait before.
+        // check if the stack contains an obligation that is identical
+        // up to fresh variables.
         //
         // This suffices to allow chains like `FnMut` implemented in
         // terms of `Fn` etc, but we could probably make this more
         // precise still.
-        let unbound_input_types =
-            stack.fresh_trait_pred.skip_binder().trait_ref.substs.types().any(|ty| ty.is_fresh());
-
-        if unbound_input_types
-            && stack.iter().skip(1).any(|prev| {
-                stack.obligation.param_env == prev.obligation.param_env
-                    && self.match_fresh_trait_refs(
-                        stack.fresh_trait_pred,
-                        prev.fresh_trait_pred,
-                        prev.obligation.param_env,
-                    )
-            })
-        {
+        if stack.iter().skip(1).any(|prev| {
+            stack.obligation.param_env == prev.obligation.param_env
+                && self.match_fresh_trait_refs(
+                    stack.fresh_trait_pred,
+                    prev.fresh_trait_pred,
+                    prev.obligation.param_env,
+                )
+        }) {
             debug!("evaluate_stack --> unbound argument, recursive --> giving up",);
             return Ok(EvaluatedToUnknown);
         }
