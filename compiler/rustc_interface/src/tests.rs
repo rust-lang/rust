@@ -802,6 +802,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(teach, true);
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
+    tracked!(tiny_const_eval_limit, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
     tracked!(trait_solver, TraitSolver::Chalk);
     tracked!(translate_remapped_path_to_local_path, false);

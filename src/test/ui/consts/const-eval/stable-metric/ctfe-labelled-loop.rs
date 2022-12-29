@@ -1,24 +1,18 @@
-// check-pass
-#![feature(const_for)]
+// check-fail
+// compile-flags: -Z tiny-const-eval-limit
 
-const fn labelled_loop() -> u32 {
-    let mut n = 0;
-    'outer: loop {
-        'inner: loop {
-            n = n + 1;
-            if n > 5 && n <= 10 {
-                n = n + 1;
-                continue 'inner
-            }
-            if n > 30 {
-                break 'outer
-            }
+const fn labelled_loop(n: u32) -> u32 {
+    let mut i = 0;
+    'mylabel: loop { //~ ERROR evaluation of constant value failed [E0080]
+        if i > n {
+            break 'mylabel
         }
+        i += 1;
     }
-    n
+    0
 }
 
-const X: u32 = labelled_loop();
+const X: u32 = labelled_loop(19);
 
 fn main() {
     println!("{X}");

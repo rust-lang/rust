@@ -62,8 +62,6 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(true);
         }
 
-        M::before_terminator(self)?;
-
         let terminator = basic_block.terminator();
         self.terminator(terminator)?;
         Ok(true)
@@ -130,7 +128,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             Coverage(..) => {}
 
             ConstEvalCounter => {
-                self.increment_const_eval_counter();
+                M::increment_const_eval_counter(self)?;
             }
 
             // Defined to do nothing. These are added by optimization passes, to avoid changing the
