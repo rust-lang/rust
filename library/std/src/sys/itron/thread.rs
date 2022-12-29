@@ -119,7 +119,7 @@ impl Thread {
 
             let old_lifecycle = inner
                 .lifecycle
-                .swap(LIFECYCLE_EXITED_OR_FINISHED_OR_JOIN_FINALIZE, Ordering::Release);
+                .swap(LIFECYCLE_EXITED_OR_FINISHED_OR_JOIN_FINALIZE, Ordering::AcqRel);
 
             match old_lifecycle {
                 LIFECYCLE_DETACHED => {
@@ -129,9 +129,9 @@ impl Thread {
 
                     // In this case, `*p_inner`'s ownership has been moved to
                     // us, and we are responsible for dropping it. The acquire
-                    // ordering is not necessary because the parent thread made
-                    // no memory access needing synchronization since the call
-                    // to `acre_tsk`.
+                    // ordering ensures that the swap operation that wrote
+                    // `LIFECYCLE_DETACHED` happens-before `Box::from_raw(
+                    // p_inner)`.
                     // Safety: See above.
                     let _ = unsafe { Box::from_raw(p_inner) };
 
@@ -151,6 +151,9 @@ impl Thread {
                     // Since the parent might drop `*inner` and terminate us as
                     // soon as it sees `JOIN_FINALIZE`, the release ordering
                     // must be used in the above `swap` call.
+                    //
+                    // To make the task referred to by `parent_tid` visible, we
+                    // must use the acquire ordering in the above `swap` call.
 
                     // [JOINING → JOIN_FINALIZE]
                     // Wake up the parent task.
@@ -218,11 +221,15 @@ impl Thread {
 
         let current_task = current_task as usize;
 
-        match inner.lifecycle.swap(current_task, Ordering::Acquire) {
+        match inner.lifecycle.swap(current_task, Ordering::AcqRel) {
             LIFECYCLE_INIT => {
                 // [INIT → JOINING]
                 // The child task will transition the state to `JOIN_FINALIZE`
                 // and wake us up.
+                //
+                // To make the task referred to by `current_task` visible from
+                // the child task's point of view, we must use the release
+                // ordering in the above `swap` call.
                 loop {
                     expect_success_aborting(unsafe { abi::slp_tsk() }, &"slp_tsk");
                     // To synchronize with the child task's memory accesses to
@@ -267,15 +274,15 @@ impl Drop for Thread {
         let inner = unsafe { self.p_inner.as_ref() };
 
         // Detach the thread.
-        match inner.lifecycle.swap(LIFECYCLE_DETACHED_OR_JOINED, Ordering::Acquire) {
+        match inner.lifecycle.swap(LIFECYCLE_DETACHED_OR_JOINED, Ordering::AcqRel) {
             LIFECYCLE_INIT => {
                 // [INIT → DETACHED]
                 // When the time comes, the child will figure out that no
                 // one will ever join it.
                 // The ownership of `*p_inner` is moved to the child thread.
-                // However, the release ordering is not necessary because we
-                // made no memory access needing synchronization since the call
-                // to `acre_tsk`.
+                // The release ordering ensures that the above swap operation on
+                // `lifecycle` happens-before the child thread's
+                // `Box::from_raw(p_inner)`.
             }
             LIFECYCLE_FINISHED => {
                 // [FINISHED → JOINED]
