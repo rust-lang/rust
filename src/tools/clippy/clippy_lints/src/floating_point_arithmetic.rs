@@ -324,7 +324,7 @@ fn check_powi(cx: &LateContext<'_>, expr: &Expr<'_>, receiver: &Expr<'_>, args: 
                     let maybe_neg_sugg = |expr, hir_id| {
                         let sugg = Sugg::hir(cx, expr, "..");
                         if matches!(op, BinOpKind::Sub) && hir_id == rhs.hir_id {
-                            format!("-{sugg}")
+                            format!("-{}", sugg.maybe_par())
                         } else {
                             sugg.to_string()
                         }

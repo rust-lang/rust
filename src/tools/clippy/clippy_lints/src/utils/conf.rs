@@ -333,7 +333,7 @@ define_Conf! {
     /// Lint: LARGE_STACK_ARRAYS, LARGE_CONST_ARRAYS.
     ///
     /// The maximum allowed size for arrays on the stack
-    (array_size_threshold: u64 = 512_000),
+    (array_size_threshold: u128 = 512_000),
     /// Lint: VEC_BOX.
     ///
     /// The size of the boxed type in bytes, where boxing in a `Vec` is allowed
