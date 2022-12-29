@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/item-with-attr.rs:2:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL | fn foo() {}
+LL | =======
+   | ^^^^^^^ middle
+LL | fn bar() {}
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+

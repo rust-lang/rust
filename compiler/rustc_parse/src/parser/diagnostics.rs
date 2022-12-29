@@ -31,7 +31,8 @@ use rustc_ast::{
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{
-    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, Handler, MultiSpan, PResult,
+    fluent, Applicability, DiagnosticBuilder, DiagnosticMessage, FatalError, Handler, MultiSpan,
+    PResult,
 };
 use rustc_errors::{pluralize, Diagnostic, ErrorGuaranteed, IntoDiagnostic};
 use rustc_session::errors::ExprParenthesesNeeded;
@@ -2554,6 +2555,57 @@ impl<'a> Parser<'a> {
             }
         }
         Ok(())
+    }
+
+    pub fn is_diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> bool {
+        (0..3).all(|i| self.look_ahead(i, |tok| tok == long_kind))
+            && self.look_ahead(3, |tok| tok == short_kind)
+    }
+
+    fn diff_marker(&mut self, long_kind: &TokenKind, short_kind: &TokenKind) -> Option<Span> {
+        if self.is_diff_marker(long_kind, short_kind) {
+            let lo = self.token.span;
+            for _ in 0..4 {
+                self.bump();
+            }
+            return Some(lo.to(self.prev_token.span));
+        }
+        None
+    }
+
+    pub fn recover_diff_marker(&mut self) {
+        let Some(start) = self.diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) else {
+            return;
+        };
+        let mut spans = Vec::with_capacity(3);
+        spans.push(start);
+        let mut middle = None;
+        let mut end = None;
+        loop {
+            if self.token.kind == TokenKind::Eof {
+                break;
+            }
+            if let Some(span) = self.diff_marker(&TokenKind::EqEq, &TokenKind::Eq) {
+                spans.push(span);
+                middle = Some(span);
+            }
+            if let Some(span) = self.diff_marker(&TokenKind::BinOp(token::Shr), &TokenKind::Gt) {
+                spans.push(span);
+                end = Some(span);
+                break;
+            }
+            self.bump();
+        }
+        let mut err = self.struct_span_err(spans, "encountered diff marker");
+        err.span_label(start, "start");
+        if let Some(middle) = middle {
+            err.span_label(middle, "middle");
+        }
+        if let Some(end) = end {
+            err.span_label(end, "end");
+        }
+        err.emit();
+        FatalError.raise()
     }
 
     /// Parse and throw away a parenthesized comma separated

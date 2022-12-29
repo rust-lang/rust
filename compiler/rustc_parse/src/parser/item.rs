@@ -98,7 +98,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
+        self.recover_diff_marker();
         let attrs = self.parse_outer_attributes()?;
+        self.recover_diff_marker();
         self.parse_item_common(attrs, true, false, fn_parse_mode, force_collect)
     }
 
@@ -704,6 +706,7 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
+            self.recover_diff_marker();
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
@@ -1039,8 +1042,11 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
-        self.parse_delim_comma_seq(Delimiter::Brace, |p| Ok((p.parse_use_tree()?, DUMMY_NODE_ID)))
-            .map(|(r, _)| r)
+        self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+            p.recover_diff_marker();
+            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+        })
+        .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -2427,6 +2433,7 @@ impl<'a> Parser<'a> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
+            p.recover_diff_marker();
             let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_token.span;

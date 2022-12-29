@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/use-statement.rs:2:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL |     bar,
+LL | =======
+   | ^^^^^^^ middle
+LL |     baz,
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+

@@ -1,0 +1,14 @@
+error: encountered diff marker
+  --> $DIR/statement.rs:10:1
+   |
+LL | <<<<<<< HEAD
+   | ^^^^^^^ start
+LL |     S::foo();
+LL | =======
+   | ^^^^^^^ middle
+LL |     S::bar();
+LL | >>>>>>> branch
+   | ^^^^^^^ end
+
+error: aborting due to previous error
+
