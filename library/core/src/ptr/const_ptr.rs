@@ -1,6 +1,6 @@
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics;
+use crate::intrinsics::{self, const_eval_select};
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
@@ -34,12 +34,23 @@ impl<T: ?Sized> *const T {
     #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
     pub const fn is_null(self) -> bool {
-        // Compare via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        match (self as *const u8).guaranteed_eq(null()) {
-            None => false,
-            Some(res) => res,
+        #[inline]
+        fn runtime_impl(ptr: *const u8) -> bool {
+            ptr.addr() == 0
         }
+
+        #[inline]
+        const fn const_impl(ptr: *const u8) -> bool {
+            // Compare via a cast to a thin pointer, so fat pointers are only
+            // considering their "data" part for null-ness.
+            match (ptr).guaranteed_eq(null_mut()) {
+                None => false,
+                Some(res) => res,
+            }
+        }
+
+        // SAFETY: The two versions are equivalent at runtime.
+        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
     }
 
     /// Casts to a pointer of another type.
@@ -1587,11 +1598,22 @@ impl<T: ?Sized> *const T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
-        // The cast to `()` is used to
-        //   1. deal with fat pointers; and
-        //   2. ensure that `align_offset` doesn't actually try to compute an offset.
-        self.cast::<()>().align_offset(align) == 0
+        #[inline]
+        fn runtime_impl(ptr: *const (), align: usize) -> bool {
+            ptr.addr() & (align - 1) == 0
+        }
+
+        #[inline]
+        const fn const_impl(ptr: *const (), align: usize) -> bool {
+            // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
+            // The cast to `()` is used to
+            //   1. deal with fat pointers; and
+            //   2. ensure that `align_offset` doesn't actually try to compute an offset.
+            ptr.align_offset(align) == 0
+        }
+
+        // SAFETY: The two versions are equivalent at runtime.
+        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
     }
 }
 
