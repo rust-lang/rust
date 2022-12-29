@@ -1740,7 +1740,7 @@ impl Type {
     fn inner_def_id(&self, cache: Option<&Cache>) -> Option<DefId> {
         let t: PrimitiveType = match *self {
             Type::Path { ref path } => return Some(path.def_id()),
-            DynTrait(ref bounds, _) => return Some(bounds[0].trait_.def_id()),
+            DynTrait(ref bounds, _) => return bounds.get(0).map(|b| b.trait_.def_id()),
             Primitive(p) => return cache.and_then(|c| c.primitive_locations.get(&p).cloned()),
             BorrowedRef { type_: box Generic(..), .. } => PrimitiveType::Reference,
             BorrowedRef { ref type_, .. } => return type_.inner_def_id(cache),
