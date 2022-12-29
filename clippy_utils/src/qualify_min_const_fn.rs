@@ -240,6 +240,7 @@ fn check_statement<'tcx>(
         | StatementKind::Retag { .. }
         | StatementKind::AscribeUserType(..)
         | StatementKind::Coverage(..)
+        | StatementKind::ConstEvalCounter
         | StatementKind::Nop => Ok(()),
     }
 }
