@@ -1,5 +1,5 @@
 // Type ascription is unstable
 
 fn main() {
-    let a = 10: u8; //~ ERROR type ascription is experimental
+    let a = type_ascribe!(10, u8); //~ ERROR use of unstable library feature 'type_ascription': placeholder syntax for type ascription
 }

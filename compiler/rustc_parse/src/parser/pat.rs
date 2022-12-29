@@ -382,11 +382,11 @@ impl<'a> Parser<'a> {
             // Parse pattern starting with a path
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let span = lo.to(self.prev_token.span);
 
@@ -827,11 +827,11 @@ impl<'a> Parser<'a> {
             let lo = self.token.span;
             let (qself, path) = if self.eat_lt() {
                 // Parse a qualified path
-                let (qself, path) = self.parse_qpath(PathStyle::Expr)?;
+                let (qself, path) = self.parse_qpath(PathStyle::Pat)?;
                 (Some(qself), path)
             } else {
                 // Parse an unqualified path
-                (None, self.parse_path(PathStyle::Expr)?)
+                (None, self.parse_path(PathStyle::Pat)?)
             };
             let hi = self.prev_token.span;
             Ok(self.mk_expr(lo.to(hi), ExprKind::Path(qself, path)))

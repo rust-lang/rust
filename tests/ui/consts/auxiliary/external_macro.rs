@@ -9,6 +9,6 @@
 macro_rules! static_assert {
     ($test:expr) => {
         #[allow(dead_code)]
-        const _: () = [()][!($test: bool) as usize];
+        const _: () = [()][!($test) as usize];
     }
 }

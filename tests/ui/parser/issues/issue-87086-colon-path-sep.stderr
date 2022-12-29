@@ -84,6 +84,11 @@ error[E0433]: failed to resolve: `Bar` is a variant, not a module
    |
 LL |         Foo:Bar::Baz => {}
    |             ^^^ `Bar` is a variant, not a module
+   |
+help: there is an enum variant `Foo::Bar`; try using the variant's enum
+   |
+LL |         Foo => {}
+   |         ~~~
 
 error: aborting due to 10 previous errors
 

@@ -4,7 +4,7 @@ use super::{
     TokenExpectType, TokenType,
 };
 use crate::errors::{
-    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub,
+    AmbiguousPlus, AttributeOnParamType, BadQPathStage2, BadTypePlus, BadTypePlusSub, ColonAsSemi,
     ComparisonOperatorsCannotBeChained, ComparisonOperatorsCannotBeChainedSugg,
     ConstGenericWithoutBraces, ConstGenericWithoutBracesSugg, DocCommentOnParamType,
     DoubleColonInBound, ExpectedIdentifier, ExpectedSemi, ExpectedSemiSugg,
@@ -85,6 +85,7 @@ impl RecoverQPath for Ty {
 }
 
 impl RecoverQPath for Pat {
+    const PATH_STYLE: PathStyle = PathStyle::Pat;
     fn to_ty(&self) -> Option<P<Ty>> {
         self.to_ty()
     }
@@ -241,6 +242,7 @@ impl<'a> DerefMut for SnapshotParser<'a> {
 
 impl<'a> Parser<'a> {
     #[rustc_lint_diagnostics]
+    #[track_caller]
     pub fn struct_span_err<S: Into<MultiSpan>>(
         &self,
         sp: S,
@@ -1475,7 +1477,38 @@ impl<'a> Parser<'a> {
         if self.eat(&token::Semi) {
             return Ok(());
         }
+
+        if self.recover_colon_as_semi() {
+            return Ok(());
+        }
+
         self.expect(&token::Semi).map(drop) // Error unconditionally
+    }
+
+    pub(super) fn recover_colon_as_semi(&mut self) -> bool {
+        let line_idx = |span: Span| {
+            self.sess
+                .source_map()
+                .span_to_lines(span)
+                .ok()
+                .and_then(|lines| Some(lines.lines.get(0)?.line_index))
+        };
+
+        if self.may_recover()
+            && self.token == token::Colon
+            && self.look_ahead(1, |next| line_idx(self.token.span) < line_idx(next.span))
+        {
+            self.sess.emit_err(ColonAsSemi {
+                span: self.token.span,
+                type_ascription: self.sess.unstable_features.is_nightly_build().then_some(()),
+            });
+
+            self.bump();
+
+            return true;
+        }
+
+        false
     }
 
     /// Consumes alternative await syntaxes like `await!(<expr>)`, `await <expr>`,
@@ -1809,7 +1842,7 @@ impl<'a> Parser<'a> {
                         && brace_depth == 0
                         && bracket_depth == 0 =>
                 {
-                    debug!("recover_stmt_ return - Semi");
+                    debug!("recover_stmt_ return - Comma");
                     break;
                 }
                 _ => self.bump(),
@@ -2236,6 +2269,7 @@ impl<'a> Parser<'a> {
         if is_op_or_dot {
             self.bump();
         }
+        debug!("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
         match self.parse_expr_res(Restrictions::CONST_EXPR, None) {
             Ok(expr) => {
                 // Find a mistake like `MyTrait<Assoc == S::Assoc>`.
@@ -2249,7 +2283,8 @@ impl<'a> Parser<'a> {
                     let value = self.mk_expr_err(start.to(expr.span));
                     err.emit();
                     return Ok(GenericArg::Const(AnonConst { id: ast::DUMMY_NODE_ID, value }));
-                } else if token::Colon == snapshot.token.kind
+                }
+                /*else if token::Colon == snapshot.token.kind
                     && expr.span.lo() == snapshot.token.span.hi()
                     && matches!(expr.kind, ExprKind::Path(..))
                 {
@@ -2262,7 +2297,8 @@ impl<'a> Parser<'a> {
                     );
                     err.emit();
                     return Ok(GenericArg::Type(self.mk_ty(start.to(expr.span), TyKind::Err)));
-                } else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
+                } */
+                else if token::Comma == self.token.kind || self.token.kind.should_end_const_arg()
                 {
                     // Avoid the following output by checking that we consumed a full const arg:
                     // help: expressions must be enclosed in braces to be used as const generic

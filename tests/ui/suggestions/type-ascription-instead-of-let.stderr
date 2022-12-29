@@ -1,11 +1,10 @@
-error[E0425]: cannot find value `temp` in this scope
-  --> $DIR/type-ascription-instead-of-let.rs:5:9
+error: path separator must be a double colon
+  --> $DIR/type-ascription-instead-of-let.rs:5:13
    |
 LL |         temp: i32 = fun(5i32);
-   |         ^^^^
-   |         |
-   |         not found in this scope
-   |         help: maybe you meant to write an assignment here: `let temp`
+   |             ^ help: use a double colon instead: `::`
+   |
+   = note: type ascription syntax has been removed, see issue #101728 <https://github.com/rust-lang/rust/issues/101728>
 
 error[E0425]: cannot find value `temp` in this scope
   --> $DIR/type-ascription-instead-of-let.rs:7:9
@@ -13,6 +12,18 @@ error[E0425]: cannot find value `temp` in this scope
 LL |         temp + value + 1
    |         ^^^^ not found in this scope
 
-error: aborting due to 2 previous errors
+error[E0433]: failed to resolve: use of undeclared crate or module `temp`
+  --> $DIR/type-ascription-instead-of-let.rs:5:9
+   |
+LL |         temp: i32 = fun(5i32);
+   |         ^^^^ use of undeclared crate or module `temp`
+   |
+help: you might have meant to introduce a new binding
+   |
+LL |         let temp: i32 = fun(5i32);
+   |         +++
 
-For more information about this error, try `rustc --explain E0425`.
+error: aborting due to 3 previous errors
+
+Some errors have detailed explanations: E0425, E0433.
+For more information about an error, try `rustc --explain E0425`.

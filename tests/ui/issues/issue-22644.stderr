@@ -1,5 +1,5 @@
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:8:31
+  --> $DIR/issue-22644.rs:6:31
    |
 LL |     println!("{}", a as usize < long_name);
    |                               ^ --------- interpreted as generic arguments
@@ -12,7 +12,7 @@ LL |     println!("{}", (a as usize) < long_name);
    |                    +          +
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:9:33
+  --> $DIR/issue-22644.rs:7:33
    |
 LL |     println!("{}{}", a as usize < long_name, long_name);
    |                                 ^ -------------------- interpreted as generic arguments
@@ -25,7 +25,7 @@ LL |     println!("{}{}", (a as usize) < long_name, long_name);
    |                      +          +
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:11:31
+  --> $DIR/issue-22644.rs:9:31
    |
 LL |     println!("{}", a as usize < 4);
    |                               ^ - interpreted as generic arguments
@@ -38,33 +38,7 @@ LL |     println!("{}", (a as usize) < 4);
    |                    +          +
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:13:31
-   |
-LL |     println!("{}{}", a: usize < long_name, long_name);
-   |                               ^ -------------------- interpreted as generic arguments
-   |                               |
-   |                               not interpreted as comparison
-   |
-help: try comparing the cast value
-   |
-LL |     println!("{}{}", (a: usize) < long_name, long_name);
-   |                      +        +
-
-error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:15:29
-   |
-LL |     println!("{}", a: usize < 4);
-   |                             ^ - interpreted as generic arguments
-   |                             |
-   |                             not interpreted as comparison
-   |
-help: try comparing the cast value
-   |
-LL |     println!("{}", (a: usize) < 4);
-   |                    +        +
-
-error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:20:20
+  --> $DIR/issue-22644.rs:14:20
    |
 LL |                    <
    |                    ^ not interpreted as comparison
@@ -79,7 +53,7 @@ LL ~                    usize)
    |
 
 error: `<` is interpreted as a start of generic arguments for `usize`, not a comparison
-  --> $DIR/issue-22644.rs:29:20
+  --> $DIR/issue-22644.rs:23:20
    |
 LL |                    <
    |                    ^ not interpreted as comparison
@@ -96,7 +70,7 @@ LL ~                    usize)
    |
 
 error: `<<` is interpreted as a start of generic arguments for `usize`, not a shift
-  --> $DIR/issue-22644.rs:32:31
+  --> $DIR/issue-22644.rs:26:31
    |
 LL |     println!("{}", a as usize << long_name);
    |                               ^^ --------- interpreted as generic arguments
@@ -108,16 +82,5 @@ help: try shifting the cast value
 LL |     println!("{}", (a as usize) << long_name);
    |                    +          +
 
-error: expected type, found `4`
-  --> $DIR/issue-22644.rs:34:28
-   |
-LL |     println!("{}", a: &mut 4);
-   |                     -      ^ expected type
-   |                     |
-   |                     tried to parse a type due to this type ascription
-   |
-   = note: `#![feature(type_ascription)]` lets you annotate an expression with a type: `<expr>: <type>`
-   = note: see issue #23416 <https://github.com/rust-lang/rust/issues/23416> for more information
-
-error: aborting due to 9 previous errors
+error: aborting due to 6 previous errors
 

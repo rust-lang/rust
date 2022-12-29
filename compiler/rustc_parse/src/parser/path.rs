@@ -1,5 +1,6 @@
 use super::ty::{AllowPlus, RecoverQPath, RecoverReturnSign};
 use super::{Parser, Restrictions, TokenType};
+use crate::errors::PathSingleColon;
 use crate::maybe_whole;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
@@ -8,7 +9,7 @@ use rustc_ast::{
     AssocConstraintKind, BlockCheckMode, GenericArg, GenericArgs, Generics, ParenthesizedArgs,
     Path, PathSegment, QSelf,
 };
-use rustc_errors::{pluralize, Applicability, PResult};
+use rustc_errors::{pluralize, Applicability, IntoDiagnostic, PResult};
 use rustc_span::source_map::{BytePos, Span};
 use rustc_span::symbol::{kw, sym, Ident};
 use std::mem;
@@ -24,7 +25,19 @@ pub enum PathStyle {
     /// In all such contexts the non-path interpretation is preferred by default for practical
     /// reasons, but the path interpretation can be forced by the disambiguator `::`, e.g.
     /// `x<y>` - comparisons, `x::<y>` - unambiguously a path.
+    ///
+    /// Also, a path may never be followed by a `:`. This means that we can eagerly recover if
+    /// we encounter it.
     Expr,
+    /// The same as `Expr`, but may be followed by a `:`.
+    /// For example, this code:
+    /// ```rust
+    /// struct S;
+    ///
+    /// let S: S;
+    /// //  ^ Followed by a `:`
+    /// ```
+    Pat,
     /// In other contexts, notably in types, no ambiguity exists and paths can be written
     /// without the disambiguator, e.g., `x<y>` - unambiguously a path.
     /// Paths with disambiguators are still accepted, `x::<Y>` - unambiguously a path too.
@@ -36,6 +49,12 @@ pub enum PathStyle {
     /// anyway, due to macros), but it is used to avoid weird suggestions about expected
     /// tokens when something goes wrong.
     Mod,
+}
+
+impl PathStyle {
+    fn has_generic_ambiguity(&self) -> bool {
+        matches!(self, Self::Expr | Self::Pat)
+    }
 }
 
 impl<'a> Parser<'a> {
@@ -198,7 +217,7 @@ impl<'a> Parser<'a> {
     ) -> PResult<'a, ()> {
         loop {
             let segment = self.parse_path_segment(style, ty_generics)?;
-            if style == PathStyle::Expr {
+            if style.has_generic_ambiguity() {
                 // In order to check for trailing angle brackets, we must have finished
                 // recursing (`parse_path_segment` can indirectly call this function),
                 // that is, the next token must be the highlighted part of the below example:
@@ -220,6 +239,23 @@ impl<'a> Parser<'a> {
             segments.push(segment);
 
             if self.is_import_coupler() || !self.eat(&token::ModSep) {
+                if style == PathStyle::Expr
+                    && self.may_recover()
+                    && self.token == token::Colon
+                    && self.look_ahead(1, |token| token.is_ident() && !token.is_reserved_ident())
+                {
+                    self.bump(); // bump past the colon
+                    self.sess.emit_err(PathSingleColon {
+                        span: self.prev_token.span,
+                        type_ascription: self
+                            .sess
+                            .unstable_features
+                            .is_nightly_build()
+                            .then_some(()),
+                    });
+                    continue;
+                }
+
                 return Ok(());
             }
         }
@@ -273,8 +309,25 @@ impl<'a> Parser<'a> {
                         ty_generics,
                     )?;
                     self.expect_gt().map_err(|mut err| {
+                        // Try to recover a `:` into a `::`
+                        if self.token == token::Colon
+                            && self.look_ahead(1, |token| {
+                                token.is_ident() && !token.is_reserved_ident()
+                            })
+                        {
+                            err.cancel();
+                            err = PathSingleColon {
+                                span: self.token.span,
+                                type_ascription: self
+                                    .sess
+                                    .unstable_features
+                                    .is_nightly_build()
+                                    .then_some(()),
+                            }
+                            .into_diagnostic(self.diagnostic());
+                        }
                         // Attempt to find places where a missing `>` might belong.
-                        if let Some(arg) = args
+                        else if let Some(arg) = args
                             .iter()
                             .rev()
                             .find(|arg| !matches!(arg, AngleBracketedArg::Constraint(_)))
@@ -666,6 +719,7 @@ impl<'a> Parser<'a> {
         &mut self,
         ty_generics: Option<&Generics>,
     ) -> PResult<'a, Option<GenericArg>> {
+        debug!("pain");
         let start = self.token.span;
         let arg = if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
             // Parse lifetime argument.
@@ -674,13 +728,18 @@ impl<'a> Parser<'a> {
             // Parse const argument.
             GenericArg::Const(self.parse_const_arg()?)
         } else if self.check_type() {
+            debug!("type");
             // Parse type argument.
             let is_const_fn =
                 self.look_ahead(1, |t| t.kind == token::OpenDelim(Delimiter::Parenthesis));
             let mut snapshot = self.create_snapshot_for_diagnostic();
             match self.parse_ty() {
-                Ok(ty) => GenericArg::Type(ty),
+                Ok(ty) => {
+                    debug!(?ty, "success ty");
+                    GenericArg::Type(ty)
+                }
                 Err(err) => {
+                    debug!("should recover");
                     if is_const_fn {
                         match (*snapshot).parse_expr_res(Restrictions::CONST_EXPR, None) {
                             Ok(expr) => {

@@ -716,7 +716,7 @@ impl<'a> Parser<'a> {
                     (
                         // `foo: `
                         ExprKind::Path(None, ast::Path { segments, .. }),
-                        TokenKind::Ident(kw::For | kw::Loop | kw::While, false),
+                        token::Ident(kw::For | kw::Loop | kw::While, false),
                     ) if segments.len() == 1 => {
                         let snapshot = self.create_snapshot_for_diagnostic();
                         let label = Label {
@@ -1185,8 +1185,8 @@ impl<'a> Parser<'a> {
                         return Some(self.mk_expr_err(span));
                     }
                     Ok(_) => {}
-                    Err(mut err) => {
-                        err.emit();
+                    Err(err) => {
+                        err.cancel();
                     }
                 }
             }
@@ -1474,7 +1474,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse `'label: $expr`. The label is already parsed.
-    fn parse_labeled_expr(
+    pub(super) fn parse_labeled_expr(
         &mut self,
         label_: Label,
         mut consume_colon: bool,
@@ -2864,6 +2864,11 @@ impl<'a> Parser<'a> {
                     } else {
                         e.span_label(pth.span, "while parsing this struct");
                     }
+
+                    if !recover {
+                        return Err(e);
+                    }
+
                     e.emit();
 
                     // If the next token is a comma, then try to parse
@@ -2875,6 +2880,7 @@ impl<'a> Parser<'a> {
                             break;
                         }
                     }
+
                     None
                 }
             };
