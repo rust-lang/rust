@@ -350,14 +350,11 @@ fn mir_promoted(
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
 fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     let did = def_id.expect_local();
-    let body = if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
+    if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
         tcx.mir_for_ctfe_of_const_arg(def)
     } else {
         tcx.arena.alloc(inner_mir_for_ctfe(tcx, ty::WithOptConstParam::unknown(did)))
-    };
-    //info!("MIR_FOR_CTFE (DefId = {def_id:?}) body res: {:#?}", body);
-    info!("MIR_FOR_CTFE (DefId = {def_id:?})");
-    body
+    }
 }
 
 /// Same as `mir_for_ctfe`, but used to get the MIR of a const generic parameter.
@@ -451,7 +448,6 @@ fn mir_drops_elaborated_and_const_checked(
 
     run_analysis_to_runtime_passes(tcx, &mut body);
 
-    //info!("MIR after runtime passes: {:#?}", body);
     tcx.alloc_steal_mir(body)
 }
 
@@ -623,7 +619,6 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
     let mut body = remap_mir_for_const_eval_select(tcx, body, hir::Constness::NotConst);
     debug!("body: {:#?}", body);
     run_optimization_passes(tcx, &mut body);
-    //info!("body after OPTIMIZATION: {:#?}", body);
 
     debug_assert!(!body.has_free_regions(), "Free regions in optimized MIR");
 

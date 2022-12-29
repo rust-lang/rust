@@ -22,8 +22,6 @@ use crate::interpret::{
     RefTracking, StackPopCleanup,
 };
 
-use tracing::info;
-
 const NOTE_ON_UNDEFINED_BEHAVIOR_ERROR: &str = "The rules on what exactly is undefined behavior aren't clear, \
      so this check might be overzealous. Please open an issue on the rustc \
      repository if you believe it should not be considered undefined behavior.";
@@ -35,7 +33,6 @@ fn eval_body_using_ecx<'mir, 'tcx>(
     body: &'mir mir::Body<'tcx>,
 ) -> InterpResult<'tcx, MPlaceTy<'tcx>> {
     debug!("eval_body_using_ecx: {:?}, {:?}", cid, ecx.param_env);
-    info!("HERE body is {:#?}", body);
     let tcx = *ecx.tcx;
     assert!(
         cid.promoted.is_some()
