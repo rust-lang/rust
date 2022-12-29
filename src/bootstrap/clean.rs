@@ -9,11 +9,10 @@ use std::fs;
 use std::io::{self, ErrorKind};
 use std::path::Path;
 
-use crate::builder::{Builder, RunConfig, ShouldRun, Step};
+use crate::builder::{crate_description, Builder, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
-use crate::config::TargetSelection;
 use crate::util::t;
-use crate::{Build, Mode, Subcommand};
+use crate::{Build, Compiler, Mode, Subcommand};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct CleanAll {}
@@ -40,7 +39,7 @@ macro_rules! clean_crate_tree {
     ( $( $name:ident, $mode:path, $root_crate:literal);+ $(;)? ) => { $(
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
         pub struct $name {
-            target: TargetSelection,
+            compiler: Compiler,
             crates: Interned<Vec<String>>,
         }
 
@@ -54,22 +53,21 @@ macro_rules! clean_crate_tree {
 
             fn make_run(run: RunConfig<'_>) {
                 let builder = run.builder;
-                if builder.top_stage != 0 {
-                    panic!("non-stage-0 clean not supported for individual crates");
-                }
-                builder.ensure(Self { crates: run.cargo_crates_in_set(), target: run.target });
+                let compiler = builder.compiler(builder.top_stage, run.target);
+                builder.ensure(Self { crates: run.cargo_crates_in_set(), compiler });
             }
 
             fn run(self, builder: &Builder<'_>) -> Self::Output {
-                let compiler = builder.compiler(0, self.target);
-                let mut cargo = builder.bare_cargo(compiler, $mode, self.target, "clean");
+                let compiler = self.compiler;
+                let target = compiler.host;
+                let mut cargo = builder.bare_cargo(compiler, $mode, target, "clean");
                 for krate in &*self.crates {
                     cargo.arg(krate);
                 }
 
                 builder.info(&format!(
-                    "Cleaning stage{} {} artifacts ({} -> {})",
-                    compiler.stage, stringify!($name).to_lowercase(), &compiler.host, self.target
+                    "Cleaning stage{} {} artifacts ({} -> {}){}",
+                    compiler.stage, stringify!($name).to_lowercase(), &compiler.host, target, crate_description(self.crates),
                 ));
 
                 // NOTE: doesn't use `run_cargo` because we don't want to save a stamp file,

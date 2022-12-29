@@ -18,6 +18,7 @@ use std::str;
 
 use serde::Deserialize;
 
+use crate::builder::crate_description;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -128,8 +129,11 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building stage{} std artifacts ({} -> {}){}",
+            compiler.stage,
+            &compiler.host,
+            target,
+            crate_description(self.crates),
         ));
         run_cargo(
             builder,
@@ -715,8 +719,11 @@ impl Step for Rustc {
         }
 
         builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building stage{} compiler artifacts ({} -> {}){}",
+            compiler.stage,
+            &compiler.host,
+            target,
+            crate_description(self.crates),
         ));
         run_cargo(
             builder,
