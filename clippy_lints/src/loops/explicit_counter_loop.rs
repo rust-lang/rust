@@ -77,7 +77,7 @@ pub(super) fn check<'tcx>(
                                 applicability,
                             );
 
-                            diag.note(&format!(
+                            diag.note(format!(
                                 "`{name}` is of type `{int_name}`, making it ineligible for `Iterator::enumerate`"
                             ));
                         },

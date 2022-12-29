@@ -31,19 +31,11 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
     };
 
     // Do we need to add ';' to suggestion ?
-    match match_body.kind {
-        ExprKind::Block(block, _) => {
-            // macro + expr_ty(body) == ()
-            if block.span.from_expansion() && cx.typeck_results().expr_ty(match_body).is_unit() {
-                snippet_body.push(';');
-            }
-        },
-        _ => {
-            // expr_ty(body) == ()
-            if cx.typeck_results().expr_ty(match_body).is_unit() {
-                snippet_body.push(';');
-            }
-        },
+    if let ExprKind::Block(block, _) = match_body.kind {
+        // macro + expr_ty(body) == ()
+        if block.span.from_expansion() && cx.typeck_results().expr_ty(match_body).is_unit() {
+            snippet_body.push(';');
+        }
     }
 
     let mut applicability = Applicability::MaybeIncorrect;
