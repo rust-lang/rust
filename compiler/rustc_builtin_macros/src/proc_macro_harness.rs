@@ -349,7 +349,7 @@ fn mk_decls(cx: &mut ExtCtxt<'_>, macros: &[ProcMacro]) -> P<ast::Item> {
         .item_static(
             span,
             Ident::new(sym::_DECLS, span),
-            cx.ty_rptr(
+            cx.ty_ref(
                 span,
                 cx.ty(
                     span,

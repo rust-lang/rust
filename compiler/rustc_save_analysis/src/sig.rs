@@ -165,7 +165,7 @@ impl<'hir> Sig for hir::Ty<'hir> {
                 let text = format!("{}{}", prefix, nested.text);
                 Ok(replace_text(nested, text))
             }
-            hir::TyKind::Rptr(ref lifetime, ref mt) => {
+            hir::TyKind::Ref(ref lifetime, ref mt) => {
                 let mut prefix = "&".to_owned();
                 prefix.push_str(&lifetime.ident.to_string());
                 prefix.push(' ');

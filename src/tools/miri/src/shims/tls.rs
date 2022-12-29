@@ -257,15 +257,10 @@ impl TlsDtorsState {
                         // And move to the final state.
                         self.0 = Done;
                     }
-                    "wasi" | "none" => {
-                        // No OS, no TLS dtors.
+                    _ => {
+                        // No TLS dtor support.
                         // FIXME: should we do something on wasi?
                         self.0 = Done;
-                    }
-                    os => {
-                        throw_unsup_format!(
-                            "the TLS machinery does not know how to handle OS `{os}`"
-                        );
                     }
                 }
             }

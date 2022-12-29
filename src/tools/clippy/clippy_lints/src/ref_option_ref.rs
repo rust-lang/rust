@@ -39,7 +39,7 @@ declare_lint_pass!(RefOptionRef => [REF_OPTION_REF]);
 impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
     fn check_ty(&mut self, cx: &LateContext<'tcx>, ty: &'tcx Ty<'tcx>) {
         if_chain! {
-            if let TyKind::Rptr(_, ref mut_ty) = ty.kind;
+            if let TyKind::Ref(_, ref mut_ty) = ty.kind;
             if mut_ty.mutbl == Mutability::Not;
             if let TyKind::Path(ref qpath) = &mut_ty.ty.kind;
             let last = last_path_segment(qpath);
@@ -52,7 +52,7 @@ impl<'tcx> LateLintPass<'tcx> for RefOptionRef {
                 GenericArg::Type(inner_ty) => Some(inner_ty),
                 _ => None,
             });
-            if let TyKind::Rptr(_, ref inner_mut_ty) = inner_ty.kind;
+            if let TyKind::Ref(_, ref inner_mut_ty) = inner_ty.kind;
             if inner_mut_ty.mutbl == Mutability::Not;
 
             then {

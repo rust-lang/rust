@@ -1209,7 +1209,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = node
-        && let hir::TyKind::Rptr(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
+        && let hir::TyKind::Ref(lt, hir::MutTy { mutbl: hir::Mutability::Not, ty }) = field.ty.kind
     {
         return Some(lt.ident.span.between(ty.span));
     }

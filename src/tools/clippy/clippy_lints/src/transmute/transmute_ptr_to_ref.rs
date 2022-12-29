@@ -71,7 +71,7 @@ pub(super) fn check<'tcx>(
 /// Gets the type `Bar` in `…::transmute<Foo, &Bar>`.
 fn get_explicit_type<'tcx>(path: &'tcx Path<'tcx>) -> Option<&'tcx hir::Ty<'tcx>> {
     if let GenericArg::Type(ty) = path.segments.last()?.args?.args.get(1)?
-        && let TyKind::Rptr(_, ty) = &ty.kind
+        && let TyKind::Ref(_, ty) = &ty.kind
     {
         Some(ty.ty)
     } else {

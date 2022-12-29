@@ -59,7 +59,7 @@ impl RedundantStaticLifetimes {
                 }
             },
             // This is what we are looking for !
-            TyKind::Rptr(ref optional_lifetime, ref borrow_type) => {
+            TyKind::Ref(ref optional_lifetime, ref borrow_type) => {
                 // Match the 'static lifetime
                 if let Some(lifetime) = *optional_lifetime {
                     match borrow_type.ty.kind {

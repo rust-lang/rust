@@ -152,7 +152,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     let input_lifetimes: Vec<LifetimeName> = inputs
         .iter()
         .filter_map(|ty| {
-            if let TyKind::Rptr(lt, _) = ty.kind {
+            if let TyKind::Ref(lt, _) = ty.kind {
                 Some(lt.res)
             } else {
                 None

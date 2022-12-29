@@ -1025,7 +1025,7 @@ impl<'a> State<'a> {
                 self.word("*");
                 self.print_mt(mt, true);
             }
-            ast::TyKind::Rptr(lifetime, mt) => {
+            ast::TyKind::Ref(lifetime, mt) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);

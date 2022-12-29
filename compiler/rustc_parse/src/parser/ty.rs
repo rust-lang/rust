@@ -504,7 +504,7 @@ impl<'a> Parser<'a> {
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }))
+        Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))
     }
 
     // Parses the `typeof(EXPR)`.
