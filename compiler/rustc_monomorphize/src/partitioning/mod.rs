@@ -109,7 +109,7 @@ use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::SwitchWithOptPath;
+use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
@@ -492,9 +492,11 @@ fn dump_mono_items_stats<'tcx>(
         Path::new(".")
     };
 
-    let filename = format!("{}.mono_items.md", crate_name.unwrap_or("unknown-crate"));
+    let format = tcx.sess.opts.unstable_opts.dump_mono_stats_format;
+    let ext = format.extension();
+    let filename = format!("{}.mono_items.{ext}", crate_name.unwrap_or("unknown-crate"));
     let output_path = output_directory.join(&filename);
-    let file = File::create(output_path)?;
+    let file = File::create(&output_path)?;
     let mut file = BufWriter::new(file);
 
     // Gather instantiated mono items grouped by def_id
@@ -508,30 +510,44 @@ fn dump_mono_items_stats<'tcx>(
         }
     }
 
+    #[derive(serde::Serialize)]
+    struct MonoItem {
+        name: String,
+        instantiation_count: usize,
+        size_estimate: usize,
+        total_estimate: usize,
+    }
+
     // Output stats sorted by total instantiated size, from heaviest to lightest
     let mut stats: Vec<_> = items_per_def_id
         .into_iter()
         .map(|(def_id, items)| {
+            let name = with_no_trimmed_paths!(tcx.def_path_str(def_id));
             let instantiation_count = items.len();
             let size_estimate = items[0].size_estimate(tcx);
             let total_estimate = instantiation_count * size_estimate;
-            (def_id, instantiation_count, size_estimate, total_estimate)
+            MonoItem { name, instantiation_count, size_estimate, total_estimate }
         })
         .collect();
-    stats.sort_unstable_by_key(|(_, _, _, total_estimate)| cmp::Reverse(*total_estimate));
+    stats.sort_unstable_by_key(|item| cmp::Reverse(item.total_estimate));
 
     if !stats.is_empty() {
-        writeln!(
-            file,
-            "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
-        )?;
-        writeln!(file, "| --- | ---: | ---: | ---: |")?;
-        for (def_id, instantiation_count, size_estimate, total_estimate) in stats {
-            let item = with_no_trimmed_paths!(tcx.def_path_str(def_id));
-            writeln!(
-                file,
-                "| {item} | {instantiation_count} | {size_estimate} | {total_estimate} |"
-            )?;
+        match format {
+            DumpMonoStatsFormat::Json => serde_json::to_writer(file, &stats)?,
+            DumpMonoStatsFormat::Markdown => {
+                writeln!(
+                    file,
+                    "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
+                )?;
+                writeln!(file, "| --- | ---: | ---: | ---: |")?;
+
+                for MonoItem { name, instantiation_count, size_estimate, total_estimate } in stats {
+                    writeln!(
+                        file,
+                        "| `{name}` | {instantiation_count} | {size_estimate} | {total_estimate} |"
+                    )?;
+                }
+            }
         }
     }
 
