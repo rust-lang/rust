@@ -59,6 +59,7 @@ use rustc_middle::ty::print::with_no_trimmed_paths;
 
 mod candidate_assembly;
 mod confirmation;
+mod only_fresh_differ;
 
 #[derive(Clone, Debug, Eq, PartialEq, Hash)]
 pub enum IntercrateAmbiguityCause {
@@ -1135,7 +1136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         if stack.iter().skip(1).any(|prev| {
             stack.obligation.param_env == prev.obligation.param_env
-                && self.match_fresh_trait_refs(
+                && self.only_typevars_differ(
                     stack.fresh_trait_pred,
                     prev.fresh_trait_pred,
                     prev.obligation.param_env,
@@ -2452,13 +2453,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
 
-    fn match_fresh_trait_refs(
+    fn only_typevars_differ(
         &self,
         previous: ty::PolyTraitPredicate<'tcx>,
         current: ty::PolyTraitPredicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
-        let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
+        let mut matcher = only_fresh_differ::FreshDiffer::new(self.tcx(), param_env);
         matcher.relate(previous, current).is_ok()
     }
 
