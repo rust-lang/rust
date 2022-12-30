@@ -65,7 +65,6 @@ mod task_queue {
 /// execution. The signal is sent once all TLS destructors have finished at
 /// which point no new thread locals should be created.
 pub mod wait_notify {
-    use crate::mem::MaybeUninit;
     use crate::pin::Pin;
     use crate::sync::Arc;
     use crate::sys_common::thread_parking::Parker;
@@ -88,25 +87,14 @@ pub mod wait_notify {
         /// called, this will return immediately, otherwise the current thread
         /// is blocked until notified.
         pub fn wait(self) {
-            // This is not actually `unsafe`, but it uses the `Parker` API,
-            // which needs `unsafe` on some platforms.
+            // SAFETY:
+            // This is only ever called on one thread.
             unsafe { Pin::new(&*self.0).park() }
         }
     }
 
     pub fn new() -> (Notifier, Waiter) {
-        // Safety:
-        // Some other platforms (looking at you, UNIX!) require that the thread
-        // parker is constructed in-place. This is just a noisy way of writing:
-        // ```rust
-        // let parker = Parker::new();
-        // ```
-        let parker = unsafe {
-            let mut place = MaybeUninit::uninit();
-            Parker::new(place.as_mut_ptr());
-            place.assume_init()
-        };
-        let inner = Arc::new(parker);
+        let inner = Arc::new(Parker::new());
         (Notifier(inner.clone()), Waiter(inner))
     }
 }

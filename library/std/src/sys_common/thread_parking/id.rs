@@ -26,9 +26,13 @@ const EMPTY: i8 = 0;
 const NOTIFIED: i8 = 1;
 
 impl Parker {
+    pub fn new() -> Parker {
+        Parker { state: AtomicI8::new(EMPTY), tid: UnsafeCell::new(None) }
+    }
+
     /// Create a new thread parker. UNIX requires this to happen in-place.
-    pub unsafe fn new(parker: *mut Parker) {
-        parker.write(Parker { state: AtomicI8::new(EMPTY), tid: UnsafeCell::new(None) })
+    pub unsafe fn new_in_place(parker: *mut Parker) {
+        parker.write(Parker::new())
     }
 
     /// # Safety

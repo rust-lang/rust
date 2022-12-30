@@ -41,7 +41,7 @@ pub struct Parker {
 impl Parker {
     /// Construct a parker for the current thread. The UNIX parker
     /// implementation requires this to happen in-place.
-    pub unsafe fn new(parker: *mut Parker) {
+    pub unsafe fn new_in_place(parker: *mut Parker) {
         parker.write(Parker { state: AtomicI8::new(EMPTY), wait_flag: WaitFlag::new() })
     }
 
