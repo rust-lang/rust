@@ -1246,6 +1246,9 @@ impl PathBuf {
     ///   and `path` is not empty, the new path is normalized: all references
     ///   to `.` and `..` are removed.
     ///
+    /// Consider using [`Path::join`] if you need a new `PathBuf` instead of
+    /// using this function on a cloned `PathBuf`.
+    ///
     /// # Examples
     ///
     /// Pushing a relative path extends the existing path:
