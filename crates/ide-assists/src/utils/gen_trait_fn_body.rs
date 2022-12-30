@@ -419,7 +419,7 @@ fn gen_partial_eq(adt: &ast::Adt, func: &ast::Fn) -> Option<()> {
         make::ext::path_from_idents(["Self", &variant.name()?.to_string()])
     }
 
-    fn gen_tuple_field(field_name: &String) -> ast::Pat {
+    fn gen_tuple_field(field_name: &str) -> ast::Pat {
         ast::Pat::IdentPat(make::ident_pat(false, false, make::name(field_name)))
     }
 
