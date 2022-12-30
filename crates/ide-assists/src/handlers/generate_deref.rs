@@ -85,8 +85,7 @@ fn generate_tuple_deref(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()
     let strukt = ctx.find_node_at_offset::<ast::Struct>()?;
     let field = ctx.find_node_at_offset::<ast::TupleField>()?;
     let field_list = ctx.find_node_at_offset::<ast::TupleFieldList>()?;
-    let field_list_index =
-        field_list.syntax().children().into_iter().position(|s| &s == field.syntax())?;
+    let field_list_index = field_list.syntax().children().position(|s| &s == field.syntax())?;
 
     let deref_type_to_generate = match existing_deref_impl(&ctx.sema, &strukt) {
         None => DerefType::Deref,

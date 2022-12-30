@@ -270,7 +270,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         await_expr: &ast::AwaitExpr,
     ) -> Option<FunctionId> {
-        let mut ty = self.ty_of_expr(db, &await_expr.expr()?.into())?.clone();
+        let mut ty = self.ty_of_expr(db, &await_expr.expr()?)?.clone();
 
         let into_future_trait = self
             .resolver
@@ -316,7 +316,7 @@ impl SourceAnalyzer {
             ast::UnaryOp::Not => name![not],
             ast::UnaryOp::Neg => name![neg],
         };
-        let ty = self.ty_of_expr(db, &prefix_expr.expr()?.into())?;
+        let ty = self.ty_of_expr(db, &prefix_expr.expr()?)?;
 
         let (op_trait, op_fn) = self.lang_trait_fn(db, &lang_item_name, &lang_item_name)?;
         // HACK: subst for all methods coincides with that for their trait because the methods
@@ -331,8 +331,8 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         index_expr: &ast::IndexExpr,
     ) -> Option<FunctionId> {
-        let base_ty = self.ty_of_expr(db, &index_expr.base()?.into())?;
-        let index_ty = self.ty_of_expr(db, &index_expr.index()?.into())?;
+        let base_ty = self.ty_of_expr(db, &index_expr.base()?)?;
+        let index_ty = self.ty_of_expr(db, &index_expr.index()?)?;
 
         let lang_item_name = name![index];
 
@@ -352,8 +352,8 @@ impl SourceAnalyzer {
         binop_expr: &ast::BinExpr,
     ) -> Option<FunctionId> {
         let op = binop_expr.op_kind()?;
-        let lhs = self.ty_of_expr(db, &binop_expr.lhs()?.into())?;
-        let rhs = self.ty_of_expr(db, &binop_expr.rhs()?.into())?;
+        let lhs = self.ty_of_expr(db, &binop_expr.lhs()?)?;
+        let rhs = self.ty_of_expr(db, &binop_expr.rhs()?)?;
 
         let (op_trait, op_fn) = lang_names_for_bin_op(op)
             .and_then(|(name, lang_item)| self.lang_trait_fn(db, &lang_item, &name))?;
@@ -372,7 +372,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         try_expr: &ast::TryExpr,
     ) -> Option<FunctionId> {
-        let ty = self.ty_of_expr(db, &try_expr.expr()?.into())?;
+        let ty = self.ty_of_expr(db, &try_expr.expr()?)?;
 
         let op_fn =
             db.lang_item(self.resolver.krate(), name![branch].to_smol_str())?.as_function()?;

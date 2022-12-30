@@ -220,7 +220,7 @@ impl<'a> InferenceContext<'a> {
                 ),
             Pat::Record { path: p, args: fields, ellipsis: _ } => {
                 let subs = fields.iter().map(|f| (f.name.clone(), f.pat));
-                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat.into(), subs)
+                self.infer_record_pat_like(p.as_deref(), &expected, default_bm, pat, subs)
             }
             Pat::Path(path) => {
                 // FIXME use correct resolver for the surrounding expression

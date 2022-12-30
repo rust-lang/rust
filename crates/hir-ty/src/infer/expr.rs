@@ -960,7 +960,7 @@ impl<'a> InferenceContext<'a> {
             Expr::RecordLit { path, fields, .. } => {
                 let subs = fields.iter().map(|f| (f.name.clone(), f.expr));
 
-                self.infer_record_pat_like(path.as_deref(), &rhs_ty, (), lhs.into(), subs)
+                self.infer_record_pat_like(path.as_deref(), &rhs_ty, (), lhs, subs)
             }
             Expr::Underscore => rhs_ty.clone(),
             _ => {

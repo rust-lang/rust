@@ -183,7 +183,7 @@ pub(crate) fn check_edit_with_config(
     let ra_fixture_after = trim_indent(ra_fixture_after);
     let (db, position) = position(ra_fixture_before);
     let completions: Vec<CompletionItem> =
-        crate::completions(&db, &config, position, None).unwrap().into();
+        crate::completions(&db, &config, position, None).unwrap();
     let (completion,) = completions
         .iter()
         .filter(|it| it.lookup() == what)

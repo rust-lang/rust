@@ -29,7 +29,6 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     let scope = &def_map[module_id.local_id].scope;
     let adt_id = scope
         .declarations()
-        .into_iter()
         .find_map(|x| match x {
             hir_def::ModuleDefId::AdtId(x) => {
                 let name = match x {
