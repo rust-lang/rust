@@ -50,7 +50,7 @@ pub fn load_scalar_pair<'a>(x: &(&'a i32, &'a Align16)) -> (&'a i32, &'a Align16
 // CHECK-LABEL: @load_raw_pointer
 #[no_mangle]
 pub fn load_raw_pointer<'a>(x: &*const i32) -> *const i32 {
-    // loaded raw pointer should not have !nonnull, !align, or !noundef metadata
+    // loaded raw pointer should not have !nonnull or !align metadata
     // CHECK: load {{i32\*|ptr}}, {{i32\*\*|ptr}} %x, align [[PTR_ALIGNMENT]], !noundef !2{{$}}
     *x
 }
