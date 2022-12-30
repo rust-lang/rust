@@ -49,7 +49,7 @@ pub(crate) fn render_tuple_lit(
     path: &str,
 ) -> RenderedLiteral {
     if snippet_cap.is_none() {
-        return RenderedLiteral { literal: format!("{path}"), detail: format!("{path}") };
+        return RenderedLiteral { literal: path.to_string(), detail: path.to_string() };
     }
     let completions = fields.iter().enumerate().format_with(", ", |(idx, _), f| {
         if snippet_cap.is_some() {

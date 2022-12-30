@@ -101,7 +101,7 @@ Including a description and GIF suitable for the changelog means less work for t
 
 We don't enforce Clippy.
 A number of default lints have high false positive rate.
-Selectively patching false-positives with `allow(clippy)` is considered worse than not using Clippy at all.
+Selectively patching false-positives with `allow(clippy)` is probably worse than entirely disabling a problematic lint.
 There's a `cargo lint` command which runs a subset of low-FPR lints.
 Careful tweaking of `lint` is welcome.
 Of course, applying Clippy suggestions is welcome as long as they indeed improve the code.
