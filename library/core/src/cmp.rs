@@ -798,9 +798,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.max_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
+        #[cfg(not(bootstrap))]
+        {
+            max_by(self, other, Ord::cmp)
+        }
+
+        #[cfg(bootstrap)]
         match self.cmp(&other) {
             Ordering::Less | Ordering::Equal => other,
             Ordering::Greater => self,
@@ -825,9 +828,12 @@ pub trait Ord: Eq + PartialOrd<Self> {
         Self: Sized,
         Self: ~const Destruct,
     {
-        // HACK(fee1-dead): go back to using `self.min_by(other, Ord::cmp)`
-        // when trait methods are allowed to be used when a const closure is
-        // expected.
+        #[cfg(not(bootstrap))]
+        {
+            min_by(self, other, Ord::cmp)
+        }
+
+        #[cfg(bootstrap)]
         match self.cmp(&other) {
             Ordering::Less | Ordering::Equal => self,
             Ordering::Greater => other,
