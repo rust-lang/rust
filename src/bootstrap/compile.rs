@@ -141,14 +141,7 @@ impl Step for Std {
             &compiler.host,
             target,
         ));
-        run_cargo(
-            builder,
-            cargo,
-            vec![],
-            &libstd_stamp(builder, compiler, target),
-            target_deps,
-            false,
-        );
+        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), target_deps, false);
 
         builder.ensure(StdLink::from_std(
             self,
@@ -735,14 +728,7 @@ impl Step for Rustc {
             &compiler.host,
             target,
         ));
-        run_cargo(
-            builder,
-            cargo,
-            vec![],
-            &librustc_stamp(builder, compiler, target),
-            vec![],
-            false,
-        );
+        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], false);
 
         builder.ensure(RustcLink::from_rustc(
             self,
@@ -998,7 +984,7 @@ impl Step for CodegenBackend {
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
         ));
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
+        let files = run_cargo(builder, cargo, &tmp_stamp, vec![], false);
         if builder.config.dry_run() {
             return;
         }
@@ -1422,7 +1408,6 @@ pub fn add_to_sysroot(
 pub fn run_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
-    tail_args: Vec<String>,
     stamp: &Path,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
@@ -1448,7 +1433,7 @@ pub fn run_cargo(
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
+    let ok = stream_cargo(builder, cargo, &mut |msg| {
         let (filenames, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
@@ -1563,7 +1548,6 @@ pub fn run_cargo(
 pub fn stream_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
-    tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
@@ -1582,10 +1566,6 @@ pub fn stream_cargo(
         message_format.push_str(s);
     }
     cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
-
-    for arg in tail_args {
-        cargo.arg(arg);
-    }
 
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {
