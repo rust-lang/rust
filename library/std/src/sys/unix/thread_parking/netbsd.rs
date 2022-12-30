@@ -1,5 +1,3 @@
-#![cfg(target_os = "netbsd")]
-
 use crate::ffi::{c_int, c_void};
 use crate::ptr;
 use crate::time::Duration;
