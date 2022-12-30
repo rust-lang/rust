@@ -198,12 +198,12 @@ pub(super) fn emit_frag_parse_err(
         );
         if !e.span.is_dummy() {
             // early end of macro arm (#52866)
-            e.replace_span_with(parser.token.span.shrink_to_hi());
+            e.replace_span_with(parser.token.span.shrink_to_hi(), true);
         }
     }
     if e.span.is_dummy() {
         // Get around lack of span in error (#30128)
-        e.replace_span_with(site_span);
+        e.replace_span_with(site_span, true);
         if !parser.sess.source_map().is_imported(arm_span) {
             e.span_label(arm_span, "in this macro arm");
         }
