@@ -80,15 +80,6 @@ fn check_if_error_code_is_test_in_explanation(f: &str, err_code: &str) -> bool {
     ignore_found
 }
 
-macro_rules! some_or_continue {
-    ($e:expr) => {
-        match $e {
-            Some(e) => e,
-            None => continue,
-        }
-    };
-}
-
 fn extract_error_codes(
     f: &str,
     error_codes: &mut HashMap<String, ErrorCodeStatus>,
@@ -122,10 +113,16 @@ fn extract_error_codes(
                     Some((file_name, _)) => file_name,
                 },
             };
-            let path = some_or_continue!(path.parent())
+
+            let Some(parent) = path.parent() else {
+                continue;
+            };
+
+            let path = parent
                 .join(md_file_name)
                 .canonicalize()
                 .expect("failed to canonicalize error explanation file path");
+
             match read_to_string(&path) {
                 Ok(content) => {
                     let has_test = check_if_error_code_is_test_in_explanation(&content, &err_code);
@@ -215,8 +212,6 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     // * #[error = "E0111"]
     let regex = Regex::new(r#"[(,"\s](E\d{4})[,)"]"#).unwrap();
 
-    println!("Checking which error codes lack tests...");
-
     for path in paths {
         walk(path, &mut filter_dirs, &mut |entry, contents| {
             let file_name = entry.file_name();
@@ -245,20 +240,15 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
         });
     }
     if found_explanations == 0 {
-        eprintln!("No error code explanation was tested!");
-        *bad = true;
+        tidy_error!(bad, "No error code explanation was tested!");
     }
     if found_tests == 0 {
-        eprintln!("No error code was found in compilation errors!");
-        *bad = true;
+        tidy_error!(bad, "No error code was found in compilation errors!");
     }
     if explanations.is_empty() {
-        eprintln!("No error code explanation was found!");
-        *bad = true;
+        tidy_error!(bad, "No error code explanation was found!");
     }
     if errors.is_empty() {
-        println!("Found {} error codes", error_codes.len());
-
         for (err_code, error_status) in &error_codes {
             if !error_status.has_test && !EXEMPTED_FROM_TEST.contains(&err_code.as_str()) {
                 errors.push(format!("Error code {err_code} needs to have at least one UI test!"));
@@ -310,11 +300,6 @@ pub fn check(paths: &[&Path], bad: &mut bool) {
     }
     errors.sort();
     for err in &errors {
-        eprintln!("{err}");
+        tidy_error!(bad, "{err}");
     }
-    println!("Found {} error(s) in error codes", errors.len());
-    if !errors.is_empty() {
-        *bad = true;
-    }
-    println!("Done!");
 }
