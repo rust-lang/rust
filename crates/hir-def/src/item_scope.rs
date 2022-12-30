@@ -159,15 +159,14 @@ impl ItemScope {
     pub(crate) fn name_of(&self, item: ItemInNs) -> Option<(&Name, Visibility)> {
         let (def, mut iter) = match item {
             ItemInNs::Macros(def) => {
-                return self
-                    .macros
-                    .iter()
-                    .find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)));
+                return self.macros.iter().find_map(|(name, &(other_def, vis))| {
+                    (other_def == def).then_some((name, vis))
+                });
             }
             ItemInNs::Types(def) => (def, self.types.iter()),
             ItemInNs::Values(def) => (def, self.values.iter()),
         };
-        iter.find_map(|(name, &(other_def, vis))| (other_def == def).then(|| (name, vis)))
+        iter.find_map(|(name, &(other_def, vis))| (other_def == def).then_some((name, vis)))
     }
 
     pub(crate) fn traits<'a>(&'a self) -> impl Iterator<Item = TraitId> + 'a {

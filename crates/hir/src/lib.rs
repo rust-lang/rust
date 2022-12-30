@@ -1559,7 +1559,7 @@ impl Function {
     }
 
     pub fn self_param(self, db: &dyn HirDatabase) -> Option<SelfParam> {
-        self.has_self_param(db).then(|| SelfParam { func: self.id })
+        self.has_self_param(db).then_some(SelfParam { func: self.id })
     }
 
     pub fn assoc_fn_params(self, db: &dyn HirDatabase) -> Vec<Param> {

@@ -228,7 +228,7 @@ fn completion_item(
     max_relevance: u32,
     item: CompletionItem,
 ) {
-    let insert_replace_support = config.insert_replace_support().then(|| tdpp.position);
+    let insert_replace_support = config.insert_replace_support().then_some(tdpp.position);
     let mut additional_text_edits = Vec::new();
 
     // LSP does not allow arbitrary edits in completion, so we have to do a
@@ -258,7 +258,7 @@ fn completion_item(
         text_edit.unwrap()
     };
 
-    let insert_text_format = item.is_snippet().then(|| lsp_types::InsertTextFormat::SNIPPET);
+    let insert_text_format = item.is_snippet().then_some(lsp_types::InsertTextFormat::SNIPPET);
     let tags = item.deprecated().then(|| vec![lsp_types::CompletionItemTag::DEPRECATED]);
     let command = if item.trigger_call_info() && config.client_commands().trigger_parameter_hints {
         Some(command::trigger_parameter_hints())

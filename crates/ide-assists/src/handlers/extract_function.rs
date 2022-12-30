@@ -588,7 +588,7 @@ impl FunctionBody {
             FunctionBody::Expr(expr) => Some(expr.clone()),
             FunctionBody::Span { parent, text_range } => {
                 let tail_expr = parent.tail_expr()?;
-                text_range.contains_range(tail_expr.syntax().text_range()).then(|| tail_expr)
+                text_range.contains_range(tail_expr.syntax().text_range()).then_some(tail_expr)
             }
         }
     }

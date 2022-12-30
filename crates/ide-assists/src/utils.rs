@@ -613,7 +613,7 @@ pub(crate) fn convert_reference_type(
 }
 
 fn handle_copy(ty: &hir::Type, db: &dyn HirDatabase) -> Option<ReferenceConversionType> {
-    ty.is_copy(db).then(|| ReferenceConversionType::Copy)
+    ty.is_copy(db).then_some(ReferenceConversionType::Copy)
 }
 
 fn handle_as_ref_str(
@@ -624,7 +624,7 @@ fn handle_as_ref_str(
     let str_type = hir::BuiltinType::str().ty(db);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[str_type])
-        .then(|| ReferenceConversionType::AsRefStr)
+        .then_some(ReferenceConversionType::AsRefStr)
 }
 
 fn handle_as_ref_slice(
@@ -636,7 +636,7 @@ fn handle_as_ref_slice(
     let slice_type = hir::Type::new_slice(type_argument);
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[slice_type])
-        .then(|| ReferenceConversionType::AsRefSlice)
+        .then_some(ReferenceConversionType::AsRefSlice)
 }
 
 fn handle_dereferenced(
@@ -647,7 +647,7 @@ fn handle_dereferenced(
     let type_argument = ty.type_arguments().next()?;
 
     ty.impls_trait(db, famous_defs.core_convert_AsRef()?, &[type_argument])
-        .then(|| ReferenceConversionType::Dereferenced)
+        .then_some(ReferenceConversionType::Dereferenced)
 }
 
 fn handle_option_as_ref(

@@ -795,7 +795,7 @@ impl<'db> SemanticsImpl<'db> {
                 // requeue the tokens we got from mapping our current token down
                 stack.extend(mapped_tokens);
                 // if the length changed we have found a mapping for the token
-                (stack.len() != len).then(|| ())
+                (stack.len() != len).then_some(())
             };
 
         // Remap the next token in the queue into a macro call its in, if it is not being remapped
@@ -1221,7 +1221,7 @@ impl<'db> SemanticsImpl<'db> {
         krate
             .dependencies(self.db)
             .into_iter()
-            .find_map(|dep| (dep.name == name).then(|| dep.krate))
+            .find_map(|dep| (dep.name == name).then_some(dep.krate))
     }
 
     fn resolve_variant(&self, record_lit: ast::RecordExpr) -> Option<VariantId> {

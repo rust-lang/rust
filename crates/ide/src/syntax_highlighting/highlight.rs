@@ -111,7 +111,7 @@ fn punctuation(
             let is_raw_ptr = (|| {
                 let prefix_expr = parent.and_then(ast::PrefixExpr::cast)?;
                 let expr = prefix_expr.expr()?;
-                sema.type_of_expr(&expr)?.original.is_raw_ptr().then(|| ())
+                sema.type_of_expr(&expr)?.original.is_raw_ptr().then_some(())
             })();
             if let Some(()) = is_raw_ptr {
                 HlTag::Operator(HlOperator::Other) | HlMod::Unsafe

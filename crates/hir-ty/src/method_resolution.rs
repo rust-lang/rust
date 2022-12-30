@@ -714,7 +714,7 @@ fn lookup_impl_assoc_item_for_trait_ref(
     let impl_data = find_matching_impl(impls, table, trait_ref)?;
     impl_data.items.iter().find_map(|it| match it {
         AssocItemId::FunctionId(f) => {
-            (db.function_data(*f).name == *name).then(|| AssocItemId::FunctionId(*f))
+            (db.function_data(*f).name == *name).then_some(AssocItemId::FunctionId(*f))
         }
         AssocItemId::ConstId(c) => db
             .const_data(*c)

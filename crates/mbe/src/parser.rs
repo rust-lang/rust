@@ -273,7 +273,7 @@ fn parse_repeat(src: &mut TtIter<'_>) -> Result<(Option<Separator>, RepeatKind),
                         _ => return Err(ParseError::InvalidRepeat),
                     },
                 };
-                return Ok((has_sep.then(|| separator), repeat_kind));
+                return Ok((has_sep.then_some(separator), repeat_kind));
             }
         }
     }

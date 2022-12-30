@@ -37,7 +37,7 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
                     hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
                     hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
                 };
-                (name == "Goal").then(|| x)
+                (name == "Goal").then_some(x)
             }
             _ => None,
         })
