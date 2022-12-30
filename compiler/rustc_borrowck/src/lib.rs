@@ -610,7 +610,6 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
             // Doesn't have any language semantics
             | StatementKind::Coverage(..)
             // Does not actually affect borrowck
-            | StatementKind::ConstEvalCounter
             | StatementKind::StorageLive(..) => {}
             StatementKind::StorageDead(local) => {
                 self.access_place(
@@ -621,7 +620,8 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     flow_state,
                 );
             }
-            StatementKind::Nop
+            StatementKind::ConstEvalCounter
+            | StatementKind::Nop
             | StatementKind::Retag { .. }
             | StatementKind::Deinit(..)
             | StatementKind::SetDiscriminant { .. } => {
