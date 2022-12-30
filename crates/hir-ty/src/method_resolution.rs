@@ -495,7 +495,8 @@ pub(crate) fn lookup_method(
     visible_from_module: VisibleFromModule,
     name: &Name,
 ) -> Option<(ReceiverAdjustments, FunctionId)> {
-    iterate_method_candidates(
+    let mut not_visible = None;
+    let res = iterate_method_candidates(
         ty,
         db,
         env,
@@ -503,11 +504,16 @@ pub(crate) fn lookup_method(
         visible_from_module,
         Some(name),
         LookupMode::MethodCall,
-        |adjustments, f| match f {
-            AssocItemId::FunctionId(f) => Some((adjustments, f)),
+        |adjustments, f, visible| match f {
+            AssocItemId::FunctionId(f) if visible => Some((adjustments, f)),
+            AssocItemId::FunctionId(f) if not_visible.is_none() => {
+                not_visible = Some((adjustments, f));
+                None
+            }
             _ => None,
         },
-    )
+    );
+    res.or(not_visible)
 }
 
 /// Whether we're looking up a dotted method call (like `v.len()`) or a path
@@ -619,7 +625,7 @@ pub(crate) fn iterate_method_candidates<T>(
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    mut callback: impl FnMut(ReceiverAdjustments, AssocItemId) -> Option<T>,
+    mut callback: impl FnMut(ReceiverAdjustments, AssocItemId, bool) -> Option<T>,
 ) -> Option<T> {
     let mut slot = None;
     iterate_method_candidates_dyn(
@@ -630,9 +636,9 @@ pub(crate) fn iterate_method_candidates<T>(
         visible_from_module,
         name,
         mode,
-        &mut |adj, item| {
+        &mut |adj, item, visible| {
             assert!(slot.is_none());
-            if let Some(it) = callback(adj, item) {
+            if let Some(it) = callback(adj, item, visible) {
                 slot = Some(it);
                 return ControlFlow::Break(());
             }
@@ -771,7 +777,7 @@ pub fn iterate_path_candidates(
         name,
         LookupMode::Path,
         // the adjustments are not relevant for path lookup
-        &mut |_, id| callback(id),
+        &mut |_, id, _| callback(id),
     )
 }
 
@@ -783,7 +789,7 @@ pub fn iterate_method_candidates_dyn(
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
     mode: LookupMode,
-    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     match mode {
         LookupMode::MethodCall => {
@@ -847,7 +853,7 @@ fn iterate_method_candidates_with_autoref(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     if receiver_ty.value.is_general_var(Interner, &receiver_ty.binders) {
         // don't try to resolve methods on unknown types
@@ -908,7 +914,7 @@ fn iterate_method_candidates_by_receiver(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let mut table = InferenceTable::new(db, env);
     let receiver_ty = table.instantiate_canonical(receiver_ty.clone());
@@ -954,7 +960,7 @@ fn iterate_method_candidates_for_self_ty(
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: Option<&Name>,
-    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    mut callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let mut table = InferenceTable::new(db, env);
     let self_ty = table.instantiate_canonical(self_ty.clone());
@@ -985,7 +991,7 @@ fn iterate_trait_method_candidates(
     name: Option<&Name>,
     receiver_ty: Option<&Ty>,
     receiver_adjustments: Option<ReceiverAdjustments>,
-    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let db = table.db;
     let env = table.trait_env.clone();
@@ -1016,9 +1022,11 @@ fn iterate_trait_method_candidates(
         for &(_, item) in data.items.iter() {
             // Don't pass a `visible_from_module` down to `is_valid_candidate`,
             // since only inherent methods should be included into visibility checking.
-            if !is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
-                continue;
-            }
+            let visible = match is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
+                IsValidCandidate::Yes => true,
+                IsValidCandidate::NotVisible => false,
+                IsValidCandidate::No => continue,
+            };
             if !known_implemented {
                 let goal = generic_implements_goal(db, env.clone(), t, &canonical_self_ty);
                 if db.trait_solve(env.krate, goal.cast(Interner)).is_none() {
@@ -1026,7 +1034,7 @@ fn iterate_trait_method_candidates(
                 }
             }
             known_implemented = true;
-            callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
+            callback(receiver_adjustments.clone().unwrap_or_default(), item, visible)?;
         }
     }
     ControlFlow::Continue(())
@@ -1039,7 +1047,7 @@ fn iterate_inherent_methods(
     receiver_ty: Option<&Ty>,
     receiver_adjustments: Option<ReceiverAdjustments>,
     visible_from_module: VisibleFromModule,
-    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+    callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
 ) -> ControlFlow<()> {
     let db = table.db;
     let env = table.trait_env.clone();
@@ -1128,7 +1136,7 @@ fn iterate_inherent_methods(
         name: Option<&Name>,
         receiver_ty: Option<&Ty>,
         receiver_adjustments: Option<ReceiverAdjustments>,
-        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
         traits: impl Iterator<Item = TraitId>,
     ) -> ControlFlow<()> {
         let db = table.db;
@@ -1136,9 +1144,13 @@ fn iterate_inherent_methods(
             let data = db.trait_data(t);
             for &(_, item) in data.items.iter() {
                 // We don't pass `visible_from_module` as all trait items should be visible.
-                if is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
-                    callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
-                }
+                let visible =
+                    match is_valid_candidate(table, name, receiver_ty, item, self_ty, None) {
+                        IsValidCandidate::Yes => true,
+                        IsValidCandidate::NotVisible => false,
+                        IsValidCandidate::No => continue,
+                    };
+                callback(receiver_adjustments.clone().unwrap_or_default(), item, visible)?;
             }
         }
         ControlFlow::Continue(())
@@ -1152,17 +1164,25 @@ fn iterate_inherent_methods(
         receiver_ty: Option<&Ty>,
         receiver_adjustments: Option<ReceiverAdjustments>,
         visible_from_module: Option<ModuleId>,
-        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId) -> ControlFlow<()>,
+        callback: &mut dyn FnMut(ReceiverAdjustments, AssocItemId, bool) -> ControlFlow<()>,
     ) -> ControlFlow<()> {
         let db = table.db;
         let impls_for_self_ty = impls.for_self_ty(self_ty);
         for &impl_def in impls_for_self_ty {
             for &item in &db.impl_data(impl_def).items {
-                if !is_valid_candidate(table, name, receiver_ty, item, self_ty, visible_from_module)
-                {
-                    continue;
-                }
-                callback(receiver_adjustments.clone().unwrap_or_default(), item)?;
+                let visible = match is_valid_candidate(
+                    table,
+                    name,
+                    receiver_ty,
+                    item,
+                    self_ty,
+                    visible_from_module,
+                ) {
+                    IsValidCandidate::Yes => true,
+                    IsValidCandidate::NotVisible => false,
+                    IsValidCandidate::No => continue,
+                };
+                callback(receiver_adjustments.clone().unwrap_or_default(), item, visible)?;
             }
         }
         ControlFlow::Continue(())
@@ -1191,7 +1211,7 @@ pub fn resolve_indexing_op(
 macro_rules! check_that {
     ($cond:expr) => {
         if !$cond {
-            return false;
+            return IsValidCandidate::No;
         }
     };
 }
@@ -1203,7 +1223,7 @@ fn is_valid_candidate(
     item: AssocItemId,
     self_ty: &Ty,
     visible_from_module: Option<ModuleId>,
-) -> bool {
+) -> IsValidCandidate {
     let db = table.db;
     match item {
         AssocItemId::FunctionId(m) => {
@@ -1214,13 +1234,13 @@ fn is_valid_candidate(
             check_that!(receiver_ty.is_none());
 
             check_that!(name.map_or(true, |n| data.name.as_ref() == Some(n)));
-            check_that!(visible_from_module.map_or(true, |from_module| {
-                let v = db.const_visibility(c).is_visible_from(db.upcast(), from_module);
-                if !v {
+
+            if let Some(from_module) = visible_from_module {
+                if !db.const_visibility(c).is_visible_from(db.upcast(), from_module) {
                     cov_mark::hit!(const_candidate_not_visible);
+                    return IsValidCandidate::NotVisible;
                 }
-                v
-            }));
+            }
             if let ItemContainerId::ImplId(impl_id) = c.lookup(db.upcast()).container {
                 let self_ty_matches = table.run_in_snapshot(|table| {
                     let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
@@ -1230,13 +1250,19 @@ fn is_valid_candidate(
                 });
                 if !self_ty_matches {
                     cov_mark::hit!(const_candidate_self_type_mismatch);
-                    return false;
+                    return IsValidCandidate::No;
                 }
             }
-            true
+            IsValidCandidate::Yes
         }
-        _ => false,
+        _ => IsValidCandidate::No,
     }
+}
+
+enum IsValidCandidate {
+    Yes,
+    No,
+    NotVisible,
 }
 
 fn is_valid_fn_candidate(
@@ -1246,19 +1272,17 @@ fn is_valid_fn_candidate(
     receiver_ty: Option<&Ty>,
     self_ty: &Ty,
     visible_from_module: Option<ModuleId>,
-) -> bool {
+) -> IsValidCandidate {
     let db = table.db;
     let data = db.function_data(fn_id);
 
     check_that!(name.map_or(true, |n| n == &data.name));
-    check_that!(visible_from_module.map_or(true, |from_module| {
-        let v = db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module);
-        if !v {
+    if let Some(from_module) = visible_from_module {
+        if !db.function_visibility(fn_id).is_visible_from(db.upcast(), from_module) {
             cov_mark::hit!(autoderef_candidate_not_visible);
+            return IsValidCandidate::NotVisible;
         }
-        v
-    }));
-
+    }
     table.run_in_snapshot(|table| {
         let container = fn_id.lookup(db.upcast()).container;
         let (impl_subst, expect_self_ty) = match container {
@@ -1297,7 +1321,7 @@ fn is_valid_fn_candidate(
             // We need to consider the bounds on the impl to distinguish functions of the same name
             // for a type.
             let predicates = db.generic_predicates(impl_id.into());
-            predicates
+            let valid = predicates
                 .iter()
                 .map(|predicate| {
                     let (p, b) = predicate
@@ -1312,12 +1336,16 @@ fn is_valid_fn_candidate(
                 // It's ok to get ambiguity here, as we may not have enough information to prove
                 // obligations. We'll check if the user is calling the selected method properly
                 // later anyway.
-                .all(|p| table.try_obligation(p.cast(Interner)).is_some())
+                .all(|p| table.try_obligation(p.cast(Interner)).is_some());
+            match valid {
+                true => IsValidCandidate::Yes,
+                false => IsValidCandidate::No,
+            }
         } else {
             // For `ItemContainerId::TraitId`, we check if `self_ty` implements the trait in
             // `iterate_trait_method_candidates()`.
             // For others, this function shouldn't be called.
-            true
+            IsValidCandidate::Yes
         }
     })
 }

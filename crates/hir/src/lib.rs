@@ -3274,7 +3274,7 @@ impl Type {
             with_local_impls.and_then(|b| b.id.containing_block()).into(),
             name,
             method_resolution::LookupMode::MethodCall,
-            &mut |_adj, id| callback(id),
+            &mut |_adj, id, _| callback(id),
         );
     }
 
