@@ -1136,7 +1136,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // precise still.
         if stack.iter().skip(1).any(|prev| {
             stack.obligation.param_env == prev.obligation.param_env
-                && self.only_typevars_differ(
+                && self.is_repetition(
                     stack.fresh_trait_pred,
                     prev.fresh_trait_pred,
                     prev.obligation.param_env,
@@ -2453,14 +2453,21 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
 
-    fn only_typevars_differ(
+    fn is_repetition(
         &self,
-        previous: ty::PolyTraitPredicate<'tcx>,
-        current: ty::PolyTraitPredicate<'tcx>,
+        new: ty::PolyTraitPredicate<'tcx>,
+        old: ty::PolyTraitPredicate<'tcx>,
         param_env: ty::ParamEnv<'tcx>,
     ) -> bool {
         let mut matcher = only_fresh_differ::FreshDiffer::new(self.tcx(), param_env);
-        matcher.relate(previous, current).is_ok()
+        if matcher.relate(new, old).is_ok() {
+            return true;
+        }
+
+        let mut matcher = ty::_match::Match::new(self.tcx(), param_env);
+
+        new.skip_binder().trait_ref.substs.types().any(|ty| ty.is_fresh())
+            && matcher.relate(new, old).is_ok()
     }
 
     fn push_stack<'o>(
