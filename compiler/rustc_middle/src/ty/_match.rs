@@ -89,7 +89,9 @@ impl<'tcx> TypeRelation<'tcx> for Match<'tcx> {
                 Err(TypeError::Sorts(relate::expected_found(self, a, b)))
             }
 
-            (&ty::Error(_), _) | (_, &ty::Error(_)) => Ok(self.tcx().ty_error()),
+            (&ty::Error(guar), _) | (_, &ty::Error(guar)) => {
+                Ok(self.tcx().ty_error_with_guaranteed(guar))
+            }
 
             _ => relate::super_relate_tys(self, a, b),
         }
