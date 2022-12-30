@@ -234,8 +234,7 @@ impl TraitData {
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
         let _cx = stdx::panic_context::enter(format!(
-            "trait_data_query({:?} -> {:?} -> {:?})",
-            tr, tr_loc, tr_def
+            "trait_data_query({tr:?} -> {tr_loc:?} -> {tr_def:?})"
         ));
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
@@ -619,10 +618,8 @@ impl<'a> AssocItemCollector<'a> {
 
                         let ast_id_map = self.db.ast_id_map(self.expander.current_file_id());
                         let call = ast_id_map.get(call.ast_id).to_node(&root);
-                        let _cx = stdx::panic_context::enter(format!(
-                            "collect_items MacroCall: {}",
-                            call
-                        ));
+                        let _cx =
+                            stdx::panic_context::enter(format!("collect_items MacroCall: {call}"));
                         let res = self.expander.enter_expand::<ast::MacroItems>(self.db, call);
 
                         if let Ok(ExpandResult { value: Some((mark, _)), .. }) = res {

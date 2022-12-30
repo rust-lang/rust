@@ -118,7 +118,7 @@ impl Drop for CpuSpan {
                     eprintln!("Profile rendered to:\n\n    {}\n", svg.display());
                 }
                 _ => {
-                    eprintln!("Failed to run:\n\n   {:?}\n", cmd);
+                    eprintln!("Failed to run:\n\n   {cmd:?}\n");
                 }
             }
         }

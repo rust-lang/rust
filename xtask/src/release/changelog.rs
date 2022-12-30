@@ -63,31 +63,30 @@ pub(crate) fn get_changelog(
 
     let contents = format!(
         "\
-= Changelog #{}
+= Changelog #{changelog_n}
 :sectanchors:
 :experimental:
 :page-layout: post
 
-Commit: commit:{}[] +
-Release: release:{}[]
+Commit: commit:{commit}[] +
+Release: release:{today}[]
 
 == New Features
 
-{}
+{features}
 
 == Fixes
 
-{}
+{fixes}
 
 == Internal Improvements
 
-{}
+{internal}
 
 == Others
 
-{}
-",
-        changelog_n, commit, today, features, fixes, internal, others
+{others}
+"
     );
     Ok(contents)
 }

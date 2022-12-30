@@ -303,8 +303,7 @@ impl WorkspaceBuildScripts {
                                         Ok(it) => acc.push(it),
                                         Err(err) => {
                                             push_err(&format!(
-                                                "invalid cfg from cargo-metadata: {}",
-                                                err
+                                                "invalid cfg from cargo-metadata: {err}"
                                             ));
                                             return;
                                         }

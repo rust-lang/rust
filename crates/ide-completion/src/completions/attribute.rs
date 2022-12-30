@@ -371,9 +371,7 @@ fn attributes_are_sorted() {
     attrs.for_each(|next| {
         assert!(
             prev < next,
-            r#"ATTRIBUTES array is not sorted, "{}" should come after "{}""#,
-            prev,
-            next
+            r#"ATTRIBUTES array is not sorted, "{prev}" should come after "{next}""#
         );
         prev = next;
     });

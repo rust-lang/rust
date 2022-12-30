@@ -414,10 +414,7 @@ impl GlobalState {
         let loop_duration = loop_start.elapsed();
         if loop_duration > Duration::from_millis(100) && was_quiescent {
             tracing::warn!("overly long loop turn: {:?}", loop_duration);
-            self.poke_rust_analyzer_developer(format!(
-                "overly long loop turn: {:?}",
-                loop_duration
-            ));
+            self.poke_rust_analyzer_developer(format!("overly long loop turn: {loop_duration:?}"));
         }
         Ok(())
     }

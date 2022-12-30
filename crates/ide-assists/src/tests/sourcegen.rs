@@ -95,8 +95,7 @@ impl Assist {
                 let id = block.id;
                 assert!(
                     id.chars().all(|it| it.is_ascii_lowercase() || it == '_'),
-                    "invalid assist id: {:?}",
-                    id
+                    "invalid assist id: {id:?}"
                 );
                 let mut lines = block.contents.iter().peekable();
                 let location = sourcegen::Location { file: path.to_path_buf(), line: block.line };

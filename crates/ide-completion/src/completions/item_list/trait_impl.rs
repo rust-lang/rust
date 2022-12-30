@@ -845,11 +845,10 @@ trait Test {{
 struct T;
 
 impl Test for T {{
-    {}
-    {}
+    {hint}
+    {next_sibling}
 }}
-"#,
-                    hint, next_sibling
+"#
                 ),
                 &format!(
                     r#"
@@ -861,11 +860,10 @@ trait Test {{
 struct T;
 
 impl Test for T {{
-    {}
-    {}
+    {completed}
+    {next_sibling}
 }}
-"#,
-                    completed, next_sibling
+"#
                 ),
             )
         };
@@ -905,10 +903,9 @@ struct T;
 impl Foo for T {{
     // Comment
     #[bar]
-    {}
+    {hint}
 }}
-"#,
-                    hint
+"#
                 ),
                 &format!(
                     r#"
@@ -922,10 +919,9 @@ struct T;
 impl Foo for T {{
     // Comment
     #[bar]
-    {}
+    {completed}
 }}
-"#,
-                    completed
+"#
                 ),
             )
         };

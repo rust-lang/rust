@@ -65,10 +65,7 @@ impl CommentBlock {
                 let first = block.contents.remove(0);
                 first.strip_prefix(&tag).map(|id| {
                     if block.is_doc {
-                        panic!(
-                            "Use plain (non-doc) comments with tags like {}:\n    {}",
-                            tag, first
-                        );
+                        panic!("Use plain (non-doc) comments with tags like {tag}:\n    {first}");
                     }
 
                     block.id = id.trim().to_string();

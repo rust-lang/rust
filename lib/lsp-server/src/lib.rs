@@ -128,15 +128,11 @@ impl Connection {
                     self.sender.send(resp.into()).unwrap();
                 }
                 Ok(msg) => {
-                    return Err(ProtocolError(format!(
-                        "expected initialize request, got {:?}",
-                        msg
-                    )))
+                    return Err(ProtocolError(format!("expected initialize request, got {msg:?}")))
                 }
                 Err(e) => {
                     return Err(ProtocolError(format!(
-                        "expected initialize request, got error: {}",
-                        e
+                        "expected initialize request, got error: {e}"
                     )))
                 }
             };
@@ -154,15 +150,11 @@ impl Connection {
         match &self.receiver.recv() {
             Ok(Message::Notification(n)) if n.is_initialized() => (),
             Ok(msg) => {
-                return Err(ProtocolError(format!(
-                    "expected Message::Notification, got: {:?}",
-                    msg,
-                )))
+                return Err(ProtocolError(format!("expected Message::Notification, got: {msg:?}",)))
             }
             Err(e) => {
                 return Err(ProtocolError(format!(
-                    "expected initialized notification, got error: {}",
-                    e,
+                    "expected initialized notification, got error: {e}",
                 )))
             }
         }
