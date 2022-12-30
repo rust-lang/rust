@@ -177,7 +177,7 @@ macro_rules! nonzero_integer {
             ///
             /// # Safety
             /// The referenced value must not be currently zero.
-            #[unstable(feature = "nonzero_from_mut", issue = "none")]
+            #[unstable(feature = "nonzero_from_mut", issue = "106290")]
             #[must_use]
             #[inline]
             pub unsafe fn from_mut_unchecked(n: &mut $Int) -> &mut Self {
@@ -194,7 +194,7 @@ macro_rules! nonzero_integer {
 
             /// Converts a primitive mutable reference to a non-zero mutable reference
             /// if the referenced integer is not zero.
-            #[unstable(feature = "nonzero_from_mut", issue = "none")]
+            #[unstable(feature = "nonzero_from_mut", issue = "106290")]
             #[must_use]
             #[inline]
             pub fn from_mut(n: &mut $Int) -> Option<&mut Self> {
