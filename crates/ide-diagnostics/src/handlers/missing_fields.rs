@@ -128,9 +128,9 @@ fn fixes(ctx: &DiagnosticsContext<'_>, d: &hir::MissingFields) -> Option<Vec<Ass
                         )?;
 
                         use_trivial_constructor(
-                            &ctx.sema.db,
+                            ctx.sema.db,
                             ide_db::helpers::mod_path_to_ast(&type_path),
-                            &ty,
+                            ty,
                         )
                     })();
 

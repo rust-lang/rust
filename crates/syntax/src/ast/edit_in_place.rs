@@ -888,6 +888,6 @@ enum Foo {
         let enum_ = ast_mut_from_text::<ast::Enum>(before);
         enum_.variant_list().map(|it| it.add_variant(variant));
         let after = enum_.to_string();
-        assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(&after.trim()));
+        assert_eq_text!(&trim_indent(expected.trim()), &trim_indent(after.trim()));
     }
 }

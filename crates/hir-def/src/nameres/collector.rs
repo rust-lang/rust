@@ -1094,7 +1094,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
-                        &resolver_def_id,
+                        resolver_def_id,
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
@@ -1110,7 +1110,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver,
+                        resolver,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {

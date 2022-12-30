@@ -926,7 +926,7 @@ fn iterate_method_candidates_by_receiver(
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_inherent_methods(
             &self_ty,
-            &mut autoderef.table,
+            autoderef.table,
             name,
             Some(&receiver_ty),
             Some(receiver_adjustments.clone()),
@@ -941,7 +941,7 @@ fn iterate_method_candidates_by_receiver(
     while let Some((self_ty, _)) = autoderef.next() {
         iterate_trait_method_candidates(
             &self_ty,
-            &mut autoderef.table,
+            autoderef.table,
             traits_in_scope,
             name,
             Some(&receiver_ty),
@@ -1246,7 +1246,7 @@ fn is_valid_candidate(
                     let expected_self_ty = TyBuilder::impl_self_ty(db, impl_id)
                         .fill_with_inference_vars(table)
                         .build();
-                    table.unify(&expected_self_ty, &self_ty)
+                    table.unify(&expected_self_ty, self_ty)
                 });
                 if !self_ty_matches {
                     cov_mark::hit!(const_candidate_self_type_mismatch);

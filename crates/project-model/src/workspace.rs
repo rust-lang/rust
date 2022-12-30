@@ -407,7 +407,7 @@ impl ProjectWorkspace {
                 ["libexec", "lib"]
                     .into_iter()
                     .map(|segment| sysroot.root().join(segment).join(&standalone_server_name))
-                    .find(|server_path| std::fs::metadata(&server_path).is_ok())
+                    .find(|server_path| std::fs::metadata(server_path).is_ok())
             }
             _ => None,
         }

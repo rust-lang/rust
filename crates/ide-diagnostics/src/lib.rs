@@ -229,7 +229,7 @@ pub fn diagnostics(
     for node in parse.syntax().descendants() {
         handlers::useless_braces::useless_braces(&mut res, file_id, &node);
         handlers::field_shorthand::field_shorthand(&mut res, file_id, &node);
-        handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, &config);
+        handlers::json_is_not_rust::json_in_items(&sema, &mut res, file_id, &node, config);
     }
 
     let module = sema.to_module_def(file_id);

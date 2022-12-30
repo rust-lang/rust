@@ -228,7 +228,7 @@ impl SourceAnalyzer {
         db: &dyn HirDatabase,
         pat: &ast::Pat,
     ) -> Option<SmallVec<[Type; 1]>> {
-        let pat_id = self.pat_id(&pat)?;
+        let pat_id = self.pat_id(pat)?;
         let infer = self.infer.as_ref()?;
         Some(
             infer
@@ -824,7 +824,7 @@ impl SourceAnalyzer {
     }
 
     fn ty_of_expr(&self, db: &dyn HirDatabase, expr: &ast::Expr) -> Option<&Ty> {
-        self.infer.as_ref()?.type_of_expr.get(self.expr_id(db, &expr)?)
+        self.infer.as_ref()?.type_of_expr.get(self.expr_id(db, expr)?)
     }
 }
 

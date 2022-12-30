@@ -13,7 +13,7 @@ pub(crate) fn format_string(
     original: &ast::String,
     expanded: &ast::String,
 ) {
-    if !is_format_string(&expanded) {
+    if !is_format_string(expanded) {
         return;
     }
     let cursor = ctx.position.offset;

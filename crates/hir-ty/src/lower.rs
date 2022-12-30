@@ -780,7 +780,7 @@ impl<'a> TyLoweringContext<'a> {
                         |_, c, ty| {
                             const_or_path_to_chalk(
                                 self.db,
-                                &self.resolver,
+                                self.resolver,
                                 ty,
                                 c,
                                 self.type_param_mode,
@@ -1852,7 +1852,7 @@ pub(crate) fn return_type_impl_traits(
     let ctx_ret = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let _ret = (&ctx_ret).lower_ty(&data.ret_type);
+    let _ret = ctx_ret.lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
     let return_type_impl_traits =
         ReturnTypeImplTraits { impl_traits: ctx_ret.opaque_type_data.into_inner() };

@@ -62,7 +62,7 @@ impl<'a> UnescapedName<'a> {
                     it.clone()
                 }
             }
-            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
+            Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
     }
 }
@@ -139,7 +139,7 @@ impl Name {
     pub fn to_smol_str(&self) -> SmolStr {
         match &self.0 {
             Repr::Text(it) => it.clone(),
-            Repr::TupleField(it) => SmolStr::new(&it.to_string()),
+            Repr::TupleField(it) => SmolStr::new(it.to_string()),
         }
     }
 

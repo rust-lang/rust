@@ -404,7 +404,7 @@ pub(crate) fn path_to_const(
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let args = args_lazy();

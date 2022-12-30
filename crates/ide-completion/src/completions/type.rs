@@ -58,7 +58,7 @@ pub(crate) fn complete_type_path(
             trait_.items(ctx.sema.db).into_iter().for_each(|item| add_assoc_item(acc, item))
         }
         Qualified::TypeAnchor { ty: Some(ty), trait_: None } => {
-            ctx.iterate_path_candidates(&ty, |item| {
+            ctx.iterate_path_candidates(ty, |item| {
                 add_assoc_item(acc, item);
             });
 

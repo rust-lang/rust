@@ -153,7 +153,7 @@ impl<'a> InferenceContext<'a> {
     ) -> Ty {
         let mut expected = self.resolve_ty_shallow(expected);
 
-        if is_non_ref_pat(&self.body, pat) {
+        if is_non_ref_pat(self.body, pat) {
             let mut pat_adjustments = Vec::new();
             while let Some((inner, _lifetime, mutability)) = expected.as_reference() {
                 pat_adjustments.push(expected.clone());

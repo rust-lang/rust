@@ -1252,7 +1252,7 @@ impl<'db> SemanticsImpl<'db> {
 
     fn to_def<T: ToDef>(&self, src: &T) -> Option<T::Def> {
         let src = self.find_file(src.syntax()).with_value(src).cloned();
-        T::to_def(&self, src)
+        T::to_def(self, src)
     }
 
     fn to_module_def(&self, file: FileId) -> impl Iterator<Item = Module> {

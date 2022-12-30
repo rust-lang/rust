@@ -517,7 +517,7 @@ fn cargo_config_build_target(
     cargo_config.envs(extra_env);
     cargo_config
         .current_dir(cargo_toml.parent())
-        .args(&["-Z", "unstable-options", "config", "get", "build.target"])
+        .args(["-Z", "unstable-options", "config", "get", "build.target"])
         .env("RUSTC_BOOTSTRAP", "1");
     // if successful we receive `build.target = "target-triple"`
     // or `build.target = ["<target 1>", ..]`

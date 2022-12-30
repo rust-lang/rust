@@ -14,7 +14,7 @@ fn sourcegen_feature_docs() {
         contents.trim()
     );
     let dst = sourcegen::project_root().join("docs/user/generated_features.adoc");
-    fs::write(&dst, &contents).unwrap();
+    fs::write(dst, contents).unwrap();
 }
 
 #[derive(Debug)]

@@ -102,7 +102,7 @@ impl flags::Scip {
                 let symbol = tokens_to_symbol
                     .entry(id)
                     .or_insert_with(|| {
-                        let symbol = token_to_symbol(&token).unwrap_or_else(&mut new_local_symbol);
+                        let symbol = token_to_symbol(token).unwrap_or_else(&mut new_local_symbol);
                         scip::symbol::format_symbol(symbol)
                     })
                     .clone();
@@ -176,7 +176,7 @@ fn get_relative_filepath(
     rootpath: &vfs::AbsPathBuf,
     file_id: ide::FileId,
 ) -> Option<String> {
-    Some(vfs.file_path(file_id).as_path()?.strip_prefix(&rootpath)?.as_ref().to_str()?.to_string())
+    Some(vfs.file_path(file_id).as_path()?.strip_prefix(rootpath)?.as_ref().to_str()?.to_string())
 }
 
 // SCIP Ranges have a (very large) optimization that ranges if they are on the same line

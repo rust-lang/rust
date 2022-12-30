@@ -119,7 +119,7 @@ pub struct Location {
 
 impl fmt::Display for Location {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let path = self.file.strip_prefix(&project_root()).unwrap().display().to_string();
+        let path = self.file.strip_prefix(project_root()).unwrap().display().to_string();
         let path = path.replace('\\', "/");
         let name = self.file.file_name().unwrap();
         write!(
@@ -175,7 +175,7 @@ pub fn ensure_file_contents(file: &Path, contents: &str) {
         }
     }
 
-    let display_path = file.strip_prefix(&project_root()).unwrap_or(file);
+    let display_path = file.strip_prefix(project_root()).unwrap_or(file);
     eprintln!(
         "\n\x1b[31;1merror\x1b[0m: {} was not up-to-date, updating\n",
         display_path.display()

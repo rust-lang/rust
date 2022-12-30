@@ -176,7 +176,7 @@ fn find_path_for_module(
 
     // - if relative paths are fine, check if we are searching for a parent
     if prefixed.filter(PrefixKind::is_absolute).is_none() {
-        if let modpath @ Some(_) = find_self_super(&def_map, module_id, from) {
+        if let modpath @ Some(_) = find_self_super(def_map, module_id, from) {
             return modpath;
         }
     }

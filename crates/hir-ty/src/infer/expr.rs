@@ -1335,7 +1335,7 @@ impl<'a> InferenceContext<'a> {
                             ty,
                             c,
                             ParamLoweringMode::Placeholder,
-                            || generics(this.db.upcast(), (&this.resolver).generic_def().unwrap()),
+                            || generics(this.db.upcast(), this.resolver.generic_def().unwrap()),
                             DebruijnIndex::INNERMOST,
                         )
                     },

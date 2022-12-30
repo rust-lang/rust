@@ -542,7 +542,7 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.inactive_diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast()),
+                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast()),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));
@@ -551,7 +551,7 @@ impl<'a> AssocItemCollector<'a> {
 
             'attrs: for attr in &*attrs {
                 let ast_id =
-                    AstId::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast());
+                    AstId::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast());
                 let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
 
                 if let Ok(ResolvedAttr::Macro(call_id)) = self.def_map.resolve_attr_macro(

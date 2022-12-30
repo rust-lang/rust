@@ -114,7 +114,7 @@ impl Drop for CpuSpan {
             match out {
                 Ok(out) if out.status.success() => {
                     let svg = profile_data.with_extension("svg");
-                    std::fs::write(&svg, &out.stdout).unwrap();
+                    std::fs::write(&svg, out.stdout).unwrap();
                     eprintln!("Profile rendered to:\n\n    {}\n", svg.display());
                 }
                 _ => {

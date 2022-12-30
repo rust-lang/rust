@@ -15,10 +15,10 @@ pub(super) fn get(
             let mut cmd = Command::new(toolchain::rustc());
             cmd.envs(extra_env);
             cmd.current_dir(cargo_toml.parent())
-                .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+                .args(["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
                 .env("RUSTC_BOOTSTRAP", "1");
             if let Some(target) = target {
-                cmd.args(&["--target", target]);
+                cmd.args(["--target", target]);
             }
             match utf8_stdout(cmd) {
                 Ok(it) => return Ok(it),
@@ -28,10 +28,10 @@ pub(super) fn get(
         // using unstable cargo features failed, fall back to using plain rustc
         let mut cmd = Command::new(toolchain::rustc());
         cmd.envs(extra_env)
-            .args(&["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
+            .args(["-Z", "unstable-options", "rustc", "--print", "target-spec-json"])
             .env("RUSTC_BOOTSTRAP", "1");
         if let Some(target) = target {
-            cmd.args(&["--target", target]);
+            cmd.args(["--target", target]);
         }
         utf8_stdout(cmd)
     })()

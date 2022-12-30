@@ -276,7 +276,7 @@ pub(super) fn struct_rest_pat(
         }
     };
     for (_, t) in &missing_fields {
-        walk_and_push_ty(sema.db, &t, &mut push_new_def);
+        walk_and_push_ty(sema.db, t, &mut push_new_def);
     }
 
     res.markup = {
