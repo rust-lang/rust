@@ -1871,12 +1871,11 @@ in storage.js
 }
 
 .scraped-example {
-	/* So .scraped-example-title can be positioned absolutely */
+	/* So .scraped-example-title, .prev, .next, and .expand can be positioned absolutely */
 	position: relative;
 }
 
 .scraped-example .code-wrapper {
-	position: relative;
 	display: flex;
 	flex-direction: row;
 	flex-wrap: wrap;
