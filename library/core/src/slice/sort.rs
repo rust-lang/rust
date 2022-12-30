@@ -3,7 +3,7 @@
 //! This module contains a sorting algorithm based on Orson Peters' pattern-defeating quicksort,
 //! published at: <https://github.com/orlp/pdqsort>
 //!
-//! Unstable sorting is compatible with libcore because it doesn't allocate memory, unlike our
+//! Unstable sorting is compatible with core because it doesn't allocate memory, unlike our
 //! stable sorting implementation.
 
 use crate::cmp;

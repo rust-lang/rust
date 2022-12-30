@@ -164,7 +164,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
         #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
         {
-            // We don't want to add this as a public type to libstd, nor do we
+            // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break
             // Miri and xargo for example), so we choose to duplicate these
             // constants from `compiler/rustc_session/src/config/sigpipe.rs`.

@@ -17,7 +17,7 @@ mod unicode_data;
 #[stable(feature = "unicode_version", since = "1.45.0")]
 pub const UNICODE_VERSION: (u8, u8, u8) = unicode_data::UNICODE_VERSION;
 
-// For use in liballoc, not re-exported in libstd.
+// For use in alloc, not re-exported in std.
 pub use unicode_data::{
     case_ignorable::lookup as Case_Ignorable, cased::lookup as Cased, conversions,
 };

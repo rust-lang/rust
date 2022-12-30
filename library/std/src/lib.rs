@@ -202,7 +202,7 @@
     no_global_oom_handling,
     not(no_global_oom_handling)
 ))]
-// To run libstd tests without x.py without ending up with two copies of libstd, Miri needs to be
+// To run std tests without x.py without ending up with two copies of std, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
 // rustc itself never sets the feature, so this line has no affect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
@@ -532,7 +532,7 @@ pub mod process;
 pub mod sync;
 pub mod time;
 
-// Pull in `std_float` crate  into libstd. The contents of
+// Pull in `std_float` crate  into std. The contents of
 // `std_float` are in a different repository: rust-lang/portable-simd.
 #[path = "../../portable-simd/crates/std_float/src/lib.rs"]
 #[allow(missing_debug_implementations, dead_code, unsafe_op_in_unsafe_fn, unused_unsafe)]
@@ -602,7 +602,7 @@ mod personality;
 #[allow(dead_code, unused_attributes, fuzzy_provenance_casts)]
 mod backtrace_rs;
 
-// Re-export macros defined in libcore.
+// Re-export macros defined in core.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(deprecated, deprecated_in_future)]
 pub use core::{
@@ -610,7 +610,7 @@ pub use core::{
     unimplemented, unreachable, write, writeln,
 };
 
-// Re-export built-in macros defined through libcore.
+// Re-export built-in macros defined through core.
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
 #[allow(deprecated)]
 pub use core::{

@@ -306,7 +306,7 @@ unsafe fn u8_slice_as_os_str(s: &[u8]) -> &OsStr {
     // This casts are safe as OsStr is internally a wrapper around [u8] on all
     // platforms.
     //
-    // Note that currently this relies on the special knowledge that libstd has;
+    // Note that currently this relies on the special knowledge that std has;
     // these types are single-element structs but are not marked
     // repr(transparent) or repr(C) which would make these casts not allowable
     // outside std.

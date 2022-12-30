@@ -1,9 +1,8 @@
 //! Support for "weak linkage" to symbols on Unix
 //!
-//! Some I/O operations we do in libstd require newer versions of OSes but we
-//! need to maintain binary compatibility with older releases for now. In order
-//! to use the new functionality when available we use this module for
-//! detection.
+//! Some I/O operations we do in std require newer versions of OSes but we need
+//! to maintain binary compatibility with older releases for now. In order to
+//! use the new functionality when available we use this module for detection.
 //!
 //! One option to use here is weak linkage, but that is unfortunately only
 //! really workable with ELF. Otherwise, use dlsym to get the symbol value at
