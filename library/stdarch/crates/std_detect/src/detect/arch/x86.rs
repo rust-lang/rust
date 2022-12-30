@@ -92,6 +92,7 @@ features! {
     /// * `"adx"`
     /// * `"rtm"`
     /// * `"movbe"`
+    /// * `"ermsb"`
     ///
     /// [docs]: https://software.intel.com/sites/landingpage/IntrinsicsGuide
     #[stable(feature = "simd_x86", since = "1.27.0")]
@@ -200,4 +201,6 @@ features! {
     /// RTM, Intel (Restricted Transactional Memory)
     @FEATURE: #[stable(feature = "movbe_target_feature", since = "1.67.0")] movbe: "movbe";
     /// MOVBE (Move Data After Swapping Bytes)
+    @FEATURE: #[stable(feature = "simd_x86", since = "1.27.0")] ermsb: "ermsb";
+    /// ERMSB, Enhanced REP MOVSB and STOSB
 }

@@ -129,6 +129,8 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(extended_features_ebx, 3, Feature::bmi1);
         enable(extended_features_ebx, 8, Feature::bmi2);
 
+        enable(extended_features_ebx, 9, Feature::ermsb);
+
         // `XSAVE` and `AVX` support:
         let cpu_xsave = bit::test(proc_info_ecx as usize, 26);
         if cpu_xsave {
