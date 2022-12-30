@@ -299,6 +299,7 @@ fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<
             // What we need to do constant evaluation.
             &simplify::SimplifyCfg::new("initial"),
             &rustc_peek::SanityCheck, // Just a lint
+            &ctfe_limit::CtfeLimit,
         ],
         None,
     );
@@ -518,7 +519,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // CTFE support for aggregates.
         &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
-        &ctfe_limit::CtfeLimit,
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
