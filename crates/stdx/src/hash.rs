@@ -51,7 +51,7 @@ impl Hasher for NoHashHasher {
     }
 
     fn write_u64(&mut self, i: u64) {
-        self.0 = i as u64;
+        self.0 = i;
     }
 
     fn write_usize(&mut self, i: usize) {
