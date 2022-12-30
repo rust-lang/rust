@@ -11,6 +11,7 @@ use std::iter;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 
+use crate::builder::crate_description;
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::Interned;
 use crate::compile;
@@ -2154,8 +2155,12 @@ impl Step for Crate {
         }
 
         builder.info(&format!(
-            "{} {:?} stage{} ({} -> {})",
-            test_kind, self.crates, compiler.stage, &compiler.host, target
+            "{}{} stage{} ({} -> {})",
+            test_kind,
+            crate_description(&self.crates),
+            compiler.stage,
+            &compiler.host,
+            target
         ));
         let _time = util::timeit(&builder);
         try_run(builder, &mut cargo.into());

@@ -12,6 +12,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::builder::crate_description;
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
@@ -558,7 +559,8 @@ fn doc_std(
     requested_crates: &[String],
 ) {
     builder.info(&format!(
-        "Documenting stage{} std ({}) in {} format",
+        "Documenting{} stage{} library ({}) in {} format",
+        crate_description(requested_crates),
         stage,
         target,
         format.as_str()
