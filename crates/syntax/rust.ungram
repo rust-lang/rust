@@ -359,6 +359,7 @@ Expr =
 | TupleExpr
 | WhileExpr
 | YieldExpr
+| YeetExpr
 | LetExpr
 | UnderscoreExpr
 
@@ -502,6 +503,9 @@ ReturnExpr =
 
 YieldExpr =
   Attr* 'yield' Expr?
+
+YeetExpr =
+  Attr* 'do' 'yeet' Expr?
 
 LetExpr =
   Attr* 'let' Pat '=' Expr

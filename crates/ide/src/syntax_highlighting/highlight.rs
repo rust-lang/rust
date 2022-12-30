@@ -174,6 +174,7 @@ fn keyword(
         | T![return]
         | T![while]
         | T![yield] => h | HlMod::ControlFlow,
+        T![do] | T![yeet] if parent_matches::<ast::YeetExpr>(&token) => h | HlMod::ControlFlow,
         T![for] if parent_matches::<ast::ForExpr>(&token) => h | HlMod::ControlFlow,
         T![unsafe] => h | HlMod::Unsafe,
         T![true] | T![false] => HlTag::BoolLiteral.into(),

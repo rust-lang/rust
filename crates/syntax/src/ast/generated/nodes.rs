@@ -1064,6 +1064,17 @@ impl YieldExpr {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct YeetExpr {
+    pub(crate) syntax: SyntaxNode,
+}
+impl ast::HasAttrs for YeetExpr {}
+impl YeetExpr {
+    pub fn do_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![do]) }
+    pub fn yeet_token(&self) -> Option<SyntaxToken> { support::token(&self.syntax, T![yeet]) }
+    pub fn expr(&self) -> Option<Expr> { support::child(&self.syntax) }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct LetExpr {
     pub(crate) syntax: SyntaxNode,
 }
@@ -1541,6 +1552,7 @@ pub enum Expr {
     TupleExpr(TupleExpr),
     WhileExpr(WhileExpr),
     YieldExpr(YieldExpr),
+    YeetExpr(YeetExpr),
     LetExpr(LetExpr),
     UnderscoreExpr(UnderscoreExpr),
 }
@@ -2694,6 +2706,17 @@ impl AstNode for YieldExpr {
     }
     fn syntax(&self) -> &SyntaxNode { &self.syntax }
 }
+impl AstNode for YeetExpr {
+    fn can_cast(kind: SyntaxKind) -> bool { kind == YEET_EXPR }
+    fn cast(syntax: SyntaxNode) -> Option<Self> {
+        if Self::can_cast(syntax.kind()) {
+            Some(Self { syntax })
+        } else {
+            None
+        }
+    }
+    fn syntax(&self) -> &SyntaxNode { &self.syntax }
+}
 impl AstNode for LetExpr {
     fn can_cast(kind: SyntaxKind) -> bool { kind == LET_EXPR }
     fn cast(syntax: SyntaxNode) -> Option<Self> {
@@ -3382,6 +3405,9 @@ impl From<WhileExpr> for Expr {
 impl From<YieldExpr> for Expr {
     fn from(node: YieldExpr) -> Expr { Expr::YieldExpr(node) }
 }
+impl From<YeetExpr> for Expr {
+    fn from(node: YeetExpr) -> Expr { Expr::YeetExpr(node) }
+}
 impl From<LetExpr> for Expr {
     fn from(node: LetExpr) -> Expr { Expr::LetExpr(node) }
 }
@@ -3422,6 +3448,7 @@ impl AstNode for Expr {
                 | TUPLE_EXPR
                 | WHILE_EXPR
                 | YIELD_EXPR
+                | YEET_EXPR
                 | LET_EXPR
                 | UNDERSCORE_EXPR
         )
@@ -3458,6 +3485,7 @@ impl AstNode for Expr {
             TUPLE_EXPR => Expr::TupleExpr(TupleExpr { syntax }),
             WHILE_EXPR => Expr::WhileExpr(WhileExpr { syntax }),
             YIELD_EXPR => Expr::YieldExpr(YieldExpr { syntax }),
+            YEET_EXPR => Expr::YeetExpr(YeetExpr { syntax }),
             LET_EXPR => Expr::LetExpr(LetExpr { syntax }),
             UNDERSCORE_EXPR => Expr::UnderscoreExpr(UnderscoreExpr { syntax }),
             _ => return None,
@@ -3496,6 +3524,7 @@ impl AstNode for Expr {
             Expr::TupleExpr(it) => &it.syntax,
             Expr::WhileExpr(it) => &it.syntax,
             Expr::YieldExpr(it) => &it.syntax,
+            Expr::YeetExpr(it) => &it.syntax,
             Expr::LetExpr(it) => &it.syntax,
             Expr::UnderscoreExpr(it) => &it.syntax,
         }
@@ -3963,6 +3992,7 @@ impl AstNode for AnyHasAttrs {
                 | TUPLE_EXPR
                 | WHILE_EXPR
                 | YIELD_EXPR
+                | YEET_EXPR
                 | LET_EXPR
                 | UNDERSCORE_EXPR
                 | STMT_LIST
@@ -4651,6 +4681,11 @@ impl std::fmt::Display for WhileExpr {
     }
 }
 impl std::fmt::Display for YieldExpr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self.syntax(), f)
+    }
+}
+impl std::fmt::Display for YeetExpr {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self.syntax(), f)
     }

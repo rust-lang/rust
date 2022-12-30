@@ -247,6 +247,15 @@ impl<'a> Printer<'a> {
                     self.print_expr(*expr);
                 }
             }
+            Expr::Yeet { expr } => {
+                w!(self, "do");
+                self.whitespace();
+                w!(self, "yeet");
+                if let Some(expr) = expr {
+                    self.whitespace();
+                    self.print_expr(*expr);
+                }
+            }
             Expr::RecordLit { path, fields, spread, ellipsis, is_assignee_expr: _ } => {
                 match path {
                     Some(path) => self.print_path(path),
