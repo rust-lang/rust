@@ -62,6 +62,8 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> InterpCx<'mir, 'tcx, M> {
             return Ok(true);
         }
 
+        M::before_terminator(self)?;
+
         let terminator = basic_block.terminator();
         self.terminator(terminator)?;
         Ok(true)
