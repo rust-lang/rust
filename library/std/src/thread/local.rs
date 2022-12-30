@@ -905,9 +905,8 @@ pub mod statik {
 pub mod fast {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
-    use crate::fmt;
-    use crate::mem;
     use crate::sys::thread_local_dtor::register_dtor;
+    use crate::{fmt, mem, panic};
 
     #[derive(Copy, Clone)]
     enum DtorState {
@@ -1028,10 +1027,15 @@ pub mod fast {
         // `Option<T>` to `None`, and `dtor_state` to `RunningOrHasRun`. This
         // causes future calls to `get` to run `try_initialize_drop` again,
         // which will now fail, and return `None`.
-        unsafe {
+        //
+        // Wrap the call in a catch to ensure unwinding is caught in the event
+        // a panic takes place in a destructor.
+        if let Err(_) = panic::catch_unwind(panic::AssertUnwindSafe(|| unsafe {
             let value = (*ptr).inner.take();
             (*ptr).dtor_state.set(DtorState::RunningOrHasRun);
             drop(value);
+        })) {
+            rtabort!("thread local panicked on drop");
         }
     }
 }
@@ -1044,10 +1048,8 @@ pub mod fast {
 pub mod os {
     use super::lazy::LazyKeyInner;
     use crate::cell::Cell;
-    use crate::fmt;
-    use crate::marker;
-    use crate::ptr;
     use crate::sys_common::thread_local_key::StaticKey as OsStaticKey;
+    use crate::{fmt, marker, panic, ptr};
 
     /// Use a regular global static to store this key; the state provided will then be
     /// thread-local.
@@ -1137,12 +1139,17 @@ pub mod os {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        unsafe {
+        //
+        // Wrap the call in a catch to ensure unwinding is caught in the event
+        // a panic takes place in a destructor.
+        if let Err(_) = panic::catch_unwind(|| unsafe {
             let ptr = Box::from_raw(ptr as *mut Value<T>);
             let key = ptr.key;
             key.os.set(ptr::invalid_mut(1));
             drop(ptr);
             key.os.set(ptr::null_mut());
+        }) {
+            rtabort!("thread local panicked on drop");
         }
     }
 }
