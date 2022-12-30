@@ -949,7 +949,7 @@ pub mod fast {
 
         // note that this is just a publicly-callable function only for the
         // const-initialized form of thread locals, basically a way to call the
-        // free `register_dtor` function defined elsewhere in libstd.
+        // free `register_dtor` function defined elsewhere in std.
         pub unsafe fn register_dtor(a: *mut u8, dtor: unsafe extern "C" fn(*mut u8)) {
             unsafe {
                 register_dtor(a, dtor);

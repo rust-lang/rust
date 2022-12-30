@@ -166,7 +166,7 @@ impl Repr {
         // `new_unchecked` is safe.
         let res = Self(unsafe { NonNull::new_unchecked(tagged) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(matches!(res.data(), ErrorData::Custom(_)), "repr(custom) encoding failed");
         res
     }
@@ -177,7 +177,7 @@ impl Repr {
         // Safety: `TAG_OS` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Os(c) if c == code),
             "repr(os) encoding failed for {code}"
@@ -191,7 +191,7 @@ impl Repr {
         // Safety: `TAG_SIMPLE` is not zero, so the result of the `|` is not 0.
         let res = Self(unsafe { NonNull::new_unchecked(ptr::invalid_mut(utagged)) }, PhantomData);
         // quickly smoke-check we encoded the right thing (This generally will
-        // only run in libstd's tests, unless the user uses -Zbuild-std)
+        // only run in std's tests, unless the user uses -Zbuild-std)
         debug_assert!(
             matches!(res.data(), ErrorData::Simple(k) if k == kind),
             "repr(simple) encoding failed {:?}",
@@ -348,7 +348,7 @@ fn kind_from_prim(ek: u32) -> Option<ErrorKind> {
 // that our encoding relies on for correctness and soundness. (Some of these are
 // a bit overly thorough/cautious, admittedly)
 //
-// If any of these are hit on a platform that libstd supports, we should likely
+// If any of these are hit on a platform that std supports, we should likely
 // just use `repr_unpacked.rs` there instead (unless the fix is easy).
 macro_rules! static_assert {
     ($condition:expr) => {

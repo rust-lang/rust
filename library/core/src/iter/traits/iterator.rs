@@ -1381,8 +1381,8 @@ pub trait Iterator {
         Take::new(self, n)
     }
 
-    /// An iterator adapter similar to [`fold`] that holds internal state and
-    /// produces a new iterator.
+    /// An iterator adapter which, like [`fold`], holds internal state, but
+    /// unlike [`fold`], produces a new iterator.
     ///
     /// [`fold`]: Iterator::fold
     ///
@@ -1394,20 +1394,25 @@ pub trait Iterator {
     ///
     /// On iteration, the closure will be applied to each element of the
     /// iterator and the return value from the closure, an [`Option`], is
-    /// yielded by the iterator.
+    /// returned by the `next` method. Thus the closure can return
+    /// `Some(value)` to yield `value`, or `None` to end the iteration.
     ///
     /// # Examples
     ///
     /// Basic usage:
     ///
     /// ```
-    /// let a = [1, 2, 3];
+    /// let a = [1, 2, 3, 4];
     ///
     /// let mut iter = a.iter().scan(1, |state, &x| {
-    ///     // each iteration, we'll multiply the state by the element
+    ///     // each iteration, we'll multiply the state by the element ...
     ///     *state = *state * x;
     ///
-    ///     // then, we'll yield the negation of the state
+    ///     // ... and terminate if the state exceeds 6
+    ///     if *state > 6 {
+    ///         return None;
+    ///     }
+    ///     // ... else yield the negation of the state
     ///     Some(-*state)
     /// });
     ///

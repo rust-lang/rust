@@ -1,7 +1,7 @@
 //! Android ABI-compatibility module
 //!
-//! The ABI of Android has changed quite a bit over time, and libstd attempts to
-//! be both forwards and backwards compatible as much as possible. We want to
+//! The ABI of Android has changed quite a bit over time, and std attempts to be
+//! both forwards and backwards compatible as much as possible. We want to
 //! always work with the most recent version of Android, but we also want to
 //! work with older versions of Android for whenever projects need to.
 //!
