@@ -688,7 +688,7 @@ impl<'a> InferenceContext<'a> {
         }
     }
 
-    /// Replaces Ty::Unknown by a new type var, so we can maybe still infer it.
+    /// Replaces `Ty::Error` by a new type var, so we can maybe still infer it.
     fn insert_type_vars_shallow(&mut self, ty: Ty) -> Ty {
         match ty.kind(Interner) {
             TyKind::Error => self.table.new_type_var(),
