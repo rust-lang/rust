@@ -210,7 +210,7 @@ impl<'a> Writer<'a> {
             let idx_tag = match child {
                 tt::TokenTree::Subtree(it) => {
                     let idx = self.enqueue(it);
-                    idx << 2 | 0b00
+                    idx << 2
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Literal(lit) => {
