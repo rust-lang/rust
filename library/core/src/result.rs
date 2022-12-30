@@ -1121,6 +1121,8 @@ impl<T, E> Result<T, E> {
     ///
     /// Unlike [`unwrap`], this function will not panic.
     ///
+    /// [`unwrap`]: Result::unwrap
+    ///
     /// # Examples
     ///
     /// Converts a string to an integer, turning poorly-formed strings
