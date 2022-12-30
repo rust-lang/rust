@@ -111,7 +111,10 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
+            builder.info(&format!(
+                "Uplifting stage1 library ({} -> {})",
+                compiler_to_use.host, target
+            ));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
@@ -127,18 +130,21 @@ impl Step for Std {
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
 
         builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {}){}",
+            "Building{} stage{} library artifacts ({} -> {})",
+            crate_description(&self.crates),
             compiler.stage,
             &compiler.host,
             target,
-            crate_description(self.crates),
         ));
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &libstd_stamp(builder, compiler, target),
             target_deps,
             false,
@@ -429,7 +435,7 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
         builder.info(&format!(
-            "Copying stage{} std from stage{} ({} -> {} / {})",
+            "Copying stage{} library from stage{} ({} -> {} / {})",
             target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
         ));
         let libdir = builder.sysroot_libdir(target_compiler, target);
@@ -718,17 +724,21 @@ impl Step for Rustc {
             }
         }
 
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
+
         builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {}){}",
+            "Building{} stage{} compiler artifacts ({} -> {})",
+            crate_description(&self.crates),
             compiler.stage,
             &compiler.host,
             target,
-            crate_description(self.crates),
         ));
         run_cargo(
             builder,
             cargo,
-            self.crates.to_vec(),
+            vec![],
             &librustc_stamp(builder, compiler, target),
             vec![],
             false,

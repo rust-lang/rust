@@ -101,7 +101,7 @@ impl Step for Std {
         std_cargo(builder, target, compiler.stage, &mut cargo);
 
         builder.info(&format!(
-            "Checking stage{} std artifacts ({} -> {})",
+            "Checking stage{} library artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
         run_cargo(
@@ -157,7 +157,7 @@ impl Step for Std {
         }
 
         builder.info(&format!(
-            "Checking stage{} std test/bench/example targets ({} -> {})",
+            "Checking stage{} library test/bench/example targets ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
         run_cargo(

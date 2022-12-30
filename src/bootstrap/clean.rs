@@ -66,8 +66,8 @@ macro_rules! clean_crate_tree {
                 }
 
                 builder.info(&format!(
-                    "Cleaning stage{} {} artifacts ({} -> {}){}",
-                    compiler.stage, stringify!($name).to_lowercase(), &compiler.host, target, crate_description(self.crates),
+                    "Cleaning{} stage{} {} artifacts ({} -> {})",
+                    crate_description(&self.crates), compiler.stage, stringify!($name).to_lowercase(), &compiler.host, target,
                 ));
 
                 // NOTE: doesn't use `run_cargo` because we don't want to save a stamp file,
