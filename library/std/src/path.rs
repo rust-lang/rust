@@ -1411,13 +1411,28 @@ impl PathBuf {
         self.push(file_name);
     }
 
-    /// Updates [`self.extension`] to `extension`.
+    /// Updates [`self.extension`] to `Some(extension)` or to `None` if
+    /// `extension` is empty.
     ///
     /// Returns `false` and does nothing if [`self.file_name`] is [`None`],
     /// returns `true` and updates the extension otherwise.
     ///
     /// If [`self.extension`] is [`None`], the extension is added; otherwise
     /// it is replaced.
+    ///
+    /// If `extension` is the empty string, [`self.extension`] will be [`None`]
+    /// afterwards, not `Some("")`.
+    ///
+    /// # Caveats
+    ///
+    /// The new `extension` may contain dots and will be used in its entirety,
+    /// but only the part after the final dot will be reflected in
+    /// [`self.extension`].
+    ///
+    /// If the file stem contains internal dots and `extension` is empty, part
+    /// of the old file stem will be considered the new [`self.extension`].
+    ///
+    /// See the examples below.
     ///
     /// [`self.file_name`]: Path::file_name
     /// [`self.extension`]: Path::extension
@@ -1432,8 +1447,20 @@ impl PathBuf {
     /// p.set_extension("force");
     /// assert_eq!(Path::new("/feel/the.force"), p.as_path());
     ///
-    /// p.set_extension("dark_side");
-    /// assert_eq!(Path::new("/feel/the.dark_side"), p.as_path());
+    /// p.set_extension("dark.side");
+    /// assert_eq!(Path::new("/feel/the.dark.side"), p.as_path());
+    ///
+    /// p.set_extension("cookie");
+    /// assert_eq!(Path::new("/feel/the.dark.cookie"), p.as_path());
+    ///
+    /// p.set_extension("");
+    /// assert_eq!(Path::new("/feel/the.dark"), p.as_path());
+    ///
+    /// p.set_extension("");
+    /// assert_eq!(Path::new("/feel/the"), p.as_path());
+    ///
+    /// p.set_extension("");
+    /// assert_eq!(Path::new("/feel/the"), p.as_path());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_extension<S: AsRef<OsStr>>(&mut self, extension: S) -> bool {
