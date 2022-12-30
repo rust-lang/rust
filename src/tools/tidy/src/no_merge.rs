@@ -3,6 +3,9 @@
 
 use std::process::Command;
 
+use build_helper::ci::CiEnv;
+use build_helper::git::get_rust_lang_rust_remote;
+
 macro_rules! try_unwrap_in_ci {
     ($expr:expr) => {
         match $expr {
@@ -36,38 +39,6 @@ If you're doing a subtree sync, add your tool to the list in the code that emitt
     }
 }
 
-/// Finds the remote for rust-lang/rust.
-/// For example for these remotes it will return `upstream`.
-/// ```text
-/// origin  https://github.com/Nilstrieb/rust.git (fetch)
-/// origin  https://github.com/Nilstrieb/rust.git (push)
-/// upstream        https://github.com/rust-lang/rust (fetch)
-/// upstream        https://github.com/rust-lang/rust (push)
-/// ```
-fn get_rust_lang_rust_remote() -> Result<String, String> {
-    let mut git = Command::new("git");
-    git.args(["config", "--local", "--get-regex", "remote\\..*\\.url"]);
-
-    let output = git.output().map_err(|err| format!("{err:?}"))?;
-    if !output.status.success() {
-        return Err(format!(
-            "failed to execute git config command: {}",
-            String::from_utf8_lossy(&output.stderr)
-        ));
-    }
-
-    let stdout = String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?;
-
-    let rust_lang_remote = stdout
-        .lines()
-        .find(|remote| remote.contains("rust-lang"))
-        .ok_or_else(|| "rust-lang/rust remote not found".to_owned())?;
-
-    let remote_name =
-        rust_lang_remote.split('.').nth(1).ok_or_else(|| "remote name not found".to_owned())?;
-    Ok(remote_name.into())
-}
-
 /// Runs `git log --merges --format=%s $REMOTE/master..HEAD` and returns all commits
 fn find_merge_commits(remote: &str) -> Result<String, String> {
     let mut git = Command::new("git");
@@ -98,31 +69,4 @@ fn find_merge_commits(remote: &str) -> Result<String, String> {
     let stdout = String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?;
 
     Ok(stdout)
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
-pub enum CiEnv {
-    /// Not a CI environment.
-    None,
-    /// The Azure Pipelines environment, for Linux (including Docker), Windows, and macOS builds.
-    AzurePipelines,
-    /// The GitHub Actions environment, for Linux (including Docker), Windows and macOS builds.
-    GitHubActions,
-}
-
-impl CiEnv {
-    /// Obtains the current CI environment.
-    pub fn current() -> CiEnv {
-        if std::env::var("TF_BUILD").map_or(false, |e| e == "True") {
-            CiEnv::AzurePipelines
-        } else if std::env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
-            CiEnv::GitHubActions
-        } else {
-            CiEnv::None
-        }
-    }
-
-    pub fn is_ci() -> bool {
-        Self::current() != CiEnv::None
-    }
 }
