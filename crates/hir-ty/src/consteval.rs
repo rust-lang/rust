@@ -511,10 +511,10 @@ pub(crate) fn const_eval_query_variant(
     )
 }
 
-pub(crate) fn eval_to_const<'a>(
+pub(crate) fn eval_to_const(
     expr: Idx<Expr>,
     mode: ParamLoweringMode,
-    ctx: &mut InferenceContext<'a>,
+    ctx: &mut InferenceContext<'_>,
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {

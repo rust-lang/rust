@@ -411,7 +411,7 @@ impl CargoWorkspace {
         CargoWorkspace { packages, targets, workspace_root }
     }
 
-    pub fn packages<'a>(&'a self) -> impl Iterator<Item = Package> + ExactSizeIterator + 'a {
+    pub fn packages(&self) -> impl Iterator<Item = Package> + ExactSizeIterator + '_ {
         self.packages.iter().map(|(id, _pkg)| id)
     }
 

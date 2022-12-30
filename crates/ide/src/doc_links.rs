@@ -285,7 +285,7 @@ impl DocCommentToken {
     }
 }
 
-fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<'a>)> {
+fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)> {
     Some((/*url*/ link.reference.clone(), /*title*/ link.reference))
 }
 

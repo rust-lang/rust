@@ -82,11 +82,11 @@ pub(crate) fn autoderef_step(
 }
 
 // FIXME: replace uses of this with Autoderef above
-pub fn autoderef<'a>(
-    db: &'a dyn HirDatabase,
+pub fn autoderef(
+    db: &dyn HirDatabase,
     env: Arc<TraitEnvironment>,
     ty: Canonical<Ty>,
-) -> impl Iterator<Item = Canonical<Ty>> + 'a {
+) -> impl Iterator<Item = Canonical<Ty>> + '_ {
     let mut table = InferenceTable::new(db, env);
     let ty = table.instantiate_canonical(ty);
     let mut autoderef = Autoderef::new(&mut table, ty);

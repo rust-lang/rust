@@ -142,8 +142,8 @@ pub enum WherePredicateTypeTarget {
 
 impl GenericParams {
     /// Iterator of type_or_consts field
-    pub fn iter<'a>(
-        &'a self,
+    pub fn iter(
+        &self,
     ) -> impl DoubleEndedIterator<Item = (Idx<TypeOrConstParamData>, &TypeOrConstParamData)> {
         self.type_or_consts.iter()
     }

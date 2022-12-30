@@ -116,9 +116,9 @@ enum Mode {
     Template,
 }
 
-fn next_op<'a>(
+fn next_op(
     first_peeked: &tt::TokenTree,
-    src: &mut TtIter<'a>,
+    src: &mut TtIter<'_>,
     mode: Mode,
 ) -> Result<Op, ParseError> {
     let res = match first_peeked {
