@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 //
 // only-x86_64
 // ignore-windows
@@ -16,6 +16,6 @@ struct Bar(u64, u64, u64);
 
 // Ensure that emit arguments of the correct type.
 pub unsafe fn test_call_variadic() {
-    // CHECK: call void (i32, ...) @variadic_fn(i32 noundef 0, i8 {{.*}}, {{%Bar\*|ptr}} {{.*}})
+    // CHECK: call void (i32, ...) @variadic_fn(i32 0, i8 {{.*}}, {{%Bar\*|ptr}} {{.*}})
     variadic_fn(0, Foo(0), Bar(0, 0, 0))
 }

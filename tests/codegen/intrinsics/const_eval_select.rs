@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 
 #![crate_type = "lib"]
 #![feature(const_eval_select)]
@@ -13,6 +13,6 @@ pub fn hi(n: i32) -> i32 { n }
 
 #[no_mangle]
 pub unsafe fn hey() {
-    // CHECK: call noundef i32 @hi(i32
+    // CHECK: call i32 @hi(i32
     const_eval_select((42,), foo, hi);
 }

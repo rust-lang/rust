@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 // needs-asm-support
 // only-x86_64
 
@@ -19,7 +19,7 @@ pub unsafe extern "C" fn naked_empty() {
 }
 
 // CHECK: Function Attrs: naked
-// CHECK-NEXT: define{{.*}}i{{[0-9]+}} @naked_with_args_and_return(i64 noundef %a, i64 noundef %b)
+// CHECK-NEXT: define{{.*}}i{{[0-9]+}} @naked_with_args_and_return(i64 %a, i64 %b)
 #[no_mangle]
 #[naked]
 pub unsafe extern "C" fn naked_with_args_and_return(a: isize, b: isize) -> isize {

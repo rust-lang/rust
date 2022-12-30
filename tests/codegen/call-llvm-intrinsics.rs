@@ -1,4 +1,4 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 
 // ignore-riscv64
 
@@ -23,7 +23,7 @@ pub fn do_call() {
 
     unsafe {
         // Ensure that we `call` LLVM intrinsics instead of trying to `invoke` them
-        // CHECK: call noundef float @llvm.sqrt.f32(float noundef 4.000000e+00
+        // CHECK: call float @llvm.sqrt.f32(float 4.000000e+00
         sqrt(4.0);
     }
 }

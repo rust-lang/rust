@@ -1,11 +1,11 @@
 // compile-flags: -O -C no-prepopulate-passes
 
 #![crate_type = "lib"]
-#![feature(rustc_attrs)]
 
 use std::mem::MaybeUninit;
 use std::num::NonZeroU64;
 use std::marker::PhantomPinned;
+use std::ptr::NonNull;
 
 pub struct S {
   _field: [i32; 8],
@@ -138,10 +138,26 @@ pub fn indirect_struct(_: S) {
 pub fn borrowed_struct(_: &S) {
 }
 
+// CHECK: @option_borrow({{i32\*|ptr}} noalias noundef readonly align 4 dereferenceable_or_null(4) %x)
+#[no_mangle]
+pub fn option_borrow(x: Option<&i32>) {
+}
+
+// CHECK: @option_borrow_mut({{i32\*|ptr}} noalias noundef align 4 dereferenceable_or_null(4) %x)
+#[no_mangle]
+pub fn option_borrow_mut(x: Option<&mut i32>) {
+}
+
 // CHECK: @raw_struct({{%S\*|ptr}} noundef %_1)
 #[no_mangle]
 pub fn raw_struct(_: *const S) {
 }
+
+// CHECK: @raw_option_nonnull_struct({{i32\*|ptr}} noundef %_1)
+#[no_mangle]
+pub fn raw_option_nonnull_struct(_: Option<NonNull<S>>) {
+}
+
 
 // `Box` can get deallocated during execution of the function, so it should
 // not get `dereferenceable`.
@@ -198,6 +214,16 @@ pub fn str(_: &[u8]) {
 // FIXME #25759 This should also have `nocapture`
 #[no_mangle]
 pub fn trait_borrow(_: &dyn Drop) {
+}
+
+// CHECK: @option_trait_borrow({{i8\*|ptr}} noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
+#[no_mangle]
+pub fn option_trait_borrow(x: Option<&dyn Drop>) {
+}
+
+// CHECK: @option_trait_borrow_mut({{i8\*|ptr}} noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
+#[no_mangle]
+pub fn option_trait_borrow_mut(x: Option<&mut dyn Drop>) {
 }
 
 // CHECK: @trait_raw({{\{\}\*|ptr}} noundef %_1.0, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}) %_1.1)

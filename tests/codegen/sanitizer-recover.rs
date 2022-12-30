@@ -6,8 +6,8 @@
 // revisions:ASAN ASAN-RECOVER MSAN MSAN-RECOVER MSAN-RECOVER-LTO
 // no-prefer-dynamic
 //
-//[ASAN]             compile-flags: -Zsanitizer=address
-//[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address
+//[ASAN]             compile-flags: -Zsanitizer=address -Copt-level=0
+//[ASAN-RECOVER]     compile-flags: -Zsanitizer=address -Zsanitizer-recover=address -Copt-level=0
 //[MSAN]             compile-flags: -Zsanitizer=memory
 //[MSAN-RECOVER]     compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory
 //[MSAN-RECOVER-LTO] compile-flags: -Zsanitizer=memory  -Zsanitizer-recover=memory -C lto=fat
@@ -16,12 +16,12 @@
 // MSAN-RECOVER:     @__msan_keep_going = weak_odr {{.*}}constant i32 1
 // MSAN-RECOVER-LTO: @__msan_keep_going = weak_odr {{.*}}constant i32 1
 
-// ASAN-LABEL: define dso_local noundef i32 @penguin(
+// ASAN-LABEL: define dso_local i32 @penguin(
 // ASAN:         call void @__asan_report_load4(i64 %0)
 // ASAN:         unreachable
 // ASAN:       }
 //
-// ASAN-RECOVER-LABEL: define dso_local noundef i32 @penguin(
+// ASAN-RECOVER-LABEL: define dso_local i32 @penguin(
 // ASAN-RECOVER:         call void @__asan_report_load4_noabort(
 // ASAN-RECOVER-NOT:     unreachable
 // ASAN:               }

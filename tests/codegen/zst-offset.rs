@@ -1,10 +1,10 @@
-// compile-flags: -C no-prepopulate-passes
+// compile-flags: -C no-prepopulate-passes -Copt-level=0
 
 #![crate_type = "lib"]
 #![feature(repr_simd)]
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]] noundef %_1)
+// CHECK: @helper([[USIZE:i[0-9]+]] %_1)
 #[no_mangle]
 pub fn helper(_: usize) {
 }
