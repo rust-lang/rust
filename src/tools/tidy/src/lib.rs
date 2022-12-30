@@ -48,6 +48,7 @@ pub mod errors;
 pub mod extdeps;
 pub mod features;
 pub mod mir_opt_tests;
+pub mod no_merge;
 pub mod pal;
 pub mod primitive_docs;
 pub mod style;
