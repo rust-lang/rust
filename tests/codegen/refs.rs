@@ -3,7 +3,7 @@
 #![crate_type = "lib"]
 
 // Hack to get the correct size for the length part in slices
-// CHECK: @helper([[USIZE:i[0-9]+]] %_1)
+// CHECK: @helper([[USIZE:i[0-9]+]] noundef %_1)
 #[no_mangle]
 pub fn helper(_: usize) {
 }

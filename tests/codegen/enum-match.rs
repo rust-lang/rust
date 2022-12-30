@@ -11,7 +11,7 @@ pub enum Enum0 {
     B,
 }
 
-// CHECK: define i8 @match0{{.*}}
+// CHECK: define noundef i8 @match0{{.*}}
 // CHECK-NEXT: start:
 // CHECK-NEXT: %1 = icmp eq i8 %0, 2
 // CHECK-NEXT: %2 = and i8 %0, 1
@@ -32,7 +32,7 @@ pub enum Enum1 {
     C,
 }
 
-// CHECK: define i8 @match1{{.*}}
+// CHECK: define noundef i8 @match1{{.*}}
 // CHECK-NEXT: start:
 // CHECK-NEXT: [[DISCR:%.*]] = {{.*}}call i8 @llvm.usub.sat.i8(i8 %0, i8 1)
 // CHECK-NEXT: switch i8 [[DISCR]], label {{.*}} [
@@ -88,7 +88,7 @@ pub enum Enum2 {
     E,
 }
 
-// CHECK: define i8 @match2{{.*}}
+// CHECK: define noundef i8 @match2{{.*}}
 // CHECK-NEXT: start:
 // CHECK-NEXT: %1 = add i8 %0, 2
 // CHECK-NEXT: %2 = zext i8 %1 to i64

@@ -220,7 +220,7 @@ fn adjust_for_rust_scalar<'tcx>(
     }
 
     // Scalars which have invalid values cannot be undef.
-    if !scalar.is_always_valid(&cx) {
+    if !scalar.is_uninit_valid() {
         attrs.set(ArgAttribute::NoUndef);
     }
 

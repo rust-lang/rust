@@ -15,7 +15,7 @@ extern "C" {
 
 pub unsafe extern "C" fn use_foreign_c_variadic_0() {
     // Ensure that we correctly call foreign C-variadic functions.
-    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM:i32( signext)?]] 0)
+    // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM:i32 noundef( signext)?]] 0)
     foreign_c_variadic_0(0);
     // CHECK: call void (i32, ...) @foreign_c_variadic_0([[PARAM]] 0, [[PARAM]] 42)
     foreign_c_variadic_0(0, 42i32);
@@ -61,7 +61,7 @@ pub unsafe extern "C" fn c_variadic(n: i32, mut ap: ...) -> i32 {
 // Ensure that we generate the correct `call` signature when calling a Rust
 // defined C-variadic.
 pub unsafe fn test_c_variadic_call() {
-    // CHECK: call [[RET:(signext )?i32]] (i32, ...) @c_variadic([[PARAM]] 0)
+    // CHECK: call [[RET:noundef( signext)? i32]] (i32, ...) @c_variadic([[PARAM]] 0)
     c_variadic(0);
     // CHECK: call [[RET]] (i32, ...) @c_variadic([[PARAM]] 0, [[PARAM]] 42)
     c_variadic(0, 42i32);

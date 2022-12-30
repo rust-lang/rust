@@ -2,7 +2,7 @@
 
 #![crate_type = "rlib"]
 
-// CHECK: define i8 @call_foreign_fn()
+// CHECK: define noundef i8 @call_foreign_fn()
 #[no_mangle]
 pub fn call_foreign_fn() -> u8 {
     unsafe {
@@ -13,7 +13,7 @@ pub fn call_foreign_fn() -> u8 {
 // (Allow but do not require `zeroext` here, because it is not worth effort to
 // spell out which targets have it and which ones do not; see rust#97800.)
 
-// CHECK: declare{{( zeroext)?}} i8 @foreign_fn()
+// CHECK: declare noundef{{( zeroext)?}} i8 @foreign_fn()
 extern "C" {fn foreign_fn() -> u8;}
 
 // CHECK: !{i32 {{[78]}}, !"PIC Level", i32 2}

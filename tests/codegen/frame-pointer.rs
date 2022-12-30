@@ -20,7 +20,7 @@ trait Copy { }
 impl Copy for u32 {}
 
 
-// CHECK: define i32 @peach{{.*}}[[PEACH_ATTRS:\#[0-9]+]] {
+// CHECK: define noundef i32 @peach{{.*}}[[PEACH_ATTRS:\#[0-9]+]] {
 #[no_mangle]
 pub fn peach(x: u32) -> u32 {
     x
