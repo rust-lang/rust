@@ -1,4 +1,4 @@
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -6,10 +6,10 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
    = note: `#[deny(proc_macro_back_compat)]` on by default
 
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -17,9 +17,9 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
 
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -27,9 +27,9 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
 
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -37,12 +37,12 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
 
 error: aborting due to 4 previous errors
 
 Future incompatibility report: Future breakage diagnostic:
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -50,11 +50,11 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
    = note: `#[deny(proc_macro_back_compat)]` on by default
 
 Future breakage diagnostic:
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -62,11 +62,11 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
    = note: `#[deny(proc_macro_back_compat)]` on by default
 
 Future breakage diagnostic:
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -74,11 +74,11 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
    = note: `#[deny(proc_macro_back_compat)]` on by default
 
 Future breakage diagnostic:
-error: using an old version of `rental`
+error: using `allsorts-rental`
   --> $DIR/pretty-print-hack/allsorts-rental-0.5.6/src/lib.rs:4:6
    |
 LL | enum ProceduralMasqueradeDummyType {
@@ -86,6 +86,6 @@ LL | enum ProceduralMasqueradeDummyType {
    |
    = warning: this was previously accepted by the compiler but is being phased out; it will become a hard error in a future release!
    = note: for more information, see issue #83125 <https://github.com/rust-lang/rust/issues/83125>
-   = note: older versions of the `rental` crate will stop compiling in future versions of Rust; please update to `rental` v0.5.6, or switch to one of the `rental` alternatives
+   = note: the `allsorts-rental` crate will stop compiling in future versions of Rust; please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`
    = note: `#[deny(proc_macro_back_compat)]` on by default
 

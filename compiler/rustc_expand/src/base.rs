@@ -1424,7 +1424,7 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                 if variant.ident.name == sym::Input {
                     let filename = sess.source_map().span_to_filename(item.ident.span);
                     if let FileName::Real(real) = filename {
-                        if let real
+                        if real
                             .local_path()
                             .unwrap_or(Path::new(""))
                             .components()
@@ -1436,10 +1436,10 @@ fn pretty_printing_compatibility_hack(item: &Item, sess: &ParseSess) -> bool {
                                     &PROC_MACRO_BACK_COMPAT,
                                     item.ident.span,
                                     ast::CRATE_NODE_ID,
-                                    "using an old version of `rental`",
+                                    "using `allsorts-rental`",
                                     BuiltinLintDiagnostics::ProcMacroBackCompat(
-                                    "older versions of the `rental` crate will stop compiling in future versions of Rust; \
-                                    please update to `rental` v0.5.6, or switch to one of the `rental` alternatives".to_string()
+                                    "the `allsorts-rental` crate will stop compiling in future versions of Rust; \
+                                    please switch to `rental` v0.5.6, or switch to one of the `rental` alternatives like `ouroboros`".to_string()
                                     )
                                 );
                             return true;
