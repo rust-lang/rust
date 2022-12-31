@@ -1896,3 +1896,24 @@ impl dyn Error + Send {
 "#,
     );
 }
+
+#[test]
+fn fallback_private_methods() {
+    check(
+        r#"
+mod module {
+    pub struct Struct;
+
+    impl Struct {
+        fn func(&self) {}
+    }
+}
+
+fn foo() {
+    let s = module::Struct;
+    s.func();
+  //^^^^^^^^ type: ()
+}
+"#,
+    );
+}
