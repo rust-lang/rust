@@ -352,32 +352,32 @@ To learn more about a subcommand, run `./x.py <subcommand> -h`",
 
         // fn usage()
         let usage = |exit_code: i32, opts: &Options, verbose: bool, subcommand_help: &str| -> ! {
-            // We have an unfortunate situation here: some Steps use `builder.in_tree_crates` to determine their paths.
-            // To determine those crates, we need to run `cargo metadata`, which means we need all submodules to be checked out.
-            // That takes a while to run, so only do it when paths were explicitly requested, not on all CLI errors.
-            // `Build::new` won't load submodules for the `setup` command.
-            let cmd = if verbose {
-                println!("note: updating submodules before printing available paths");
-                "build"
-            } else {
-                "setup"
-            };
-            let config = Config::parse(&[cmd.to_string()]);
-            let build = Build::new(config);
-            let paths = Builder::get_help(&build, subcommand);
-
             println!("{}", opts.usage(subcommand_help));
-            if let Some(s) = paths {
-                if verbose {
+            if verbose {
+                // We have an unfortunate situation here: some Steps use `builder.in_tree_crates` to determine their paths.
+                // To determine those crates, we need to run `cargo metadata`, which means we need all submodules to be checked out.
+                // That takes a while to run, so only do it when paths were explicitly requested, not on all CLI errors.
+                // `Build::new` won't load submodules for the `setup` command.
+                let cmd = if verbose {
+                    println!("note: updating submodules before printing available paths");
+                    "build"
+                } else {
+                    "setup"
+                };
+                let config = Config::parse(&[cmd.to_string()]);
+                let build = Build::new(config);
+                let paths = Builder::get_help(&build, subcommand);
+
+                if let Some(s) = paths {
                     println!("{}", s);
                 } else {
-                    println!(
-                        "Run `./x.py {} -h -v` to see a list of available paths.",
-                        subcommand.as_str()
-                    );
+                    panic!("No paths available for subcommand `{}`", subcommand.as_str());
                 }
-            } else if verbose {
-                panic!("No paths available for subcommand `{}`", subcommand.as_str());
+            } else {
+                println!(
+                    "Run `./x.py {} -h -v` to see a list of available paths.",
+                    subcommand.as_str()
+                );
             }
             crate::detail_exit(exit_code);
         };
