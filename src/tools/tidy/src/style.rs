@@ -15,6 +15,7 @@
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
+// ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
@@ -278,6 +279,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let mut skip_leading_newlines =
             contains_ignore_directive(can_contain, &contents, "leading-newlines");
         let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
+        let mut skip_dbg = contains_ignore_directive(can_contain, &contents, "dbg");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
@@ -306,6 +308,21 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
+
+            if trimmed.contains("dbg!")
+                && !trimmed.starts_with("//")
+                && !file
+                    .ancestors()
+                    .any(|a| a.ends_with("src/test") || a.ends_with("library/alloc/tests"))
+                && filename != "tests.rs"
+            {
+                suppressible_tidy_err!(
+                    err,
+                    skip_dbg,
+                    "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+                )
+            }
+
             if !under_rustfmt
                 && line.chars().count() > max_columns
                 && !long_line_is_ok(&extension, is_error_code, max_columns, line)
