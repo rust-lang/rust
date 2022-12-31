@@ -1,5 +1,5 @@
 use crate::abi::call::{ArgAttribute, FnAbi, PassMode, Reg, RegKind};
-use crate::abi::{HasDataLayout, TyAbiInterface};
+use crate::abi::{Align, HasDataLayout, TyAbiInterface};
 use crate::spec::HasTargetSpec;
 
 #[derive(PartialEq)]
@@ -53,11 +53,38 @@ where
         if arg.is_ignore() {
             continue;
         }
-        if arg.layout.is_aggregate() {
-            arg.make_indirect_byval();
-        } else {
+        if !arg.layout.is_aggregate() {
             arg.extend_integer_width_to(32);
+            continue;
         }
+
+        // We need to compute the alignment of the `byval` argument. The rules can be found in
+        // `X86_32ABIInfo::getTypeStackAlignInBytes` in Clang's `TargetInfo.cpp`. Summarized here,
+        // they are:
+        //
+        // 1. If the natural alignment of the type is less than or equal to 4, the alignment is 4.
+        //
+        // 2. Otherwise, on Linux, the alignment of any vector type is the natural alignment.
+        // (This doesn't matter here because we ensure we have an aggregate with the check above.)
+        //
+        // 3. Otherwise, on Apple platforms, the alignment of anything that contains a vector type
+        // is 16.
+        //
+        // 4. If none of these conditions are true, the alignment is 4.
+        let t = cx.target_spec();
+        let align_4 = Align::from_bytes(4).unwrap();
+        let align_16 = Align::from_bytes(16).unwrap();
+        let byval_align = if arg.layout.align.abi < align_4 {
+            align_4
+        } else if t.is_like_osx && arg.layout.align.abi >= align_16 {
+            // FIXME(pcwalton): This is dubious--we should actually be looking inside the type to
+            // determine if it contains SIMD vector values--but I think it's fine?
+            align_16
+        } else {
+            align_4
+        };
+
+        arg.make_indirect_byval(Some(byval_align));
     }
 
     if flavor == Flavor::FastcallOrVectorcall {
