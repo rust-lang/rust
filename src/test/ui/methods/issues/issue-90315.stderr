@@ -184,18 +184,7 @@ help: you must specify a concrete type for this numeric value, like `i32`
 LL |     let _res: i32 = ..6_i32.take(2).sum();
    |                       ~~~~~
 
-error[E0308]: mismatched types
-  --> $DIR/issue-90315.rs:71:21
-   |
-LL |     let _res: i32 = ..6.take(2).sum();
-   |               ---   ^^^^^^^^^^^^^^^^^ expected `i32`, found struct `RangeTo`
-   |               |
-   |               expected due to this
-   |
-   = note: expected type `i32`
-            found struct `RangeTo<_>`
-
-error: aborting due to 19 previous errors
+error: aborting due to 18 previous errors
 
 Some errors have detailed explanations: E0308, E0599, E0689.
 For more information about an error, try `rustc --explain E0308`.
