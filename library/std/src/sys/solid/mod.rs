@@ -13,9 +13,9 @@ mod itron {
     pub(super) mod spin;
     pub(super) mod task;
     pub mod thread;
+    pub mod thread_parking;
     pub(super) mod time;
     use super::unsupported;
-    pub mod wait_flag;
 }
 
 pub mod alloc;
@@ -43,8 +43,8 @@ pub use self::itron::thread;
 pub mod memchr;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
+pub use self::itron::thread_parking;
 pub mod time;
-pub use self::itron::wait_flag;
 
 mod rwlock;
 
