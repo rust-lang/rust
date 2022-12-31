@@ -252,6 +252,11 @@ pub fn is_pattern_cond(expr: ast::Expr) -> bool {
 /// Note that modifying the tree while iterating it will cause undefined iteration which might
 /// potentially results in an out of bounds panic.
 pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
+    let walk_loop = |cb: &mut dyn FnMut(&ast::Expr), label, body: Option<ast::BlockExpr>| {
+        for_each_break_expr(label, body.and_then(|it| it.stmt_list()), &mut |b| {
+            cb(&ast::Expr::BreakExpr(b))
+        })
+    };
     match expr {
         ast::Expr::BlockExpr(b) => {
             match b.modifier() {
@@ -291,11 +296,9 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
                 }
             }
         }
-        ast::Expr::LoopExpr(l) => {
-            for_each_break_expr(l.label(), l.loop_body().and_then(|it| it.stmt_list()), &mut |b| {
-                cb(&ast::Expr::BreakExpr(b))
-            })
-        }
+        ast::Expr::LoopExpr(l) => walk_loop(cb, l.label(), l.loop_body()),
+        ast::Expr::WhileExpr(w) => walk_loop(cb, w.label(), w.loop_body()),
+        ast::Expr::ForExpr(f) => walk_loop(cb, f.label(), f.loop_body()),
         ast::Expr::MatchExpr(m) => {
             if let Some(arms) = m.match_arm_list() {
                 arms.arms().filter_map(|arm| arm.expr()).for_each(|e| for_each_tail_expr(&e, cb));
@@ -311,7 +314,6 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::ClosureExpr(_)
         | ast::Expr::ContinueExpr(_)
         | ast::Expr::FieldExpr(_)
-        | ast::Expr::ForExpr(_)
         | ast::Expr::IndexExpr(_)
         | ast::Expr::Literal(_)
         | ast::Expr::MacroExpr(_)
@@ -325,7 +327,6 @@ pub fn for_each_tail_expr(expr: &ast::Expr, cb: &mut dyn FnMut(&ast::Expr)) {
         | ast::Expr::ReturnExpr(_)
         | ast::Expr::TryExpr(_)
         | ast::Expr::TupleExpr(_)
-        | ast::Expr::WhileExpr(_)
         | ast::Expr::LetExpr(_)
         | ast::Expr::UnderscoreExpr(_)
         | ast::Expr::YieldExpr(_)
