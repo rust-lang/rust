@@ -2246,12 +2246,6 @@ pub struct DeducedParamAttrs {
     pub read_only: bool,
 }
 
-// We are comparing types with different invariant lifetimes, so `ptr::eq`
-// won't work for us.
-fn ptr_eq<T, U>(t: *const T, u: *const U) -> bool {
-    t as *const () == u as *const ()
-}
-
 pub fn provide(providers: &mut ty::query::Providers) {
     providers.module_reexports =
         |tcx, id| tcx.resolutions(()).reexport_map.get(&id).map(|v| &v[..]);
