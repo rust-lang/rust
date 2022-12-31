@@ -3,6 +3,10 @@
 //! This library contains the tidy lints and exposes it
 //! to be used by tools.
 
+use std::fmt::Display;
+
+use termcolor::WriteColor;
+
 /// A helper macro to `unwrap` a result except also print out details like:
 ///
 /// * The expression that failed
@@ -26,16 +30,25 @@ macro_rules! t {
 }
 
 macro_rules! tidy_error {
-    ($bad:expr, $fmt:expr) => ({
-        *$bad = true;
-        eprint!("tidy error: ");
-        eprintln!($fmt);
+    ($bad:expr, $($fmt:tt)*) => ({
+        $crate::tidy_error($bad, format_args!($($fmt)*)).expect("failed to output error");
     });
-    ($bad:expr, $fmt:expr, $($arg:tt)*) => ({
-        *$bad = true;
-        eprint!("tidy error: ");
-        eprintln!($fmt, $($arg)*);
-    });
+}
+
+fn tidy_error(bad: &mut bool, args: impl Display) -> std::io::Result<()> {
+    use std::io::Write;
+    use termcolor::{Color, ColorChoice, ColorSpec, StandardStream};
+
+    *bad = true;
+
+    let mut stderr = StandardStream::stdout(ColorChoice::Auto);
+    stderr.set_color(ColorSpec::new().set_fg(Some(Color::Red)))?;
+
+    write!(&mut stderr, "tidy error")?;
+    stderr.set_color(&ColorSpec::new())?;
+
+    writeln!(&mut stderr, ": {args}")?;
+    Ok(())
 }
 
 pub mod alphabetical;
