@@ -107,8 +107,6 @@ fn main() {
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 
-        check!(no_merge, ());
-
         let collected = {
             drain_handles(&mut handles);
 

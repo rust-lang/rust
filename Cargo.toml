@@ -4,7 +4,6 @@ members = [
   "library/std",
   "library/test",
   "src/rustdoc-json-types",
-  "src/tools/build_helper",
   "src/tools/cargotest",
   "src/tools/clippy",
   "src/tools/clippy/clippy_dev",

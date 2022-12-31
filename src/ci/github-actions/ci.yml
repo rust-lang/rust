@@ -103,12 +103,6 @@ x--expand-yaml-anchors--remove:
         with:
           fetch-depth: 2
 
-      - name: checkout the `master` branch for tidy
-        uses: actions/checkout@v3
-        with:
-          ref: master
-          fetch-depth: 1
-
       # Rust Log Analyzer can't currently detect the PR number of a GitHub
       # Actions build on its own, so a hint in the log message is needed to
       # point it in the right direction.
