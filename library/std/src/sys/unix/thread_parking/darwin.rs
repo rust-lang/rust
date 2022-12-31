@@ -46,7 +46,7 @@ unsafe impl Sync for Parker {}
 unsafe impl Send for Parker {}
 
 impl Parker {
-    pub unsafe fn new(parker: *mut Parker) {
+    pub unsafe fn new_in_place(parker: *mut Parker) {
         let semaphore = dispatch_semaphore_create(0);
         assert!(
             !semaphore.is_null(),

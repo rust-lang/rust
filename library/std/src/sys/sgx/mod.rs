@@ -34,7 +34,7 @@ pub mod process;
 pub mod stdio;
 pub mod thread;
 pub mod thread_local_key;
-pub mod thread_parker;
+pub mod thread_parking;
 pub mod time;
 
 mod condvar;

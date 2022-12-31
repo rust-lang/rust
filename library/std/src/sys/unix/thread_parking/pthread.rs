@@ -99,7 +99,7 @@ impl Parker {
     ///
     /// # Safety
     /// The constructed parker must never be moved.
-    pub unsafe fn new(parker: *mut Parker) {
+    pub unsafe fn new_in_place(parker: *mut Parker) {
         // Use the default mutex implementation to allow for simpler initialization.
         // This could lead to undefined behaviour when deadlocking. This is avoided
         // by not deadlocking. Note in particular the unlocking operation before any

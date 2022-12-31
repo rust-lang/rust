@@ -11,13 +11,17 @@ cfg_if::cfg_if! {
     ))] {
         mod futex;
         pub use futex::Parker;
+    } else if #[cfg(any(
+        target_os = "netbsd",
+        all(target_vendor = "fortanix", target_env = "sgx"),
+    ))] {
+        mod id;
+        pub use id::Parker;
     } else if #[cfg(target_os = "solid_asp3")] {
         mod wait_flag;
         pub use wait_flag::Parker;
     } else if #[cfg(any(windows, target_family = "unix"))] {
-        pub use crate::sys::thread_parker::Parker;
-    } else if #[cfg(all(target_vendor = "fortanix", target_env = "sgx"))] {
-        pub use crate::sys::thread_parker::Parker;
+        pub use crate::sys::thread_parking::Parker;
     } else {
         mod generic;
         pub use generic::Parker;
