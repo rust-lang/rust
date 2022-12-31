@@ -2525,15 +2525,7 @@ pub trait Iterator {
         R: Try<Output = Self::Item>,
         R::Residual: Residual<Option<Self::Item>>,
     {
-        let first = match self.next() {
-            Some(i) => i,
-            None => return Try::from_output(None),
-        };
-
-        match self.try_fold(first, f).branch() {
-            ControlFlow::Break(r) => FromResidual::from_residual(r),
-            ControlFlow::Continue(i) => Try::from_output(Some(i)),
-        }
+        self.try_fold_first(Try::from_output, f)
     }
 
     /// Folds every element into an accumulator by applying an operation,
@@ -2581,6 +2573,82 @@ pub trait Iterator {
     {
         let first = init(self.next()?);
         Some(self.fold(first, folding))
+    }
+
+    /// Folds every element into an accumulator by applying an operation,
+    /// returning the final result. The initial value is derived from the
+    /// first element using the provided method.
+    ///
+    /// If the closure returns a failure, the failure is propagated back to the caller immediately.
+    ///
+    /// # Example
+    ///
+    /// Replaying a series of events from creation
+    ///
+    /// ```
+    /// #![feature(iterator_try_fold_first)]
+    ///
+    /// enum Events {
+    ///     Create,
+    ///     Update,
+    /// }
+    ///
+    /// let events = [Events::Create, Events::Update, Events::Update];
+    /// let replayed_state = events.into_iter()
+    ///     .try_fold_first(
+    ///         |first| match first {
+    ///             Events::Create => Ok(1),
+    ///             _ => Err("only creation event supported at start"),
+    ///         },
+    ///         |state, next| match next {
+    ///             Events::Update => Ok(state + 1),
+    ///             _ => Err("only update events should follow a creation"),
+    ///         },
+    ///     );
+    /// assert_eq!(replayed_state, Ok(Some(3)));
+    ///
+    /// // Which is equivalent to doing it with `try_fold`:
+    /// let events = [Events::Create, Events::Update, Events::Update];
+    /// let folded = events.into_iter()
+    ///     .try_fold(
+    ///         None,
+    ///         |state, event| {
+    ///             match (state, event) {
+    ///                 // init
+    ///                 (None, Events::Create) => Ok(Some(1)),
+    ///                 (None, Events::Update) => Err("only update events should follow a creation"),
+    ///
+    ///                 // fold
+    ///                 (Some(state), Events::Update) => Ok(Some(state + 1)),
+    ///                 (Some(_), Events::Create) => Err("only creation event supported at start"),
+    ///             }
+    ///         },
+    ///     );
+    /// assert_eq!(replayed_state, folded);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_try_fold_first", reason = "new API", issue = "none")]
+    fn try_fold_first<F1, FR, R>(
+        &mut self,
+        init: F1,
+        folding: FR,
+    ) -> ChangeOutputType<R, Option<R::Output>>
+    where
+        Self: Sized,
+        F1: FnOnce(Self::Item) -> R,
+        FR: FnMut(R::Output, Self::Item) -> R,
+        R: Try,
+        R::Residual: Residual<Option<R::Output>>,
+    {
+        let first = match self.next() {
+            Some(i) => init(i)?,
+            None => return Try::from_output(None),
+        };
+
+        match self.try_fold(first, folding).branch() {
+            ControlFlow::Break(r) => FromResidual::from_residual(r),
+            ControlFlow::Continue(i) => Try::from_output(Some(i)),
+        }
     }
 
     /// Tests if every element of the iterator matches a predicate.
