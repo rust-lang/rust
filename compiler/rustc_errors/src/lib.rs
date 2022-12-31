@@ -40,12 +40,13 @@ use rustc_span::source_map::SourceMap;
 use rustc_span::HashStableContext;
 use rustc_span::{Loc, Span};
 
+use std::any::Any;
 use std::borrow::Cow;
+use std::fmt;
 use std::hash::Hash;
 use std::num::NonZeroUsize;
 use std::panic;
 use std::path::Path;
-use std::{error, fmt};
 
 use termcolor::{Color, ColorSpec};
 
@@ -361,16 +362,11 @@ pub use rustc_span::fatal_error::{FatalError, FatalErrorMarker};
 
 /// Signifies that the compiler died with an explicit call to `.bug`
 /// or `.span_bug` rather than a failed assertion, etc.
-#[derive(Copy, Clone, Debug)]
 pub struct ExplicitBug;
 
-impl fmt::Display for ExplicitBug {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "parser internal bug")
-    }
-}
-
-impl error::Error for ExplicitBug {}
+/// Signifies that the compiler died with an explicit call to `.delay_good_path_bug`
+/// rather than a failed assertion, etc.
+pub struct GoodPathBug;
 
 pub use diagnostic::{
     AddToDiagnostic, DecorateLint, Diagnostic, DiagnosticArg, DiagnosticArgValue, DiagnosticId,
@@ -507,7 +503,11 @@ impl Drop for HandlerInner {
 
         if !self.has_errors() {
             let bugs = std::mem::replace(&mut self.delayed_span_bugs, Vec::new());
-            self.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+            self.flush_delayed(
+                bugs,
+                "no errors encountered even though `delay_span_bug` issued",
+                ExplicitBug,
+            );
         }
 
         // FIXME(eddyb) this explains what `delayed_good_path_bugs` are!
@@ -520,6 +520,7 @@ impl Drop for HandlerInner {
             self.flush_delayed(
                 bugs.into_iter().map(DelayedDiagnostic::decorate),
                 "no warnings or errors encountered even though `delayed_good_path_bugs` issued",
+                GoodPathBug,
             );
         }
 
@@ -1203,7 +1204,11 @@ impl Handler {
     pub fn flush_delayed(&self) {
         let mut inner = self.inner.lock();
         let bugs = std::mem::replace(&mut inner.delayed_span_bugs, Vec::new());
-        inner.flush_delayed(bugs, "no errors encountered even though `delay_span_bug` issued");
+        inner.flush_delayed(
+            bugs,
+            "no errors encountered even though `delay_span_bug` issued",
+            ExplicitBug,
+        );
     }
 }
 
@@ -1580,6 +1585,7 @@ impl HandlerInner {
         &mut self,
         bugs: impl IntoIterator<Item = Diagnostic>,
         explanation: impl Into<DiagnosticMessage> + Copy,
+        panic_with: impl Any + Send + 'static,
     ) {
         let mut no_bugs = true;
         for mut bug in bugs {
@@ -1607,7 +1613,7 @@ impl HandlerInner {
 
         // Panic with `ExplicitBug` to avoid "unexpected panic" messages.
         if !no_bugs {
-            panic::panic_any(ExplicitBug);
+            panic::panic_any(panic_with);
         }
     }
 
