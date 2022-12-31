@@ -140,7 +140,7 @@ You might also notice conflicts in the web UI:
 
 The most common cause is that you rebased after a change and ran `git add .` without first running
 `x.py` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
-and modified files in a submodule, then commited the changes.
+and modified files in a submodule, then committed the changes.
 
 To fix it, do the following things:
 
