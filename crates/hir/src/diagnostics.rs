@@ -10,7 +10,7 @@ use hir_def::path::ModPath;
 use hir_expand::{name::Name, HirFileId, InFile};
 use syntax::{ast, AstPtr, SyntaxNodePtr, TextRange};
 
-use crate::{MacroKind, Type};
+use crate::{Field, MacroKind, Type};
 
 macro_rules! diagnostics {
     ($($diag:ident,)*) => {
@@ -41,6 +41,7 @@ diagnostics![
     MissingMatchArms,
     MissingUnsafe,
     NoSuchField,
+    PrivateField,
     ReplaceFilterMapNextWithFindMap,
     TypeMismatch,
     UnimplementedBuiltinMacro,
@@ -119,6 +120,12 @@ pub struct MalformedDerive {
 #[derive(Debug)]
 pub struct NoSuchField {
     pub field: InFile<AstPtr<ast::RecordExprField>>,
+}
+
+#[derive(Debug)]
+pub struct PrivateField {
+    pub expr: InFile<AstPtr<ast::Expr>>,
+    pub field: Field,
 }
 
 #[derive(Debug)]
