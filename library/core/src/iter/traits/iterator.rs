@@ -2448,13 +2448,12 @@ pub trait Iterator {
     /// ```
     #[inline]
     #[stable(feature = "iterator_fold_self", since = "1.51.0")]
-    fn reduce<F>(mut self, f: F) -> Option<Self::Item>
+    fn reduce<F>(self, f: F) -> Option<Self::Item>
     where
         Self: Sized,
         F: FnMut(Self::Item, Self::Item) -> Self::Item,
     {
-        let first = self.next()?;
-        Some(self.fold(first, f))
+        self.fold_first(core::convert::identity, f)
     }
 
     /// Reduces the elements to a single one by repeatedly applying a reducing operation. If the
@@ -2535,6 +2534,53 @@ pub trait Iterator {
             ControlFlow::Break(r) => FromResidual::from_residual(r),
             ControlFlow::Continue(i) => Try::from_output(Some(i)),
         }
+    }
+
+    /// Folds every element into an accumulator by applying an operation,
+    /// returning the final result. The initial value is derived from the
+    /// first element using the provided method.
+    ///
+    /// If the iterator is empty, returns [`None`]; otherwise, returns the
+    /// result of the fold.
+    ///
+    /// The folding function is a closure with two arguments: an 'accumulator', and an element.
+    /// For iterators with at least one element, this is the same as [`reduce()`]
+    /// with the first element being fed into the init function
+    ///
+    /// [`reduce()`]: Iterator::reduce
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(iterator_fold_first)]
+    ///
+    /// let min_max: (i32, i32) = [3, 1, 4, 1, 5, 9, 2]
+    ///     .into_iter()
+    ///     .fold_first(
+    ///         |first| (first, first),
+    ///         |(min, max), next| (i32::min(min, next), i32::max(max, next)),
+    ///     ).unwrap();
+    /// assert_eq!(min_max, (1, 9));
+    ///
+    /// // Which is equivalent to doing it with `fold`:
+    /// let folded: (i32, i32) = [3, 1, 4, 1, 5, 9, 2]
+    ///     .into_iter()
+    ///     .fold(
+    ///         (i32::MAX, i32::MIN),
+    ///         |(min, max), next| (i32::min(min, next), i32::max(max, next)),
+    ///     );
+    /// assert_eq!(min_max, folded);
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_fold_first", reason = "new API", issue = "none")]
+    fn fold_first<B, F1, FR>(mut self, init: F1, folding: FR) -> Option<B>
+    where
+        Self: Sized,
+        F1: FnOnce(Self::Item) -> B,
+        FR: FnMut(B, Self::Item) -> B,
+    {
+        let first = init(self.next()?);
+        Some(self.fold(first, folding))
     }
 
     /// Tests if every element of the iterator matches a predicate.
