@@ -97,7 +97,7 @@ const NOTIFIED: i8 = 1;
 impl Parker {
     /// Construct the Windows parker. The UNIX parker implementation
     /// requires this to happen in-place.
-    pub unsafe fn new(parker: *mut Parker) {
+    pub unsafe fn new_in_place(parker: *mut Parker) {
         parker.write(Self { state: AtomicI8::new(EMPTY) });
     }
 

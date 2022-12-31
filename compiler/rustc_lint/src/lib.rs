@@ -61,7 +61,6 @@ mod late;
 mod let_underscore;
 mod levels;
 mod methods;
-mod multiple_supertrait_upcastable;
 mod non_ascii_idents;
 mod non_fmt_panic;
 mod nonstandard_style;
@@ -96,7 +95,6 @@ use hidden_unicode_codepoints::*;
 use internal::*;
 use let_underscore::*;
 use methods::*;
-use multiple_supertrait_upcastable::*;
 use non_ascii_idents::*;
 use non_fmt_panic::NonPanicFmt;
 use nonstandard_style::*;
@@ -231,7 +229,6 @@ late_lint_methods!(
             InvalidAtomicOrdering: InvalidAtomicOrdering,
             NamedAsmLabels: NamedAsmLabels,
             OpaqueHiddenInferredBound: OpaqueHiddenInferredBound,
-            MultipleSupertraitUpcastable: MultipleSupertraitUpcastable,
         ]
     ]
 );

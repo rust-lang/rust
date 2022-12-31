@@ -65,9 +65,9 @@ mod task_queue {
 /// execution. The signal is sent once all TLS destructors have finished at
 /// which point no new thread locals should be created.
 pub mod wait_notify {
-    use super::super::thread_parker::Parker;
     use crate::pin::Pin;
     use crate::sync::Arc;
+    use crate::sys_common::thread_parking::Parker;
 
     pub struct Notifier(Arc<Parker>);
 
@@ -87,14 +87,14 @@ pub mod wait_notify {
         /// called, this will return immediately, otherwise the current thread
         /// is blocked until notified.
         pub fn wait(self) {
-            // This is not actually `unsafe`, but it uses the `Parker` API,
-            // which needs `unsafe` on some platforms.
+            // SAFETY:
+            // This is only ever called on one thread.
             unsafe { Pin::new(&*self.0).park() }
         }
     }
 
     pub fn new() -> (Notifier, Waiter) {
-        let inner = Arc::new(Parker::new_internal());
+        let inner = Arc::new(Parker::new());
         (Notifier(inner.clone()), Waiter(inner))
     }
 }
