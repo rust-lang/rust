@@ -333,7 +333,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let local_decl = &self.body.local_decls[local];
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
                 err.span_suggestion(
                     local_decl.source_info.span,
                     "consider changing this to be mutable",
@@ -357,7 +357,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let captured_place = &self.upvars[upvar_index.index()].place;
 
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
@@ -397,7 +397,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     .span_to_snippet(span)
                     .map_or(false, |snippet| snippet.starts_with("&mut ")) =>
             {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
                 err.span_suggestion(
                     span,
                     "try removing `&mut` here",
@@ -409,7 +409,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             PlaceRef { local, projection: [ProjectionElem::Deref] }
                 if self.body.local_decls[local].is_ref_for_guard() =>
             {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
                 err.note(
                     "variables bound in patterns are immutable until the end of the pattern guard",
                 );
@@ -537,7 +537,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                             Some((true, err_help_span, suggested_code)) => {
                                 let (is_trait_sig, local_trait) = self.is_error_in_trait(local);
                                 if !is_trait_sig {
-                                    err.span_suggestion(
+                                    err.span_suggestion_verbose(
                                         err_help_span,
                                         &format!(
                                             "consider changing this to be a mutable {pointer_desc}"
@@ -546,7 +546,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                         Applicability::MachineApplicable,
                                     );
                                 } else if let Some(x) = local_trait {
-                                    err.span_suggestion(
+                                    err.span_suggestion_verbose(
                                         x,
                                         &format!(
                                             "consider changing that to be a mutable {pointer_desc}"
@@ -569,24 +569,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         err.span_label(
                             span,
                             format!(
-                                "`{NAME}` is a `{SIGIL}` {DESC}, \
-                                so the data it refers to cannot be {ACTED_ON}",
-                                NAME = name,
-                                SIGIL = pointer_sigil,
-                                DESC = pointer_desc,
-                                ACTED_ON = acted_on
+                                "`{name}` is a `{pointer_sigil}` {pointer_desc}, \
+                                 so the data it refers to cannot be {acted_on}",
                             ),
                         );
                     }
                     _ => {
                         err.span_label(
                             span,
-                            format!(
-                                "cannot {ACT} through `{SIGIL}` {DESC}",
-                                ACT = act,
-                                SIGIL = pointer_sigil,
-                                DESC = pointer_desc
-                            ),
+                            format!("cannot {act} through `{pointer_sigil}` {pointer_desc}"),
                         );
                     }
                 }
@@ -605,13 +596,13 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     Some(BorrowedContentSource::OverloadedDeref(ty)) => {
                         err.help(&format!(
                             "trait `DerefMut` is required to modify through a dereference, \
-                                but it is not implemented for `{ty}`",
+                             but it is not implemented for `{ty}`",
                         ));
                     }
                     Some(BorrowedContentSource::OverloadedIndex(ty)) => {
                         err.help(&format!(
                             "trait `IndexMut` is required to modify indexed content, \
-                                but it is not implemented for `{ty}`",
+                             but it is not implemented for `{ty}`",
                         ));
                         self.suggest_map_index_mut_alternatives(ty, &mut err, span);
                     }
@@ -620,7 +611,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
 
             _ => {
-                err.span_label(span, format!("cannot {ACT}", ACT = act));
+                err.span_label(span, format!("cannot {act}"));
             }
         }
 
