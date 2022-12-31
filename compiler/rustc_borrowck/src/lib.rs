@@ -340,7 +340,7 @@ fn do_mir_borrowck<'tcx>(
                 next_region_name: RefCell::new(1),
                 polonius_output: None,
                 errors,
-                to_skip: Default::default(),
+                replaces: Default::default(),
             };
             promoted_mbcx.report_move_errors(move_errors);
             errors = promoted_mbcx.errors;
@@ -372,7 +372,7 @@ fn do_mir_borrowck<'tcx>(
         next_region_name: RefCell::new(1),
         polonius_output,
         errors,
-        to_skip: Default::default(),
+        replaces: Default::default(),
     };
 
     // Compute and report region errors, if any.
@@ -556,7 +556,9 @@ struct MirBorrowckCtxt<'cx, 'tcx> {
 
     errors: error::BorrowckErrors<'tcx>,
 
-    to_skip: FxHashSet<Location>,
+    /// Record the places were a replace happens so that we can use the
+    /// correct access depth in the assignment for better diagnostic
+    replaces: FxHashSet<Location>,
 }
 
 // Check that:
@@ -581,9 +583,10 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
         match &stmt.kind {
             StatementKind::Assign(box (lhs, rhs)) => {
                 self.consume_rvalue(location, (rhs, span), flow_state);
-                if !self.to_skip.contains(&location) {
-                    self.mutate_place(location, (*lhs, span), Shallow(None), flow_state);
-                }
+                // In case of a replace the drop access check is skipped for better diagnostic but we need
+                // to use a stricter access depth here
+                let access_depth = if self.replaces.contains(&location) {AccessDepth::Drop} else {Shallow(None)};
+                self.mutate_place(location, (*lhs, span), access_depth, flow_state);
             }
             StatementKind::FakeRead(box (_, place)) => {
                 // Read for match doesn't access any memory and is used to
@@ -656,36 +659,28 @@ impl<'cx, 'tcx> rustc_mir_dataflow::ResultsVisitor<'cx, 'tcx> for MirBorrowckCtx
                     loc, term, place, span
                 );
 
-                let next_statement = if *is_replace {
-                    self.body()
-                        .basic_blocks
-                        .get(*target)
-                        .expect("MIR should be complete at this point")
-                        .statements
-                        .first()
-                } else {
-                    None
-                };
-
-                match next_statement {
-                    Some(Statement { kind: StatementKind::Assign(_), source_info: _ }) => {
-                        // this is a drop from a replace operation, for better diagnostic report
-                        // here possible conflicts and mute the assign statement errors
-                        self.to_skip.insert(Location { block: *target, statement_index: 0 });
-                        self.to_skip
-                            .insert(Location { block: unwind.unwrap(), statement_index: 0 });
-                        self.mutate_place(loc, (*place, span), AccessDepth::Deep, flow_state);
+                // In case of a replace, it's more user friendly to report a problem with the explicit
+                // assignment than the implicit drop.
+                // Simply skip this access and rely on the assignment to report any error.
+                if *is_replace {
+                    // An assignment `x = ...` is usually a shallow access, but in the case of a replace
+                    // the drop could access internal references depending on the drop implementation.
+                    // Since we're skipping the drop access, we need to mark the access depth
+                    // of the assignment as AccessDepth::Drop.
+                    self.replaces.insert(Location { block: *target, statement_index: 0 });
+                    if let Some(unwind) = unwind {
+                        self.replaces.insert(Location { block: *unwind, statement_index: 0 });
                     }
-                    _ => {
-                        self.access_place(
-                            loc,
-                            (*place, span),
-                            (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
-                            LocalMutationIsAllowed::Yes,
-                            flow_state,
-                        );
-                    }
+                    return;
                 }
+
+                self.access_place(
+                    loc,
+                    (*place, span),
+                    (AccessDepth::Drop, Write(WriteKind::StorageDeadOrDrop)),
+                    LocalMutationIsAllowed::Yes,
+                    flow_state,
+                )
             }
             TerminatorKind::Call {
                 func,
