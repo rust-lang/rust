@@ -30,7 +30,6 @@ path = "bin/sccache-plus-cl.rs"
 test = false
 
 [dependencies]
-build_helper = { path = "../tools/build_helper" }
 cmake = "0.1.38"
 fd-lock = "3.0.8"
 filetime = "0.2"

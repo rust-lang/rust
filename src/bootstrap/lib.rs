@@ -113,7 +113,6 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use std::str;
 
-use build_helper::ci::CiEnv;
 use channel::GitInfo;
 use config::{DryRun, Target};
 use filetime::FileTime;
@@ -122,7 +121,7 @@ use once_cell::sync::OnceCell;
 use crate::builder::Kind;
 use crate::config::{LlvmLibunwind, TargetSelection};
 use crate::util::{
-    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed,
+    exe, libdir, mtime, output, run, run_suppressed, symlink_dir, try_run_suppressed, CiEnv,
 };
 
 mod bolt;
