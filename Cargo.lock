@@ -655,6 +655,7 @@ dependencies = [
  "ide-db",
  "itertools",
  "profile",
+ "smallvec",
  "sourcegen",
  "stdx",
  "syntax",
