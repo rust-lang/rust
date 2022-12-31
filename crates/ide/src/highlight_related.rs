@@ -766,6 +766,23 @@ fn foo() ->$0 u32 {
     }
 
     #[test]
+    fn test_hl_inner_tail_exit_points_loops() {
+        check(
+            r#"
+fn foo() ->$0 u32 {
+    'foo: while { return 0; true } {
+               // ^^^^^^
+        break 'foo 0;
+     // ^^^^^
+        return 0;
+     // ^^^^^^
+    }
+}
+"#,
+        );
+    }
+
+    #[test]
     fn test_hl_break_loop() {
         check(
             r#"
