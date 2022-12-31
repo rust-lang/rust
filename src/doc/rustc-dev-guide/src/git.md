@@ -128,6 +128,33 @@ git remote set-url origin <URL>
 
 where the `<URL>` is your new fork.
 
+### I changed a submodule by accident
+
+Usually people notice this when rustbot posts a comment on github that `cargo` has been modified:
+
+![rustbot submodule comment](./img/rustbot-submodules.png)
+
+You might also notice conflicts in the web UI:
+
+![conflict in src/tools/cargo](./img/submodule-conflicts.png)
+
+The most common cause is that you rebased after a change and ran `git add .` without first running
+`x.py` to update the submodules.  Alternatively, you might have run `cargo fmt` instead of `x fmt`
+and modified files in a submodule, then commited the changes.
+
+To fix it, do the following things:
+
+1. See which commit has the accidental changes: `git log --stat -n1 src/tools/cargo`
+2. Revert the changes to that commit: `git checkout <my-commit>~ src/tools/cargo`. Type `~`
+   literally but replace `<my-commit>` with the output from step 1.
+3. Tell git to commit the changes: `git commit --fixup <my-commit>`
+4. Repeat steps 1-3 for all the submodules you modified.
+    - If you modified the submodule in several different commits, you will need to repeat steps 1-3
+    for each commit you modified. You'll know when to stop when the `git log` command shows a commit
+    that's not authored by you.
+5. Squash your changes into the existing commits: `git rebase --autosquash -i upstream/master`
+6. [Push your changes](#standard-process).
+
 ### I see "error: cannot rebase" when I try to rebase
 
 These are two common errors to see when rebasing:
