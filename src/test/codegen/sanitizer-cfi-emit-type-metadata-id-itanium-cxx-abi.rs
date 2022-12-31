@@ -131,6 +131,13 @@ pub struct Type13<'a> {
     member3: &'a Type13<'a>,
 }
 
+// Helper type to allow `Type14<Bar>` to be a unique ID
+pub struct Bar;
+
+// repr(transparent) parameterized type
+#[repr(transparent)]
+pub struct Type14<T>(T);
+
 pub fn foo0(_: ()) { }
 // CHECK: define{{.*}}foo0{{.*}}!type ![[TYPE0:[0-9]+]]
 pub fn foo1(_: c_void, _: ()) { }
@@ -425,6 +432,12 @@ pub fn foo145(_: Type13, _: Type13) { }
 // CHECK: define{{.*}}foo145{{.*}}!type ![[TYPE145:[0-9]+]]
 pub fn foo146(_: Type13, _: Type13, _: Type13) { }
 // CHECK: define{{.*}}foo146{{.*}}!type ![[TYPE146:[0-9]+]]
+pub fn foo147(_: Type14<Bar>) { }
+// CHECK: define{{.*}}foo147{{.*}}!type ![[TYPE147:[0-9]+]]
+pub fn foo148(_: Type14<Bar>, _: Type14<Bar>) { }
+// CHECK: define{{.*}}foo148{{.*}}!type ![[TYPE148:[0-9]+]]
+pub fn foo149(_: Type14<Bar>, _: Type14<Bar>, _: Type14<Bar>) { }
+// CHECK: define{{.*}}foo149{{.*}}!type ![[TYPE149:[0-9]+]]
 
 // CHECK: ![[TYPE0]] = !{i64 0, !"_ZTSFvvE"}
 // CHECK: ![[TYPE1]] = !{i64 0, !"_ZTSFvvvE"}
@@ -570,6 +583,9 @@ pub fn foo146(_: Type13, _: Type13, _: Type13) { }
 // CHECK: ![[TYPE141]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3FooE"}
 // CHECK: ![[TYPE142]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3FooS_E"}
 // CHECK: ![[TYPE143]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3FooS_S_E"}
-// CHECK: ![[TYPE144]] = !{i64 0, !"_ZTSFvu3refIu3refIvEEE"}
-// CHECK: ![[TYPE145]] = !{i64 0, !"_ZTSFvu3refIu3refIvEES0_E"}
-// CHECK: ![[TYPE146]] = !{i64 0, !"_ZTSFvu3refIu3refIvEES0_S0_E"}
+// CHECK: ![[TYPE144]] = !{i64 0, !"_ZTSFvu3refIvEE"}
+// CHECK: ![[TYPE145]] = !{i64 0, !"_ZTSFvu3refIvES_E"}
+// CHECK: ![[TYPE146]] = !{i64 0, !"_ZTSFvu3refIvES_S_E"}
+// CHECK: ![[TYPE147]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3BarE
+// CHECK: ![[TYPE148]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3BarS_E
+// CHECK: ![[TYPE149]] = !{i64 0, !"_ZTSFvu{{[0-9]+}}NtC{{[[:print:]]+}}_51sanitizer_cfi_emit_type_metadata_id_itanium_cxx_abi3BarS_S_E
