@@ -1199,8 +1199,8 @@ static DEFAULT_HOOK: LazyLock<Box<dyn Fn(&panic::PanicInfo<'_>) + Sync + Send + 
             };
 
             // Invoke the default handler, which prints the actual panic message and optionally a backtrace
-            // Don't do this for `ExplicitBug`, which has an unhelpful message and backtrace.
-            if !info.payload().is::<rustc_errors::ExplicitBug>() {
+            // Don't do this for `GoodPathBug`, which already emits its own more useful backtrace.
+            if !info.payload().is::<rustc_errors::GoodPathBug>() {
                 (*DEFAULT_HOOK)(info);
 
                 // Separate the output with an empty line
@@ -1237,7 +1237,9 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     // a .span_bug or .bug call has already printed what
     // it wants to print.
-    if !info.payload().is::<rustc_errors::ExplicitBug>() {
+    if !info.payload().is::<rustc_errors::ExplicitBug>()
+        && !info.payload().is::<rustc_errors::GoodPathBug>()
+    {
         let mut d = rustc_errors::Diagnostic::new(rustc_errors::Level::Bug, "unexpected panic");
         handler.emit_diagnostic(&mut d);
     }
