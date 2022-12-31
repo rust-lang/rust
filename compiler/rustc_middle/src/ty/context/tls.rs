@@ -55,16 +55,16 @@ mod tlv {
     /// Gets Rayon's thread-local variable, which is preserved for Rayon jobs.
     /// This is used to get the pointer to the current `ImplicitCtxt`.
     #[inline]
-    pub(super) fn get_tlv() -> usize {
-        rayon_core::tlv::get()
+    pub(super) fn get_tlv() -> *const () {
+        ptr::from_exposed_addr(rayon_core::tlv::get())
     }
 
     /// Sets Rayon's thread-local variable, which is preserved for Rayon jobs
     /// to `value` during the call to `f`. It is restored to its previous value after.
     /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[inline]
-    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
-        rayon_core::tlv::with(value, f)
+    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
+        rayon_core::tlv::with(value.expose_addr(), f)
     }
 }
 
@@ -75,12 +75,12 @@ mod tlv {
 
     thread_local! {
         /// A thread local variable that stores a pointer to the current `ImplicitCtxt`.
-        static TLV: Cell<usize> = const { Cell::new(0) };
+        static TLV: Cell<*const ()> = const { Cell::new(ptr::null()) };
     }
 
     /// Gets the pointer to the current `ImplicitCtxt`.
     #[inline]
-    pub(super) fn get_tlv() -> usize {
+    pub(super) fn get_tlv() -> *const () {
         TLV.with(|tlv| tlv.get())
     }
 
@@ -88,12 +88,22 @@ mod tlv {
     /// It is restored to its previous value after.
     /// This is used to set the pointer to the new `ImplicitCtxt`.
     #[inline]
-    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: usize, f: F) -> R {
+    pub(super) fn with_tlv<F: FnOnce() -> R, R>(value: *const (), f: F) -> R {
         let old = get_tlv();
         let _reset = rustc_data_structures::OnDrop(move || TLV.with(|tlv| tlv.set(old)));
         TLV.with(|tlv| tlv.set(value));
         f()
     }
+}
+
+#[inline]
+fn erase(context: &ImplicitCtxt<'_, '_>) -> *const () {
+    context as *const _ as *const ()
+}
+
+#[inline]
+unsafe fn downcast<'a, 'tcx>(context: *const ()) -> &'a ImplicitCtxt<'a, 'tcx> {
+    &*(context as *const ImplicitCtxt<'a, 'tcx>)
 }
 
 /// Sets `context` as the new current `ImplicitCtxt` for the duration of the function `f`.
@@ -102,7 +112,7 @@ pub fn enter_context<'a, 'tcx, F, R>(context: &ImplicitCtxt<'a, 'tcx>, f: F) -> 
 where
     F: FnOnce(&ImplicitCtxt<'a, 'tcx>) -> R,
 {
-    tlv::with_tlv(context as *const _ as usize, || f(&context))
+    tlv::with_tlv(erase(context), || f(&context))
 }
 
 /// Allows access to the current `ImplicitCtxt` in a closure if one is available.
@@ -112,14 +122,14 @@ where
     F: for<'a, 'tcx> FnOnce(Option<&ImplicitCtxt<'a, 'tcx>>) -> R,
 {
     let context = tlv::get_tlv();
-    if context == 0 {
+    if context.is_null() {
         f(None)
     } else {
         // We could get an `ImplicitCtxt` pointer from another thread.
         // Ensure that `ImplicitCtxt` is `Sync`.
         sync::assert_sync::<ImplicitCtxt<'_, '_>>();
 
-        unsafe { f(Some(&*(context as *const ImplicitCtxt<'_, '_>))) }
+        unsafe { f(Some(downcast(context))) }
     }
 }
 
