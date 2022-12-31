@@ -3237,7 +3237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         })) = call_node
         {
             if Some(rcvr.span) == err.span.primary_span() {
-                err.replace_span_with(path.ident.span);
+                err.replace_span_with(path.ident.span, true);
             }
         }
         if let Some(Node::Expr(hir::Expr {

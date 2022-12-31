@@ -2270,6 +2270,7 @@ mod error {
         /// same primary span come out in a consistent order.
         buffered_move_errors:
             BTreeMap<Vec<MoveOutIndex>, (PlaceRef<'tcx>, DiagnosticBuilder<'tcx, ErrorGuaranteed>)>,
+        buffered_mut_errors: FxHashMap<Span, (DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)>,
         /// Diagnostics to be reported buffer.
         buffered: Vec<Diagnostic>,
         /// Set to Some if we emit an error during borrowck
@@ -2281,6 +2282,7 @@ mod error {
             BorrowckErrors {
                 tcx,
                 buffered_move_errors: BTreeMap::new(),
+                buffered_mut_errors: Default::default(),
                 buffered: Default::default(),
                 tainted_by_errors: None,
             }
@@ -2331,10 +2333,32 @@ mod error {
             }
         }
 
+        pub fn get_buffered_mut_error(
+            &mut self,
+            span: Span,
+        ) -> Option<(DiagnosticBuilder<'tcx, ErrorGuaranteed>, usize)> {
+            self.errors.buffered_mut_errors.remove(&span)
+        }
+
+        pub fn buffer_mut_error(
+            &mut self,
+            span: Span,
+            t: DiagnosticBuilder<'tcx, ErrorGuaranteed>,
+            count: usize,
+        ) {
+            self.errors.buffered_mut_errors.insert(span, (t, count));
+        }
+
         pub fn emit_errors(&mut self) -> Option<ErrorGuaranteed> {
             // Buffer any move errors that we collected and de-duplicated.
             for (_, (_, diag)) in std::mem::take(&mut self.errors.buffered_move_errors) {
                 // We have already set tainted for this error, so just buffer it.
+                diag.buffer(&mut self.errors.buffered);
+            }
+            for (_, (mut diag, count)) in std::mem::take(&mut self.errors.buffered_mut_errors) {
+                if count > 10 {
+                    diag.note(&format!("...and {} other attempted mutable borrows", count - 10));
+                }
                 diag.buffer(&mut self.errors.buffered);
             }
 
