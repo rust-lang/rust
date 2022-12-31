@@ -85,7 +85,7 @@ pub use crate::{
     diagnostics::{
         AnyDiagnostic, BreakOutsideOfLoop, InactiveCode, IncorrectCase, InvalidDeriveTarget,
         MacroError, MalformedDerive, MismatchedArgCount, MissingFields, MissingMatchArms,
-        MissingUnsafe, NoSuchField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
+        MissingUnsafe, NoSuchField, PrivateField, ReplaceFilterMapNextWithFindMap, TypeMismatch,
         UnimplementedBuiltinMacro, UnresolvedExternCrate, UnresolvedImport, UnresolvedMacroCall,
         UnresolvedModule, UnresolvedProcMacro,
     },
@@ -1352,6 +1352,11 @@ impl DefWithBody {
                         ),
                         Err(SyntheticSyntax) => (),
                     }
+                }
+                &hir_ty::InferenceDiagnostic::PrivateField { expr, field } => {
+                    let expr = source_map.expr_syntax(expr).expect("unexpected synthetic");
+                    let field = field.into();
+                    acc.push(PrivateField { expr, field }.into())
                 }
             }
         }

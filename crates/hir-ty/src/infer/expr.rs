@@ -1,7 +1,6 @@
 //! Type inference for expressions.
 
 use std::{
-    collections::hash_map::Entry,
     iter::{repeat, repeat_with},
     mem,
 };
@@ -521,6 +520,7 @@ impl<'a> InferenceContext<'a> {
                 let receiver_ty = self.infer_expr_inner(*expr, &Expectation::none());
 
                 let mut autoderef = Autoderef::new(&mut self.table, receiver_ty);
+                let mut private_field = None;
                 let ty = autoderef.by_ref().find_map(|(derefed_ty, _)| {
                     let (field_id, parameters) = match derefed_ty.kind(Interner) {
                         TyKind::Tuple(_, substs) => {
@@ -547,13 +547,8 @@ impl<'a> InferenceContext<'a> {
                     let is_visible = self.db.field_visibilities(field_id.parent)[field_id.local_id]
                         .is_visible_from(self.db.upcast(), self.resolver.module());
                     if !is_visible {
-                        // Write down the first field resolution even if it is not visible
-                        // This aids IDE features for private fields like goto def and in
-                        // case of autoderef finding an applicable field, this will be
-                        // overwritten in a following cycle
-                        if let Entry::Vacant(entry) = self.result.field_resolutions.entry(tgt_expr)
-                        {
-                            entry.insert(field_id);
+                        if private_field.is_none() {
+                            private_field = Some(field_id);
                         }
                         return None;
                     }
@@ -572,7 +567,17 @@ impl<'a> InferenceContext<'a> {
                         let ty = self.normalize_associated_types_in(ty);
                         ty
                     }
-                    _ => self.err_ty(),
+                    _ => {
+                        // Write down the first private field resolution if we found no field
+                        // This aids IDE features for private fields like goto def
+                        if let Some(field) = private_field {
+                            self.result.field_resolutions.insert(tgt_expr, field);
+                            self.result
+                                .diagnostics
+                                .push(InferenceDiagnostic::PrivateField { expr: tgt_expr, field });
+                        }
+                        self.err_ty()
+                    }
                 };
                 ty
             }
