@@ -1861,9 +1861,13 @@ in storage.js
 	font-size: 12px;
 	position: relative;
 	bottom: 1px;
-	border-width: 1px;
-	border-style: solid;
+	border: 1px solid var(--scrape-example-help-border-color);
 	border-radius: 50px;
+	color: var(--scrape-example-help-color);
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: var(--scrape-example-help-hover-border-color);
+	color: var(--scrape-example-help-hover-color);
 }
 
 .scraped-example {
@@ -1954,14 +1958,6 @@ in storage.js
 }
 .scraped-example .example-wrap .rust span.highlight.focus {
 	background: var(--scrape-example-code-line-highlight-focus);
-}
-.scraped-example-list .scrape-help {
-	border-color: var(--scrape-example-help-border-color);
-	color: var(--scrape-example-help-color);
-}
-.scraped-example-list .scrape-help:hover {
-	border-color: var(--scrape-example-help-hover-border-color);
-	color: var(--scrape-example-help-hover-color);
 }
 
 .more-examples-toggle {
