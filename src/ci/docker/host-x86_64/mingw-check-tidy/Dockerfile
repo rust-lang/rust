@@ -33,4 +33,4 @@ COPY host-x86_64/mingw-check/validate-toolstate.sh /scripts/
 COPY host-x86_64/mingw-check/validate-error-codes.sh /scripts/
 
 ENV RUN_CHECK_WITH_PARALLEL_QUERIES 1
-ENV SCRIPT python3 ../x.py test --stage 0 src/tools/tidy
+ENV SCRIPT python3 ../x.py test --stage 0 src/tools/tidy tidyselftest

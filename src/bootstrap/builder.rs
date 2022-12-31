@@ -662,6 +662,7 @@ impl<'a> Builder<'a> {
                 crate::toolstate::ToolStateCheck,
                 test::ExpandYamlAnchors,
                 test::Tidy,
+                test::TidySelfTest,
                 test::Ui,
                 test::RunPassValgrind,
                 test::MirOpt,

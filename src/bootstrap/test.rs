@@ -1143,6 +1143,40 @@ help: to skip test's attempt to check tidiness, pass `--exclude src/tools/tidy` 
     }
 }
 
+/// Runs tidy's own tests.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+pub struct TidySelfTest;
+
+impl Step for TidySelfTest {
+    type Output = ();
+    const DEFAULT: bool = true;
+    const ONLY_HOSTS: bool = true;
+
+    fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
+        run.alias("tidyselftest")
+    }
+
+    fn make_run(run: RunConfig<'_>) {
+        run.builder.ensure(TidySelfTest);
+    }
+
+    fn run(self, builder: &Builder<'_>) {
+        let bootstrap_host = builder.config.build;
+        let compiler = builder.compiler(0, bootstrap_host);
+        let cargo = tool::prepare_tool_cargo(
+            builder,
+            compiler,
+            Mode::ToolBootstrap,
+            bootstrap_host,
+            "test",
+            "src/tools/tidy",
+            SourceType::InTree,
+            &[],
+        );
+        try_run(builder, &mut cargo.into());
+    }
+}
+
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub struct ExpandYamlAnchors;
 
