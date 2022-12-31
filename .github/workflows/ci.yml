@@ -71,6 +71,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+      - name: "checkout the `master` branch for tidy"
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          fetch-depth: 1
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -485,6 +490,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+      - name: "checkout the `master` branch for tidy"
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          fetch-depth: 1
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
@@ -600,6 +610,11 @@ jobs:
         uses: actions/checkout@v3
         with:
           fetch-depth: 2
+      - name: "checkout the `master` branch for tidy"
+        uses: actions/checkout@v3
+        with:
+          ref: master
+          fetch-depth: 1
       - name: configure the PR in which the error message will be posted
         run: "echo \"[CI_PR_NUMBER=$num]\""
         env:
