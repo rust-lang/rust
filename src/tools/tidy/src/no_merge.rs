@@ -48,7 +48,7 @@ fn find_merge_commits(remote: &str) -> Result<String, String> {
         "--format=%s",
         &format!("{remote}/master..HEAD"),
         // Ignore subtree syncs. Add your new subtrees here.
-        ":!src/tools/miri",
+        //   ":!src/tools/miri", // Ignore miri to see whether its the only thing missing or whatevers going on
         ":!src/tools/rust-analyzer",
         ":!compiler/rustc_smir",
         ":!library/portable-simd",

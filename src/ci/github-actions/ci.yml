@@ -759,9 +759,8 @@ jobs:
     strategy:
       matrix:
         include:
-          - &dist-x86_64-linux
-            name: dist-x86_64-linux
-            <<: *job-linux-xl
+          - name: aarch64-gnu
+            <<: *job-aarch64-linux
 
   master:
     name: master

@@ -598,9 +598,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: dist-x86_64-linux
-            os: ubuntu-20.04-xl
-            env: {}
+          - name: aarch64-gnu
+            os:
+              - self-hosted
+              - ARM64
+              - linux
     timeout-minutes: 600
     runs-on: "${{ matrix.os }}"
     steps:
