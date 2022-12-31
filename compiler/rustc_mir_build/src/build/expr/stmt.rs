@@ -39,12 +39,19 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 // Generate better code for things that don't need to be
                 // dropped.
-
                 let needs_drop = lhs.ty.needs_drop(this.tcx, this.param_env);
                 let rhs = unpack!(block = this.as_local_rvalue(block, rhs));
                 let lhs = unpack!(block = this.as_place(block, lhs));
                 if needs_drop {
-                    unpack!(block = this.build_drop_and_replace(block, lhs_span, lhs, rhs.clone()));
+                    unpack!(
+                        block = this.build_drop_and_replace(
+                            block,
+                            source_info,
+                            lhs_span,
+                            lhs,
+                            rhs.clone()
+                        )
+                    );
                 }
                 this.cfg.push_assign(block, source_info, lhs, rhs);
                 this.block_context.pop();

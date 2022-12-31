@@ -1125,6 +1125,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
     pub(crate) fn build_drop_and_replace(
         &mut self,
         block: BasicBlock,
+        statement_source_info: SourceInfo,
         span: Span,
         place: Place<'tcx>,
         value: Rvalue<'tcx>,
@@ -1133,8 +1134,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         let next_target = self.cfg.start_new_block();
 
         let assign = self.cfg.start_new_cleanup_block();
-        self.cfg.push_assign(assign, source_info, place, value.clone());
-        self.cfg.terminate(assign, source_info, TerminatorKind::Goto { target: block });
+        self.cfg.push_assign(assign, statement_source_info, place, value.clone());
+        self.cfg.terminate(assign, statement_source_info, TerminatorKind::Goto { target: block });
 
         self.cfg.terminate(
             block,
