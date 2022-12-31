@@ -79,24 +79,19 @@ fn update_rustfmt_version(build: &Builder<'_>) {
 ///
 /// Returns `None` if all files should be formatted.
 fn get_modified_rs_files(build: &Builder<'_>) -> Option<Vec<String>> {
-    let Ok(remote) = get_rust_lang_rust_remote() else {return None;};
+    let Ok(remote) = get_rust_lang_rust_remote() else { return None; };
     if !verify_rustfmt_version(build) {
         return None;
     }
+
+    let merge_base =
+        output(build.config.git().arg("merge-base").arg(&format!("{remote}/master")).arg("HEAD"));
     Some(
-        output(
-            build
-                .config
-                .git()
-                .arg("diff-index")
-                .arg("--name-only")
-                .arg("--merge-base")
-                .arg(&format!("{remote}/master")),
-        )
-        .lines()
-        .map(|s| s.trim().to_owned())
-        .filter(|f| Path::new(f).extension().map_or(false, |ext| ext == "rs"))
-        .collect(),
+        output(build.config.git().arg("diff-index").arg("--name-only").arg(merge_base.trim()))
+            .lines()
+            .map(|s| s.trim().to_owned())
+            .filter(|f| Path::new(f).extension().map_or(false, |ext| ext == "rs"))
+            .collect(),
     )
 }
 
