@@ -111,8 +111,57 @@ assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
 click: "#source-sidebar details:first-of-type > summary"
 assert-property: ("#source-sidebar details:first-of-type", {"open": "false"})
 
-// Check the spacing.
-assert-css: ("#source-sidebar > details.dir-entry", {"padding-left": "4px"})
+// And open it again, since it'll be the reference we use to check positions.
+click: "#source-sidebar details:first-of-type > summary"
+assert-property: ("#source-sidebar details:first-of-type", {"open": "true"})
+
+// Check the sidebar directory entries have a marker and spacing (desktop).
+store-property: (
+    link_height,
+    "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+    "offsetHeight"
+)
+define-function: (
+    "check-sidebar-dir-entry",
+    (x, y),
+    [
+        ("assert", "details:first-of-type.dir-entry[open] > summary::marker"),
+        ("assert-css", ("#source-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})),
+        // This check ensures that the summary is only one line.
+       ("assert-property", (
+            "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
+            {"offsetHeight": |link_height|}
+        )),
+        ("assert-position", (
+            "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
+            {"x": |x|, "y": |y|}
+        )),
+        ("assert-property", (
+            "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            {"offsetHeight": |link_height|}
+        )),
+        ("assert-position", (
+            "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
+            // left margin
+            {"x": |x| + 27, "y": |y| + |link_height|}
+        )),
+    ]
+)
+store-property: (
+    source_sidebar_title_height,
+    "#source-sidebar > .title",
+    "offsetHeight"
+)
+store-property: (
+    source_sidebar_title_y,
+    "#source-sidebar > .title",
+    "offsetTop"
+)
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    // border + margin = 6
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+})
 
 // Check the search form
 assert-css: ("nav.sub", {"flex-direction": "row"})
@@ -125,13 +174,45 @@ assert-property: ("nav.sub form", {"offsetTop": 28, "offsetHeight": 34})
 assert-property: ("#main-content", {"offsetTop": 90})
 // 28 = 90 - 34 - 28
 
-// Now do the same check on moderately-sized mobile.
+// Now do the same check on moderately-sized, tablet mobile.
 size: (700, 700)
 assert-css: ("nav.sub", {"flex-direction": "row"})
 assert-property: ("nav.sub form", {"offsetTop": 21, "offsetHeight": 34})
 assert-property: ("#main-content", {"offsetTop": 76})
 // 21 = 76 - 34 - 21
 
-// Tiny mobile gets a different display where the logo is stacked on top.
+// Check the sidebar directory entries have a marker and spacing (tablet).
+store-property: (
+    source_sidebar_title_height,
+    "#source-sidebar > .title",
+    "offsetHeight"
+)
+store-property: (
+    source_sidebar_title_y,
+    "#source-sidebar > .title",
+    "offsetTop"
+)
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+})
+
+// Tiny, phone mobile gets a different display where the logo is stacked on top.
 size: (450, 700)
 assert-css: ("nav.sub", {"flex-direction": "column"})
+
+// Check the sidebar directory entries have a marker and spacing (phone).
+store-property: (
+    source_sidebar_title_height,
+    "#source-sidebar > .title",
+    "offsetHeight"
+)
+store-property: (
+    source_sidebar_title_y,
+    "#source-sidebar > .title",
+    "offsetTop"
+)
+call-function: ("check-sidebar-dir-entry", {
+    "x": 0,
+    "y": |source_sidebar_title_y| + |source_sidebar_title_height| + 6,
+})
