@@ -2364,10 +2364,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ProjectionElem::Deref => match kind {
                             StorageDeadOrDrop::LocalStorageDead
                             | StorageDeadOrDrop::BoxedStorageDead => {
-                                // assert!(
-                                //     place_ty.ty.is_box(),
-                                //     "Drop of value behind a reference or raw pointer"
-                                // );
+                                assert!(
+                                    place_ty.ty.is_box(),
+                                    "Drop of value behind a reference or raw pointer"
+                                );
                                 StorageDeadOrDrop::BoxedStorageDead
                             }
                             StorageDeadOrDrop::Destructor(_) => kind,
