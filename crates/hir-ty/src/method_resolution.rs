@@ -488,13 +488,13 @@ pub fn lang_names_for_bin_op(op: syntax::ast::BinaryOp) -> Option<(Name, Name)> 
 
 /// Look up the method with the given name.
 pub(crate) fn lookup_method(
-    ty: &Canonical<Ty>,
     db: &dyn HirDatabase,
+    ty: &Canonical<Ty>,
     env: Arc<TraitEnvironment>,
     traits_in_scope: &FxHashSet<TraitId>,
     visible_from_module: VisibleFromModule,
     name: &Name,
-) -> Option<(ReceiverAdjustments, FunctionId)> {
+) -> Option<(ReceiverAdjustments, FunctionId, bool)> {
     let mut not_visible = None;
     let res = iterate_method_candidates(
         ty,
@@ -505,9 +505,9 @@ pub(crate) fn lookup_method(
         Some(name),
         LookupMode::MethodCall,
         |adjustments, f, visible| match f {
-            AssocItemId::FunctionId(f) if visible => Some((adjustments, f)),
+            AssocItemId::FunctionId(f) if visible => Some((adjustments, f, true)),
             AssocItemId::FunctionId(f) if not_visible.is_none() => {
-                not_visible = Some((adjustments, f));
+                not_visible = Some((adjustments, f, false));
                 None
             }
             _ => None,

@@ -2,7 +2,7 @@ use crate::{Diagnostic, DiagnosticsContext};
 
 // Diagnostic: private-field
 //
-// This diagnostic is triggered if created structure does not have field provided in record.
+// This diagnostic is triggered if the accessed field is not visible from the current module.
 pub(crate) fn private_field(ctx: &DiagnosticsContext<'_>, d: &hir::PrivateField) -> Diagnostic {
     // FIXME: add quickfix
     Diagnostic::new(
@@ -28,6 +28,19 @@ mod module { pub struct Struct { field: u32 } }
 fn main(s: module::Struct) {
     s.field;
   //^^^^^^^ error: field `field` of `Struct` is private
+}
+"#,
+        );
+    }
+
+    #[test]
+    fn private_tuple_field() {
+        check_diagnostics(
+            r#"
+mod module { pub struct Struct(u32); }
+fn main(s: module::Struct) {
+    s.0;
+  //^^^ error: field `0` of `Struct` is private
 }
 "#,
         );

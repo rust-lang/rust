@@ -1142,20 +1142,26 @@ impl<'a> InferenceContext<'a> {
         let traits_in_scope = self.resolver.traits_in_scope(self.db.upcast());
 
         let resolved = method_resolution::lookup_method(
-            &canonicalized_receiver.value,
             self.db,
+            &canonicalized_receiver.value,
             self.trait_env.clone(),
             &traits_in_scope,
             VisibleFromModule::Filter(self.resolver.module()),
             method_name,
         );
         let (receiver_ty, method_ty, substs) = match resolved {
-            Some((adjust, func)) => {
+            Some((adjust, func, visible)) => {
                 let (ty, adjustments) = adjust.apply(&mut self.table, receiver_ty);
                 let generics = generics(self.db.upcast(), func.into());
                 let substs = self.substs_for_method_call(generics, generic_args);
                 self.write_expr_adj(receiver, adjustments);
                 self.write_method_resolution(tgt_expr, func, substs.clone());
+                if !visible {
+                    self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem {
+                        id: tgt_expr.into(),
+                        item: func.into(),
+                    })
+                }
                 (ty, self.db.value_ty(func.into()), substs)
             }
             None => (

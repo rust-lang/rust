@@ -14,7 +14,8 @@ use crate::{
     consteval,
     method_resolution::{self, VisibleFromModule},
     utils::generics,
-    Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind, ValueTyDefId,
+    InferenceDiagnostic, Interner, Substitution, TraitRefExt, Ty, TyBuilder, TyExt, TyKind,
+    ValueTyDefId,
 };
 
 use super::{ExprOrPatId, InferenceContext, TraitRef};
@@ -279,20 +280,23 @@ impl<'a> InferenceContext<'a> {
                 };
 
                 if visible {
-                    Some((def, item, Some(substs)))
+                    Some((def, item, Some(substs), true))
                 } else {
                     if not_visible.is_none() {
-                        not_visible = Some((def, item, Some(substs)));
+                        not_visible = Some((def, item, Some(substs), false));
                     }
                     None
                 }
             },
         );
         let res = res.or(not_visible);
-        if let Some((_, item, Some(ref substs))) = res {
+        if let Some((_, item, Some(ref substs), visible)) = res {
             self.write_assoc_resolution(id, item, substs.clone());
+            if !visible {
+                self.push_diagnostic(InferenceDiagnostic::PrivateAssocItem { id, item })
+            }
         }
-        res.map(|(def, _, substs)| (def, substs))
+        res.map(|(def, _, substs, _)| (def, substs))
     }
 
     fn resolve_enum_variant_on_ty(
