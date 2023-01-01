@@ -80,7 +80,7 @@ fn main() {
         check!(mir_opt_tests, &src_path, bless);
 
         // Checks that only make sense for the compiler.
-        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path]);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);

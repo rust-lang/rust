@@ -37,21 +37,29 @@ const IGNORE_UI_TEST_CHECK: &[&str] = &[
     "E0729", "E0789",
 ];
 
-pub fn check(root_path: &Path, search_paths: &[&Path], bad: &mut bool) {
+macro_rules! verbose_print {
+    ($verbose:expr, $($fmt:tt)*) => {
+        if $verbose {
+            println!("{}", format_args!($($fmt)*));
+        }
+    };
+}
+
+pub fn check(root_path: &Path, search_paths: &[&Path], verbose: bool, bad: &mut bool) {
     let mut errors = Vec::new();
 
     // Stage 1: create list
-    let error_codes = extract_error_codes(root_path, &mut errors);
+    let error_codes = extract_error_codes(root_path, &mut errors, verbose);
     println!("Found {} error codes", error_codes.len());
 
     // Stage 2: check list has docs
-    let no_longer_emitted = check_error_codes_docs(root_path, &error_codes, &mut errors);
+    let no_longer_emitted = check_error_codes_docs(root_path, &error_codes, &mut errors, verbose);
 
     // Stage 3: check list has UI tests
-    check_error_codes_tests(root_path, &error_codes, &mut errors);
+    check_error_codes_tests(root_path, &error_codes, &mut errors, verbose);
 
     // Stage 4: check list is emitted by compiler
-    check_error_codes_used(search_paths, &error_codes, &mut errors, &no_longer_emitted);
+    check_error_codes_used(search_paths, &error_codes, &mut errors, &no_longer_emitted, verbose);
 
     // Print any errors.
     for error in errors {
@@ -60,15 +68,13 @@ pub fn check(root_path: &Path, search_paths: &[&Path], bad: &mut bool) {
 }
 
 /// Stage 1: Parses a list of error codes from `error_codes.rs`.
-fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String> {
+fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>, verbose: bool) -> Vec<String> {
     let path = root_path.join(Path::new(ERROR_CODES_PATH));
     let file =
         fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read `{path:?}`: {e}"));
 
     let mut error_codes = Vec::new();
     let mut reached_undocumented_codes = false;
-
-    let mut undocumented_count = 0;
 
     for line in file.lines() {
         let line = line.trim();
@@ -115,7 +121,7 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
             }
             .to_string();
 
-            undocumented_count += 1;
+            verbose_print!(verbose, "warning: Error code `{}` is undocumented.", err_code);
 
             if error_codes.contains(&err_code) {
                 errors.push(format!("Found duplicate error code: `{}`", err_code));
@@ -128,11 +134,6 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
         }
     }
 
-    println!(
-        "WARNING: {} error codes are undocumented. This *will* become a hard error.",
-        undocumented_count
-    );
-
     error_codes
 }
 
@@ -141,12 +142,9 @@ fn check_error_codes_docs(
     root_path: &Path,
     error_codes: &[String],
     errors: &mut Vec<String>,
+    verbose: bool,
 ) -> Vec<String> {
     let docs_path = root_path.join(Path::new(ERROR_DOCS_PATH));
-
-    let mut emit_ignore_warning = 0;
-    let mut emit_no_longer_warning = 0;
-    let mut emit_no_code_warning = 0;
 
     let mut no_longer_emitted_codes = Vec::new();
 
@@ -179,14 +177,25 @@ fn check_error_codes_docs(
         // `has_test.1` checks whether the error code has a proper (definitely tested) doctest.
         let has_test = check_explanation_has_doctest(&contents, &err_code);
         if has_test.2 {
-            emit_ignore_warning += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code `{err_code}` uses the ignore header. This should not be used, add the error code to the \
+                `IGNORE_DOCTEST_CHECK` constant instead."
+            );
         }
         if has_test.3 {
             no_longer_emitted_codes.push(err_code.to_owned());
-            emit_no_longer_warning += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code `{err_code}` is no longer emitted and should be removed entirely."
+            );
         }
         if !has_test.0 {
-            emit_no_code_warning += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code `{err_code}` doesn't have a code example, all error codes are expected to have one \
+                (even if untested)."
+            );
         }
 
         let test_ignored = IGNORE_DOCTEST_CHECK.contains(&err_code);
@@ -205,25 +214,6 @@ fn check_error_codes_docs(
             ));
         }
     });
-
-    if emit_ignore_warning > 0 {
-        println!(
-            "WARNING: {emit_ignore_warning} error codes use the ignore header. This should not be used, add the error codes to the \
-            `IGNORE_DOCTEST_CHECK` constant instead. This *will* become a hard error."
-        );
-    }
-    if emit_no_code_warning > 0 {
-        println!(
-            "WARNING: {emit_ignore_warning} error codes don't have a code example, all error codes are expected \
-            to have one (even if untested). This *will* become a hard error."
-        );
-    }
-    if emit_no_longer_warning > 0 {
-        println!(
-            "WARNING: {emit_no_longer_warning} error codes are no longer emitted and should be removed entirely. \
-            This *will* become a hard error."
-        );
-    }
 
     no_longer_emitted_codes
 }
@@ -266,18 +256,22 @@ fn check_explanation_has_doctest(explanation: &str, err_code: &str) -> (bool, bo
 }
 
 // Stage 3: Checks that each error code has a UI test in the correct directory
-fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mut Vec<String>) {
+fn check_error_codes_tests(
+    root_path: &Path,
+    error_codes: &[String],
+    errors: &mut Vec<String>,
+    verbose: bool,
+) {
     let tests_path = root_path.join(Path::new(ERROR_TESTS_PATH));
-
-    // Some warning counters, this whole thing is clunky but'll be removed eventually.
-    let mut no_ui_test = 0;
-    let mut no_error_code_in_test = 0;
 
     for code in error_codes {
         let test_path = tests_path.join(format!("{}.stderr", code));
 
         if !test_path.exists() && !IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
-            no_ui_test += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code `{code}` needs to have at least one UI test in the `src/test/ui/error-codes/` directory`!"
+            );
             continue;
         }
         if IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
@@ -292,8 +286,9 @@ fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mu
         let file = match fs::read_to_string(&test_path) {
             Ok(file) => file,
             Err(err) => {
-                println!(
-                    "WARNING: Failed to read UI test file (`{}`) for `{code}` but the file exists. The test is assumed to work:\n{err}",
+                verbose_print!(
+                    verbose,
+                    "warning: Failed to read UI test file (`{}`) for `{code}` but the file exists. The test is assumed to work:\n{err}",
                     test_path.display()
                 );
                 continue;
@@ -314,21 +309,11 @@ fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mu
         }
 
         if !found_code {
-            no_error_code_in_test += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code {code}`` has a UI test file, but doesn't contain its own error code!"
+            );
         }
-    }
-
-    if no_error_code_in_test > 0 {
-        println!(
-            "WARNING: {no_error_code_in_test} error codes have a UI test file, but don't contain their own error code!"
-        );
-    }
-
-    if no_ui_test > 0 {
-        println!(
-            "WARNING: {no_ui_test} error codes need to have at least one UI test in the `src/test/ui/error-codes/` directory`! \
-            This *will* become a hard error."
-        );
     }
 }
 
@@ -338,6 +323,7 @@ fn check_error_codes_used(
     error_codes: &[String],
     errors: &mut Vec<String>,
     no_longer_emitted: &[String],
+    verbose: bool,
 ) {
     // We want error codes which match the following cases:
     //
@@ -380,21 +366,16 @@ fn check_error_codes_used(
         }
     });
 
-    let mut used_when_shouldnt = 0;
-
     for code in error_codes {
         if !found_codes.contains(code) && !no_longer_emitted.contains(code) {
             errors.push(format!("Error code `{code}` exists, but is not emitted by the compiler!"))
         }
 
         if found_codes.contains(code) && no_longer_emitted.contains(code) {
-            used_when_shouldnt += 1;
+            verbose_print!(
+                verbose,
+                "warning: Error code `{code}` is used when it's marked as \"no longer emitted\""
+            );
         }
-    }
-
-    if used_when_shouldnt > 0 {
-        println!(
-            "WARNING: {used_when_shouldnt} error codes are used when they are marked as \"no longer emitted\""
-        );
     }
 }
