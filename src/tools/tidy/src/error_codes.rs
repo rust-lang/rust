@@ -289,11 +289,12 @@ fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mu
             continue;
         }
 
-        let file = match fs::read_to_string(test_path) {
+        let file = match fs::read_to_string(&test_path) {
             Ok(file) => file,
             Err(err) => {
                 println!(
-                    "WARNING: Failed to read UI test file (`{test_path}`) for `{code}` but the file exists. The test is assumed to work:\n{err}"
+                    "WARNING: Failed to read UI test file (`{}`) for `{code}` but the file exists. The test is assumed to work:\n{err}",
+                    test_path.display()
                 );
                 continue;
             }
