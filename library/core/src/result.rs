@@ -1113,8 +1113,8 @@ impl<T, E> Result<T, E> {
         }
     }
 
-    /// Consumes the `self` argument and returns the contained [`Ok`] value
-    /// or the default value.
+    /// Returns the contained [`Ok`] value or the default value,
+    /// consuming the `self` value.
     ///
     /// If the result is [`Err`], the default value for the type that would
     /// be contained on success is returned.
