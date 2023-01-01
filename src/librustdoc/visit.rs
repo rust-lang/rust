@@ -17,10 +17,10 @@ pub(crate) trait DocVisitor: Sized {
             EnumItem(i) => i.variants.iter().for_each(|x| self.visit_item(x)),
             TraitItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
             ImplItem(i) => i.items.iter().for_each(|x| self.visit_item(x)),
-            VariantItem(i) => match i {
-                Variant::Struct(j) => j.fields.iter().for_each(|x| self.visit_item(x)),
-                Variant::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
-                Variant::CLike(_) => {}
+            VariantItem(i) => match &i.kind {
+                VariantKind::Struct(j) => j.fields.iter().for_each(|x| self.visit_item(x)),
+                VariantKind::Tuple(fields) => fields.iter().for_each(|x| self.visit_item(x)),
+                VariantKind::CLike => {}
             },
             ExternCrateItem { src: _ }
             | ImportItem(_)

@@ -646,9 +646,12 @@ impl FromWithTcx<clean::Enum> for Enum {
 
 impl FromWithTcx<clean::Variant> for Variant {
     fn from_tcx(variant: clean::Variant, tcx: TyCtxt<'_>) -> Self {
-        use clean::Variant::*;
-        match variant {
-            CLike(disr) => Variant::Plain(disr.map(|disr| disr.into_tcx(tcx))),
+        use clean::VariantKind::*;
+
+        let discriminant = variant.discriminant.map(|d| d.into_tcx(tcx));
+
+        match variant.kind {
+            CLike => Variant::Plain(discriminant),
             Tuple(fields) => Variant::Tuple(ids_keeping_stripped(fields, tcx)),
             Struct(s) => Variant::Struct {
                 fields_stripped: s.has_stripped_entries(),

@@ -807,8 +807,11 @@ impl ItemKind {
         match self {
             StructItem(s) => s.fields.iter(),
             UnionItem(u) => u.fields.iter(),
-            VariantItem(Variant::Struct(v)) => v.fields.iter(),
-            VariantItem(Variant::Tuple(v)) => v.iter(),
+            VariantItem(v) => match &v.kind {
+                VariantKind::CLike => [].iter(),
+                VariantKind::Tuple(t) => t.iter(),
+                VariantKind::Struct(s) => s.fields.iter(),
+            },
             EnumItem(e) => e.variants.iter(),
             TraitItem(t) => t.items.iter(),
             ImplItem(i) => i.items.iter(),
@@ -824,7 +827,6 @@ impl ItemKind {
             | TyMethodItem(_)
             | MethodItem(_, _)
             | StructFieldItem(_)
-            | VariantItem(_)
             | ForeignFunctionItem(_)
             | ForeignStaticItem(_)
             | ForeignTypeItem
@@ -2136,17 +2138,23 @@ impl Enum {
 }
 
 #[derive(Clone, Debug)]
-pub(crate) enum Variant {
-    CLike(Option<Discriminant>),
+pub(crate) struct Variant {
+    pub kind: VariantKind,
+    pub discriminant: Option<Discriminant>,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum VariantKind {
+    CLike,
     Tuple(Vec<Item>),
     Struct(VariantStruct),
 }
 
 impl Variant {
     pub(crate) fn has_stripped_entries(&self) -> Option<bool> {
-        match *self {
-            Self::Struct(ref struct_) => Some(struct_.has_stripped_entries()),
-            Self::CLike(..) | Self::Tuple(_) => None,
+        match &self.kind {
+            VariantKind::Struct(struct_) => Some(struct_.has_stripped_entries()),
+            VariantKind::CLike | VariantKind::Tuple(_) => None,
         }
     }
 }
