@@ -360,7 +360,7 @@ impl File {
     /// Depending on the platform, this function may fail if the
     /// full directory path does not exist.
     ///
-    /// See the [`OpenOptions::open`] function for more details.
+    /// See the [`OpenOptions::create`] function for more details.
     ///
     /// # Examples
     ///
