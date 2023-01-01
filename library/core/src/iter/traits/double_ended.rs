@@ -339,6 +339,33 @@ pub trait DoubleEndedIterator: Iterator {
         Some(self.rfold(last, folding))
     }
 
+    /// This is the reverse version of [`Iterator::try_fold_first()`]: it takes
+    /// elements starting from the back of the iterator.
+    #[inline]
+    #[unstable(feature = "iterator_try_rfold_last", reason = "new API", issue = "none")]
+    fn try_rfold_last<F1, FR, R>(
+        &mut self,
+        init: F1,
+        folding: FR,
+    ) -> ChangeOutputType<R, Option<R::Output>>
+    where
+        Self: Sized,
+        F1: FnOnce(Self::Item) -> R,
+        FR: FnMut(R::Output, Self::Item) -> R,
+        R: Try,
+        R::Residual: Residual<Option<R::Output>>,
+    {
+        let last = match self.next_back() {
+            Some(i) => init(i)?,
+            None => return Try::from_output(None),
+        };
+
+        match self.try_rfold(last, folding).branch() {
+            ControlFlow::Break(r) => FromResidual::from_residual(r),
+            ControlFlow::Continue(i) => Try::from_output(Some(i)),
+        }
+    }
+
     /// Searches for an element of an iterator from the back that satisfies a predicate.
     ///
     /// `rfind()` takes a closure that returns `true` or `false`. It applies
