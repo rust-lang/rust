@@ -6,7 +6,11 @@ pub fn check(bad: &mut bool) {
     let result = Command::new("x").arg("--wrapper-version").stdout(Stdio::piped()).spawn();
     // This runs the command inside a temporarily directory.
     // This allows us to compare output of result to see if `--wrapper-version` is not a recognized argument to x.
-    let temp_result = Command::new("x").arg("--wrapper-version").current_dir(std::env::temp_dir()).stdout(Stdio::piped()).spawn();
+    let temp_result = Command::new("x")
+        .arg("--wrapper-version")
+        .current_dir(std::env::temp_dir())
+        .stdout(Stdio::piped())
+        .spawn();
 
     let (child, temp_child) = match (result, temp_result) {
         (Ok(child), Ok(temp_child)) => (child, temp_child),
@@ -23,9 +27,9 @@ pub fn check(bad: &mut bool) {
 
     if output != temp_output {
         return tidy_error!(
-                bad,
-                "Current version of x does not support the `--wrapper-version` argument\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
-            )
+            bad,
+            "Current version of x does not support the `--wrapper-version` argument\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
+        );
     }
 
     if output.status.success() {
