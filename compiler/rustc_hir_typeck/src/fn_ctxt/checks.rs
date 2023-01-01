@@ -932,17 +932,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     labels
                         .push((provided_span, format!("argument{} unexpected", provided_ty_name)));
                     let mut span = provided_span;
-                    if let Some((_, next)) = provided_arg_tys.get(
+                    if arg_idx.index() > 0
+                        && let Some((_, prev)) = provided_arg_tys
+                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
+                    ) {
+                        // Include previous comma
+                        span = span.with_lo(prev.hi());
+                    } else if let Some((_, next)) = provided_arg_tys.get(
                         ProvidedIdx::from_usize(arg_idx.index() + 1),
                     ) {
                         // Include next comma
                         span = span.until(*next);
-                    } else if arg_idx.index() > 0
-                        && let Some((_, prev)) = provided_arg_tys
-                            .get(ProvidedIdx::from_usize(arg_idx.index() - 1)
-                    ) {
-                        // Last argument, include previous comma
-                        span = span.with_lo(prev.hi());
                     }
                     suggestions.push((span, String::new()));
 

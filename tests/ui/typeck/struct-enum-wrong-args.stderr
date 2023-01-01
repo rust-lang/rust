@@ -25,7 +25,7 @@ note: tuple variant defined here
 help: remove the extra arguments
    |
 LL -     let _ = Ok(3, 6, 2);
-LL +     let _ = Ok(3, );
+LL +     let _ = Ok(3);
    |
 
 error[E0061]: this enum variant takes 1 argument but 0 arguments were supplied
