@@ -301,6 +301,44 @@ pub trait DoubleEndedIterator: Iterator {
         accum
     }
 
+    /// Folds every element into an accumulator by applying an operation,
+    /// returning the final result, starting from the back.
+    /// The initial value is derived from the last element using the provided method.
+    ///
+    /// This is the reverse version of [`Iterator::fold_first()`]: it takes elements
+    /// starting from the back of the iterator.
+    ///
+    /// If the iterator is empty, returns [`None`]; otherwise, returns the
+    /// result of the fold.
+    ///
+    /// The folding function is a closure with two arguments: an 'accumulator', and an element.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// #![feature(iterator_rfold_last)]
+    ///
+    /// let numbers = [1, 2, 3, 4, 5];
+    ///
+    /// let result = numbers.iter().rfold_last(
+    ///     |last| last.to_string(),
+    ///     |acc, &x| format!("({x} + {acc})"),
+    /// ).unwrap();
+    ///
+    /// assert_eq!(result, "(1 + (2 + (3 + (4 + 5))))");
+    /// ```
+    #[inline]
+    #[unstable(feature = "iterator_rfold_last", reason = "new API", issue = "none")]
+    fn rfold_last<B, F1, FR>(mut self, init: F1, folding: FR) -> Option<B>
+    where
+        Self: Sized,
+        F1: FnOnce(Self::Item) -> B,
+        FR: FnMut(B, Self::Item) -> B,
+    {
+        let last = init(self.next_back()?);
+        Some(self.rfold(last, folding))
+    }
+
     /// Searches for an element of an iterator from the back that satisfies a predicate.
     ///
     /// `rfind()` takes a closure that returns `true` or `false`. It applies
