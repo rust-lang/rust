@@ -43,7 +43,7 @@ pub fn check(bad: &mut bool) {
         if version < expected {
             return tidy_error!(
                 bad,
-                "Current version of x is {version} Consider updating to the newer version of x by running `cargo install --path src/tools/x`"
+                "Current version of x is {version}, but the latest version is {expected}\nConsider updating to the newer version of x by running `cargo install --path src/tools/x`"
             );
         }
     } else {
