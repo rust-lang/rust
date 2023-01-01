@@ -2153,10 +2153,11 @@ pub trait BufRead: Read {
     ///
     /// This function is blocking and should be used carefully: it is possible for
     /// an attacker to continuously send bytes without ever sending a newline
-    /// or EOF.
+    /// or EOF. You can use [`take`] to limit the maximum number of bytes read.
     ///
     /// [`Ok(0)`]: Ok
-    /// [`clear`]: String:::clear
+    /// [`clear`]: String::clear
+    /// [`take`]: crate::io::Read::take
     ///
     /// # Errors
     ///
