@@ -1135,7 +1135,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
         let assign = self.cfg.start_new_cleanup_block();
         self.cfg.push_assign(assign, statement_source_info, place, value.clone());
-        self.cfg.terminate(assign, statement_source_info, TerminatorKind::Goto { target: block });
+        // We still have to build the scope drops so we don't know which block will follow.
+        // This terminator will be overwritten once the unwind drop tree builder runs.
+        self.cfg.terminate(assign, statement_source_info, TerminatorKind::Unreachable);
 
         self.cfg.terminate(
             block,
