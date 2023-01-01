@@ -29,7 +29,7 @@ const ERROR_DOCS_PATH: &str = "compiler/rustc_error_codes/src/error_codes/";
 const ERROR_TESTS_PATH: &str = "src/test/ui/error-codes/";
 
 // Error codes that (for some reason) can't have a doctest in their explanation. Error codes are still expected to provide a code example, even if untested.
-const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602", "E0729"];
+const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
 const IGNORE_UI_TEST_CHECK: &[&str] = &[
