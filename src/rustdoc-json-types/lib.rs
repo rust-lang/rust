@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 /// rustdoc format-version.
-pub const FORMAT_VERSION: u32 = 23;
+pub const FORMAT_VERSION: u32 = 24;
 
 /// A `Crate` is the root of the emitted JSON blob. It contains all type/documentation information
 /// about the language items in the local crate, as well as info about external items to allow
@@ -334,10 +334,17 @@ pub struct Enum {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct Variant {
+    /// Whether the variant is plain, a tuple-like, or struct-like. Contains the fields.
+    pub kind: VariantKind,
+    /// The discriminant, if explicitly specified.
+    pub discriminant: Option<Discriminant>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-#[serde(tag = "variant_kind", content = "variant_inner")]
-pub enum Variant {
-    /// A variant with no parentheses, and possible discriminant.
+pub enum VariantKind {
+    /// A variant with no parentheses
     ///
     /// ```rust
     /// enum Demo {
@@ -345,7 +352,7 @@ pub enum Variant {
     ///     PlainWithDiscriminant = 1,
     /// }
     /// ```
-    Plain(Option<Discriminant>),
+    Plain,
     /// A variant with unnamed fields.
     ///
     /// Unlike most of json, `#[doc(hidden)]` fields will be given as `None`

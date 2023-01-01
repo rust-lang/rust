@@ -650,14 +650,16 @@ impl FromWithTcx<clean::Variant> for Variant {
 
         let discriminant = variant.discriminant.map(|d| d.into_tcx(tcx));
 
-        match variant.kind {
-            CLike => Variant::Plain(discriminant),
-            Tuple(fields) => Variant::Tuple(ids_keeping_stripped(fields, tcx)),
-            Struct(s) => Variant::Struct {
+        let kind = match variant.kind {
+            CLike => VariantKind::Plain,
+            Tuple(fields) => VariantKind::Tuple(ids_keeping_stripped(fields, tcx)),
+            Struct(s) => VariantKind::Struct {
                 fields_stripped: s.has_stripped_entries(),
                 fields: ids(s.fields, tcx),
             },
-        }
+        };
+
+        Variant { kind, discriminant }
     }
 }
 
