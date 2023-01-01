@@ -27,8 +27,9 @@ LL |     let f = |x| x * 3;
    |             ^^^
 help: remove the extra argument
    |
-LL |     let c = f(2);
-   |              ~~~
+LL -     let c = f(2, 3);
+LL +     let c = f(2);
+   |
 
 error: aborting due to 2 previous errors
 

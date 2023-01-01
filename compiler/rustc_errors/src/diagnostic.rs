@@ -612,7 +612,7 @@ impl Diagnostic {
     pub fn multipart_suggestion_with_style(
         &mut self,
         msg: impl Into<SubdiagnosticMessage>,
-        suggestion: Vec<(Span, String)>,
+        mut suggestion: Vec<(Span, String)>,
         applicability: Applicability,
         style: SuggestionStyle,
     ) -> &mut Self {
@@ -634,6 +634,7 @@ impl Diagnostic {
             None,
             "suggestion must not have overlapping parts",
         );
+        suggestion.sort_by_key(|(span, _)| (span.lo(), span.hi()));
 
         self.push_suggestion(CodeSuggestion {
             substitutions: vec![Substitution { parts }],

@@ -13,8 +13,9 @@ LL | fn two_args(_a: i32, _b: f32) {}
    |    ^^^^^^^^ -------  -------
 help: remove the extra argument
    |
-LL |   two_args(1, /* f32 */);
-   |           ~~~~~~~~~~~~~~
+LL -   two_args(1, "", X {});
+LL +   two_args(1, /* f32 */);
+   |
 
 error[E0061]: this function takes 3 arguments but 4 arguments were supplied
   --> $DIR/mixed_cases.rs:11:3

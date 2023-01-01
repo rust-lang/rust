@@ -11,8 +11,9 @@ LL |     fn zero(self) -> Foo { self }
    |        ^^^^
 help: remove the extra argument
    |
-LL |     x.zero()
-   |           ~~
+LL -     x.zero(0)
+LL +     x.zero()
+   |
 
 error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/method-call-err-msg.rs:14:7

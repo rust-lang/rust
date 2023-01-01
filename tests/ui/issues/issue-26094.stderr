@@ -14,8 +14,9 @@ LL | fn some_function() {}
    |    ^^^^^^^^^^^^^
 help: remove the extra argument
    |
-LL |         some_function()
-   |         ~~~~~~~~~~~~~~~
+LL -         $other(None)
+LL +         $other()
+   |
 
 error: aborting due to previous error
 
