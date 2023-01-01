@@ -61,8 +61,9 @@ pub fn check(root_path: &Path, search_paths: &[&Path], bad: &mut bool) {
 
 /// Stage 1: Parses a list of error codes from `error_codes.rs`.
 fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String> {
-    let file = fs::read_to_string(root_path.join(Path::new(ERROR_CODES_PATH)))
-        .unwrap_or_else(|e| panic!("failed to read `error_codes.rs`: {e}"));
+    let path = root_path.join(Path::new(ERROR_CODES_PATH));
+    let file =
+        fs::read_to_string(&path).unwrap_or_else(|e| panic!("failed to read `{path:?}`: {e}"));
 
     let mut error_codes = Vec::new();
     let mut reached_undocumented_codes = false;
@@ -97,7 +98,8 @@ fn extract_error_codes(root_path: &Path, errors: &mut Vec<String>) -> Vec<String
             let expected_filename = format!(" include_str!(\"./error_codes/{}.md\"),", err_code);
             if expected_filename != split_line.unwrap().1 {
                 errors.push(format!(
-                    "Error code `{}` expected to reference docs with `{}` but instead found `{}`",
+                    "Error code `{}` expected to reference docs with `{}` but instead found `{}` in \
+                    `compiler/rustc_error_codes/src/error_codes.rs`",
                     err_code,
                     expected_filename,
                     split_line.unwrap().1,
@@ -281,7 +283,7 @@ fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mu
         if IGNORE_UI_TEST_CHECK.contains(&code.as_str()) {
             if test_path.exists() {
                 errors.push(format!(
-                    "Error code `{code}` has a UI test, it shouldn't be listed in `EXEMPTED_FROM_TEST`!"
+                    "Error code `{code}` has a UI test in `src/test/ui/error-codes/{code}.rs`, it shouldn't be listed in `EXEMPTED_FROM_TEST`!"
                 ));
             }
             continue;
@@ -291,7 +293,7 @@ fn check_error_codes_tests(root_path: &Path, error_codes: &[String], errors: &mu
             Ok(file) => file,
             Err(err) => {
                 println!(
-                    "WARNING: Failed to read UI test file for `{code}` but the file exists. The test is assumed to work:\n{err}"
+                    "WARNING: Failed to read UI test file (`{test_path}`) for `{code}` but the file exists. The test is assumed to work:\n{err}"
                 );
                 continue;
             }
