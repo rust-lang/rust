@@ -36,6 +36,13 @@ pub(crate) fn dummy_expr_id() -> ExprId {
 
 pub type PatId = Idx<Pat>;
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum ExprOrPatId {
+    ExprId(ExprId),
+    PatId(PatId),
+}
+stdx::impl_from!(ExprId, PatId for ExprOrPatId);
+
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct Label {
     pub name: Name,
