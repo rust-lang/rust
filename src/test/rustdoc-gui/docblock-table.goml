@@ -1,3 +1,4 @@
+// This test checks the appearance of the tables in the doc comments.
 goto: "file://" + |DOC_PATH| + "/test_docs/doc_block_table/struct.DocBlockTable.html#method.func"
 
 compare-elements-css: (".impl-items .docblock table th", ".top-doc .docblock table th", ["border"])
