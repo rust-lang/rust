@@ -14,9 +14,7 @@ pub fn check(bad: &mut bool) {
 
     let (child, temp_child) = match (result, temp_result) {
         (Ok(child), Ok(temp_child)) => (child, temp_child),
-        // what would it mean if the temp cmd error'd?
-        (Ok(_child), Err(_e)) => todo!(),
-        (Err(e), _) => match e.kind() {
+        (Err(e), _) | (_, Err(e)) => match e.kind() {
             ErrorKind::NotFound => return,
             _ => return tidy_error!(bad, "failed to run `x`: {}", e),
         },
