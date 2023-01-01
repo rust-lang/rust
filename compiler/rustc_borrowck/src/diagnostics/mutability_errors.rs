@@ -377,10 +377,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     err.span_label(span, format!("cannot {act}"));
                 }
                 if suggest {
-                    err.span_suggestion(
-                        local_decl.source_info.span,
+                    err.span_suggestion_verbose(
+                        local_decl.source_info.span.shrink_to_lo(),
                         "consider changing this to be mutable",
-                        format!("mut {}", self.local_names[local].unwrap()),
+                        "mut ".to_string(),
                         Applicability::MachineApplicable,
                     );
                     let tcx = self.infcx.tcx;
