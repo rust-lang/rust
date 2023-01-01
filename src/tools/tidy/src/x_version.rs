@@ -4,7 +4,7 @@ use std::process::{Command, Stdio};
 
 pub fn check(bad: &mut bool) {
     let result = Command::new("x").arg("--wrapper-version").stdout(Stdio::piped()).spawn();
-    // This runs the command inside a temporarily directory.
+    // This runs the command inside a temporary directory.
     // This allows us to compare output of result to see if `--wrapper-version` is not a recognized argument to x.
     let temp_result = Command::new("x")
         .arg("--wrapper-version")
