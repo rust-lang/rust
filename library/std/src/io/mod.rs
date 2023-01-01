@@ -2137,8 +2137,10 @@ pub trait BufRead: Read {
     }
 
     /// Read all bytes until a newline (the `0xA` byte) is reached, and append
-    /// them to the provided buffer. You do not need to clear the buffer before
-    /// appending.
+    /// them to the provided `String` buffer.
+    ///
+    /// Previous content of the buffer will be preserved. To avoid appending to
+    /// the buffer, you need to [`clear`] it first.
     ///
     /// This function will read bytes from the underlying stream until the
     /// newline delimiter (the `0xA` byte) or EOF is found. Once found, all bytes
@@ -2154,6 +2156,7 @@ pub trait BufRead: Read {
     /// or EOF.
     ///
     /// [`Ok(0)`]: Ok
+    /// [`clear`]: String:::clear
     ///
     /// # Errors
     ///
