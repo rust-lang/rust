@@ -1,12 +1,8 @@
 error[E0200]: the trait `Foo` requires an `unsafe impl` declaration
   --> $DIR/safety-trait-impl-cc.rs:9:1
    |
-LL | / impl lib::Foo for Bar {
-LL | |     fn foo(&self) -> isize {
-LL | |         panic!();
-LL | |     }
-LL | | }
-   | |_^
+LL | impl lib::Foo for Bar {
+   | ^^^^^^^^^^^^^^^^^^^^^
    |
    = note: the trait `Foo` enforces invariants that the compiler can't check. Review the trait documentation and make sure this implementation upholds those invariants before adding the `unsafe` keyword
 help: add `unsafe` to this trait implementation
