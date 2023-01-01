@@ -191,6 +191,29 @@ macro_rules! iterator {
                 self.next_back()
             }
 
+            #[inline]
+            fn fold<B, F>(mut self, init: B, mut f: F) -> B
+                where
+                    F: FnMut(B, Self::Item) -> B,
+            {
+                // Handling the 0-len case explicitly and then using a do-while style loop
+                // helps the optimizer. See issue #106288
+                if is_empty!(self) {
+                    return init;
+                }
+                let mut acc = init;
+                // SAFETY: The 0-len case was handled above so one loop iteration is guaranteed.
+                unsafe {
+                    loop {
+                        acc = f(acc, next_unchecked!(self));
+                        if is_empty!(self) {
+                            break;
+                        }
+                    }
+                }
+                acc
+            }
+
             // We override the default implementation, which uses `try_fold`,
             // because this simple implementation generates less LLVM IR and is
             // faster to compile.
