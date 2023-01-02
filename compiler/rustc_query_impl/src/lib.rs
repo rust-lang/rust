@@ -34,7 +34,6 @@ use rustc_query_system::query::*;
 pub use rustc_query_system::query::{deadlock, QueryContext};
 
 pub use rustc_query_system::query::QueryConfig;
-pub(crate) use rustc_query_system::query::QueryVTable;
 
 mod on_disk_cache;
 pub use on_disk_cache::OnDiskCache;
