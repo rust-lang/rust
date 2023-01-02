@@ -1853,7 +1853,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
         ty::Infer(..) => panic!("Infer"),
-        ty::Error(_) => panic!("Error"),
+        ty::Error(_) => rustc_errors::FatalError.raise(),
     }
 }
 
