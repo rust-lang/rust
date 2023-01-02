@@ -1,7 +1,6 @@
 //@ignore-target-windows: no libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
 
-#![feature(io_error_more)]
 #![feature(io_error_uncategorized)]
 
 use std::convert::TryInto;

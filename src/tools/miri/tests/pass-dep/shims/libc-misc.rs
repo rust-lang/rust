@@ -1,6 +1,5 @@
 //@ignore-target-windows: No libc on Windows
 //@compile-flags: -Zmiri-disable-isolation
-#![feature(io_error_more)]
 
 use std::fs::{remove_file, File};
 use std::os::unix::io::AsRawFd;
