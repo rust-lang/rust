@@ -1262,7 +1262,7 @@ pub struct ContainsName<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
-    type NestedFilter = nested_filter::All;
+    type NestedFilter = nested_filter::OnlyBodies;
 
     fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
