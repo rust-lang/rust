@@ -468,6 +468,44 @@ tradeoff. The main advantage is the generally linear commit history. This
 greatly simplifies bisecting and makes the history and commit log much easier
 to follow and understand.
 
+## Tips for reviewing
+
+**NOTE**: This section is for *reviewing* PRs, not authoring them.
+
+### Hiding whitespace
+
+Github has a button for disabling whitespace changes that may be useful.
+You can also use `git diff -w origin/master` to view changes locally.
+
+![hide whitespace](./img/github-whitespace-changes.png)
+
+### Fetching PRs
+
+To checkout PRs locally, you can use `git fetch upstream pull/NNNNN/head && git checkout
+FETCH_HEAD`.
+
+You can also use github's cli tool. Github shows a button on PRs where you can copy-paste the
+command to check it out locally. See <https://cli.github.com/> for more info.
+
+![`gh` suggestion](./img/github-cli.png)
+
+### Moving large sections of code
+
+Git and Github's default diff view for large moves *within* a file is quite poor; it will show each
+line as deleted and each line as added, forcing you to compare each line yourself. Git has an option
+to show moved lines in a different color:
+
+```
+git log -p --color-moved=dimmed-zebra --color-moved-ws=allow-indentation-change
+```
+
+See [the docs for `--color-moved`](https://git-scm.com/docs/git-diff#Documentation/git-diff.txt---color-movedltmodegt) for more info.
+
+### range-diff
+
+See [the relevant section for PR authors](#git-range-diff). This can be useful for comparing code
+that was force-pushed to make sure there are no unexpected changes.
+
 ## Git submodules
 
 **NOTE**: submodules are a nice thing to know about, but it *isn't* an absolute
