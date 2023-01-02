@@ -173,22 +173,23 @@ fn check_error_codes_docs(
             return;
         }
 
-        let (found_code_example, found_proper_doctest, emit_ignore_warning, emit_no_longer_warning) = check_explanation_has_doctest(&contents, &err_code);
-        if has_test.2 {
+        let (found_code_example, found_proper_doctest, emit_ignore_warning, emit_no_longer_warning) =
+            check_explanation_has_doctest(&contents, &err_code);
+        if emit_ignore_warning {
             verbose_print!(
                 verbose,
                 "warning: Error code `{err_code}` uses the ignore header. This should not be used, add the error code to the \
                 `IGNORE_DOCTEST_CHECK` constant instead."
             );
         }
-        if has_test.3 {
+        if emit_no_longer_warning {
             no_longer_emitted_codes.push(err_code.to_owned());
             verbose_print!(
                 verbose,
                 "warning: Error code `{err_code}` is no longer emitted and should be removed entirely."
             );
         }
-        if !has_test.0 {
+        if !found_code_example {
             verbose_print!(
                 verbose,
                 "warning: Error code `{err_code}` doesn't have a code example, all error codes are expected to have one \
@@ -196,15 +197,15 @@ fn check_error_codes_docs(
             );
         }
 
-        let test_ignored = IGNORE_DOCTEST_CHECK.contains(&err_code);
+        let test_ignored = IGNORE_DOCTEST_CHECK.contains(&&err_code);
 
         // Check that the explanation has a doctest, and if it shouldn't, that it doesn't
-        if !has_test.1 && !test_ignored {
+        if !found_proper_doctest && !test_ignored {
             errors.push(format!(
                 "`{}` doesn't use its own error code in compile_fail example",
                 path.display(),
             ));
-        } else if has_test.1 && test_ignored {
+        } else if found_proper_doctest && test_ignored {
             errors.push(format!(
                 "`{}` has a compile_fail doctest with its own error code, it shouldn't \
                 be listed in `IGNORE_DOCTEST_CHECK`",
