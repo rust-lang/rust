@@ -23,16 +23,12 @@
   
       bb2: {
           _0 = const 1_u32;                // scope 1 at $DIR/early_otherwise_branch_soundness.rs:+1:38: +1:39
-          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
       }
   
       bb3: {
           _0 = const 2_u32;                // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:49: +1:50
-          goto -> bb4;                     // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
-      }
-  
-      bb4: {
-          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+2:2: +2:2
+          return;                          // scope 0 at $DIR/early_otherwise_branch_soundness.rs:+1:5: +1:52
       }
   }
   
