@@ -766,7 +766,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(panic_abort_tests, true);
     tracked!(panic_in_drop, PanicStrategy::Abort);
     tracked!(pick_stable_methods_before_any_unstable, false);
-    tracked!(plt, Some(true));
+    tracked!(plt, false);
     tracked!(polonius, true);
     tracked!(precise_enum_drop_elaboration, false);
     tracked!(print_fuel, Some("abc".to_string()));

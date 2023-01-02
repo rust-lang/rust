@@ -14,7 +14,7 @@ trait Sized {}
 trait Copy {}
 
 // CHECK-LABEL: call_other_fn:
-// CHECK:       {{(jmpq|callq)}} *other_fn@GOTPCREL(%rip)
+// CHECK:       {{(jmp|callq)}} other_fn@PLT
 #[no_mangle]
 pub fn call_other_fn() -> u8 {
     unsafe {
@@ -23,7 +23,7 @@ pub fn call_other_fn() -> u8 {
 }
 
 // CHECK-LABEL: other_fn:
-// CHECK:       callq *foreign_fn@GOTPCREL(%rip)
+// CHECK:       callq foreign_fn@PLT
 #[no_mangle]
 #[inline(never)]
 pub fn other_fn() -> u8 {

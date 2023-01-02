@@ -107,9 +107,7 @@
     -Z                              parse-only=val -- parse only; do not compile, assemble, or link (default: no)
     -Z                              perf-stats=val -- print some performance-related statistics (default: no)
     -Z pick-stable-methods-before-any-unstable=val -- try to pick stable methods first before picking any unstable methods (default: yes)
-    -Z                                     plt=val -- whether to use the PLT when calling into shared libraries;
-        only has effect for PIC code on systems with ELF binaries
-        (default: PLT is disabled if full relro is enabled)
+    -Z                                     plt=val -- if false, use GOT-generating code sequences for external function calls. This results in longer code sequences, but may avoid a PLT if the function is not bound locally. Only has effect on ELF systems (default: yes)
     -Z                                polonius=val -- enable polonius-based borrow-checker (default: no)
     -Z                            polymorphize=val -- perform polymorphization analysis
     -Z                            pre-link-arg=val -- a single extra argument to prepend the linker invocation (can be used several times)

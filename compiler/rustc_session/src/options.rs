@@ -1479,10 +1479,10 @@ options! {
         "print some performance-related statistics (default: no)"),
     pick_stable_methods_before_any_unstable: bool = (true, parse_bool, [TRACKED],
         "try to pick stable methods first before picking any unstable methods (default: yes)"),
-    plt: Option<bool> = (None, parse_opt_bool, [TRACKED],
-        "whether to use the PLT when calling into shared libraries;
-        only has effect for PIC code on systems with ELF binaries
-        (default: PLT is disabled if full relro is enabled)"),
+    plt: bool = (true, parse_bool, [TRACKED],
+        "if false, use GOT-generating code sequences for external function calls. \
+        This results in longer code sequences, but may avoid a PLT if the function is not bound locally. \
+        Only has effect on ELF systems (default: yes)"),
     polonius: bool = (false, parse_bool, [TRACKED],
         "enable polonius-based borrow-checker (default: no)"),
     polymorphize: bool = (false, parse_bool, [TRACKED],

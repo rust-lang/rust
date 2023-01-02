@@ -8,9 +8,6 @@ pub fn target() -> Target {
     base.add_pre_link_args(LinkerFlavor::Gnu(Cc::Yes, Lld::No), &["-mx32"]);
     base.stack_probes = StackProbeType::X86;
     base.has_thread_local = false;
-    // BUG(GabrielMajeri): disabling the PLT on x86_64 Linux with x32 ABI
-    // breaks code gen. See LLVM bug 36743
-    base.needs_plt = true;
 
     Target {
         llvm_target: "x86_64-unknown-linux-gnux32".into(),
