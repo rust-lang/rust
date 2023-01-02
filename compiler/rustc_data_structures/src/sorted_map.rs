@@ -1,6 +1,7 @@
 use crate::stable_hasher::{HashStable, StableHasher, StableOrd};
 use std::borrow::Borrow;
 use std::cmp::Ordering;
+use std::fmt::Debug;
 use std::mem;
 use std::ops::{Bound, Index, IndexMut, RangeBounds};
 
@@ -16,7 +17,7 @@ pub use index_map::SortedIndexMultiMap;
 /// stores data in a more compact way. It also supports accessing contiguous
 /// ranges of elements as a slice, and slices of already sorted elements can be
 /// inserted efficiently.
-#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Encodable, Decodable)]
+#[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Encodable, Decodable)]
 pub struct SortedMap<K, V> {
     data: Vec<(K, V)>,
 }
@@ -311,6 +312,12 @@ impl<K: HashStable<CTX> + StableOrd, V: HashStable<CTX>, CTX> HashStable<CTX> fo
     #[inline]
     fn hash_stable(&self, ctx: &mut CTX, hasher: &mut StableHasher) {
         self.data.hash_stable(ctx, hasher);
+    }
+}
+
+impl<K: Debug, V: Debug> Debug for SortedMap<K, V> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_map().entries(self.data.iter().map(|(a, b)| (a, b))).finish()
     }
 }
 

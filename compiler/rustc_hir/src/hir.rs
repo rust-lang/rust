@@ -854,7 +854,11 @@ impl fmt::Debug for OwnerNodes<'_> {
                 &self
                     .nodes
                     .iter_enumerated()
-                    .map(|(id, parented_node)| (id, parented_node.as_ref().map(|node| node.parent)))
+                    .map(|(id, parented_node)| {
+                        let parented_node = parented_node.as_ref().map(|node| node.parent);
+
+                        debug_fn(move |f| write!(f, "({id:?}, {parented_node:?})"))
+                    })
                     .collect::<Vec<_>>(),
             )
             .field("bodies", &self.bodies)
@@ -3614,4 +3618,14 @@ mod size_asserts {
     static_assert_size!(Ty<'_>, 48);
     static_assert_size!(TyKind<'_>, 32);
     // tidy-alphabetical-end
+}
+
+fn debug_fn(f: impl Fn(&mut fmt::Formatter<'_>) -> fmt::Result) -> impl fmt::Debug {
+    struct DebugFn<F>(F);
+    impl<F: Fn(&mut fmt::Formatter<'_>) -> fmt::Result> fmt::Debug for DebugFn<F> {
+        fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+            (self.0)(fmt)
+        }
+    }
+    DebugFn(f)
 }
