@@ -1,6 +1,7 @@
 //! Inlining pass for MIR functions
 use crate::deref_separator::deref_finder;
 use rustc_attr::InlineAttr;
+use rustc_hir::def_id::DefId;
 use rustc_index::bit_set::BitSet;
 use rustc_index::vec::Idx;
 use rustc_middle::middle::codegen_fn_attrs::{CodegenFnAttrFlags, CodegenFnAttrs};
@@ -26,6 +27,8 @@ const LANDINGPAD_PENALTY: usize = 50;
 const RESUME_PENALTY: usize = 45;
 
 const UNKNOWN_SIZE_COST: usize = 10;
+
+const TOP_DOWN_DEPTH_LIMIT: usize = 5;
 
 pub struct Inline;
 
@@ -86,8 +89,13 @@ fn inline<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) -> bool {
 
     let param_env = tcx.param_env_reveal_all_normalized(def_id);
 
-    let mut this =
-        Inliner { tcx, param_env, codegen_fn_attrs: tcx.codegen_fn_attrs(def_id), changed: false };
+    let mut this = Inliner {
+        tcx,
+        param_env,
+        codegen_fn_attrs: tcx.codegen_fn_attrs(def_id),
+        history: Vec::new(),
+        changed: false,
+    };
     let blocks = BasicBlock::new(0)..body.basic_blocks.next_index();
     this.process_blocks(body, blocks);
     this.changed
@@ -98,12 +106,26 @@ struct Inliner<'tcx> {
     param_env: ParamEnv<'tcx>,
     /// Caller codegen attributes.
     codegen_fn_attrs: &'tcx CodegenFnAttrs,
+    /// Stack of inlined instances.
+    /// We only check the `DefId` and not the substs because we want to
+    /// avoid inlining cases of polymorphic recursion.
+    /// The number of `DefId`s is finite, so checking history is enough
+    /// to ensure that we do not loop endlessly while inlining.
+    history: Vec<DefId>,
     /// Indicates that the caller body has been modified.
     changed: bool,
 }
 
 impl<'tcx> Inliner<'tcx> {
     fn process_blocks(&mut self, caller_body: &mut Body<'tcx>, blocks: Range<BasicBlock>) {
+        // How many callsites in this body are we allowed to inline? We need to limit this in order
+        // to prevent super-linear growth in MIR size
+        let inline_limit = match self.history.len() {
+            0 => usize::MAX,
+            1..=TOP_DOWN_DEPTH_LIMIT => 1,
+            _ => return,
+        };
+        let mut inlined_count = 0;
         for bb in blocks {
             let bb_data = &caller_body[bb];
             if bb_data.is_cleanup {
@@ -122,12 +144,16 @@ impl<'tcx> Inliner<'tcx> {
                     debug!("not-inlined {} [{}]", callsite.callee, reason);
                     continue;
                 }
-                Ok(_) => {
+                Ok(new_blocks) => {
                     debug!("inlined {}", callsite.callee);
                     self.changed = true;
-                    // We could process the blocks returned by `try_inlining` here. However, that
-                    // leads to exponential compile times due to the top-down nature of this kind
-                    // of inlining.
+                    inlined_count += 1;
+                    if inlined_count == inline_limit {
+                        return;
+                    }
+                    self.history.push(callsite.callee.def_id());
+                    self.process_blocks(caller_body, new_blocks);
+                    self.history.pop();
                 }
             }
         }
@@ -298,6 +324,10 @@ impl<'tcx> Inliner<'tcx> {
                     Instance::resolve(self.tcx, self.param_env, def_id, substs).ok().flatten()?;
 
                 if let InstanceDef::Virtual(..) | InstanceDef::Intrinsic(_) = callee.def {
+                    return None;
+                }
+
+                if self.history.contains(&callee.def_id()) {
                     return None;
                 }
 
