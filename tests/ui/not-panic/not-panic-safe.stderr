@@ -2,10 +2,7 @@ error[E0277]: the type `&mut i32` may not be safely transferred across an unwind
   --> $DIR/not-panic-safe.rs:8:14
    |
 LL |     assert::<&mut i32>();
-   |              -^^^^^^^
-   |              |
-   |              `&mut i32` may not be safely transferred across an unwind boundary
-   |              help: consider removing the leading `&`-reference
+   |              ^^^^^^^^ `&mut i32` may not be safely transferred across an unwind boundary
    |
    = help: the trait `UnwindSafe` is not implemented for `&mut i32`
    = note: `UnwindSafe` is implemented for `&i32`, but not for `&mut i32`

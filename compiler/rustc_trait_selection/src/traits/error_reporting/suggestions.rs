@@ -1358,25 +1358,40 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let span = obligation.cause.span;
-
+        let mut span = obligation.cause.span;
+        while span.desugaring_kind().is_some() {
+            // Remove all the hir desugaring contexts while maintaining the macro contexts.
+            span.remove_mark();
+        }
         let mut suggested = false;
-        if let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) {
-            let refs_number =
-                snippet.chars().filter(|c| !c.is_whitespace()).take_while(|c| *c == '&').count();
-            if let Some('\'') = snippet.chars().filter(|c| !c.is_whitespace()).nth(refs_number) {
-                // Do not suggest removal of borrow from type arguments.
-                return false;
-            }
 
-            // Skipping binder here, remapping below
-            let mut suggested_ty = trait_pred.self_ty().skip_binder();
+        let mut expr_finder = super::FindExprBySpan { span, result: None };
+        let Some(hir::Node::Expr(body)) = self.tcx.hir().find(obligation.cause.body_id) else {
+            return false;
+        };
+        expr_finder.visit_expr(&body);
+        let mut count = 0;
+        let mut suggestions = vec![];
+        let Some(mut expr) = expr_finder.result else { return false; };
+        // Skipping binder here, remapping below
+        let mut suggested_ty = trait_pred.self_ty().skip_binder();
 
-            for refs_remaining in 0..refs_number {
+        'outer: loop {
+            while let hir::ExprKind::AddrOf(_, _, borrowed) = expr.kind {
+                count += 1;
+                let span = if expr.span.eq_ctxt(borrowed.span) {
+                    expr.span.until(borrowed.span)
+                } else {
+                    expr.span.with_hi(expr.span.lo() + BytePos(1))
+                };
+                suggestions.push((span, String::new()));
+
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
                     break;
                 };
                 suggested_ty = *inner_ty;
+
+                expr = borrowed;
 
                 // Remapping bound vars here
                 let trait_pred_and_suggested_ty =
@@ -1388,24 +1403,32 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 );
 
                 if self.predicate_may_hold(&new_obligation) {
-                    let sp = self
-                        .tcx
-                        .sess
-                        .source_map()
-                        .span_take_while(span, |c| c.is_whitespace() || *c == '&');
-
-                    let remove_refs = refs_remaining + 1;
-
-                    let msg = if remove_refs == 1 {
+                    let msg = if count == 1 {
                         "consider removing the leading `&`-reference".to_string()
                     } else {
-                        format!("consider removing {} leading `&`-references", remove_refs)
+                        format!("consider removing {count} leading `&`-references")
                     };
 
-                    err.span_suggestion_short(sp, &msg, "", Applicability::MachineApplicable);
+                    err.multipart_suggestion_verbose(
+                        &msg,
+                        suggestions,
+                        Applicability::MachineApplicable,
+                    );
                     suggested = true;
-                    break;
+                    break 'outer;
                 }
+            }
+            if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
+                && let hir::def::Res::Local(hir_id) = path.res
+                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(hir_id)
+                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
+                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
+                && let None = local.ty
+                && let Some(binding_expr) = local.init
+            {
+                expr = binding_expr;
+            } else {
+                break 'outer;
             }
         }
         suggested

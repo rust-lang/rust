@@ -2,11 +2,15 @@ error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
   --> $DIR/issue-102140.rs:23:22
    |
 LL |         MyTrait::foo(&self)
-   |         ------------ -^^^^
-   |         |            |
-   |         |            the trait `MyTrait` is not implemented for `&dyn MyTrait`
-   |         |            help: consider removing the leading `&`-reference
+   |         ------------ ^^^^^ the trait `MyTrait` is not implemented for `&dyn MyTrait`
+   |         |
    |         required by a bound introduced by this call
+   |
+help: consider removing the leading `&`-reference
+   |
+LL -         MyTrait::foo(&self)
+LL +         MyTrait::foo(self)
+   |
 
 error[E0277]: the trait bound `&dyn MyTrait: MyTrait` is not satisfied
   --> $DIR/issue-102140.rs:23:9
