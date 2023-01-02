@@ -107,7 +107,7 @@ fn find_path_inner(
     }
 
     // - if the item is in the prelude, return the name from there
-    if let Some(value) = find_in_prelude(db, &crate_root.def_map(db), item, from) {
+    if let value @ Some(_) = find_in_prelude(db, &crate_root.def_map(db), &def_map, item, from) {
         return value;
     }
 
@@ -205,7 +205,8 @@ fn find_path_for_module(
         }
     }
 
-    if let Some(value) = find_in_prelude(db, &root_def_map, ItemInNs::Types(module_id.into()), from)
+    if let value @ Some(_) =
+        find_in_prelude(db, &root_def_map, &def_map, ItemInNs::Types(module_id.into()), from)
     {
         return value;
     }
@@ -234,23 +235,41 @@ fn find_in_scope(
     })
 }
 
+/// Returns single-segment path (i.e. without any prefix) if `item` is found in prelude and its
+/// name doesn't clash in current scope.
 fn find_in_prelude(
     db: &dyn DefDatabase,
     root_def_map: &DefMap,
+    local_def_map: &DefMap,
     item: ItemInNs,
     from: ModuleId,
-) -> Option<Option<ModPath>> {
-    if let Some(prelude_module) = root_def_map.prelude() {
-        // Preludes in block DefMaps are ignored, only the crate DefMap is searched
-        let prelude_def_map = prelude_module.def_map(db);
-        let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
-        if let Some((name, vis)) = prelude_scope.name_of(item) {
-            if vis.is_visible_from(db, from) {
-                return Some(Some(ModPath::from_segments(PathKind::Plain, Some(name.clone()))));
-            }
-        }
+) -> Option<ModPath> {
+    let prelude_module = root_def_map.prelude()?;
+    // Preludes in block DefMaps are ignored, only the crate DefMap is searched
+    let prelude_def_map = prelude_module.def_map(db);
+    let prelude_scope = &prelude_def_map[prelude_module.local_id].scope;
+    let (name, vis) = prelude_scope.name_of(item)?;
+    if !vis.is_visible_from(db, from) {
+        return None;
     }
-    None
+
+    // Check if the name is in current scope and it points to the same def.
+    let found_and_same_def =
+        local_def_map.with_ancestor_maps(db, from.local_id, &mut |def_map, local_id| {
+            let per_ns = def_map[local_id].scope.get(name);
+            let same_def = match item {
+                ItemInNs::Types(it) => per_ns.take_types()? == it,
+                ItemInNs::Values(it) => per_ns.take_values()? == it,
+                ItemInNs::Macros(it) => per_ns.take_macros()? == it,
+            };
+            Some(same_def)
+        });
+
+    if found_and_same_def.unwrap_or(true) {
+        Some(ModPath::from_segments(PathKind::Plain, Some(name.clone())))
+    } else {
+        None
+    }
 }
 
 fn find_self_super(def_map: &DefMap, item: ModuleId, from: ModuleId) -> Option<ModPath> {
@@ -801,6 +820,48 @@ pub mod prelude {
     }
 }
         "#,
+            "S",
+            "S",
+            "S",
+            "S",
+        );
+    }
+
+    #[test]
+    fn shadowed_prelude() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+struct S;
+$0
+//- /std.rs crate:std
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct S;
+    }
+}
+"#,
+            "std::prelude::rust_2018::S",
+            "std::prelude::rust_2018::S",
+            "std::prelude::rust_2018::S",
+            "std::prelude::rust_2018::S",
+        );
+    }
+
+    #[test]
+    fn imported_prelude() {
+        check_found_path(
+            r#"
+//- /main.rs crate:main deps:std
+use S;
+$0
+//- /std.rs crate:std
+pub mod prelude {
+    pub mod rust_2018 {
+        pub struct S;
+    }
+}
+"#,
             "S",
             "S",
             "S",
