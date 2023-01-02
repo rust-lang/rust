@@ -26,7 +26,7 @@ fn main() {
     let _ = String::new().ends_with(".EXT12");
     let _ = "str".ends_with(".EXT12");
 
-    // This should print a note about how to_lowercase and to_uppercase allocates
+    // Should not trigger the lint failure because of the calls to to_lowercase and to_uppercase
     let _ = String::new().to_lowercase().ends_with(".EXT12");
     let _ = String::new().to_uppercase().ends_with(".EXT12");
 

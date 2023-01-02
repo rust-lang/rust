@@ -18,6 +18,13 @@ pub(super) fn check<'tcx>(
     recv: &'tcx Expr<'_>,
     arg: &'tcx Expr<'_>,
 ) {
+    if let ExprKind::MethodCall(path_segment, ..) = recv.kind {
+        let method_name = path_segment.ident.name.as_str();
+        if method_name == "to_lowercase" || method_name == "to_uppercase" {
+            return;
+        }
+    }
+
     if_chain! {
         if let Some(method_id) = cx.typeck_results().type_dependent_def_id(expr.hir_id);
         if let Some(impl_id) = cx.tcx.impl_of_method(method_id);
@@ -42,16 +49,6 @@ pub(super) fn check<'tcx>(
 
                     if is_type_lang_item(cx, recv_ty, LangItem::String) {
                         recv_source = format!("&{recv_source}");
-                    }
-
-                    if recv_source.ends_with(".to_lowercase()") {
-                        diag.note("to_lowercase allocates memory, this can be avoided by using Path");
-                        recv_source = recv_source.strip_suffix(".to_lowercase()").unwrap().to_string();
-                    }
-
-                    if recv_source.ends_with(".to_uppercase()") {
-                        diag.note("to_uppercase allocates memory, this can be avoided by using Path");
-                        recv_source = recv_source.strip_suffix(".to_uppercase()").unwrap().to_string();
                     }
 
                     let suggestion_source = reindent_multiline(

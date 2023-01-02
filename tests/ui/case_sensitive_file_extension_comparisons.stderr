@@ -69,35 +69,5 @@ LL +         .extension()
 LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
    |
 
-error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:30:13
-   |
-LL |     let _ = String::new().to_lowercase().ends_with(".EXT12");
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using a case-insensitive comparison instead
-   = note: to_lowercase allocates memory, this can be avoided by using Path
-help: use std::path::Path
-   |
-LL ~     let _ = std::path::Path::new(&String::new())
-LL +         .extension()
-LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
-   |
-
-error: case-sensitive file extension comparison
-  --> $DIR/case_sensitive_file_extension_comparisons.rs:31:13
-   |
-LL |     let _ = String::new().to_uppercase().ends_with(".EXT12");
-   |             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   |
-   = help: consider using a case-insensitive comparison instead
-   = note: to_uppercase allocates memory, this can be avoided by using Path
-help: use std::path::Path
-   |
-LL ~     let _ = std::path::Path::new(&String::new())
-LL +         .extension()
-LL ~         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
-   |
-
-error: aborting due to 7 previous errors
+error: aborting due to 5 previous errors
 

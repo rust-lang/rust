@@ -36,13 +36,9 @@ fn main() {
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
 
-    // This should print a note about how to_lowercase and to_uppercase allocates
-    let _ = std::path::Path::new(&String::new())
-        .extension()
-        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
-    let _ = std::path::Path::new(&String::new())
-        .extension()
-        .map_or(false, |ext| ext.eq_ignore_ascii_case("EXT12"));
+    // Should not trigger the lint failure because of the calls to to_lowercase and to_uppercase
+    let _ = String::new().to_lowercase().ends_with(".EXT12");
+    let _ = String::new().to_uppercase().ends_with(".EXT12");
 
     // The test struct should not trigger the lint failure with .EXT12
     TestStruct {}.ends_with(".EXT12");
