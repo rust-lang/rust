@@ -13,6 +13,7 @@ use core::marker::PhantomData;
 use core::mem::{self, ManuallyDrop, MaybeUninit, SizedTypeProperties};
 #[cfg(not(no_global_oom_handling))]
 use core::ops::Deref;
+use core::ops::Try;
 use core::ptr::{self, NonNull};
 use core::slice::{self};
 
@@ -231,6 +232,65 @@ impl<T, A: Allocator> Iterator for IntoIter<T, A> {
             return Err(step_size);
         }
         Ok(())
+    }
+
+    fn fold<B, F>(mut self, mut acc: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        // Handling the 0-len case explicitly and then using a do-while style loop
+        // helps the optimizer. See issue #106288
+        if self.ptr == self.end {
+            return acc;
+        }
+        // SAFETY: The 0-len case was handled above so one loop iteration is guaranteed.
+        unsafe {
+            loop {
+                let val = ptr::read(self.ptr);
+                if T::IS_ZST {
+                    // See `next` for why we sub `end` here.
+                    self.end = self.end.wrapping_byte_sub(1);
+                } else {
+                    self.ptr = self.ptr.add(1);
+                }
+                acc = f(acc, val);
+                if self.ptr == self.end {
+                    break;
+                }
+            }
+        }
+        acc
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, mut acc: B, mut f: F) -> R
+    where
+        F: FnMut(B, Self::Item) -> R,
+        R: Try<Output = B>,
+    {
+        // Handling the 0-len case explicitly and then using a do-while style loop
+        // helps the optimizer. See issue #106288
+        if self.ptr == self.end {
+            return try { acc };
+        }
+        // SAFETY: The 0-len case was handled above so one loop iteration is guaranteed.
+        unsafe {
+            loop {
+                let val = ptr::read(self.ptr);
+                if T::IS_ZST {
+                    // See `next` for why we sub `end` here.
+                    self.end = self.end.wrapping_byte_sub(1);
+                } else {
+                    self.ptr = self.ptr.add(1);
+                }
+                acc = f(acc, val)?;
+                if self.ptr == self.end {
+                    break;
+                }
+            }
+        }
+        try { acc }
     }
 
     #[inline]

@@ -187,6 +187,7 @@
 #![feature(staged_api)]
 #![feature(stmt_expr_attributes)]
 #![cfg_attr(test, feature(test))]
+#![feature(try_blocks)]
 #![feature(unboxed_closures)]
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
