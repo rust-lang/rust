@@ -339,7 +339,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &mut err, item_name, rcvr_ty, cal, span,
                     );
                 }
-                if let Some(span) = tcx.resolutions(()).confused_type_with_std_module.get(&span) {
+                if let Some(span) =
+                    tcx.resolutions(()).confused_type_with_std_module.get(&span.with_parent(None))
+                {
                     err.span_suggestion(
                         span.shrink_to_lo(),
                         "you are looking for the module in `std`, not the primitive type",

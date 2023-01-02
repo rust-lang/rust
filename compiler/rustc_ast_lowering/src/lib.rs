@@ -776,7 +776,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.unstable_opts.incremental_relative_spans {
+        if self.tcx.sess.opts.incremental_relative_spans() {
             span.with_parent(Some(self.current_hir_id_owner.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.

@@ -1332,11 +1332,12 @@ options! {
         "generate human-readable, predictable names for codegen units (default: no)"),
     identify_regions: bool = (false, parse_bool, [UNTRACKED],
         "display unnamed regions as `'<id>`, using a non-ident unique id (default: no)"),
-    incremental_ignore_spans: bool = (false, parse_bool, [UNTRACKED],
+    incremental_ignore_spans: bool = (false, parse_bool, [TRACKED],
         "ignore spans during ICH computation -- used for testing (default: no)"),
     incremental_info: bool = (false, parse_bool, [UNTRACKED],
         "print high-level information about incremental reuse (or the lack thereof) \
         (default: no)"),
+    #[rustc_lint_opt_deny_field_access("use `Session::incremental_relative_spans` instead of this field")]
     incremental_relative_spans: bool = (false, parse_bool, [TRACKED],
         "hash spans relative to their parent item for incr. comp. (default: no)"),
     incremental_verify_ich: bool = (false, parse_bool, [UNTRACKED],

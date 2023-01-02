@@ -469,10 +469,12 @@ pub enum StashKey {
     CallAssocMethod,
 }
 
-fn default_track_diagnostic(_: &Diagnostic) {}
+fn default_track_diagnostic(d: &mut Diagnostic, f: &mut dyn FnMut(&mut Diagnostic)) {
+    (*f)(d)
+}
 
-pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&Diagnostic)> =
-    AtomicRef::new(&(default_track_diagnostic as fn(&_)));
+pub static TRACK_DIAGNOSTICS: AtomicRef<fn(&mut Diagnostic, &mut dyn FnMut(&mut Diagnostic))> =
+    AtomicRef::new(&(default_track_diagnostic as _));
 
 #[derive(Copy, Clone, Default)]
 pub struct HandlerFlags {
@@ -654,17 +656,19 @@ impl Handler {
     /// Retrieve a stashed diagnostic with `steal_diagnostic`.
     pub fn stash_diagnostic(&self, span: Span, key: StashKey, diag: Diagnostic) {
         let mut inner = self.inner.borrow_mut();
-        inner.stash((span, key), diag);
+        inner.stash((span.with_parent(None), key), diag);
     }
 
     /// Steal a previously stashed diagnostic with the given `Span` and [`StashKey`] as the key.
     pub fn steal_diagnostic(&self, span: Span, key: StashKey) -> Option<DiagnosticBuilder<'_, ()>> {
         let mut inner = self.inner.borrow_mut();
-        inner.steal((span, key)).map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
+        inner
+            .steal((span.with_parent(None), key))
+            .map(|diag| DiagnosticBuilder::new_diagnostic(self, diag))
     }
 
     pub fn has_stashed_diagnostic(&self, span: Span, key: StashKey) -> bool {
-        self.inner.borrow().stashed_diagnostics.get(&(span, key)).is_some()
+        self.inner.borrow().stashed_diagnostics.get(&(span.with_parent(None), key)).is_some()
     }
 
     /// Emit all stashed diagnostics.
@@ -1293,67 +1297,69 @@ impl HandlerInner {
             && !diagnostic.is_force_warn()
         {
             if diagnostic.has_future_breakage() {
-                (*TRACK_DIAGNOSTICS)(diagnostic);
+                (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
             }
             return None;
         }
-
-        (*TRACK_DIAGNOSTICS)(diagnostic);
 
         if matches!(diagnostic.level, Level::Expect(_) | Level::Allow) {
+            (*TRACK_DIAGNOSTICS)(diagnostic, &mut |_| {});
             return None;
         }
 
-        if let Some(ref code) = diagnostic.code {
-            self.emitted_diagnostic_codes.insert(code.clone());
-        }
+        let mut guaranteed = None;
+        (*TRACK_DIAGNOSTICS)(diagnostic, &mut |diagnostic| {
+            if let Some(ref code) = diagnostic.code {
+                self.emitted_diagnostic_codes.insert(code.clone());
+            }
 
-        let already_emitted = |this: &mut Self| {
-            let mut hasher = StableHasher::new();
-            diagnostic.hash(&mut hasher);
-            let diagnostic_hash = hasher.finish();
-            !this.emitted_diagnostics.insert(diagnostic_hash)
-        };
-
-        // Only emit the diagnostic if we've been asked to deduplicate or
-        // haven't already emitted an equivalent diagnostic.
-        if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
-            debug!(?diagnostic);
-            debug!(?self.emitted_diagnostics);
-            let already_emitted_sub = |sub: &mut SubDiagnostic| {
-                debug!(?sub);
-                if sub.level != Level::OnceNote {
-                    return false;
-                }
+            let already_emitted = |this: &mut Self| {
                 let mut hasher = StableHasher::new();
-                sub.hash(&mut hasher);
+                diagnostic.hash(&mut hasher);
                 let diagnostic_hash = hasher.finish();
-                debug!(?diagnostic_hash);
-                !self.emitted_diagnostics.insert(diagnostic_hash)
+                !this.emitted_diagnostics.insert(diagnostic_hash)
             };
 
-            diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+            // Only emit the diagnostic if we've been asked to deduplicate or
+            // haven't already emitted an equivalent diagnostic.
+            if !(self.flags.deduplicate_diagnostics && already_emitted(self)) {
+                debug!(?diagnostic);
+                debug!(?self.emitted_diagnostics);
+                let already_emitted_sub = |sub: &mut SubDiagnostic| {
+                    debug!(?sub);
+                    if sub.level != Level::OnceNote {
+                        return false;
+                    }
+                    let mut hasher = StableHasher::new();
+                    sub.hash(&mut hasher);
+                    let diagnostic_hash = hasher.finish();
+                    debug!(?diagnostic_hash);
+                    !self.emitted_diagnostics.insert(diagnostic_hash)
+                };
 
-            self.emitter.emit_diagnostic(diagnostic);
+                diagnostic.children.drain_filter(already_emitted_sub).for_each(|_| {});
+
+                self.emitter.emit_diagnostic(diagnostic);
+                if diagnostic.is_error() {
+                    self.deduplicated_err_count += 1;
+                } else if let Warning(_) = diagnostic.level {
+                    self.deduplicated_warn_count += 1;
+                }
+            }
             if diagnostic.is_error() {
-                self.deduplicated_err_count += 1;
-            } else if let Warning(_) = diagnostic.level {
-                self.deduplicated_warn_count += 1;
-            }
-        }
-        if diagnostic.is_error() {
-            if matches!(diagnostic.level, Level::Error { lint: true }) {
-                self.bump_lint_err_count();
+                if matches!(diagnostic.level, Level::Error { lint: true }) {
+                    self.bump_lint_err_count();
+                } else {
+                    self.bump_err_count();
+                }
+
+                guaranteed = Some(ErrorGuaranteed::unchecked_claim_error_was_emitted());
             } else {
-                self.bump_err_count();
+                self.bump_warn_count();
             }
+        });
 
-            Some(ErrorGuaranteed::unchecked_claim_error_was_emitted())
-        } else {
-            self.bump_warn_count();
-
-            None
-        }
+        guaranteed
     }
 
     fn emit_artifact_notification(&mut self, path: &Path, artifact_type: &str) {
