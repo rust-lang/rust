@@ -61,6 +61,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
         goal: Goal<'tcx, Self>,
     );
+
+    fn consider_auto_trait_candidate(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    );
 }
 
 /// An abstraction which correctly deals with the canonical results for candidates.
@@ -89,6 +94,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_bound_candidates(goal);
 
         acx.assemble_param_env_candidates(goal);
+
+        acx.assemble_auto_trait_candidates(goal);
 
         acx.candidates
     }
@@ -181,5 +188,11 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
 
     fn assemble_param_env_candidates(&mut self, goal: Goal<'tcx, G>) {
         G::consider_param_env_candidates(self, goal);
+    }
+
+    fn assemble_auto_trait_candidates(&mut self, goal: Goal<'tcx, G>) {
+        if self.cx.tcx.trait_is_auto(goal.predicate.trait_def_id(self.cx.tcx)) {
+            G::consider_auto_trait_candidate(self, goal);
+        }
     }
 }
