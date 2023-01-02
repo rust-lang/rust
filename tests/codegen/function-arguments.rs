@@ -181,6 +181,12 @@ pub fn _box(x: Box<i32>) -> Box<i32> {
   x
 }
 
+// CHECK: noundef nonnull align 4 {{i32\*|ptr}} @notunpin_box({{i32\*|ptr}} noundef nonnull align 4 %x)
+#[no_mangle]
+pub fn notunpin_box(x: Box<NotUnpin>) -> Box<NotUnpin> {
+  x
+}
+
 // CHECK: @struct_return({{%S\*|ptr}} noalias nocapture noundef sret(%S) dereferenceable(32){{( %0)?}})
 #[no_mangle]
 pub fn struct_return() -> S {
@@ -247,12 +253,12 @@ pub fn trait_raw(_: *const dyn Drop) {
 
 // CHECK: @trait_box({{\{\}\*|ptr}} noalias noundef nonnull align 1{{( %0)?}}, {{.+}} noalias noundef readonly align {{.*}} dereferenceable({{.*}}){{( %1)?}})
 #[no_mangle]
-pub fn trait_box(_: Box<dyn Drop>) {
+pub fn trait_box(_: Box<dyn Drop + Unpin>) {
 }
 
 // CHECK: { {{i8\*|ptr}}, {{i8\*|ptr}} } @trait_option({{i8\*|ptr}} noalias noundef align 1 %x.0, {{i8\*|ptr}} %x.1)
 #[no_mangle]
-pub fn trait_option(x: Option<Box<dyn Drop>>) -> Option<Box<dyn Drop>> {
+pub fn trait_option(x: Option<Box<dyn Drop + Unpin>>) -> Option<Box<dyn Drop + Unpin>> {
   x
 }
 

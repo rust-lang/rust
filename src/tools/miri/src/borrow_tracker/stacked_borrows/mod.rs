@@ -135,6 +135,32 @@ impl NewPermission {
         }
     }
 
+    fn from_box_ty<'tcx>(
+        ty: Ty<'tcx>,
+        kind: RetagKind,
+        cx: &crate::MiriInterpCx<'_, 'tcx>,
+    ) -> Self {
+        // `ty` is not the `Box` but the field of the Box with this pointer (due to allocator handling).
+        let pointee = ty.builtin_deref(true).unwrap().ty;
+        if pointee.is_unpin(*cx.tcx, cx.param_env()) {
+            // A regular box. On `FnEntry` this is `noalias`, but not `dereferenceable` (hence only
+            // a weak protector).
+            NewPermission::Uniform {
+                perm: Permission::Unique,
+                access: Some(AccessKind::Write),
+                protector: (kind == RetagKind::FnEntry)
+                    .then_some(ProtectorKind::WeakProtector),
+            }
+        } else {
+            // `!Unpin` boxes do not get `noalias` nor `dereferenceable`.
+            NewPermission::Uniform {
+                perm: Permission::SharedReadWrite,
+                access: None,
+                protector: None,
+            }
+        }
+    }
+
     fn protector(&self) -> Option<ProtectorKind> {
         match self {
             NewPermission::Uniform { protector, .. } => *protector,
@@ -914,12 +940,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
             fn visit_box(&mut self, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
                 // Boxes get a weak protectors, since they may be deallocated.
-                let new_perm = NewPermission::Uniform {
-                    perm: Permission::Unique,
-                    access: Some(AccessKind::Write),
-                    protector: (self.kind == RetagKind::FnEntry)
-                        .then_some(ProtectorKind::WeakProtector),
-                };
+                let new_perm = NewPermission::from_box_ty(place.layout.ty, self.kind, self.ecx);
                 self.retag_ptr_inplace(place, new_perm, self.retag_cause)
             }
 

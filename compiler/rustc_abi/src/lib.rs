@@ -1443,8 +1443,8 @@ pub enum PointerKind {
     SharedRef { frozen: bool },
     /// Mutable reference. `unpin` indicates the absence of any pinned data.
     MutableRef { unpin: bool },
-    /// Box.
-    Box,
+    /// Box. `unpin` indicates the absence of any pinned data.
+    Box { unpin: bool },
 }
 
 /// Note that this information is advisory only, and backends are free to ignore it.
