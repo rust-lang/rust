@@ -273,9 +273,11 @@ fn adjust_for_rust_scalar<'tcx>(
                 | PointerKind::UniqueBorrowed
                 | PointerKind::UniqueBorrowedPinned => false,
                 PointerKind::UniqueOwned => noalias_for_box,
-                PointerKind::Frozen => !is_return,
+                PointerKind::Frozen => true,
             };
-            if no_alias {
+            // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
+            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
+            if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
 
