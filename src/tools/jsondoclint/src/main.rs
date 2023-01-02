@@ -1,23 +1,32 @@
+use std::io::{BufWriter, Write};
+
 use anyhow::{bail, Result};
 use clap::Parser;
 use fs_err as fs;
 use rustdoc_json_types::{Crate, Id, FORMAT_VERSION};
+use serde::Serialize;
 use serde_json::Value;
 
 pub(crate) mod item_kind;
 mod json_find;
 mod validator;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 struct Error {
     kind: ErrorKind,
     id: Id,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Serialize, Clone)]
 enum ErrorKind {
     NotFound(Vec<json_find::Selector>),
     Custom(String),
+}
+
+#[derive(Debug, Serialize)]
+struct JsonOutput {
+    path: String,
+    errors: Vec<Error>,
 }
 
 #[derive(Parser)]
@@ -28,10 +37,13 @@ struct Cli {
     /// Show verbose output
     #[arg(long)]
     verbose: bool,
+
+    #[arg(long)]
+    json_output: Option<String>,
 }
 
 fn main() -> Result<()> {
-    let Cli { path, verbose } = Cli::parse();
+    let Cli { path, verbose, json_output } = Cli::parse();
 
     let contents = fs::read_to_string(&path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
@@ -41,6 +53,13 @@ fn main() -> Result<()> {
 
     let mut validator = validator::Validator::new(&krate, krate_json);
     validator.check_crate();
+
+    if let Some(json_output) = json_output {
+        let output = JsonOutput { path: path.clone(), errors: validator.errs.clone() };
+        let mut f = BufWriter::new(fs::File::create(json_output)?);
+        serde_json::to_writer(&mut f, &output)?;
+        f.flush()?;
+    }
 
     if !validator.errs.is_empty() {
         for err in validator.errs {

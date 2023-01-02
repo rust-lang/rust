@@ -2115,6 +2115,7 @@ dependencies = [
  "clap 4.0.15",
  "fs-err",
  "rustdoc-json-types",
+ "serde",
  "serde_json",
 ]
 
