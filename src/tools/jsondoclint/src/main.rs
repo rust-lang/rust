@@ -16,7 +16,7 @@ struct Error {
 
 #[derive(Debug, PartialEq, Eq)]
 enum ErrorKind {
-    NotFound,
+    NotFound(Vec<json_find::Selector>),
     Custom(String),
 }
 
@@ -37,49 +37,48 @@ fn main() -> Result<()> {
     let krate: Crate = serde_json::from_str(&contents)?;
     assert_eq!(krate.format_version, FORMAT_VERSION);
 
-    let mut validator = validator::Validator::new(&krate);
+    let krate_json: Value = serde_json::from_str(&contents)?;
+
+    let mut validator = validator::Validator::new(&krate, krate_json);
     validator.check_crate();
 
     if !validator.errs.is_empty() {
         for err in validator.errs {
             match err.kind {
-                ErrorKind::NotFound => {
-                    let krate_json: Value = serde_json::from_str(&contents)?;
-
-                    let sels =
-                        json_find::find_selector(&krate_json, &Value::String(err.id.0.clone()));
-                    match &sels[..] {
-                        [] => unreachable!(
-                            "id must be in crate, or it wouldn't be reported as not found"
-                        ),
-                        [sel] => eprintln!(
-                            "{} not in index or paths, but refered to at '{}'",
-                            err.id.0,
-                            json_find::to_jsonpath(&sel)
-                        ),
-                        [sel, ..] => {
-                            if verbose {
-                                let sels = sels
-                                    .iter()
-                                    .map(json_find::to_jsonpath)
-                                    .map(|i| format!("'{i}'"))
-                                    .collect::<Vec<_>>()
-                                    .join(", ");
-                                eprintln!(
-                                    "{} not in index or paths, but refered to at {sels}",
-                                    err.id.0
-                                );
-                            } else {
-                                eprintln!(
-                                    "{} not in index or paths, but refered to at '{}' and {} more",
-                                    err.id.0,
-                                    json_find::to_jsonpath(&sel),
-                                    sels.len() - 1,
-                                )
-                            }
+                ErrorKind::NotFound(sels) => match &sels[..] {
+                    [] => {
+                        unreachable!(
+                            "id {:?} must be in crate, or it wouldn't be reported as not found",
+                            err.id
+                        )
+                    }
+                    [sel] => eprintln!(
+                        "{} not in index or paths, but refered to at '{}'",
+                        err.id.0,
+                        json_find::to_jsonpath(&sel)
+                    ),
+                    [sel, ..] => {
+                        if verbose {
+                            let sels = sels
+                                .iter()
+                                .map(json_find::to_jsonpath)
+                                .map(|i| format!("'{i}'"))
+                                .collect::<Vec<_>>()
+                                .join(", ");
+                            eprintln!(
+                                "{} not in index or paths, but refered to at {sels}",
+                                err.id.0
+                            );
+                        } else {
+                            eprintln!(
+                                "{} not in index or paths, but refered to at '{}' and {} more",
+                                err.id.0,
+                                json_find::to_jsonpath(&sel),
+                                sels.len() - 1,
+                            )
                         }
                     }
-                }
+                },
                 ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
             }
         }

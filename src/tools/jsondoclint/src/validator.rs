@@ -7,8 +7,9 @@ use rustdoc_json_types::{
     Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
     TypeBindingKind, Typedef, Union, Variant, VariantKind, WherePredicate,
 };
+use serde_json::Value;
 
-use crate::{item_kind::Kind, Error, ErrorKind};
+use crate::{item_kind::Kind, json_find, Error, ErrorKind};
 
 /// The Validator walks over the JSON tree, and ensures it is well formed.
 /// It is made of several parts.
@@ -22,6 +23,7 @@ use crate::{item_kind::Kind, Error, ErrorKind};
 pub struct Validator<'a> {
     pub(crate) errs: Vec<Error>,
     krate: &'a Crate,
+    krate_json: Value,
     /// Worklist of Ids to check.
     todo: HashSet<&'a Id>,
     /// Ids that have already been visited, so don't need to be checked again.
@@ -39,9 +41,10 @@ enum PathKind {
 }
 
 impl<'a> Validator<'a> {
-    pub fn new(krate: &'a Crate) -> Self {
+    pub fn new(krate: &'a Crate, krate_json: Value) -> Self {
         Self {
             krate,
+            krate_json,
             errs: Vec::new(),
             seen_ids: HashSet::new(),
             todo: HashSet::new(),
@@ -373,7 +376,11 @@ impl<'a> Validator<'a> {
         } else {
             if !self.missing_ids.contains(id) {
                 self.missing_ids.insert(id);
-                self.fail(id, ErrorKind::NotFound)
+
+                let sels = json_find::find_selector(&self.krate_json, &Value::String(id.0.clone()));
+                assert_ne!(sels.len(), 0);
+
+                self.fail(id, ErrorKind::NotFound(sels))
             }
         }
     }
