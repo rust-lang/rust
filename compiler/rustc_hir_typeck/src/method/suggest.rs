@@ -177,9 +177,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             MethodError::IllegalSizedBound(candidates, needs_mut, bound_span, self_expr) => {
-                let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
+                let msg = if needs_mut {
+                    with_forced_trimmed_paths!(format!(
+                        "the `{item_name}` method cannot be invoked on `{rcvr_ty}`"
+                    ))
+                } else {
+                    format!("the `{item_name}` method cannot be invoked on a trait object")
+                };
                 let mut err = self.sess().struct_span_err(span, &msg);
-                err.span_label(bound_span, "this has a `Sized` requirement");
+                if !needs_mut {
+                    err.span_label(bound_span, "this has a `Sized` requirement");
+                }
                 if !candidates.is_empty() {
                     let help = format!(
                         "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
