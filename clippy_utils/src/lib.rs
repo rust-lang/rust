@@ -116,6 +116,8 @@ use crate::consts::{constant, Constant};
 use crate::ty::{can_partially_move_ty, expr_sig, is_copy, is_recursively_primitive_type, ty_is_fn_once_param};
 use crate::visitors::for_each_expr;
 
+use rustc_middle::hir::nested_filter;
+
 #[macro_export]
 macro_rules! extract_msrv_attr {
     ($context:ident) => {
@@ -1253,22 +1255,33 @@ pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     }
 }
 
-pub struct ContainsName {
+pub struct ContainsName<'a, 'tcx> {
+    pub cx: &'a LateContext<'tcx>,
     pub name: Symbol,
     pub result: bool,
 }
 
-impl<'tcx> Visitor<'tcx> for ContainsName {
+impl<'a, 'tcx> Visitor<'tcx> for ContainsName<'a, 'tcx> {
+    type NestedFilter = nested_filter::All;
+
     fn visit_name(&mut self, name: Symbol) {
         if self.name == name {
             self.result = true;
         }
     }
+
+    fn nested_visit_map(&mut self) -> Self::Map {
+        self.cx.tcx.hir()
+    }
 }
 
 /// Checks if an `Expr` contains a certain name.
-pub fn contains_name(name: Symbol, expr: &Expr<'_>) -> bool {
-    let mut cn = ContainsName { name, result: false };
+pub fn contains_name<'tcx>(name: Symbol, expr: &'tcx Expr<'_>, cx: &LateContext<'tcx>) -> bool {
+    let mut cn = ContainsName {
+        name,
+        result: false,
+        cx,
+    };
     cn.visit_expr(expr);
     cn.result
 }
