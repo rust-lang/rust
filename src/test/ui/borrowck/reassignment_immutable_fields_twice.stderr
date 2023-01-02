@@ -1,11 +1,13 @@
 error[E0594]: cannot assign to `x.0`, as `x` is not declared as mutable
   --> $DIR/reassignment_immutable_fields_twice.rs:7:5
    |
-LL |     let x: (u32, u32);
-   |         - help: consider changing this to be mutable: `mut x`
-LL |     x = (22, 44);
 LL |     x.0 = 1;
    |     ^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x: (u32, u32);
+   |         +++
 
 error[E0381]: partially assigned binding `x` isn't fully initialized
   --> $DIR/reassignment_immutable_fields_twice.rs:12:5

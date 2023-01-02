@@ -180,6 +180,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // the verbs used in some diagnostic messages.
         let act;
         let acted_on;
+        let mut suggest = true;
+        let mut mut_error = None;
+        let mut count = 1;
 
         let span = match error_access {
             AccessKind::Mutate => {
@@ -194,15 +197,50 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let borrow_spans = self.borrow_spans(span, location);
                 let borrow_span = borrow_spans.args_or_use();
-                err = self.cannot_borrow_path_as_mutable_because(borrow_span, &item_msg, &reason);
-                borrow_spans.var_span_label(
-                    &mut err,
-                    format!(
-                        "mutable borrow occurs due to use of {} in closure",
-                        self.describe_any_place(access_place.as_ref()),
-                    ),
-                    "mutable",
-                );
+                match the_place_err {
+                    PlaceRef { local, projection: [] }
+                        if self.body.local_decls[local].can_be_made_mutable() =>
+                    {
+                        let span = self.body.local_decls[local].source_info.span;
+                        mut_error = Some(span);
+                        if let Some((buffer, c)) = self.get_buffered_mut_error(span) {
+                            // We've encountered a second (or more) attempt to mutably borrow an
+                            // immutable binding, so the likely problem is with the binding
+                            // declaration, not the use. We collect these in a single diagnostic
+                            // and make the binding the primary span of the error.
+                            err = buffer;
+                            count = c + 1;
+                            if count == 2 {
+                                err.replace_span_with(span, false);
+                                err.span_label(span, "not mutable");
+                            }
+                            suggest = false;
+                        } else {
+                            err = self.cannot_borrow_path_as_mutable_because(
+                                borrow_span,
+                                &item_msg,
+                                &reason,
+                            );
+                        }
+                    }
+                    _ => {
+                        err = self.cannot_borrow_path_as_mutable_because(
+                            borrow_span,
+                            &item_msg,
+                            &reason,
+                        );
+                    }
+                }
+                if suggest {
+                    borrow_spans.var_span_label(
+                        &mut err,
+                        format!(
+                            "mutable borrow occurs due to use of {} in closure",
+                            self.describe_any_place(access_place.as_ref()),
+                        ),
+                        "mutable",
+                    );
+                }
                 borrow_span
             }
         };
@@ -276,7 +314,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                                 pat_span: _,
                             },
                         )))) => {
-                            err.span_note(sp, "the binding is already a mutable borrow");
+                            if suggest {
+                                err.span_note(sp, "the binding is already a mutable borrow");
+                            }
                         }
                         _ => {
                             err.span_note(
@@ -333,16 +373,20 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 let local_decl = &self.body.local_decls[local];
                 assert_eq!(local_decl.mutability, Mutability::Not);
 
-                err.span_label(span, format!("cannot {act}"));
-                err.span_suggestion(
-                    local_decl.source_info.span,
-                    "consider changing this to be mutable",
-                    format!("mut {}", self.local_names[local].unwrap()),
-                    Applicability::MachineApplicable,
-                );
-                let tcx = self.infcx.tcx;
-                if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
-                    self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
+                if count < 10 {
+                    err.span_label(span, format!("cannot {act}"));
+                }
+                if suggest {
+                    err.span_suggestion_verbose(
+                        local_decl.source_info.span.shrink_to_lo(),
+                        "consider changing this to be mutable",
+                        "mut ".to_string(),
+                        Applicability::MachineApplicable,
+                    );
+                    let tcx = self.infcx.tcx;
+                    if let ty::Closure(id, _) = *the_place_err.ty(self.body, tcx).ty.kind() {
+                        self.show_mutating_upvar(tcx, id.expect_local(), the_place_err, &mut err);
+                    }
                 }
             }
 
@@ -615,7 +659,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             }
         }
 
-        self.buffer_error(err);
+        if let Some(span) = mut_error {
+            self.buffer_mut_error(span, err, count);
+        } else {
+            self.buffer_error(err);
+        }
     }
 
     fn suggest_map_index_mut_alternatives(&self, ty: Ty<'tcx>, err: &mut Diagnostic, span: Span) {

@@ -10,11 +10,13 @@ LL |     x;
 error[E0596]: cannot borrow `y` as mutable, as it is not declared as mutable
   --> $DIR/augmented-assignments.rs:23:5
    |
-LL |     let y = Int(2);
-   |         - help: consider changing this to be mutable: `mut y`
-...
 LL |     y
    |     ^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut y = Int(2);
+   |         +++
 
 error: aborting due to 2 previous errors
 

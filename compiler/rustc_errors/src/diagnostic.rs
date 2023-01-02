@@ -365,12 +365,12 @@ impl Diagnostic {
         self
     }
 
-    pub fn replace_span_with(&mut self, after: Span) -> &mut Self {
+    pub fn replace_span_with(&mut self, after: Span, keep_label: bool) -> &mut Self {
         let before = self.span.clone();
         self.set_span(after);
         for span_label in before.span_labels() {
             if let Some(label) = span_label.label {
-                if span_label.is_primary {
+                if span_label.is_primary && keep_label {
                     self.span.push_span_label(after, label);
                 } else {
                     self.span.push_span_label(span_label.span, label);
