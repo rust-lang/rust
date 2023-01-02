@@ -2705,8 +2705,19 @@ impl Item {
 /// `extern` qualifier on a function item or function type.
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub enum Extern {
+    /// No explicit extern keyword was used
+    ///
+    /// E.g. `fn foo() {}`
     None,
+    /// An explicit extern keyword was used, but with implicit ABI
+    ///
+    /// E.g. `extern fn foo() {}`
+    ///
+    /// This is just `extern "C"` (see `rustc_target::spec::abi::Abi::FALLBACK`)
     Implicit(Span),
+    /// An explicit extern keyword was used with an explicit ABI
+    ///
+    /// E.g. `extern "C" fn foo() {}`
     Explicit(StrLit, Span),
 }
 
