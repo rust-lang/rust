@@ -960,6 +960,21 @@
                         "Only show type hints for return types of closures with blocks."
                     ]
                 },
+                "rust-analyzer.inlayHints.discriminantHints.enable": {
+                    "markdownDescription": "Whether to show enum variant discriminant hints.",
+                    "default": "never",
+                    "type": "string",
+                    "enum": [
+                        "always",
+                        "never",
+                        "fieldless"
+                    ],
+                    "enumDescriptions": [
+                        "Always show all discriminant hints.",
+                        "Never show discriminant hints.",
+                        "Only show discriminant hints on fieldless enum variants."
+                    ]
+                },
                 "rust-analyzer.inlayHints.expressionAdjustmentHints.enable": {
                     "markdownDescription": "Whether to show inlay hints for type adjustments.",
                     "default": "never",

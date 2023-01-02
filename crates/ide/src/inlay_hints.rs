@@ -24,12 +24,14 @@ mod chaining;
 mod param_name;
 mod binding_mode;
 mod bind_pat;
+mod discrimant;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct InlayHintsConfig {
     pub location_links: bool,
     pub render_colons: bool,
     pub type_hints: bool,
+    pub discriminant_hints: DiscriminantHints,
     pub parameter_hints: bool,
     pub chaining_hints: bool,
     pub adjustment_hints: AdjustmentHints,
@@ -49,6 +51,13 @@ pub enum ClosureReturnTypeHints {
     Always,
     WithBlock,
     Never,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DiscriminantHints {
+    Always,
+    Never,
+    Fieldless,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -76,6 +85,7 @@ pub enum InlayKind {
     LifetimeHint,
     ParameterHint,
     TypeHint,
+    DiscriminantHint,
     OpeningParenthesis,
     ClosingParenthesis,
 }
@@ -365,6 +375,9 @@ fn hints(
                 ast::Item::Const(it) => implicit_static::hints(hints, config, Either::Right(it)),
                 _ => None,
             },
+            ast::Variant(v) => {
+                discrimant::hints(hints, famous_defs, config, file_id, &v)
+            },
             // FIXME: fn-ptr type, dyn fn type, and trait object type elisions
             ast::Type(_) => None,
             _ => None,
@@ -418,12 +431,14 @@ mod tests {
     use test_utils::extract_annotations;
 
     use crate::inlay_hints::AdjustmentHints;
+    use crate::DiscriminantHints;
     use crate::{fixture, inlay_hints::InlayHintsConfig, LifetimeElisionHints};
 
     use super::ClosureReturnTypeHints;
 
     pub(super) const DISABLED_CONFIG: InlayHintsConfig = InlayHintsConfig {
         location_links: false,
+        discriminant_hints: DiscriminantHints::Never,
         render_colons: false,
         type_hints: false,
         parameter_hints: false,
