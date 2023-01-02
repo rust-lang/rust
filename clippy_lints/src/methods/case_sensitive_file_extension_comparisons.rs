@@ -1,4 +1,5 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::{indent_of, reindent_multiline};
 use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_lang_item;
 use if_chain::if_chain;
@@ -37,29 +38,36 @@ pub(super) fn check<'tcx>(
                 "case-sensitive file extension comparison",
                 |diag| {
                     diag.help("consider using a case-insensitive comparison instead");
-                    let mut recv_str = Sugg::hir(cx, recv, "").to_string();
+                    let mut recv_source = Sugg::hir(cx, recv, "").to_string();
 
                     if is_type_lang_item(cx, recv_ty, LangItem::String) {
-                        recv_str = format!("&{recv_str}");
+                        recv_source = format!("&{recv_source}");
                     }
 
-                    if recv_str.contains(".to_lowercase()") {
+                    if recv_source.ends_with(".to_lowercase()") {
                         diag.note("to_lowercase allocates memory, this can be avoided by using Path");
-                        recv_str = recv_str.replace(".to_lowercase()", "");
+                        recv_source = recv_source.strip_suffix(".to_lowercase()").unwrap().to_string();
                     }
 
-                    if recv_str.contains(".to_uppercase()") {
+                    if recv_source.ends_with(".to_uppercase()") {
                         diag.note("to_uppercase allocates memory, this can be avoided by using Path");
-                        recv_str = recv_str.replace(".to_uppercase()", "");
+                        recv_source = recv_source.strip_suffix(".to_uppercase()").unwrap().to_string();
                     }
+
+                    let suggestion_source = reindent_multiline(
+                        format!(
+                            "std::path::Path::new({})
+                                .extension()
+                                .map_or(false, |ext| ext.eq_ignore_ascii_case(\"{}\"))",
+                            recv_source, ext_str.strip_prefix('.').unwrap()).into(),
+                        true,
+                        Some(indent_of(cx, call_span).unwrap_or(0) + 4)
+                    );
 
                     diag.span_suggestion(
                         recv.span.to(call_span),
                         "use std::path::Path",
-                        format!("std::path::Path::new({})
-        .extension()
-        .map_or(false, |ext| ext.eq_ignore_ascii_case(\"{}\"))", 
-                            recv_str, ext_str.strip_prefix('.').unwrap()),
+                        suggestion_source,
                         Applicability::MaybeIncorrect,
                     );
                 }
