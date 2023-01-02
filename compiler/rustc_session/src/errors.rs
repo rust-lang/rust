@@ -260,6 +260,7 @@ pub(crate) struct InvalidFloatLiteralSuffix {
 
 #[derive(Diagnostic)]
 #[diag(session_int_literal_too_large)]
+#[note]
 pub(crate) struct IntLiteralTooLarge {
     #[primary_span]
     pub span: Span,
