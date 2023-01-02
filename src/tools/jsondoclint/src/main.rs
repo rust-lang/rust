@@ -24,10 +24,14 @@ enum ErrorKind {
 struct Cli {
     /// The path to the json file to be linted
     path: String,
+
+    /// Show verbose output
+    #[arg(long)]
+    verbose: bool,
 }
 
 fn main() -> Result<()> {
-    let Cli { path } = Cli::parse();
+    let Cli { path, verbose } = Cli::parse();
 
     let contents = fs::read_to_string(&path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
@@ -53,11 +57,27 @@ fn main() -> Result<()> {
                             err.id.0,
                             json_find::to_jsonpath(&sel)
                         ),
-                        [sel, ..] => eprintln!(
-                            "{} not in index or paths, but refered to at '{}' and more",
-                            err.id.0,
-                            json_find::to_jsonpath(&sel)
-                        ),
+                        [sel, ..] => {
+                            if verbose {
+                                let sels = sels
+                                    .iter()
+                                    .map(json_find::to_jsonpath)
+                                    .map(|i| format!("'{i}'"))
+                                    .collect::<Vec<_>>()
+                                    .join(", ");
+                                eprintln!(
+                                    "{} not in index or paths, but refered to at {sels}",
+                                    err.id.0
+                                );
+                            } else {
+                                eprintln!(
+                                    "{} not in index or paths, but refered to at '{}' and {} more",
+                                    err.id.0,
+                                    json_find::to_jsonpath(&sel),
+                                    sels.len() - 1,
+                                )
+                            }
+                        }
                     }
                 }
                 ErrorKind::Custom(msg) => eprintln!("{}: {}", err.id.0, msg),
