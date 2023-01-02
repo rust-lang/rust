@@ -382,6 +382,12 @@ pub mod ops {
         type Output;
         fn add(self, rhs: Rhs) -> Self::Output;
     }
+
+    #[lang = "add_assign"]
+    #[const_trait]
+    pub trait AddAssign<Rhs = Self> {
+        fn add_assign(&mut self, rhs: Rhs);
+    }
     // endregion:add
 
     // region:generator

@@ -6,7 +6,7 @@ use std::{
 };
 
 use chalk_ir::{
-    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyVariableKind,
+    cast::Cast, fold::Shift, DebruijnIndex, GenericArgData, Mutability, TyKind, TyVariableKind,
 };
 use hir_def::{
     expr::{
@@ -34,8 +34,8 @@ use crate::{
     primitive::{self, UintTy},
     static_lifetime, to_chalk_trait_id,
     utils::{generics, Generics},
-    AdtId, Binders, CallableDefId, FnPointer, FnSig, FnSubst, Interner, Rawness, Scalar,
-    Substitution, TraitRef, Ty, TyBuilder, TyExt, TyKind,
+    Adjust, Adjustment, AdtId, AutoBorrow, Binders, CallableDefId, FnPointer, FnSig, FnSubst,
+    Interner, Rawness, Scalar, Substitution, TraitRef, Ty, TyBuilder, TyExt,
 };
 
 use super::{
@@ -1038,13 +1038,37 @@ impl<'a> InferenceContext<'a> {
         self.infer_expr_coerce(rhs, &Expectation::has_type(rhs_ty.clone()));
 
         let ret_ty = match method_ty.callable_sig(self.db) {
-            Some(sig) => sig.ret().clone(),
+            Some(sig) => {
+                let p_left = &sig.params()[0];
+                if matches!(op, BinaryOp::CmpOp(..) | BinaryOp::Assignment { .. }) {
+                    if let &TyKind::Ref(mtbl, _, _) = p_left.kind(Interner) {
+                        self.write_expr_adj(
+                            lhs,
+                            vec![Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(mtbl)),
+                                target: p_left.clone(),
+                            }],
+                        );
+                    }
+                }
+                let p_right = &sig.params()[1];
+                if matches!(op, BinaryOp::CmpOp(..)) {
+                    if let &TyKind::Ref(mtbl, _, _) = p_right.kind(Interner) {
+                        self.write_expr_adj(
+                            rhs,
+                            vec![Adjustment {
+                                kind: Adjust::Borrow(AutoBorrow::Ref(mtbl)),
+                                target: p_right.clone(),
+                            }],
+                        );
+                    }
+                }
+                sig.ret().clone()
+            }
             None => self.err_ty(),
         };
 
         let ret_ty = self.normalize_associated_types_in(ret_ty);
-
-        // FIXME: record autoref adjustments
 
         // use knowledge of built-in binary ops, which can sometimes help inference
         if let Some(builtin_rhs) = self.builtin_binary_op_rhs_expectation(op, lhs_ty.clone()) {
