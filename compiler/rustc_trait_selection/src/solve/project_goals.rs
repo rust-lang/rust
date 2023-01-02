@@ -211,6 +211,22 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
         })
     }
+
+    fn consider_alias_bound_candidates(
+        _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        _goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
+        _alias_ty: ty::AliasTy<'tcx>,
+    ) {
+        todo!()
+    }
+
+    fn consider_object_bound_candidates(
+        _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        _goal: Goal<'tcx, Self>,
+        _object_bounds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    ) {
+        todo!()
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.

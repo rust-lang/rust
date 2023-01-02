@@ -44,6 +44,18 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
     );
+
+    fn consider_alias_bound_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        alias_ty: ty::AliasTy<'tcx>,
+    );
+
+    fn consider_object_bound_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        object_bounds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    );
 }
 
 /// An abstraction which correctly deals with the canonical results for candidates.
@@ -68,6 +80,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_candidates_after_normalizing_self_ty(goal);
 
         acx.assemble_impl_candidates(goal);
+
+        acx.assemble_bound_candidates(goal);
 
         acx.candidates
     }
@@ -146,5 +160,15 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
             goal.predicate.self_ty(),
             |impl_def_id| G::consider_impl_candidate(self, goal, impl_def_id),
         );
+    }
+
+    fn assemble_bound_candidates(&mut self, goal: Goal<'tcx, G>) {
+        match *goal.predicate.self_ty().kind() {
+            ty::Alias(_, alias_ty) => G::consider_alias_bound_candidates(self, goal, alias_ty),
+            ty::Dynamic(predicates, _, _) => {
+                G::consider_object_bound_candidates(self, goal, predicates)
+            }
+            _ => {}
+        }
     }
 }

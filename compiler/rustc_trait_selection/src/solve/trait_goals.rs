@@ -5,8 +5,9 @@ use std::iter;
 use super::assembly::{self, AssemblyCtxt};
 use super::{CanonicalGoal, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
-use rustc_infer::infer::InferOk;
+use rustc_infer::infer::{InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
+use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::TraitPredicate;
@@ -36,6 +37,8 @@ pub(super) enum CandidateSource {
     /// We know that `<Whatever as Trait>::Assoc: OtherTrait` holds by looking at
     /// the bounds on `Trait::Assoc`.
     AliasBound(usize),
+    /// Implementation of `Trait` or its supertraits for a `dyn Trait + Send + Sync`.
+    ObjectBound(usize),
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.
     ///
@@ -68,7 +71,7 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
     fn consider_impl_candidate(
         acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
-        goal: Goal<'tcx, TraitPredicate<'tcx>>,
+        goal: Goal<'tcx, Self>,
         impl_def_id: DefId,
     ) {
         let tcx = acx.cx.tcx;
@@ -108,6 +111,87 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
         })
     }
+
+    fn consider_alias_bound_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        alias_ty: ty::AliasTy<'tcx>,
+    ) {
+        for (idx, (predicate, _)) in acx
+            .cx
+            .tcx
+            .bound_explicit_item_bounds(alias_ty.def_id)
+            .subst_iter_copied(acx.cx.tcx, alias_ty.substs)
+            .enumerate()
+        {
+            let Some(poly_trait_pred) = predicate.to_opt_poly_trait_pred() else { continue };
+            if poly_trait_pred.skip_binder().def_id() != goal.predicate.def_id() {
+                continue;
+            };
+            // FIXME: constness? polarity?
+            let poly_trait_ref = poly_trait_pred.map_bound(|trait_pred| trait_pred.trait_ref);
+            // FIXME: Faster to do a filter first with a rejection context?
+            match_poly_trait_ref_against_goal(
+                acx,
+                goal,
+                poly_trait_ref,
+                CandidateSource::AliasBound(idx),
+            );
+        }
+    }
+
+    fn consider_object_bound_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        object_bounds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
+    ) {
+        if let Some(principal_trait_ref) = object_bounds.principal() {
+            let principal_trait_ref =
+                principal_trait_ref.with_self_ty(acx.cx.tcx, goal.predicate.self_ty());
+
+            for (idx, poly_trait_ref) in supertraits(acx.cx.tcx, principal_trait_ref).enumerate() {
+                if poly_trait_ref.skip_binder().def_id != goal.predicate.def_id() {
+                    continue;
+                };
+                match_poly_trait_ref_against_goal(
+                    acx,
+                    goal,
+                    poly_trait_ref,
+                    CandidateSource::ObjectBound(idx),
+                );
+            }
+        }
+    }
+}
+
+fn match_poly_trait_ref_against_goal<'tcx>(
+    acx: &mut AssemblyCtxt<'_, 'tcx, TraitPredicate<'tcx>>,
+    goal: Goal<'tcx, TraitPredicate<'tcx>>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    candidate: impl FnOnce() -> CandidateSource,
+) {
+    acx.infcx.probe(|_| {
+        let trait_ref = acx.infcx.replace_bound_vars_with_fresh_vars(
+            DUMMY_SP,
+            LateBoundRegionConversionTime::HigherRankedType,
+            trait_ref,
+        );
+
+        let Ok(InferOk { obligations, .. }) = acx
+            .infcx
+            .at(&ObligationCause::dummy(), goal.param_env)
+            .define_opaque_types(false)
+            .sup(goal.predicate.trait_ref, trait_ref)
+            .map_err(|e| debug!("failed to equate trait refs: {e:?}"))
+        else {
+            return
+        };
+
+        let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
+
+        let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+        acx.try_insert_candidate(candidate(), certainty);
+    })
 }
 
 impl<'tcx> EvalCtxt<'tcx> {
@@ -169,6 +253,7 @@ impl<'tcx> EvalCtxt<'tcx> {
             (CandidateSource::Impl(_), _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound(_), _)
+            | (CandidateSource::ObjectBound(_), _)
             | (CandidateSource::Builtin, _)
             | (CandidateSource::AutoImpl, _) => unimplemented!(),
         }
