@@ -53,7 +53,7 @@ fn do_orphan_check_impl<'tcx>(
             sp,
             item.span,
             tr.path.span,
-            trait_ref.self_ty(),
+            trait_ref,
             impl_.self_ty.span,
             &impl_.generics,
             err,
@@ -154,11 +154,12 @@ fn emit_orphan_check_error<'tcx>(
     sp: Span,
     full_impl_span: Span,
     trait_span: Span,
-    self_ty: Ty<'tcx>,
+    trait_ref: ty::TraitRef<'tcx>,
     self_ty_span: Span,
     generics: &hir::Generics<'tcx>,
     err: traits::OrphanCheckErr<'tcx>,
 ) -> Result<!, ErrorGuaranteed> {
+    let self_ty = trait_ref.self_ty();
     Err(match err {
         traits::OrphanCheckErr::NonLocalInputType(tys) => {
             let msg = match self_ty.kind() {
@@ -187,7 +188,14 @@ fn emit_orphan_check_error<'tcx>(
                 let msg = |ty: &str, postfix: &str| {
                     format!("{ty} is not defined in the current crate{postfix}")
                 };
-                let this = |name: &str| msg("this", &format!(" because {name} are always foreign"));
+
+                let this = |name: &str| {
+                    if !trait_ref.def_id.is_local() && !is_target_ty {
+                        msg("this", &format!(" because this is a foreign trait"))
+                    } else {
+                        msg("this", &format!(" because {name} are always foreign"))
+                    }
+                };
                 let msg = match &ty.kind() {
                     ty::Slice(_) => this("slices"),
                     ty::Array(..) => this("arrays"),
