@@ -173,9 +173,7 @@ fn check_error_codes_docs(
             return;
         }
 
-        // `has_test.0` checks whether the error code has any (potentially untested) code example.
-        // `has_test.1` checks whether the error code has a proper (definitely tested) doctest.
-        let has_test = check_explanation_has_doctest(&contents, &err_code);
+        let (found_code_example, found_proper_doctest, emit_ignore_warning, emit_no_longer_warning) = check_explanation_has_doctest(&contents, &err_code);
         if has_test.2 {
             verbose_print!(
                 verbose,
