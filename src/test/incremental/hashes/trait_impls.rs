@@ -11,9 +11,6 @@
 // [cfail1]compile-flags: -Zincremental-ignore-spans
 // [cfail2]compile-flags: -Zincremental-ignore-spans
 // [cfail3]compile-flags: -Zincremental-ignore-spans
-// [cfail4]compile-flags: -Zincremental-relative-spans
-// [cfail5]compile-flags: -Zincremental-relative-spans
-// [cfail6]compile-flags: -Zincremental-relative-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]

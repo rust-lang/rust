@@ -169,7 +169,7 @@ rustc_queries! {
         separate_provide_extern
     }
 
-    query collect_trait_impl_trait_tys(key: DefId)
+    query collect_return_position_impl_trait_in_trait_tys(key: DefId)
         -> Result<&'tcx FxHashMap<DefId, Ty<'tcx>>, ErrorGuaranteed>
     {
         desc { "comparing an impl and trait method signature, inferring any hidden `impl Trait` types in the process" }
@@ -2117,7 +2117,7 @@ rustc_queries! {
         desc { "checking to see if `{}` permits being left zeroed", key.ty }
     }
 
-    query compare_assoc_const_impl_item_with_trait_item(
+    query compare_impl_const(
         key: (LocalDefId, DefId)
     ) -> Result<(), ErrorGuaranteed> {
         desc { |tcx| "checking assoc const `{}` has the same type as trait item", tcx.def_path_str(key.0.to_def_id()) }

@@ -62,7 +62,6 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #788797;
 	--code-highlight-doc-comment-color: #a1ac88;
-	--example-line-numbers-border-color: none;
 	--src-line-numbers-span-color: #5c6773;
 	--src-line-number-highlighted-background-color: rgba(255, 236, 164, 0.06);
 	--test-arrow-color: #788797;
@@ -90,6 +89,14 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--source-sidebar-background-hover: #14191f;
 	--table-alt-row-background-color: #191f26;
 	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
+	--scrape-example-code-line-highlight: rgb(91, 59, 1);
+	--scrape-example-code-line-highlight-focus: rgb(124, 75, 15);
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
 }
 
 h1, h2, h3, h4 {
@@ -132,7 +139,7 @@ pre, .rustdoc.source .example-wrap {
 
 .src-line-numbers .line-highlighted {
 	color: #708090;
-	padding-right: 4px;
+	padding-right: 7px;
 	border-right: 1px solid #ffb44c;
 }
 
@@ -161,18 +168,18 @@ pre, .rustdoc.source .example-wrap {
 	color: #788797;
 }
 
-#titles > button.selected {
+#search-tabs > button.selected {
 	background-color: #141920 !important;
 	border-bottom: 1px solid #ffb44c !important;
 	border-top: none;
 }
 
-#titles > button:not(.selected) {
+#search-tabs > button:not(.selected) {
 	background-color: transparent !important;
 	border: none;
 }
 
-#titles > button:hover {
+#search-tabs > button:hover {
 	border-bottom: 1px solid rgba(242, 151, 24, 0.3);
 }
 
@@ -182,11 +189,7 @@ individually rather than as a group) */
 /* FIXME: these rules should be at the bottom of the file but currently must be
 above the `@media (max-width: 700px)` rules due to a bug in the css checker */
 /* see https://github.com/rust-lang/rust/pull/71237#issuecomment-618170143 */
-pre.rust .lifetime {}
-pre.rust .kw {}
-#titles > button:hover, #titles > button.selected {}
-pre.rust .self, pre.rust .bool-val, pre.rust .prelude-val, pre.rust .attribute {}
-pre.rust .kw-2, pre.rust .prelude-ty {}
+#search-tabs > button:hover, #search-tabs > button.selected {}
 
 #settings-menu > a img {
 	filter: invert(100);
@@ -201,29 +204,9 @@ pre.rust .kw-2, pre.rust .prelude-ty {}
 	color: #ffb44c;
 }
 
-.scraped-example-list .scrape-help {
-	border-color: #aaa;
-	color: #eee;
-}
-.scraped-example-list .scrape-help:hover {
-	border-color: white;
-	color: white;
-}
-.scraped-example .example-wrap .rust span.highlight {
-	background: rgb(91, 59, 1);
-}
-.scraped-example .example-wrap .rust span.highlight.focus {
-	background: rgb(124, 75, 15);
-}
-.scraped-example:not(.expanded) .code-wrapper:before {
+.scraped-example:not(.expanded) .code-wrapper::before {
 	background: linear-gradient(to bottom, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
 }
-.scraped-example:not(.expanded) .code-wrapper:after {
+.scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(15, 20, 25, 1), rgba(15, 20, 25, 0));
-}
-.toggle-line-inner {
-	background: #999;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #c5c5c5;
 }

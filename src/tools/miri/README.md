@@ -399,6 +399,8 @@ to Miri failing to detect cases of undefined behavior in a program.
 * `-Zmiri-track-weak-memory-loads` shows a backtrace when weak memory emulation returns an outdated
   value from a load. This can help diagnose problems that disappear under
   `-Zmiri-disable-weak-memory-emulation`.
+* `-Zmiri-force-page-size=<num>` overrides the default page size for an architecture, in multiples of 1k.
+  `4` is default for most targets. This value should always be a power of 2 and nonzero.
 
 [function ABI]: https://doc.rust-lang.org/reference/items/functions.html#extern-function-qualifier
 
@@ -574,6 +576,21 @@ extern "Rust" {
 
     /// Miri-provided extern function to deallocate memory.
     fn miri_dealloc(ptr: *mut u8, size: usize, align: usize);
+
+    /// Convert a path from the host Miri runs on to the target Miri interprets.
+    /// Performs conversion of path separators as needed.
+    ///
+    /// Usually Miri performs this kind of conversion automatically. However, manual conversion
+    /// might be necessary when reading an environment variable that was set on the host
+    /// (such as TMPDIR) and using it as a target path.
+    ///
+    /// Only works with isolation disabled.
+    ///
+    /// `in` must point to a null-terminated string, and will be read as the input host path.
+    /// `out` must point to at least `out_size` many bytes, and the result will be stored there
+    /// with a null terminator.
+    /// Returns 0 if the `out` buffer was large enough, and the required size otherwise.
+    fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
 }
 ```
 
@@ -639,6 +656,7 @@ Definite bugs found:
 * [Data race in `thread::scope`](https://github.com/rust-lang/rust/issues/98498)
 * [`regex` incorrectly handling unaligned `Vec<u8>` buffers](https://www.reddit.com/r/rust/comments/vq3mmu/comment/ienc7t0?context=3)
 * [Incorrect use of `compare_exchange_weak` in `once_cell`](https://github.com/matklad/once_cell/issues/186)
+* [Dropping with unaligned pointers in `vec::IntoIter`](https://github.com/rust-lang/rust/pull/106084)
 
 Violations of [Stacked Borrows] found that are likely bugs (but Stacked Borrows is currently just an experiment):
 

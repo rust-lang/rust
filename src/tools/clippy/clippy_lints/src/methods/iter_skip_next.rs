@@ -29,7 +29,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &hir::Expr<'_>, recv: &hir::Expr
                         application = Applicability::Unspecified;
                         diag.span_help(
                             pat.span,
-                            &format!("for this change `{}` has to be mutable", snippet(cx, pat.span, "..")),
+                            format!("for this change `{}` has to be mutable", snippet(cx, pat.span, "..")),
                         );
                     }
                 }

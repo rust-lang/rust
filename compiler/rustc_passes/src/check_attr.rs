@@ -1090,9 +1090,7 @@ impl CheckAttrVisitor<'_> {
                                     errors::DocTestUnknownInclude {
                                         path,
                                         value: value.to_string(),
-                                        inner: (attr.style == AttrStyle::Inner)
-                                            .then_some("!")
-                                            .unwrap_or(""),
+                                        inner: if attr.style == AttrStyle::Inner { "!" } else { "" },
                                         sugg: (attr.meta().unwrap().span, applicability),
                                     }
                                 );

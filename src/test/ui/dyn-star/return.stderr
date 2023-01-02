@@ -4,7 +4,7 @@ warning: the feature `dyn_star` is incomplete and may not be safe to use and/or 
 LL | #![feature(dyn_star)]
    |            ^^^^^^^^
    |
-   = note: see issue #91611 <https://github.com/rust-lang/rust/issues/91611> for more information
+   = note: see issue #102425 <https://github.com/rust-lang/rust/issues/102425> for more information
    = note: `#[warn(incomplete_features)]` on by default
 
 warning: 1 warning emitted

@@ -531,13 +531,23 @@ impl<'a> Parser<'a> {
         recover: AttemptLocalParseRecovery,
     ) -> PResult<'a, P<Block>> {
         let mut stmts = vec![];
+        let mut snapshot = None;
         while !self.eat(&token::CloseDelim(Delimiter::Brace)) {
             if self.token == token::Eof {
                 break;
             }
+            if self.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                // Account for `<<<<<<<` diff markers. We can't proactively error here because
+                // that can be a valid path start, so we snapshot and reparse only we've
+                // encountered another parse error.
+                snapshot = Some(self.create_snapshot_for_diagnostic());
+            }
             let stmt = match self.parse_full_stmt(recover) {
                 Err(mut err) if recover.yes() => {
                     self.maybe_annotate_with_ascription(&mut err, false);
+                    if let Some(ref mut snapshot) = snapshot {
+                        snapshot.recover_diff_marker();
+                    }
                     err.emit();
                     self.recover_stmt_(SemiColonMode::Ignore, BlockMode::Ignore);
                     Some(self.mk_stmt_err(self.token.span))

@@ -92,7 +92,7 @@ impl<'a> FnKind<'a> {
 #[derive(Copy, Clone, Debug)]
 pub enum LifetimeCtxt {
     /// Appears in a reference type.
-    Rptr,
+    Ref,
     /// Appears as a bound on a type or another lifetime.
     Bound,
     /// Appears as a generic argument.
@@ -396,8 +396,8 @@ pub fn walk_ty<'a, V: Visitor<'a>>(visitor: &mut V, typ: &'a Ty) {
     match &typ.kind {
         TyKind::Slice(ty) | TyKind::Paren(ty) => visitor.visit_ty(ty),
         TyKind::Ptr(mutable_type) => visitor.visit_ty(&mutable_type.ty),
-        TyKind::Rptr(opt_lifetime, mutable_type) => {
-            walk_list!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Rptr);
+        TyKind::Ref(opt_lifetime, mutable_type) => {
+            walk_list!(visitor, visit_lifetime, opt_lifetime, LifetimeCtxt::Ref);
             visitor.visit_ty(&mutable_type.ty)
         }
         TyKind::Tup(tuple_element_types) => {

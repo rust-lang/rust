@@ -264,7 +264,11 @@ impl GlobalStateInner {
 
 impl<'mir, 'tcx: 'mir> EvalContextExt<'mir, 'tcx> for crate::MiriInterpCx<'mir, 'tcx> {}
 pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
-    fn retag_ptr_value(&mut self, kind: RetagKind, val: &ImmTy<'tcx, Provenance>) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
+    fn retag_ptr_value(
+        &mut self,
+        kind: RetagKind,
+        val: &ImmTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx, ImmTy<'tcx, Provenance>> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {
@@ -272,7 +276,11 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
     }
 
-    fn retag_place_contents(&mut self, kind: RetagKind, place: &PlaceTy<'tcx, Provenance>) -> InterpResult<'tcx> {
+    fn retag_place_contents(
+        &mut self,
+        kind: RetagKind,
+        place: &PlaceTy<'tcx, Provenance>,
+    ) -> InterpResult<'tcx> {
         let this = self.eval_context_mut();
         let method = this.machine.borrow_tracker.as_ref().unwrap().borrow().borrow_tracker_method;
         match method {

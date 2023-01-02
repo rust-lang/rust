@@ -416,11 +416,6 @@ struct VariantData {
     is_non_exhaustive: bool,
 }
 
-#[derive(TyEncodable, TyDecodable)]
-struct GeneratorData<'tcx> {
-    layout: mir::GeneratorLayout<'tcx>,
-}
-
 // Tags used for encoding Spans:
 const TAG_VALID_SPAN_LOCAL: u8 = 0;
 const TAG_VALID_SPAN_FOREIGN: u8 = 1;

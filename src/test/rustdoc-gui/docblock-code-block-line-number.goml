@@ -1,23 +1,53 @@
 // Checks that the setting "line numbers" is working as expected.
 goto: "file://" + |DOC_PATH| + "/test_docs/fn.foo.html"
 
+// Otherwise, we can't check text color
+show-text: true
+
 // We check that without this setting, there is no line number displayed.
 assert-false: "pre.example-line-numbers"
 
-// We now set the setting to show the line numbers on code examples.
-local-storage: {"rustdoc-line-numbers": "true" }
-// We reload to make the line numbers appear.
-reload:
-
-// We wait for them to be added into the DOM by the JS...
-wait-for: "pre.example-line-numbers"
-// If the test didn't fail, it means that it was found!
 // Let's now check some CSS properties...
-assert-css: ("pre.example-line-numbers", {
-    "margin": "0px",
-    "padding": "13px 8px",
-    "text-align": "right",
+define-function: (
+    "check-colors",
+    (theme, color),
+    [
+        // We now set the setting to show the line numbers on code examples.
+        ("local-storage", {
+            "rustdoc-theme": |theme|,
+            "rustdoc-use-system-theme": "false",
+            "rustdoc-line-numbers": "true"
+        }),
+        // We reload to make the line numbers appear and change theme.
+        ("reload"),
+        // We wait for them to be added into the DOM by the JS...
+        ("wait-for", "pre.example-line-numbers"),
+        // If the test didn't fail, it means that it was found!
+        ("assert-css", (
+            "pre.example-line-numbers",
+            {
+                "color": |color|,
+                "margin": "0px",
+                "padding": "14px 8px",
+                "text-align": "right",
+            },
+            ALL,
+        )),
+    ],
+)
+call-function: ("check-colors", {
+    "theme": "ayu",
+    "color": "rgb(92, 103, 115)",
 })
+call-function: ("check-colors", {
+    "theme": "dark",
+    "color": "rgb(59, 145, 226)",
+})
+call-function: ("check-colors", {
+    "theme": "light",
+    "color": "rgb(198, 126, 45)",
+})
+
 // The first code block has two lines so let's check its `<pre>` elements lists both of them.
 assert-text: ("pre.example-line-numbers", "1\n2")
 

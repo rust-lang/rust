@@ -170,7 +170,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         match this.init_once_status(id) {
             InitOnceStatus::Uninitialized => {
                 this.init_once_begin(id);
-                this.write_scalar(this.eval_windows("c", "TRUE")?, &pending_place)?;
+                this.write_scalar(this.eval_windows("c", "TRUE"), &pending_place)?;
             }
             InitOnceStatus::Begun => {
                 // Someone else is already on it.
@@ -195,8 +195,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                                 unreachable!(
                                     "status should have either been set to begun or complete"
                                 ),
-                            InitOnceStatus::Begun => this.eval_windows("c", "TRUE")?,
-                            InitOnceStatus::Complete => this.eval_windows("c", "FALSE")?,
+                            InitOnceStatus::Begun => this.eval_windows("c", "TRUE"),
+                            InitOnceStatus::Complete => this.eval_windows("c", "FALSE"),
                         };
 
                         this.write_scalar(pending, &self.pending_place)?;
@@ -213,12 +213,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
             InitOnceStatus::Complete => {
                 this.init_once_observe_completed(id);
-                this.write_scalar(this.eval_windows("c", "FALSE")?, &pending_place)?;
+                this.write_scalar(this.eval_windows("c", "FALSE"), &pending_place)?;
             }
         }
 
         // This always succeeds (even if the thread is blocked, we will succeed if we ever unblock).
-        this.eval_windows("c", "TRUE")
+        Ok(this.eval_windows("c", "TRUE"))
     }
 
     fn InitOnceComplete(
@@ -235,7 +235,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let success = if flags == 0 {
             true
-        } else if flags == this.eval_windows("c", "INIT_ONCE_INIT_FAILED")?.to_u32()? {
+        } else if flags == this.eval_windows_u32("c", "INIT_ONCE_INIT_FAILED") {
             false
         } else {
             throw_unsup_format!("unsupported `dwFlags` {flags} in `InitOnceBeginInitialize`");
@@ -258,7 +258,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.init_once_fail(id)?;
         }
 
-        this.eval_windows("c", "TRUE")
+        Ok(this.eval_windows("c", "TRUE"))
     }
 
     fn WaitOnAddress(
@@ -280,14 +280,14 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let addr = ptr.addr().bytes();
 
         if size > 8 || !size.is_power_of_two() {
-            let invalid_param = this.eval_windows("c", "ERROR_INVALID_PARAMETER")?;
+            let invalid_param = this.eval_windows("c", "ERROR_INVALID_PARAMETER");
             this.set_last_error(invalid_param)?;
             this.write_scalar(Scalar::from_i32(0), dest)?;
             return Ok(());
         };
         let size = Size::from_bytes(size);
 
-        let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
+        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
@@ -325,7 +325,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     fn call(&self, this: &mut MiriInterpCx<'mir, 'tcx>) -> InterpResult<'tcx> {
                         this.unblock_thread(self.thread);
                         this.futex_remove_waiter(self.addr, self.thread);
-                        let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT")?;
+                        let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT");
                         this.set_last_error(error_timeout)?;
                         this.write_scalar(Scalar::from_i32(0), &self.dest)?;
 
@@ -377,7 +377,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let timeout_ms = this.read_scalar(timeout_op)?.to_u32()?;
         let flags = this.read_scalar(flags_op)?.to_u32()?;
 
-        let timeout_time = if timeout_ms == this.eval_windows("c", "INFINITE")?.to_u32()? {
+        let timeout_time = if timeout_ms == this.eval_windows_u32("c", "INFINITE") {
             None
         } else {
             let duration = Duration::from_millis(timeout_ms.into());
@@ -431,9 +431,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
                     this.condvar_remove_waiter(self.condvar_id, self.thread);
 
-                    let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT")?;
+                    let error_timeout = this.eval_windows("c", "ERROR_TIMEOUT");
                     this.set_last_error(error_timeout)?;
-                    this.write_scalar(this.eval_windows("c", "FALSE")?, &self.dest)?;
+                    this.write_scalar(this.eval_windows("c", "FALSE"), &self.dest)?;
                     Ok(())
                 }
             }
@@ -451,7 +451,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             );
         }
 
-        this.eval_windows("c", "TRUE")
+        Ok(this.eval_windows("c", "TRUE"))
     }
 
     fn WakeConditionVariable(&mut self, condvar_op: &OpTy<'tcx, Provenance>) -> InterpResult<'tcx> {

@@ -558,8 +558,8 @@ impl fmt::Display for ClippyConfiguration {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
-            "* `{}`: `{}`: {} (defaults to `{}`)",
-            self.name, self.config_type, self.doc, self.default
+            "* `{}`: `{}`(defaults to `{}`): {}",
+            self.name, self.config_type, self.default, self.doc
         )
     }
 }

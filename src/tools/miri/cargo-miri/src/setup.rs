@@ -137,9 +137,11 @@ pub fn setup(subcommand: &MiriCommand, target: &str, rustc_version: &VersionMeta
         .rustflags(rustflags)
         .cargo(cargo_cmd)
         .build_from_source(&rust_src)
-        .unwrap_or_else(|_| {
-            if only_setup {
-                show_error!("failed to build sysroot, see error details above")
+        .unwrap_or_else(|err| {
+            if print_sysroot {
+                show_error!("failed to build sysroot")
+            } else if only_setup {
+                show_error!("failed to build sysroot: {err:?}")
             } else {
                 show_error!(
                     "failed to build sysroot; run `cargo miri setup` to see the error details"

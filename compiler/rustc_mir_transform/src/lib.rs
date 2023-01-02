@@ -266,10 +266,7 @@ fn mir_const_qualif(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> 
 /// Make MIR ready for const evaluation. This is run on all MIR, not just on consts!
 /// FIXME(oli-obk): it's unclear whether we still need this phase (and its corresponding query).
 /// We used to have this for pre-miri MIR based const eval.
-fn mir_const<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx Steal<Body<'tcx>> {
+fn mir_const(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -> &Steal<Body<'_>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_const(def);
     }
@@ -308,10 +305,10 @@ fn mir_const<'tcx>(
 }
 
 /// Compute the main MIR body and the list of MIR bodies of the promoteds.
-fn mir_promoted<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn mir_promoted(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> (&'tcx Steal<Body<'tcx>>, &'tcx Steal<IndexVec<Promoted, Body<'tcx>>>) {
+) -> (&Steal<Body<'_>>, &Steal<IndexVec<Promoted, Body<'_>>>) {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_promoted(def);
     }
@@ -350,7 +347,7 @@ fn mir_promoted<'tcx>(
 }
 
 /// Compute the MIR that is used during CTFE (and thus has no optimizations run on it)
-fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
+fn mir_for_ctfe(tcx: TyCtxt<'_>, def_id: DefId) -> &Body<'_> {
     let did = def_id.expect_local();
     if let Some(def) = ty::WithOptConstParam::try_lookup(did, tcx) {
         tcx.mir_for_ctfe_of_const_arg(def)
@@ -364,10 +361,7 @@ fn mir_for_ctfe<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> &'tcx Body<'tcx> {
 /// we'd get cycle errors with `mir_for_ctfe`, because typeck would need to typeck
 /// the const parameter while type checking the main body, which in turn would try
 /// to type check the main body again.
-fn mir_for_ctfe_of_const_arg<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    (did, param_did): (LocalDefId, DefId),
-) -> &'tcx Body<'tcx> {
+fn mir_for_ctfe_of_const_arg(tcx: TyCtxt<'_>, (did, param_did): (LocalDefId, DefId)) -> &Body<'_> {
     tcx.arena.alloc(inner_mir_for_ctfe(
         tcx,
         ty::WithOptConstParam { did, const_param_did: Some(param_did) },
@@ -424,10 +418,10 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
 /// Obtain just the main MIR (no promoteds) and run some cleanups on it. This also runs
 /// mir borrowck *before* doing so in order to ensure that borrowck can be run and doesn't
 /// end up missing the source MIR due to stealing happening.
-fn mir_drops_elaborated_and_const_checked<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn mir_drops_elaborated_and_const_checked(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx Steal<Body<'tcx>> {
+) -> &Steal<Body<'_>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_drops_elaborated_and_const_checked(def);
     }
@@ -597,7 +591,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 }
 
 /// Optimize the MIR and prepare it for codegen.
-fn optimized_mir<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx Body<'tcx> {
+fn optimized_mir(tcx: TyCtxt<'_>, did: DefId) -> &Body<'_> {
     let did = did.expect_local();
     assert_eq!(ty::WithOptConstParam::try_lookup(did, tcx), None);
     tcx.arena.alloc(inner_optimized_mir(tcx, did))
@@ -634,10 +628,10 @@ fn inner_optimized_mir(tcx: TyCtxt<'_>, did: LocalDefId) -> Body<'_> {
 
 /// Fetch all the promoteds of an item and prepare their MIR bodies to be ready for
 /// constant evaluation once all substitutions become known.
-fn promoted_mir<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn promoted_mir(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx IndexVec<Promoted, Body<'tcx>> {
+) -> &IndexVec<Promoted, Body<'_>> {
     if tcx.is_constructor(def.did.to_def_id()) {
         return tcx.arena.alloc(IndexVec::new());
     }

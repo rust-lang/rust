@@ -267,8 +267,8 @@ struct IsThirPolymorphic<'a, 'tcx> {
     thir: &'a thir::Thir<'tcx>,
 }
 
-fn error<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn error(
+    tcx: TyCtxt<'_>,
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
@@ -281,8 +281,8 @@ fn error<'tcx>(
     Err(reported)
 }
 
-fn maybe_supported_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn maybe_supported_error(
+    tcx: TyCtxt<'_>,
     sub: GenericConstantTooComplexSub,
     root_span: Span,
 ) -> Result<!, ErrorGuaranteed> {
@@ -349,10 +349,10 @@ impl<'a, 'tcx> visit::Visitor<'a, 'tcx> for IsThirPolymorphic<'a, 'tcx> {
 }
 
 /// Builds an abstract const, do not use this directly, but use `AbstractConst::new` instead.
-pub fn thir_abstract_const<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn thir_abstract_const(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> Result<Option<ty::Const<'tcx>>, ErrorGuaranteed> {
+) -> Result<Option<ty::Const<'_>>, ErrorGuaranteed> {
     if tcx.features().generic_const_exprs {
         match tcx.def_kind(def.did) {
             // FIXME(generic_const_exprs): We currently only do this for anonymous constants,

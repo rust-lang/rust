@@ -28,10 +28,10 @@ use rustc_target::spec::abi::Abi;
 
 use super::lints;
 
-pub(crate) fn mir_built<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn mir_built(
+    tcx: TyCtxt<'_>,
     def: ty::WithOptConstParam<LocalDefId>,
-) -> &'tcx rustc_data_structures::steal::Steal<Body<'tcx>> {
+) -> &rustc_data_structures::steal::Steal<Body<'_>> {
     if let Some(def) = def.try_upgrade(tcx) {
         return tcx.mir_built(def);
     }
@@ -625,12 +625,12 @@ fn construct_const<'a, 'tcx>(
 ///
 /// This is required because we may still want to run MIR passes on an item
 /// with type errors, but normal MIR construction can't handle that in general.
-fn construct_error<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn construct_error(
+    tcx: TyCtxt<'_>,
     def: LocalDefId,
     body_owner_kind: hir::BodyOwnerKind,
     err: ErrorGuaranteed,
-) -> Body<'tcx> {
+) -> Body<'_> {
     let span = tcx.def_span(def);
     let hir_id = tcx.hir().local_def_id_to_hir_id(def);
     let generator_kind = tcx.generator_kind(def);

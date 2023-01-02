@@ -1767,9 +1767,9 @@ impl SourceScope {
     /// Finds the original HirId this MIR item came from.
     /// This is necessary after MIR optimizations, as otherwise we get a HirId
     /// from the function that was inlined instead of the function call site.
-    pub fn lint_root<'tcx>(
+    pub fn lint_root(
         self,
-        source_scopes: &IndexVec<SourceScope, SourceScopeData<'tcx>>,
+        source_scopes: &IndexVec<SourceScope, SourceScopeData<'_>>,
     ) -> Option<HirId> {
         let mut data = &source_scopes[self];
         // FIXME(oli-obk): we should be able to just walk the `inlined_parent_scope`, but it
@@ -2894,7 +2894,7 @@ fn pretty_print_const_value<'tcx>(
                 if let Some(contents) = tcx.try_destructure_mir_constant(
                     ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
                 ) {
-                    let fields = contents.fields.iter().copied().collect::<Vec<_>>();
+                    let fields = contents.fields.to_vec();
                     match *ty.kind() {
                         ty::Array(..) => {
                             fmt.write_str("[")?;

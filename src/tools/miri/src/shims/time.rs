@@ -36,26 +36,26 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 // Linux further distinguishes regular and "coarse" clocks, but the "coarse" version
                 // is just specified to be "faster and less precise", so we implement both the same way.
                 absolute_clocks = vec![
-                    this.eval_libc_i32("CLOCK_REALTIME")?,
-                    this.eval_libc_i32("CLOCK_REALTIME_COARSE")?,
+                    this.eval_libc_i32("CLOCK_REALTIME"),
+                    this.eval_libc_i32("CLOCK_REALTIME_COARSE"),
                 ];
                 // The second kind is MONOTONIC clocks for which 0 is an arbitrary time point, but they are
                 // never allowed to go backwards. We don't need to do any additonal monotonicity
                 // enforcement because std::time::Instant already guarantees that it is monotonic.
                 relative_clocks = vec![
-                    this.eval_libc_i32("CLOCK_MONOTONIC")?,
-                    this.eval_libc_i32("CLOCK_MONOTONIC_COARSE")?,
+                    this.eval_libc_i32("CLOCK_MONOTONIC"),
+                    this.eval_libc_i32("CLOCK_MONOTONIC_COARSE"),
                 ];
             }
             "macos" => {
-                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")?];
-                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")?];
+                absolute_clocks = vec![this.eval_libc_i32("CLOCK_REALTIME")];
+                relative_clocks = vec![this.eval_libc_i32("CLOCK_MONOTONIC")];
                 // Some clocks only seem to exist in the aarch64 version of the target.
                 if this.tcx.sess.target.arch == "aarch64" {
                     // `CLOCK_UPTIME_RAW` supposed to not increment while the system is asleep... but
                     // that's not really something a program running inside Miri can tell, anyway.
                     // We need to support it because std uses it.
-                    relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW")?);
+                    relative_clocks.push(this.eval_libc_i32("CLOCK_UPTIME_RAW"));
                 }
             }
             target => throw_unsup_format!("`clock_gettime` is not supported on target OS {target}"),
@@ -68,7 +68,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             this.machine.clock.now().duration_since(this.machine.clock.anchor())
         } else {
             // Unsupported clock.
-            let einval = this.eval_libc("EINVAL")?;
+            let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             return Ok(Scalar::from_i32(-1));
         };
@@ -94,7 +94,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         // Using tz is obsolete and should always be null
         let tz = this.read_pointer(tz_op)?;
         if !this.ptr_is_null(tz)? {
-            let einval = this.eval_libc("EINVAL")?;
+            let einval = this.eval_libc("EINVAL");
             this.set_last_error(einval)?;
             return Ok(-1);
         }
@@ -118,9 +118,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         this.assert_target_os("windows", "GetSystemTimeAsFileTime");
         this.check_no_isolation("`GetSystemTimeAsFileTime`")?;
 
-        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC")?;
-        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC")?;
-        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH")?;
+        let NANOS_PER_SEC = this.eval_windows_u64("time", "NANOS_PER_SEC");
+        let INTERVALS_PER_SEC = this.eval_windows_u64("time", "INTERVALS_PER_SEC");
+        let INTERVALS_TO_UNIX_EPOCH = this.eval_windows_u64("time", "INTERVALS_TO_UNIX_EPOCH");
         let NANOS_PER_INTERVAL = NANOS_PER_SEC / INTERVALS_PER_SEC;
         let SECONDS_TO_UNIX_EPOCH = INTERVALS_TO_UNIX_EPOCH / INTERVALS_PER_SEC;
 
@@ -226,7 +226,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let duration = match this.read_timespec(&this.deref_operand(req_op)?)? {
             Some(duration) => duration,
             None => {
-                let einval = this.eval_libc("EINVAL")?;
+                let einval = this.eval_libc("EINVAL");
                 this.set_last_error(einval)?;
                 return Ok(-1);
             }

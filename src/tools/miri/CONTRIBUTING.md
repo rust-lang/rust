@@ -232,15 +232,15 @@ You can also directly run Miri on a Rust source file:
 
 ## Advanced topic: Syncing with the rustc repo
 
-We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit
-changes between the rustc and Miri repositories. For now, the latest git version
-of josh needs to be built from source. This downloads and runs josh:
+We use the [`josh` proxy](https://github.com/josh-project/josh) to transmit changes between the
+rustc and Miri repositories.
 
 ```sh
-git clone https://github.com/josh-project/josh
-cd josh
-cargo run --release -p josh-proxy -- --local=local --remote=https://github.com --no-background
+cargo +stable install josh-proxy --git https://github.com/josh-project/josh --tag r22.12.06
+josh-proxy --local=$HOME/.cache/josh --remote=https://github.com --no-background
 ```
+
+This uses a directory `$HOME/.cache/josh` as a cache, to speed up repeated pulling/pushing.
 
 ### Importing changes from the rustc repo
 

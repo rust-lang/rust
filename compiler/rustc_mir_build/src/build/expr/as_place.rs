@@ -81,8 +81,8 @@ pub(in crate::build) struct PlaceBuilder<'tcx> {
 /// ProjectionElems `Downcast`, `ConstantIndex`, `Index`, or `Subslice` because those will never be
 /// part of a path that is captured by a closure. We stop applying projections once we see the first
 /// projection that isn't captured by a closure.
-fn convert_to_hir_projections_and_truncate_for_capture<'tcx>(
-    mir_projections: &[PlaceElem<'tcx>],
+fn convert_to_hir_projections_and_truncate_for_capture(
+    mir_projections: &[PlaceElem<'_>],
 ) -> Vec<HirProjectionKind> {
     let mut hir_projections = Vec::new();
     let mut variant = None;

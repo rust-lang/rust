@@ -1,3 +1,4 @@
+use crate::dep_graph::DepKind;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{pluralize, struct_span_err, Applicability, MultiSpan};
 use rustc_hir as hir;
@@ -11,16 +12,16 @@ use rustc_span::Span;
 
 use std::fmt::Write;
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Ty<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo]) -> Self {
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Ty<'_> {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `Ty<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe { std::mem::transmute::<Ty<'tcx>, Ty<'_>>(tcx.ty_error()) }
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo]) -> Self {
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::SymbolName<'_> {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, _: &[QueryInfo<DepKind>]) -> Self {
         // SAFETY: This is never called when `Self` is not `SymbolName<'tcx>`.
         // FIXME: Represent the above fact in the trait system somehow.
         unsafe {
@@ -31,12 +32,12 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::SymbolName<'_> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo]) -> Self {
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for ty::Binder<'_, ty::FnSig<'_>> {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, stack: &[QueryInfo<DepKind>]) -> Self {
         let err = tcx.ty_error();
 
         let arity = if let Some(frame) = stack.get(0)
-            && frame.query.name == "fn_sig"
+            && frame.query.dep_kind == DepKind::fn_sig
             && let Some(def_id) = frame.query.def_id
             && let Some(node) = tcx.hir().get_if_local(def_id)
             && let Some(sig) = node.fn_sig()
@@ -61,12 +62,12 @@ impl<'tcx> Value<TyCtxt<'tcx>> for ty::Binder<'_, ty::FnSig<'_>> {
     }
 }
 
-impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
-    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo]) -> Self {
+impl<'tcx> Value<TyCtxt<'tcx>, DepKind> for Representability {
+    fn from_cycle_error(tcx: TyCtxt<'tcx>, cycle: &[QueryInfo<DepKind>]) -> Self {
         let mut item_and_field_ids = Vec::new();
         let mut representable_ids = FxHashSet::default();
         for info in cycle {
-            if info.query.name == "representability"
+            if info.query.dep_kind == DepKind::representability
                 && let Some(field_id) = info.query.def_id
                 && let Some(field_id) = field_id.as_local()
                 && let Some(DefKind::Field) = info.query.def_kind
@@ -80,7 +81,7 @@ impl<'tcx> Value<TyCtxt<'tcx>> for Representability {
             }
         }
         for info in cycle {
-            if info.query.name == "representability_adt_ty"
+            if info.query.dep_kind == DepKind::representability_adt_ty
                 && let Some(def_id) = info.query.ty_adt_id
                 && let Some(def_id) = def_id.as_local()
                 && !item_and_field_ids.iter().any(|&(id, _)| id == def_id)

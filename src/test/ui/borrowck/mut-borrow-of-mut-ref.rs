@@ -2,15 +2,14 @@
 #![crate_type = "rlib"]
 
 pub fn f(b: &mut i32) {
-    //~^ NOTE the binding is already a mutable borrow
+    //~^ ERROR cannot borrow
+    //~| NOTE not mutable
     //~| NOTE the binding is already a mutable borrow
     h(&mut b);
-    //~^ ERROR cannot borrow
-    //~| NOTE cannot borrow as mutable
+    //~^ NOTE cannot borrow as mutable
     //~| HELP try removing `&mut` here
     g(&mut &mut b);
-    //~^ ERROR cannot borrow
-    //~| NOTE cannot borrow as mutable
+    //~^ NOTE cannot borrow as mutable
     //~| HELP try removing `&mut` here
 }
 

@@ -88,7 +88,7 @@ pub fn dump_mir<'tcx, F>(
     dump_matched_mir_node(tcx, pass_num, pass_name, disambiguator, body, extra_data);
 }
 
-pub fn dump_enabled<'tcx>(tcx: TyCtxt<'tcx>, pass_name: &str, def_id: DefId) -> bool {
+pub fn dump_enabled(tcx: TyCtxt<'_>, pass_name: &str, def_id: DefId) -> bool {
     let Some(ref filters) = tcx.sess.opts.unstable_opts.dump_mir else {
         return false;
     };
@@ -421,7 +421,7 @@ impl<'tcx> ExtraComments<'tcx> {
     }
 }
 
-fn use_verbose<'tcx>(ty: Ty<'tcx>, fn_def: bool) -> bool {
+fn use_verbose(ty: Ty<'_>, fn_def: bool) -> bool {
     match *ty.kind() {
         ty::Int(_) | ty::Uint(_) | ty::Bool | ty::Char | ty::Float(_) => false,
         // Unit type

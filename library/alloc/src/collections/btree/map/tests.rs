@@ -1,12 +1,12 @@
-use super::super::testing::crash_test::{CrashTestDummy, Panic};
-use super::super::testing::ord_chaos::{Cyclic3, Governed, Governor};
-use super::super::testing::rng::DeterministicRng;
 use super::Entry::{Occupied, Vacant};
 use super::*;
 use crate::boxed::Box;
 use crate::fmt::Debug;
 use crate::rc::Rc;
 use crate::string::{String, ToString};
+use crate::testing::crash_test::{CrashTestDummy, Panic};
+use crate::testing::ord_chaos::{Cyclic3, Governed, Governor};
+use crate::testing::rng::DeterministicRng;
 use crate::vec::Vec;
 use std::cmp::Ordering;
 use std::convert::TryFrom;

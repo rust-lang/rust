@@ -18,6 +18,7 @@ use std::str;
 
 use serde::Deserialize;
 
+use crate::builder::crate_description;
 use crate::builder::Cargo;
 use crate::builder::{Builder, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
@@ -46,17 +47,6 @@ impl Std {
     }
 }
 
-/// Return a `-p=x -p=y` string suitable for passing to a cargo invocation.
-fn build_crates_in_set(run: &RunConfig<'_>) -> Interned<Vec<String>> {
-    let mut crates = Vec::new();
-    for krate in &run.paths {
-        let path = krate.assert_single_path();
-        let crate_name = run.builder.crate_paths[&path.path];
-        crates.push(format!("-p={crate_name}"));
-    }
-    INTERNER.intern_list(crates)
-}
-
 impl Step for Std {
     type Output = ();
     const DEFAULT: bool = true;
@@ -76,7 +66,7 @@ impl Step for Std {
         // Build all crates anyway, as if they hadn't passed the other args.
         let has_library =
             run.paths.iter().any(|set| set.assert_single_path().path.ends_with("library"));
-        let crates = if has_library { Default::default() } else { build_crates_in_set(&run) };
+        let crates = if has_library { Default::default() } else { run.cargo_crates_in_set() };
         run.builder.ensure(Std {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -121,7 +111,10 @@ impl Step for Std {
         let compiler_to_use = builder.compiler_for(compiler.stage, compiler.host, target);
         if compiler_to_use != compiler {
             builder.ensure(Std::new(compiler_to_use, target));
-            builder.info(&format!("Uplifting stage1 std ({} -> {})", compiler_to_use.host, target));
+            builder.info(&format!(
+                "Uplifting stage1 library ({} -> {})",
+                compiler_to_use.host, target
+            ));
 
             // Even if we're not building std this stage, the new sysroot must
             // still contain the third party objects needed by various targets.
@@ -137,19 +130,18 @@ impl Step for Std {
 
         let mut cargo = builder.cargo(compiler, Mode::Std, SourceType::InTree, target, "build");
         std_cargo(builder, target, compiler.stage, &mut cargo);
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
 
         builder.info(&format!(
-            "Building stage{} std artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building{} stage{} library artifacts ({} -> {})",
+            crate_description(&self.crates),
+            compiler.stage,
+            &compiler.host,
+            target,
         ));
-        run_cargo(
-            builder,
-            cargo,
-            self.crates.to_vec(),
-            &libstd_stamp(builder, compiler, target),
-            target_deps,
-            false,
-        );
+        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), target_deps, false);
 
         builder.ensure(StdLink::from_std(
             self,
@@ -436,7 +428,7 @@ impl Step for StdLink {
         let target_compiler = self.target_compiler;
         let target = self.target;
         builder.info(&format!(
-            "Copying stage{} std from stage{} ({} -> {} / {})",
+            "Copying stage{} library from stage{} ({} -> {} / {})",
             target_compiler.stage, compiler.stage, &compiler.host, target_compiler.host, target
         ));
         let libdir = builder.sysroot_libdir(target_compiler, target);
@@ -603,7 +595,7 @@ impl Step for Rustc {
     }
 
     fn make_run(run: RunConfig<'_>) {
-        let crates = build_crates_in_set(&run);
+        let crates = run.cargo_crates_in_set();
         run.builder.ensure(Rustc {
             compiler: run.builder.compiler(run.builder.top_stage, run.build_triple()),
             target: run.target,
@@ -702,7 +694,8 @@ impl Step for Rustc {
             ));
         }
 
-        // cfg(bootstrap): remove if condition once the bootstrap compiler supports dylib LTO
+        // We currently don't support cross-crate LTO in stage0. This also isn't hugely necessary
+        // and may just be a time sink.
         if compiler.stage != 0 {
             match builder.config.rust_lto {
                 RustcLto::Thin | RustcLto::Fat => {
@@ -724,18 +717,18 @@ impl Step for Rustc {
             }
         }
 
+        for krate in &*self.crates {
+            cargo.arg("-p").arg(krate);
+        }
+
         builder.info(&format!(
-            "Building stage{} compiler artifacts ({} -> {})",
-            compiler.stage, &compiler.host, target
+            "Building{} stage{} compiler artifacts ({} -> {})",
+            crate_description(&self.crates),
+            compiler.stage,
+            &compiler.host,
+            target,
         ));
-        run_cargo(
-            builder,
-            cargo,
-            self.crates.to_vec(),
-            &librustc_stamp(builder, compiler, target),
-            vec![],
-            false,
-        );
+        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], false);
 
         builder.ensure(RustcLink::from_rustc(
             self,
@@ -991,7 +984,7 @@ impl Step for CodegenBackend {
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
         ));
-        let files = run_cargo(builder, cargo, vec![], &tmp_stamp, vec![], false);
+        let files = run_cargo(builder, cargo, &tmp_stamp, vec![], false);
         if builder.config.dry_run() {
             return;
         }
@@ -1415,7 +1408,6 @@ pub fn add_to_sysroot(
 pub fn run_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
-    tail_args: Vec<String>,
     stamp: &Path,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
@@ -1441,7 +1433,7 @@ pub fn run_cargo(
     // files we need to probe for later.
     let mut deps = Vec::new();
     let mut toplevel = Vec::new();
-    let ok = stream_cargo(builder, cargo, tail_args, &mut |msg| {
+    let ok = stream_cargo(builder, cargo, &mut |msg| {
         let (filenames, crate_types) = match msg {
             CargoMessage::CompilerArtifact {
                 filenames,
@@ -1556,7 +1548,6 @@ pub fn run_cargo(
 pub fn stream_cargo(
     builder: &Builder<'_>,
     cargo: Cargo,
-    tail_args: Vec<String>,
     cb: &mut dyn FnMut(CargoMessage<'_>),
 ) -> bool {
     let mut cargo = Command::from(cargo);
@@ -1575,10 +1566,6 @@ pub fn stream_cargo(
         message_format.push_str(s);
     }
     cargo.arg("--message-format").arg(message_format).stdout(Stdio::piped());
-
-    for arg in tail_args {
-        cargo.arg(arg);
-    }
 
     builder.verbose(&format!("running: {:?}", cargo));
     let mut child = match cargo.spawn() {

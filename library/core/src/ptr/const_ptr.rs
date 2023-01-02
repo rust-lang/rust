@@ -1,6 +1,6 @@
 use super::*;
 use crate::cmp::Ordering::{self, Equal, Greater, Less};
-use crate::intrinsics;
+use crate::intrinsics::{self, const_eval_select};
 use crate::mem;
 use crate::slice::{self, SliceIndex};
 
@@ -34,12 +34,23 @@ impl<T: ?Sized> *const T {
     #[rustc_const_unstable(feature = "const_ptr_is_null", issue = "74939")]
     #[inline]
     pub const fn is_null(self) -> bool {
-        // Compare via a cast to a thin pointer, so fat pointers are only
-        // considering their "data" part for null-ness.
-        match (self as *const u8).guaranteed_eq(null()) {
-            None => false,
-            Some(res) => res,
+        #[inline]
+        fn runtime_impl(ptr: *const u8) -> bool {
+            ptr.addr() == 0
         }
+
+        #[inline]
+        const fn const_impl(ptr: *const u8) -> bool {
+            // Compare via a cast to a thin pointer, so fat pointers are only
+            // considering their "data" part for null-ness.
+            match (ptr).guaranteed_eq(null_mut()) {
+                None => false,
+                Some(res) => res,
+            }
+        }
+
+        // SAFETY: The two versions are equivalent at runtime.
+        unsafe { const_eval_select((self as *const u8,), const_impl, runtime_impl) }
     }
 
     /// Casts to a pointer of another type.
@@ -1350,26 +1361,6 @@ impl<T: ?Sized> *const T {
             panic!("align_offset: align is not a power-of-two");
         }
 
-        #[cfg(bootstrap)]
-        {
-            fn rt_impl<T>(p: *const T, align: usize) -> usize {
-                // SAFETY: `align` has been checked to be a power of 2 above
-                unsafe { align_offset(p, align) }
-            }
-
-            const fn ctfe_impl<T>(_: *const T, _: usize) -> usize {
-                usize::MAX
-            }
-
-            // SAFETY:
-            // It is permissible for `align_offset` to always return `usize::MAX`,
-            // algorithm correctness can not depend on `align_offset` returning non-max values.
-            //
-            // As such the behaviour can't change after replacing `align_offset` with `usize::MAX`, only performance can.
-            unsafe { intrinsics::const_eval_select((self, align), ctfe_impl, rt_impl) }
-        }
-
-        #[cfg(not(bootstrap))]
         {
             // SAFETY: `align` has been checked to be a power of 2 above
             unsafe { align_offset(self, align) }
@@ -1406,8 +1397,7 @@ impl<T: ?Sized> *const T {
     /// is never aligned if cast to a type with a stricter alignment than the reference's
     /// underlying allocation.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1433,8 +1423,7 @@ impl<T: ?Sized> *const T {
     /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1460,8 +1449,7 @@ impl<T: ?Sized> *const T {
     /// If a pointer is created from a fixed address, this function behaves the same during
     /// runtime and compiletime.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1537,8 +1525,7 @@ impl<T: ?Sized> *const T {
     /// return `true` if the pointer is guaranteed to be aligned. This means that the pointer
     /// cannot be stricter aligned than the reference's underlying allocation.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1563,8 +1550,7 @@ impl<T: ?Sized> *const T {
     /// Due to this behavior, it is possible that a runtime pointer derived from a compiletime
     /// pointer is aligned, even if the compiletime pointer wasn't aligned.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1588,8 +1574,7 @@ impl<T: ?Sized> *const T {
     /// If a pointer is created from a fixed address, this function behaves the same during
     /// runtime and compiletime.
     ///
-    #[cfg_attr(bootstrap, doc = "```ignore")]
-    #[cfg_attr(not(bootstrap), doc = "```")]
+    /// ```
     /// #![feature(pointer_is_aligned)]
     /// #![feature(const_pointer_is_aligned)]
     ///
@@ -1613,11 +1598,22 @@ impl<T: ?Sized> *const T {
             panic!("is_aligned_to: align is not a power-of-two");
         }
 
-        // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
-        // The cast to `()` is used to
-        //   1. deal with fat pointers; and
-        //   2. ensure that `align_offset` doesn't actually try to compute an offset.
-        self.cast::<()>().align_offset(align) == 0
+        #[inline]
+        fn runtime_impl(ptr: *const (), align: usize) -> bool {
+            ptr.addr() & (align - 1) == 0
+        }
+
+        #[inline]
+        const fn const_impl(ptr: *const (), align: usize) -> bool {
+            // We can't use the address of `self` in a `const fn`, so we use `align_offset` instead.
+            // The cast to `()` is used to
+            //   1. deal with fat pointers; and
+            //   2. ensure that `align_offset` doesn't actually try to compute an offset.
+            ptr.align_offset(align) == 0
+        }
+
+        // SAFETY: The two versions are equivalent at runtime.
+        unsafe { const_eval_select((self.cast::<()>(), align), const_impl, runtime_impl) }
     }
 }
 

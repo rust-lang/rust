@@ -969,14 +969,14 @@ fn binding_ty_auto_deref_stability<'tcx>(
     precedence: i8,
     binder_args: &'tcx List<BoundVariableKind>,
 ) -> Position {
-    let TyKind::Rptr(_, ty) = &ty.kind else {
+    let TyKind::Ref(_, ty) = &ty.kind else {
         return Position::Other(precedence);
     };
     let mut ty = ty;
 
     loop {
         break match ty.ty.kind {
-            TyKind::Rptr(_, ref ref_ty) => {
+            TyKind::Ref(_, ref ref_ty) => {
                 ty = ref_ty;
                 continue;
             },
@@ -1282,10 +1282,10 @@ fn referent_used_exactly_once<'tcx>(
             possible_borrowers.push((body_owner_local_def_id, PossibleBorrowerMap::new(cx, mir)));
         }
         let possible_borrower = &mut possible_borrowers.last_mut().unwrap().1;
-        // If `only_borrowers` were used here, the `copyable_iterator::warn` test would fail. The reason is
-        // that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible borrower of
-        // itself. See the comment in that method for an explanation as to why.
-        possible_borrower.bounded_borrowers(&[local], &[local, place.local], place.local, location)
+        // If `place.local` were not included here, the `copyable_iterator::warn` test would fail. The
+        // reason is that `PossibleBorrowerVisitor::visit_terminator` considers `place.local` a possible
+        // borrower of itself. See the comment in that method for an explanation as to why.
+        possible_borrower.at_most_borrowers(cx, &[local, place.local], place.local, location)
             && used_exactly_once(mir, place.local).unwrap_or(false)
     } else {
         false

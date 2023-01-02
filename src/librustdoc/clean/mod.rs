@@ -1612,7 +1612,7 @@ pub(crate) fn clean_ty<'tcx>(ty: &hir::Ty<'tcx>, cx: &mut DocContext<'tcx>) -> T
     match ty.kind {
         TyKind::Never => Primitive(PrimitiveType::Never),
         TyKind::Ptr(ref m) => RawPointer(m.mutbl, Box::new(clean_ty(m.ty, cx))),
-        TyKind::Rptr(ref l, ref m) => {
+        TyKind::Ref(ref l, ref m) => {
             let lifetime = if l.is_anonymous() { None } else { Some(clean_lifetime(*l, cx)) };
             BorrowedRef { lifetime, mutability: m.mutbl, type_: Box::new(clean_ty(m.ty, cx)) }
         }

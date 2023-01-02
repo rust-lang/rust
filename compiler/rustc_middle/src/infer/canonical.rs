@@ -300,6 +300,16 @@ impl<'tcx, V> Canonical<'tcx, V> {
         let Canonical { max_universe, variables, value } = self;
         Canonical { max_universe, variables, value: map_op(value) }
     }
+
+    /// Allows you to map the `value` of a canonical while keeping the same set of
+    /// bound variables.
+    ///
+    /// **WARNING:** This function is very easy to mis-use, hence the name! See
+    /// the comment of [Canonical::unchecked_map] for more details.
+    pub fn unchecked_rebind<W>(self, value: W) -> Canonical<'tcx, W> {
+        let Canonical { max_universe, variables, value: _ } = self;
+        Canonical { max_universe, variables, value }
+    }
 }
 
 pub type QueryOutlivesConstraint<'tcx> = (

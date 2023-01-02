@@ -432,10 +432,7 @@ fn walk_between<'q>(
     }
 }
 
-fn filter_edges<'q>(
-    query: &'q DepGraphQuery,
-    nodes: &FxHashSet<DepKind>,
-) -> Vec<(DepKind, DepKind)> {
+fn filter_edges(query: &DepGraphQuery, nodes: &FxHashSet<DepKind>) -> Vec<(DepKind, DepKind)> {
     let uniq: FxHashSet<_> = query
         .edges()
         .into_iter()

@@ -6,7 +6,7 @@ use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, PatKind, StmtKind};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, LangItem, MatchSource, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
@@ -207,6 +207,12 @@ fn check_final_expr<'tcx>(
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
+            // if desugar of `do yeet`, don't lint
+            if let Some(inner_expr) = inner
+                && let ExprKind::Call(path_expr, _) = inner_expr.kind
+                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind {
+                    return;
+            }
             if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {

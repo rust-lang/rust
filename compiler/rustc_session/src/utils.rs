@@ -3,7 +3,7 @@ use rustc_data_structures::profiling::VerboseTimingGuard;
 use std::path::{Path, PathBuf};
 
 impl Session {
-    pub fn timer<'a>(&'a self, what: &'static str) -> VerboseTimingGuard<'a> {
+    pub fn timer(&self, what: &'static str) -> VerboseTimingGuard<'_> {
         self.prof.verbose_generic_activity(what)
     }
     pub fn time<R>(&self, what: &'static str, f: impl FnOnce() -> R) -> R {

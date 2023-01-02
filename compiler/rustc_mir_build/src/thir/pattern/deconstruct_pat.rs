@@ -404,7 +404,7 @@ impl SplitIntRange {
     }
 
     /// Iterate over the contained ranges.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = IntRange> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = IntRange> + Captures<'_> {
         use IntBorder::*;
 
         let self_range = Self::to_borders(self.range.clone());
@@ -612,7 +612,7 @@ impl SplitVarLenSlice {
     }
 
     /// Iterate over the partition of this slice.
-    fn iter<'a>(&'a self) -> impl Iterator<Item = Slice> + Captures<'a> {
+    fn iter(&self) -> impl Iterator<Item = Slice> + Captures<'_> {
         let smaller_lengths = match self.array_len {
             // The only admissible fixed-length slice is one of the array size. Whether `max_slice`
             // is fixed-length or variable-length, it will be the only relevant slice to output

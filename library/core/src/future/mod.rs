@@ -44,7 +44,7 @@ pub use poll_fn::{poll_fn, PollFn};
 ///    non-Send/Sync as well, and we don't want that.
 ///
 /// It also simplifies the HIR lowering of `.await`.
-#[cfg_attr(not(bootstrap), lang = "ResumeTy")]
+#[lang = "ResumeTy"]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[derive(Debug, Copy, Clone)]
@@ -61,7 +61,6 @@ unsafe impl Sync for ResumeTy {}
 /// This function returns a `GenFuture` underneath, but hides it in `impl Trait` to give
 /// better error messages (`impl Future` rather than `GenFuture<[closure.....]>`).
 // This is `const` to avoid extra errors after we recover from `const async fn`
-#[cfg_attr(bootstrap, lang = "from_generator")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[rustc_const_unstable(feature = "gen_future", issue = "50547")]
@@ -113,10 +112,10 @@ pub unsafe fn get_context<'a, 'b>(cx: ResumeTy) -> &'a mut Context<'b> {
     unsafe { &mut *cx.0.as_ptr().cast() }
 }
 
-#[cfg_attr(not(bootstrap), lang = "identity_future")]
 #[doc(hidden)]
 #[unstable(feature = "gen_future", issue = "50547")]
 #[inline]
+#[lang = "identity_future"]
 pub const fn identity_future<O, Fut: Future<Output = O>>(f: Fut) -> Fut {
     f
 }

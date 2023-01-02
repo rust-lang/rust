@@ -50,7 +50,7 @@ fn lint_misrefactored_assign_op(
                 let long = format!("{snip_a} = {}", sugg::make_binop(op.into(), a, r));
                 diag.span_suggestion(
                     expr.span,
-                    &format!(
+                    format!(
                         "did you mean `{snip_a} = {snip_a} {} {snip_r}` or `{long}`? Consider replacing it with",
                         op.as_str()
                     ),

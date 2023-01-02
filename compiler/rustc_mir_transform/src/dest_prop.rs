@@ -658,7 +658,7 @@ impl WriteInfo {
         }
     }
 
-    fn add_place<'tcx>(&mut self, place: Place<'tcx>) {
+    fn add_place(&mut self, place: Place<'_>) {
         self.writes.push(place.local);
     }
 

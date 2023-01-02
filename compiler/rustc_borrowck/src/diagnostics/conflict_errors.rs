@@ -194,7 +194,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
 
                 if !seen_spans.contains(&move_span) {
                     if !closure {
-                        self.suggest_ref_or_clone(mpi, move_span, &mut err, &mut in_pattern);
+                        self.suggest_ref_or_clone(
+                            mpi,
+                            move_span,
+                            &mut err,
+                            &mut in_pattern,
+                            move_spans,
+                        );
                     }
 
                     self.explain_captures(
@@ -312,6 +318,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         move_span: Span,
         err: &mut DiagnosticBuilder<'_, ErrorGuaranteed>,
         in_pattern: &mut bool,
+        move_spans: UseSpans<'_>,
     ) {
         struct ExpressionFinder<'hir> {
             expr_span: Span,
@@ -440,6 +447,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         ) = call_expr.kind
                     {
                         // Do not suggest `.clone()` in a `for` loop, we already suggest borrowing.
+                    } else if let UseSpans::FnSelfUse {
+                        kind: CallKind::Normal { .. },
+                        ..
+                    } = move_spans {
+                        // We already suggest cloning for these cases in `explain_captures`.
                     } else {
                         self.suggest_cloning(err, ty, move_span);
                     }
@@ -2669,7 +2681,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                             // Need to use the `rustc_middle::ty` types to compare against the
                             // `return_region`. Then use the `rustc_hir` type to get only
                             // the lifetime span.
-                            if let hir::TyKind::Rptr(lifetime, _) = &fn_decl.inputs[index].kind {
+                            if let hir::TyKind::Ref(lifetime, _) = &fn_decl.inputs[index].kind {
                                 // With access to the lifetime, we can get
                                 // the span of it.
                                 arguments.push((*argument, lifetime.ident.span));
@@ -2690,7 +2702,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let return_ty = sig.output().skip_binder();
                 let mut return_span = fn_decl.output.span();
                 if let hir::FnRetTy::Return(ty) = &fn_decl.output {
-                    if let hir::TyKind::Rptr(lifetime, _) = ty.kind {
+                    if let hir::TyKind::Ref(lifetime, _) = ty.kind {
                         return_span = lifetime.ident.span;
                     }
                 }

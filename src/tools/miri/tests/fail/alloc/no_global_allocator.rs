@@ -1,3 +1,4 @@
+//@normalize-stderr-test: "OS `.*`" -> "$$OS"
 // Make sure we pretend the allocation symbols don't exist when there is no allocator
 
 #![feature(lang_items, start)]
@@ -10,7 +11,7 @@ extern "Rust" {
 #[start]
 fn start(_: isize, _: *const *const u8) -> isize {
     unsafe {
-        __rust_alloc(1, 1); //~ERROR: unsupported operation: can't call foreign function: __rust_alloc
+        __rust_alloc(1, 1); //~ERROR: unsupported operation: can't call foreign function `__rust_alloc`
     }
 
     0

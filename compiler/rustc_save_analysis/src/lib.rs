@@ -957,10 +957,10 @@ impl SaveHandler for CallbackHandler<'_> {
     }
 }
 
-pub fn process_crate<'l, 'tcx, H: SaveHandler>(
-    tcx: TyCtxt<'tcx>,
+pub fn process_crate<H: SaveHandler>(
+    tcx: TyCtxt<'_>,
     cratename: Symbol,
-    input: &'l Input,
+    input: &Input,
     config: Option<Config>,
     mut handler: H,
 ) {

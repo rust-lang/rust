@@ -18,10 +18,10 @@ use rustc_middle::thir::*;
 use rustc_middle::ty::{self, RvalueScopes, TyCtxt};
 use rustc_span::Span;
 
-pub(crate) fn thir_body<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub(crate) fn thir_body(
+    tcx: TyCtxt<'_>,
     owner_def: ty::WithOptConstParam<LocalDefId>,
-) -> Result<(&'tcx Steal<Thir<'tcx>>, ExprId), ErrorGuaranteed> {
+) -> Result<(&Steal<Thir<'_>>, ExprId), ErrorGuaranteed> {
     let hir = tcx.hir();
     let body = hir.body(hir.body_owned_by(owner_def.did));
     let mut cx = Cx::new(tcx, owner_def);
@@ -52,10 +52,7 @@ pub(crate) fn thir_body<'tcx>(
     Ok((tcx.alloc_steal_thir(cx.thir), expr))
 }
 
-pub(crate) fn thir_tree<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    owner_def: ty::WithOptConstParam<LocalDefId>,
-) -> String {
+pub(crate) fn thir_tree(tcx: TyCtxt<'_>, owner_def: ty::WithOptConstParam<LocalDefId>) -> String {
     match thir_body(tcx, owner_def) {
         Ok((thir, _)) => format!("{:#?}", thir.steal()),
         Err(_) => "error".into(),

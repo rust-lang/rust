@@ -462,7 +462,9 @@ impl<'history, 'ecx, 'mir, 'tcx> DiagnosticCx<'history, 'ecx, 'mir, 'tcx> {
             Operation::Retag(RetagOp { orig_tag, permission, new_tag, .. }) => {
                 let permission = permission
                     .expect("start_grant should set the current permission before popping a tag");
-                format!(" due to {permission:?} retag from {orig_tag:?} (that retag created {new_tag:?})")
+                format!(
+                    " due to {permission:?} retag from {orig_tag:?} (that retag created {new_tag:?})"
+                )
             }
         };
 

@@ -1,6 +1,11 @@
 use rustc_index::vec::Idx;
+use rustc_span::{Span, SpanData, DUMMY_SP};
 use smallvec::SmallVec;
-use std::{cmp::Ordering, fmt::Debug, ops::Index};
+use std::{
+    cmp::Ordering,
+    fmt::Debug,
+    ops::{Index, IndexMut},
+};
 
 /// A vector clock index, this is associated with a thread id
 /// but in some cases one vector index may be shared with
@@ -40,9 +45,42 @@ impl From<u32> for VectorIdx {
 /// clock vectors larger than this will be stored on the heap
 const SMALL_VECTOR: usize = 4;
 
-/// The type of the time-stamps recorded in the data-race detector
-/// set to a type of unsigned integer
-pub type VTimestamp = u32;
+/// The time-stamps recorded in the data-race detector consist of both
+/// a 32-bit unsigned integer which is the actual timestamp, and a `Span`
+/// so that diagnostics can report what code was responsible for an operation.
+#[derive(Clone, Copy, Debug)]
+pub struct VTimestamp {
+    time: u32,
+    pub span: Span,
+}
+
+impl VTimestamp {
+    pub const ZERO: VTimestamp = VTimestamp { time: 0, span: DUMMY_SP };
+
+    pub fn span_data(&self) -> SpanData {
+        self.span.data()
+    }
+}
+
+impl PartialEq for VTimestamp {
+    fn eq(&self, other: &Self) -> bool {
+        self.time == other.time
+    }
+}
+
+impl Eq for VTimestamp {}
+
+impl PartialOrd for VTimestamp {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for VTimestamp {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.time.cmp(&other.time)
+    }
+}
 
 /// A vector clock for detecting data-races, this is conceptually
 /// a map from a vector index (and thus a thread id) to a timestamp.
@@ -62,7 +100,7 @@ impl VClock {
     /// for a value at the given index
     pub fn new_with_index(index: VectorIdx, timestamp: VTimestamp) -> VClock {
         let len = index.index() + 1;
-        let mut vec = smallvec::smallvec![0; len];
+        let mut vec = smallvec::smallvec![VTimestamp::ZERO; len];
         vec[index.index()] = timestamp;
         VClock(vec)
     }
@@ -79,7 +117,7 @@ impl VClock {
     #[inline]
     fn get_mut_with_min_len(&mut self, min_len: usize) -> &mut [VTimestamp] {
         if self.0.len() < min_len {
-            self.0.resize(min_len, 0);
+            self.0.resize(min_len, VTimestamp::ZERO);
         }
         assert!(self.0.len() >= min_len);
         self.0.as_mut_slice()
@@ -88,11 +126,14 @@ impl VClock {
     /// Increment the vector clock at a known index
     /// this will panic if the vector index overflows
     #[inline]
-    pub fn increment_index(&mut self, idx: VectorIdx) {
+    pub fn increment_index(&mut self, idx: VectorIdx, current_span: Span) {
         let idx = idx.index();
         let mut_slice = self.get_mut_with_min_len(idx + 1);
         let idx_ref = &mut mut_slice[idx];
-        *idx_ref = idx_ref.checked_add(1).expect("Vector clock overflow")
+        idx_ref.time = idx_ref.time.checked_add(1).expect("Vector clock overflow");
+        if !current_span.is_dummy() {
+            idx_ref.span = current_span;
+        }
     }
 
     // Join the two vector-clocks together, this
@@ -102,14 +143,23 @@ impl VClock {
         let rhs_slice = other.as_slice();
         let lhs_slice = self.get_mut_with_min_len(rhs_slice.len());
         for (l, &r) in lhs_slice.iter_mut().zip(rhs_slice.iter()) {
+            let l_span = l.span;
+            let r_span = r.span;
             *l = r.max(*l);
+            l.span = l.span.substitute_dummy(r_span).substitute_dummy(l_span);
         }
     }
 
     /// Set the element at the current index of the vector
     pub fn set_at_index(&mut self, other: &Self, idx: VectorIdx) {
         let mut_slice = self.get_mut_with_min_len(idx.index() + 1);
+
+        let prev_span = mut_slice[idx.index()].span;
+
         mut_slice[idx.index()] = other[idx];
+
+        let span = &mut mut_slice[idx.index()].span;
+        *span = span.substitute_dummy(prev_span);
     }
 
     /// Set the vector to the all-zero vector
@@ -313,7 +363,14 @@ impl Index<VectorIdx> for VClock {
 
     #[inline]
     fn index(&self, index: VectorIdx) -> &VTimestamp {
-        self.as_slice().get(index.to_u32() as usize).unwrap_or(&0)
+        self.as_slice().get(index.to_u32() as usize).unwrap_or(&VTimestamp::ZERO)
+    }
+}
+
+impl IndexMut<VectorIdx> for VClock {
+    #[inline]
+    fn index_mut(&mut self, index: VectorIdx) -> &mut VTimestamp {
+        self.0.as_mut_slice().get_mut(index.to_u32() as usize).unwrap()
     }
 }
 
@@ -324,6 +381,7 @@ impl Index<VectorIdx> for VClock {
 mod tests {
 
     use super::{VClock, VTimestamp, VectorIdx};
+    use rustc_span::DUMMY_SP;
     use std::cmp::Ordering;
 
     #[test]
@@ -331,13 +389,13 @@ mod tests {
         let mut c1 = VClock::default();
         let mut c2 = VClock::default();
         assert_eq!(c1, c2);
-        c1.increment_index(VectorIdx(5));
+        c1.increment_index(VectorIdx(5), DUMMY_SP);
         assert_ne!(c1, c2);
-        c2.increment_index(VectorIdx(53));
+        c2.increment_index(VectorIdx(53), DUMMY_SP);
         assert_ne!(c1, c2);
-        c1.increment_index(VectorIdx(53));
+        c1.increment_index(VectorIdx(53), DUMMY_SP);
         assert_ne!(c1, c2);
-        c2.increment_index(VectorIdx(5));
+        c2.increment_index(VectorIdx(5), DUMMY_SP);
         assert_eq!(c1, c2);
     }
 
@@ -386,14 +444,14 @@ mod tests {
         );
     }
 
-    fn from_slice(mut slice: &[VTimestamp]) -> VClock {
+    fn from_slice(mut slice: &[u32]) -> VClock {
         while let Some(0) = slice.last() {
             slice = &slice[..slice.len() - 1]
         }
-        VClock(smallvec::SmallVec::from_slice(slice))
+        VClock(slice.iter().copied().map(|time| VTimestamp { time, span: DUMMY_SP }).collect())
     }
 
-    fn assert_order(l: &[VTimestamp], r: &[VTimestamp], o: Option<Ordering>) {
+    fn assert_order(l: &[u32], r: &[u32], o: Option<Ordering>) {
         let l = from_slice(l);
         let r = from_slice(r);
 

@@ -419,7 +419,7 @@ pub fn from_target_feature(
 
 /// Computes the set of target features used in a function for the purposes of
 /// inline assembly.
-fn asm_target_features<'tcx>(tcx: TyCtxt<'tcx>, did: DefId) -> &'tcx FxHashSet<Symbol> {
+fn asm_target_features(tcx: TyCtxt<'_>, did: DefId) -> &FxHashSet<Symbol> {
     let mut target_features = tcx.sess.unstable_target_features.clone();
     if tcx.def_kind(did).has_codegen_attrs() {
         let attrs = tcx.codegen_fn_attrs(did);

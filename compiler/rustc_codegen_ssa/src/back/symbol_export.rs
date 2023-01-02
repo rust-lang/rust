@@ -163,10 +163,10 @@ fn is_reachable_non_generic_provider_extern(tcx: TyCtxt<'_>, def_id: DefId) -> b
     tcx.reachable_non_generics(def_id.krate).contains_key(&def_id)
 }
 
-fn exported_symbols_provider_local<'tcx>(
-    tcx: TyCtxt<'tcx>,
+fn exported_symbols_provider_local(
+    tcx: TyCtxt<'_>,
     cnum: CrateNum,
-) -> &'tcx [(ExportedSymbol<'tcx>, SymbolExportInfo)] {
+) -> &[(ExportedSymbol<'_>, SymbolExportInfo)] {
     assert_eq!(cnum, LOCAL_CRATE);
 
     if !tcx.sess.opts.output_types.should_codegen() {

@@ -205,10 +205,7 @@ impl SelfProfilerRef {
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
     /// stderr if the compiler is invoked with -Ztime-passes.
-    pub fn verbose_generic_activity<'a>(
-        &'a self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'a> {
+    pub fn verbose_generic_activity(&self, event_label: &'static str) -> VerboseTimingGuard<'_> {
         let message =
             if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
 
@@ -216,11 +213,11 @@ impl SelfProfilerRef {
     }
 
     /// Like `verbose_generic_activity`, but with an extra arg.
-    pub fn verbose_generic_activity_with_arg<'a, A>(
-        &'a self,
+    pub fn verbose_generic_activity_with_arg<A>(
+        &self,
         event_label: &'static str,
         event_arg: A,
-    ) -> VerboseTimingGuard<'a>
+    ) -> VerboseTimingGuard<'_>
     where
         A: Borrow<str> + Into<String>,
     {

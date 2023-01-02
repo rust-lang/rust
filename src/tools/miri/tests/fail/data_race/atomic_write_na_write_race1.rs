@@ -20,7 +20,7 @@ pub fn main() {
         });
 
         let j2 = spawn(move || {
-            (&*c.0).store(64, Ordering::SeqCst); //~ ERROR: Data race detected between Atomic Store on thread `<unnamed>` and Write on thread `<unnamed>`
+            (&*c.0).store(64, Ordering::SeqCst); //~ ERROR: Data race detected between (1) Write on thread `<unnamed>` and (2) Atomic Store on thread `<unnamed>`
         });
 
         j1.join().unwrap();

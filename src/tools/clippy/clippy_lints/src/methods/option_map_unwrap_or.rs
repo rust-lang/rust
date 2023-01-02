@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
                 suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 
-            diag.multipart_suggestion(&format!("use `{suggest}` instead"), suggestion, applicability);
+            diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
         });
     }
 }

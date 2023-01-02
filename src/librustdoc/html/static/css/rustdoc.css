@@ -347,18 +347,21 @@ pre {
 .source .content pre {
 	padding: 20px;
 }
+.rustdoc.source .example-wrap > pre.src-line-numbers  {
+	padding: 20px 0 20px 4px;
+}
 
 img {
 	max-width: 100%;
 }
 
-.source .content {
-	overflow: visible;
-}
-
 .sub-logo-container, .logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
+}
+
+.sub-logo-container {
+	margin-right: 32px;
 }
 
 .sub-logo-container > img {
@@ -369,10 +372,6 @@ img {
 
 .rust-logo {
 	filter: var(--rust-logo-filter);
-}
-
-.sidebar, .mobile-topbar, .sidebar-menu-toggle {
-	background-color: var(--sidebar-background-color);
 }
 
 .sidebar {
@@ -393,7 +392,8 @@ img {
 	overflow-y: hidden;
 }
 
-.source .sidebar, #src-sidebar-toggle, #source-sidebar {
+.sidebar, .mobile-topbar, .sidebar-menu-toggle,
+#src-sidebar-toggle, #source-sidebar {
 	background-color: var(--sidebar-background-color);
 }
 
@@ -519,10 +519,6 @@ ul.block, .block li {
 	display: none;
 }
 
-.source .content pre.rust {
-	padding-left: 0;
-}
-
 .rustdoc .example-wrap {
 	display: flex;
 	position: relative;
@@ -550,23 +546,21 @@ ul.block, .block li {
 	-moz-user-select: none;
 	-ms-user-select: none;
 	user-select: none;
+	padding: 14px 8px;
+	color: var(--src-line-numbers-span-color);
 }
 
-.example-line-numbers {
-	border: 1px solid;
-	padding: 13px 8px;
-	border-top-left-radius: 5px;
-	border-bottom-left-radius: 5px;
-	border-color: var(--example-line-numbers-border-color);
+.rustdoc .example-wrap > pre.src-line-numbers {
+	padding: 14px 0;
 }
-
 .src-line-numbers a, .src-line-numbers span {
 	color: var(--src-line-numbers-span-color);
+	padding: 0 8px;
 }
 .src-line-numbers :target {
 	background-color: transparent;
 	border-right: none;
-	padding-right: 0;
+	padding: 0 8px;
 }
 .src-line-numbers .line-highlighted {
 	background-color: var(--src-line-number-highlighted-background-color);
@@ -579,8 +573,6 @@ ul.block, .block li {
 .docblock-short {
 	overflow-wrap: break-word;
 	overflow-wrap: anywhere;
-	overflow: hidden;
-	text-overflow: ellipsis;
 }
 /* Wrap non-pre code blocks (`text`) but not (```text```). */
 .docblock :not(pre) > code,
@@ -675,9 +667,6 @@ nav.sub {
 }
 .source nav.sub {
 	margin: 0 0 15px 0;
-}
-.source .search-form {
-	margin-left: 32px;
 }
 
 a {
@@ -1113,7 +1102,6 @@ pre.rust .doccomment {
 }
 
 .example-wrap .tooltip:hover::after {
-	text-align: center;
 	padding: 5px 3px 3px 3px;
 	border-radius: 6px;
 	margin-left: 5px;
@@ -1261,14 +1249,14 @@ a.test-arrow:hover {
 	margin-right: auto;
 }
 
-#titles {
+#search-tabs {
 	display: flex;
 	flex-direction: row;
 	gap: 1px;
 	margin-bottom: 4px;
 }
 
-#titles > button {
+#search-tabs button {
 	text-align: center;
 	font-size: 1.125rem;
 	border: 0;
@@ -1278,8 +1266,7 @@ a.test-arrow:hover {
 	color: inherit;
 }
 
-#titles > button > div.count {
-	display: inline-block;
+#search-tabs .count {
 	font-size: 1rem;
 	color: var(--search-tab-title-count-color);
 }
@@ -1326,15 +1313,11 @@ a.test-arrow:hover {
 	-webkit-appearance: none;
 	opacity: 1;
 }
+
 #settings-menu, #help-button {
 	margin-left: 4px;
 	display: flex;
 }
-
-#settings-menu > a, #help-button > a, #copy-path {
-	width: 33px;
-}
-
 #settings-menu > a, #help-button > a {
 	display: flex;
 	align-items: center;
@@ -1346,6 +1329,7 @@ a.test-arrow:hover {
 	/* Rare exception to specifying font sizes in rem. Since this is acting
 	   as an icon, it's okay to specify their sizes in pixels. */
 	font-size: 20px;
+	width: 33px;
 }
 
 #settings-menu > a:hover, #settings-menu > a:focus,
@@ -1361,6 +1345,7 @@ a.test-arrow:hover {
 	padding: 0;
 	padding-left: 2px;
 	border: 0;
+	width: 33px;
 }
 #copy-path > img {
 	filter: var(--copy-path-img-filter);
@@ -1402,31 +1387,10 @@ details.dir-entry {
 	padding-left: 4px;
 }
 
-details.dir-entry > summary::after {
-	content: " ►";
-	position: absolute;
-	left: -15px;
-	top: 0px;
-	font-size: 80%;
-	padding: 2px 0px;
-	/* set width to cover gap between arrow and text */
-	width: 25px;
-}
-
-details[open].dir-entry > summary::after {
-	content: " ▼";
-}
-
-details.dir-entry > summary::-webkit-details-marker,
-details.dir-entry > summary::marker {
-	display: none;
-}
-
 details.dir-entry > summary {
-	margin: 0 0 0 13px;
-	list-style: none;
+	margin: 0 0 0 -4px;
+	padding: 0 0 0 4px;
 	cursor: pointer;
-	position: relative;
 }
 
 details.dir-entry div.folders, details.dir-entry div.files {
@@ -1706,7 +1670,7 @@ in storage.js
 		display: none !important;
 	}
 
-	#titles > button > div.count {
+	#search-tabs .count {
 		display: block;
 	}
 
@@ -1839,13 +1803,6 @@ in storage.js
 		height: 35px;
 		width: 35px;
 	}
-
-	#src-sidebar-toggle {
-		top: 10px;
-	}
-	.source-sidebar-expanded #src-sidebar-toggle {
-		top: unset;
-	}
 }
 
 .variant,
@@ -1883,9 +1840,13 @@ in storage.js
 	font-size: 12px;
 	position: relative;
 	bottom: 1px;
-	border-width: 1px;
-	border-style: solid;
+	border: 1px solid var(--scrape-example-help-border-color);
 	border-radius: 50px;
+	color: var(--scrape-example-help-color);
+}
+.scraped-example-list .scrape-help:hover {
+	border-color: var(--scrape-example-help-hover-border-color);
+	color: var(--scrape-example-help-hover-color);
 }
 
 .scraped-example {
@@ -1961,15 +1922,6 @@ in storage.js
 	bottom: 0;
 }
 
-.scraped-example .code-wrapper .src-line-numbers {
-	padding: 14px 0;
-}
-
-.scraped-example .code-wrapper .src-line-numbers a,
-.scraped-example .code-wrapper .src-line-numbers span {
-	padding: 0 14px;
-}
-
 .scraped-example .code-wrapper .example-wrap {
 	width: 100%;
 	overflow-y: hidden;
@@ -1978,6 +1930,13 @@ in storage.js
 
 .scraped-example:not(.expanded) .code-wrapper .example-wrap {
 	overflow-x: hidden;
+}
+
+.scraped-example .example-wrap .rust span.highlight {
+	background: var(--scrape-example-code-line-highlight);
+}
+.scraped-example .example-wrap .rust span.highlight.focus {
+	background: var(--scrape-example-code-line-highlight-focus);
 }
 
 .more-examples-toggle {
@@ -2008,6 +1967,11 @@ in storage.js
 .toggle-line-inner {
 	min-width: 2px;
 	height: 100%;
+	background: var(--scrape-example-toggle-line-background);
+}
+
+.toggle-line:hover .toggle-line-inner {
+	background: var(--scrape-example-toggle-line-hover-background);
 }
 
 .more-scraped-examples .scraped-example, .example-links {

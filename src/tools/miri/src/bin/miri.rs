@@ -512,6 +512,18 @@ fn main() {
             };
 
             miri_config.num_cpus = num_cpus;
+        } else if let Some(param) = arg.strip_prefix("-Zmiri-force-page-size=") {
+            let page_size = match param.parse::<u64>() {
+                Ok(i) =>
+                    if i.is_power_of_two() {
+                        i * 1024
+                    } else {
+                        show_error!("-Zmiri-force-page-size requires a power of 2: {}", i)
+                    },
+                Err(err) => show_error!("-Zmiri-force-page-size requires a `u64`: {}", err),
+            };
+
+            miri_config.page_size = Some(page_size);
         } else {
             // Forward to rustc.
             rustc_args.push(arg);

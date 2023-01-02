@@ -347,7 +347,7 @@ fn check_item<'tcx>(
     }
 }
 
-fn has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
+fn has_custom_linkage(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     // Anything which has custom linkage gets thrown on the worklist no
     // matter where it is in the crate, along with "special std symbols"
     // which are currently akin to allocator symbols.
@@ -364,7 +364,7 @@ fn has_custom_linkage<'tcx>(tcx: TyCtxt<'tcx>, def_id: LocalDefId) -> bool {
         || codegen_attrs.flags.contains(CodegenFnAttrFlags::USED_LINKER)
 }
 
-fn reachable_set<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> FxHashSet<LocalDefId> {
+fn reachable_set(tcx: TyCtxt<'_>, (): ()) -> FxHashSet<LocalDefId> {
     let effective_visibilities = &tcx.effective_visibilities(());
 
     let any_library =

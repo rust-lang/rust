@@ -322,8 +322,7 @@ fn get_index_type_id(clean_type: &clean::Type) -> Option<RenderTypeId> {
     match *clean_type {
         clean::Type::Path { ref path, .. } => Some(RenderTypeId::DefId(path.def_id())),
         clean::DynTrait(ref bounds, _) => {
-            let path = &bounds[0].trait_;
-            Some(RenderTypeId::DefId(path.def_id()))
+            bounds.get(0).map(|b| RenderTypeId::DefId(b.trait_.def_id()))
         }
         clean::Primitive(p) => Some(RenderTypeId::Primitive(p)),
         clean::BorrowedRef { ref type_, .. } | clean::RawPointer(_, ref type_) => {

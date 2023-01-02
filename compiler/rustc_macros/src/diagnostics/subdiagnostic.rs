@@ -29,7 +29,7 @@ impl SubdiagnosticDeriveBuilder {
         Self { diag, f }
     }
 
-    pub(crate) fn into_tokens<'a>(self, mut structure: Structure<'a>) -> TokenStream {
+    pub(crate) fn into_tokens(self, mut structure: Structure<'_>) -> TokenStream {
         let implementation = {
             let ast = structure.ast();
             let span = ast.span().unwrap();

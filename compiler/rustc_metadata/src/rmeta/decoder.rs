@@ -78,10 +78,6 @@ pub(crate) struct CrateMetadata {
     blob: MetadataBlob,
 
     // --- Some data pre-decoded from the metadata blob, usually for performance ---
-    /// NOTE(eddyb) we pass `'static` to a `'tcx` parameter because this
-    /// lifetime is only used behind `LazyValue`, `LazyArray`, or `LazyTable`, and therefore acts like a
-    /// universal (`for<'tcx>`), that is paired up with whichever `TyCtxt`
-    /// is being used to decode those values.
     root: CrateRoot,
     /// Trait impl data.
     /// FIXME: Used only from queries and can use query cache,
@@ -688,10 +684,10 @@ impl MetadataBlob {
     pub(crate) fn get_root(&self) -> CrateRoot {
         let slice = &self.blob()[..];
         let offset = METADATA_HEADER.len();
-        let pos = (((slice[offset + 0] as u32) << 24)
-            | ((slice[offset + 1] as u32) << 16)
-            | ((slice[offset + 2] as u32) << 8)
-            | ((slice[offset + 3] as u32) << 0)) as usize;
+
+        let pos_bytes = slice[offset..][..4].try_into().unwrap();
+        let pos = u32::from_be_bytes(pos_bytes) as usize;
+
         LazyValue::<CrateRoot>::from_position(NonZeroUsize::new(pos).unwrap()).decode(self)
     }
 
@@ -702,16 +698,14 @@ impl MetadataBlob {
         writeln!(out, "hash {} stable_crate_id {:?}", root.hash, root.stable_crate_id)?;
         writeln!(out, "proc_macro {:?}", root.proc_macro_data.is_some())?;
         writeln!(out, "=External Dependencies=")?;
+
         for (i, dep) in root.crate_deps.decode(self).enumerate() {
+            let CrateDep { name, extra_filename, hash, host_hash, kind } = dep;
+            let number = i + 1;
+
             writeln!(
                 out,
-                "{} {}{} hash {} host_hash {:?} kind {:?}",
-                i + 1,
-                dep.name,
-                dep.extra_filename,
-                dep.hash,
-                dep.host_hash,
-                dep.kind
+                "{number} {name}{extra_filename} hash {hash} host_hash {host_hash:?} kind {kind:?}"
             )?;
         }
         write!(out, "\n")?;

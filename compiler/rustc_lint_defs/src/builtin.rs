@@ -1405,7 +1405,7 @@ declare_lint! {
     /// struct S;
     ///
     /// impl S {
-    ///     fn late<'a, 'b>(self, _: &'a u8, _: &'b u8) {}
+    ///     fn late(self, _: &u8, _: &u8) {}
     /// }
     ///
     /// fn main() {
@@ -3581,7 +3581,7 @@ declare_lint! {
     /// fn main() {
     ///     let x: String = "3".try_into().unwrap();
     ///     //                  ^^^^^^^^
-    ///     // This call to try_into matches both Foo:try_into and TryInto::try_into as
+    ///     // This call to try_into matches both Foo::try_into and TryInto::try_into as
     ///     // `TryInto` has been added to the Rust prelude in 2021 edition.
     ///     println!("{x}");
     /// }

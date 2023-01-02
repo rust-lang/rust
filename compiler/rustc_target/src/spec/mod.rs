@@ -1319,7 +1319,7 @@ pub struct Target {
 }
 
 impl Target {
-    pub fn parse_data_layout<'a>(&'a self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'a>> {
+    pub fn parse_data_layout(&self) -> Result<TargetDataLayout, TargetDataLayoutErrors<'_>> {
         let mut dl = TargetDataLayout::parse_from_llvm_datalayout_string(&self.data_layout)?;
 
         // Perform consistency checks against the Target information.
@@ -2291,7 +2291,7 @@ impl Target {
                     } else {
                         return Some(Err(format!(
                             "'{}' is not a valid value for lld-flavor. \
-                             Use 'darwin', 'gnu', 'link' or 'wasm.",
+                             Use 'darwin', 'gnu', 'link' or 'wasm'.",
                             s)))
                     }
                     Some(Ok(()))

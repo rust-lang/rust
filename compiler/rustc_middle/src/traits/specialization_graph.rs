@@ -60,7 +60,7 @@ pub enum OverlapMode {
 }
 
 impl OverlapMode {
-    pub fn get<'tcx>(tcx: TyCtxt<'tcx>, trait_id: DefId) -> OverlapMode {
+    pub fn get(tcx: TyCtxt<'_>, trait_id: DefId) -> OverlapMode {
         let with_negative_coherence = tcx.features().with_negative_coherence;
         let strict_coherence = tcx.has_attr(trait_id, sym::rustc_strict_coherence);
 
@@ -180,6 +180,7 @@ impl Iterator for Ancestors<'_> {
 }
 
 /// Information about the most specialized definition of an associated item.
+#[derive(Debug)]
 pub struct LeafDef {
     /// The associated item described by this `LeafDef`.
     pub item: ty::AssocItem,
@@ -253,11 +254,11 @@ impl<'tcx> Ancestors<'tcx> {
 ///
 /// Returns `Err` if an error was reported while building the specialization
 /// graph.
-pub fn ancestors<'tcx>(
-    tcx: TyCtxt<'tcx>,
+pub fn ancestors(
+    tcx: TyCtxt<'_>,
     trait_def_id: DefId,
     start_from_impl: DefId,
-) -> Result<Ancestors<'tcx>, ErrorGuaranteed> {
+) -> Result<Ancestors<'_>, ErrorGuaranteed> {
     let specialization_graph = tcx.specialization_graph_of(trait_def_id);
 
     if let Some(reported) = specialization_graph.has_errored {

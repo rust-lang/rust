@@ -2675,9 +2675,9 @@ dependencies = [
 
 [[package]]
 name = "owo-colors"
-version = "3.4.0"
+version = "3.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "decf7381921fea4dcb2549c5667eda59b3ec297ab7e2b5fc33eac69d2e7da87b"
+checksum = "c1b04fb49957986fdce4d6ee7a65027d55d4b6d2265e5848bbb507b58ccfdb6f"
 
 [[package]]
 name = "packed_simd_2"
@@ -3295,9 +3295,9 @@ dependencies = [
 
 [[package]]
 name = "rustc-build-sysroot"
-version = "0.4.0"
+version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "20c4b4625eeb148cccf82d5e9b90ad7fab3b11a0204cf75cc7fa04981a0fdffd"
+checksum = "d65b1271cdac365b71b59570ea35d945dea2dd2cc47eba3d33b4bd1e0190ac6d"
 dependencies = [
  "anyhow",
  "rustc_version",
@@ -5203,9 +5203,9 @@ dependencies = [
 
 [[package]]
 name = "termcolor"
-version = "1.1.2"
+version = "1.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
+checksum = "bab24d30b911b2376f3a13cc2cd443142f0c81dda04c118693e35b3835757755"
 dependencies = [
  "winapi-util",
 ]
@@ -5309,6 +5309,7 @@ dependencies = [
  "lazy_static",
  "miropt-test-tools",
  "regex",
+ "termcolor",
  "walkdir",
 ]
 

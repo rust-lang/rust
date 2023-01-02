@@ -572,7 +572,7 @@ impl Pat {
             PatKind::MacCall(mac) => TyKind::MacCall(mac.clone()),
             // `&mut? P` can be reinterpreted as `&mut? T` where `T` is `P` reparsed as a type.
             PatKind::Ref(pat, mutbl) => {
-                pat.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?
+                pat.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
             }
             // A slice/array pattern `[P]` can be reparsed as `[T]`, an unsized array,
             // when `P` can be reparsed as a type `T`.
@@ -1193,7 +1193,7 @@ impl Expr {
             ExprKind::Paren(expr) => expr.to_ty().map(TyKind::Paren)?,
 
             ExprKind::AddrOf(BorrowKind::Ref, mutbl, expr) => {
-                expr.to_ty().map(|ty| TyKind::Rptr(None, MutTy { ty, mutbl: *mutbl }))?
+                expr.to_ty().map(|ty| TyKind::Ref(None, MutTy { ty, mutbl: *mutbl }))?
             }
 
             ExprKind::Repeat(expr, expr_len) => {
@@ -2031,7 +2031,7 @@ impl Clone for Ty {
 impl Ty {
     pub fn peel_refs(&self) -> &Self {
         let mut final_ty = self;
-        while let TyKind::Rptr(_, MutTy { ty, .. }) = &final_ty.kind {
+        while let TyKind::Ref(_, MutTy { ty, .. }) = &final_ty.kind {
             final_ty = ty;
         }
         final_ty
@@ -2058,7 +2058,7 @@ pub enum TyKind {
     /// A raw pointer (`*const T` or `*mut T`).
     Ptr(MutTy),
     /// A reference (`&'a T` or `&'a mut T`).
-    Rptr(Option<Lifetime>, MutTy),
+    Ref(Option<Lifetime>, MutTy),
     /// A bare function (e.g., `fn(usize) -> bool`).
     BareFn(P<BareFnTy>),
     /// The never type (`!`).
@@ -2286,7 +2286,7 @@ impl Param {
             if ident.name == kw::SelfLower {
                 return match self.ty.kind {
                     TyKind::ImplicitSelf => Some(respan(self.pat.span, SelfKind::Value(mutbl))),
-                    TyKind::Rptr(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
+                    TyKind::Ref(lt, MutTy { ref ty, mutbl }) if ty.kind.is_implicit_self() => {
                         Some(respan(self.pat.span, SelfKind::Region(lt, mutbl)))
                     }
                     _ => Some(respan(
@@ -2319,7 +2319,7 @@ impl Param {
                 Mutability::Not,
                 P(Ty {
                     id: DUMMY_NODE_ID,
-                    kind: TyKind::Rptr(lt, MutTy { ty: infer_ty, mutbl }),
+                    kind: TyKind::Ref(lt, MutTy { ty: infer_ty, mutbl }),
                     span,
                     tokens: None,
                 }),

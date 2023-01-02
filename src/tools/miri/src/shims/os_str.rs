@@ -174,7 +174,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_c_str(ptr)?;
 
-        Ok(match this.convert_path_separator(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
+        Ok(match this.convert_path(Cow::Borrowed(os_str), PathConversion::TargetToHost) {
             Cow::Borrowed(x) => Cow::Borrowed(Path::new(x)),
             Cow::Owned(y) => Cow::Owned(PathBuf::from(y)),
         })
@@ -188,10 +188,7 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let this = self.eval_context_ref();
         let os_str = this.read_os_str_from_wide_str(ptr)?;
 
-        Ok(this
-            .convert_path_separator(Cow::Owned(os_str), PathConversion::TargetToHost)
-            .into_owned()
-            .into())
+        Ok(this.convert_path(Cow::Owned(os_str), PathConversion::TargetToHost).into_owned().into())
     }
 
     /// Write a Path to the machine memory (as a null-terminated sequence of bytes),
@@ -203,8 +200,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = this
-            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        let os_str =
+            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_c_str(&os_str, ptr, size)
     }
 
@@ -217,8 +214,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         size: u64,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
-        let os_str = this
-            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        let os_str =
+            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.write_os_str_to_wide_str(&os_str, ptr, size)
     }
 
@@ -230,18 +227,20 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         memkind: MemoryKind<MiriMemoryKind>,
     ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
         let this = self.eval_context_mut();
-        let os_str = this
-            .convert_path_separator(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        let os_str =
+            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.alloc_os_str_as_c_str(&os_str, memkind)
     }
 
-    fn convert_path_separator<'a>(
+    #[allow(clippy::get_first)]
+    fn convert_path<'a>(
         &self,
         os_str: Cow<'a, OsStr>,
         direction: PathConversion,
     ) -> Cow<'a, OsStr> {
         let this = self.eval_context_ref();
         let target_os = &this.tcx.sess.target.os;
+
         #[cfg(windows)]
         return if target_os == "windows" {
             // Windows-on-Windows, all fine.
@@ -252,24 +251,71 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 PathConversion::HostToTarget => ('\\', '/'),
                 PathConversion::TargetToHost => ('/', '\\'),
             };
-            let converted = os_str
+            let mut converted = os_str
                 .encode_wide()
                 .map(|wchar| if wchar == from as u16 { to as u16 } else { wchar })
                 .collect::<Vec<_>>();
+            // We also have to ensure that absolute paths remain absolute.
+            match direction {
+                PathConversion::HostToTarget => {
+                    // If this is an absolute Windows path that starts with a drive letter (`C:/...`
+                    // after separator conversion), it would not be considered absolute by Unix
+                    // target code.
+                    if converted.get(1).copied() == Some(b':' as u16)
+                        && converted.get(2).copied() == Some(b'/' as u16)
+                    {
+                        // We add a `/` at the beginning, to store the absolute Windows
+                        // path in something that looks like an absolute Unix path.
+                        converted.insert(0, b'/' as u16);
+                    }
+                }
+                PathConversion::TargetToHost => {
+                    // If the path is `\C:\`, the leading backslash was probably added by the above code
+                    // and we should get rid of it again.
+                    if converted.get(0).copied() == Some(b'\\' as u16)
+                        && converted.get(2).copied() == Some(b':' as u16)
+                        && converted.get(3).copied() == Some(b'\\' as u16)
+                    {
+                        converted.remove(0);
+                    }
+                }
+            }
             Cow::Owned(OsString::from_wide(&converted))
         };
         #[cfg(unix)]
         return if target_os == "windows" {
             // Windows target, Unix host.
             let (from, to) = match direction {
-                PathConversion::HostToTarget => ('/', '\\'),
-                PathConversion::TargetToHost => ('\\', '/'),
+                PathConversion::HostToTarget => (b'/', b'\\'),
+                PathConversion::TargetToHost => (b'\\', b'/'),
             };
-            let converted = os_str
+            let mut converted = os_str
                 .as_bytes()
                 .iter()
-                .map(|&wchar| if wchar == from as u8 { to as u8 } else { wchar })
+                .map(|&wchar| if wchar == from { to } else { wchar })
                 .collect::<Vec<_>>();
+            // We also have to ensure that absolute paths remain absolute.
+            match direction {
+                PathConversion::HostToTarget => {
+                    // If this start withs a `\`, we add `\\?` so it starts with `\\?\` which is
+                    // some magic path on Windos that *is* considered absolute.
+                    if converted.get(0).copied() == Some(b'\\') {
+                        converted.splice(0..0, b"\\\\?".iter().copied());
+                    }
+                }
+                PathConversion::TargetToHost => {
+                    // If this starts with `//?/`, it was probably produced by the above code and we
+                    // remove the `//?` that got added to get the Unix path back out.
+                    if converted.get(0).copied() == Some(b'/')
+                        && converted.get(1).copied() == Some(b'/')
+                        && converted.get(2).copied() == Some(b'?')
+                        && converted.get(3).copied() == Some(b'/')
+                    {
+                        // Remove first 3 characters
+                        converted.splice(0..3, std::iter::empty());
+                    }
+                }
+            }
             Cow::Owned(OsString::from_vec(converted))
         } else {
             // Unix-on-Unix, all is fine.

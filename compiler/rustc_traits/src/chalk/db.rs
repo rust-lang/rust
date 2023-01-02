@@ -719,7 +719,7 @@ impl<'tcx> chalk_ir::UnificationDatabase<RustInterner<'tcx>> for RustIrDatabase<
 /// var bound at index `0`. For types, we use a `BoundVar` index equal to
 /// the type parameter index. For regions, we use the `BoundRegionKind::BrNamed`
 /// variant (which has a `DefId`).
-fn bound_vars_for_item<'tcx>(tcx: TyCtxt<'tcx>, def_id: DefId) -> SubstsRef<'tcx> {
+fn bound_vars_for_item(tcx: TyCtxt<'_>, def_id: DefId) -> SubstsRef<'_> {
     InternalSubsts::for_item(tcx, def_id, |param, substs| match param.kind {
         ty::GenericParamDefKind::Type { .. } => tcx
             .mk_ty(ty::Bound(

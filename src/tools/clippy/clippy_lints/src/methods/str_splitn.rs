@@ -167,7 +167,7 @@ fn check_manual_split_once_indirect(
             };
             diag.span_suggestion_verbose(
                 local.span,
-                &format!("try `{r}split_once`"),
+                format!("try `{r}split_once`"),
                 format!("let ({lhs}, {rhs}) = {self_snip}.{r}split_once({pat_snip}){unwrap};"),
                 app,
             );

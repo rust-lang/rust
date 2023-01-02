@@ -149,7 +149,7 @@ enum DefUse {
 }
 
 impl DefUse {
-    fn apply<'tcx>(trans: &mut impl GenKill<Local>, place: Place<'tcx>, context: PlaceContext) {
+    fn apply(trans: &mut impl GenKill<Local>, place: Place<'_>, context: PlaceContext) {
         match DefUse::for_place(place, context) {
             Some(DefUse::Def) => trans.kill(place.local),
             Some(DefUse::Use) => trans.gen(place.local),
@@ -157,7 +157,7 @@ impl DefUse {
         }
     }
 
-    fn for_place<'tcx>(place: Place<'tcx>, context: PlaceContext) -> Option<DefUse> {
+    fn for_place(place: Place<'_>, context: PlaceContext) -> Option<DefUse> {
         match context {
             PlaceContext::NonUse(_) => None,
 

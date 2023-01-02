@@ -307,7 +307,7 @@ impl<'a> State<'a> {
                 self.word("*");
                 self.print_mt(mt, true);
             }
-            hir::TyKind::Rptr(ref lifetime, ref mt) => {
+            hir::TyKind::Ref(ref lifetime, ref mt) => {
                 self.word("&");
                 self.print_opt_lifetime(lifetime);
                 self.print_mt(mt, false);

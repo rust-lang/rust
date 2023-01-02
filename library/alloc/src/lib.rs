@@ -3,7 +3,7 @@
 //! This library provides smart pointers and collections for managing
 //! heap-allocated values.
 //!
-//! This library, like libcore, normally doesn’t need to be used directly
+//! This library, like core, normally doesn’t need to be used directly
 //! since its contents are re-exported in the [`std` crate](../std/index.html).
 //! Crates that use the `#![no_std]` attribute however will typically
 //! not depend on `std`, so they’d use this crate instead.
@@ -75,7 +75,7 @@
 ))]
 #![no_std]
 #![needs_allocator]
-// To run liballoc tests without x.py without ending up with two copies of liballoc, Miri needs to be
+// To run alloc tests without x.py without ending up with two copies of alloc, Miri needs to be
 // able to "empty" this crate. See <https://github.com/rust-lang/miri-test-libstd/issues/4>.
 // rustc itself never sets the feature, so this line has no affect there.
 #![cfg(any(not(feature = "miri-test-libstd"), test, doctest))]
@@ -122,6 +122,7 @@
 #![feature(fmt_internals)]
 #![feature(fn_traits)]
 #![feature(hasher_prefixfree_extras)]
+#![feature(inline_const)]
 #![feature(inplace_iteration)]
 #![feature(iter_advance_by)]
 #![feature(iter_next_chunk)]
@@ -152,7 +153,7 @@
 #![feature(trusted_len)]
 #![feature(trusted_random_access)]
 #![feature(try_trait_v2)]
-#![cfg_attr(not(bootstrap), feature(tuple_trait))]
+#![feature(tuple_trait)]
 #![feature(unchecked_math)]
 #![feature(unicode_internals)]
 #![feature(unsize)]
@@ -206,6 +207,8 @@
 extern crate std;
 #[cfg(test)]
 extern crate test;
+#[cfg(test)]
+mod testing;
 
 // Module with internal macros used by other modules (needs to be included before other modules).
 #[macro_use]

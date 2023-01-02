@@ -57,7 +57,6 @@
 	--code-highlight-question-mark-color: #ff9011;
 	--code-highlight-comment-color: #8d8d8b;
 	--code-highlight-doc-comment-color: #8ca375;
-	--example-line-numbers-border-color: #4a4949;
 	--src-line-numbers-span-color: #3b91e2;
 	--src-line-number-highlighted-background-color: #0a042f;
 	--test-arrow-color: #dedede;
@@ -85,41 +84,29 @@
 	--source-sidebar-background-hover: #444;
 	--table-alt-row-background-color: #2A2A2A;
 	--codeblock-link-background: #333;
+	--scrape-example-toggle-line-background: #999;
+	--scrape-example-toggle-line-hover-background: #c5c5c5;
+	--scrape-example-code-line-highlight: rgb(91, 59, 1);
+	--scrape-example-code-line-highlight-focus: rgb(124, 75, 15);
+	--scrape-example-help-border-color: #aaa;
+	--scrape-example-help-color: #eee;
+	--scrape-example-help-hover-border-color: #fff;
+	--scrape-example-help-hover-color: #fff;
 }
 
-#titles > button:not(.selected) {
+#search-tabs > button:not(.selected) {
 	background-color: #252525;
 	border-top-color: #252525;
 }
 
-#titles > button:hover, #titles > button.selected {
+#search-tabs > button:hover, #search-tabs > button.selected {
 	border-top-color: #0089ff;
 	background-color: #353535;
 }
 
-.scraped-example-list .scrape-help {
-	border-color: #aaa;
-	color: #eee;
-}
-.scraped-example-list .scrape-help:hover {
-	border-color: white;
-	color: white;
-}
-.scraped-example .example-wrap .rust span.highlight {
-	background: rgb(91, 59, 1);
-}
-.scraped-example .example-wrap .rust span.highlight.focus {
-	background: rgb(124, 75, 15);
-}
-.scraped-example:not(.expanded) .code-wrapper:before {
+.scraped-example:not(.expanded) .code-wrapper::before {
 	background: linear-gradient(to bottom, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
 }
-.scraped-example:not(.expanded) .code-wrapper:after {
+.scraped-example:not(.expanded) .code-wrapper::after {
 	background: linear-gradient(to top, rgba(53, 53, 53, 1), rgba(53, 53, 53, 0));
-}
-.toggle-line-inner {
-	background: #999;
-}
-.toggle-line:hover .toggle-line-inner {
-	background: #c5c5c5;
 }

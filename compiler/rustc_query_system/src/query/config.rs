@@ -21,7 +21,7 @@ pub trait QueryConfig<Qcx: QueryContext> {
     type Cache: QueryCache<Key = Self::Key, Stored = Self::Stored, Value = Self::Value>;
 
     // Don't use this method to access query results, instead use the methods on TyCtxt
-    fn query_state<'a>(tcx: Qcx) -> &'a QueryState<Self::Key>
+    fn query_state<'a>(tcx: Qcx) -> &'a QueryState<Self::Key, Qcx::DepKind>
     where
         Qcx: 'a;
 

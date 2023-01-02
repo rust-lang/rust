@@ -238,10 +238,7 @@ impl<'tcx> CapturedPlace<'tcx> {
     }
 }
 
-fn symbols_for_closure_captures<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: (LocalDefId, LocalDefId),
-) -> Vec<Symbol> {
+fn symbols_for_closure_captures(tcx: TyCtxt<'_>, def_id: (LocalDefId, LocalDefId)) -> Vec<Symbol> {
     let typeck_results = tcx.typeck(def_id.0);
     let captures = typeck_results.closure_min_captures_flattened(def_id.1);
     captures.into_iter().map(|captured_place| captured_place.to_symbol(tcx)).collect()

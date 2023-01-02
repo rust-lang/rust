@@ -129,7 +129,7 @@ impl<'tcx> Visitor<'tcx> for DeduceReadOnly {
 }
 
 /// Returns true if values of a given type will never be passed indirectly, regardless of ABI.
-fn type_will_always_be_passed_directly<'tcx>(ty: Ty<'tcx>) -> bool {
+fn type_will_always_be_passed_directly(ty: Ty<'_>) -> bool {
     matches!(
         ty.kind(),
         ty::Bool

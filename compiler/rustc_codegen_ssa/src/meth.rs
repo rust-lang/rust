@@ -65,7 +65,7 @@ impl<'a, 'tcx> VirtualIndex {
 
 /// This takes a valid `self` receiver type and extracts the principal trait
 /// ref of the type.
-fn expect_dyn_trait_in_self<'tcx>(ty: Ty<'tcx>) -> ty::PolyExistentialTraitRef<'tcx> {
+fn expect_dyn_trait_in_self(ty: Ty<'_>) -> ty::PolyExistentialTraitRef<'_> {
     for arg in ty.peel_refs().walk() {
         if let GenericArgKind::Type(ty) = arg.unpack() {
             if let ty::Dynamic(data, _, _) = ty.kind() {

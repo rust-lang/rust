@@ -225,10 +225,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
 /// that are assumed to be well-formed (because they come from the environment).
 ///
 /// Used only in chalk mode.
-fn well_formed_types_in_env<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    def_id: DefId,
-) -> &'tcx ty::List<Predicate<'tcx>> {
+fn well_formed_types_in_env(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Predicate<'_>> {
     use rustc_hir::{ForeignItemKind, ImplItemKind, ItemKind, Node, TraitItemKind};
     use rustc_middle::ty::subst::GenericArgKind;
 

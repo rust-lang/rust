@@ -1,30 +1,30 @@
-error[E0425]: cannot find value `not_found` in this scope
-  --> $DIR/issue-104287.rs:5:13
-   |
-LL |     let x = not_found;
-   |             ^^^^^^^^^ not found in this scope
-
 error[E0107]: this associated function takes 0 generic arguments but 1 generic argument was supplied
-  --> $DIR/issue-104287.rs:6:5
+  --> $DIR/issue-104287.rs:10:5
    |
-LL |     simd_gt::<()>(x);
-   |     ^^^^^^^------ help: remove these generics
+LL |     foo::<()>(x);
+   |     ^^^------ help: remove these generics
    |     |
    |     expected 0 generic arguments
+   |
+note: associated function defined here, with 0 generic parameters
+  --> $DIR/issue-104287.rs:6:8
+   |
+LL |     fn foo(&self) {}
+   |        ^^^
 
-error[E0425]: cannot find function `simd_gt` in this scope
-  --> $DIR/issue-104287.rs:6:5
+error[E0425]: cannot find function `foo` in this scope
+  --> $DIR/issue-104287.rs:10:5
    |
-LL |     simd_gt::<()>(x);
-   |     ^^^^^^^ not found in this scope
+LL |     foo::<()>(x);
+   |     ^^^ not found in this scope
    |
-help: use the `.` operator to call the method `SimdPartialOrd::simd_gt` on `[type error]`
+help: use the `.` operator to call the method `foo` on `&S`
    |
-LL -     simd_gt::<()>(x);
-LL +     x.simd_gt();
+LL -     foo::<()>(x);
+LL +     x.foo();
    |
 
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 Some errors have detailed explanations: E0107, E0425.
 For more information about an error, try `rustc --explain E0107`.

@@ -5,7 +5,7 @@ write: (".search-input", "Foo")
 // To be SURE that the search will be run.
 press-key: 'Enter'
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 
 // Now use the keyboard commands to switch to the third result.
 press-key: "ArrowDown"
