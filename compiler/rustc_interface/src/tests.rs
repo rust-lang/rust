@@ -4,6 +4,7 @@ use crate::interface::parse_cfgspecs;
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
 use rustc_session::config::rustc_optgroups;
+use rustc_session::config::TraitSolver;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
 use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
@@ -722,7 +723,6 @@ fn test_unstable_options_tracking_hash() {
             pac_ret: Some(PacRet { leaf: true, key: PAuthKey::B })
         })
     );
-    tracked!(chalk, true);
     tracked!(codegen_backend, Some("abc".to_string()));
     tracked!(crate_attr, vec!["abc".to_string()]);
     tracked!(debug_info_for_profiling, true);
@@ -792,6 +792,7 @@ fn test_unstable_options_tracking_hash() {
     tracked!(thinlto, Some(true));
     tracked!(thir_unsafeck, true);
     tracked!(tls_model, Some(TlsModel::GeneralDynamic));
+    tracked!(trait_solver, TraitSolver::Chalk);
     tracked!(translate_remapped_path_to_local_path, false);
     tracked!(trap_unreachable, Some(false));
     tracked!(treat_err_as_bug, NonZeroUsize::new(1));
