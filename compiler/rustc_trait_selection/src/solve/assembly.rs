@@ -56,6 +56,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         goal: Goal<'tcx, Self>,
         object_bounds: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
     );
+
+    fn consider_param_env_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    );
 }
 
 /// An abstraction which correctly deals with the canonical results for candidates.
@@ -82,6 +87,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_impl_candidates(goal);
 
         acx.assemble_bound_candidates(goal);
+
+        acx.assemble_param_env_candidates(goal);
 
         acx.candidates
     }
@@ -170,5 +177,9 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
             }
             _ => {}
         }
+    }
+
+    fn assemble_param_env_candidates(&mut self, goal: Goal<'tcx, G>) {
+        G::consider_param_env_candidates(self, goal);
     }
 }

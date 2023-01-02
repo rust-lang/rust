@@ -169,6 +169,28 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             acx.try_insert_candidate(CandidateSource::ObjectAutoBound, Certainty::Yes);
         }
     }
+
+    fn consider_param_env_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    ) {
+        for (idx, predicate) in goal.param_env.caller_bounds().iter().enumerate() {
+            let Some(poly_trait_pred) = predicate.to_opt_poly_trait_pred() else { continue };
+            if poly_trait_pred.skip_binder().def_id() != goal.predicate.def_id() {
+                continue;
+            };
+            // FIXME: constness? polarity?
+            let poly_trait_ref = poly_trait_pred.map_bound(|trait_pred| trait_pred.trait_ref);
+            // FIXME: Faster to do a filter first with a rejection context?
+
+            match_poly_trait_ref_against_goal(
+                acx,
+                goal,
+                poly_trait_ref,
+                CandidateSource::ParamEnv(idx),
+            );
+        }
+    }
 }
 
 fn match_poly_trait_ref_against_goal<'tcx>(
