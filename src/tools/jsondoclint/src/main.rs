@@ -1,6 +1,5 @@
-use std::env;
-
-use anyhow::{anyhow, bail, Result};
+use anyhow::{bail, Result};
+use clap::Parser;
 use fs_err as fs;
 use rustdoc_json_types::{Crate, Id, FORMAT_VERSION};
 use serde_json::Value;
@@ -21,8 +20,15 @@ enum ErrorKind {
     Custom(String),
 }
 
+#[derive(Parser)]
+struct Cli {
+    /// The path to the json file to be linted
+    path: String,
+}
+
 fn main() -> Result<()> {
-    let path = env::args().nth(1).ok_or_else(|| anyhow!("no path given"))?;
+    let Cli { path } = Cli::parse();
+
     let contents = fs::read_to_string(&path)?;
     let krate: Crate = serde_json::from_str(&contents)?;
     assert_eq!(krate.format_version, FORMAT_VERSION);
