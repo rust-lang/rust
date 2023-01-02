@@ -3,7 +3,7 @@
 use std::iter;
 
 use super::assembly::{self, AssemblyCtxt};
-use super::{CanonicalGoal, EvalCtxt, Goal, QueryResult};
+use super::{CanonicalGoal, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
 use rustc_infer::infer::{InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
@@ -39,6 +39,9 @@ pub(super) enum CandidateSource {
     AliasBound(usize),
     /// Implementation of `Trait` or its supertraits for a `dyn Trait + Send + Sync`.
     ObjectBound(usize),
+    /// Implementation of `Send` or other explicitly listed *auto* traits for
+    /// a `dyn Trait + Send + Sync`
+    ObjectAutoBound(usize),
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.
     ///
@@ -161,6 +164,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 );
             }
         }
+
+        for (idx, predicate) in object_bounds.iter().enumerate() {
+            let ty::ExistentialPredicate::AutoTrait(def_id) = predicate.skip_binder() else { continue };
+            if def_id != goal.predicate.def_id() {
+                continue;
+            }
+            acx.try_insert_candidate(CandidateSource::ObjectAutoBound(idx), Certainty::Yes);
+        }
     }
 }
 
@@ -254,6 +265,7 @@ impl<'tcx> EvalCtxt<'tcx> {
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound(_), _)
             | (CandidateSource::ObjectBound(_), _)
+            | (CandidateSource::ObjectAutoBound(_), _)
             | (CandidateSource::Builtin, _)
             | (CandidateSource::AutoImpl, _) => unimplemented!(),
         }
