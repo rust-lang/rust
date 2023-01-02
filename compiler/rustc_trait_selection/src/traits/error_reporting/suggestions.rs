@@ -1363,19 +1363,70 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // Remove all the hir desugaring contexts while maintaining the macro contexts.
             span.remove_mark();
         }
-        let mut suggested = false;
-
-        let mut expr_finder = super::FindExprBySpan { span, result: None };
+        let mut expr_finder = super::FindExprBySpan::new(span);
         let Some(hir::Node::Expr(body)) = self.tcx.hir().find(obligation.cause.body_id) else {
             return false;
         };
         expr_finder.visit_expr(&body);
+        let mut maybe_suggest = |suggested_ty, count, suggestions| {
+            // Remapping bound vars here
+            let trait_pred_and_suggested_ty =
+                trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
+
+            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                obligation.param_env,
+                trait_pred_and_suggested_ty,
+            );
+
+            if self.predicate_may_hold(&new_obligation) {
+                let msg = if count == 1 {
+                    "consider removing the leading `&`-reference".to_string()
+                } else {
+                    format!("consider removing {count} leading `&`-references")
+                };
+
+                err.multipart_suggestion_verbose(
+                    &msg,
+                    suggestions,
+                    Applicability::MachineApplicable,
+                );
+                true
+            } else {
+                false
+            }
+        };
+
+        // Maybe suggest removal of borrows from types in type parameters, like in
+        // `src/test/ui/not-panic/not-panic-safe.rs`.
         let mut count = 0;
         let mut suggestions = vec![];
-        let Some(mut expr) = expr_finder.result else { return false; };
         // Skipping binder here, remapping below
         let mut suggested_ty = trait_pred.self_ty().skip_binder();
+        if let Some(mut hir_ty) = expr_finder.ty_result {
+            while let hir::TyKind::Ref(_, mut_ty) = &hir_ty.kind {
+                count += 1;
+                let span = hir_ty.span.until(mut_ty.ty.span);
+                suggestions.push((span, String::new()));
 
+                let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
+                    break;
+                };
+                suggested_ty = *inner_ty;
+
+                hir_ty = mut_ty.ty;
+
+                if maybe_suggest(suggested_ty, count, suggestions.clone()) {
+                    return true;
+                }
+            }
+        }
+
+        // Maybe suggest removal of borrows from expressions, like in `for i in &&&foo {}`.
+        let Some(mut expr) = expr_finder.result else { return false; };
+        let mut count = 0;
+        let mut suggestions = vec![];
+        // Skipping binder here, remapping below
+        let mut suggested_ty = trait_pred.self_ty().skip_binder();
         'outer: loop {
             while let hir::ExprKind::AddrOf(_, _, borrowed) = expr.kind {
                 count += 1;
@@ -1387,35 +1438,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 suggestions.push((span, String::new()));
 
                 let ty::Ref(_, inner_ty, _) = suggested_ty.kind() else {
-                    break;
+                    break 'outer;
                 };
                 suggested_ty = *inner_ty;
 
                 expr = borrowed;
 
-                // Remapping bound vars here
-                let trait_pred_and_suggested_ty =
-                    trait_pred.map_bound(|trait_pred| (trait_pred, suggested_ty));
-
-                let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-                    obligation.param_env,
-                    trait_pred_and_suggested_ty,
-                );
-
-                if self.predicate_may_hold(&new_obligation) {
-                    let msg = if count == 1 {
-                        "consider removing the leading `&`-reference".to_string()
-                    } else {
-                        format!("consider removing {count} leading `&`-references")
-                    };
-
-                    err.multipart_suggestion_verbose(
-                        &msg,
-                        suggestions,
-                        Applicability::MachineApplicable,
-                    );
-                    suggested = true;
-                    break 'outer;
+                if maybe_suggest(suggested_ty, count, suggestions.clone()) {
+                    return true;
                 }
             }
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
@@ -1431,7 +1461,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 break 'outer;
             }
         }
-        suggested
+        false
     }
 
     fn suggest_remove_await(&self, obligation: &PredicateObligation<'tcx>, err: &mut Diagnostic) {
