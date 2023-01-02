@@ -41,7 +41,7 @@ pub(super) enum CandidateSource {
     ObjectBound(usize),
     /// Implementation of `Send` or other explicitly listed *auto* traits for
     /// a `dyn Trait + Send + Sync`
-    ObjectAutoBound(usize),
+    ObjectAutoBound,
     /// A builtin implementation for some specific traits, used in cases
     /// where we cannot rely an ordinary library implementations.
     ///
@@ -165,12 +165,8 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             }
         }
 
-        for (idx, predicate) in object_bounds.iter().enumerate() {
-            let ty::ExistentialPredicate::AutoTrait(def_id) = predicate.skip_binder() else { continue };
-            if def_id != goal.predicate.def_id() {
-                continue;
-            }
-            acx.try_insert_candidate(CandidateSource::ObjectAutoBound(idx), Certainty::Yes);
+        if object_bounds.auto_traits().any(|def_id| def_id == goal.predicate.def_id()) {
+            acx.try_insert_candidate(CandidateSource::ObjectAutoBound, Certainty::Yes);
         }
     }
 }
@@ -265,7 +261,7 @@ impl<'tcx> EvalCtxt<'tcx> {
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound(_), _)
             | (CandidateSource::ObjectBound(_), _)
-            | (CandidateSource::ObjectAutoBound(_), _)
+            | (CandidateSource::ObjectAutoBound, _)
             | (CandidateSource::Builtin, _)
             | (CandidateSource::AutoImpl, _) => unimplemented!(),
         }
