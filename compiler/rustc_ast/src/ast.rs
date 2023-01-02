@@ -2736,9 +2736,13 @@ impl Extern {
 /// included in this struct (e.g., `async unsafe fn` or `const extern "C" fn`).
 #[derive(Clone, Copy, Encodable, Decodable, Debug)]
 pub struct FnHeader {
+    /// The `unsafe` keyword, if any
     pub unsafety: Unsafe,
+    /// The `async` keyword, if any
     pub asyncness: Async,
+    /// The `const` keyword, if any
     pub constness: Const,
+    /// The `extern` keyword and corresponding ABI string, if any
     pub ext: Extern,
 }
 
