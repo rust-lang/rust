@@ -1,8 +1,11 @@
-error[E0433]: failed to resolve: use of undeclared crate or module `foo`
+error[E0433]: failed to resolve: unresolved import
   --> $DIR/export-fully-qualified.rs:6:20
    |
 LL |     pub fn bar() { foo::baz(); }
-   |                    ^^^ use of undeclared crate or module `foo`
+   |                    ^^^
+   |                    |
+   |                    unresolved import
+   |                    help: a similar path exists: `crate::foo`
 
 error: aborting due to previous error
 

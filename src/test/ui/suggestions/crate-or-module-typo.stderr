@@ -31,11 +31,14 @@ help: there is a crate or module with a similar name
 LL |     bar: std::cell::Cell<bool>
    |          ~~~
 
-error[E0433]: failed to resolve: use of undeclared crate or module `bar`
+error[E0433]: failed to resolve: unresolved import
   --> $DIR/crate-or-module-typo.rs:6:20
    |
 LL |     pub fn bar() { bar::baz(); }
-   |                    ^^^ use of undeclared crate or module `bar`
+   |                    ^^^
+   |                    |
+   |                    unresolved import
+   |                    help: a similar path exists: `crate::bar`
 
 error: aborting due to 4 previous errors
 

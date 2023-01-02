@@ -1861,6 +1861,33 @@ impl<'a> Resolver<'a> {
                     },
                 )
             });
+            let candidates = self
+                .lookup_import_candidates(ident, TypeNS, parent_scope, |res| {
+                    matches!(res, Res::Def(DefKind::Mod, _))
+                })
+                .into_iter()
+                .filter(|ImportSuggestion { did, .. }| match did {
+                    Some(suggestion_did) => suggestion_did.is_local(),
+                    _ => true,
+                })
+                .collect::<Vec<_>>();
+            if let Some(candidate) = candidates.get(0) {
+                let mut crt = "";
+                if ident.name.to_string() == pprust::path_to_string(&candidate.path) {
+                    crt = "crate::";
+                }
+                return (
+                    String::from("unresolved import"),
+                    Some((
+                        vec![(
+                            ident.span,
+                            crt.to_string() + &pprust::path_to_string(&candidate.path),
+                        )],
+                        String::from("a similar path exists"),
+                        Applicability::MaybeIncorrect,
+                    )),
+                );
+            }
             (format!("use of undeclared crate or module `{}`", ident), suggestion)
         }
     }
