@@ -577,7 +577,14 @@ pub enum TerminatorKind<'tcx> {
     /// > The drop glue is executed if, among all statements executed within this `Body`, an assignment to
     /// > the place or one of its "parents" occurred more recently than a move out of it. This does not
     /// > consider indirect assignments.
-    Drop { place: Place<'tcx>, target: BasicBlock, unwind: Option<BasicBlock>, is_replace: bool },
+    Drop {
+        place: Place<'tcx>,
+        target: BasicBlock,
+        unwind: Option<BasicBlock>,
+        /// This field is only used for better diagnostic and to check MIR drop invariants.
+        /// It has no effect on the semantics of the `Drop` terminator.
+        is_replace: bool,
+    },
 
     /// Roughly speaking, evaluates the `func` operand and the arguments, and starts execution of
     /// the referred to function. The operand types must match the argument types of the function.

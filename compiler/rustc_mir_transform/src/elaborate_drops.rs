@@ -386,8 +386,8 @@ impl<'b, 'tcx> ElaborateDropsCtxt<'b, 'tcx> {
                                     &format!("drop of untracked value {:?}", bb),
                                 );
                             }
-                            // If we cannot find it, it means it's a drop followed by a replace
-                            // -> unconditional dro
+                            // drop and replace behind a pointer/array/whatever. The location
+                            // must be initialized.
                             Elaborator { ctxt: self }.patch().patch_terminator(
                                 bb,
                                 TerminatorKind::Drop {
