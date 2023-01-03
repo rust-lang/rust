@@ -943,7 +943,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }) => {
                     // Check if our original expression is a child of the condition of a while loop
                     let expr_is_ancestor = std::iter::successors(Some(original_expr_id), |id| {
-                        self.tcx.hir().find_parent_node(*id)
+                        self.tcx.hir().opt_parent_id(*id)
                     })
                     .take_while(|id| *id != parent)
                     .any(|id| id == expr.hir_id);

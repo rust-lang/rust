@@ -298,7 +298,7 @@ impl<'hir> Map<'hir> {
     /// Finds the id of the parent node to this one.
     ///
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
-    pub fn find_parent_node(self, id: HirId) -> Option<HirId> {
+    pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
@@ -313,7 +313,7 @@ impl<'hir> Map<'hir> {
 
     #[track_caller]
     pub fn parent_id(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id)
+        self.opt_parent_id(hir_id)
             .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
     }
 

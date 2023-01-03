@@ -140,7 +140,7 @@ impl<'tcx> expr_use_visitor::Delegate<'tcx> for ExprUseDelegate<'tcx> {
         diag_expr_id: HirId,
     ) {
         let hir = self.tcx.hir();
-        let parent = match hir.find_parent_node(place_with_id.hir_id) {
+        let parent = match hir.opt_parent_id(place_with_id.hir_id) {
             Some(parent) => parent,
             None => place_with_id.hir_id,
         };
