@@ -2303,10 +2303,10 @@ fn assoc_ty_own_obligations<'cx, 'tcx>(
     nested: &mut Vec<PredicateObligation<'tcx>>,
 ) {
     let tcx = selcx.tcx();
-    let own = tcx
+    let predicates = tcx
         .predicates_of(obligation.predicate.def_id)
         .instantiate_own(tcx, obligation.predicate.substs);
-    for (predicate, span) in std::iter::zip(own.predicates, own.spans) {
+    for (predicate, span) in predicates {
         let normalized = normalize_with_depth_to(
             selcx,
             obligation.param_env,

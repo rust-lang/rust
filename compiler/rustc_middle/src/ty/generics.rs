@@ -341,15 +341,9 @@ impl<'tcx> GenericPredicates<'tcx> {
         &self,
         tcx: TyCtxt<'tcx>,
         substs: SubstsRef<'tcx>,
-    ) -> InstantiatedPredicates<'tcx> {
-        InstantiatedPredicates {
-            predicates: self
-                .predicates
-                .iter()
-                .map(|(p, _)| EarlyBinder(*p).subst(tcx, substs))
-                .collect(),
-            spans: self.predicates.iter().map(|(_, sp)| *sp).collect(),
-        }
+    ) -> impl Iterator<Item = (Predicate<'tcx>, Span)> + DoubleEndedIterator + ExactSizeIterator
+    {
+        EarlyBinder(self.predicates).subst_iter_copied(tcx, substs)
     }
 
     #[instrument(level = "debug", skip(self, tcx))]

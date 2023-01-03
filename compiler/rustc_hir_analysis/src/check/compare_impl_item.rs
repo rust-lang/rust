@@ -209,9 +209,11 @@ fn compare_method_predicate_entailment<'tcx>(
     //
     // We then register the obligations from the impl_m and check to see
     // if all constraints hold.
-    hybrid_preds
-        .predicates
-        .extend(trait_m_predicates.instantiate_own(tcx, trait_to_placeholder_substs).predicates);
+    hybrid_preds.predicates.extend(
+        trait_m_predicates
+            .instantiate_own(tcx, trait_to_placeholder_substs)
+            .map(|(predicate, _)| predicate),
+    );
 
     // Construct trait parameter environment and then shift it into the placeholder viewpoint.
     // The key step here is to update the caller_bounds's predicates to be
@@ -230,7 +232,7 @@ fn compare_method_predicate_entailment<'tcx>(
     debug!("compare_impl_method: caller_bounds={:?}", param_env.caller_bounds());
 
     let impl_m_own_bounds = impl_m_predicates.instantiate_own(tcx, impl_to_placeholder_substs);
-    for (predicate, span) in iter::zip(impl_m_own_bounds.predicates, impl_m_own_bounds.spans) {
+    for (predicate, span) in impl_m_own_bounds {
         let normalize_cause = traits::ObligationCause::misc(span, impl_m_hir_id);
         let predicate = ocx.normalize(&normalize_cause, param_env, predicate);
 
@@ -1828,8 +1830,7 @@ fn compare_type_predicate_entailment<'tcx>(
     check_region_bounds_on_impl_item(tcx, impl_ty, trait_ty, false)?;
 
     let impl_ty_own_bounds = impl_ty_predicates.instantiate_own(tcx, impl_substs);
-
-    if impl_ty_own_bounds.is_empty() {
+    if impl_ty_own_bounds.len() == 0 {
         // Nothing to check.
         return Ok(());
     }
@@ -1844,9 +1845,11 @@ fn compare_type_predicate_entailment<'tcx>(
     // associated type in the trait are assumed.
     let impl_predicates = tcx.predicates_of(impl_ty_predicates.parent.unwrap());
     let mut hybrid_preds = impl_predicates.instantiate_identity(tcx);
-    hybrid_preds
-        .predicates
-        .extend(trait_ty_predicates.instantiate_own(tcx, trait_to_impl_substs).predicates);
+    hybrid_preds.predicates.extend(
+        trait_ty_predicates
+            .instantiate_own(tcx, trait_to_impl_substs)
+            .map(|(predicate, _)| predicate),
+    );
 
     debug!("compare_type_predicate_entailment: bounds={:?}", hybrid_preds);
 
@@ -1862,9 +1865,7 @@ fn compare_type_predicate_entailment<'tcx>(
 
     debug!("compare_type_predicate_entailment: caller_bounds={:?}", param_env.caller_bounds());
 
-    assert_eq!(impl_ty_own_bounds.predicates.len(), impl_ty_own_bounds.spans.len());
-    for (span, predicate) in std::iter::zip(impl_ty_own_bounds.spans, impl_ty_own_bounds.predicates)
-    {
+    for (predicate, span) in impl_ty_own_bounds {
         let cause = ObligationCause::misc(span, impl_ty_hir_id);
         let predicate = ocx.normalize(&cause, param_env, predicate);
 
