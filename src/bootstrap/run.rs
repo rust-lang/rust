@@ -105,6 +105,7 @@ impl Step for BumpStage0 {
 
     fn run(self, builder: &Builder<'_>) -> Self::Output {
         let mut cmd = builder.tool_cmd(Tool::BumpStage0);
+        cmd.args(builder.config.cmd.args());
         builder.run(&mut cmd);
     }
 }
