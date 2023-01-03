@@ -1,8 +1,6 @@
 error[E0308]: arguments to this function are incorrect
   --> $DIR/two-mismatch-notes.rs:10:5
    |
-LL |     let w = Wrapper::<isize>(1isize);
-   |             ------------------------ here the type of `w` is inferred to be `Wrapper<isize>`
 LL |     foo(f, w);
    |     ^^^
    |

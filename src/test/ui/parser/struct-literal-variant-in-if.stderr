@@ -51,8 +51,6 @@ LL |     if x == E::V { field } {}
 error[E0308]: mismatched types
   --> $DIR/struct-literal-variant-in-if.rs:10:20
    |
-LL |     let field = true;
-   |                 ---- here the type of `field` is inferred to be `bool`
 LL |     if x == E::V { field } {}
    |     ---------------^^^^^--
    |     |              |

@@ -1,8 +1,6 @@
 error[E0308]: mismatched types
   --> $DIR/closure-return-type-mismatch.rs:7:9
    |
-LL |         let a = true;
-   |                 ---- here the type of `a` is inferred to be `bool`
 LL |         a
    |         ^ expected `&str`, found `bool`
    |

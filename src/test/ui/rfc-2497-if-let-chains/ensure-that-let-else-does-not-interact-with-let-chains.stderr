@@ -100,9 +100,6 @@ LL |     let Some(n) = opt && let another = n else {
 error[E0308]: mismatched types
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:9:19
    |
-LL |     let opt = Some(1i32);
-   |               ---------- here the type of `opt` is inferred to be `Option<i32>`
-...
 LL |     let Some(n) = opt && n == 1 else {
    |                   ^^^ expected `bool`, found enum `Option`
    |
@@ -123,9 +120,6 @@ LL |     let Some(n) = opt && n == 1 else {
 error[E0308]: mismatched types
   --> $DIR/ensure-that-let-else-does-not-interact-with-let-chains.rs:15:19
    |
-LL |     let opt = Some(1i32);
-   |               ---------- here the type of `opt` is inferred to be `Option<i32>`
-...
 LL |     let Some(n) = opt && let another = n else {
    |                   ^^^ expected `bool`, found enum `Option`
    |
