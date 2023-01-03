@@ -1264,6 +1264,7 @@ impl<'tcx> IntoIterator for InstantiatedPredicates<'tcx> {
     type IntoIter = std::iter::Zip<std::vec::IntoIter<Predicate<'tcx>>, std::vec::IntoIter<Span>>;
 
     fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
         std::iter::zip(self.predicates, self.spans)
     }
 }
@@ -1277,6 +1278,7 @@ impl<'a, 'tcx> IntoIterator for &'a InstantiatedPredicates<'tcx> {
     >;
 
     fn into_iter(self) -> Self::IntoIter {
+        debug_assert_eq!(self.predicates.len(), self.spans.len());
         std::iter::zip(self.predicates.iter().copied(), self.spans.iter().copied())
     }
 }
