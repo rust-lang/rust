@@ -191,6 +191,7 @@ fn map_rust_child_diagnostic(
 
     let mut edit_map: HashMap<lsp_types::Url, Vec<lsp_types::TextEdit>> = HashMap::new();
     let mut suggested_replacements = Vec::new();
+    let mut is_preferred = true;
     for &span in &spans {
         if let Some(suggested_replacement) = &span.suggested_replacement {
             if !suggested_replacement.is_empty() {
@@ -209,6 +210,8 @@ fn map_rust_child_diagnostic(
             ) {
                 edit_map.entry(location.uri).or_default().push(edit);
             }
+            is_preferred &=
+                matches!(span.suggestion_applicability, Some(Applicability::MachineApplicable));
         }
     }
 
@@ -251,7 +254,7 @@ fn map_rust_child_diagnostic(
                         document_changes: None,
                         change_annotations: None,
                     }),
-                    is_preferred: Some(true),
+                    is_preferred: Some(is_preferred),
                     data: None,
                     command: None,
                 },
