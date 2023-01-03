@@ -22,6 +22,7 @@
     - [armv4t-none-eabi](platform-support/armv4t-none-eabi.md)
     - [armv5te-none-eabi](platform-support/armv5te-none-eabi.md)
     - [armv6k-nintendo-3ds](platform-support/armv6k-nintendo-3ds.md)
+    - [armv7-sony-vita-newlibeabihf](platform-support/armv7-sony-vita-newlibeabihf.md)
     - [armv7-unknown-linux-uclibceabi](platform-support/armv7-unknown-linux-uclibceabi.md)
     - [armv7-unknown-linux-uclibceabihf](platform-support/armv7-unknown-linux-uclibceabihf.md)
     - [\*-android and \*-androideabi](platform-support/android.md)

@@ -1241,6 +1241,8 @@ supported_targets! {
 
     ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
 
+    ("armv7-sony-vita-newlibeabihf", armv7_sony_vita_newlibeabihf),
+
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
 
