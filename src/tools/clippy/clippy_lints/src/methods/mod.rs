@@ -3986,7 +3986,7 @@ impl OutType {
             (Self::Unit, &hir::FnRetTy::Return(ty)) if is_unit(ty) => true,
             (Self::Bool, &hir::FnRetTy::Return(ty)) if is_bool(ty) => true,
             (Self::Any, &hir::FnRetTy::Return(ty)) if !is_unit(ty) => true,
-            (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Rptr(_, _)),
+            (Self::Ref, &hir::FnRetTy::Return(ty)) => matches!(ty.kind, hir::TyKind::Ref(_, _)),
             _ => false,
         }
     }

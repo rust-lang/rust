@@ -12,7 +12,7 @@ pub use self::caches::{
 };
 
 mod config;
-pub use self::config::{QueryConfig, QueryVTable};
+pub use self::config::{HashResult, QueryConfig, TryLoadFromDisk};
 
 use crate::dep_graph::DepKind;
 use crate::dep_graph::{DepNodeIndex, HasDepContext, SerializedDepNodeIndex};

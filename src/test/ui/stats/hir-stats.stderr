@@ -41,8 +41,8 @@ ast-stats-1 - Wild                      88 ( 1.2%)             1
 ast-stats-1 - Ident                    440 ( 5.9%)             5
 ast-stats-1 PathSegment              720 ( 9.7%)            30            24
 ast-stats-1 Ty                       896 (12.1%)            14            64
-ast-stats-1 - Rptr                      64 ( 0.9%)             1
 ast-stats-1 - Ptr                       64 ( 0.9%)             1
+ast-stats-1 - Ref                       64 ( 0.9%)             1
 ast-stats-1 - ImplicitSelf             128 ( 1.7%)             2
 ast-stats-1 - Path                     640 ( 8.6%)            10
 ast-stats-1 Item                   1_656 (22.3%)             9           184
@@ -100,8 +100,8 @@ ast-stats-2 - Lit                      144 ( 1.8%)             2
 ast-stats-2 - Block                    216 ( 2.7%)             3
 ast-stats-2 PathSegment              792 ( 9.8%)            33            24
 ast-stats-2 Ty                       896 (11.0%)            14            64
-ast-stats-2 - Rptr                      64 ( 0.8%)             1
 ast-stats-2 - Ptr                       64 ( 0.8%)             1
+ast-stats-2 - Ref                       64 ( 0.8%)             1
 ast-stats-2 - ImplicitSelf             128 ( 1.6%)             2
 ast-stats-2 - Path                     640 ( 7.9%)            10
 ast-stats-2 Item                   2_024 (25.0%)            11           184
@@ -154,7 +154,7 @@ hir-stats GenericParam             400 ( 4.4%)             5            80
 hir-stats Generics                 560 ( 6.2%)            10            56
 hir-stats Ty                       720 ( 8.0%)            15            48
 hir-stats - Ptr                       48 ( 0.5%)             1
-hir-stats - Rptr                      48 ( 0.5%)             1
+hir-stats - Ref                       48 ( 0.5%)             1
 hir-stats - Path                     624 ( 6.9%)            13
 hir-stats Expr                     768 ( 8.5%)            12            64
 hir-stats - Path                      64 ( 0.7%)             1

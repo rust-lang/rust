@@ -23,10 +23,10 @@
 //!
 //! ## Platform support
 //!
-//! Not all platforms that libstd compiles for support capturing backtraces.
-//! Some platforms simply do nothing when capturing a backtrace. To check
-//! whether the platform supports capturing backtraces you can consult the
-//! `BacktraceStatus` enum as a result of `Backtrace::status`.
+//! Not all platforms that std compiles for support capturing backtraces. Some
+//! platforms simply do nothing when capturing a backtrace. To check whether the
+//! platform supports capturing backtraces you can consult the `BacktraceStatus`
+//! enum as a result of `Backtrace::status`.
 //!
 //! Like above with accuracy platform support is done on a best effort basis.
 //! Sometimes libraries might not be available at runtime or something may go

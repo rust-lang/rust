@@ -185,7 +185,7 @@ pub fn phase_cargo_miri(mut args: impl Iterator<Item = String>) {
     // explicitly do this even if RUSTC_STAGE is set, since for these builds we do *not* want the
     // bootstrap `rustc` thing in our way! Instead, we have MIRI_HOST_SYSROOT to use for host
     // builds.
-    cmd.env("RUSTC", &fs::canonicalize(find_miri()).unwrap());
+    cmd.env("RUSTC", fs::canonicalize(find_miri()).unwrap());
     cmd.env("MIRI_BE_RUSTC", "target"); // we better remember to *unset* this in the other phases!
 
     // Set rustdoc to us as well, so we can run doctests.

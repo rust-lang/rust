@@ -219,7 +219,6 @@ mod tests {
     /// Query the map at every offset in the range and collect the results.
     fn to_vec<T: Copy>(map: &RangeMap<T>, offset: u64, len: u64) -> Vec<T> {
         (offset..offset + len)
-            .into_iter()
             .map(|i| {
                 map.iter(Size::from_bytes(i), Size::from_bytes(1)).next().map(|(_, &t)| t).unwrap()
             })

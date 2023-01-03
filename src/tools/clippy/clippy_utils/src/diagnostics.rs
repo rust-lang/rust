@@ -17,7 +17,7 @@ use std::env;
 fn docs_link(diag: &mut Diagnostic, lint: &'static Lint) {
     if env::var("CLIPPY_DISABLE_DOCS_LINKS").is_err() {
         if let Some(lint) = lint.name_lower().strip_prefix("clippy::") {
-            diag.help(&format!(
+            diag.help(format!(
                 "for further information visit https://rust-lang.github.io/rust-clippy/{}/index.html#{lint}",
                 &option_env!("RUST_RELEASE_NUM").map_or("master".to_string(), |n| {
                     // extract just major + minor version and ignore patch versions

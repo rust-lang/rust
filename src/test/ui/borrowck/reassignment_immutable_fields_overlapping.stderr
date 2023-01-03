@@ -11,11 +11,13 @@ LL |     x.a = 1;
 error[E0594]: cannot assign to `x.b`, as `x` is not declared as mutable
   --> $DIR/reassignment_immutable_fields_overlapping.rs:13:5
    |
-LL |     let x: Foo;
-   |         - help: consider changing this to be mutable: `mut x`
-LL |     x.a = 1;
 LL |     x.b = 22;
    |     ^^^^^^^^ cannot assign
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut x: Foo;
+   |         +++
 
 error: aborting due to 2 previous errors
 

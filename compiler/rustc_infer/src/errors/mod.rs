@@ -369,8 +369,8 @@ impl AddToDiagnostic for AddLifetimeParamsSuggestion<'_> {
     {
         let mut mk_suggestion = || {
             let (
-                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sub, _), .. },
-                hir::Ty { kind: hir::TyKind::Rptr(lifetime_sup, _), .. },
+                hir::Ty { kind: hir::TyKind::Ref(lifetime_sub, _), .. },
+                hir::Ty { kind: hir::TyKind::Ref(lifetime_sup, _), .. },
             ) = (self.ty_sub, self.ty_sup) else {
                 return false;
             };

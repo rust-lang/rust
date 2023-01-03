@@ -493,28 +493,32 @@ macro_rules! define_queries {
                 &tcx.query_caches.$name
             }
 
-            #[inline]
-            fn make_vtable(tcx: QueryCtxt<'tcx>, key: &Self::Key) ->
-                QueryVTable<QueryCtxt<'tcx>, Self::Key, Self::Value>
-            {
-                let compute = get_provider!([$($modifiers)*][tcx, $name, key]);
-                let cache_on_disk = Self::cache_on_disk(tcx.tcx, key);
-                QueryVTable {
-                    anon: is_anon!([$($modifiers)*]),
-                    eval_always: is_eval_always!([$($modifiers)*]),
-                    depth_limit: depth_limit!([$($modifiers)*]),
-                    feedable: feedable!([$($modifiers)*]),
-                    dep_kind: dep_graph::DepKind::$name,
-                    hash_result: hash_result!([$($modifiers)*]),
-                    handle_cycle_error: handle_cycle_error!([$($modifiers)*]),
-                    compute,
-                    try_load_from_disk: if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None },
-                }
+            fn execute_query(tcx: TyCtxt<'tcx>, key: Self::Key) -> Self::Stored {
+                tcx.$name(key)
             }
 
-            fn execute_query(tcx: TyCtxt<'tcx>, k: Self::Key) -> Self::Stored {
-                tcx.$name(k)
+            #[inline]
+            // key is only sometimes used
+            #[allow(unused_variables)]
+            fn compute(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> fn(TyCtxt<'tcx>, Self::Key) -> Self::Value {
+                get_provider!([$($modifiers)*][qcx, $name, key])
             }
+
+            #[inline]
+            fn try_load_from_disk(qcx: QueryCtxt<'tcx>, key: &Self::Key) -> rustc_query_system::query::TryLoadFromDisk<QueryCtxt<'tcx>, Self> {
+                let cache_on_disk = Self::cache_on_disk(qcx.tcx, key);
+                if cache_on_disk { should_ever_cache_on_disk!([$($modifiers)*]) } else { None }
+            }
+
+            const ANON: bool = is_anon!([$($modifiers)*]);
+            const EVAL_ALWAYS: bool = is_eval_always!([$($modifiers)*]);
+            const DEPTH_LIMIT: bool = depth_limit!([$($modifiers)*]);
+            const FEEDABLE: bool = feedable!([$($modifiers)*]);
+
+            const DEP_KIND: rustc_middle::dep_graph::DepKind = dep_graph::DepKind::$name;
+            const HANDLE_CYCLE_ERROR: rustc_query_system::HandleCycleError = handle_cycle_error!([$($modifiers)*]);
+
+            const HASH_RESULT: rustc_query_system::query::HashResult<QueryCtxt<'tcx>, Self> = hash_result!([$($modifiers)*]);
         })*
 
         #[allow(nonstandard_style)]

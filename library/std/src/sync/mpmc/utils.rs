@@ -136,7 +136,7 @@ impl Backoff {
         }
     }
 
-    /// Returns `true` if exponential backoff has completed and blocking the thread is advised.
+    /// Returns `true` if quadratic backoff has completed and blocking the thread is advised.
     #[inline]
     pub fn is_completed(&self) -> bool {
         self.step.get() > YIELD_LIMIT

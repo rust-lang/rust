@@ -509,7 +509,7 @@ pub fn compute_debuginfo_vtable_name<'tcx>(
         visited.clear();
         push_generic_params_internal(tcx, trait_ref.substs, &mut vtable_name, &mut visited);
     } else {
-        vtable_name.push_str("_");
+        vtable_name.push('_');
     }
 
     push_close_angle_bracket(cpp_like_debuginfo, &mut vtable_name);

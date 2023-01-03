@@ -31,7 +31,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             &format!("usage of `{outer_sym}<{generic_snippet}>`"),
             |diag| {
                 diag.span_suggestion(hir_ty.span, "try", format!("{generic_snippet}"), applicability);
-                diag.note(&format!(
+                diag.note(format!(
                     "`{generic_snippet}` is already a pointer, `{outer_sym}<{generic_snippet}>` allocates a pointer on the heap"
                 ));
             },
@@ -78,7 +78,7 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
                     format!("{outer_sym}<{generic_snippet}>"),
                     applicability,
                 );
-                diag.note(&format!(
+                diag.note(format!(
                     "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"
                 ));
             },
@@ -91,10 +91,10 @@ pub(super) fn check(cx: &LateContext<'_>, hir_ty: &hir::Ty<'_>, qpath: &QPath<'_
             hir_ty.span,
             &format!("usage of `{outer_sym}<{inner_sym}<{generic_snippet}>>`"),
             |diag| {
-                diag.note(&format!(
+                diag.note(format!(
                     "`{inner_sym}<{generic_snippet}>` is already on the heap, `{outer_sym}<{inner_sym}<{generic_snippet}>>` makes an extra allocation"
                 ));
-                diag.help(&format!(
+                diag.help(format!(
                     "consider using just `{outer_sym}<{generic_snippet}>` or `{inner_sym}<{generic_snippet}>`"
                 ));
             },

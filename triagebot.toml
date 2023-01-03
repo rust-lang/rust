@@ -496,7 +496,6 @@ infra-ci = [
 rustdoc = [
     "@jsha",
     "@GuillaumeGomez",
-    "@CraftSpider",
     "@notriddle",
 ]
 docs = [

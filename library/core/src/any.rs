@@ -148,7 +148,7 @@
 //! ```
 //!
 //! In this example, if the concrete type of `obj` in `use_my_trait` is `SomeConcreteType`, then
-//! the `get_context_ref` call will return a reference to `obj.some_string` with type `&String`.
+//! the `get_context_by_ref` call will return a reference to `obj.some_string` with type `&String`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 

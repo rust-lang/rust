@@ -417,6 +417,100 @@ fn env_empty() {
     assert!(p.is_ok());
 }
 
+#[test]
+#[cfg(not(windows))]
+#[cfg_attr(any(target_os = "emscripten", target_env = "sgx"), ignore)]
+fn main() {
+    const PIDFD: &'static str =
+        if cfg!(target_os = "linux") { "    create_pidfd: false,\n" } else { "" };
+
+    let mut command = Command::new("some-boring-name");
+
+    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name""#));
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "some-boring-name",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    command.args(&["1", "2", "3"]);
+
+    assert_eq!(format!("{command:?}"), format!(r#""some-boring-name" "1" "2" "3""#));
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "some-boring-name",
+        "1",
+        "2",
+        "3",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    crate::os::unix::process::CommandExt::arg0(&mut command, "exciting-name");
+
+    assert_eq!(
+        format!("{command:?}"),
+        format!(r#"["some-boring-name"] "exciting-name" "1" "2" "3""#)
+    );
+
+    assert_eq!(
+        format!("{command:#?}"),
+        format!(
+            r#"Command {{
+    program: "some-boring-name",
+    args: [
+        "exciting-name",
+        "1",
+        "2",
+        "3",
+    ],
+{PIDFD}}}"#
+        )
+    );
+
+    let mut command_with_env_and_cwd = Command::new("boring-name");
+    command_with_env_and_cwd.current_dir("/some/path").env("FOO", "bar");
+    assert_eq!(
+        format!("{command_with_env_and_cwd:?}"),
+        r#"cd "/some/path" && FOO="bar" "boring-name""#
+    );
+    assert_eq!(
+        format!("{command_with_env_and_cwd:#?}"),
+        format!(
+            r#"Command {{
+    program: "boring-name",
+    args: [
+        "boring-name",
+    ],
+    env: CommandEnv {{
+        clear: false,
+        vars: {{
+            "FOO": Some(
+                "bar",
+            ),
+        }},
+    }},
+    cwd: Some(
+        "/some/path",
+    ),
+{PIDFD}}}"#
+        )
+    );
+}
+
 // See issue #91991
 #[test]
 #[cfg(windows)]

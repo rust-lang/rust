@@ -1,5 +1,4 @@
 use crate::marker::Destruct;
-#[cfg(not(bootstrap))]
 use crate::marker::Tuple;
 
 /// Struct representing a closure with mutably borrowed data.
@@ -46,33 +45,6 @@ impl<'a, CapturedData: ?Sized, Function> ConstFnMutClosure<&'a mut CapturedData,
 
 macro_rules! impl_fn_mut_tuple {
     ($($var:ident)*) => {
-        #[cfg(bootstrap)]
-        #[allow(unused_parens)]
-        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
-            FnOnce<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
-        where
-            Function: ~const Fn(($(&mut $var),*), ClosureArguments) -> ClosureReturnValue + ~const Destruct,
-        {
-            type Output = ClosureReturnValue;
-
-            extern "rust-call" fn call_once(mut self, args: ClosureArguments) -> Self::Output {
-            self.call_mut(args)
-            }
-        }
-        #[cfg(bootstrap)]
-        #[allow(unused_parens)]
-        impl<'a, $($var,)* ClosureArguments, Function, ClosureReturnValue> const
-            FnMut<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
-        where
-            Function: ~const Fn(($(&mut $var),*), ClosureArguments)-> ClosureReturnValue + ~const Destruct,
-        {
-            extern "rust-call" fn call_mut(&mut self, args: ClosureArguments) -> Self::Output {
-                #[allow(non_snake_case)]
-                let ($($var),*) = &mut self.data;
-                (self.func)(($($var),*), args)
-            }
-        }
-        #[cfg(not(bootstrap))]
         #[allow(unused_parens)]
         impl<'a, $($var,)* ClosureArguments: Tuple, Function, ClosureReturnValue> const
             FnOnce<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>
@@ -85,7 +57,6 @@ macro_rules! impl_fn_mut_tuple {
             self.call_mut(args)
             }
         }
-        #[cfg(not(bootstrap))]
         #[allow(unused_parens)]
         impl<'a, $($var,)* ClosureArguments: Tuple, Function, ClosureReturnValue> const
             FnMut<ClosureArguments> for ConstFnMutClosure<($(&'a mut $var),*), Function>

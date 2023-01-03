@@ -365,3 +365,6 @@ parse_invalid_identifier_with_leading_number = expected identifier, found number
 
 parse_maybe_fn_typo_with_impl = you might have meant to write `impl` instead of `fn`
     .suggestion = replace `fn` with `impl` here
+
+parse_expected_fn_path_found_fn_keyword = expected identifier, found keyword `fn`
+    .suggestion = use `Fn` to refer to the trait

@@ -317,7 +317,7 @@ impl TokenCursor {
         // required to wrap the text. E.g.
         // - `abc d` is wrapped as `r"abc d"` (num_of_hashes = 0)
         // - `abc "d"` is wrapped as `r#"abc "d""#` (num_of_hashes = 1)
-        // - `abc "##d##"` is wrapped as `r###"abc "d""###` (num_of_hashes = 3)
+        // - `abc "##d##"` is wrapped as `r###"abc ##"d"##"###` (num_of_hashes = 3)
         let mut num_of_hashes = 0;
         let mut count = 0;
         for ch in data.as_str().chars() {
@@ -1498,6 +1498,10 @@ impl<'a> Parser<'a> {
 
     pub fn clear_expected_tokens(&mut self) {
         self.expected_tokens.clear();
+    }
+
+    pub fn approx_token_stream_pos(&self) -> usize {
+        self.token_cursor.num_next_calls
     }
 }
 

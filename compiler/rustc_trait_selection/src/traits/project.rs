@@ -2284,7 +2284,7 @@ fn confirm_impl_trait_in_trait_candidate<'tcx>(
         obligation.param_env,
         cause.clone(),
         obligation.recursion_depth + 1,
-        tcx.bound_trait_impl_trait_tys(impl_fn_def_id)
+        tcx.bound_return_position_impl_trait_in_trait_tys(impl_fn_def_id)
             .map_bound(|tys| {
                 tys.map_or_else(|_| tcx.ty_error(), |tys| tys[&obligation.predicate.def_id])
             })

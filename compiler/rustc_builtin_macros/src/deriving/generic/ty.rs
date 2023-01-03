@@ -97,7 +97,7 @@ impl Ty {
         match self {
             Ref(ty, mutbl) => {
                 let raw_ty = ty.to_ty(cx, span, self_ty, self_generics);
-                cx.ty_rptr(span, raw_ty, None, *mutbl)
+                cx.ty_ref(span, raw_ty, None, *mutbl)
             }
             Path(p) => p.to_ty(cx, span, self_ty, self_generics),
             Self_ => cx.ty_path(self.to_path(cx, span, self_ty, self_generics)),

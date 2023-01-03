@@ -6,7 +6,7 @@ use rustc_errors::{Applicability, Diagnostic};
 use rustc_hir as hir;
 use rustc_hir::def::{CtorKind, Namespace};
 use rustc_hir::GeneratorKind;
-use rustc_infer::infer::TyCtxtInferExt;
+use rustc_infer::infer::{LateBoundRegionConversionTime, TyCtxtInferExt};
 use rustc_middle::mir::tcx::PlaceTy;
 use rustc_middle::mir::{
     AggregateKind, Constant, FakeReadCause, Field, Local, LocalInfo, LocalKind, Location, Operand,
@@ -18,7 +18,10 @@ use rustc_mir_dataflow::move_paths::{InitLocation, LookupResult};
 use rustc_span::def_id::LocalDefId;
 use rustc_span::{symbol::sym, Span, Symbol, DUMMY_SP};
 use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::type_known_to_meet_bound_modulo_regions;
+use rustc_trait_selection::traits::query::evaluate_obligation::InferCtxtExt;
+use rustc_trait_selection::traits::{
+    type_known_to_meet_bound_modulo_regions, Obligation, ObligationCause,
+};
 
 use super::borrow_set::BorrowData;
 use super::MirBorrowckCtxt;
@@ -1066,18 +1069,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 CallKind::Normal { self_arg, desugaring, method_did } => {
                     let self_arg = self_arg.unwrap();
+                    let tcx = self.infcx.tcx;
                     if let Some((CallDesugaringKind::ForLoopIntoIter, _)) = desugaring {
-                        let ty = moved_place.ty(self.body, self.infcx.tcx).ty;
-                        let suggest = match self.infcx.tcx.get_diagnostic_item(sym::IntoIterator) {
+                        let ty = moved_place.ty(self.body, tcx).ty;
+                        let suggest = match tcx.get_diagnostic_item(sym::IntoIterator) {
                             Some(def_id) => {
                                 let infcx = self.infcx.tcx.infer_ctxt().build();
                                 type_known_to_meet_bound_modulo_regions(
                                     &infcx,
                                     self.param_env,
-                                    infcx.tcx.mk_imm_ref(
-                                        infcx.tcx.lifetimes.re_erased,
-                                        infcx.tcx.erase_regions(ty),
-                                    ),
+                                    tcx.mk_imm_ref(tcx.lifetimes.re_erased, tcx.erase_regions(ty)),
                                     def_id,
                                     DUMMY_SP,
                                 )
@@ -1133,8 +1134,44 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                                 place_name, partially_str, loop_message
                             ),
                         );
+                        let infcx = tcx.infer_ctxt().build();
+                        let ty = tcx.erase_regions(moved_place.ty(self.body, tcx).ty);
+                        if let ty::Adt(def, substs) = ty.kind()
+                            && Some(def.did()) == tcx.lang_items().pin_type()
+                            && let ty::Ref(_, _, hir::Mutability::Mut) = substs.type_at(0).kind()
+                            && let self_ty = infcx.replace_bound_vars_with_fresh_vars(
+                                fn_call_span,
+                                LateBoundRegionConversionTime::FnCall,
+                                tcx.fn_sig(method_did).input(0),
+                            )
+                            && infcx.can_eq(self.param_env, ty, self_ty).is_ok()
+                        {
+                            err.span_suggestion_verbose(
+                                fn_call_span.shrink_to_lo(),
+                                "consider reborrowing the `Pin` instead of moving it",
+                                "as_mut().".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+                        if let Some(clone_trait) = tcx.lang_items().clone_trait()
+                            && let trait_ref = tcx.mk_trait_ref(clone_trait, [ty])
+                            && let o = Obligation::new(
+                                tcx,
+                                ObligationCause::dummy(),
+                                self.param_env,
+                                ty::Binder::dummy(trait_ref),
+                            )
+                            && infcx.predicate_must_hold_modulo_regions(&o)
+                        {
+                            err.span_suggestion_verbose(
+                                fn_call_span.shrink_to_lo(),
+                                "you can `clone` the value and consume it, but this might not be \
+                                 your desired behavior",
+                                "clone().".to_string(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
                     }
-                    let tcx = self.infcx.tcx;
                     // Avoid pointing to the same function in multiple different
                     // error messages.
                     if span != DUMMY_SP && self.fn_self_span_reported.insert(self_arg.span) {

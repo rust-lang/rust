@@ -427,7 +427,7 @@ impl f64 {
         self != self
     }
 
-    // FIXME(#50145): `abs` is publicly unavailable in libcore due to
+    // FIXME(#50145): `abs` is publicly unavailable in core due to
     // concerns about portability, so this implementation is for
     // private use internally.
     #[inline]

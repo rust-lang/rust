@@ -704,12 +704,10 @@ impl<'hir> Map<'hir> {
     pub fn get_return_block(self, id: HirId) -> Option<HirId> {
         let mut iter = self.parent_iter(id).peekable();
         let mut ignore_tail = false;
-        if let Some(node) = self.find(id) {
-            if let Node::Expr(Expr { kind: ExprKind::Ret(_), .. }) = node {
-                // When dealing with `return` statements, we don't care about climbing only tail
-                // expressions.
-                ignore_tail = true;
-            }
+        if let Some(Node::Expr(Expr { kind: ExprKind::Ret(_), .. })) = self.find(id) {
+            // When dealing with `return` statements, we don't care about climbing only tail
+            // expressions.
+            ignore_tail = true;
         }
         while let Some((hir_id, node)) = iter.next() {
             if let (Some((_, next_node)), false) = (iter.peek(), ignore_tail) {
@@ -1162,7 +1160,7 @@ pub(super) fn crate_hash(tcx: TyCtxt<'_>, crate_num: CrateNum) -> Svh {
         hir_body_hash.hash_stable(&mut hcx, &mut stable_hasher);
         upstream_crates.hash_stable(&mut hcx, &mut stable_hasher);
         source_file_names.hash_stable(&mut hcx, &mut stable_hasher);
-        if tcx.sess.opts.unstable_opts.incremental_relative_spans {
+        if tcx.sess.opts.incremental_relative_spans() {
             let definitions = tcx.definitions_untracked();
             let mut owner_spans: Vec<_> = krate
                 .owners

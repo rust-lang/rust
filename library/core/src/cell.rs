@@ -807,7 +807,8 @@ impl<T> RefCell<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently borrowed, or
+    /// if `self` and `other` point to the same `RefCell`.
     ///
     /// # Examples
     ///
@@ -1193,7 +1194,7 @@ impl<T: Default> Default for RefCell<T> {
 impl<T: ?Sized + PartialEq> PartialEq for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
@@ -1207,7 +1208,7 @@ impl<T: ?Sized + Eq> Eq for RefCell<T> {}
 impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn partial_cmp(&self, other: &RefCell<T>) -> Option<Ordering> {
         self.borrow().partial_cmp(&*other.borrow())
@@ -1215,7 +1216,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn lt(&self, other: &RefCell<T>) -> bool {
         *self.borrow() < *other.borrow()
@@ -1223,7 +1224,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn le(&self, other: &RefCell<T>) -> bool {
         *self.borrow() <= *other.borrow()
@@ -1231,7 +1232,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn gt(&self, other: &RefCell<T>) -> bool {
         *self.borrow() > *other.borrow()
@@ -1239,7 +1240,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn ge(&self, other: &RefCell<T>) -> bool {
         *self.borrow() >= *other.borrow()
@@ -1250,7 +1251,7 @@ impl<T: ?Sized + PartialOrd> PartialOrd for RefCell<T> {
 impl<T: ?Sized + Ord> Ord for RefCell<T> {
     /// # Panics
     ///
-    /// Panics if the value in either `RefCell` is currently borrowed.
+    /// Panics if the value in either `RefCell` is currently mutably borrowed.
     #[inline]
     fn cmp(&self, other: &RefCell<T>) -> Ordering {
         self.borrow().cmp(&*other.borrow())
@@ -1783,7 +1784,7 @@ impl<T: ?Sized + fmt::Display> fmt::Display for RefMut<'_, T> {
 /// until the reference expires. As a special exception, given an `&T`, any part of it that is
 /// inside an `UnsafeCell<_>` may be deallocated during the lifetime of the reference, after the
 /// last time the reference is used (dereferenced or reborrowed). Since you cannot deallocate a part
-/// of what a reference points to, this means the memory an `&T` points to can be deallocted only if
+/// of what a reference points to, this means the memory an `&T` points to can be deallocated only if
 /// *every part of it* (including padding) is inside an `UnsafeCell`.
 ///
 ///     However, whenever a `&UnsafeCell<T>` is constructed or dereferenced, it must still point to
@@ -1993,7 +1994,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[rustc_const_stable(feature = "const_unsafecell_get", since = "1.32.0")]
     pub const fn get(&self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // #[repr(transparent)]. This exploits std's special status, there is
         // no guarantee for user code that this will work in future versions of the compiler!
         self as *const UnsafeCell<T> as *const T as *mut T
     }
@@ -2051,7 +2052,7 @@ impl<T: ?Sized> UnsafeCell<T> {
     #[rustc_const_stable(feature = "unsafe_cell_raw_get", since = "1.56.0")]
     pub const fn raw_get(this: *const Self) -> *mut T {
         // We can just cast the pointer from `UnsafeCell<T>` to `T` because of
-        // #[repr(transparent)]. This exploits libstd's special status, there is
+        // #[repr(transparent)]. This exploits std's special status, there is
         // no guarantee for user code that this will work in future versions of the compiler!
         this as *const T as *mut T
     }

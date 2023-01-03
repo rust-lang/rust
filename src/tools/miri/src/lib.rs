@@ -54,6 +54,11 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate rustc_target;
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 mod borrow_tracker;
 mod clock;
 mod concurrency;

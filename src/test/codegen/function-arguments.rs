@@ -145,7 +145,7 @@ pub fn raw_struct(_: *const S) {
 
 // `Box` can get deallocated during execution of the function, so it should
 // not get `dereferenceable`.
-// CHECK: noalias noundef nonnull align 4 {{i32\*|ptr}} @_box({{i32\*|ptr}} noalias noundef nonnull align 4 %x)
+// CHECK: noundef nonnull align 4 {{i32\*|ptr}} @_box({{i32\*|ptr}} noalias noundef nonnull align 4 %x)
 #[no_mangle]
 pub fn _box(x: Box<i32>) -> Box<i32> {
   x

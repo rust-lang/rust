@@ -634,7 +634,7 @@ impl<K: DepKind> DepGraph<K> {
         if dep_node_debug.borrow().contains_key(&dep_node) {
             return;
         }
-        let debug_str = debug_str_gen();
+        let debug_str = self.with_ignore(debug_str_gen);
         dep_node_debug.borrow_mut().insert(dep_node, debug_str);
     }
 
@@ -829,7 +829,9 @@ impl<K: DepKind> DepGraph<K> {
         );
 
         if !side_effects.is_empty() {
-            self.emit_side_effects(qcx, data, dep_node_index, side_effects);
+            self.with_query_deserialization(|| {
+                self.emit_side_effects(qcx, data, dep_node_index, side_effects)
+            });
         }
 
         // ... and finally storing a "Green" entry in the color map.

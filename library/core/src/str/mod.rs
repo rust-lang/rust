@@ -368,7 +368,7 @@ impl str {
     #[inline(always)]
     pub unsafe fn as_bytes_mut(&mut self) -> &mut [u8] {
         // SAFETY: the cast from `&str` to `&[u8]` is safe since `str`
-        // has the same layout as `&[u8]` (only libstd can make this guarantee).
+        // has the same layout as `&[u8]` (only std can make this guarantee).
         // The pointer dereference is safe since it comes from a mutable reference which
         // is guaranteed to be valid for writes.
         unsafe { &mut *(self as *mut str as *mut [u8]) }

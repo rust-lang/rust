@@ -147,7 +147,7 @@ impl<'tcx> Visitor<'tcx> for TypeParamSpanVisitor<'tcx> {
 
     fn visit_ty(&mut self, arg: &'tcx hir::Ty<'tcx>) {
         match arg.kind {
-            hir::TyKind::Rptr(_, ref mut_ty) => {
+            hir::TyKind::Ref(_, ref mut_ty) => {
                 // We don't want to suggest looking into borrowing `&T` or `&Self`.
                 hir::intravisit::walk_ty(self, mut_ty.ty);
                 return;

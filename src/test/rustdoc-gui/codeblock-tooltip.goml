@@ -34,7 +34,6 @@ define-function: (
             ".docblock .example-wrap.compile_fail .tooltip::after",
             {
                 "content": '"This example deliberately fails to compile"',
-                "text-align": "center",
                 "padding": "5px 3px 3px",
                 "background-color": |background|,
                 "color": |color|,
@@ -74,7 +73,6 @@ define-function: (
             ".docblock .example-wrap.should_panic .tooltip::after",
             {
                 "content": '"This example panics"',
-                "text-align": "center",
                 "padding": "5px 3px 3px",
                 "background-color": |background|,
                 "color": |color|,
@@ -114,7 +112,6 @@ define-function: (
             ".docblock .example-wrap.ignore .tooltip::after",
             {
                 "content": '"This example is not tested"',
-                "text-align": "center",
                 "padding": "5px 3px 3px",
                 "background-color": |background|,
                 "color": |color|,

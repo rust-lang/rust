@@ -6,21 +6,11 @@ LL | auto trait Foo {
 LL |     fn g(&self);
    |     ---^-------- help: remove these associated items
 
-error[E0599]: the method `g` exists for reference `&Self`, but its trait bounds were not satisfied
-  --> $DIR/issue-105732.rs:9:14
+error[E0599]: no method named `g` found for reference `&Self` in the current scope
+  --> $DIR/issue-105732.rs:10:14
    |
 LL |         self.g();
-   |              ^
-   |
-   = note: the following trait bounds were not satisfied:
-           `Self: Foo`
-           which is required by `&Self: Foo`
-           `&Self: Foo`
-   = help: items from traits can only be used if the type parameter is bounded by the trait
-help: the following trait defines an item `g`, perhaps you need to add a supertrait for it:
-   |
-LL | trait Bar: Foo {
-   |          +++++
+   |              ^ help: there is a method with a similar name: `f`
 
 error: aborting due to 2 previous errors
 

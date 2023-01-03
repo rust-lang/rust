@@ -727,10 +727,6 @@ impl Build {
             return format::format(&builder::Builder::new(&self), *check, &paths);
         }
 
-        if let Subcommand::Clean { all } = self.config.cmd {
-            return clean::clean(self, all);
-        }
-
         // Download rustfmt early so that it can be used in rust-analyzer configs.
         let _ = &builder::Builder::new(&self).initial_rustfmt();
 
@@ -1400,7 +1396,10 @@ impl Build {
         let mut list = vec![INTERNER.intern_str(root)];
         let mut visited = HashSet::new();
         while let Some(krate) = list.pop() {
-            let krate = &self.crates[&krate];
+            let krate = self
+                .crates
+                .get(&krate)
+                .unwrap_or_else(|| panic!("metadata missing for {krate}: {:?}", self.crates));
             ret.push(krate);
             for dep in &krate.deps {
                 if !self.crates.contains_key(dep) {

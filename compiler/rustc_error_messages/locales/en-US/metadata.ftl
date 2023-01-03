@@ -4,6 +4,11 @@ metadata_rlib_required =
 metadata_lib_required =
     crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
 
+metadata_rustc_lib_required =
+    crate `{$crate_name}` required to be available in {$kind} format, but was not found in this form
+    .note = only .rmeta files are distributed for `rustc_private` crates other than `rustc_driver`
+    .help = try adding `extern crate rustc_driver;` at the top level of this crate
+
 metadata_crate_dep_multiple =
     cannot satisfy dependencies so `{$crate_name}` only shows up once
     .help = having upstream crates all available in one format will likely make this go away
@@ -196,11 +201,7 @@ metadata_extern_location_not_file =
     extern location for {$crate_name} is not a file: {$location}
 
 metadata_multiple_candidates =
-    multiple {$flavor} candidates for `{$crate_name}` found
-
-metadata_multiple_matching_crates =
-    multiple matching crates for `{$crate_name}`
-    .note = candidates:{$candidates}
+    multiple candidates for `{$flavor}` dependency `{$crate_name}` found
 
 metadata_symbol_conflicts_current =
     the current crate is indistinguishable from one of its dependencies: it has the same crate-name `{$crate_name}` and was compiled with the same `-C metadata` arguments. This will result in symbol conflicts between the two.

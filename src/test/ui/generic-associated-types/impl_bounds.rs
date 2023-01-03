@@ -15,7 +15,6 @@ impl<T> Foo for Fooy<T> {
     //~^ ERROR impl has stricter requirements than trait
     type B<'a, 'b> = (&'a(), &'b ()) where 'b: 'a;
     //~^ ERROR impl has stricter requirements than trait
-    //~| ERROR lifetime bound not satisfied
     type C = String where Self: Copy;
     //~^ ERROR the trait bound `T: Copy` is not satisfied
     fn d() where Self: Copy {}

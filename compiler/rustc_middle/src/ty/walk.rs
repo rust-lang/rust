@@ -4,7 +4,7 @@
 use crate::ty::subst::{GenericArg, GenericArgKind};
 use crate::ty::{self, Ty};
 use rustc_data_structures::sso::SsoHashSet;
-use smallvec::{self, SmallVec};
+use smallvec::SmallVec;
 
 // The TypeWalker's stack is hot enough that it's worth going to some effort to
 // avoid heap allocations.

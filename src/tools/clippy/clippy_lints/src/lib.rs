@@ -125,6 +125,7 @@ mod explicit_write;
 mod fallible_impl_from;
 mod float_literal;
 mod floating_point_arithmetic;
+mod fn_null_check;
 mod format;
 mod format_args;
 mod format_impl;
@@ -234,6 +235,7 @@ mod partialeq_ne_impl;
 mod partialeq_to_none;
 mod pass_by_ref_or_value;
 mod pattern_type_mismatch;
+mod permissions_set_readonly_false;
 mod precedence;
 mod ptr;
 mod ptr_offset_with_cast;
@@ -263,6 +265,7 @@ mod shadow;
 mod single_char_lifetime_names;
 mod single_component_path_imports;
 mod size_of_in_element_count;
+mod size_of_ref;
 mod slow_vector_initialization;
 mod std_instead_of_core;
 mod strings;
@@ -334,7 +337,7 @@ pub fn read_conf(sess: &Session, path: &io::Result<Option<PathBuf>>) -> Conf {
         Ok(Some(path)) => path,
         Ok(None) => return Conf::default(),
         Err(error) => {
-            sess.struct_err(&format!("error finding Clippy's configuration file: {error}"))
+            sess.struct_err(format!("error finding Clippy's configuration file: {error}"))
                 .emit();
             return Conf::default();
         },
@@ -902,6 +905,9 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(suspicious_xor_used_as_pow::ConfusingXorAndPow));
     store.register_late_pass(move |_| Box::new(manual_is_ascii_check::ManualIsAsciiCheck::new(msrv())));
     store.register_late_pass(|_| Box::new(semicolon_block::SemicolonBlock));
+    store.register_late_pass(|_| Box::new(fn_null_check::FnNullCheck));
+    store.register_late_pass(|_| Box::new(permissions_set_readonly_false::PermissionsSetReadonlyFalse));
+    store.register_late_pass(|_| Box::new(size_of_ref::SizeOfRef));
     // add lints here, do not remove this comment, it's used in `new_lint`
 }
 

@@ -9,6 +9,8 @@
 +         debug f => _2;                   // in scope 1 at $DIR/inline_cycle.rs:53:22: 53:23
 +         let _3: ();                      // in scope 1 at $DIR/inline_cycle.rs:54:5: 54:8
 +         let mut _4: ();                  // in scope 1 at $DIR/inline_cycle.rs:54:5: 54:8
++         scope 2 (inlined <fn() {f} as FnOnce<()>>::call_once - shim(fn() {f})) { // at $DIR/inline_cycle.rs:54:5: 54:8
++         }
 +     }
   
       bb0: {
@@ -24,10 +26,7 @@
                                            // + literal: Const { ty: fn() {f}, val: Value(<ZST>) }
 +         StorageLive(_3);                 // scope 1 at $DIR/inline_cycle.rs:54:5: 54:8
 +         StorageLive(_4);                 // scope 1 at $DIR/inline_cycle.rs:54:5: 54:8
-+         _3 = <fn() {f} as FnOnce<()>>::call_once(move _2, move _4) -> bb1; // scope 1 at $DIR/inline_cycle.rs:54:5: 54:8
-+                                          // mir::Constant
-+                                          // + span: $DIR/inline_cycle.rs:54:5: 54:6
-+                                          // + literal: Const { ty: extern "rust-call" fn(fn() {f}, ()) -> <fn() {f} as FnOnce<()>>::Output {<fn() {f} as FnOnce<()>>::call_once}, val: Value(<ZST>) }
++         _3 = move _2() -> bb1;           // scope 2 at $SRC_DIR/core/src/ops/function.rs:LL:COL
       }
   
       bb1: {

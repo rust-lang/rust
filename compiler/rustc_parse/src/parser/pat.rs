@@ -491,17 +491,6 @@ impl<'a> Parser<'a> {
 
         if let PatKind::Ident(_, _, sub @ None) = &mut rhs.kind {
             // The user inverted the order, so help them fix that.
-            let mut applicability = Applicability::MachineApplicable;
-            // FIXME(bindings_after_at): Remove this code when stabilizing the feature.
-            lhs.walk(&mut |p| match p.kind {
-                // `check_match` is unhappy if the subpattern has a binding anywhere.
-                PatKind::Ident(..) => {
-                    applicability = Applicability::MaybeIncorrect;
-                    false // Short-circuit.
-                }
-                _ => true,
-            });
-
             let lhs_span = lhs.span;
             // Move the LHS into the RHS as a subpattern.
             // The RHS is now the full pattern.
@@ -510,7 +499,12 @@ impl<'a> Parser<'a> {
             self.struct_span_err(sp, "pattern on wrong side of `@`")
                 .span_label(lhs_span, "pattern on the left, should be on the right")
                 .span_label(rhs.span, "binding on the right, should be on the left")
-                .span_suggestion(sp, "switch the order", pprust::pat_to_string(&rhs), applicability)
+                .span_suggestion(
+                    sp,
+                    "switch the order",
+                    pprust::pat_to_string(&rhs),
+                    Applicability::MachineApplicable,
+                )
                 .emit();
         } else {
             // The special case above doesn't apply so we may have e.g. `A(x) @ B(y)`.

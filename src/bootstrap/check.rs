@@ -99,19 +99,13 @@ impl Step for Std {
             cargo_subcommand(builder.kind),
         );
         std_cargo(builder, target, compiler.stage, &mut cargo);
+        cargo.args(args(builder));
 
         builder.info(&format!(
-            "Checking stage{} std artifacts ({} -> {})",
+            "Checking stage{} library artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(
-            builder,
-            cargo,
-            args(builder),
-            &libstd_stamp(builder, compiler, target),
-            vec![],
-            true,
-        );
+        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), vec![], true, false);
 
         // We skip populating the sysroot in non-zero stage because that'll lead
         // to rlib/rmeta conflicts if std gets built during this session.
@@ -155,18 +149,19 @@ impl Step for Std {
         for krate in builder.in_tree_crates("test", Some(target)) {
             cargo.arg("-p").arg(krate.name);
         }
+        cargo.args(args(builder));
 
         builder.info(&format!(
-            "Checking stage{} std test/bench/example targets ({} -> {})",
+            "Checking stage{} library test/bench/example targets ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
         run_cargo(
             builder,
             cargo,
-            args(builder),
             &libstd_test_stamp(builder, compiler, target),
             vec![],
             true,
+            false,
         );
     }
 }
@@ -231,19 +226,13 @@ impl Step for Rustc {
         for krate in builder.in_tree_crates("rustc-main", Some(target)) {
             cargo.arg("-p").arg(krate.name);
         }
+        cargo.args(args(builder));
 
         builder.info(&format!(
             "Checking stage{} compiler artifacts ({} -> {})",
             builder.top_stage, &compiler.host, target
         ));
-        run_cargo(
-            builder,
-            cargo,
-            args(builder),
-            &librustc_stamp(builder, compiler, target),
-            vec![],
-            true,
-        );
+        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], true, false);
 
         let libdir = builder.sysroot_libdir(compiler, target);
         let hostdir = builder.sysroot_libdir(compiler, compiler.host);
@@ -290,6 +279,7 @@ impl Step for CodegenBackend {
             .arg("--manifest-path")
             .arg(builder.src.join(format!("compiler/rustc_codegen_{}/Cargo.toml", backend)));
         rustc_cargo_env(builder, &mut cargo, target);
+        cargo.args(args(builder));
 
         builder.info(&format!(
             "Checking stage{} {} artifacts ({} -> {})",
@@ -299,10 +289,10 @@ impl Step for CodegenBackend {
         run_cargo(
             builder,
             cargo,
-            args(builder),
             &codegen_backend_stamp(builder, compiler, target, backend),
             vec![],
             true,
+            false,
         );
     }
 }
@@ -355,11 +345,13 @@ impl Step for RustAnalyzer {
             cargo.arg("--benches");
         }
 
+        cargo.args(args(builder));
+
         builder.info(&format!(
             "Checking stage{} {} artifacts ({} -> {})",
             compiler.stage, "rust-analyzer", &compiler.host.triple, target.triple
         ));
-        run_cargo(builder, cargo, args(builder), &stamp(builder, compiler, target), vec![], true);
+        run_cargo(builder, cargo, &stamp(builder, compiler, target), vec![], true, false);
 
         /// Cargo's output path in a given stage, compiled by a particular
         /// compiler for the specified target.
@@ -413,6 +405,8 @@ macro_rules! tool_check_step {
                     cargo.arg("--all-targets");
                 }
 
+                cargo.args(args(builder));
+
                 // Enable internal lints for clippy and rustdoc
                 // NOTE: this doesn't enable lints for any other tools unless they explicitly add `#![warn(rustc::internal)]`
                 // See https://github.com/rust-lang/rust/pull/80573#issuecomment-754010776
@@ -428,10 +422,10 @@ macro_rules! tool_check_step {
                 run_cargo(
                     builder,
                     cargo,
-                    args(builder),
                     &stamp(builder, compiler, target),
                     vec![],
                     true,
+                    false,
                 );
 
                 /// Cargo's output path in a given stage, compiled by a particular

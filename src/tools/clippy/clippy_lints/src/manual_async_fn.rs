@@ -76,7 +76,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualAsyncFn {
                                 let help = format!("make the function `async` and {ret_sugg}");
                                 diag.span_suggestion(
                                     header_span,
-                                    &help,
+                                    help,
                                     format!("async {}{ret_snip}", &header_snip[..ret_pos]),
                                     Applicability::MachineApplicable
                                 );
@@ -152,7 +152,7 @@ fn captures_all_lifetimes(inputs: &[Ty<'_>], output_lifetimes: &[LifetimeName]) 
     let input_lifetimes: Vec<LifetimeName> = inputs
         .iter()
         .filter_map(|ty| {
-            if let TyKind::Rptr(lt, _) = ty.kind {
+            if let TyKind::Ref(lt, _) = ty.kind {
                 Some(lt.res)
             } else {
                 None

@@ -131,7 +131,6 @@ fn distinct_type_names() {
     assert_ne!(type_name_of_val(Velocity), type_name_of_val(Velocity(0.0, -9.8)),);
 }
 
-#[cfg(not(bootstrap))]
 #[test]
 fn dyn_type_name() {
     trait Foo {

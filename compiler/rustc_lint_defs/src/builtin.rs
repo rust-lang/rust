@@ -3581,7 +3581,7 @@ declare_lint! {
     /// fn main() {
     ///     let x: String = "3".try_into().unwrap();
     ///     //                  ^^^^^^^^
-    ///     // This call to try_into matches both Foo:try_into and TryInto::try_into as
+    ///     // This call to try_into matches both Foo::try_into and TryInto::try_into as
     ///     // `TryInto` has been added to the Rust prelude in 2021 edition.
     ///     println!("{x}");
     /// }

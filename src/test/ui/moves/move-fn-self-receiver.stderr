@@ -9,6 +9,10 @@ LL |     val.0;
 note: `into_iter` takes ownership of the receiver `self`, which moves `val.0`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
    = note: move occurs because `val.0` has type `Vec<bool>`, which does not implement the `Copy` trait
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |     val.0.clone().into_iter().next();
+   |           ++++++++
 
 error[E0382]: use of moved value: `foo`
   --> $DIR/move-fn-self-receiver.rs:34:5
@@ -93,10 +97,10 @@ note: `Foo::use_rc_self` takes ownership of the receiver `self`, which moves `rc
    |
 LL |     fn use_rc_self(self: Rc<Self>) {}
    |                    ^^^^
-help: consider cloning the value if the performance cost is acceptable
+help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     rc_foo.clone().use_rc_self();
-   |           ++++++++
+   |            ++++++++
 
 error[E0382]: use of moved value: `foo_add`
   --> $DIR/move-fn-self-receiver.rs:59:5
@@ -136,10 +140,10 @@ LL |     for _val in explicit_into_iter.into_iter() {}
 LL |     explicit_into_iter;
    |     ^^^^^^^^^^^^^^^^^^ value used here after move
    |
-help: consider cloning the value if the performance cost is acceptable
+help: you can `clone` the value and consume it, but this might not be your desired behavior
    |
 LL |     for _val in explicit_into_iter.clone().into_iter() {}
-   |                                   ++++++++
+   |                                    ++++++++
 
 error[E0382]: use of moved value: `container`
   --> $DIR/move-fn-self-receiver.rs:71:5

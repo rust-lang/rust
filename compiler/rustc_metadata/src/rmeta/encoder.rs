@@ -76,7 +76,7 @@ pub(super) struct EncodeContext<'a, 'tcx> {
     symbol_table: FxHashMap<Symbol, usize>,
 }
 
-/// If the current crate is a proc-macro, returns early with `Lazy:empty()`.
+/// If the current crate is a proc-macro, returns early with `LazyArray::empty()`.
 /// This is useful for skipping the encoding of things that aren't needed
 /// for proc-macro crates.
 macro_rules! empty_proc_macro {
@@ -713,7 +713,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
         let computed_total_bytes: usize = stats.iter().map(|(_, size)| size).sum();
         assert_eq!(total_bytes, computed_total_bytes);
 
-        if tcx.sess.meta_stats() {
+        if tcx.sess.opts.unstable_opts.meta_stats {
             self.opaque.flush();
 
             // Rewind and re-read all the metadata to count the zero bytes we wrote.
@@ -1197,7 +1197,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 record!(self.tables.params_in_repr[def_id] <- params_in_repr);
             }
             if should_encode_trait_impl_trait_tys(tcx, def_id)
-                && let Ok(table) = self.tcx.collect_trait_impl_trait_tys(def_id)
+                && let Ok(table) = self.tcx.collect_return_position_impl_trait_in_trait_tys(def_id)
             {
                 record!(self.tables.trait_impl_trait_tys[def_id] <- table);
             }
@@ -1564,7 +1564,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let trait_ref = self.tcx.impl_trait_ref(def_id);
                 if let Some(trait_ref) = trait_ref {
                     let trait_def = self.tcx.trait_def(trait_ref.def_id);
-                    if let Some(mut an) = trait_def.ancestors(self.tcx, def_id).ok() {
+                    if let Ok(mut an) = trait_def.ancestors(self.tcx, def_id) {
                         if let Some(specialization_graph::Node::Impl(parent)) = an.nth(1) {
                             self.tables.impl_parent.set(def_id.index, parent.into());
                         }

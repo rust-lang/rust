@@ -1,9 +1,9 @@
 // run-pass
-// needs-unwind
-// revisions: mir thir strict
-// [thir]compile-flags: -Zthir-unsafeck
+// revisions: default strict
 // [strict]compile-flags: -Zstrict-init-checks
 // ignore-tidy-linelength
+// ignore-emscripten spawning processes is not supported
+// ignore-sgx no processes
 
 // This test checks panic emitted from `mem::{uninitialized,zeroed}`.
 
@@ -12,7 +12,6 @@
 
 use std::{
     mem::{self, MaybeUninit, ManuallyDrop},
-    panic,
     ptr::NonNull,
     num,
 };
@@ -70,21 +69,42 @@ enum ZeroIsValid {
 }
 
 #[track_caller]
-fn test_panic_msg<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
-    let err = panic::catch_unwind(op).err();
-    assert_eq!(
-        err.as_ref().and_then(|a| a.downcast_ref::<&str>()),
-        Some(&msg)
-    );
+fn test_panic_msg<T, F: (FnOnce() -> T) + 'static>(op: F, msg: &str) {
+    use std::{panic, env, process};
+
+    // The tricky part is that we can't just run `op`, as that would *abort* the process.
+    // So instead, we reinvoke this process with the caller location as argument.
+    // For the purpose of this test, the line number is unique enough.
+    // If we are running in such a re-invocation, we skip all the tests *except* for the one with that type name.
+    let our_loc = panic::Location::caller().line().to_string();
+    let mut args = env::args();
+    let this = args.next().unwrap();
+    if let Some(loc) = args.next() {
+        if loc == our_loc {
+            op();
+            panic!("we did not abort");
+        } else {
+            // Nothing, we are running another test.
+        }
+    } else {
+        // Invoke new process for actual test, and check result.
+        let mut cmd = process::Command::new(this);
+        cmd.arg(our_loc);
+        let res = cmd.output().unwrap();
+        assert!(!res.status.success(), "test did not fail");
+        let stderr = String::from_utf8_lossy(&res.stderr);
+        assert!(stderr.contains(msg), "test did not contain expected output: looking for {:?}, output:\n{}", msg, stderr);
+    }
 }
 
 #[track_caller]
-fn test_panic_msg_only_if_strict<T>(op: impl (FnOnce() -> T) + panic::UnwindSafe, msg: &str) {
-    let err = panic::catch_unwind(op).err();
-    assert_eq!(
-        err.as_ref().and_then(|a| a.downcast_ref::<&str>()),
-        if cfg!(strict) { Some(&msg) } else { None },
-    );
+fn test_panic_msg_only_if_strict<T>(op: impl (FnOnce() -> T) + 'static, msg: &str) {
+    if !cfg!(strict) {
+        // Just run it.
+        op();
+    } else {
+        test_panic_msg(op, msg);
+    }
 }
 
 fn main() {

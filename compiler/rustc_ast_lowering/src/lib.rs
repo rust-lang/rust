@@ -776,7 +776,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Intercept all spans entering HIR.
     /// Mark a span as relative to the current owning item.
     fn lower_span(&self, span: Span) -> Span {
-        if self.tcx.sess.opts.unstable_opts.incremental_relative_spans {
+        if self.tcx.sess.opts.incremental_relative_spans() {
             span.with_parent(Some(self.current_hir_id_owner.def_id))
         } else {
             // Do not make spans relative when not using incremental compilation.
@@ -1238,7 +1238,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             TyKind::Err => hir::TyKind::Err,
             TyKind::Slice(ty) => hir::TyKind::Slice(self.lower_ty(ty, itctx)),
             TyKind::Ptr(mt) => hir::TyKind::Ptr(self.lower_mt(mt, itctx)),
-            TyKind::Rptr(region, mt) => {
+            TyKind::Ref(region, mt) => {
                 let region = region.unwrap_or_else(|| {
                     let id = if let Some(LifetimeRes::ElidedAnchor { start, end }) =
                         self.resolver.get_lifetime_res(t.id)
@@ -1252,7 +1252,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     Lifetime { ident: Ident::new(kw::UnderscoreLifetime, span), id }
                 });
                 let lifetime = self.lower_lifetime(&region);
-                hir::TyKind::Rptr(lifetime, self.lower_mt(mt, itctx))
+                hir::TyKind::Ref(lifetime, self.lower_mt(mt, itctx))
             }
             TyKind::BareFn(f) => {
                 let generic_params = self.lower_lifetime_binder(t.id, &f.generic_params);
@@ -1656,9 +1656,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     // Lowers a function declaration.
     //
     // `decl`: the unlowered (AST) function declaration.
-    // `fn_def_id`: if `Some`, impl Trait arguments are lowered into generic parameters on the
-    //      given DefId, otherwise impl Trait is disallowed. Must be `Some` if
-    //      `make_ret_async` is also `Some`.
+    // `fn_node_id`: `impl Trait` arguments are lowered into generic parameters on the given `NodeId`.
     // `make_ret_async`: if `Some`, converts `-> T` into `-> impl Future<Output = T>` in the
     //      return type. This is used for `async fn` declarations. The `NodeId` is the ID of the
     //      return type `impl Trait` item, and the `Span` points to the `async` keyword.
@@ -1773,7 +1771,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                     // Given we are only considering `ImplicitSelf` types, we needn't consider
                     // the case where we have a mutable pattern to a reference as that would
                     // no longer be an `ImplicitSelf`.
-                    TyKind::Rptr(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
+                    TyKind::Ref(_, mt) if mt.ty.kind.is_implicit_self() => match mt.mutbl {
                         hir::Mutability::Not => hir::ImplicitSelfKind::ImmRef,
                         hir::Mutability::Mut => hir::ImplicitSelfKind::MutRef,
                     },
@@ -1789,7 +1787,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     //     type OpaqueTy<generics_from_parent_fn> = impl Future<Output = T>;
     //
     // `output`: unlowered output type (`T` in `-> T`)
-    // `fn_def_id`: `DefId` of the parent function (used to create child impl trait definition)
+    // `fn_node_id`: `NodeId` of the parent function (used to create child impl trait definition)
     // `opaque_ty_node_id`: `NodeId` of the opaque `impl Trait` type that should be created
     #[instrument(level = "debug", skip(self))]
     fn lower_async_fn_ret_ty(
@@ -2031,7 +2029,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         &mut self,
         output: &FnRetTy,
         span: Span,
-        mut nested_impl_trait_context: ImplTraitContext,
+        nested_impl_trait_context: ImplTraitContext,
     ) -> hir::GenericBound<'hir> {
         // Compute the `T` in `Future<Output = T>` from the return type.
         let output_ty = match output {
@@ -2039,7 +2037,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
                 // Not `OpaqueTyOrigin::AsyncFn`: that's only used for the
                 // `impl Future` opaque type that `async fn` implicitly
                 // generates.
-                self.lower_ty(ty, &mut nested_impl_trait_context)
+                self.lower_ty(ty, &nested_impl_trait_context)
             }
             FnRetTy::Default(ret_ty_span) => self.arena.alloc(self.ty_tup(*ret_ty_span, &[])),
         };
@@ -2247,6 +2245,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ) -> (hir::GenericParam<'hir>, Option<hir::WherePredicate<'hir>>, hir::TyKind<'hir>) {
         // Add a definition for the in-band `Param`.
         let def_id = self.local_def_id(node_id);
+        let span = self.lower_span(span);
 
         // Set the name to `impl Bound1 + Bound2`.
         let param = hir::GenericParam {
@@ -2254,7 +2253,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             def_id,
             name: ParamName::Plain(self.lower_ident(ident)),
             pure_wrt_drop: false,
-            span: self.lower_span(span),
+            span,
             kind: hir::GenericParamKind::Type { default: None, synthetic: true },
             colon_span: None,
         };
@@ -2264,6 +2263,8 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
             node_id,
             &GenericParamKind::Type { default: None },
             bounds,
+            /* colon_span */ None,
+            span,
             &ImplTraitContext::Universal,
             hir::PredicateOrigin::ImplTrait,
         );
@@ -2273,7 +2274,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
         let ty = hir::TyKind::Path(hir::QPath::Resolved(
             None,
             self.arena.alloc(hir::Path {
-                span: self.lower_span(span),
+                span,
                 res,
                 segments:
                     arena_vec![self; hir::PathSegment::new(self.lower_ident(ident), hir_id, res)],

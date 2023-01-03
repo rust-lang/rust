@@ -45,14 +45,6 @@ fi
 ci_dir=`cd $(dirname $0) && pwd`
 source "$ci_dir/shared.sh"
 
-if command -v python > /dev/null; then
-    PYTHON="python"
-elif command -v python3 > /dev/null; then
-    PYTHON="python3"
-else
-    PYTHON="python2"
-fi
-
 if ! isCI || isCiBranch auto || isCiBranch beta || isCiBranch try || isCiBranch try-perf; then
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.print-step-timings --enable-verbose-tests"
     RUST_CONFIGURE_ARGS="$RUST_CONFIGURE_ARGS --set build.metrics"
@@ -192,16 +184,16 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --set rust.parallel-compiler
 
   # Save the build metrics before we wipe the directory
-  if [ $HAS_METRICS = 1 ]; then
+  if [ "$HAS_METRICS" = 1 ]; then
     mv build/metrics.json .
   fi
   rm -rf build
-  if [ $HAS_METRICS = 1 ]; then
+  if [ "$HAS_METRICS" = 1 ]; then
     mkdir build
     mv metrics.json build
   fi
 
-  CARGO_INCREMENTAL=0 $PYTHON ../x.py check
+  CARGO_INCREMENTAL=0 ../x check
 fi
 
 sccache --show-stats || true

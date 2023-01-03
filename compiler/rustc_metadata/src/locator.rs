@@ -216,9 +216,8 @@ use crate::creader::Library;
 use crate::errors::{
     CannotFindCrate, CrateLocationUnknownType, DlError, ExternLocationNotExist,
     ExternLocationNotFile, FoundStaticlib, IncompatibleRustc, InvalidMetadataFiles,
-    LibFilenameForm, MultipleCandidates, MultipleMatchingCrates, NewerCrateVersion,
-    NoCrateWithTriple, NoDylibPlugin, NonAsciiName, StableCrateIdCollision, SymbolConflictsCurrent,
-    SymbolConflictsOthers,
+    LibFilenameForm, MultipleCandidates, NewerCrateVersion, NoCrateWithTriple, NoDylibPlugin,
+    NonAsciiName, StableCrateIdCollision, SymbolConflictsCurrent, SymbolConflictsOthers,
 };
 use crate::rmeta::{rustc_version, MetadataBlob, METADATA_HEADER};
 
@@ -240,7 +239,6 @@ use rustc_target::spec::{Target, TargetTriple};
 
 use snap::read::FrameDecoder;
 use std::borrow::Cow;
-use std::fmt::Write as _;
 use std::io::{Read, Result as IoResult, Write};
 use std::path::{Path, PathBuf};
 use std::{cmp, fmt, fs};
@@ -482,7 +480,22 @@ impl<'a> CrateLocator<'a> {
         match libraries.len() {
             0 => Ok(None),
             1 => Ok(Some(libraries.into_iter().next().unwrap().1)),
-            _ => Err(CrateError::MultipleMatchingCrates(self.crate_name, libraries)),
+            _ => {
+                let mut libraries: Vec<_> = libraries.into_values().collect();
+
+                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
+                let candidates = libraries
+                    .iter()
+                    .map(|lib| lib.source.paths().next().unwrap().clone())
+                    .collect::<Vec<_>>();
+
+                Err(CrateError::MultipleCandidates(
+                    self.crate_name,
+                    // these are the same for all candidates
+                    get_flavor_from_path(candidates.first().unwrap()),
+                    candidates,
+                ))
+            }
         }
     }
 
@@ -882,17 +895,22 @@ pub fn list_file_metadata(
     metadata_loader: &dyn MetadataLoader,
     out: &mut dyn Write,
 ) -> IoResult<()> {
+    let flavor = get_flavor_from_path(path);
+    match get_metadata_section(target, flavor, path, metadata_loader) {
+        Ok(metadata) => metadata.list_crate_metadata(out),
+        Err(msg) => write!(out, "{}\n", msg),
+    }
+}
+
+fn get_flavor_from_path(path: &Path) -> CrateFlavor {
     let filename = path.file_name().unwrap().to_str().unwrap();
-    let flavor = if filename.ends_with(".rlib") {
+
+    if filename.ends_with(".rlib") {
         CrateFlavor::Rlib
     } else if filename.ends_with(".rmeta") {
         CrateFlavor::Rmeta
     } else {
         CrateFlavor::Dylib
-    };
-    match get_metadata_section(target, flavor, path, metadata_loader) {
-        Ok(metadata) => metadata.list_crate_metadata(out),
-        Err(msg) => write!(out, "{}\n", msg),
     }
 }
 
@@ -931,7 +949,6 @@ pub(crate) enum CrateError {
     ExternLocationNotExist(Symbol, PathBuf),
     ExternLocationNotFile(Symbol, PathBuf),
     MultipleCandidates(Symbol, CrateFlavor, Vec<PathBuf>),
-    MultipleMatchingCrates(Symbol, FxHashMap<Svh, Library>),
     SymbolConflictsCurrent(Symbol),
     SymbolConflictsOthers(Symbol),
     StableCrateIdCollision(Symbol, Symbol),
@@ -972,37 +989,7 @@ impl CrateError {
                 sess.emit_err(ExternLocationNotFile { span, crate_name, location: &loc });
             }
             CrateError::MultipleCandidates(crate_name, flavor, candidates) => {
-                sess.emit_err(MultipleCandidates { span, flavor: flavor, crate_name, candidates });
-            }
-            CrateError::MultipleMatchingCrates(crate_name, libraries) => {
-                let mut libraries: Vec<_> = libraries.into_values().collect();
-                // Make ordering of candidates deterministic.
-                // This has to `clone()` to work around lifetime restrictions with `sort_by_key()`.
-                // `sort_by()` could be used instead, but this is in the error path,
-                // so the performance shouldn't matter.
-                libraries.sort_by_cached_key(|lib| lib.source.paths().next().unwrap().clone());
-                let candidates = libraries
-                    .iter()
-                    .map(|lib| {
-                        let crate_name = lib.metadata.get_root().name();
-                        let crate_name = crate_name.as_str();
-                        let mut paths = lib.source.paths();
-
-                        // This `unwrap()` should be okay because there has to be at least one
-                        // source file. `CrateSource`'s docs confirm that too.
-                        let mut s = format!(
-                            "\ncrate `{}`: {}",
-                            crate_name,
-                            paths.next().unwrap().display()
-                        );
-                        let padding = 8 + crate_name.len();
-                        for path in paths {
-                            write!(s, "\n{:>padding$}", path.display(), padding = padding).unwrap();
-                        }
-                        s
-                    })
-                    .collect::<String>();
-                sess.emit_err(MultipleMatchingCrates { span, crate_name, candidates });
+                sess.emit_err(MultipleCandidates { span, crate_name, flavor, candidates });
             }
             CrateError::SymbolConflictsCurrent(root_name) => {
                 sess.emit_err(SymbolConflictsCurrent { span, crate_name: root_name });

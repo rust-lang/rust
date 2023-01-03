@@ -194,7 +194,7 @@ declare_features! (
     /// Allows irrefutable patterns in `if let` and `while let` statements (RFC 2086).
     (accepted, irrefutable_let_patterns, "1.33.0", Some(44495), None),
     /// Allows `#[instruction_set(_)]` attribute.
-    (accepted, isa_attribute, "CURRENT_RUSTC_VERSION", Some(74727), None),
+    (accepted, isa_attribute, "1.67.0", Some(74727), None),
     /// Allows some increased flexibility in the name resolution rules,
     /// especially around globs and shadowing (RFC 1560).
     (accepted, item_like_imports, "1.15.0", Some(35120), None),
@@ -240,7 +240,7 @@ declare_features! (
     /// Allows specifying the bundle link modifier
     (accepted, native_link_modifiers_bundle, "1.63.0", Some(81490), None),
     /// Allows specifying the verbatim link modifier
-    (accepted, native_link_modifiers_verbatim, "CURRENT_RUSTC_VERSION", Some(81490), None),
+    (accepted, native_link_modifiers_verbatim, "1.67.0", Some(81490), None),
     /// Allows specifying the whole-archive link modifier
     (accepted, native_link_modifiers_whole_archive, "1.61.0", Some(81490), None),
     /// Allows using non lexical lifetimes (RFC 2094).

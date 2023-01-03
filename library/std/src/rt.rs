@@ -139,9 +139,9 @@ fn lang_start_internal(
     // mechanism itself.
     //
     // There are a couple of instances where unwinding can begin. First is inside of the
-    // `rt::init`, `rt::cleanup` and similar functions controlled by libstd. In those instances a
-    // panic is a libstd implementation bug. A quite likely one too, as there isn't any way to
-    // prevent libstd from accidentally introducing a panic to these functions. Another is from
+    // `rt::init`, `rt::cleanup` and similar functions controlled by bstd. In those instances a
+    // panic is a std implementation bug. A quite likely one too, as there isn't any way to
+    // prevent std from accidentally introducing a panic to these functions. Another is from
     // user code from `main` or, more nefariously, as described in e.g. issue #86030.
     // SAFETY: Only called once during runtime initialization.
     panic::catch_unwind(move || unsafe { init(argc, argv, sigpipe) }).map_err(rt_abort)?;

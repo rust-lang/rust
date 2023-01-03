@@ -1,6 +1,6 @@
 // run-rustfix
 #![warn(clippy::manual_retain)]
-#![allow(unused)]
+#![allow(unused, clippy::redundant_clone)]
 use std::collections::BTreeMap;
 use std::collections::BTreeSet;
 use std::collections::BinaryHeap;

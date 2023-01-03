@@ -2291,7 +2291,7 @@ impl Target {
                     } else {
                         return Some(Err(format!(
                             "'{}' is not a valid value for lld-flavor. \
-                             Use 'darwin', 'gnu', 'link' or 'wasm.",
+                             Use 'darwin', 'gnu', 'link' or 'wasm'.",
                             s)))
                     }
                     Some(Ok(()))

@@ -1,5 +1,6 @@
 use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
+use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
@@ -30,14 +31,17 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr_ty: Ty<'tcx>,
         expected: Ty<'tcx>,
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
-        _error: Option<TypeError<'tcx>>,
+        error: Option<TypeError<'tcx>>,
     ) {
         if expr_ty == expected {
             return;
         }
 
+        self.annotate_alternative_method_deref(err, expr, error);
+
         // Use `||` to give these suggestions a precedence
         let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
             || self.suggest_option_to_bool(err, expr, expr_ty, expected)
@@ -70,6 +74,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.check_for_range_as_method_call(err, expr, expr_ty, expected);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -313,6 +318,162 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => {}
         }
+    }
+
+    fn annotate_alternative_method_deref(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) {
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
+        let Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+                })) = self.tcx.hir().find(parent) else {return; };
+        if rhs.hir_id != expr.hir_id || expected.is_closure() {
+            return;
+        }
+        let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else { return; };
+        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else { return; };
+        let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else { return; };
+
+        let Ok(pick) = self
+            .probe_for_name(
+                probe::Mode::MethodCall,
+                path.ident,
+                probe::IsSuggestion(true),
+                self_ty,
+                deref.hir_id,
+                probe::ProbeScope::TraitsInScope,
+            ) else {
+                return;
+            };
+        let in_scope_methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::TraitsInScope,
+        );
+        let other_methods_in_scope: Vec<_> =
+            in_scope_methods.iter().filter(|c| c.item.def_id != pick.item.def_id).collect();
+
+        let all_methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::AllTraits,
+        );
+        let suggestions: Vec<_> = all_methods
+            .into_iter()
+            .filter(|c| c.item.def_id != pick.item.def_id)
+            .map(|c| {
+                let m = c.item;
+                let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
+                    self.var_for_def(deref.span, param)
+                });
+                vec![
+                    (
+                        deref.span.until(base.span),
+                        format!(
+                            "{}({}",
+                            with_no_trimmed_paths!(
+                                self.tcx.def_path_str_with_substs(m.def_id, substs,)
+                            ),
+                            match self.tcx.fn_sig(m.def_id).input(0).skip_binder().kind() {
+                                ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                                ty::Ref(_, _, _) => "&",
+                                _ => "",
+                            },
+                        ),
+                    ),
+                    match &args[..] {
+                        [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
+                        [first, ..] => (base.span.between(first.span), ", ".to_string()),
+                    },
+                ]
+            })
+            .collect();
+        if suggestions.is_empty() {
+            return;
+        }
+        let mut path_span: MultiSpan = path.ident.span.into();
+        path_span.push_span_label(
+            path.ident.span,
+            with_no_trimmed_paths!(format!(
+                "refers to `{}`",
+                self.tcx.def_path_str(pick.item.def_id),
+            )),
+        );
+        let container_id = pick.item.container_id(self.tcx);
+        let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
+        for def_id in pick.import_ids {
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+            path_span.push_span_label(
+                self.tcx.hir().span(hir_id),
+                format!("`{container}` imported here"),
+            );
+        }
+        let tail = with_no_trimmed_paths!(match &other_methods_in_scope[..] {
+            [] => return,
+            [candidate] => format!(
+                "the method of the same name on {} `{}`",
+                match candidate.kind {
+                    probe::CandidateKind::InherentImplCandidate(..) => "the inherent impl for",
+                    _ => "trait",
+                },
+                self.tcx.def_path_str(candidate.item.container_id(self.tcx))
+            ),
+            [.., last] if other_methods_in_scope.len() < 5 => {
+                format!(
+                    "the methods of the same name on {} and `{}`",
+                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
+                        .iter()
+                        .map(|c| format!(
+                            "`{}`",
+                            self.tcx.def_path_str(c.item.container_id(self.tcx))
+                        ))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                )
+            }
+            _ => format!(
+                "the methods of the same name on {} other traits",
+                other_methods_in_scope.len()
+            ),
+        });
+        err.span_note(
+            path_span,
+            &format!(
+                "the `{}` call is resolved to the method in `{container}`, shadowing {tail}",
+                path.ident,
+            ),
+        );
+        if suggestions.len() > other_methods_in_scope.len() {
+            err.note(&format!(
+                "additionally, there are {} other available methods that aren't in scope",
+                suggestions.len() - other_methods_in_scope.len()
+            ));
+        }
+        err.multipart_suggestions(
+            &format!(
+                "you might have meant to call {}; you can use the fully-qualified path to call {} \
+                 explicitly",
+                if suggestions.len() == 1 {
+                    "the other method"
+                } else {
+                    "one of the other methods"
+                },
+                if suggestions.len() == 1 { "it" } else { "one of them" },
+            ),
+            suggestions,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
@@ -1446,5 +1607,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         }
+    }
+
+    /// Identify when the user has written `foo..bar()` instead of `foo.bar()`.
+    pub fn check_for_range_as_method_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if !hir::is_range_literal(expr) {
+            return;
+        }
+        let hir::ExprKind::Struct(
+            hir::QPath::LangItem(LangItem::Range, ..),
+            [start, end],
+            _,
+        ) = expr.kind else { return; };
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
+            // Ignore `Foo { field: a..Default::default() }`
+            return;
+        }
+        let mut expr = end.expr;
+        while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
+            // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
+            // `src/test/ui/methods/issues/issue-90315.stderr`.
+            expr = rcvr;
+        }
+        let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
+        let ty::Adt(adt, _) = checked_ty.kind() else { return; };
+        if self.tcx.lang_items().range_struct() != Some(adt.did()) {
+            return;
+        }
+        if let ty::Adt(adt, _) = expected_ty.kind()
+            && self.tcx.lang_items().range_struct() == Some(adt.did())
+        {
+            return;
+        }
+        // Check if start has method named end.
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
+        let [hir::PathSegment { ident, .. }] = p.segments else { return; };
+        let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
+        let Ok(_pick) = self.probe_for_name(
+            probe::Mode::MethodCall,
+            *ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            expr.hir_id,
+            probe::ProbeScope::AllTraits,
+        ) else { return; };
+        let mut sugg = ".";
+        let mut span = start.expr.span.between(end.expr.span);
+        if span.lo() + BytePos(2) == span.hi() {
+            // There's no space between the start, the range op and the end, suggest removal which
+            // will be more noticeable than the replacement of `..` with `.`.
+            span = span.with_lo(span.lo() + BytePos(1));
+            sugg = "";
+        }
+        err.span_suggestion_verbose(
+            span,
+            "you likely meant to write a method call instead of a range",
+            sugg,
+            Applicability::MachineApplicable,
+        );
     }
 }

@@ -1291,29 +1291,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
             let hir = self.tcx.hir();
-            if let Some(node) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
-                if let hir::Node::Expr(expr) = node {
-                    // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
-                    // and if not maybe suggest doing something else? If we kept the expression around we
-                    // could also check if it is an fn call (very likely) and suggest changing *that*, if
-                    // it is from the local crate.
-                    err.span_suggestion(
-                        span,
-                        "remove the `.await`",
-                        "",
-                        Applicability::MachineApplicable,
-                    );
-                    // FIXME: account for associated `async fn`s.
-                    if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
-                        if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
-                            obligation.predicate.kind().skip_binder()
-                        {
-                            err.span_label(
-                                *span,
-                                &format!("this call returns `{}`", pred.self_ty()),
-                            );
-                        }
-                        if let Some(typeck_results) = &self.typeck_results
+            if let Some(hir::Node::Expr(expr)) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
+                // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
+                // and if not maybe suggest doing something else? If we kept the expression around we
+                // could also check if it is an fn call (very likely) and suggest changing *that*, if
+                // it is from the local crate.
+                err.span_suggestion(
+                    span,
+                    "remove the `.await`",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+                // FIXME: account for associated `async fn`s.
+                if let hir::Expr { span, kind: hir::ExprKind::Call(base, _), .. } = expr {
+                    if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) =
+                        obligation.predicate.kind().skip_binder()
+                    {
+                        err.span_label(*span, &format!("this call returns `{}`", pred.self_ty()));
+                    }
+                    if let Some(typeck_results) = &self.typeck_results
                             && let ty = typeck_results.expr_ty_adjusted(base)
                             && let ty::FnDef(def_id, _substs) = ty.kind()
                             && let Some(hir::Node::Item(hir::Item { ident, span, vis_span, .. })) =
@@ -1339,7 +1335,6 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 );
                             }
                         }
-                    }
                 }
             }
         }
@@ -2519,6 +2514,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);
                 match self.tcx.hir().find(parent_node) {
+                    Some(Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                        err.span_suggestion_verbose(
+                            ty.span.shrink_to_lo(),
+                            "consider borrowing here",
+                            "&",
+                            Applicability::MachineApplicable,
+                        );
+                        err.note("all local variables must have a statically known size");
+                    }
                     Some(Node::Local(hir::Local {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
                         ..
@@ -2688,7 +2692,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 // Don't print the tuple of capture types
                 'print: {
                     if !is_upvar_tys_infer_tuple {
-                        let msg = format!("required because it appears within the type `{}`", ty);
+                        let msg = with_forced_trimmed_paths!(format!(
+                            "required because it appears within the type `{ty}`",
+                        ));
                         match ty.kind() {
                             ty::Adt(def, _) => match self.tcx.opt_item_ident(def.did()) {
                                 Some(ident) => err.span_note(ident.span, &msg),
@@ -2729,7 +2735,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let mut msg =
                                     "required because it captures the following types: ".to_owned();
                                 for ty in bound_tys.skip_binder() {
-                                    write!(msg, "`{}`, ", ty).unwrap();
+                                    with_forced_trimmed_paths!(write!(msg, "`{}`, ", ty).unwrap());
                                 }
                                 err.note(msg.trim_end_matches(", "))
                             }
@@ -2740,7 +2746,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                                 let kind = tcx.generator_kind(def_id).unwrap().descr();
                                 err.span_note(
                                     sp,
-                                    &format!("required because it's used within this {}", kind),
+                                    with_forced_trimmed_paths!(&format!(
+                                        "required because it's used within this {kind}",
+                                    )),
                                 )
                             }
                             ty::Closure(def_id, _) => err.span_note(
@@ -2964,7 +2972,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     let expr_ty = with_forced_trimmed_paths!(self.ty_to_string(expr_ty));
                     err.span_label(
                         expr_span,
-                        format!("return type was inferred to be `{expr_ty}` here"),
+                        with_forced_trimmed_paths!(format!(
+                            "return type was inferred to be `{expr_ty}` here",
+                        )),
                     );
                 }
             }
@@ -3227,7 +3237,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         })) = call_node
         {
             if Some(rcvr.span) == err.span.primary_span() {
-                err.replace_span_with(path.ident.span);
+                err.replace_span_with(path.ident.span, true);
             }
         }
         if let Some(Node::Expr(hir::Expr {

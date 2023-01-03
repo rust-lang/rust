@@ -4,82 +4,95 @@ goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 // This is needed so that the text color is computed.
 show-text: true
 
-// Ayu theme
-local-storage: {
-    "rustdoc-theme": "ayu",
-    "rustdoc-use-system-theme": "false",
-}
-reload:
-
-assert-css: (".item-table .mod", {"color": "rgb(57, 175, 215)"}, ALL)
-assert-css: (".item-table .macro", {"color": "rgb(163, 122, 204)"}, ALL)
-assert-css: (".item-table .struct", {"color": "rgb(255, 160, 165)"}, ALL)
-assert-css: (".item-table .enum", {"color": "rgb(255, 160, 165)"}, ALL)
-assert-css: (".item-table .trait", {"color": "rgb(57, 175, 215)"}, ALL)
-assert-css: (".item-table .fn", {"color": "rgb(253, 214, 135)"}, ALL)
-assert-css: (".item-table .type", {"color": "rgb(255, 160, 165)"}, ALL)
-assert-css: (".item-table .union", {"color": "rgb(255, 160, 165)"}, ALL)
-assert-css: (".item-table .keyword", {"color": "rgb(57, 175, 215)"}, ALL)
-
-assert-css: (
-    ".sidebar-elems a:not(.current)",
-    {"color": "rgb(83, 177, 219)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
-    ALL,
-)
-assert-css: (
-    ".sidebar-elems a.current",
-    {"color": "rgb(255, 180, 76)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "500"},
-    ALL,
-)
-
-
-// Dark theme
-local-storage: {"rustdoc-theme": "dark"}
-reload:
-
-assert-css: (".item-table .mod", {"color": "rgb(210, 153, 29)"}, ALL)
-assert-css: (".item-table .macro", {"color": "rgb(9, 189, 0)"}, ALL)
-assert-css: (".item-table .struct", {"color": "rgb(45, 191, 184)"}, ALL)
-assert-css: (".item-table .enum", {"color": "rgb(45, 191, 184)"}, ALL)
-assert-css: (".item-table .trait", {"color": "rgb(183, 140, 242)"}, ALL)
-assert-css: (".item-table .fn", {"color": "rgb(43, 171, 99)"}, ALL)
-assert-css: (".item-table .type", {"color": "rgb(45, 191, 184)"}, ALL)
-assert-css: (".item-table .union", {"color": "rgb(45, 191, 184)"}, ALL)
-assert-css: (".item-table .keyword", {"color": "rgb(210, 153, 29)"}, ALL)
-
-assert-css: (
-    ".sidebar-elems a:not(.current)",
-    {"color": "rgb(253, 191, 53)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
-    ALL,
-)
-assert-css: (
-    ".sidebar-elems a.current",
-    {"color": "rgb(253, 191, 53)", "background-color": "rgb(68, 68, 68)", "font-weight": "500"},
-    ALL,
+define-function: (
+    "check-colors",
+    (theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
+     sidebar, sidebar_current, sidebar_current_background),
+    [
+        ("local-storage", {
+            "rustdoc-theme": |theme|,
+            "rustdoc-use-system-theme": "false",
+        }),
+        ("reload"),
+        // Checking results colors.
+        ("assert-css", (".item-table .mod", {"color": |mod|}, ALL)),
+        ("assert-css", (".item-table .macro", {"color": |macro|}, ALL)),
+        ("assert-css", (".item-table .struct", {"color": |struct|}, ALL)),
+        ("assert-css", (".item-table .enum", {"color": |enum|}, ALL)),
+        ("assert-css", (".item-table .trait", {"color": |trait|}, ALL)),
+        ("assert-css", (".item-table .fn", {"color": |fn|}, ALL)),
+        ("assert-css", (".item-table .type", {"color": |type|}, ALL)),
+        ("assert-css", (".item-table .union", {"color": |union|}, ALL)),
+        ("assert-css", (".item-table .keyword", {"color": |keyword|}, ALL)),
+        // Checking sidebar elements.
+        ("assert-css", (
+            ".sidebar-elems a:not(.current)",
+            {"color": |sidebar|, "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
+            ALL,
+        )),
+        ("assert-css", (
+            ".sidebar-elems a.current",
+            {
+                "color": |sidebar_current|,
+                "background-color": |sidebar_current_background|,
+                "font-weight": "500",
+            },
+            ALL,
+        )),
+    ],
 )
 
-
-// Light theme
-local-storage: {"rustdoc-theme": "light"}
-reload:
-
-assert-css: (".item-table .mod", {"color": "rgb(56, 115, 173)"}, ALL)
-assert-css: (".item-table .macro", {"color": "rgb(6, 128, 0)"}, ALL)
-assert-css: (".item-table .struct", {"color": "rgb(173, 55, 138)"}, ALL)
-assert-css: (".item-table .enum", {"color": "rgb(173, 55, 138)"}, ALL)
-assert-css: (".item-table .trait", {"color": "rgb(110, 79, 201)"}, ALL)
-assert-css: (".item-table .fn", {"color": "rgb(173, 124, 55)"}, ALL)
-assert-css: (".item-table .type", {"color": "rgb(173, 55, 138)"}, ALL)
-assert-css: (".item-table .union", {"color": "rgb(173, 55, 138)"}, ALL)
-assert-css: (".item-table .keyword", {"color": "rgb(56, 115, 173)"}, ALL)
-
-assert-css: (
-    ".sidebar-elems a:not(.current)",
-    {"color": "rgb(53, 109, 164)", "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
-    ALL,
+call-function: (
+    "check-colors",
+    {
+        "theme": "ayu",
+        "mod": "rgb(57, 175, 215)",
+        "macro": "rgb(163, 122, 204)",
+        "struct": "rgb(255, 160, 165)",
+        "enum": "rgb(255, 160, 165)",
+        "trait": "rgb(57, 175, 215)",
+        "fn": "rgb(253, 214, 135)",
+        "type": "rgb(255, 160, 165)",
+        "union": "rgb(255, 160, 165)",
+        "keyword": "rgb(57, 175, 215)",
+        "sidebar": "rgb(83, 177, 219)",
+        "sidebar_current": "rgb(255, 180, 76)",
+        "sidebar_current_background": "rgba(0, 0, 0, 0)",
+    },
 )
-assert-css: (
-    ".sidebar-elems a.current",
-    {"color": "rgb(53, 109, 164)", "background-color": "rgb(255, 255, 255)", "font-weight": "500"},
-    ALL,
+call-function: (
+    "check-colors",
+    {
+        "theme": "dark",
+        "mod": "rgb(210, 153, 29)",
+        "macro": "rgb(9, 189, 0)",
+        "struct": "rgb(45, 191, 184)",
+        "enum": "rgb(45, 191, 184)",
+        "trait": "rgb(183, 140, 242)",
+        "fn": "rgb(43, 171, 99)",
+        "type": "rgb(45, 191, 184)",
+        "union": "rgb(45, 191, 184)",
+        "keyword": "rgb(210, 153, 29)",
+        "sidebar": "rgb(253, 191, 53)",
+        "sidebar_current": "rgb(253, 191, 53)",
+        "sidebar_current_background": "rgb(68, 68, 68)",
+    },
+)
+call-function: (
+    "check-colors",
+    {
+        "theme": "light",
+        "mod": "rgb(56, 115, 173)",
+        "macro": "rgb(6, 128, 0)",
+        "struct": "rgb(173, 55, 138)",
+        "enum": "rgb(173, 55, 138)",
+        "trait": "rgb(110, 79, 201)",
+        "fn": "rgb(173, 124, 55)",
+        "type": "rgb(173, 55, 138)",
+        "union": "rgb(173, 55, 138)",
+        "keyword": "rgb(56, 115, 173)",
+        "sidebar": "rgb(53, 109, 164)",
+        "sidebar_current": "rgb(53, 109, 164)",
+        "sidebar_current_background": "rgb(255, 255, 255)",
+    },
 )

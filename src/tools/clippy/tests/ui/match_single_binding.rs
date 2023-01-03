@@ -148,3 +148,17 @@ fn issue_9575() {
         _ => println!("Needs curlies"),
     };
 }
+
+#[allow(dead_code)]
+fn issue_9725(r: Option<u32>) {
+    match r {
+        x => match x {
+            Some(_) => {
+                println!("Some");
+            },
+            None => {
+                println!("None");
+            },
+        },
+    };
+}

@@ -244,6 +244,7 @@ E0457: include_str!("./error_codes/E0457.md"),
 E0458: include_str!("./error_codes/E0458.md"),
 E0459: include_str!("./error_codes/E0459.md"),
 E0460: include_str!("./error_codes/E0460.md"),
+E0461: include_str!("./error_codes/E0461.md"),
 E0462: include_str!("./error_codes/E0462.md"),
 E0463: include_str!("./error_codes/E0463.md"),
 E0464: include_str!("./error_codes/E0464.md"),
@@ -275,10 +276,12 @@ E0509: include_str!("./error_codes/E0509.md"),
 E0510: include_str!("./error_codes/E0510.md"),
 E0511: include_str!("./error_codes/E0511.md"),
 E0512: include_str!("./error_codes/E0512.md"),
+E0514: include_str!("./error_codes/E0514.md"),
 E0515: include_str!("./error_codes/E0515.md"),
 E0516: include_str!("./error_codes/E0516.md"),
 E0517: include_str!("./error_codes/E0517.md"),
 E0518: include_str!("./error_codes/E0518.md"),
+E0519: include_str!("./error_codes/E0519.md"),
 E0520: include_str!("./error_codes/E0520.md"),
 E0521: include_str!("./error_codes/E0521.md"),
 E0522: include_str!("./error_codes/E0522.md"),
@@ -595,8 +598,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0421, // merged into 531
 //  E0427, // merged into 530
 //  E0456, // plugin `..` is not available for triple `..`
-    E0461, // couldn't find crate `..` with expected target triple ..
-    E0465, // multiple .. candidates for `..` found
+//  E0465, // removed: merged with E0464
 //  E0467, // removed
 //  E0470, // removed
 //  E0471, // constant evaluation error (in pattern)
@@ -615,8 +617,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0488, // lifetime of variable does not enclose its declaration
 //  E0489, // type/lifetime parameter not in scope here
     E0490, // a value of type `..` is borrowed for too long
-    E0514, // metadata version mismatch
-    E0519, // local crate and dependency have same (crate-name, disambiguator)
     E0523, // two dependencies have same (crate-name, disambiguator) but different SVH
 //  E0526, // shuffle indices are not constant
 //  E0540, // multiple rustc_deprecated attributes

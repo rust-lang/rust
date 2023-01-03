@@ -20,10 +20,13 @@ LL |     **t1 = 22;
 error[E0596]: cannot borrow `**t0` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs:19:26
    |
-LL | fn foo4(t0: & &mut isize) {
-   |             ------------ help: consider changing this to be a mutable reference: `&mut &mut isize`
 LL |     let x:  &mut isize = &mut **t0;
    |                          ^^^^^^^^^ `t0` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn foo4(t0: &mut &mut isize) {
+   |             ~~~~~~~~~~~~~~~
 
 error: aborting due to 3 previous errors
 

@@ -105,10 +105,13 @@ LL |     use_imm(_bar1);
 error[E0596]: cannot borrow `foo.bar1` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-reborrow-from-mut.rs:88:17
    |
-LL | fn borrow_mut_from_imm(foo: &Foo) {
-   |                             ---- help: consider changing this to be a mutable reference: `&mut Foo`
 LL |     let _bar1 = &mut foo.bar1;
    |                 ^^^^^^^^^^^^^ `foo` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn borrow_mut_from_imm(foo: &mut Foo) {
+   |                             ~~~~~~~~
 
 error: aborting due to 11 previous errors
 

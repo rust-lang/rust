@@ -1,6 +1,5 @@
 use rustc_errors::Diagnostic;
 use rustc_span::Span;
-use smallvec::smallvec;
 use smallvec::SmallVec;
 
 use rustc_data_structures::fx::FxHashSet;
