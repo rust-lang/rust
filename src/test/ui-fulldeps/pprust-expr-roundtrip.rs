@@ -27,6 +27,11 @@ extern crate rustc_session;
 extern crate rustc_span;
 extern crate thin_vec;
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 use rustc_ast::mut_visit::{self, visit_clobber, MutVisitor};
 use rustc_ast::ptr::P;
 use rustc_ast::*;

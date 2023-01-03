@@ -10,6 +10,11 @@ extern crate rustc_parse;
 extern crate rustc_session;
 extern crate rustc_span;
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 use rustc_parse::new_parser_from_file;
 use rustc_session::parse::ParseSess;
 use rustc_span::source_map::FilePathMapping;

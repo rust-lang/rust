@@ -14,6 +14,11 @@
 extern crate rustc_arena;
 extern crate libc;
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 use TypeStructure::{TypeInt, TypeFunction};
 use AstKind::{ExprInt, ExprVar, ExprLambda};
 use rustc_arena::TypedArena;

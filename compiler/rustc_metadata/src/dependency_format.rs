@@ -54,7 +54,7 @@
 use crate::creader::CStore;
 use crate::errors::{
     BadPanicStrategy, CrateDepMultiple, IncompatiblePanicInDropStrategy, LibRequired,
-    RequiredPanicStrategy, RlibRequired, TwoPanicRuntimes,
+    RequiredPanicStrategy, RlibRequired, RustcLibRequired, TwoPanicRuntimes,
 };
 
 use rustc_data_structures::fx::FxHashMap;
@@ -224,7 +224,12 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
                     Linkage::Static => "rlib",
                     _ => "dylib",
                 };
-                sess.emit_err(LibRequired { crate_name: tcx.crate_name(cnum), kind: kind });
+                let crate_name = tcx.crate_name(cnum);
+                if crate_name.as_str().starts_with("rustc_") {
+                    sess.emit_err(RustcLibRequired { crate_name, kind });
+                } else {
+                    sess.emit_err(LibRequired { crate_name, kind });
+                }
             }
         }
     }
