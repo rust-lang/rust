@@ -99,7 +99,7 @@ impl fmt::Debug for Command {
     }
 }
 
-#[derive(PartialEq, Eq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Default)]
 #[non_exhaustive]
 pub struct ExitStatus();
 
