@@ -51,9 +51,9 @@ fn method_might_be_inlined(
             return true;
         }
     }
-    match tcx.hir().find_by_def_id(impl_src) {
-        Some(Node::Item(item)) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
-        Some(..) | None => span_bug!(impl_item.span, "impl did is not an item"),
+    match tcx.hir().get_by_def_id(impl_src) {
+        Node::Item(item) => item_might_be_inlined(tcx, &item, codegen_fn_attrs),
+        _ => span_bug!(impl_item.span, "impl did is not an item"),
     }
 }
 
@@ -146,20 +146,20 @@ impl<'tcx> ReachableContext<'tcx> {
             return false;
         };
 
-        match self.tcx.hir().find_by_def_id(def_id) {
-            Some(Node::Item(item)) => match item.kind {
+        match self.tcx.hir().get_by_def_id(def_id) {
+            Node::Item(item) => match item.kind {
                 hir::ItemKind::Fn(..) => {
                     item_might_be_inlined(self.tcx, &item, self.tcx.codegen_fn_attrs(def_id))
                 }
                 _ => false,
             },
-            Some(Node::TraitItem(trait_method)) => match trait_method.kind {
+            Node::TraitItem(trait_method) => match trait_method.kind {
                 hir::TraitItemKind::Const(_, ref default) => default.is_some(),
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)) => true,
                 hir::TraitItemKind::Fn(_, hir::TraitFn::Required(_))
                 | hir::TraitItemKind::Type(..) => false,
             },
-            Some(Node::ImplItem(impl_item)) => match impl_item.kind {
+            Node::ImplItem(impl_item) => match impl_item.kind {
                 hir::ImplItemKind::Const(..) => true,
                 hir::ImplItemKind::Fn(..) => {
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
@@ -168,8 +168,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 }
                 hir::ImplItemKind::Type(_) => false,
             },
-            Some(_) => false,
-            None => false, // This will happen for default methods.
+            _ => false,
         }
     }
 
@@ -181,13 +180,11 @@ impl<'tcx> ReachableContext<'tcx> {
                 continue;
             }
 
-            if let Some(ref item) = self.tcx.hir().find_by_def_id(search_item) {
-                self.propagate_node(item, search_item);
-            }
+            self.propagate_node(self.tcx.hir().get_by_def_id(search_item), search_item);
         }
     }
 
-    fn propagate_node(&mut self, node: &Node<'tcx>, search_item: LocalDefId) {
+    fn propagate_node(&mut self, node: Node<'tcx>, search_item: LocalDefId) {
         if !self.any_library {
             // If we are building an executable, only explicitly extern
             // types need to be exported.
@@ -195,7 +192,7 @@ impl<'tcx> ReachableContext<'tcx> {
                 if let Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })
                 | Node::ImplItem(hir::ImplItem {
                     kind: hir::ImplItemKind::Fn(sig, ..), ..
-                }) = *node
+                }) = node
                 {
                     sig.header.abi != Abi::Rust
                 } else {
@@ -220,7 +217,7 @@ impl<'tcx> ReachableContext<'tcx> {
             self.reachable_symbols.insert(search_item);
         }
 
-        match *node {
+        match node {
             Node::Item(item) => {
                 match item.kind {
                     hir::ItemKind::Fn(.., body) => {

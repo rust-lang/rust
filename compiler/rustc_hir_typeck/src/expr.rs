@@ -745,21 +745,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
             let encl_item_id = self.tcx.hir().get_parent_item(expr.hir_id);
 
-            if let Some(hir::Node::Item(hir::Item {
+            if let hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Fn(..),
                 span: encl_fn_span,
                 ..
-            }))
-            | Some(hir::Node::TraitItem(hir::TraitItem {
+            })
+            | hir::Node::TraitItem(hir::TraitItem {
                 kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(_)),
                 span: encl_fn_span,
                 ..
-            }))
-            | Some(hir::Node::ImplItem(hir::ImplItem {
+            })
+            | hir::Node::ImplItem(hir::ImplItem {
                 kind: hir::ImplItemKind::Fn(..),
                 span: encl_fn_span,
                 ..
-            })) = self.tcx.hir().find_by_def_id(encl_item_id.def_id)
+            }) = self.tcx.hir().get_by_def_id(encl_item_id.def_id)
             {
                 // We are inside a function body, so reporting "return statement
                 // outside of function body" needs an explanation.
@@ -921,8 +921,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         then: impl FnOnce(&hir::Expr<'_>),
     ) {
         let mut parent = self.tcx.hir().get_parent_node(original_expr_id);
-        while let Some(node) = self.tcx.hir().find(parent) {
-            match node {
+        loop {
+            match self.tcx.hir().get(parent) {
                 hir::Node::Expr(hir::Expr {
                     kind:
                         hir::ExprKind::Loop(

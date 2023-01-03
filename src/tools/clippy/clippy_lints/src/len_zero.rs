@@ -146,9 +146,9 @@ impl<'tcx> LateLintPass<'tcx> for LenZero {
             if !is_lint_allowed(cx, LEN_WITHOUT_IS_EMPTY, ty_hir_id);
             if let Some(output) = parse_len_output(cx, cx.tcx.fn_sig(item.owner_id).skip_binder());
             then {
-                let (name, kind) = match cx.tcx.hir().find(ty_hir_id) {
-                    Some(Node::ForeignItem(x)) => (x.ident.name, "extern type"),
-                    Some(Node::Item(x)) => match x.kind {
+                let (name, kind) = match cx.tcx.hir().get(ty_hir_id) {
+                    Node::ForeignItem(x) => (x.ident.name, "extern type"),
+                    Node::Item(x) => match x.kind {
                         ItemKind::Struct(..) => (x.ident.name, "struct"),
                         ItemKind::Enum(..) => (x.ident.name, "enum"),
                         ItemKind::Union(..) => (x.ident.name, "union"),

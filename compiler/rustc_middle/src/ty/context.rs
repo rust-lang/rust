@@ -984,11 +984,9 @@ impl<'tcx> TyCtxt<'tcx> {
             _ => return None, // not a free region
         };
 
-        let is_impl_item = match self.hir().find_by_def_id(suitable_region_binding_scope) {
-            Some(Node::Item(..) | Node::TraitItem(..)) => false,
-            Some(Node::ImplItem(..)) => {
-                self.is_bound_region_in_impl_item(suitable_region_binding_scope)
-            }
+        let is_impl_item = match self.hir().get_by_def_id(suitable_region_binding_scope) {
+            Node::Item(..) | Node::TraitItem(..) => false,
+            Node::ImplItem(..) => self.is_bound_region_in_impl_item(suitable_region_binding_scope),
             _ => return None,
         };
 

@@ -64,7 +64,7 @@ pub(super) fn check<'tcx>(
                                 if let PatKind::Binding(bind_ann, ..) = pat.kind;
                                 if !matches!(bind_ann, BindingAnnotation(_, Mutability::Mut));
                                 let parent_node = cx.tcx.hir().get_parent_node(hir_id);
-                                if let Some(Node::Local(parent_let_expr)) = cx.tcx.hir().find(parent_node);
+                                if let Node::Local(parent_let_expr) = cx.tcx.hir().get(parent_node);
                                 if let Some(init) = parent_let_expr.init;
                                 then {
                                     match init.kind {

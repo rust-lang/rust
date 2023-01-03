@@ -72,10 +72,10 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
         }
 
         let parent_id = cx.tcx.hir().get_parent_item(hir_id).def_id;
-        let parent_node = cx.tcx.hir().find_by_def_id(parent_id);
+        let parent_node = cx.tcx.hir().get_by_def_id(parent_id);
 
         let mut trait_self_ty = None;
-        if let Some(Node::Item(item)) = parent_node {
+        if let Node::Item(item) = parent_node {
             // If the method is an impl for a trait, don't warn.
             if let ItemKind::Impl(Impl { of_trait: Some(_), .. }) = item.kind {
                 return;
@@ -123,15 +123,15 @@ impl<'tcx> LateLintPass<'tcx> for BoxedLocal {
 
 // TODO: Replace with Map::is_argument(..) when it's fixed
 fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
-    match map.find(id) {
-        Some(Node::Pat(Pat {
+    match map.get(id) {
+        Node::Pat(Pat {
             kind: PatKind::Binding(..),
             ..
-        })) => (),
+        }) => (),
         _ => return false,
     }
 
-    matches!(map.find(map.get_parent_node(id)), Some(Node::Param(_)))
+    matches!(map.get(map.get_parent_node(id)), Node::Param(_))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
@@ -157,7 +157,7 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             if is_argument(*map, cmt.hir_id) {
                 // Skip closure arguments
                 let parent_id = map.get_parent_node(cmt.hir_id);
-                if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+                if let Node::Expr(..) = map.get(map.get_parent_node(parent_id)) {
                     return;
                 }
 

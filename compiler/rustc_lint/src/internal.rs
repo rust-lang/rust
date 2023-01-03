@@ -143,14 +143,14 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
                     let hir = cx.tcx.hir();
-                    let span = match hir.find(hir.get_parent_node(ty.hir_id)) {
-                        Some(Node::Pat(Pat {
+                    let span = match hir.get(hir.get_parent_node(ty.hir_id)) {
+                        Node::Pat(Pat {
                             kind:
                                 PatKind::Path(qpath)
                                 | PatKind::TupleStruct(qpath, ..)
                                 | PatKind::Struct(qpath, ..),
                             ..
-                        })) => {
+                        }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -159,10 +159,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                                 None
                             }
                         }
-                        Some(Node::Expr(Expr {
+                        Node::Expr(Expr {
                             kind: ExprKind::Path(qpath),
                             ..
-                        })) => {
+                        }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {
@@ -173,10 +173,10 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
                         }
                         // Can't unify these two branches because qpath below is `&&` and above is `&`
                         // and `A | B` paths don't play well together with adjustments, apparently.
-                        Some(Node::Expr(Expr {
+                        Node::Expr(Expr {
                             kind: ExprKind::Struct(qpath, ..),
                             ..
-                        })) => {
+                        }) => {
                             if let QPath::TypeRelative(qpath_ty, ..) = qpath
                                 && qpath_ty.hir_id == ty.hir_id
                             {

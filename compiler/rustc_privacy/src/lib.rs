@@ -1407,17 +1407,11 @@ impl<'a, 'tcx> ObsoleteVisiblePrivateTypesVisitor<'a, 'tcx> {
             res => res.def_id(),
         };
 
-        // A path can only be private if:
-        // it's in this crate...
-        if let Some(did) = did.as_local() {
-            // .. and it corresponds to a private type in the AST (this returns
-            // `None` for type parameters).
-            match self.tcx.hir().find(self.tcx.hir().local_def_id_to_hir_id(did)) {
-                Some(Node::Item(_)) => !self.tcx.visibility(did).is_public(),
-                Some(_) | None => false,
-            }
-        } else {
-            false
+        // A path can only be private if it's in this crate and it
+        // corresponds to a private type in the AST.
+        match self.tcx.hir().get_if_local(did) {
+            Some(Node::Item(_)) => !self.tcx.visibility(did).is_public(),
+            _ => false,
         }
     }
 

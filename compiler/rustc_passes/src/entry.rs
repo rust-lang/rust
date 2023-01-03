@@ -141,7 +141,7 @@ fn configure_main(tcx: TyCtxt<'_>, visitor: &EntryContext<'_>) -> Option<(DefId,
     } else {
         if let Some(main_def) = tcx.resolutions(()).main_def && let Some(def_id) = main_def.opt_fn_def_id() {
             // non-local main imports are handled below
-            if let Some(def_id) = def_id.as_local() && matches!(tcx.hir().find_by_def_id(def_id), Some(Node::ForeignItem(_))) {
+            if let Some(def_id) = def_id.as_local() && matches!(tcx.hir().get_by_def_id(def_id), Node::ForeignItem(_)) {
                 tcx.sess.emit_err(ExternMain { span: tcx.def_span(def_id) });
                 return None;
             }

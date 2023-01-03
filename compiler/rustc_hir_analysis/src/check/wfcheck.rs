@@ -1914,13 +1914,11 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
             // Match the existing behavior.
             if pred.is_global() && !pred.has_late_bound_regions() {
                 let pred = self.normalize(span, None, pred);
-                let hir_node = tcx.hir().find(self.body_id);
+                let hir_node = tcx.hir().get(self.body_id);
 
                 // only use the span of the predicate clause (#90869)
 
-                if let Some(hir::Generics { predicates, .. }) =
-                    hir_node.and_then(|node| node.generics())
-                {
+                if let Some(hir::Generics { predicates, .. }) = hir_node.generics() {
                     let obligation_span = obligation.cause.span();
 
                     span = predicates

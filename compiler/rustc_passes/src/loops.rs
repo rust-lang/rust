@@ -103,7 +103,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
                     Err(hir::LoopIdError::UnresolvedLabel) => None,
                 };
 
-                if let Some(Node::Block(_)) = loop_id.and_then(|id| self.hir_map.find(id)) {
+                if let Some(Node::Block(_)) = loop_id.map(|id| self.hir_map.get(id)) {
                     return;
                 }
 
@@ -150,7 +150,7 @@ impl<'a, 'hir> Visitor<'hir> for CheckLoopVisitor<'a, 'hir> {
 
                 match destination.target_id {
                     Ok(loop_id) => {
-                        if let Node::Block(block) = self.hir_map.find(loop_id).unwrap() {
+                        if let Node::Block(block) = self.hir_map.get(loop_id) {
                             self.sess.emit_err(ContinueLabeledBlock {
                                 span: e.span,
                                 block_span: block.span,

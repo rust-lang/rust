@@ -75,7 +75,7 @@ impl<'tcx> LateLintPass<'tcx> for DerivableImpls {
             if let Some(def_id) = trait_ref.trait_def_id();
             if cx.tcx.is_diagnostic_item(sym::Default, def_id);
             if let impl_item_hir = child.id.hir_id();
-            if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
+            if let Node::ImplItem(impl_item) = cx.tcx.hir().get(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
             if let Some(adt_def) = cx.tcx.type_of(item.owner_id).ty_adt_def();

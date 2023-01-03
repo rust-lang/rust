@@ -643,7 +643,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
                 let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-                let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
+                let Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. }) = self.tcx.hir().get(parent) else {
                     return false;
                 };
                 match fn_name.kind {
@@ -828,9 +828,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let ty::Param(expected_ty_as_param) = expected.kind() else { return };
 
-        let fn_node = self.tcx.hir().find(fn_id);
-
-        let Some(hir::Node::Item(hir::Item {
+        let hir::Node::Item(hir::Item {
             kind:
                 hir::ItemKind::Fn(
                     hir::FnSig { decl: hir::FnDecl { inputs: fn_parameters, output: fn_return, .. }, .. },
@@ -838,7 +836,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _body_id,
                 ),
             ..
-        })) = fn_node else { return };
+        }) = self.tcx.hir().get(fn_id) else { return };
 
         if params.get(expected_ty_as_param.index as usize).is_none() {
             return;

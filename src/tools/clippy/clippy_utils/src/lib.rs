@@ -172,10 +172,10 @@ pub fn expr_or_init<'a, 'b, 'tcx: 'b>(cx: &LateContext<'tcx>, mut expr: &'a Expr
 pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Expr<'tcx>> {
     let hir = cx.tcx.hir();
     if_chain! {
-        if let Some(Node::Pat(pat)) = hir.find(hir_id);
+        if let Node::Pat(pat) = hir.get(hir_id);
         if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
         let parent = hir.get_parent_node(hir_id);
-        if let Some(Node::Local(local)) = hir.find(parent);
+        if let Node::Local(local) = hir.get(parent);
         then {
             return local.init;
         }
@@ -563,12 +563,12 @@ fn local_item_children_by_name(tcx: TyCtxt<'_>, local_id: LocalDefId, name: Symb
     let hir = tcx.hir();
 
     let root_mod;
-    let item_kind = match hir.find_by_def_id(local_id) {
-        Some(Node::Crate(r#mod)) => {
+    let item_kind = match hir.get_by_def_id(local_id) {
+        Node::Crate(r#mod) => {
             root_mod = ItemKind::Mod(r#mod);
             &root_mod
         },
-        Some(Node::Item(item)) => &item.kind,
+        Node::Item(item) => &item.kind,
         _ => return Vec::new(),
     };
 
@@ -1243,12 +1243,10 @@ pub fn is_in_panic_handler(cx: &LateContext<'_>, e: &Expr<'_>) -> bool {
 /// Gets the name of the item the expression is in, if available.
 pub fn get_item_name(cx: &LateContext<'_>, expr: &Expr<'_>) -> Option<Symbol> {
     let parent_id = cx.tcx.hir().get_parent_item(expr.hir_id).def_id;
-    match cx.tcx.hir().find_by_def_id(parent_id) {
-        Some(
-            Node::Item(Item { ident, .. })
-            | Node::TraitItem(TraitItem { ident, .. })
-            | Node::ImplItem(ImplItem { ident, .. }),
-        ) => Some(ident.name),
+    match cx.tcx.hir().get_by_def_id(parent_id) {
+        Node::Item(Item { ident, .. })
+        | Node::TraitItem(TraitItem { ident, .. })
+        | Node::ImplItem(ImplItem { ident, .. }) => Some(ident.name),
         _ => None,
     }
 }
@@ -1305,10 +1303,10 @@ pub fn get_parent_expr_for_hir<'tcx>(cx: &LateContext<'tcx>, hir_id: hir::HirId)
 }
 
 pub fn get_enclosing_block<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<&'tcx Block<'tcx>> {
-    let map = &cx.tcx.hir();
+    let map = cx.tcx.hir();
     let enclosing_node = map
         .get_enclosing_scope(hir_id)
-        .and_then(|enclosing_id| map.find(enclosing_id));
+        .map(|enclosing_id| map.get(enclosing_id));
     enclosing_node.and_then(|node| match node {
         Node::Block(block) => Some(block),
         Node::Item(&Item {
@@ -2075,7 +2073,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+    if let Node::Item(item) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hir_id)) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false

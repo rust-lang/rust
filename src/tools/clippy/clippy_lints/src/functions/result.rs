@@ -87,10 +87,10 @@ fn check_result_large_err<'tcx>(cx: &LateContext<'tcx>, err_ty: Ty<'tcx>, hir_ty
     if_chain! {
         if let Adt(adt, subst) = err_ty.kind();
         if let Some(local_def_id) = err_ty.ty_adt_def().expect("already checked this is adt").did().as_local();
-        if let Some(hir::Node::Item(item)) = cx
+        if let hir::Node::Item(item) = cx
             .tcx
             .hir()
-            .find_by_def_id(local_def_id);
+            .get_by_def_id(local_def_id);
         if let hir::ItemKind::Enum(ref def, _) = item.kind;
         then {
             let variants_size = AdtVariantInfo::new(cx, *adt, subst);

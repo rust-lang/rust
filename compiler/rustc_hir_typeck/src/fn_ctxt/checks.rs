@@ -1509,7 +1509,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                     // silence this redundant error, as we already emit E0070.
 
                                     // Our block must be a `assign desugar local; assignment`
-                                    if let Some(hir::Node::Block(hir::Block {
+                                    if let hir::Node::Block(hir::Block {
                                         stmts:
                                             [
                                                 hir::Stmt {
@@ -1531,7 +1531,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                 },
                                             ],
                                         ..
-                                    })) = self.tcx.hir().find(blk.hir_id)
+                                    }) = self.tcx.hir().get(blk.hir_id)
                                     {
                                         self.comes_from_while_condition(blk.hir_id, |_| {
                                             err.downgrade_to_delayed_bug();

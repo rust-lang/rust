@@ -750,11 +750,8 @@ impl CheckAttrVisitor<'_> {
             self.doc_attr_str_error(meta, "keyword");
             return false;
         }
-        match self.tcx.hir().find(hir_id).and_then(|node| match node {
-            hir::Node::Item(item) => Some(&item.kind),
-            _ => None,
-        }) {
-            Some(ItemKind::Mod(ref module)) => {
+        match self.tcx.hir().get(hir_id) {
+            hir::Node::Item(hir::Item { kind: ItemKind::Mod(ref module), .. }) => {
                 if !module.item_ids.is_empty() {
                     self.tcx.sess.emit_err(errors::DocKeywordEmptyMod { span: meta.span() });
                     return false;
@@ -776,11 +773,8 @@ impl CheckAttrVisitor<'_> {
     }
 
     fn check_doc_fake_variadic(&self, meta: &NestedMetaItem, hir_id: HirId) -> bool {
-        match self.tcx.hir().find(hir_id).and_then(|node| match node {
-            hir::Node::Item(item) => Some(&item.kind),
-            _ => None,
-        }) {
-            Some(ItemKind::Impl(ref i)) => {
+        match self.tcx.hir().get(hir_id) {
+            hir::Node::Item(hir::Item { kind: ItemKind::Impl(ref i), .. }) => {
                 let is_valid = matches!(&i.self_ty.kind, hir::TyKind::Tup([_]))
                     || if let hir::TyKind::BareFn(bare_fn_ty) = &i.self_ty.kind {
                         bare_fn_ty.decl.inputs.len() == 1

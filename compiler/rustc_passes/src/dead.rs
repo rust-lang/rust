@@ -29,15 +29,13 @@ use crate::errors::{
 // may need to be marked as live.
 fn should_explore(tcx: TyCtxt<'_>, def_id: LocalDefId) -> bool {
     matches!(
-        tcx.hir().find_by_def_id(def_id),
-        Some(
-            Node::Item(..)
-                | Node::ImplItem(..)
-                | Node::ForeignItem(..)
-                | Node::TraitItem(..)
-                | Node::Variant(..)
-                | Node::AnonConst(..)
-        )
+        tcx.hir().get_by_def_id(def_id),
+        Node::Item(..)
+            | Node::ImplItem(..)
+            | Node::ForeignItem(..)
+            | Node::TraitItem(..)
+            | Node::Variant(..)
+            | Node::AnonConst(..)
     )
 }
 
@@ -246,11 +244,8 @@ impl<'tcx> MarkSymbolVisitor<'tcx> {
             // in the case of tuple struct constructors we want to check the item, not the generated
             // tuple struct constructor function
             let id = self.struct_constructors.get(&id).copied().unwrap_or(id);
-
-            if let Some(node) = self.tcx.hir().find_by_def_id(id) {
-                self.live_symbols.insert(id);
-                self.visit_node(node);
-            }
+            self.live_symbols.insert(id);
+            self.visit_node(self.tcx.hir().get_by_def_id(id));
         }
     }
 

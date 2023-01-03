@@ -201,8 +201,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
+        match tcx.hir().get(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. }) => {
                 if !generics.params.is_empty() {
                     Some(generics.span)
                 } else {
@@ -220,8 +220,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
+        match tcx.hir().get(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. }) => {
                 Some(generics.where_clause_span)
             }
             _ => {
@@ -242,8 +242,8 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
             return None;
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
-        match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(ref fn_sig, _, _), .. })) => {
+        match tcx.hir().get(hir_id) {
+            Node::Item(hir::Item { kind: hir::ItemKind::Fn(ref fn_sig, _, _), .. }) => {
                 Some(fn_sig.decl.output.span())
             }
             _ => {
@@ -372,7 +372,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     let start_t = tcx.type_of(start_def_id);
     match start_t.kind() {
         ty::FnDef(..) => {
-            if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
+            if let Node::Item(it) = tcx.hir().get(start_id) {
                 if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {

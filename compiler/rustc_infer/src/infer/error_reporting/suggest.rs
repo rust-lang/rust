@@ -412,52 +412,53 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
     ) {
         let hir = self.tcx.hir();
         let fn_hir_id = hir.get_parent_node(cause.body_id);
-        if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
-            let hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Fn(_sig, _, body_id), ..
-                }) = node {
-        let body = hir.body(*body_id);
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_sig, _, body_id), .. }) =
+            self.tcx.hir().get(fn_hir_id)
+        {
+            let body = hir.body(*body_id);
 
-        /// Find the if expression with given span
-        struct IfVisitor {
-            pub result: bool,
-            pub found_if: bool,
-            pub err_span: Span,
-        }
+            /// Find the if expression with given span
+            struct IfVisitor {
+                pub result: bool,
+                pub found_if: bool,
+                pub err_span: Span,
+            }
 
-        impl<'v> Visitor<'v> for IfVisitor {
-            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
-                if self.result { return; }
-                match ex.kind {
-                    hir::ExprKind::If(cond, _, _) => {
-                        self.found_if = true;
-                        walk_expr(self, cond);
-                        self.found_if = false;
+            impl<'v> Visitor<'v> for IfVisitor {
+                fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                    if self.result {
+                        return;
                     }
-                    _ => walk_expr(self, ex),
+                    match ex.kind {
+                        hir::ExprKind::If(cond, _, _) => {
+                            self.found_if = true;
+                            walk_expr(self, cond);
+                            self.found_if = false;
+                        }
+                        _ => walk_expr(self, ex),
+                    }
+                }
+
+                fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
+                    if let hir::StmtKind::Local(hir::Local {
+                            span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
+                        }) = &ex.kind
+                        && self.found_if
+                        && span.eq(&self.err_span) {
+                            self.result = true;
+                    }
+                    walk_stmt(self, ex);
+                }
+
+                fn visit_body(&mut self, body: &'v hir::Body<'v>) {
+                    hir::intravisit::walk_body(self, body);
                 }
             }
 
-            fn visit_stmt(&mut self, ex: &'v hir::Stmt<'v>) {
-                if let hir::StmtKind::Local(hir::Local {
-                        span, pat: hir::Pat{..}, ty: None, init: Some(_), ..
-                    }) = &ex.kind
-                    && self.found_if
-                    && span.eq(&self.err_span) {
-                        self.result = true;
-                }
-                walk_stmt(self, ex);
-            }
-
-            fn visit_body(&mut self, body: &'v hir::Body<'v>) {
-                hir::intravisit::walk_body(self, body);
-            }
-        }
-
-        let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
-        visitor.visit_body(&body);
-        if visitor.result {
-                err.subdiagnostic(SuggAddLetForLetChains{span: span.shrink_to_lo()});
+            let mut visitor = IfVisitor { err_span: span, found_if: false, result: false };
+            visitor.visit_body(&body);
+            if visitor.result {
+                err.subdiagnostic(SuggAddLetForLetChains { span: span.shrink_to_lo() });
             }
         }
     }
@@ -585,32 +586,30 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
             local.pat.walk(&mut find_compatible_candidates);
         }
-        match hir.find(hir.get_parent_node(blk.hir_id)) {
-            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
-                match hir.find(hir.get_parent_node(*hir_id)) {
-                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+        match hir.get(hir.get_parent_node(blk.hir_id)) {
+            hir::Node::Expr(hir::Expr { hir_id, .. }) => {
+                match hir.get(hir.get_parent_node(*hir_id)) {
+                    hir::Node::Arm(hir::Arm { pat, .. }) => {
                         pat.walk(&mut find_compatible_candidates);
                     }
-                    Some(
-                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
-                        | hir::Node::ImplItem(hir::ImplItem {
-                            kind: hir::ImplItemKind::Fn(_, body),
-                            ..
-                        })
-                        | hir::Node::TraitItem(hir::TraitItem {
-                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
-                            ..
-                        })
-                        | hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
-                            ..
-                        }),
-                    ) => {
+                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                    | hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::Fn(_, body),
+                        ..
+                    })
+                    | hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                        ..
+                    })
+                    | hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                        ..
+                    }) => {
                         for param in hir.body(*body).params {
                             param.pat.walk(&mut find_compatible_candidates);
                         }
                     }
-                    Some(hir::Node::Expr(hir::Expr {
+                    hir::Node::Expr(hir::Expr {
                         kind:
                             hir::ExprKind::If(
                                 hir::Expr { kind: hir::ExprKind::Let(let_), .. },
@@ -618,7 +617,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                                 _,
                             ),
                         ..
-                    })) if then_block.hir_id == *hir_id => {
+                    }) if then_block.hir_id == *hir_id => {
                         let_.pat.walk(&mut find_compatible_candidates);
                     }
                     _ => {}

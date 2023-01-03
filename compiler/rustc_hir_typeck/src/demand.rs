@@ -212,17 +212,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         error: Option<TypeError<'tcx>>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        match (self.tcx.hir().find(parent), error) {
-            (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
+        match (self.tcx.hir().get(parent), error) {
+            (hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. }), _)
                 if init.hir_id == expr.hir_id =>
             {
                 // Point at `let` assignment type.
                 err.span_label(ty.span, "expected due to this");
             }
             (
-                Some(hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
-                })),
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Assign(lhs, rhs, _), .. }),
                 Some(TypeError::Sorts(ExpectedFound { expected, .. })),
             ) if rhs.hir_id == expr.hir_id && !expected.is_closure() => {
                 // We ignore closures explicitly because we already point at them elsewhere.
@@ -257,20 +255,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None,
                         hir::Path { res: hir::def::Res::Local(hir_id), .. },
                     )) => {
-                        if let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(*hir_id) {
+                        if let hir::Node::Pat(pat) = self.tcx.hir().get(*hir_id) {
                             let parent = self.tcx.hir().get_parent_node(pat.hir_id);
                             primary_span = pat.span;
                             secondary_span = pat.span;
-                            match self.tcx.hir().find(parent) {
-                                Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                            match self.tcx.hir().get(parent) {
+                                hir::Node::Local(hir::Local { ty: Some(ty), .. }) => {
                                     primary_span = ty.span;
                                     post_message = " type";
                                 }
-                                Some(hir::Node::Local(hir::Local { init: Some(init), .. })) => {
+                                hir::Node::Local(hir::Local { init: Some(init), .. }) => {
                                     primary_span = init.span;
                                     post_message = " value";
                                 }
-                                Some(hir::Node::Param(hir::Param { ty_span, .. })) => {
+                                hir::Node::Param(hir::Param { ty_span, .. }) => {
                                     primary_span = *ty_span;
                                     post_message = " parameter type";
                                 }
@@ -307,9 +305,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
             (
-                Some(hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Binary(_, lhs, rhs), ..
-                })),
+                hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Binary(_, lhs, rhs), .. }),
                 Some(TypeError::Sorts(ExpectedFound { expected, .. })),
             ) if rhs.hir_id == expr.hir_id
                 && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
@@ -328,9 +324,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
         let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
-        let Some(hir::Node::Expr(hir::Expr {
-                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
-                })) = self.tcx.hir().find(parent) else {return; };
+        let hir::Node::Expr(hir::Expr {
+            kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+        }) = self.tcx.hir().get(parent) else { return; };
         if rhs.hir_id != expr.hir_id || expected.is_closure() {
             return;
         }
@@ -522,9 +518,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     break;
                 }
 
-                if let Some(hir::Node::Block(&hir::Block {
-                    span: block_span, expr: Some(e), ..
-                })) = self.tcx.hir().find(parent)
+                if let hir::Node::Block(&hir::Block { span: block_span, expr: Some(e), .. }) =
+                    self.tcx.hir().get(parent)
                 {
                     if e.hir_id == id {
                         if let Some(span) = expr.span.find_ancestor_inside(block_span) {
@@ -791,29 +786,25 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
 
         let local_parent = self.tcx.hir().get_parent_node(local_id);
-        let Some(Node::Param(hir::Param { hir_id: param_hir_id, .. })) = self.tcx.hir().find(local_parent) else {
+        let Node::Param(hir::Param { hir_id: param_hir_id, .. }) = self.tcx.hir().get(local_parent) else {
             return None;
         };
 
         let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
-        let Some(Node::Expr(hir::Expr {
+        let Node::Expr(hir::Expr {
             hir_id: expr_hir_id,
             kind: hir::ExprKind::Closure(hir::Closure { fn_decl: closure_fn_decl, .. }),
             ..
-        })) = self.tcx.hir().find(param_parent) else {
+        }) = self.tcx.hir().get(param_parent) else {
             return None;
         };
 
         let expr_parent = self.tcx.hir().get_parent_node(*expr_hir_id);
-        let hir = self.tcx.hir().find(expr_parent);
-        let closure_params_len = closure_fn_decl.inputs.len();
-        let (
-            Some(Node::Expr(hir::Expr {
-                kind: hir::ExprKind::MethodCall(method_path, receiver, ..),
-                ..
-            })),
-            1,
-        ) = (hir, closure_params_len) else {
+        let Node::Expr(hir::Expr {
+            kind: hir::ExprKind::MethodCall(method_path, receiver, ..),
+            ..
+        }) = self.tcx.hir().get(expr_parent) else { return None };
+        if closure_fn_decl.inputs.len() != 1 {
             return None;
         };
 
@@ -857,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         }?;
 
-        match hir.find(hir.get_parent_node(expr.hir_id))? {
+        match hir.get(hir.get_parent_node(expr.hir_id)) {
             Node::ExprField(field) => {
                 if field.ident.name == local.name && field.is_shorthand {
                     return Some(local.name);
@@ -884,10 +875,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     pub(crate) fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::If(..) = expr.kind {
             let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
-            if let Some(Node::Expr(hir::Expr {
-                kind: hir::ExprKind::If(_, _, Some(else_expr)),
-                ..
-            })) = self.tcx.hir().find(parent_id)
+            if let Node::Expr(hir::Expr {
+                kind: hir::ExprKind::If(_, _, Some(else_expr)), ..
+            }) = self.tcx.hir().get(parent_id)
             {
                 return else_expr.hir_id == expr.hir_id;
             }
@@ -1037,10 +1027,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             None => String::new(),
                         };
 
-                        if let Some(hir::Node::Expr(hir::Expr {
+                        if let hir::Node::Expr(hir::Expr {
                             kind: hir::ExprKind::Assign(..),
                             ..
-                        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+                        }) = self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
                             if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
@@ -1267,8 +1257,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut sugg = vec![];
 
-        if let Some(hir::Node::ExprField(field)) =
-            self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+        if let hir::Node::ExprField(field) =
+            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
         {
             // `expr` is a literal field for a struct, only suggest if appropriate
             if field.is_shorthand {
@@ -1626,7 +1616,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _,
         ) = expr.kind else { return; };
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
+        if let hir::Node::ExprField(_) = self.tcx.hir().get(parent) {
             // Ignore `Foo { field: a..Default::default() }`
             return;
         }

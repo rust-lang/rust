@@ -313,7 +313,7 @@ impl_lint_pass!(Types => [BOX_COLLECTION, VEC_BOX, OPTION_OPTION, LINKEDLIST, BO
 impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_fn(&mut self, cx: &LateContext<'_>, _: FnKind<'_>, decl: &FnDecl<'_>, _: &Body<'_>, _: Span, id: HirId) {
         let is_in_trait_impl =
-            if let Some(hir::Node::Item(item)) = cx.tcx.hir().find_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
+            if let hir::Node::Item(item) = cx.tcx.hir().get_by_def_id(cx.tcx.hir().get_parent_item(id).def_id) {
                 matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
             } else {
                 false
@@ -352,10 +352,10 @@ impl<'tcx> LateLintPass<'tcx> for Types {
     fn check_impl_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx ImplItem<'_>) {
         match item.kind {
             ImplItemKind::Const(ty, _) => {
-                let is_in_trait_impl = if let Some(hir::Node::Item(item)) = cx
+                let is_in_trait_impl = if let hir::Node::Item(item) = cx
                     .tcx
                     .hir()
-                    .find_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
+                    .get_by_def_id(cx.tcx.hir().get_parent_item(item.hir_id()).def_id)
                 {
                     matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
                 } else {

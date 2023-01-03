@@ -355,11 +355,11 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
         }
         let hir = self.infcx.tcx.hir();
-        if let Some(hir::Node::Item(hir::Item {
+        if let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(_, _, body_id),
             ..
-        })) = hir.find(hir.local_def_id_to_hir_id(self.mir_def_id()))
-            && let Some(hir::Node::Expr(expr)) = hir.find(body_id.hir_id)
+        }) = hir.get(hir.local_def_id_to_hir_id(self.mir_def_id()))
+            && let hir::Node::Expr(expr) = hir.get(body_id.hir_id)
         {
             let place = &self.move_data.move_paths[mpi].place;
             let span = place.as_local()
@@ -395,8 +395,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
                 let hir_id = hir.get_parent_node(expr.hir_id);
-                if let Some(parent) = hir.find(hir_id) {
-                    let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
+                let parent = hir.get(hir_id);
+                let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
                         && let Some(def_id) = typeck.type_dependent_def_id(parent_expr.hir_id)
                     {
@@ -410,7 +410,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                         (None, &[][..], 0)
                     };
                     if let Some(def_id) = def_id
-                        && let Some(node) = hir.find(hir.local_def_id_to_hir_id(def_id))
+                        && let node = hir.get(hir.local_def_id_to_hir_id(def_id))
                         && let Some(fn_sig) = node.fn_sig()
                         && let Some(ident) = node.ident()
                         && let Some(pos) = args.iter().position(|arg| arg.hir_id == expr.hir_id)
@@ -455,7 +455,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     } else {
                         self.suggest_cloning(err, ty, move_span);
                     }
-                }
             }
             if let Some(pat) = finder.pat {
                 *in_pattern = true;
@@ -1753,8 +1752,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let source_info = self.body.source_info(location);
                 if let Some(scope) = self.body.source_scopes.get(source_info.scope)
                     && let ClearCrossCrate::Set(scope_data) = &scope.local_data
-                    && let Some(node) = self.infcx.tcx.hir().find(scope_data.lint_root)
-                    && let Some(id) = node.body_id()
+                    && let Some(id) = self.infcx.tcx.hir().get(scope_data.lint_root).body_id()
                     && let hir::ExprKind::Block(block, _) = self.infcx.tcx.hir().body(id).value.kind
                 {
                     for stmt in block.stmts {

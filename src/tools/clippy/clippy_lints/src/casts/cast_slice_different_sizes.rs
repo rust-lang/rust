@@ -69,9 +69,8 @@ fn is_child_of_cast(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
     let map = cx.tcx.hir();
     if_chain! {
         if let Some(parent_id) = map.find_parent_node(expr.hir_id);
-        if let Some(parent) = map.find(parent_id);
         then {
-            let expr = match parent {
+            let expr = match map.get(parent_id) {
                 Node::Block(block) => {
                     if let Some(parent_expr) = block.expr {
                         parent_expr

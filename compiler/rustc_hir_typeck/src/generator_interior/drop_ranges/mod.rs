@@ -81,8 +81,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 /// as well as the HirId of the local `x` itself.
 fn for_each_consumable(hir: Map<'_>, place: TrackedValue, mut f: impl FnMut(TrackedValue)) {
     f(place);
-    let node = hir.find(place.hir_id());
-    if let Some(Node::Expr(expr)) = node {
+    if let Node::Expr(expr) = hir.get(place.hir_id()) {
         match expr.kind {
             hir::ExprKind::Path(hir::QPath::Resolved(
                 _,

@@ -140,16 +140,16 @@ pub(crate) fn check<'a>(cx: &LateContext<'a>, ex: &Expr<'a>, arms: &[Arm<'_>], e
 fn opt_parent_assign_span<'a>(cx: &LateContext<'a>, ex: &Expr<'a>) -> Option<AssignmentExpr> {
     let map = &cx.tcx.hir();
 
-    if let Some(Node::Expr(parent_arm_expr)) = map.find(map.get_parent_node(ex.hir_id)) {
-        return match map.find(map.get_parent_node(parent_arm_expr.hir_id)) {
-            Some(Node::Local(parent_let_expr)) => Some(AssignmentExpr::Local {
+    if let Node::Expr(parent_arm_expr) = map.get(map.get_parent_node(ex.hir_id)) {
+        return match map.get(map.get_parent_node(parent_arm_expr.hir_id)) {
+            Node::Local(parent_let_expr) => Some(AssignmentExpr::Local {
                 span: parent_let_expr.span,
                 pat_span: parent_let_expr.pat.span(),
             }),
-            Some(Node::Expr(Expr {
+            Node::Expr(Expr {
                 kind: ExprKind::Assign(parent_assign_expr, match_expr, _),
                 ..
-            })) => Some(AssignmentExpr::Assign {
+            }) => Some(AssignmentExpr::Assign {
                 span: parent_assign_expr.span,
                 match_span: match_expr.span,
             }),

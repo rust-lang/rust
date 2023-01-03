@@ -43,7 +43,7 @@ impl LateLintPass<'_> for EmptyDrop {
             }) = item.kind;
             if trait_ref.trait_def_id() == cx.tcx.lang_items().drop_trait();
             if let impl_item_hir = child.id.hir_id();
-            if let Some(Node::ImplItem(impl_item)) = cx.tcx.hir().find(impl_item_hir);
+            if let Node::ImplItem(impl_item) = cx.tcx.hir().get(impl_item_hir);
             if let ImplItemKind::Fn(_, b) = &impl_item.kind;
             if let Body { value: func_expr, .. } = cx.tcx.hir().body(*b);
             let func_expr = peel_blocks(func_expr);

@@ -405,7 +405,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
                 let upvar_hir_id = captured_place.get_root_variable();
 
-                if let Some(Node::Pat(pat)) = self.infcx.tcx.hir().find(upvar_hir_id)
+                if let Node::Pat(pat) = self.infcx.tcx.hir().get(upvar_hir_id)
                     && let hir::PatKind::Binding(
                         hir::BindingAnnotation::NONE,
                         _,
@@ -768,8 +768,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let hir_map = self.infcx.tcx.hir();
             let def_id = self.body.source.def_id();
             let hir_id = hir_map.local_def_id_to_hir_id(def_id.as_local().unwrap());
-            let node = hir_map.find(hir_id);
-            let Some(hir::Node::Item(item)) = node else { return; };
+            let hir::Node::Item(item) = hir_map.get(hir_id) else { return; };
             let hir::ItemKind::Fn(.., body_id) = item.kind else { return; };
             let body = self.infcx.tcx.hir().body(body_id);
             let mut v = V { assign_span: span, err, ty, suggested: false };
@@ -799,11 +798,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
         (
             true,
-            td.as_local().and_then(|tld| match hir_map.find_by_def_id(tld) {
-                Some(Node::Item(hir::Item {
-                    kind: hir::ItemKind::Trait(_, _, _, _, items),
-                    ..
-                })) => {
+            td.as_local().and_then(|tld| match hir_map.get_by_def_id(tld) {
+                Node::Item(hir::Item { kind: hir::ItemKind::Trait(_, _, _, _, items), .. }) => {
                     let mut f_in_trait_opt = None;
                     for hir::TraitItemRef { id: fi, kind: k, .. } in *items {
                         let hi = fi.hir_id();
@@ -816,15 +812,15 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         f_in_trait_opt = Some(hi);
                         break;
                     }
-                    f_in_trait_opt.and_then(|f_in_trait| match hir_map.find(f_in_trait) {
-                        Some(Node::TraitItem(hir::TraitItem {
+                    f_in_trait_opt.and_then(|f_in_trait| match hir_map.get(f_in_trait) {
+                        Node::TraitItem(hir::TraitItem {
                             kind:
                                 hir::TraitItemKind::Fn(
                                     hir::FnSig { decl: hir::FnDecl { inputs, .. }, .. },
                                     _,
                                 ),
                             ..
-                        })) => {
+                        }) => {
                             let hir::Ty { span, .. } = inputs[local.index() - 1];
                             Some(span)
                         }
@@ -915,9 +911,9 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         };
 
         fn maybe_body_id_of_fn(hir_map: Map<'_>, id: HirId) -> Option<BodyId> {
-            match hir_map.find(id) {
-                Some(Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. }))
-                | Some(Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. })) => {
+            match hir_map.get(id) {
+                Node::Item(Item { kind: ItemKind::Fn(_, _, body_id), .. })
+                | Node::ImplItem(ImplItem { kind: ImplItemKind::Fn(_, body_id), .. }) => {
                     Some(*body_id)
                 }
                 _ => None,
@@ -1244,7 +1240,7 @@ fn get_mut_span_in_struct_field<'tcx>(
         && let ty::Adt(def, _) = ty.kind()
         && let field = def.all_fields().nth(field.index())?
         // Use the HIR types to construct the diagnostic message.
-        && let node = tcx.hir().find_by_def_id(field.did.as_local()?)?
+        && let node = tcx.hir().get_by_def_id(field.did.as_local()?)
         // Now we're dealing with the actual struct that we're going to suggest a change to,
         // we can expect a field that is an immutable reference to a type.
         && let hir::Node::Field(field) = node

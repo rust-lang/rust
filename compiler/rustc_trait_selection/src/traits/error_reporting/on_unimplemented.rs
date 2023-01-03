@@ -87,8 +87,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     /// to be the enclosing (async) block/function/closure
     fn describe_enclosure(&self, hir_id: hir::HirId) -> Option<&'static str> {
         let hir = self.tcx.hir();
-        let node = hir.find(hir_id)?;
-        match &node {
+        match hir.get(hir_id) {
             hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) => {
                 self.describe_generator(*body_id).or_else(|| {
                     Some(match sig.header {

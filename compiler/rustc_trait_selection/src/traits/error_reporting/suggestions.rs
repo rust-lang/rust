@@ -512,8 +512,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         // FIXME: Add check for trait bound that is already present, particularly `?Sized` so we
         //        don't suggest `T: Sized + ?Sized`.
         let mut hir_id = body_id;
-        while let Some(node) = self.tcx.hir().find(hir_id) {
-            match node {
+        loop {
+            match self.tcx.hir().get(hir_id) {
                 hir::Node::Item(hir::Item {
                     ident,
                     kind: hir::ItemKind::Trait(_, _, generics, bounds, _),
@@ -756,11 +756,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     if steps > 0 {
                         // Don't care about `&mut` because `DerefMut` is used less
                         // often and user will not expect autoderef happens.
-                        if let Some(hir::Node::Expr(hir::Expr {
+                        if let hir::Node::Expr(hir::Expr {
                             kind:
                                 hir::ExprKind::AddrOf(hir::BorrowKind::Ref, hir::Mutability::Not, expr),
                             ..
-                        })) = self.tcx.hir().find(*arg_hir_id)
+                        }) = self.tcx.hir().get(*arg_hir_id)
                         {
                             let derefs = "*".repeat(steps);
                             err.span_suggestion_verbose(
@@ -839,13 +839,13 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let hir = self.tcx.hir();
         let hir_id = hir.local_def_id_to_hir_id(def_id.as_local()?);
         let parent_node = hir.get_parent_node(hir_id);
-        match hir.find(parent_node) {
-            Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. })) => {
+        match hir.get(parent_node) {
+            hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. }) => {
                 get_name(err, &local.pat.kind)
             }
             // Different to previous arm because one is `&hir::Local` and the other
             // is `P<hir::Local>`.
-            Some(hir::Node::Local(local)) => get_name(err, &local.pat.kind),
+            hir::Node::Local(local) => get_name(err, &local.pat.kind),
             _ => None,
         }
     }
@@ -1291,7 +1291,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         if let ObligationCauseCode::AwaitableExpr(hir_id) = obligation.cause.code().peel_derives() {
             let hir = self.tcx.hir();
-            if let Some(hir::Node::Expr(expr)) = hir_id.and_then(|hir_id| hir.find(hir_id)) {
+            if let Some(hir::Node::Expr(expr)) = hir_id.map(|hir_id| hir.get(hir_id)) {
                 // FIXME: use `obligation.predicate.kind()...trait_ref.self_ty()` to see if we have `()`
                 // and if not maybe suggest doing something else? If we kept the expression around we
                 // could also check if it is an fn call (very likely) and suggest changing *that*, if
@@ -1422,8 +1422,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) -> bool {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
-        let node = hir.find(parent_node);
-        if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })) = node
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. }) = hir.get(parent_node)
             && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
             && sig.decl.output.span().overlaps(span)
             && blk.expr.is_none()
@@ -1459,7 +1458,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
-        let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) = hir.find(parent_node) else {
+        let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. }) = hir.get(parent_node) else {
             return None;
         };
 
@@ -1484,11 +1483,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         let fn_hir_id = hir.get_parent_node(obligation.cause.body_id);
-        let node = hir.find(fn_hir_id);
-        let Some(hir::Node::Item(hir::Item {
+        let hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(sig, _, body_id),
             ..
-        })) = node
+        }) = hir.get(fn_hir_id)
         else {
             return false;
         };
@@ -1696,9 +1694,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         let parent_node = hir.get_parent_node(obligation.cause.body_id);
-        let node = hir.find(parent_node);
-        if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) =
-            node
+        if let hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. }) =
+            hir.get(parent_node)
         {
             let body = hir.body(*body_id);
             // Point at all the `return`s in the function as they have failed trait bounds.
@@ -2292,7 +2289,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         debug!("target_ty evaluated from {:?}", expr);
 
                         let parent = hir.get_parent_node(expr_id);
-                        if let Some(hir::Node::Expr(e)) = hir.find(parent) {
+                        if let hir::Node::Expr(e) = hir.get(parent) {
                             let parent_span = hir.span(parent);
                             let parent_did = parent.owner.to_def_id();
                             // ```rust
@@ -2513,8 +2510,8 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             ObligationCauseCode::VariableType(hir_id) => {
                 let parent_node = self.tcx.hir().get_parent_node(hir_id);
-                match self.tcx.hir().find(parent_node) {
-                    Some(Node::Local(hir::Local { ty: Some(ty), .. })) => {
+                match self.tcx.hir().get(parent_node) {
+                    Node::Local(hir::Local { ty: Some(ty), .. }) => {
                         err.span_suggestion_verbose(
                             ty.span.shrink_to_lo(),
                             "consider borrowing here",
@@ -2523,10 +2520,10 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         );
                         err.note("all local variables must have a statically known size");
                     }
-                    Some(Node::Local(hir::Local {
+                    Node::Local(hir::Local {
                         init: Some(hir::Expr { kind: hir::ExprKind::Index(_, _), span, .. }),
                         ..
-                    })) => {
+                    }) => {
                         // When encountering an assignment of an unsized trait, like
                         // `let x = ""[..];`, provide a suggestion to borrow the initializer in
                         // order to use have a slice instead.
@@ -2538,7 +2535,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         );
                         err.note("all local variables must have a statically known size");
                     }
-                    Some(Node::Param(param)) => {
+                    Node::Param(param) => {
                         err.span_suggestion_verbose(
                             param.ty_span.shrink_to_lo(),
                             "function arguments must have a statically known size, borrowed types \
@@ -3162,7 +3159,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
     ) {
         let tcx = self.tcx;
         let hir = tcx.hir();
-        if let Some(Node::Expr(expr)) = hir.find(arg_hir_id)
+        if let Node::Expr(expr) = hir.get(arg_hir_id)
             && let Some(typeck_results) = &self.typeck_results
         {
             if let hir::Expr { kind: hir::ExprKind::Block(..), .. } = expr {
@@ -3218,9 +3215,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             }
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
-                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
+                && let hir::Node::Pat(binding) = self.tcx.hir().get(*hir_id)
                 && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
-                && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
+                && let hir::Node::Local(local) = self.tcx.hir().get(parent_hir_id)
                 && let Some(binding_expr) = local.init
             {
                 // If the expression we're calling on is a binding, we want to point at the
@@ -3231,21 +3228,19 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 self.point_at_chain(expr, &typeck_results, type_diffs, param_env, err);
             }
         }
-        let call_node = hir.find(call_hir_id);
-        if let Some(Node::Expr(hir::Expr {
-            kind: hir::ExprKind::MethodCall(path, rcvr, ..), ..
-        })) = call_node
+        if let Node::Expr(hir::Expr { kind: hir::ExprKind::MethodCall(path, rcvr, ..), .. }) =
+            hir.get(call_hir_id)
         {
             if Some(rcvr.span) == err.span.primary_span() {
                 err.replace_span_with(path.ident.span, true);
             }
         }
-        if let Some(Node::Expr(hir::Expr {
+        if let Node::Expr(hir::Expr {
             kind:
                 hir::ExprKind::Call(hir::Expr { span, .. }, _)
                 | hir::ExprKind::MethodCall(hir::PathSegment { ident: Ident { span, .. }, .. }, ..),
             ..
-        })) = hir.find(call_hir_id)
+        }) = hir.get(call_hir_id)
         {
             if Some(*span) != err.span.primary_span() {
                 err.span_label(*span, "required by a bound introduced by this call");
@@ -3286,10 +3281,9 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
-                && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
-                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
-                && let Some(parent) = self.tcx.hir().find(parent_hir_id)
+                && let hir::Node::Pat(binding) = self.tcx.hir().get(*hir_id)
             {
+                let parent = self.tcx.hir().get(self.tcx.hir().get_parent_node(binding.hir_id));
                 // We've reached the root of the method call chain...
                 if let hir::Node::Local(local) = parent
                     && let Some(binding_expr) = local.init

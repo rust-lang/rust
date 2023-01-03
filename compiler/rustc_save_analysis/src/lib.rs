@@ -427,7 +427,7 @@ impl<'tcx> SaveContext<'tcx> {
                             let trait_id = self.tcx.trait_id_of_impl(impl_id);
                             let mut docs = String::new();
                             let mut attrs = vec![];
-                            if let Some(Node::ImplItem(_)) = hir.find(hir_id) {
+                            if let Node::ImplItem(_) = hir.get(hir_id) {
                                 attrs = self.tcx.hir().attrs(hir_id).to_vec();
                                 docs = self.docs_for_attrs(&attrs);
                             }
@@ -473,7 +473,7 @@ impl<'tcx> SaveContext<'tcx> {
                         let mut docs = String::new();
                         let mut attrs = vec![];
 
-                        if let Some(Node::TraitItem(_)) = self.tcx.hir().find(hir_id) {
+                        if let Node::TraitItem(_) = self.tcx.hir().get(hir_id) {
                             attrs = self.tcx.hir().attrs(hir_id).to_vec();
                             docs = self.docs_for_attrs(&attrs);
                         }

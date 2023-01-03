@@ -457,7 +457,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             .def_id
                             .as_local()
                             .map(|id| hir.local_def_id_to_hir_id(id))
-                            .and_then(|id| self.hir().find(self.hir().get_parent_node(id)))
+                            .map(|id| self.hir().get(self.hir().get_parent_node(id)))
                             .as_ref()
                             .and_then(|node| node.generics())
                         {
@@ -875,10 +875,10 @@ fn foo(&self) -> Self::T { String::new() }
         // When `body_owner` is an `impl` or `trait` item, look in its associated types for
         // `expected` and point at it.
         let parent_id = self.hir().get_parent_item(hir_id);
-        let item = self.hir().find_by_def_id(parent_id.def_id);
+        let item = self.hir().get_by_def_id(parent_id.def_id);
         debug!("expected_projection parent item {:?}", item);
         match item {
-            Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. })) => {
+            hir::Node::Item(hir::Item { kind: hir::ItemKind::Trait(.., items), .. }) => {
                 // FIXME: account for `#![feature(specialization)]`
                 for item in &items[..] {
                     match item.kind {
@@ -902,10 +902,10 @@ fn foo(&self) -> Self::T { String::new() }
                     }
                 }
             }
-            Some(hir::Node::Item(hir::Item {
+            hir::Node::Item(hir::Item {
                 kind: hir::ItemKind::Impl(hir::Impl { items, .. }),
                 ..
-            })) => {
+            }) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
                         if self.type_of(item.id.owner_id) == found {

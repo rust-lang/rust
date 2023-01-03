@@ -1521,7 +1521,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         visitor.visit_body(&body);
 
         let parent = self.tcx.hir().get_parent_node(seg1.hir_id);
-        if let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent)
+        if let Node::Expr(call_expr) = self.tcx.hir().get(parent)
             && let Some(expr) = visitor.result
             && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
         {
@@ -2590,7 +2590,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
-        if  let Some(Node::Expr(call_expr)) = self.tcx.hir().find(parent) &&
+        if  let Node::Expr(call_expr) = self.tcx.hir().get(parent) &&
             let hir::ExprKind::MethodCall(
                 hir::PathSegment { ident: method_name, .. },
                 self_expr,

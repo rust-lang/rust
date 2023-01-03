@@ -1,6 +1,5 @@
 use super::FnCtxt;
 use hir::def_id::DefId;
-use hir::Node;
 use rustc_hir as hir;
 use rustc_middle::middle::region::{RvalueCandidateType, Scope, ScopeTree};
 use rustc_middle::ty::RvalueScopes;
@@ -74,10 +73,7 @@ pub fn resolve_rvalue_scopes<'a, 'tcx>(
     debug!("start resolving rvalue scopes, def_id={def_id:?}");
     debug!("rvalue_scope: rvalue_candidates={:?}", scope_tree.rvalue_candidates);
     for (&hir_id, candidate) in &scope_tree.rvalue_candidates {
-        let Some(Node::Expr(expr)) = hir_map.find(hir_id) else {
-            bug!("hir node does not exist")
-        };
-        record_rvalue_scope(&mut rvalue_scopes, expr, candidate);
+        record_rvalue_scope(&mut rvalue_scopes, hir_map.expect_expr(hir_id), candidate);
     }
     rvalue_scopes
 }

@@ -72,11 +72,11 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             // Also ensures the const is nonzero since zero can't be a divisor
             && const1 == const2 && const2 == const3
             && let Some(hir_id) = path_to_local(expr3)
-            && let Some(Node::Pat(_)) = cx.tcx.hir().find(hir_id) {
+            && let Node::Pat(_) = cx.tcx.hir().get(hir_id) {
                 // Apply only to params or locals with annotated types
-                match cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
-                    Some(Node::Param(..)) => (),
-                    Some(Node::Local(local)) => {
+                match cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hir_id)) {
+                    Node::Param(..) => (),
+                    Node::Local(local) => {
                         let Some(ty) = local.ty else { return };
                         if matches!(ty.kind, TyKind::Infer) {
                             return;

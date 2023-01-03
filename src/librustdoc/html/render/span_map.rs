@@ -154,7 +154,7 @@ impl<'tcx> Visitor<'tcx> for SpanMapVisitor<'tcx> {
         if !span.overlaps(m.spans.inner_span) {
             // Now that we confirmed it's a file import, we want to get the span for the module
             // name only and not all the "mod foo;".
-            if let Some(Node::Item(item)) = self.tcx.hir().find(id) {
+            if let Node::Item(item) = self.tcx.hir().get(id) {
                 self.matches.insert(
                     item.ident.span,
                     LinkFromSrc::Local(clean::Span::new(m.spans.inner_span)),

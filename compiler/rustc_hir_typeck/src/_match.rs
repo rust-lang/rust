@@ -198,8 +198,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         // Next, make sure that we have no type expectation.
         let Some(ret) = hir
-            .find_by_def_id(self.body_id.owner.def_id)
-            .and_then(|owner| owner.fn_decl())
+            .get_by_def_id(self.body_id.owner.def_id)
+            .fn_decl()
             .map(|decl| decl.output.span()) else { return; };
         let Expectation::IsLast(stmt) = expectation else {
             return;
