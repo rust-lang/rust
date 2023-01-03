@@ -172,6 +172,16 @@ debug_gimple_stmt(gimple_struct)
 
 To get the `rustc` command to run in `gdb`, add the `--verbose` flag to `cargo build`.
 
+To have the correct file paths in `gdb` instead of `/usr/src/debug/gcc/libstdc++-v3/libsupc++/eh_personality.cc`, TODO
+
+Maybe by calling the following at the beginning of gdb:
+
+```
+set substitute-path /usr/src/debug/gcc /home/bouanto/Ordinateur/Programmation/Projets/gcc-repo/gcc
+```
+
+TODO: but that's not what I remember I was doing.
+
 ### How to use a custom-build rustc
 
  * Build the stage2 compiler (`rustup toolchain link debug-current build/x86_64-unknown-linux-gnu/stage2`).

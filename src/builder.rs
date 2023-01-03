@@ -1210,6 +1210,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         self.set_personality_fn(pers_fn);
 
+        /*
+         * Matching GCC exception handling with LLVM:
+         *
+         *    GCC                 LLVM
+         *    CATCH_EXPR          landing pad catch clause
+         *    TRY_FINALLY_EXPR    cleanup
+         */
+
         self.cleanup_blocks.borrow_mut().insert(self.block);
 
         // FIXME: we're probably not creating a real cleanup pad here.
