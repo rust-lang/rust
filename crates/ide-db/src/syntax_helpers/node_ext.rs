@@ -173,7 +173,8 @@ pub fn walk_pat(pat: &ast::Pat, cb: &mut dyn FnMut(ast::Pat)) {
 }
 
 /// Preorder walk all the type's sub types.
-pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type)) {
+// FIXME: Make the control flow more proper
+pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type) -> bool) {
     let mut preorder = ty.syntax().preorder();
     while let Some(event) = preorder.next() {
         let node = match event {
@@ -184,10 +185,12 @@ pub fn walk_ty(ty: &ast::Type, cb: &mut dyn FnMut(ast::Type)) {
         match ast::Type::cast(node) {
             Some(ty @ ast::Type::MacroType(_)) => {
                 preorder.skip_subtree();
-                cb(ty)
+                cb(ty);
             }
             Some(ty) => {
-                cb(ty);
+                if cb(ty) {
+                    preorder.skip_subtree();
+                }
             }
             // skip const args
             None if ast::ConstArg::can_cast(kind) => {

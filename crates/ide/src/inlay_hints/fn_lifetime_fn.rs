@@ -59,9 +59,14 @@ pub(super) fn hints(
                         r.amp_token(),
                         lifetime,
                         is_elided,
-                    ))
+                    ));
+                    false
                 }
-                _ => (),
+                ast::Type::FnPtrType(_) => true,
+                ast::Type::PathType(t) => {
+                    t.path().and_then(|it| it.segment()).and_then(|it| it.param_list()).is_some()
+                }
+                _ => false,
             })
         });
         acc
@@ -146,8 +151,13 @@ pub(super) fn hints(
                         is_trivial = false;
                         acc.push(mk_lt_hint(amp, output_lt.to_string()));
                     }
+                    false
                 }
-                _ => (),
+                ast::Type::FnPtrType(_) => true,
+                ast::Type::PathType(t) => {
+                    t.path().and_then(|it| it.segment()).and_then(|it| it.param_list()).is_some()
+                }
+                _ => false,
             })
         }
     }
@@ -295,6 +305,20 @@ impl () {
     // ^^^<'0, '1>
         // ^'0       ^'1     ^'0
 }
+"#,
+        );
+    }
+
+    #[test]
+    fn hints_lifetimes_skip_fn_likes() {
+        check_with_config(
+            InlayHintsConfig {
+                lifetime_elision_hints: LifetimeElisionHints::Always,
+                ..TEST_CONFIG
+            },
+            r#"
+fn fn_ptr(a: fn(&()) -> &()) {}
+fn fn_trait<>(a: impl Fn(&()) -> &()) {}
 "#,
         );
     }

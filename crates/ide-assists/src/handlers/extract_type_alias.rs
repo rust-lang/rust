@@ -108,76 +108,80 @@ fn collect_used_generics<'gp>(
     }
 
     let mut generics = Vec::new();
-    walk_ty(ty, &mut |ty| match ty {
-        ast::Type::PathType(ty) => {
-            if let Some(path) = ty.path() {
-                if let Some(name_ref) = path.as_single_name_ref() {
-                    if let Some(param) = known_generics.iter().find(|gp| {
-                        match gp {
-                            ast::GenericParam::ConstParam(cp) => cp.name(),
-                            ast::GenericParam::TypeParam(tp) => tp.name(),
-                            _ => None,
-                        }
-                        .map_or(false, |n| n.text() == name_ref.text())
-                    }) {
-                        generics.push(param);
-                    }
-                }
-                generics.extend(
-                    path.segments()
-                        .filter_map(|seg| seg.generic_arg_list())
-                        .flat_map(|it| it.generic_args())
-                        .filter_map(|it| match it {
-                            ast::GenericArg::LifetimeArg(lt) => {
-                                let lt = lt.lifetime()?;
-                                known_generics.iter().find(find_lifetime(&lt.text()))
+    walk_ty(ty, &mut |ty| {
+        match ty {
+            ast::Type::PathType(ty) => {
+                if let Some(path) = ty.path() {
+                    if let Some(name_ref) = path.as_single_name_ref() {
+                        if let Some(param) = known_generics.iter().find(|gp| {
+                            match gp {
+                                ast::GenericParam::ConstParam(cp) => cp.name(),
+                                ast::GenericParam::TypeParam(tp) => tp.name(),
+                                _ => None,
                             }
-                            _ => None,
-                        }),
-                );
-            }
-        }
-        ast::Type::ImplTraitType(impl_ty) => {
-            if let Some(it) = impl_ty.type_bound_list() {
-                generics.extend(
-                    it.bounds()
-                        .filter_map(|it| it.lifetime())
-                        .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
-                );
-            }
-        }
-        ast::Type::DynTraitType(dyn_ty) => {
-            if let Some(it) = dyn_ty.type_bound_list() {
-                generics.extend(
-                    it.bounds()
-                        .filter_map(|it| it.lifetime())
-                        .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
-                );
-            }
-        }
-        ast::Type::RefType(ref_) => generics.extend(
-            ref_.lifetime().and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
-        ),
-        ast::Type::ArrayType(ar) => {
-            if let Some(expr) = ar.expr() {
-                if let ast::Expr::PathExpr(p) = expr {
-                    if let Some(path) = p.path() {
-                        if let Some(name_ref) = path.as_single_name_ref() {
-                            if let Some(param) = known_generics.iter().find(|gp| {
-                                if let ast::GenericParam::ConstParam(cp) = gp {
-                                    cp.name().map_or(false, |n| n.text() == name_ref.text())
-                                } else {
-                                    false
+                            .map_or(false, |n| n.text() == name_ref.text())
+                        }) {
+                            generics.push(param);
+                        }
+                    }
+                    generics.extend(
+                        path.segments()
+                            .filter_map(|seg| seg.generic_arg_list())
+                            .flat_map(|it| it.generic_args())
+                            .filter_map(|it| match it {
+                                ast::GenericArg::LifetimeArg(lt) => {
+                                    let lt = lt.lifetime()?;
+                                    known_generics.iter().find(find_lifetime(&lt.text()))
                                 }
-                            }) {
-                                generics.push(param);
+                                _ => None,
+                            }),
+                    );
+                }
+            }
+            ast::Type::ImplTraitType(impl_ty) => {
+                if let Some(it) = impl_ty.type_bound_list() {
+                    generics.extend(
+                        it.bounds()
+                            .filter_map(|it| it.lifetime())
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                    );
+                }
+            }
+            ast::Type::DynTraitType(dyn_ty) => {
+                if let Some(it) = dyn_ty.type_bound_list() {
+                    generics.extend(
+                        it.bounds()
+                            .filter_map(|it| it.lifetime())
+                            .filter_map(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+                    );
+                }
+            }
+            ast::Type::RefType(ref_) => generics.extend(
+                ref_.lifetime()
+                    .and_then(|lt| known_generics.iter().find(find_lifetime(&lt.text()))),
+            ),
+            ast::Type::ArrayType(ar) => {
+                if let Some(expr) = ar.expr() {
+                    if let ast::Expr::PathExpr(p) = expr {
+                        if let Some(path) = p.path() {
+                            if let Some(name_ref) = path.as_single_name_ref() {
+                                if let Some(param) = known_generics.iter().find(|gp| {
+                                    if let ast::GenericParam::ConstParam(cp) = gp {
+                                        cp.name().map_or(false, |n| n.text() == name_ref.text())
+                                    } else {
+                                        false
+                                    }
+                                }) {
+                                    generics.push(param);
+                                }
                             }
                         }
                     }
                 }
             }
-        }
-        _ => (),
+            _ => (),
+        };
+        false
     });
     // stable resort to lifetime, type, const
     generics.sort_by_key(|gp| match gp {
