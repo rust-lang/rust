@@ -61,4 +61,6 @@ ENV SCRIPT ../x.py --stage 2 test --exclude src/tools/tidy && \
            # work.
            #
            ../x.ps1 --stage 2 test tests/ui --pass=check \
-                             --host='' --target=i686-unknown-linux-gnu
+           --host='' --target=i686-unknown-linux-gnu && \
+           # Run clippy just to make sure it doesn't error out; we don't actually want to gate on the warnings though.
+           python3 ../x.py --stage 1 clippy -Awarnings
