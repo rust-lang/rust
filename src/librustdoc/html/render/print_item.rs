@@ -1229,16 +1229,7 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                                 w.write_str(")");
                             }
                             clean::VariantKind::Struct(ref s) => {
-                                render_struct(
-                                    w,
-                                    v,
-                                    None,
-                                    s.ctor_kind,
-                                    &s.fields,
-                                    "    ",
-                                    false,
-                                    cx,
-                                );
+                                render_struct(w, v, None, None, &s.fields, "    ", false, cx);
                             }
                         },
                         _ => unreachable!(),
