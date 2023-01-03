@@ -32,7 +32,6 @@ use rustc_trait_selection::traits::{
 };
 
 use std::cell::LazyCell;
-use std::iter;
 use std::ops::{ControlFlow, Deref};
 
 pub(super) struct WfCheckingCtxt<'a, 'tcx> {
@@ -1480,16 +1479,15 @@ fn check_where_clauses<'tcx>(wfcx: &WfCheckingCtxt<'_, 'tcx>, span: Span, def_id
 
     debug!(?predicates.predicates);
     assert_eq!(predicates.predicates.len(), predicates.spans.len());
-    let wf_obligations =
-        iter::zip(&predicates.predicates, &predicates.spans).flat_map(|(&p, &sp)| {
-            traits::wf::predicate_obligations(
-                infcx,
-                wfcx.param_env.without_const(),
-                wfcx.body_id,
-                p,
-                sp,
-            )
-        });
+    let wf_obligations = predicates.into_iter().flat_map(|(p, sp)| {
+        traits::wf::predicate_obligations(
+            infcx,
+            wfcx.param_env.without_const(),
+            wfcx.body_id,
+            p,
+            sp,
+        )
+    });
 
     let obligations: Vec<_> = wf_obligations.chain(default_obligations).collect();
     wfcx.register_obligations(obligations);

@@ -2070,7 +2070,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
             // Find another predicate whose self-type is equal to the expected self type,
             // but whose substs don't match.
-            let other_pred = std::iter::zip(&predicates.predicates, &predicates.spans)
+            let other_pred = predicates.into_iter()
                 .enumerate()
                 .find(|(other_idx, (pred, _))| match pred.kind().skip_binder() {
                     ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
@@ -2095,7 +2095,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             // If we found one, then it's very likely the cause of the error.
             if let Some((_, (_, other_pred_span))) = other_pred {
                 err.span_note(
-                    *other_pred_span,
+                    other_pred_span,
                     "closure inferred to have a different signature due to this bound",
                 );
             }
