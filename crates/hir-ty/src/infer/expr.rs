@@ -334,6 +334,7 @@ impl<'a> InferenceContext<'a> {
                 let (param_tys, ret_ty) = match res {
                     Some(res) => {
                         let adjustments = auto_deref_adjust_steps(&derefs);
+                        // FIXME: Handle call adjustments for Fn/FnMut
                         self.write_expr_adj(*callee, adjustments);
                         res
                     }
