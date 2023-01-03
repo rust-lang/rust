@@ -673,40 +673,34 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         let tcx = self.infcx.tcx;
 
         // Find out if the predicates show that the type is a Fn or FnMut
-        let find_fn_kind_from_did = |predicates: ty::EarlyBinder<
-            &[(ty::Predicate<'tcx>, Span)],
-        >,
-                                     substs| {
-            predicates.0.iter().find_map(|(pred, _)| {
-                    let pred = if let Some(substs) = substs {
-                        predicates.rebind(*pred).subst(tcx, substs).kind().skip_binder()
-                    } else {
-                        pred.kind().skip_binder()
-                    };
-                    if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred && pred.self_ty() == ty {
-                    if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
-                        return Some(hir::Mutability::Not);
-                    } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
-                        return Some(hir::Mutability::Mut);
-                    }
+        let find_fn_kind_from_did = |(pred, _): (ty::Predicate<'tcx>, _)| {
+            if let ty::PredicateKind::Clause(ty::Clause::Trait(pred)) = pred.kind().skip_binder()
+                && pred.self_ty() == ty
+            {
+                if Some(pred.def_id()) == tcx.lang_items().fn_trait() {
+                    return Some(hir::Mutability::Not);
+                } else if Some(pred.def_id()) == tcx.lang_items().fn_mut_trait() {
+                    return Some(hir::Mutability::Mut);
                 }
-                    None
-                })
+            }
+            None
         };
 
         // If the type is opaque/param/closure, and it is Fn or FnMut, let's suggest (mutably)
         // borrowing the type, since `&mut F: FnMut` iff `F: FnMut` and similarly for `Fn`.
         // These types seem reasonably opaque enough that they could be substituted with their
         // borrowed variants in a function body when we see a move error.
-        let borrow_level = match ty.kind() {
-            ty::Param(_) => find_fn_kind_from_did(
-                tcx.bound_explicit_predicates_of(self.mir_def_id().to_def_id())
-                    .map_bound(|p| p.predicates),
-                None,
-            ),
-            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
-                find_fn_kind_from_did(tcx.bound_explicit_item_bounds(*def_id), Some(*substs))
-            }
+        let borrow_level = match *ty.kind() {
+            ty::Param(_) => tcx
+                .explicit_predicates_of(self.mir_def_id().to_def_id())
+                .predicates
+                .iter()
+                .copied()
+                .find_map(find_fn_kind_from_did),
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => tcx
+                .bound_explicit_item_bounds(def_id)
+                .subst_iter_copied(tcx, substs)
+                .find_map(find_fn_kind_from_did),
             ty::Closure(_, substs) => match substs.as_closure().kind() {
                 ty::ClosureKind::Fn => Some(hir::Mutability::Not),
                 ty::ClosureKind::FnMut => Some(hir::Mutability::Mut),
