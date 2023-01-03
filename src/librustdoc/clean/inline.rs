@@ -13,6 +13,7 @@ use rustc_hir::def_id::DefId;
 use rustc_hir::Mutability;
 use rustc_metadata::creader::{CStore, LoadedMacro};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::def_id::LOCAL_CRATE;
 use rustc_span::hygiene::MacroKind;
 use rustc_span::symbol::{kw, sym, Symbol};
 
@@ -378,6 +379,14 @@ pub(crate) fn build_impl(
     let tcx = cx.tcx;
     let associated_trait = tcx.impl_trait_ref(did);
 
+    // Do not inline compiler-internal items unless we're a compiler-internal crate.
+    let document_compiler_internal =
+        if let Some(stab) = tcx.lookup_stability(LOCAL_CRATE.as_def_id()) {
+            stab.is_unstable() && stab.feature == sym::rustc_private
+        } else {
+            false
+        };
+
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
     if !did.is_local() {
@@ -387,10 +396,8 @@ pub(crate) fn build_impl(
                 return;
             }
 
-            if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.is_unstable() && stab.feature == sym::rustc_private {
-                    return;
-                }
+            if !document_compiler_internal && let Some(stab) = tcx.lookup_stability(did) && stab.is_unstable() && stab.feature == sym::rustc_private {
+                return;
             }
         }
     }
@@ -416,10 +423,8 @@ pub(crate) fn build_impl(
                 return;
             }
 
-            if let Some(stab) = tcx.lookup_stability(did) {
-                if stab.is_unstable() && stab.feature == sym::rustc_private {
-                    return;
-                }
+            if !document_compiler_internal && let Some(stab) = tcx.lookup_stability(did) && stab.is_unstable() && stab.feature == sym::rustc_private {
+                return;
             }
         }
     }
