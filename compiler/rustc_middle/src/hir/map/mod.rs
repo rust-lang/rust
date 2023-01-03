@@ -246,7 +246,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
-                let ctor_of = match self.find(self.parent_id(hir_id)) {
+                let ctor_of = match self.find_parent(hir_id) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -257,7 +257,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::AnonConst(_) => {
-                let inline = match self.find(self.parent_id(hir_id)) {
+                let inline = match self.find_parent(hir_id) {
                     Some(Node::Expr(&Expr {
                         kind: ExprKind::ConstBlock(ref anon_const), ..
                     })) if anon_const.hir_id == hir_id => true,
@@ -315,6 +315,14 @@ impl<'hir> Map<'hir> {
     pub fn parent_id(self, hir_id: HirId) -> HirId {
         self.opt_parent_id(hir_id)
             .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
+    }
+
+    pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
+        self.get(self.parent_id(hir_id))
+    }
+
+    pub fn find_parent(self, hir_id: HirId) -> Option<Node<'hir>> {
+        self.find(self.opt_parent_id(hir_id)?)
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -664,7 +672,7 @@ impl<'hir> Map<'hir> {
 
     /// Checks if the node is left-hand side of an assignment.
     pub fn is_lhs(self, id: HirId) -> bool {
-        match self.find(self.parent_id(id)) {
+        match self.find_parent(id) {
             Some(Node::Expr(expr)) => match expr.kind {
                 ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
                 _ => false,
@@ -892,7 +900,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.
-            Node::Ctor(..) => match self.find(self.parent_id(id))? {
+            Node::Ctor(..) => match self.find_parent(id)? {
                 Node::Item(item) => Some(item.ident),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
@@ -1093,7 +1101,7 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.get(self.parent_id(anon_const)) {
+        match self.get_parent(anon_const) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },

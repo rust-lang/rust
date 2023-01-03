@@ -21,7 +21,7 @@ pub(super) fn check<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
         return;
     }
     let map = &cx.tcx.hir();
-    let opt_parent_node = map.find(map.parent_id(expr.hir_id));
+    let opt_parent_node = map.find_parent(expr.hir_id);
     if_chain! {
         if let Some(hir::Node::Expr(parent_expr)) = opt_parent_node;
         if is_questionmark_desugar_marked_call(parent_expr);
@@ -192,7 +192,7 @@ fn fmt_stmts_and_call(
 
     let mut stmts_and_call_snippet = stmts_and_call.join(&format!("{}{}", ";\n", " ".repeat(call_expr_indent)));
     // expr is not in a block statement or result expression position, wrap in a block
-    let parent_node = cx.tcx.hir().find(cx.tcx.hir().parent_id(call_expr.hir_id));
+    let parent_node = cx.tcx.hir().find_parent(call_expr.hir_id);
     if !matches!(parent_node, Some(Node::Block(_))) && !matches!(parent_node, Some(Node::Stmt(_))) {
         let block_indent = call_expr_indent + 4;
         stmts_and_call_snippet =

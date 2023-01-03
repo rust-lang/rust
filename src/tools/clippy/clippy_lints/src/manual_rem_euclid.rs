@@ -74,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for ManualRemEuclid {
             && let Some(hir_id) = path_to_local(expr3)
             && let Some(Node::Pat(_)) = cx.tcx.hir().find(hir_id) {
                 // Apply only to params or locals with annotated types
-                match cx.tcx.hir().find(cx.tcx.hir().parent_id(hir_id)) {
+                match cx.tcx.hir().find_parent(hir_id) {
                     Some(Node::Param(..)) => (),
                     Some(Node::Local(local)) => {
                         let Some(ty) = local.ty else { return };

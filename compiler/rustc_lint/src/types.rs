@@ -129,8 +129,7 @@ fn lint_overflowing_range_endpoint<'tcx>(
     // which are represented as `ExprKind::Struct`.
     let par_id = cx.tcx.hir().parent_id(expr.hir_id);
     let Node::ExprField(field) = cx.tcx.hir().get(par_id) else { return false };
-    let field_par_id = cx.tcx.hir().parent_id(field.hir_id);
-    let Node::Expr(struct_expr) = cx.tcx.hir().get(field_par_id) else { return false };
+    let Node::Expr(struct_expr) = cx.tcx.hir().get_parent(field.hir_id) else { return false };
     if !is_range_literal(struct_expr) {
         return false;
     };

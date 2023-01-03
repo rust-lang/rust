@@ -258,10 +258,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path { res: hir::def::Res::Local(hir_id), .. },
                     )) => {
                         if let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(*hir_id) {
-                            let parent = self.tcx.hir().parent_id(pat.hir_id);
                             primary_span = pat.span;
                             secondary_span = pat.span;
-                            match self.tcx.hir().find(parent) {
+                            match self.tcx.hir().find_parent(pat.hir_id) {
                                 Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
                                     primary_span = ty.span;
                                     post_message = " type";
@@ -857,7 +856,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         }?;
 
-        match hir.find(hir.parent_id(expr.hir_id))? {
+        match hir.find_parent(expr.hir_id)? {
             Node::ExprField(field) => {
                 if field.ident.name == local.name && field.is_shorthand {
                     return Some(local.name);
@@ -1040,7 +1039,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(hir::Node::Expr(hir::Expr {
                             kind: hir::ExprKind::Assign(..),
                             ..
-                        })) = self.tcx.hir().find(self.tcx.hir().parent_id(expr.hir_id))
+                        })) = self.tcx.hir().find_parent(expr.hir_id)
                         {
                             if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
@@ -1267,9 +1266,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut sugg = vec![];
 
-        if let Some(hir::Node::ExprField(field)) =
-            self.tcx.hir().find(self.tcx.hir().parent_id(expr.hir_id))
-        {
+        if let Some(hir::Node::ExprField(field)) = self.tcx.hir().find_parent(expr.hir_id) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             if field.is_shorthand {
                 // This is a field literal

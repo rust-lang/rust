@@ -1083,7 +1083,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
                 let hir = self.tcx.hir();
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
-                    hir.get(hir.parent_id(hir.parent_id(expr.hir_id)))
+                    hir.get_parent(hir.parent_id(expr.hir_id))
                 {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_lo(),
@@ -2462,7 +2462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(field.span, "method, not a field");
         let expr_is_call =
             if let hir::Node::Expr(hir::Expr { kind: ExprKind::Call(callee, _args), .. }) =
-                self.tcx.hir().get(self.tcx.hir().parent_id(expr.hir_id))
+                self.tcx.hir().get_parent(expr.hir_id)
             {
                 expr.hir_id == callee.hir_id
             } else {

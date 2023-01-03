@@ -294,10 +294,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         };
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
-            let parent = self
-                .tcx
-                .hir()
-                .get(self.tcx.hir().parent_id(self.tcx.hir().parent_id(block.hir_id)));
+            let parent = self.tcx.hir().get_parent(self.tcx.hir().parent_id(block.hir_id));
             if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
                 (&block.expr, parent)
             {
