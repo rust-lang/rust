@@ -344,20 +344,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     } else {
                         err.span_help(source_info.span, "try removing `&mut` here");
                     }
-                } else if decl.mutability == Mutability::Not
-                    && !matches!(
+                } else if decl.mutability == Mutability::Not {
+                    if matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                             hir::ImplicitSelfKind::MutRef
-                        ))))
-                    )
-                {
-                    err.span_suggestion_verbose(
-                        decl.source_info.span.shrink_to_lo(),
-                        "consider making the binding mutable",
-                        "mut ",
-                        Applicability::MachineApplicable,
-                    );
+                        ),)))
+                    ) {
+                        err.note(
+                            "as `Self` may be unsized, this call attempts to take `&mut &mut self`",
+                        );
+                        err.note("however, `&mut self` expands to `self: &mut Self`, therefore `self` cannot be borrowed mutably");
+                    } else {
+                        err.span_suggestion_verbose(
+                            decl.source_info.span.shrink_to_lo(),
+                            "consider making the binding mutable",
+                            "mut ",
+                            Applicability::MachineApplicable,
+                        );
+                    };
                 }
             }
 
