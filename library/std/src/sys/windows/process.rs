@@ -521,17 +521,18 @@ fn program_exists(path: &Path) -> Option<Vec<u16>> {
 
 impl Stdio {
     fn to_handle(&self, stdio_id: c::DWORD, pipe: &mut Option<AnonPipe>) -> io::Result<Handle> {
-        match *self {
-            Stdio::Inherit => match stdio::get_handle(stdio_id) {
-                Ok(io) => unsafe {
-                    let io = Handle::from_raw_handle(io);
-                    let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
-                    io.into_raw_handle();
-                    ret
-                },
-                // If no stdio handle is available, then propagate the null value.
-                Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
+        let use_stdio_id = |stdio_id| match stdio::get_handle(stdio_id) {
+            Ok(io) => unsafe {
+                let io = Handle::from_raw_handle(io);
+                let ret = io.duplicate(0, true, c::DUPLICATE_SAME_ACCESS);
+                io.into_raw_handle();
+                ret
             },
+            // If no stdio handle is available, then propagate the null value.
+            Err(..) => unsafe { Ok(Handle::from_raw_handle(ptr::null_mut())) },
+        };
+        match *self {
+            Stdio::Inherit => use_stdio_id(stdio_id),
 
             Stdio::MakePipe => {
                 let ours_readable = stdio_id != c::STD_INPUT_HANDLE;
