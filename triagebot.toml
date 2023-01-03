@@ -479,6 +479,7 @@ compiler = [
     "compiler-team-contributors",
 ]
 libs = [
+    "@cuviper",
     "@joshtriplett",
     "@Mark-Simulacrum",
     "@m-ou-se",
