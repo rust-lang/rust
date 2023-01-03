@@ -91,7 +91,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnecessaryWraps {
         }
 
         // Abort if the method is implementing a trait or of it a trait method.
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().parent_id(hir_id)) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)

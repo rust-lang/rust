@@ -1436,7 +1436,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut contained_in_place = false;
 
         while let hir::Node::Expr(parent_expr) =
-            self.tcx.hir().get(self.tcx.hir().get_parent_node(expr_id))
+            self.tcx.hir().get(self.tcx.hir().parent_id(expr_id))
         {
             match &parent_expr.kind {
                 hir::ExprKind::Assign(lhs, ..) | hir::ExprKind::AssignOp(_, lhs, ..) => {

@@ -289,7 +289,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
         let node = {
-            let rslt = self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(hir_id));
+            let rslt = self.tcx.hir().parent_id(self.tcx.hir().parent_id(hir_id));
             self.tcx.hir().get(rslt)
         };
         if let hir::Node::Block(block) = node {
@@ -297,7 +297,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let parent = self
                 .tcx
                 .hir()
-                .get(self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(block.hir_id)));
+                .get(self.tcx.hir().parent_id(self.tcx.hir().parent_id(block.hir_id)));
             if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
                 (&block.expr, parent)
             {

@@ -411,7 +411,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) {
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.get_parent_node(cause.body_id);
+        let fn_hir_id = hir.parent_id(cause.body_id);
         if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
             let hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Fn(_sig, _, body_id), ..
@@ -585,9 +585,9 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
             local.pat.walk(&mut find_compatible_candidates);
         }
-        match hir.find(hir.get_parent_node(blk.hir_id)) {
+        match hir.find(hir.parent_id(blk.hir_id)) {
             Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
-                match hir.find(hir.get_parent_node(*hir_id)) {
+                match hir.find(hir.parent_id(*hir_id)) {
                     Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
                         pat.walk(&mut find_compatible_candidates);
                     }

@@ -394,7 +394,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
-                let hir_id = hir.get_parent_node(expr.hir_id);
+                let hir_id = hir.parent_id(expr.hir_id);
                 if let Some(parent) = hir.find(hir_id) {
                     let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind

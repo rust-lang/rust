@@ -600,7 +600,7 @@ impl<'tcx> SaveContext<'tcx> {
                 if seg.res != Res::Err {
                     seg.res
                 } else {
-                    let parent_node = self.tcx.hir().get_parent_node(hir_id);
+                    let parent_node = self.tcx.hir().parent_id(hir_id);
                     self.get_path_res(parent_node)
                 }
             }

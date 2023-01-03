@@ -1803,7 +1803,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir_id: call_hir_id,
                     span: call_span,
                     ..
-                }) = hir.get(hir.get_parent_node(expr.hir_id))
+                }) = hir.get(hir.parent_id(expr.hir_id))
                     && callee.hir_id == expr.hir_id
                 {
                     if self.closure_span_overlaps_error(error, *call_span) {
