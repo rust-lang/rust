@@ -1040,9 +1040,6 @@ function loadCss(cssUrl) {
             help_button.appendChild(container);
 
             container.onblur = helpBlurHandler;
-            container.onclick = event => {
-                event.preventDefault();
-            };
             help_button.onblur = helpBlurHandler;
             help_button.children[0].onblur = helpBlurHandler;
         }
