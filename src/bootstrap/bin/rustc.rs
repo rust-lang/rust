@@ -87,7 +87,7 @@ fn main() {
             }
         }
 
-        if crate_name == "build_script_build" {
+        if crate_name == "build_script_build" && verbose > 0 {
             eprintln!("building build scripts using sysroot {:?}", sysroot);
         }
     }
@@ -166,8 +166,10 @@ fn main() {
         if command == "clippy" && target.is_none() {
             let libdir_string = libdir.to_string_lossy();
             let (sysroot, _) = libdir_string.rsplit_once('/').unwrap();
-            eprintln!("passing clippy --sysroot {}", sysroot);
-            cmd.arg("--sysroot").arg(&sysroot);
+            if !args.iter().any(|arg| arg == "--sysroot") {
+                eprintln!("passing clippy --sysroot {}", sysroot);
+                cmd.arg("--sysroot").arg(&sysroot);
+            }
         }
     }
 

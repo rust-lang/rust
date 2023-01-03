@@ -13,7 +13,7 @@ use std::process::Command;
 use std::time::{Duration, Instant};
 
 use crate::cache::{Cache, Interned, INTERNER};
-use crate::config::{SplitDebuginfo, TargetSelection, DryRun};
+use crate::config::{DryRun, SplitDebuginfo, TargetSelection};
 use crate::doc;
 use crate::flags::{Color, Subcommand};
 use crate::install;
@@ -22,7 +22,9 @@ use crate::run;
 use crate::setup;
 use crate::test;
 use crate::tool::{self, SourceType};
-use crate::util::{self, add_dylib_path, add_link_lib_path, exe, libdir, output, t};
+use crate::util::{
+    self, add_dylib_path, add_link_lib_path, dylib_path, dylib_path_var, exe, libdir, output, t,
+};
 use crate::EXTRA_CHECK_CFGS;
 use crate::{check, compile, Crate};
 use crate::{clean, dist};
@@ -1118,6 +1120,44 @@ impl<'a> Builder<'a> {
         self.ensure(tool::Rustdoc { compiler })
     }
 
+    pub fn cargo_clippy_cmd(&self, run_compiler: Compiler) -> Command {
+        let initial_sysroot_bin = self.initial_rustc.parent().unwrap();
+        // Set PATH to include the sysroot bin dir so clippy can find cargo.
+        let path = t!(env::join_paths(
+            // The sysroot comes first in PATH to avoid using rustup's cargo.
+            std::iter::once(PathBuf::from(initial_sysroot_bin))
+                .chain(env::split_paths(&t!(env::var("PATH"))))
+        ));
+
+        if run_compiler.stage == 0 {
+            // `ensure(Clippy { stage: 0 })` *builds* clippy with stage0, it doesn't use the beta clippy.
+            let cargo_clippy = self.initial_rustc.parent().unwrap().join("cargo-clippy");
+            let mut cmd = Command::new(cargo_clippy);
+            cmd.env("PATH", &path);
+            return cmd;
+        }
+
+        let build_compiler = self.compiler(run_compiler.stage - 1, self.build.build);
+        self.ensure(tool::Clippy {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: vec![],
+        });
+        let cargo_clippy = self.ensure(tool::CargoClippy {
+            compiler: build_compiler,
+            target: self.build.build,
+            extra_features: vec![],
+        });
+        let mut dylib_path = dylib_path();
+        let run_compiler = self.compiler(build_compiler.stage + 1, self.build.build);
+        dylib_path.insert(0, self.sysroot(run_compiler).join("lib"));
+
+        let mut cmd = Command::new(cargo_clippy.unwrap());
+        cmd.env(dylib_path_var(), env::join_paths(&dylib_path).unwrap());
+        cmd.env("PATH", path);
+        cmd
+    }
+
     pub fn rustdoc_cmd(&self, compiler: Compiler) -> Command {
         let mut cmd = Command::new(&self.bootstrap_out.join("rustdoc"));
         cmd.env("RUSTC_STAGE", compiler.stage.to_string())
@@ -1172,7 +1212,7 @@ impl<'a> Builder<'a> {
         cmd: &str,
     ) -> Command {
         let mut cargo = if cmd == "clippy" {
-            Command::new(self.initial_rustc.parent().unwrap().join("cargo-clippy"))
+            self.cargo_clippy_cmd(compiler)
         } else {
             Command::new(&self.initial_cargo)
         };
@@ -1327,18 +1367,18 @@ impl<'a> Builder<'a> {
                 cargo.args(s.split_whitespace());
             }
             rustflags.env("RUSTFLAGS_BOOTSTRAP");
-            if cmd == "clippy" {
-                // clippy overwrites sysroot if we pass it to cargo.
-                // Pass it directly to clippy instead.
-                // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
-                // so it has no way of knowing the sysroot.
-                rustflags.arg("--sysroot");
-                rustflags.arg(sysroot_str);
-                // Only run clippy on a very limited subset of crates (in particular, not build scripts).
-                cargo.arg("-Zunstable-options");
-            }
-
             rustflags.arg("--cfg=bootstrap");
+        }
+
+        if cmd == "clippy" {
+            // clippy overwrites sysroot if we pass it to cargo.
+            // Pass it directly to clippy instead.
+            // NOTE: this can't be fixed in clippy because we explicitly don't set `RUSTC`,
+            // so it has no way of knowing the sysroot.
+            rustflags.arg("--sysroot");
+            rustflags.arg(sysroot_str);
+            // Only run clippy on a very limited subset of crates (in particular, not build scripts).
+            cargo.arg("-Zunstable-options");
         }
 
         let use_new_symbol_mangling = match self.config.rust_new_symbol_mangling {
@@ -1470,10 +1510,6 @@ impl<'a> Builder<'a> {
             Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => String::new(),
         };
 
-        if self.jobs() > 1 {
-            //panic!("TESTING: Run with one job only!");
-        }
-
         cargo.arg("-j").arg(self.jobs().to_string());
 
         // FIXME: Temporary fix for https://github.com/rust-lang/cargo/issues/3005
@@ -1536,6 +1572,28 @@ impl<'a> Builder<'a> {
             self.clear_if_dirty(&out_dir, &self.rustc(compiler));
         }
 
+        // // Cargo doesn't pass `--sysroot` for build scripts and proc-macros, which is exactly when we want to use a different sysroot.
+        // if
+
+        if cmd == "clippy" {
+            let build_script_sysroot = if stage != 0 {
+                // Our fake rustc shim passes `-Zmark-unstable-if-unmarked` for stage != 0, which we can't
+                // replicate because clippy doesn't normally run the shim.  We should talk with the clippy
+                // team about whether there's a way to do this; maybe cargo-clippy can invoke the shim
+                // which invokes clippy-driver?
+                cargo.env("RUSTC_CLIPPY_IGNORE_BUILD_SCRIPTS_AND_PROC_MACROS", "1");
+                self.initial_rustc.ancestors().nth(2).unwrap()
+            } else {
+                sysroot.clone()
+            };
+            // HACK: clippy will pass `--sysroot` to `RunCompiler` if and only if SYSROOT is set and
+            // `--sysroot is not already passed. We bypass clippy-driver altogether in stage 1
+            // because there's no way to set `-Zforce-unstable-if-unmarked` for only the correct
+            // crates, but for stage 0 build scripts and proc-macros we want to still set the right
+            // sysroot.
+            cargo.env("SYSROOT", build_script_sysroot);
+        }
+
         // Customize the compiler we're running. Specify the compiler to cargo
         // as our shim and then pass it some various options used to configure
         // how the actual compiler itself is called.
@@ -1546,11 +1604,7 @@ impl<'a> Builder<'a> {
             .env("RUSTBUILD_NATIVE_DIR", self.native_dir(target))
             .env("RUSTC_REAL", self.rustc(compiler))
             .env("RUSTC_STAGE", stage.to_string())
-
-            // set for clippy to know the sysroot
-            .env("SYSROOT", &sysroot)
             .env("RUSTC_COMMAND", cmd)
-
             .env("RUSTC_SYSROOT", &sysroot)
             .env("RUSTC_LIBDIR", &libdir)
             .env("RUSTDOC", self.bootstrap_out.join("rustdoc"))

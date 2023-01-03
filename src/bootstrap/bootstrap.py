@@ -726,16 +726,6 @@ class RustBuild(object):
         """
         return os.path.join(self.bin_root(), '.rustc-stamp')
 
-    def rustfmt_stamp(self):
-        """Return the path for .rustfmt-stamp
-
-        >>> rb = RustBuild()
-        >>> rb.build_dir = "build"
-        >>> rb.rustfmt_stamp() == os.path.join("build", "stage0", ".rustfmt-stamp")
-        True
-        """
-        return os.path.join(self.bin_root(), '.rustfmt-stamp')
-
     def clippy_stamp(self):
         """Return the path for .clippy-stamp
 

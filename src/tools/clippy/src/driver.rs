@@ -22,7 +22,7 @@ use rustc_span::symbol::Symbol;
 use std::env;
 use std::ops::Deref;
 use std::path::Path;
-use std::process::exit;
+use std::process::{Command, exit};
 
 /// If a command-line option matches `find_arg`, then apply the predicate `pred` on its value. If
 /// true, then return it. The parameter is assumed to be either `--arg=value` or `--arg value`.
@@ -233,10 +233,12 @@ pub fn main() {
         // We're invoking the compiler programmatically, so we ignore this/
         let wrapper_mode = orig_args.get(1).map(Path::new).and_then(Path::file_stem) == Some("rustc".as_ref());
 
-        if wrapper_mode {
-            // we still want to be able to invoke it normally though
-            orig_args.remove(1);
-        }
+        // we still want to be able to invoke it normally though
+        let orig_rustc_cmd = if wrapper_mode {
+            Some(orig_args.remove(1))
+        } else {
+            None
+        };
 
         if !wrapper_mode && (orig_args.iter().any(|a| a == "--help" || a == "-h") || orig_args.len() == 1) {
             display_help();
@@ -244,6 +246,23 @@ pub fn main() {
         }
 
         let mut args: Vec<String> = orig_args.clone();
+
+        let is_build_script = arg_value(&orig_args, "--crate-name", |val| val == "build_script_build").is_some();
+        let is_proc_macro = arg_value(&orig_args, "--crate-type", |val| val == "proc-macro").is_some();
+        let ignore_crate_completely = (is_build_script || is_proc_macro) && env::var("RUSTC_CLIPPY_IGNORE_BUILD_SCRIPTS_AND_PROC_MACROS").map_or(false, |x| x == "1");
+
+        // This is a more extreme version of `clippy_enabled`: it launches the original `rustc`
+        // command (which may be a `RUSTC` wrapper, not rustc itself) rather than running
+        // clippy-driver.
+        if ignore_crate_completely {
+            if let Some(orig_cmd) = orig_rustc_cmd {
+                // Respect RUSTC shim.
+                args.remove(0);
+                let status = Command::new(orig_cmd).args(args).status();
+                exit(status.ok().and_then(|status| status.code()).unwrap_or(1));
+            }
+        }
+
         pass_sysroot_env_if_given(&mut args, sys_root_env);
 
         let mut no_deps = false;
