@@ -100,6 +100,24 @@ export async function createClient(
                     }
                 },
             },
+            async provideInlayHints(document, viewPort, token, next) {
+                const inlays = await next(document, viewPort, token);
+                if (!inlays) {
+                    return inlays;
+                }
+                // U+200C is a zero-width non-joiner to prevent the editor from forming a ligature
+                // between code and hints
+                for (const inlay of inlays) {
+                    if (typeof inlay.label === "string") {
+                        inlay.label = `\u{200c}${inlay.label}\u{200c}`;
+                    } else if (Array.isArray(inlay.label)) {
+                        for (const it of inlay.label) {
+                            it.value = `\u{200c}${it.value}\u{200c}`;
+                        }
+                    }
+                }
+                return inlays;
+            },
             async handleDiagnostics(
                 uri: vscode.Uri,
                 diagnostics: vscode.Diagnostic[],
