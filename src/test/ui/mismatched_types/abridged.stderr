@@ -53,11 +53,19 @@ LL |     Ok(Foo { bar: 1 })
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:39:5
    |
-LL | fn d() -> X<X<String, String>, String> {
-   |           ---------------------------- expected `X<X<String, String>, String>` because of return type
-...
-LL |     x
-   |     ^ expected struct `String`, found integer
+LL |   fn d() -> X<X<String, String>, String> {
+   |             ---------------------------- expected `X<X<String, String>, String>` because of return type
+LL |       let x = X {
+   |  _____________-
+LL | |         x: X {
+LL | |             x: "".to_string(),
+LL | |             y: 2,
+LL | |         },
+LL | |         y: 3,
+LL | |     };
+   | |_____- here the type of `x` is inferred to be `X<_, _>`
+LL |       x
+   |       ^ expected struct `String`, found integer
    |
    = note: expected struct `X<X<_, String>, String>`
               found struct `X<X<_, {integer}>, {integer}>`
@@ -65,11 +73,19 @@ LL |     x
 error[E0308]: mismatched types
   --> $DIR/abridged.rs:50:5
    |
-LL | fn e() -> X<X<String, String>, String> {
-   |           ---------------------------- expected `X<X<String, String>, String>` because of return type
-...
-LL |     x
-   |     ^ expected struct `String`, found integer
+LL |   fn e() -> X<X<String, String>, String> {
+   |             ---------------------------- expected `X<X<String, String>, String>` because of return type
+LL |       let x = X {
+   |  _____________-
+LL | |         x: X {
+LL | |             x: "".to_string(),
+LL | |             y: 2,
+LL | |         },
+LL | |         y: "".to_string(),
+LL | |     };
+   | |_____- here the type of `x` is inferred to be `X<_, _>`
+LL |       x
+   |       ^ expected struct `String`, found integer
    |
    = note: expected struct `X<X<_, String>, _>`
               found struct `X<X<_, {integer}>, _>`

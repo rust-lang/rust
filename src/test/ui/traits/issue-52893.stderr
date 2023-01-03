@@ -4,6 +4,8 @@ error[E0308]: mismatched types
 LL | impl<F, Name, P> AddClass<Name, F> for Class<P>
    |      - this type parameter
 ...
+LL |         let output = builder.to_ref();
+   |                      ---------------- here the type of `output` is inferred to be `Class<P>`
 LL |         builder.push(output);
    |                 ---- ^^^^^^ expected type parameter `F`, found struct `Class`
    |                 |
