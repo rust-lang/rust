@@ -410,7 +410,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
 
     /// This method will create a new module and push it onto the "modules stack" then call
     /// `visit_mod_contents`. Once done, it'll remove it from the "modules stack" and instead
-    /// add into into the list of modules of the current module.
+    /// add into the list of modules of the current module.
     fn enter_mod(&mut self, id: hir::HirId, m: &'tcx hir::Mod<'tcx>, name: Symbol) {
         self.modules.push(Module::new(name, id, m.spans.inner_span));
 

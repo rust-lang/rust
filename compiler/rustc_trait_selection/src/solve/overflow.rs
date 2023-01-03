@@ -36,7 +36,7 @@ impl OverflowData {
 
     #[inline]
     pub(super) fn has_overflow(&self, depth: usize) -> bool {
-        self.current_limit.value_within_limit(depth + self.additional_depth)
+        !self.current_limit.value_within_limit(depth + self.additional_depth)
     }
 
     /// Updating the current limit when hitting overflow.

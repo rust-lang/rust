@@ -2111,7 +2111,6 @@ impl Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 pub(crate) struct VariantStruct {
-    pub(crate) ctor_kind: Option<CtorKind>,
     pub(crate) fields: Vec<Item>,
 }
 
