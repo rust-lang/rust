@@ -3,6 +3,7 @@ import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
+import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
 import { Config, substituteVSCodeVariables } from "./config";
 import { randomUUID } from "crypto";
@@ -120,12 +121,12 @@ export async function createClient(
             },
             async handleDiagnostics(
                 uri: vscode.Uri,
-                diagnostics: vscode.Diagnostic[],
+                diagnosticList: vscode.Diagnostic[],
                 next: lc.HandleDiagnosticsSignature
             ) {
                 const preview = config.previewRustcOutput;
                 const errorCode = config.useRustcErrorCode;
-                diagnostics.forEach((diag, idx) => {
+                diagnosticList.forEach((diag, idx) => {
                     // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
                     // Diagnostic class, if they ever break this we are out of luck and have to go
                     // back to the worst diagnostics experience ever:)
@@ -154,8 +155,8 @@ export async function createClient(
                         }
                         diag.code = {
                             target: vscode.Uri.from({
-                                scheme: "rust-analyzer-diagnostics-view",
-                                path: "/diagnostic message",
+                                scheme: diagnostics.URI_SCHEME,
+                                path: `/diagnostic message [${idx.toString()}]`,
                                 fragment: uri.toString(),
                                 query: idx.toString(),
                             }),
@@ -163,7 +164,7 @@ export async function createClient(
                         };
                     }
                 });
-                return next(uri, diagnostics);
+                return next(uri, diagnosticList);
             },
             async provideHover(
                 document: vscode.TextDocument,
