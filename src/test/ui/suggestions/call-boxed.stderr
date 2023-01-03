@@ -7,7 +7,7 @@ LL |     let y = Box::new(|| 1);
    |             --------------
    |             |        |
    |             |        the found closure
-   |             here the type of `y` is inferred to be `Box<_>`
+   |             here the type of `y` is inferred to be `Box<[closure@call-boxed.rs:3:22]>`
 LL |     x = y;
    |         ^ expected `i32`, found struct `Box`
    |

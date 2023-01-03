@@ -63,7 +63,7 @@ LL | |             y: 2,
 LL | |         },
 LL | |         y: 3,
 LL | |     };
-   | |_____- here the type of `x` is inferred to be `X<_, _>`
+   | |_____- here the type of `x` is inferred to be `X<X<String, {integer}>, {integer}>`
 LL |       x
    |       ^ expected struct `String`, found integer
    |
@@ -83,7 +83,7 @@ LL | |             y: 2,
 LL | |         },
 LL | |         y: "".to_string(),
 LL | |     };
-   | |_____- here the type of `x` is inferred to be `X<_, _>`
+   | |_____- here the type of `x` is inferred to be `X<X<String, {integer}>, String>`
 LL |       x
    |       ^ expected struct `String`, found integer
    |

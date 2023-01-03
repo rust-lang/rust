@@ -234,6 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) => self.check_expr_path(qpath, expr, args),
             _ => self.check_expr_kind(expr, expected),
         });
+        let ty = self.resolve_vars_if_possible(ty);
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
