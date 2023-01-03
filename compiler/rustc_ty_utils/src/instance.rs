@@ -194,7 +194,7 @@ fn resolve_associated_item<'tcx>(
                 && trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.compare_assoc_const_impl_item_with_trait_item((
+                tcx.compare_impl_const((
                     leaf_def_item,
                     trait_item_id,
                 ))?;

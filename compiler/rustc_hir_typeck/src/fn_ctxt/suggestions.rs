@@ -19,6 +19,7 @@ use rustc_middle::ty::{
     TypeVisitable,
 };
 use rustc_session::errors::ExprParenthesesNeeded;
+use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{sym, Ident};
 use rustc_span::{Span, Symbol};
 use rustc_trait_selection::infer::InferCtxtExt;
@@ -327,6 +328,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         } else {
             false
         }
+    }
+
+    pub fn suggest_remove_last_method_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        if let hir::ExprKind::MethodCall(hir::PathSegment { ident: method, .. }, recv_expr, &[], _) = expr.kind &&
+            let Some(recv_ty) = self.typeck_results.borrow().expr_ty_opt(recv_expr) &&
+            self.can_coerce(recv_ty, expected) {
+                let span = if let Some(recv_span) = recv_expr.span.find_ancestor_inside(expr.span) {
+                    expr.span.with_lo(recv_span.hi())
+                } else {
+                    expr.span.with_lo(method.span.lo() - rustc_span::BytePos(1))
+                };
+                err.span_suggestion_verbose(
+                    span,
+                    "try removing the method call",
+                    "",
+                    Applicability::MachineApplicable,
+                );
+                return true;
+            }
+        false
     }
 
     pub fn suggest_deref_ref_or_into(
@@ -948,7 +974,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
     ) -> bool {
-        let sp = self.tcx.sess.source_map().start_point(expr.span);
+        let sp = self.tcx.sess.source_map().start_point(expr.span).with_parent(None);
         if let Some(sp) = self.tcx.sess.parse_sess.ambiguous_block_expr_parse.borrow().get(&sp) {
             // `{ 42 } &&x` (#61475) or `{ 42 } && if x { 1 } else { 0 }`
             err.subdiagnostic(ExprParenthesesNeeded::surrounding(*sp));
@@ -1230,6 +1256,31 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     expr.span.until(end.span),
                     "remove the unnecessary `.` operator and add an integer part for a floating point literal",
                     "0.",
+                    Applicability::MaybeIncorrect,
+                );
+                true
+            }
+            ExprKind::Lit(Spanned {
+                node: rustc_ast::LitKind::Int(lit, rustc_ast::LitIntType::Unsuffixed),
+                span,
+            }) => {
+                let Ok(snippet) = self.tcx.sess.source_map().span_to_snippet(span) else { return false; };
+                if !(snippet.starts_with("0x") || snippet.starts_with("0X")) {
+                    return false;
+                }
+                if snippet.len() <= 5 || !snippet.is_char_boundary(snippet.len() - 3) {
+                    return false;
+                }
+                let (_, suffix) = snippet.split_at(snippet.len() - 3);
+                let value = match suffix {
+                    "f32" => (lit - 0xf32) / (16 * 16 * 16),
+                    "f64" => (lit - 0xf64) / (16 * 16 * 16),
+                    _ => return false,
+                };
+                err.span_suggestions(
+                    expr.span,
+                    "rewrite this as a decimal floating point literal, or use `as` to turn a hex literal into a float",
+                    [format!("0x{value:X} as {suffix}"), format!("{value}_{suffix}")],
                     Applicability::MaybeIncorrect,
                 );
                 true

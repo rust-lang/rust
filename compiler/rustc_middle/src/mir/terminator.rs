@@ -1,4 +1,4 @@
-use smallvec::{smallvec, SmallVec};
+use smallvec::SmallVec;
 
 use super::{BasicBlock, InlineAsmOperand, Operand, SourceInfo, TerminatorKind};
 use rustc_ast::InlineAsmTemplatePiece;

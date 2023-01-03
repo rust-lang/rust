@@ -12,6 +12,7 @@ use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::builder::crate_description;
 use crate::builder::{Builder, Compiler, Kind, RunConfig, ShouldRun, Step};
 use crate::cache::{Interned, INTERNER};
 use crate::compile;
@@ -506,7 +507,11 @@ impl Step for Std {
         // Look for library/std, library/core etc in the `x.py doc` arguments and
         // open the corresponding rendered docs.
         for requested_crate in requested_crates {
-            if STD_PUBLIC_CRATES.iter().any(|k| *k == requested_crate.as_str()) {
+            if requested_crate == "library" {
+                // For `x.py doc library --open`, open `std` by default.
+                let index = out.join("std").join("index.html");
+                builder.open_in_browser(index);
+            } else if STD_PUBLIC_CRATES.iter().any(|&k| k == requested_crate) {
                 let index = out.join(requested_crate).join("index.html");
                 builder.open_in_browser(index);
             }
@@ -554,7 +559,8 @@ fn doc_std(
     requested_crates: &[String],
 ) {
     builder.info(&format!(
-        "Documenting stage{} std ({}) in {} format",
+        "Documenting{} stage{} library ({}) in {} format",
+        crate_description(requested_crates),
         stage,
         target,
         format.as_str()

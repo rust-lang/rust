@@ -7,7 +7,7 @@
       let mut _2: std::pin::Pin<&mut [generator@$DIR/inline_generator.rs:15:5: 15:8]>; // in scope 0 at $DIR/inline_generator.rs:+1:14: +1:32
       let mut _3: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]; // in scope 0 at $DIR/inline_generator.rs:+1:23: +1:31
       let mut _4: [generator@$DIR/inline_generator.rs:15:5: 15:8]; // in scope 0 at $DIR/inline_generator.rs:+1:28: +1:31
-+     let mut _7: bool;                    // in scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
++     let mut _7: bool;                    // in scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
       scope 1 {
           debug _r => _1;                  // in scope 1 at $DIR/inline_generator.rs:+1:9: +1:11
       }
@@ -23,7 +23,7 @@
 +             }
 +         }
 +     }
-+     scope 6 (inlined g::{closure#0}) {   // at $DIR/inline_generator.rs:9:14: 9:46
++     scope 6 (inlined g::{closure#0}) {   // at $DIR/inline_generator.rs:9:33: 9:46
 +         debug a => _7;                   // in scope 6 at $DIR/inline_generator.rs:15:6: 15:7
 +         let mut _8: i32;                 // in scope 6 at $DIR/inline_generator.rs:15:17: 15:39
 +         let mut _9: u32;                 // in scope 6 at $DIR/inline_generator.rs:15:5: 15:41
@@ -68,8 +68,8 @@
 -                                          // mir::Constant
 -                                          // + span: $DIR/inline_generator.rs:9:33: 9:39
 -                                          // + literal: Const { ty: for<'a> fn(Pin<&'a mut [generator@$DIR/inline_generator.rs:15:5: 15:8]>, bool) -> GeneratorState<<[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::Yield, <[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::Return> {<[generator@$DIR/inline_generator.rs:15:5: 15:8] as Generator<bool>>::resume}, val: Value(<ZST>) }
-+         StorageLive(_7);                 // scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
-+         _7 = const false;                // scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
++         StorageLive(_7);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
++         _7 = const false;                // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
 +         _10 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         _9 = discriminant((*_10));       // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
 +         switchInt(move _9) -> [0: bb3, 1: bb8, 3: bb7, otherwise: bb9]; // scope 6 at $DIR/inline_generator.rs:15:5: 15:41
@@ -77,7 +77,7 @@
   
 -     bb3: {
 +     bb1: {
-+         StorageDead(_7);                 // scope 0 at $DIR/inline_generator.rs:+1:14: +1:46
++         StorageDead(_7);                 // scope 0 at $DIR/inline_generator.rs:+1:33: +1:46
           StorageDead(_2);                 // scope 0 at $DIR/inline_generator.rs:+1:45: +1:46
           StorageDead(_4);                 // scope 0 at $DIR/inline_generator.rs:+1:46: +1:47
           _0 = const ();                   // scope 0 at $DIR/inline_generator.rs:+0:11: +2:2

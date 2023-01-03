@@ -35,6 +35,9 @@ declare_clippy_lint! {
     /// Some may consider panicking in these situations to be desirable, but it also may
     /// introduce panicking where there wasn't any before.
     ///
+    /// See also [the discussion in the
+    /// PR](https://github.com/rust-lang/rust-clippy/pull/9484#issuecomment-1278922613).
+    ///
     /// ### Examples
     /// ```rust
     /// # let (input, min, max) = (0, -2, 1);
@@ -78,7 +81,7 @@ declare_clippy_lint! {
     /// ```
     #[clippy::version = "1.66.0"]
     pub MANUAL_CLAMP,
-    complexity,
+    nursery,
     "using a clamp pattern instead of the clamp function"
 }
 impl_lint_pass!(ManualClamp => [MANUAL_CLAMP]);

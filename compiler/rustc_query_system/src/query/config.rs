@@ -1,7 +1,6 @@
 //! Query configuration and description traits.
 
-use crate::dep_graph::DepNode;
-use crate::dep_graph::SerializedDepNodeIndex;
+use crate::dep_graph::{DepNode, DepNodeParams, SerializedDepNodeIndex};
 use crate::error::HandleCycleError;
 use crate::ich::StableHashingContext;
 use crate::query::caches::QueryCache;
@@ -11,10 +10,16 @@ use rustc_data_structures::fingerprint::Fingerprint;
 use std::fmt::Debug;
 use std::hash::Hash;
 
+pub type HashResult<Qcx, Q> =
+    Option<fn(&mut StableHashingContext<'_>, &<Q as QueryConfig<Qcx>>::Value) -> Fingerprint>;
+
+pub type TryLoadFromDisk<Qcx, Q> =
+    Option<fn(Qcx, SerializedDepNodeIndex) -> Option<<Q as QueryConfig<Qcx>>::Value>>;
+
 pub trait QueryConfig<Qcx: QueryContext> {
     const NAME: &'static str;
 
-    type Key: Eq + Hash + Clone + Debug;
+    type Key: DepNodeParams<Qcx::DepContext> + Eq + Hash + Clone + Debug;
     type Value: Debug;
     type Stored: Debug + Clone + std::borrow::Borrow<Self::Value>;
 
@@ -30,39 +35,27 @@ pub trait QueryConfig<Qcx: QueryContext> {
     where
         Qcx: 'a;
 
-    // Don't use this method to compute query results, instead use the methods on TyCtxt
-    fn make_vtable(tcx: Qcx, key: &Self::Key) -> QueryVTable<Qcx, Self::Key, Self::Value>;
-
     fn cache_on_disk(tcx: Qcx::DepContext, key: &Self::Key) -> bool;
 
     // Don't use this method to compute query results, instead use the methods on TyCtxt
     fn execute_query(tcx: Qcx::DepContext, k: Self::Key) -> Self::Stored;
-}
 
-#[derive(Copy, Clone)]
-pub struct QueryVTable<Qcx: QueryContext, K, V> {
-    pub anon: bool,
-    pub dep_kind: Qcx::DepKind,
-    pub eval_always: bool,
-    pub depth_limit: bool,
-    pub feedable: bool,
+    fn compute(tcx: Qcx, key: &Self::Key) -> fn(Qcx::DepContext, Self::Key) -> Self::Value;
 
-    pub compute: fn(Qcx::DepContext, K) -> V,
-    pub hash_result: Option<fn(&mut StableHashingContext<'_>, &V) -> Fingerprint>,
-    pub handle_cycle_error: HandleCycleError,
-    // NOTE: this is also `None` if `cache_on_disk()` returns false, not just if it's unsupported by the query
-    pub try_load_from_disk: Option<fn(Qcx, SerializedDepNodeIndex) -> Option<V>>,
-}
+    fn try_load_from_disk(qcx: Qcx, idx: &Self::Key) -> TryLoadFromDisk<Qcx, Self>;
 
-impl<Qcx: QueryContext, K, V> QueryVTable<Qcx, K, V> {
-    pub(crate) fn to_dep_node(&self, tcx: Qcx::DepContext, key: &K) -> DepNode<Qcx::DepKind>
-    where
-        K: crate::dep_graph::DepNodeParams<Qcx::DepContext>,
-    {
-        DepNode::construct(tcx, self.dep_kind, key)
-    }
+    const ANON: bool;
+    const EVAL_ALWAYS: bool;
+    const DEPTH_LIMIT: bool;
+    const FEEDABLE: bool;
 
-    pub(crate) fn compute(&self, tcx: Qcx::DepContext, key: K) -> V {
-        (self.compute)(tcx, key)
+    const DEP_KIND: Qcx::DepKind;
+    const HANDLE_CYCLE_ERROR: HandleCycleError;
+
+    const HASH_RESULT: HashResult<Qcx, Self>;
+
+    // Just here for convernience and checking that the key matches the kind, don't override this.
+    fn construct_dep_node(tcx: Qcx::DepContext, key: &Self::Key) -> DepNode<Qcx::DepKind> {
+        DepNode::construct(tcx, Self::DEP_KIND, key)
     }
 }

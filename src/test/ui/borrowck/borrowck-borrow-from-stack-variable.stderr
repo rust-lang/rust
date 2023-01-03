@@ -105,10 +105,13 @@ LL |     *bar1;
 error[E0596]: cannot borrow `foo.bar1` as mutable, as `foo` is not declared as mutable
   --> $DIR/borrowck-borrow-from-stack-variable.rs:120:16
    |
-LL |     let foo = make_foo();
-   |         --- help: consider changing this to be mutable: `mut foo`
 LL |     let bar1 = &mut foo.bar1;
    |                ^^^^^^^^^^^^^ cannot borrow as mutable
+   |
+help: consider changing this to be mutable
+   |
+LL |     let mut foo = make_foo();
+   |         +++
 
 error: aborting due to 11 previous errors
 

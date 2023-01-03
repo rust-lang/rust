@@ -1754,11 +1754,11 @@ mod remove_dir_impl {
     use crate::sys::{cvt, cvt_r};
 
     #[cfg(not(any(
-        target_os = "linux",
+        all(target_os = "linux", target_env = "gnu"),
         all(target_os = "macos", not(target_arch = "aarch64"))
     )))]
     use libc::{fdopendir, openat, unlinkat};
-    #[cfg(target_os = "linux")]
+    #[cfg(all(target_os = "linux", target_env = "gnu"))]
     use libc::{fdopendir, openat64 as openat, unlinkat};
     #[cfg(all(target_os = "macos", not(target_arch = "aarch64")))]
     use macos_weak::{fdopendir, openat, unlinkat};

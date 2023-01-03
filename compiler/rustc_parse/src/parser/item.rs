@@ -24,7 +24,6 @@ use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::DUMMY_SP;
 use std::mem;
 use thin_vec::ThinVec;
-use tracing::debug;
 
 impl<'a> Parser<'a> {
     /// Parses a source module as a crate. This is the main entry point for the parser.
@@ -99,7 +98,9 @@ impl<'a> Parser<'a> {
         fn_parse_mode: FnParseMode,
         force_collect: ForceCollect,
     ) -> PResult<'a, Option<Item>> {
+        self.recover_diff_marker();
         let attrs = self.parse_outer_attributes()?;
+        self.recover_diff_marker();
         self.parse_item_common(attrs, true, false, fn_parse_mode, force_collect)
     }
 
@@ -705,6 +706,7 @@ impl<'a> Parser<'a> {
             if self.recover_doc_comment_before_brace() {
                 continue;
             }
+            self.recover_diff_marker();
             match parse_item(self) {
                 Ok(None) => {
                     let mut is_unnecessary_semicolon = !items.is_empty()
@@ -1040,8 +1042,11 @@ impl<'a> Parser<'a> {
     /// USE_TREE_LIST = Ø | (USE_TREE `,`)* USE_TREE [`,`]
     /// ```
     fn parse_use_tree_list(&mut self) -> PResult<'a, Vec<(UseTree, ast::NodeId)>> {
-        self.parse_delim_comma_seq(Delimiter::Brace, |p| Ok((p.parse_use_tree()?, DUMMY_NODE_ID)))
-            .map(|(r, _)| r)
+        self.parse_delim_comma_seq(Delimiter::Brace, |p| {
+            p.recover_diff_marker();
+            Ok((p.parse_use_tree()?, DUMMY_NODE_ID))
+        })
+        .map(|(r, _)| r)
     }
 
     fn parse_rename(&mut self) -> PResult<'a, Option<Ident>> {
@@ -1380,7 +1385,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_enum_variant(&mut self) -> PResult<'a, Option<Variant>> {
+        self.recover_diff_marker();
         let variant_attrs = self.parse_outer_attributes()?;
+        self.recover_diff_marker();
         self.collect_tokens_trailing_token(
             variant_attrs,
             ForceCollect::No,
@@ -1574,9 +1581,32 @@ impl<'a> Parser<'a> {
         self.parse_paren_comma_seq(|p| {
             let attrs = p.parse_outer_attributes()?;
             p.collect_tokens_trailing_token(attrs, ForceCollect::No, |p, attrs| {
+                let mut snapshot = None;
+                if p.is_diff_marker(&TokenKind::BinOp(token::Shl), &TokenKind::Lt) {
+                    // Account for `<<<<<<<` diff markers. We can't proactively error here because
+                    // that can be a valid type start, so we snapshot and reparse only we've
+                    // encountered another parse error.
+                    snapshot = Some(p.create_snapshot_for_diagnostic());
+                }
                 let lo = p.token.span;
-                let vis = p.parse_visibility(FollowedByType::Yes)?;
-                let ty = p.parse_ty()?;
+                let vis = match p.parse_visibility(FollowedByType::Yes) {
+                    Ok(vis) => vis,
+                    Err(err) => {
+                        if let Some(ref mut snapshot) = snapshot {
+                            snapshot.recover_diff_marker();
+                        }
+                        return Err(err);
+                    }
+                };
+                let ty = match p.parse_ty() {
+                    Ok(ty) => ty,
+                    Err(err) => {
+                        if let Some(ref mut snapshot) = snapshot {
+                            snapshot.recover_diff_marker();
+                        }
+                        return Err(err);
+                    }
+                };
 
                 Ok((
                     FieldDef {
@@ -1597,7 +1627,9 @@ impl<'a> Parser<'a> {
 
     /// Parses an element of a struct declaration.
     fn parse_field_def(&mut self, adt_ty: &str) -> PResult<'a, FieldDef> {
+        self.recover_diff_marker();
         let attrs = self.parse_outer_attributes()?;
+        self.recover_diff_marker();
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
@@ -2424,10 +2456,11 @@ impl<'a> Parser<'a> {
     }
 
     /// Parses the parameter list of a function, including the `(` and `)` delimiters.
-    fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, Vec<Param>> {
+    pub(super) fn parse_fn_params(&mut self, req_name: ReqName) -> PResult<'a, Vec<Param>> {
         let mut first_param = true;
         // Parse the arguments, starting out with `self` being allowed...
         let (mut params, _) = self.parse_paren_comma_seq(|p| {
+            p.recover_diff_marker();
             let param = p.parse_param_general(req_name, first_param).or_else(|mut e| {
                 e.emit();
                 let lo = p.prev_token.span;
@@ -2465,7 +2498,6 @@ impl<'a> Parser<'a> {
             };
             let (pat, ty) = if is_name_required || this.is_named_param() {
                 debug!("parse_param_general parse_pat (is_name_required:{})", is_name_required);
-
                 let (pat, colon) = this.parse_fn_param_pat_colon()?;
                 if !colon {
                     let mut err = this.unexpected::<()>().unwrap_err();

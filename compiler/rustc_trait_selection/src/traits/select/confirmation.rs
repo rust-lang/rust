@@ -12,8 +12,8 @@ use rustc_index::bit_set::GrowableBitSet;
 use rustc_infer::infer::InferOk;
 use rustc_infer::infer::LateBoundRegionConversionTime::HigherRankedType;
 use rustc_middle::ty::{
-    self, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
-    ToPolyTraitRef, ToPredicate, Ty, TyCtxt,
+    self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
+    ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
 };
 use rustc_span::def_id::DefId;
 
@@ -98,8 +98,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ImplSource::Future(vtable_future)
             }
 
-            FnPointerCandidate { .. } => {
-                let data = self.confirm_fn_pointer_candidate(obligation)?;
+            FnPointerCandidate { is_const } => {
+                let data = self.confirm_fn_pointer_candidate(obligation, is_const)?;
                 ImplSource::FnPointer(data)
             }
 
@@ -597,17 +597,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_fn_pointer_candidate(
         &mut self,
         obligation: &TraitObligation<'tcx>,
+        is_const: bool,
     ) -> Result<ImplSourceFnPointerData<'tcx, PredicateObligation<'tcx>>, SelectionError<'tcx>>
     {
         debug!(?obligation, "confirm_fn_pointer_candidate");
 
+        let tcx = self.tcx();
         let self_ty = self
             .infcx
             .shallow_resolve(obligation.self_ty().no_bound_vars())
             .expect("fn pointer should not capture bound vars from predicate");
-        let sig = self_ty.fn_sig(self.tcx());
+        let sig = self_ty.fn_sig(tcx);
         let trait_ref = closure_trait_ref_and_return_type(
-            self.tcx(),
+            tcx,
             obligation.predicate.def_id(),
             self_ty,
             sig,
@@ -616,9 +618,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         .map_bound(|(trait_ref, _)| trait_ref);
 
         let mut nested = self.confirm_poly_trait_refs(obligation, trait_ref)?;
+        let cause = obligation.derived_cause(BuiltinDerivedObligation);
+
+        if obligation.is_const() && !is_const {
+            // function is a trait method
+            if let ty::FnDef(def_id, substs) = self_ty.kind() && let Some(trait_id) = tcx.trait_of_item(*def_id) {
+                let trait_ref = TraitRef::from_method(tcx, trait_id, *substs);
+                let poly_trait_pred = Binder::dummy(trait_ref).with_constness(ty::BoundConstness::ConstIfConst);
+                let obligation = Obligation::new(tcx, cause.clone(), obligation.param_env, poly_trait_pred);
+                nested.push(obligation);
+            }
+        }
 
         // Confirm the `type Output: Sized;` bound that is present on `FnOnce`
-        let cause = obligation.derived_cause(BuiltinDerivedObligation);
         let output_ty = self.infcx.replace_bound_vars_with_placeholders(sig.output());
         let output_ty = normalize_with_depth_to(
             self,

@@ -5,27 +5,22 @@
 
 pub enum Foo {
     // @set Unit = "$.index[*][?(@.name=='Unit')].id"
-    // @is "$.index[*][?(@.name=='Unit')].inner.variant_kind" '"plain"'
-    // @is "$.index[*][?(@.name=='Unit')].inner.variant_inner" null
+    // @is "$.index[*][?(@.name=='Unit')].inner.kind" '"plain"'
     Unit,
     // @set Named = "$.index[*][?(@.name=='Named')].id"
-    // @is "$.index[*][?(@.name=='Named')].inner.variant_kind" '"struct"'
-    // @is "$.index[*][?(@.name=='Named')].inner.variant_inner" '{"fields": [], "fields_stripped": false}'
+    // @is "$.index[*][?(@.name=='Named')].inner.kind.struct" '{"fields": [], "fields_stripped": false}'
     Named {},
     // @set Tuple = "$.index[*][?(@.name=='Tuple')].id"
-    // @is "$.index[*][?(@.name=='Tuple')].inner.variant_kind" '"tuple"'
-    // @is "$.index[*][?(@.name=='Tuple')].inner.variant_inner" []
+    // @is "$.index[*][?(@.name=='Tuple')].inner.kind.tuple" []
     Tuple(),
     // @set NamedField = "$.index[*][?(@.name=='NamedField')].id"
     // @set x = "$.index[*][?(@.name=='x' && @.kind=='struct_field')].id"
-    // @is "$.index[*][?(@.name=='NamedField')].inner.variant_kind" '"struct"'
-    // @is "$.index[*][?(@.name=='NamedField')].inner.variant_inner.fields[*]" $x
-    // @is "$.index[*][?(@.name=='NamedField')].inner.variant_inner.fields_stripped" false
+    // @is "$.index[*][?(@.name=='NamedField')].inner.kind.struct.fields[*]" $x
+    // @is "$.index[*][?(@.name=='NamedField')].inner.kind.struct.fields_stripped" false
     NamedField { x: i32 },
     // @set TupleField = "$.index[*][?(@.name=='TupleField')].id"
-    // @is "$.index[*][?(@.name=='TupleField')].inner.variant_kind" '"tuple"'
     // @set tup_field = "$.index[*][?(@.name=='0' && @.kind=='struct_field')].id"
-    // @is "$.index[*][?(@.name=='TupleField')].inner.variant_inner[*]" $tup_field
+    // @is "$.index[*][?(@.name=='TupleField')].inner.kind.tuple[*]" $tup_field
     TupleField(i32),
 }
 

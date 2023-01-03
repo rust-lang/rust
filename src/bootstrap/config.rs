@@ -49,10 +49,7 @@ pub enum DryRun {
 
 /// Global configuration for the entire build and/or bootstrap.
 ///
-/// This structure is derived from a combination of both `config.toml` and
-/// `config.mk`. As of the time of this writing it's unlikely that `config.toml`
-/// is used all that much, so this is primarily filled out by `config.mk` which
-/// is generated from `./configure`.
+/// This structure is parsed from `config.toml`, and some of the fields are inferred from `git` or build-time parameters.
 ///
 /// Note that this structure is not decoded directly into, but rather it is
 /// filled out from the decoded forms of the structs below. For documentation

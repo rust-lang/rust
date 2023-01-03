@@ -5,6 +5,11 @@
 extern crate rustc_graphviz;
 // A simple rust project
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 extern crate krate2;
 extern crate krate2 as krate3;
 

@@ -517,7 +517,7 @@ pub fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
-/// Entry point of panics from the libcore crate (`panic_impl` lang item).
+/// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(test))]
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
@@ -699,7 +699,11 @@ fn rust_panic_with_hook(
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        rtprintpanic!("thread panicked while panicking. aborting.\n");
+        if !can_unwind {
+            rtprintpanic!("thread caused non-unwinding panic. aborting.\n");
+        } else {
+            rtprintpanic!("thread panicked while panicking. aborting.\n");
+        }
         crate::sys::abort_internal();
     }
 

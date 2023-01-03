@@ -5,6 +5,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
@@ -907,10 +908,10 @@ fn infer_placeholder_type<'a>(
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    err.span_note(
+                    with_forced_trimmed_paths!(err.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty),
-                    );
+                        &format!("however, the inferred type `{ty}` cannot be named"),
+                    ));
                 }
             }
 
@@ -931,10 +932,10 @@ fn infer_placeholder_type<'a>(
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    diag.span_note(
+                    with_forced_trimmed_paths!(diag.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty),
-                    );
+                        &format!("however, the inferred type `{ty}` cannot be named"),
+                    ));
                 }
             }
 

@@ -405,7 +405,9 @@ if 'target' in config:
         configured_targets.append(target)
 for target in configured_targets:
     targets[target] = sections['target'][:]
-    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target))
+    # For `.` to be valid TOML, it needs to be quoted. But `bootstrap.py` doesn't use a proper TOML parser and fails to parse the target.
+    # Avoid using quotes unless it's necessary.
+    targets[target][0] = targets[target][0].replace("x86_64-unknown-linux-gnu", "'{}'".format(target) if "." in target else target)
 
 
 def is_number(value):

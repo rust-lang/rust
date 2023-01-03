@@ -164,6 +164,7 @@ fn encode_const<'tcx>(
 
 /// Encodes a FnSig using the Itanium C++ ABI with vendor extended type qualifiers and types for
 /// Rust types that are not used at the FFI boundary.
+#[instrument(level = "trace", skip(tcx, dict))]
 fn encode_fnsig<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_sig: &FnSig<'tcx>,
@@ -653,6 +654,7 @@ fn encode_ty<'tcx>(
 // Transforms a ty:Ty for being encoded and used in the substitution dictionary. It transforms all
 // c_void types into unit types unconditionally, and generalizes all pointers if
 // TransformTyOptions::GENERALIZE_POINTERS option is set.
+#[instrument(level = "trace", skip(tcx))]
 fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptions) -> Ty<'tcx> {
     let mut ty = ty;
 
@@ -698,7 +700,7 @@ fn transform_ty<'tcx>(tcx: TyCtxt<'tcx>, ty: Ty<'tcx>, options: TransformTyOptio
                     !is_zst
                 });
                 if let Some(field) = field {
-                    let ty0 = tcx.type_of(field.did);
+                    let ty0 = tcx.bound_type_of(field.did).subst(tcx, substs);
                     // Generalize any repr(transparent) user-defined type that is either a pointer
                     // or reference, and either references itself or any other type that contains or
                     // references itself, to avoid a reference cycle.
@@ -827,6 +829,7 @@ fn transform_substs<'tcx>(
 
 /// Returns a type metadata identifier for the specified FnAbi using the Itanium C++ ABI with vendor
 /// extended type qualifiers and types for Rust types that are not used at the FFI boundary.
+#[instrument(level = "trace", skip(tcx))]
 pub fn typeid_for_fnabi<'tcx>(
     tcx: TyCtxt<'tcx>,
     fn_abi: &FnAbi<'tcx, Ty<'tcx>>,

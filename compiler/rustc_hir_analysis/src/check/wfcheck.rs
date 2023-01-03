@@ -115,7 +115,7 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
-    infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
+    let _ = infcx.check_region_obligations_and_report_errors(body_def_id, &outlives_environment);
 }
 
 fn check_well_formed(tcx: TyCtxt<'_>, def_id: hir::OwnerId) {
@@ -291,7 +291,7 @@ fn check_trait_item(tcx: TyCtxt<'_>, trait_item: &hir::TraitItem<'_>) {
         // Do some rudimentary sanity checking to avoid an ICE later (issue #83471).
         if let Some(hir::FnSig { decl, span, .. }) = method_sig {
             if let [self_ty, _] = decl.inputs {
-                if !matches!(self_ty.kind, hir::TyKind::Rptr(_, _)) {
+                if !matches!(self_ty.kind, hir::TyKind::Ref(_, _)) {
                     tcx.sess
                         .struct_span_err(
                             self_ty.span,
@@ -410,10 +410,7 @@ fn check_gat_where_clauses(tcx: TyCtxt<'_>, associated_items: &[hir::TraitItemRe
                             tcx,
                             param_env,
                             item_hir_id,
-                            tcx.explicit_item_bounds(item_def_id)
-                                .iter()
-                                .copied()
-                                .collect::<Vec<_>>(),
+                            tcx.explicit_item_bounds(item_def_id).to_vec(),
                             &FxIndexSet::default(),
                             gat_def_id.def_id,
                             gat_generics,

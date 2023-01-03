@@ -19,10 +19,7 @@ LL |     x.field.map(|value| if value > 0 { do_nothing(value); do_nothing(value)
 error: called `map(f)` on an `Result` value where `f` is a closure that returns the unit type `()`
   --> $DIR/result_map_unit_fn_unfixable.rs:29:5
    |
-LL |        x.field.map(|value| {
-   |  ______^
-   | | _____|
-   | ||
+LL | //     x.field.map(|value| {
 LL | ||         do_nothing(value);
 LL | ||         do_nothing(value)
 LL | ||     });

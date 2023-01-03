@@ -13,18 +13,24 @@ LL |         f((Box::new(|| {})))
 error[E0596]: cannot borrow `*f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:25:5
    |
-LL | fn test2<F>(f: &F) where F: FnMut() {
-   |                -- help: consider changing this to be a mutable reference: `&mut F`
 LL |     (*f)();
    |     ^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn test2<F>(f: &mut F) where F: FnMut() {
+   |                ~~~~~~
 
 error[E0596]: cannot borrow `f.f` as mutable, as it is behind a `&` reference
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:34:5
    |
-LL | fn test4(f: &Test) {
-   |             ----- help: consider changing this to be a mutable reference: `&mut Test<'_>`
 LL |     f.f.call_mut(())
    |     ^^^^^^^^^^^^^^^^ `f` is a `&` reference, so the data it refers to cannot be borrowed as mutable
+   |
+help: consider changing this to be a mutable reference
+   |
+LL | fn test4(f: &mut Test<'_>) {
+   |             ~~~~~~~~~~~~~
 
 error[E0507]: cannot move out of `f`, a captured variable in an `FnMut` closure
   --> $DIR/borrowck-call-is-borrow-issue-12224.rs:57:13

@@ -339,7 +339,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         &mut err, item_name, rcvr_ty, cal, span,
                     );
                 }
-                if let Some(span) = tcx.resolutions(()).confused_type_with_std_module.get(&span) {
+                if let Some(span) =
+                    tcx.resolutions(()).confused_type_with_std_module.get(&span.with_parent(None))
+                {
                     err.span_suggestion(
                         span.shrink_to_lo(),
                         "you are looking for the module in `std`, not the primitive type",
@@ -2306,6 +2308,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         _ => false,
                     }
                 }) && (type_is_local || info.def_id.is_local())
+                    && !self.tcx.trait_is_auto(info.def_id)
                     && self
                         .associated_value(info.def_id, item_name)
                         .filter(|item| {

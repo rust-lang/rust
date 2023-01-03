@@ -160,9 +160,13 @@ pub fn provide(providers: &mut Providers) {
         } else if let Node::TraitItem(&TraitItem {
             kind: TraitItemKind::Fn(_, TraitFn::Required(idents)),
             ..
+        })
+        | Node::ForeignItem(&ForeignItem {
+            kind: ForeignItemKind::Fn(_, idents, _),
+            ..
         }) = hir.get(hir_id)
         {
-            tcx.arena.alloc_slice(idents)
+            idents
         } else {
             span_bug!(hir.span(hir_id), "fn_arg_names: unexpected item {:?}", id);
         }

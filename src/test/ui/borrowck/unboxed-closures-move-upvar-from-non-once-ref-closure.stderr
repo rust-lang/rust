@@ -1,5 +1,5 @@
 error[E0507]: cannot move out of `y`, a captured variable in an `Fn` closure
-  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:11:9
+  --> $DIR/unboxed-closures-move-upvar-from-non-once-ref-closure.rs:12:9
    |
 LL |     let y = vec![format!("World")];
    |         - captured outer variable
@@ -12,6 +12,10 @@ LL |         y.into_iter();
    |
 note: `into_iter` takes ownership of the receiver `self`, which moves `y`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
+help: you can `clone` the value and consume it, but this might not be your desired behavior
+   |
+LL |         y.clone().into_iter();
+   |           ++++++++
 
 error: aborting due to previous error
 

@@ -361,7 +361,7 @@ fn check_for_is_empty<'tcx>(
             db.span_note(span, "`is_empty` defined here");
         }
         if let Some(self_kind) = self_kind {
-            db.note(&output.expected_sig(self_kind));
+            db.note(output.expected_sig(self_kind));
         }
     });
 }

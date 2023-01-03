@@ -3,7 +3,7 @@ use clippy_utils::ty::is_type_diagnostic_item;
 use clippy_utils::visitors::contains_unsafe_block;
 use clippy_utils::{is_res_lang_ctor, path_res, path_to_local_id};
 
-use rustc_hir::LangItem::OptionSome;
+use rustc_hir::LangItem::{OptionNone, OptionSome};
 use rustc_hir::{Arm, Expr, ExprKind, HirId, Pat, PatKind};
 use rustc_lint::LateContext;
 use rustc_span::{sym, SyntaxContext};
@@ -25,15 +25,13 @@ fn get_cond_expr<'tcx>(
         if let Some(block_expr) = peels_blocks_incl_unsafe_opt(expr);
         if let ExprKind::If(cond, then_expr, Some(else_expr)) = block_expr.kind;
         if let PatKind::Binding(_,target, ..) = pat.kind;
-        if let (then_visitor, else_visitor)
-            = (is_some_expr(cx, target, ctxt, then_expr),
-                is_some_expr(cx, target, ctxt, else_expr));
-        if then_visitor != else_visitor; // check that one expr resolves to `Some(x)`, the other to `None`
+        if is_some_expr(cx, target, ctxt, then_expr) && is_none_expr(cx, else_expr)
+            || is_none_expr(cx, then_expr) && is_some_expr(cx, target, ctxt, else_expr); // check that one expr resolves to `Some(x)`, the other to `None`
         then {
             return Some(SomeExpr {
                     expr: peels_blocks_incl_unsafe(cond.peel_drop_temps()),
                     needs_unsafe_block: contains_unsafe_block(cx, expr),
-                    needs_negated: !then_visitor // if the `then_expr` resolves to `None`, need to negate the cond
+                    needs_negated: is_none_expr(cx, then_expr) // if the `then_expr` resolves to `None`, need to negate the cond
                 })
             }
     };
@@ -70,6 +68,13 @@ fn is_some_expr(cx: &LateContext<'_>, target: HirId, ctxt: SyntaxContext, expr: 
                 && is_res_lang_ctor(cx, path_res(cx, callee), OptionSome)
                 && path_to_local_id(arg, target);
         }
+    };
+    false
+}
+
+fn is_none_expr(cx: &LateContext<'_>, expr: &Expr<'_>) -> bool {
+    if let Some(inner_expr) = peels_blocks_incl_unsafe_opt(expr) {
+        return is_res_lang_ctor(cx, path_res(cx, inner_expr), OptionNone);
     };
     false
 }

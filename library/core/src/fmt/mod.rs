@@ -558,7 +558,7 @@ impl Display for Arguments<'_> {
 ///
 /// Derived `Debug` formats are not stable, and so may change with future Rust
 /// versions. Additionally, `Debug` implementations of types provided by the
-/// standard library (`libstd`, `libcore`, `liballoc`, etc.) are not stable, and
+/// standard library (`std`, `core`, `alloc`, etc.) are not stable, and
 /// may also change with future Rust versions.
 ///
 /// # Examples

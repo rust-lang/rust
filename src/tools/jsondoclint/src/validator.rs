@@ -5,7 +5,7 @@ use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
     GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Module, OpaqueTy, Path,
     Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
-    TypeBindingKind, Typedef, Union, Variant, WherePredicate,
+    TypeBindingKind, Typedef, Union, Variant, VariantKind, WherePredicate,
 };
 
 use crate::{item_kind::Kind, Error, ErrorKind};
@@ -140,24 +140,24 @@ impl<'a> Validator<'a> {
     }
 
     fn check_variant(&mut self, x: &'a Variant, id: &'a Id) {
-        match x {
-            Variant::Plain(discr) => {
-                if let Some(discr) = discr {
-                    if let (Err(_), Err(_)) =
-                        (discr.value.parse::<i128>(), discr.value.parse::<u128>())
-                    {
-                        self.fail(
-                            id,
-                            ErrorKind::Custom(format!(
-                                "Failed to parse discriminant value `{}`",
-                                discr.value
-                            )),
-                        );
-                    }
-                }
+        let Variant { kind, discriminant } = x;
+
+        if let Some(discr) = discriminant {
+            if let (Err(_), Err(_)) = (discr.value.parse::<i128>(), discr.value.parse::<u128>()) {
+                self.fail(
+                    id,
+                    ErrorKind::Custom(format!(
+                        "Failed to parse discriminant value `{}`",
+                        discr.value
+                    )),
+                );
             }
-            Variant::Tuple(tys) => tys.iter().flatten().for_each(|t| self.add_field_id(t)),
-            Variant::Struct { fields, fields_stripped: _ } => {
+        }
+
+        match kind {
+            VariantKind::Plain => {}
+            VariantKind::Tuple(tys) => tys.iter().flatten().for_each(|t| self.add_field_id(t)),
+            VariantKind::Struct { fields, fields_stripped: _ } => {
                 fields.iter().for_each(|f| self.add_field_id(f))
             }
         }

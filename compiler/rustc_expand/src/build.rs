@@ -87,14 +87,14 @@ impl<'a> ExtCtxt<'a> {
         self.anon_const(span, ast::ExprKind::Path(None, self.path_ident(span, ident)))
     }
 
-    pub fn ty_rptr(
+    pub fn ty_ref(
         &self,
         span: Span,
         ty: P<ast::Ty>,
         lifetime: Option<ast::Lifetime>,
         mutbl: ast::Mutability,
     ) -> P<ast::Ty> {
-        self.ty(span, ast::TyKind::Rptr(lifetime, self.ty_mt(ty, mutbl)))
+        self.ty(span, ast::TyKind::Ref(lifetime, self.ty_mt(ty, mutbl)))
     }
 
     pub fn ty_ptr(&self, span: Span, ty: P<ast::Ty>, mutbl: ast::Mutability) -> P<ast::Ty> {
@@ -626,7 +626,7 @@ impl<'a> ExtCtxt<'a> {
 
     // Builds `#[name = val]`.
     //
-    // Note: `span` is used for both the identifer and the value.
+    // Note: `span` is used for both the identifier and the value.
     pub fn attr_name_value_str(&self, name: Symbol, val: Symbol, span: Span) -> ast::Attribute {
         let g = &self.sess.parse_sess.attr_id_generator;
         attr::mk_attr_name_value_str(g, ast::AttrStyle::Outer, name, val, span)

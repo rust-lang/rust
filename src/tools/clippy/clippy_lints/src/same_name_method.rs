@@ -108,7 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                     |diag| {
                                         diag.span_note(
                                             trait_method_span,
-                                            &format!("existing `{method_name}` defined here"),
+                                            format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );
@@ -151,7 +151,7 @@ impl<'tcx> LateLintPass<'tcx> for SameNameMethod {
                                         // iterate on trait_spans?
                                         diag.span_note(
                                             trait_spans[0],
-                                            &format!("existing `{method_name}` defined here"),
+                                            format!("existing `{method_name}` defined here"),
                                         );
                                     },
                                 );

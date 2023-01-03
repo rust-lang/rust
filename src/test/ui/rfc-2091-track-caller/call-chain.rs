@@ -1,10 +1,14 @@
 // run-pass
+// revisions: default mir-opt
+//[default] compile-flags: -Zinline-mir=no
+//[mir-opt] compile-flags: -Zmir-opt-level=4
 
 use std::panic::Location;
 
 struct Foo;
 
 impl Foo {
+    #[inline(always)]
     #[track_caller]
     fn check_loc(&self, line: u32, col: u32) -> &Self {
         let loc = Location::caller();

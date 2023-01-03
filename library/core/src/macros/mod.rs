@@ -1461,7 +1461,6 @@ pub(crate) mod builtin {
     /// [the reference]: ../../../reference/attributes/derive.html
     #[unstable(feature = "derive_const", issue = "none")]
     #[rustc_builtin_macro]
-    #[cfg(not(bootstrap))]
     pub macro derive_const($item:item) {
         /* compiler built-in */
     }
@@ -1516,7 +1515,6 @@ pub(crate) mod builtin {
     /// Attribute macro applied to a function to register it as a handler for allocation failure.
     ///
     /// See also [`std::alloc::handle_alloc_error`](../../../std/alloc/fn.handle_alloc_error.html).
-    #[cfg(not(bootstrap))]
     #[unstable(feature = "alloc_error_handler", issue = "51540")]
     #[allow_internal_unstable(rustc_attrs)]
     #[rustc_builtin_macro]
@@ -1553,7 +1551,6 @@ pub(crate) mod builtin {
         issue = "23416",
         reason = "placeholder syntax for type ascription"
     )]
-    #[cfg(not(bootstrap))]
     pub macro type_ascribe($expr:expr, $ty:ty) {
         /* compiler built-in */
     }

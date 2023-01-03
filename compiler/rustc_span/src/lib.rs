@@ -796,6 +796,9 @@ impl Span {
 
     /// Returns a `Span` that would enclose both `self` and `end`.
     ///
+    /// Note that this can also be used to extend the span "backwards":
+    /// `start.to(end)` and `end.to(start)` return the same `Span`.
+    ///
     /// ```text
     ///     ____             ___
     ///     self lorem ipsum end

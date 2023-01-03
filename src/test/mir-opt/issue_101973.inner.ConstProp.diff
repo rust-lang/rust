@@ -23,7 +23,7 @@
               debug out => _4;             // in scope 2 at $DIR/issue_101973.rs:6:9: 6:16
           }
       }
-      scope 3 (inlined core::num::<impl u32>::rotate_right) { // at $DIR/issue_101973.rs:14:5: 14:58
+      scope 3 (inlined core::num::<impl u32>::rotate_right) { // at $DIR/issue_101973.rs:14:18: 14:58
           debug self => _4;                // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
           debug n => _6;                   // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL
           let mut _15: u32;                // in scope 3 at $SRC_DIR/core/src/num/uint_macros.rs:LL:COL

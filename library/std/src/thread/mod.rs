@@ -173,7 +173,7 @@ use crate::sync::Arc;
 use crate::sys::thread as imp;
 use crate::sys_common::thread;
 use crate::sys_common::thread_info;
-use crate::sys_common::thread_parker::Parker;
+use crate::sys_common::thread_parking::Parker;
 use crate::sys_common::{AsInner, IntoInner};
 use crate::time::Duration;
 
@@ -1216,7 +1216,7 @@ impl Thread {
             let ptr = Arc::get_mut_unchecked(&mut arc).as_mut_ptr();
             addr_of_mut!((*ptr).name).write(name);
             addr_of_mut!((*ptr).id).write(ThreadId::new());
-            Parker::new(addr_of_mut!((*ptr).parker));
+            Parker::new_in_place(addr_of_mut!((*ptr).parker));
             Pin::new_unchecked(arc.assume_init())
         };
 

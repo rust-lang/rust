@@ -75,14 +75,12 @@ pub use crate::macros::builtin::{RustcDecodable, RustcEncodable};
 
 // Do not `doc(no_inline)` so that they become doc items on their own
 // (no public module for them to be re-exported from).
-#[cfg(not(bootstrap))]
 #[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use crate::macros::builtin::alloc_error_handler;
-#[stable(feature = "builtin_macro_prelude", since = "1.38.0")]
-pub use crate::macros::builtin::{bench, derive, global_allocator, test, test_case};
+pub use crate::macros::builtin::{
+    alloc_error_handler, bench, derive, global_allocator, test, test_case,
+};
 
 #[unstable(feature = "derive_const", issue = "none")]
-#[cfg(not(bootstrap))]
 pub use crate::macros::builtin::derive_const;
 
 #[unstable(
@@ -104,5 +102,4 @@ pub use crate::macros::builtin::cfg_eval;
     issue = "23416",
     reason = "placeholder syntax for type ascription"
 )]
-#[cfg(not(bootstrap))]
 pub use crate::macros::builtin::type_ascribe;

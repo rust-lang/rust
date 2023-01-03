@@ -82,11 +82,11 @@ cfg_if::cfg_if! {
 }
 
 extern "C" {
-    /// Handler in libstd called when a panic object is dropped outside of
+    /// Handler in std called when a panic object is dropped outside of
     /// `catch_unwind`.
     fn __rust_drop_panic() -> !;
 
-    /// Handler in libstd called when a foreign exception is caught.
+    /// Handler in std called when a foreign exception is caught.
     fn __rust_foreign_exception() -> !;
 }
 

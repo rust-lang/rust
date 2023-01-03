@@ -6,7 +6,8 @@ auto trait Foo {
 
 trait Bar {
     fn f(&self) {
-        self.g(); //~ ERROR the method `g` exists for reference `&Self`, but its trait bounds were not satisfied
+        // issue #105788
+        self.g(); //~ ERROR no method named `g` found for reference `&Self` in the current scope
     }
 }
 

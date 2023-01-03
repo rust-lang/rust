@@ -617,7 +617,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     LifetimeName::Error => {}
                 }
             }
-            hir::TyKind::Rptr(ref lifetime_ref, ref mt) => {
+            hir::TyKind::Ref(ref lifetime_ref, ref mt) => {
                 self.visit_lifetime(lifetime_ref);
                 let scope = Scope::ObjectLifetimeDefault {
                     lifetime: self.map.defs.get(&lifetime_ref.hir_id).cloned(),

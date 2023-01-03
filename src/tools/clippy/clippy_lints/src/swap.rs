@@ -132,7 +132,7 @@ fn generate_swap_warning(cx: &LateContext<'_>, e1: &Expr<'_>, e2: &Expr<'_>, spa
                 applicability,
             );
             if !is_xor_based {
-                diag.note(&format!("or maybe you should use `{sugg}::mem::replace`?"));
+                diag.note(format!("or maybe you should use `{sugg}::mem::replace`?"));
             }
         },
     );
@@ -214,7 +214,7 @@ fn check_suspicious_swap(cx: &LateContext<'_>, block: &Block<'_>) {
                                 Applicability::MaybeIncorrect,
                             );
                             diag.note(
-                                &format!("or maybe you should use `{sugg}::mem::replace`?")
+                                format!("or maybe you should use `{sugg}::mem::replace`?")
                             );
                         }
                     });

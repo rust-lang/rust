@@ -1,3 +1,4 @@
+// run-rustfix
 // Test that a by-ref `FnMut` closure gets an error when it tries to
 // consume a value.
 

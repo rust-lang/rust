@@ -1,8 +1,8 @@
-//! Panic support for libcore
+//! Panic support for core
 //!
 //! The core library cannot define panicking, but it does *declare* panicking. This
-//! means that the functions inside of libcore are allowed to panic, but to be
-//! useful an upstream crate must define panicking for libcore to use. The current
+//! means that the functions inside of core are allowed to panic, but to be
+//! useful an upstream crate must define panicking for core to use. The current
 //! interface for panicking is:
 //!
 //! ```
@@ -13,7 +13,7 @@
 //! This definition allows for panicking with any general message, but it does not
 //! allow for failing with a `Box<Any>` value. (`PanicInfo` just contains a `&(dyn Any + Send)`,
 //! for which we fill in a dummy value in `PanicInfo::internal_constructor`.)
-//! The reason for this is that libcore is not allowed to allocate.
+//! The reason for this is that core is not allowed to allocate.
 //!
 //! This module contains a few other panicking functions, but these are just the
 //! necessary lang items for the compiler. All panics are funneled through this
@@ -64,12 +64,13 @@ pub const fn panic_fmt(fmt: fmt::Arguments<'_>) -> ! {
     unsafe { panic_impl(&pi) }
 }
 
-/// Like panic_fmt, but without unwinding and track_caller to reduce the impact on codesize.
-/// Also just works on `str`, as a `fmt::Arguments` needs more space to be passed.
+/// Like `panic`, but without unwinding and track_caller to reduce the impact on codesize.
+/// (No `fmt` variant as a `fmt::Arguments` needs more space to be passed.)
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
+#[cfg_attr(not(bootstrap), lang = "panic_nounwind")] // needed by codegen for non-unwinding panics
 #[rustc_nounwind]
-pub fn panic_str_nounwind(msg: &'static str) -> ! {
+pub fn panic_nounwind(msg: &'static str) -> ! {
     if cfg!(feature = "panic_immediate_abort") {
         super::intrinsics::abort()
     }
@@ -93,7 +94,7 @@ pub fn panic_str_nounwind(msg: &'static str) -> ! {
 // Next we define a bunch of higher-level wrappers that all bottom out in the two core functions
 // above.
 
-/// The underlying implementation of libcore's `panic!` macro when no formatting is used.
+/// The underlying implementation of core's `panic!` macro when no formatting is used.
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
@@ -153,10 +154,11 @@ fn panic_bounds_check(index: usize, len: usize) -> ! {
 /// any extra arguments (including those synthesized by track_caller).
 #[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
 #[cfg_attr(feature = "panic_immediate_abort", inline)]
-#[lang = "panic_no_unwind"] // needed by codegen for panic in nounwind function
+#[cfg_attr(bootstrap, lang = "panic_no_unwind")] // needed by codegen for panic in nounwind function
+#[cfg_attr(not(bootstrap), lang = "panic_cannot_unwind")] // needed by codegen for panic in nounwind function
 #[rustc_nounwind]
-fn panic_no_unwind() -> ! {
-    panic_str_nounwind("panic in a function that cannot unwind")
+fn panic_cannot_unwind() -> ! {
+    panic_nounwind("panic in a function that cannot unwind")
 }
 
 /// This function is used instead of panic_fmt in const eval.

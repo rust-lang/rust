@@ -32,12 +32,7 @@ Thir {
             kind: Scope {
                 region_scope: Node(2),
                 lint_level: Explicit(
-                    HirId {
-                        owner: OwnerId {
-                            def_id: DefId(0:3 ~ thir_tree[8f1d]::main),
-                        },
-                        local_id: 2,
-                    },
+                    HirId(DefId(0:3 ~ thir_tree[8f1d]::main).2),
                 ),
                 value: e0,
             },

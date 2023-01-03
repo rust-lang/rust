@@ -2894,7 +2894,7 @@ fn pretty_print_const_value<'tcx>(
                 if let Some(contents) = tcx.try_destructure_mir_constant(
                     ty::ParamEnv::reveal_all().and(ConstantKind::Val(ct, ty)),
                 ) {
-                    let fields = contents.fields.iter().copied().collect::<Vec<_>>();
+                    let fields = contents.fields.to_vec();
                     match *ty.kind() {
                         ty::Array(..) => {
                             fmt.write_str("[")?;

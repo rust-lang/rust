@@ -213,5 +213,30 @@ LL +         println!("Needs curlies");
 LL ~     };
    |
 
-error: aborting due to 14 previous errors
+error: this match could be written as a `let` statement
+  --> $DIR/match_single_binding.rs:154:5
+   |
+LL | /     match r {
+LL | |         x => match x {
+LL | |             Some(_) => {
+LL | |                 println!("Some");
+...  |
+LL | |         },
+LL | |     };
+   | |_____^
+   |
+help: consider using a `let` statement
+   |
+LL ~     let x = r;
+LL +     match x {
+LL +         Some(_) => {
+LL +             println!("Some");
+LL +         },
+LL +         None => {
+LL +             println!("None");
+LL +         },
+LL ~     };
+   |
+
+error: aborting due to 15 previous errors
 

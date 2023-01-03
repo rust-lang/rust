@@ -83,7 +83,7 @@ impl<'ast> Visitor<'ast> for LifetimeCollectVisitor<'ast> {
                 visit::walk_ty(self, t);
                 self.current_binders.pop();
             }
-            TyKind::Rptr(None, _) => {
+            TyKind::Ref(None, _) => {
                 self.record_elided_anchor(t.id, t.span);
                 visit::walk_ty(self, t);
             }

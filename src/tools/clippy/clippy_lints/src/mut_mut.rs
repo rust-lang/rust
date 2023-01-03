@@ -86,7 +86,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             return;
         }
 
-        if let hir::TyKind::Rptr(
+        if let hir::TyKind::Ref(
             _,
             hir::MutTy {
                 ty: pty,
@@ -94,7 +94,7 @@ impl<'a, 'tcx> intravisit::Visitor<'tcx> for MutVisitor<'a, 'tcx> {
             },
         ) = ty.kind
         {
-            if let hir::TyKind::Rptr(
+            if let hir::TyKind::Ref(
                 _,
                 hir::MutTy {
                     mutbl: hir::Mutability::Mut,

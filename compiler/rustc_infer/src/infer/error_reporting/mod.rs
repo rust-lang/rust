@@ -729,7 +729,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             format!("this and all prior arms are found to be of type `{}`", t),
                         );
                     }
-                    let outer_error_span = if any_multiline_arm {
+                    let outer = if any_multiline_arm || !source_map.is_multiline(cause.span) {
                         // Cover just `match` and the scrutinee expression, not
                         // the entire match body, to reduce diagram noise.
                         cause.span.shrink_to_lo().to(scrut_span)
@@ -737,7 +737,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                         cause.span
                     };
                     let msg = "`match` arms have incompatible types";
-                    err.span_label(outer_error_span, msg);
+                    err.span_label(outer, msg);
                     self.suggest_remove_semi_or_return_binding(
                         err,
                         prior_arm_block_id,
@@ -1836,7 +1836,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
 
         // In some (most?) cases cause.body_id points to actual body, but in some cases
         // it's an actual definition. According to the comments (e.g. in
-        // rustc_hir_analysis/check/compare_method.rs:compare_predicate_entailment) the latter
+        // rustc_hir_analysis/check/compare_impl_item.rs:compare_predicate_entailment) the latter
         // is relied upon by some other code. This might (or might not) need cleanup.
         let body_owner_def_id =
             self.tcx.hir().opt_local_def_id(cause.body_id).unwrap_or_else(|| {
