@@ -1220,15 +1220,15 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                     w.write_str("    ");
                     let name = v.name.unwrap();
                     match *v.kind {
-                        clean::VariantItem(ref var) => match var {
-                            // FIXME(#101337): Show discriminant
-                            clean::Variant::CLike(..) => write!(w, "{}", name),
-                            clean::Variant::Tuple(ref s) => {
+                        // FIXME(#101337): Show discriminant
+                        clean::VariantItem(ref var) => match var.kind {
+                            clean::VariantKind::CLike => write!(w, "{}", name),
+                            clean::VariantKind::Tuple(ref s) => {
                                 write!(w, "{}(", name);
                                 print_tuple_struct_fields(w, cx, s);
                                 w.write_str(")");
                             }
-                            clean::Variant::Struct(ref s) => {
+                            clean::VariantKind::Struct(ref s) => {
                                 render_struct(
                                     w,
                                     v,
@@ -1286,25 +1286,28 @@ fn item_enum(w: &mut Buffer, cx: &mut Context<'_>, it: &clean::Item, e: &clean::
                 " rightside",
             );
             write!(w, "<h3 class=\"code-header\">{name}", name = variant.name.unwrap());
-            if let clean::VariantItem(clean::Variant::Tuple(ref s)) = *variant.kind {
+
+            let clean::VariantItem(variant_data) = &*variant.kind else { unreachable!() };
+
+            if let clean::VariantKind::Tuple(ref s) = variant_data.kind {
                 w.write_str("(");
                 print_tuple_struct_fields(w, cx, s);
                 w.write_str(")");
             }
             w.write_str("</h3></section>");
 
-            use crate::clean::Variant;
-
-            let heading_and_fields = match &*variant.kind {
-                clean::VariantItem(Variant::Struct(s)) => Some(("Fields", &s.fields)),
-                // Documentation on tuple variant fields is rare, so to reduce noise we only emit
-                // the section if at least one field is documented.
-                clean::VariantItem(Variant::Tuple(fields))
-                    if fields.iter().any(|f| f.doc_value().is_some()) =>
-                {
-                    Some(("Tuple Fields", fields))
+            let heading_and_fields = match &variant_data.kind {
+                clean::VariantKind::Struct(s) => Some(("Fields", &s.fields)),
+                clean::VariantKind::Tuple(fields) => {
+                    // Documentation on tuple variant fields is rare, so to reduce noise we only emit
+                    // the section if at least one field is documented.
+                    if fields.iter().any(|f| f.doc_value().is_some()) {
+                        Some(("Tuple Fields", fields))
+                    } else {
+                        None
+                    }
                 }
-                _ => None,
+                clean::VariantKind::CLike => None,
             };
 
             if let Some((heading, fields)) = heading_and_fields {

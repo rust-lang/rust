@@ -184,11 +184,11 @@ if [ "$RUN_CHECK_WITH_PARALLEL_QUERIES" != "" ]; then
   $SRC/configure --set rust.parallel-compiler
 
   # Save the build metrics before we wipe the directory
-  if [ $HAS_METRICS = 1 ]; then
+  if [ "$HAS_METRICS" = 1 ]; then
     mv build/metrics.json .
   fi
   rm -rf build
-  if [ $HAS_METRICS = 1 ]; then
+  if [ "$HAS_METRICS" = 1 ]; then
     mkdir build
     mv metrics.json build
   fi

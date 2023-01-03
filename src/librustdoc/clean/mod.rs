@@ -1853,7 +1853,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
         ty::Placeholder(..) => panic!("Placeholder"),
         ty::GeneratorWitness(..) => panic!("GeneratorWitness"),
         ty::Infer(..) => panic!("Infer"),
-        ty::Error(_) => panic!("Error"),
+        ty::Error(_) => rustc_errors::FatalError.raise(),
     }
 }
 
@@ -1949,20 +1949,28 @@ pub(crate) fn clean_field_with_def_id(
 }
 
 pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocContext<'tcx>) -> Item {
+    let discriminant = match variant.discr {
+        ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
+        ty::VariantDiscr::Relative(_) => None,
+    };
+
     let kind = match variant.ctor_kind() {
-        Some(CtorKind::Const) => Variant::CLike(match variant.discr {
-            ty::VariantDiscr::Explicit(def_id) => Some(Discriminant { expr: None, value: def_id }),
-            ty::VariantDiscr::Relative(_) => None,
-        }),
-        Some(CtorKind::Fn) => Variant::Tuple(
+        Some(CtorKind::Const) => VariantKind::CLike,
+        Some(CtorKind::Fn) => VariantKind::Tuple(
             variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         ),
-        None => Variant::Struct(VariantStruct {
+        None => VariantKind::Struct(VariantStruct {
             ctor_kind: None,
             fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
-    Item::from_def_id_and_parts(variant.def_id, Some(variant.name), VariantItem(kind), cx)
+
+    Item::from_def_id_and_parts(
+        variant.def_id,
+        Some(variant.name),
+        VariantItem(Variant { kind, discriminant }),
+        cx,
+    )
 }
 
 fn clean_variant_data<'tcx>(
@@ -1970,19 +1978,23 @@ fn clean_variant_data<'tcx>(
     disr_expr: &Option<hir::AnonConst>,
     cx: &mut DocContext<'tcx>,
 ) -> Variant {
-    match variant {
-        hir::VariantData::Struct(..) => Variant::Struct(VariantStruct {
+    let discriminant = disr_expr.map(|disr| Discriminant {
+        expr: Some(disr.body),
+        value: cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
+    });
+
+    let kind = match variant {
+        hir::VariantData::Struct(..) => VariantKind::Struct(VariantStruct {
             ctor_kind: None,
             fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {
-            Variant::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
+            VariantKind::Tuple(variant.fields().iter().map(|x| clean_field(x, cx)).collect())
         }
-        hir::VariantData::Unit(..) => Variant::CLike(disr_expr.map(|disr| Discriminant {
-            expr: Some(disr.body),
-            value: cx.tcx.hir().local_def_id(disr.hir_id).to_def_id(),
-        })),
-    }
+        hir::VariantData::Unit(..) => VariantKind::CLike,
+    };
+
+    Variant { discriminant, kind }
 }
 
 fn clean_path<'tcx>(path: &hir::Path<'tcx>, cx: &mut DocContext<'tcx>) -> Path {

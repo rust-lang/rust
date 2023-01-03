@@ -132,7 +132,10 @@ impl<'a, 'tcx> DocFolder for Stripper<'a, 'tcx> {
             // implementations of traits are always public.
             clean::ImplItem(ref imp) if imp.trait_.is_some() => true,
             // Variant fields have inherited visibility
-            clean::VariantItem(clean::Variant::Struct(..) | clean::Variant::Tuple(..)) => true,
+            clean::VariantItem(clean::Variant {
+                kind: clean::VariantKind::Struct(..) | clean::VariantKind::Tuple(..),
+                ..
+            }) => true,
             _ => false,
         };
 
