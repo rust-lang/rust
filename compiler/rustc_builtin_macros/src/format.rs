@@ -638,7 +638,7 @@ fn report_missing_placeholders(
                 if show_doc_note {
                     diag.note(concat!(
                         stringify!($kind),
-                        " formatting not supported; see the documentation for `std::fmt`",
+                        " formatting is not supported; see the documentation for `std::fmt`",
                     ));
                 }
                 if suggestions.len() > 0 {
