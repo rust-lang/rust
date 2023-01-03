@@ -106,6 +106,7 @@ export async function createClient(
                 next: lc.HandleDiagnosticsSignature
             ) {
                 const preview = config.previewRustcOutput;
+                const errorCode = config.useRustcErrorCode;
                 diagnostics.forEach((diag, idx) => {
                     // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
                     // Diagnostic class, if they ever break this we are out of luck and have to go
@@ -119,10 +120,19 @@ export async function createClient(
                         ?.rendered;
                     if (rendered) {
                         if (preview) {
-                            const index = rendered.match(/^(note|help):/m)?.index || 0;
+                            const index =
+                                rendered.match(/^(note|help):/m)?.index || rendered.length;
                             diag.message = rendered
                                 .substring(0, index)
                                 .replace(/^ -->[^\n]+\n/m, "");
+                        }
+                        let value;
+                        if (errorCode) {
+                            if (typeof diag.code === "string" || typeof diag.code === "number") {
+                                value = diag.code;
+                            } else {
+                                value = diag.code?.value;
+                            }
                         }
                         diag.code = {
                             target: vscode.Uri.from({
@@ -131,7 +141,7 @@ export async function createClient(
                                 fragment: uri.toString(),
                                 query: idx.toString(),
                             }),
-                            value: "Click for full compiler diagnostic",
+                            value: value ?? "Click for full compiler diagnostic",
                         };
                     }
                 });
