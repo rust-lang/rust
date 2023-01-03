@@ -305,13 +305,13 @@ enum EofMatcherPositions {
 }
 
 /// Represents the possible results of an attempted parse.
-pub(crate) enum ParseResult<T> {
+pub(crate) enum ParseResult<T, F> {
     /// Parsed successfully.
     Success(T),
     /// Arm failed to match. If the second parameter is `token::Eof`, it indicates an unexpected
     /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
     /// The usize is the approximate position of the token in the input token stream.
-    Failure(Token, usize, &'static str),
+    Failure(F),
     /// Fatal error (malformed macro?). Abort compilation.
     Error(rustc_span::Span, String),
     ErrorReported(ErrorGuaranteed),
@@ -320,7 +320,7 @@ pub(crate) enum ParseResult<T> {
 /// A `ParseResult` where the `Success` variant contains a mapping of
 /// `MacroRulesNormalizedIdent`s to `NamedMatch`es. This represents the mapping
 /// of metavars to the token trees they bind to.
-pub(crate) type NamedParseResult = ParseResult<NamedMatches>;
+pub(crate) type NamedParseResult<F> = ParseResult<NamedMatches, F>;
 
 /// Contains a mapping of `MacroRulesNormalizedIdent`s to `NamedMatch`es.
 /// This represents the mapping of metavars to the token trees they bind to.
@@ -458,7 +458,7 @@ impl TtParser {
         token: &Token,
         approx_position: usize,
         track: &mut T,
-    ) -> Option<NamedParseResult> {
+    ) -> Option<NamedParseResult<T::Failure>> {
         // Matcher positions that would be valid if the macro invocation was over now. Only
         // modified if `token == Eof`.
         let mut eof_mps = EofMatcherPositions::None;
@@ -595,14 +595,14 @@ impl TtParser {
                 EofMatcherPositions::Multiple => {
                     Error(token.span, "ambiguity: multiple successful parses".to_string())
                 }
-                EofMatcherPositions::None => Failure(
+                EofMatcherPositions::None => Failure(T::build_failure(
                     Token::new(
                         token::Eof,
                         if token.span.is_dummy() { token.span } else { token.span.shrink_to_hi() },
                     ),
                     approx_position,
                     "missing tokens in macro arguments",
-                ),
+                )),
             })
         } else {
             None
@@ -615,7 +615,7 @@ impl TtParser {
         parser: &mut Cow<'_, Parser<'_>>,
         matcher: &'matcher [MatcherLoc],
         track: &mut T,
-    ) -> NamedParseResult {
+    ) -> NamedParseResult<T::Failure> {
         // A queue of possible matcher positions. We initialize it with the matcher position in
         // which the "dot" is before the first token of the first token tree in `matcher`.
         // `parse_tt_inner` then processes all of these possible matcher positions and produces
@@ -648,11 +648,11 @@ impl TtParser {
                 (0, 0) => {
                     // There are no possible next positions AND we aren't waiting for the black-box
                     // parser: syntax error.
-                    return Failure(
+                    return Failure(T::build_failure(
                         parser.token.clone(),
                         parser.approx_token_stream_pos(),
                         "no rules expected this token in macro call",
-                    );
+                    ));
                 }
 
                 (_, 0) => {
@@ -711,11 +711,11 @@ impl TtParser {
         }
     }
 
-    fn ambiguity_error(
+    fn ambiguity_error<F>(
         &self,
         matcher: &[MatcherLoc],
         token_span: rustc_span::Span,
-    ) -> NamedParseResult {
+    ) -> NamedParseResult<F> {
         let nts = self
             .bb_mps
             .iter()
@@ -741,11 +741,11 @@ impl TtParser {
         )
     }
 
-    fn nameize<I: Iterator<Item = NamedMatch>>(
+    fn nameize<I: Iterator<Item = NamedMatch>, F>(
         &self,
         matcher: &[MatcherLoc],
         mut res: I,
-    ) -> NamedParseResult {
+    ) -> NamedParseResult<F> {
         // Make that each metavar has _exactly one_ binding. If so, insert the binding into the
         // `NamedParseResult`. Otherwise, it's an error.
         let mut ret_val = FxHashMap::default();
