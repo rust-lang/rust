@@ -260,7 +260,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         })) = map.find(parent) else { return false; };
 
         let ty = self.node_ty(init.hir_id);
-        if ty.is_closure() || init.span.overlaps(expr.span) {
+        if ty.is_closure() || init.span.overlaps(expr.span) || pat.span.from_expansion() {
             return false;
         }
         let mut span_labels = vec![(
