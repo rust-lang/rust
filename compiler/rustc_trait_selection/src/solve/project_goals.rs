@@ -131,8 +131,14 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
             else {
                 return
             };
+            let where_clause_bounds = tcx
+                .predicates_of(impl_def_id)
+                .instantiate(tcx, impl_substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred));
 
-            let nested_goals = obligations.into_iter().map(|o| o.into()).collect();
+            let nested_goals = obligations.into_iter().map(|o| o.into()).chain(where_clause_bounds).collect();
             let Ok(trait_ref_certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
 
             let Some(assoc_def) = fetch_eligible_assoc_item_def(
