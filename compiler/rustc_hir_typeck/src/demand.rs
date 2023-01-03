@@ -4,6 +4,7 @@ use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_infer::infer::InferOk;
@@ -11,8 +12,11 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut};
+use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
+use rustc_middle::ty::{
+    self, Article, AssocItem, Ty, TyCtxt, TypeAndMut, TypeSuperFoldable, TypeVisitable,
+};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -53,7 +57,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
-            || self.suggest_floating_point_literal(err, expr, expected);
+            || self.suggest_floating_point_literal(err, expr, expected)
+            || self.point_inference_types(err, expr);
     }
 
     pub fn emit_coerce_suggestions(
@@ -203,6 +208,157 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
 
         (expected, Some(err))
+    }
+
+    fn point_inference_types(&self, err: &mut Diagnostic, expr: &hir::Expr<'_>) -> bool {
+        let tcx = self.tcx;
+        let map = self.tcx.hir();
+
+        // Hack to make equality checks on types with inference variables and regions useful.
+        struct TypeEraser<'tcx> {
+            tcx: TyCtxt<'tcx>,
+        }
+        impl<'tcx> TypeFolder<'tcx> for TypeEraser<'tcx> {
+            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
+                self.tcx
+            }
+            fn fold_region(&mut self, _r: ty::Region<'tcx>) -> ty::Region<'tcx> {
+                self.tcx().lifetimes.re_erased
+            }
+            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+                if !t.needs_infer() && !t.has_erasable_regions() {
+                    return t;
+                }
+                match *t.kind() {
+                    ty::Infer(ty::TyVar(_) | ty::FreshTy(_)) => {
+                        self.tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0)))
+                    }
+                    ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => {
+                        self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
+                    }
+                    ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => {
+                        self.tcx.mk_ty_infer(ty::FloatVar(ty::FloatVid { index: 0 }))
+                    }
+                    _ => t.super_fold_with(self),
+                }
+            }
+            fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
+                ct.super_fold_with(self)
+            }
+        }
+
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
+        let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
+        let hir::def::Res::Local(hir_id) = p.res else { return false; };
+        let Some(node) = map.find(hir_id) else { return false; };
+        let hir::Node::Pat(pat) = node else { return false; };
+        let parent = map.get_parent_node(pat.hir_id);
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = map.find(parent) else { return false; };
+
+        let ty = self.node_ty(init.hir_id);
+        if ty.is_closure() || init.span.overlaps(expr.span) {
+            return false;
+        }
+        let mut span_labels = vec![(
+            init.span,
+            with_forced_trimmed_paths!(format!(
+                "here the type of `{ident}` is inferred to be `{ty}`",
+            )),
+        )];
+
+        // Locate all the usages of the relevant binding.
+        struct FindExprs<'hir> {
+            hir_id: hir::HirId,
+            uses: Vec<&'hir hir::Expr<'hir>>,
+        }
+        impl<'v> Visitor<'v> for FindExprs<'v> {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = ex.kind
+                    && let hir::def::Res::Local(hir_id) = path.res
+                    && hir_id == self.hir_id
+                {
+                    self.uses.push(ex);
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+
+        let mut expr_finder = FindExprs { hir_id, uses: vec![] };
+        let id = map.get_parent_item(hir_id);
+        let hir_id: hir::HirId = id.into();
+
+        if let Some(node) = map.find(hir_id) && let Some(body_id) = node.body_id() {
+            let body = map.body(body_id);
+            expr_finder.visit_expr(body.value);
+            let mut eraser = TypeEraser { tcx };
+            let mut prev = eraser.fold_ty(ty);
+
+            for ex in expr_finder.uses {
+                if ex.span.overlaps(expr.span) { break; }
+                let parent = map.get_parent_node(ex.hir_id);
+                if let Some(hir::Node::Expr(expr))
+                | Some(hir::Node::Stmt(hir::Stmt {
+                    kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
+                    ..
+                })) = &map.find(parent)
+                    && let hir::ExprKind::MethodCall(s, rcvr, args, span) = expr.kind
+                    && rcvr.hir_id == ex.hir_id
+                {
+                    let ty = if let Ok(m) = self.lookup_method(ty, s, span, expr, rcvr, args) {
+                        // We get the self type from `lookup_method` because the `rcvr` node
+                        // type will not have had any adjustments from the fn arguments.
+                        let ty = m.sig.inputs_and_output[0];
+                        match ty.kind() {
+                            // Remove one layer of references to account for `&mut self` and
+                            // `&self`, so that we can compare it against the binding.
+                            ty::Ref(_, ty, _) => *ty,
+                            _ => ty,
+                        }
+                    } else {
+                        self.node_ty(rcvr.hir_id)
+                    };
+                    let ty = eraser.fold_ty(ty);
+                    if ty.references_error() {
+                        break;
+                    }
+                    if ty != prev {
+                        span_labels.push((
+                            s.ident.span,
+                            with_forced_trimmed_paths!(format!(
+                                "here the type of `{ident}` is inferred to be `{ty}`",
+                            )),
+                        ));
+                        prev = ty;
+                    }
+                } else {
+                    let ty = eraser.fold_ty(self.node_ty(ex.hir_id));
+                    if ty.references_error() {
+                        break;
+                    }
+                    if ty != prev {
+                        span_labels.push((
+                            ex.span,
+                            with_forced_trimmed_paths!(format!(
+                                "here the type of `{ident}` is inferred to be `{ty}`",
+                            )),
+                        ));
+                    }
+                    prev = ty;
+                }
+                if ex.hir_id == expr.hir_id {
+                    // Stop showing spans after the error type was emitted.
+                    break;
+                }
+            }
+        }
+        for (sp, label) in span_labels {
+            err.span_label(sp, &label);
+        }
+        true
     }
 
     fn annotate_expected_due_to_let_ty(

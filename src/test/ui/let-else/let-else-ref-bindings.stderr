@@ -19,6 +19,12 @@ LL |     let Some(ref a): Option<&[u8]> = &some else { return };
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:24:34
    |
+LL |     let some = Some(bytes);
+   |                ----------- here the type of `some` is inferred to be `Option<_>`
+...
+LL |     let Some(ref a): Option<&[u8]> = some else { return };
+   |                                      ---- here the type of `some` is inferred to be `Option<Vec<u8>>`
+...
 LL |     let Some(a): Option<&[u8]> = some else { return };
    |                  -------------   ^^^^ expected `&[u8]`, found struct `Vec`
    |                  |
@@ -59,6 +65,12 @@ LL |     let Some(ref mut a): Option<&mut [u8]> = &mut some else { return };
 error[E0308]: mismatched types
   --> $DIR/let-else-ref-bindings.rs:52:38
    |
+LL |     let mut some = Some(bytes);
+   |                    ----------- here the type of `some` is inferred to be `Option<_>`
+...
+LL |     let Some(ref mut a): Option<&mut [u8]> = some else { return };
+   |                                              ---- here the type of `some` is inferred to be `Option<Vec<u8>>`
+...
 LL |     let Some(a): Option<&mut [u8]> = some else { return };
    |                  -----------------   ^^^^ expected `&mut [u8]`, found struct `Vec`
    |                  |
