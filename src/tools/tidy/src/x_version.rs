@@ -1,9 +1,9 @@
 use semver::Version;
-use serde_json::Value;
 use std::io::ErrorKind;
+use std::path::Path;
 use std::process::{Command, Stdio};
 
-pub fn check(bad: &mut bool) {
+pub fn check(root: &Path, cargo: &Path, bad: &mut bool) {
     let result = Command::new("x").arg("--wrapper-version").stdout(Stdio::piped()).spawn();
     // This runs the command inside a temporary directory.
     // This allows us to compare output of result to see if `--wrapper-version` is not a recognized argument to x.
@@ -35,7 +35,7 @@ pub fn check(bad: &mut bool) {
         let version = String::from_utf8_lossy(&output.stdout);
         let version = Version::parse(version.trim_end()).unwrap();
 
-        if let Some(expected) = get_x_wrapper_version() {
+        if let Some(expected) = get_x_wrapper_version(root, cargo) {
             if version < expected {
                 return tidy_error!(
                     bad,
@@ -54,27 +54,11 @@ pub fn check(bad: &mut bool) {
 }
 
 // Parse latest version out of `x` Cargo.toml
-fn get_x_wrapper_version() -> Option<Version> {
-    let cmd = Command::new("cargo")
-        .arg("metadata")
-        .args(["--no-deps", "--format-version", "1", "--manifest-path", "src/tools/x/Cargo.toml"])
-        .stdout(Stdio::piped())
-        .spawn();
-
-    let child = match cmd {
-        Ok(child) => child,
-        Err(e) => {
-            println!("failed to get version of `x`: {}", e);
-            return None;
-        }
-    };
-
-    let cargo_output = child.wait_with_output().unwrap();
-    let cargo_output_str =
-        String::from_utf8(cargo_output.stdout).expect("Unable to parse `src/tools/x/Cargo.toml`");
-
-    let v: Value = serde_json::from_str(&cargo_output_str).unwrap();
-    let vesrion_str = &v["packages"][0]["version"].as_str()?;
-
-    Some(Version::parse(vesrion_str).unwrap())
+fn get_x_wrapper_version(root: &Path, cargo: &Path) -> Option<Version> {
+    let mut cmd = cargo_metadata::MetadataCommand::new();
+    cmd.cargo_path(cargo)
+        .manifest_path(root.join("src/tools/x/Cargo.toml"))
+        .features(cargo_metadata::CargoOpt::AllFeatures);
+    let mut metadata = t!(cmd.exec());
+    metadata.packages.pop().map(|x| x.version)
 }

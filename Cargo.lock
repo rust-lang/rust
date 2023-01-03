@@ -5310,7 +5310,6 @@ dependencies = [
  "miropt-test-tools",
  "regex",
  "semver",
- "serde_json",
  "termcolor",
  "walkdir",
 ]

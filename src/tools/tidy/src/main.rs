@@ -107,7 +107,7 @@ fn main() {
         check!(alphabetical, &compiler_path);
         check!(alphabetical, &library_path);
 
-        check!(x_version);
+        check!(x_version, &root_path, &cargo);
 
         let collected = {
             drain_handles(&mut handles);
