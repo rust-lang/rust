@@ -1106,6 +1106,20 @@ impl<T> fmt::Debug for Discriminant<T> {
     }
 }
 
+#[stable(feature = "discriminant_value", since = "1.21.0")]
+impl<T> cmp::PartialOrd for Discriminant<T> {
+    fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
+        self.0.partial_cmp(&other.0)
+    }
+}
+
+#[stable(feature = "discriminant_value", since = "1.21.0")]
+impl<T> cmp::Ord for Discriminant<T> {
+    fn cmp(&self, other: &Self) -> cmp::Ordering {
+        self.0.cmp(&other.0)
+    }
+}
+
 /// Returns a value uniquely identifying the enum variant in `v`.
 ///
 /// If `T` is not an enum, calling this function will not result in undefined behavior, but the
