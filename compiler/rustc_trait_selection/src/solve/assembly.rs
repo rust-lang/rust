@@ -1,5 +1,7 @@
 //! Code shared by trait and projection goals for candidate assembly.
 
+use crate::traits::TupleArgumentsFlag;
+
 use super::infcx_ext::InferCtxtExt;
 use super::{
     fixme_instantiate_canonical_query_response, CanonicalGoal, CanonicalResponse, Certainty,
@@ -66,6 +68,13 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
         goal: Goal<'tcx, Self>,
     );
+
+    fn consider_fn_candidate(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        bound_sig: ty::PolyFnSig<'tcx>,
+        tuple_arguments: TupleArgumentsFlag,
+    );
 }
 
 /// An abstraction which correctly deals with the canonical results for candidates.
@@ -96,6 +105,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_param_env_candidates(goal);
 
         acx.assemble_auto_trait_candidates(goal);
+
+        acx.assemble_fn_like_candidates(goal);
 
         acx.candidates
     }
@@ -193,6 +204,29 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
     fn assemble_auto_trait_candidates(&mut self, goal: Goal<'tcx, G>) {
         if self.cx.tcx.trait_is_auto(goal.predicate.trait_def_id(self.cx.tcx)) {
             G::consider_auto_trait_candidate(self, goal);
+        }
+    }
+
+    fn assemble_fn_like_candidates(&mut self, goal: Goal<'tcx, G>) {
+        let tcx = self.cx.tcx;
+        let trait_def_id = goal.predicate.trait_def_id(tcx);
+        if let Some(goal_kind) = tcx.fn_trait_kind_from_def_id(trait_def_id) {
+            match *goal.predicate.self_ty().kind() {
+                ty::FnDef(def_id, substs) => {
+                    G::consider_fn_candidate(self, goal, tcx.bound_fn_sig(def_id).subst(tcx, substs), TupleArgumentsFlag::Yes)
+                }
+                ty::FnPtr(sig) => {
+                    G::consider_fn_candidate(self, goal, sig, TupleArgumentsFlag::Yes)
+                }
+                ty::Closure(_, substs) => {
+                    if let Some(kind) = self.infcx.closure_kind(substs)
+                        && kind.extends(goal_kind)
+                    {
+                        G::consider_fn_candidate(self, goal, substs.as_closure().sig(), TupleArgumentsFlag::No)
+                    }
+                }
+                _ => {}
+            }
         }
     }
 }

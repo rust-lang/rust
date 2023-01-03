@@ -60,6 +60,7 @@ pub use self::specialize::{specialization_graph, translate_substs, OverlapError}
 pub use self::structural_match::{
     search_for_adt_const_param_violation, search_for_structural_match_violation,
 };
+pub use self::util::TupleArgumentsFlag;
 pub use self::util::{
     elaborate_obligations, elaborate_predicates, elaborate_predicates_with_span,
     elaborate_trait_ref, elaborate_trait_refs,

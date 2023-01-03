@@ -2,9 +2,12 @@
 
 use std::iter;
 
+use crate::traits::TupleArgumentsFlag;
+
 use super::assembly::{self, AssemblyCtxt};
 use super::{CanonicalGoal, Certainty, EvalCtxt, Goal, QueryResult};
 use rustc_hir::def_id::DefId;
+use rustc_hir::Unsafety;
 use rustc_infer::infer::{InferCtxt, InferOk, LateBoundRegionConversionTime};
 use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
@@ -13,6 +16,7 @@ use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::TraitPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
 use rustc_span::DUMMY_SP;
+use rustc_target::spec::abi::Abi;
 
 #[allow(dead_code)] // FIXME: implement and use all variants.
 #[derive(Debug, Clone, Copy)]
@@ -53,6 +57,9 @@ pub(super) enum CandidateSource {
     /// at the constituent types of the `self_ty` to check whether the auto trait
     /// is implemented for those.
     AutoImpl,
+    /// An automatic impl for `Fn`/`FnMut`/`FnOnce` for fn pointers, fn items,
+    /// and closures.
+    Fn,
 }
 
 type Candidate<'tcx> = assembly::Candidate<'tcx, TraitPredicate<'tcx>>;
@@ -212,6 +219,39 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
                 .collect();
             let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
             acx.try_insert_candidate(CandidateSource::AutoImpl, certainty);
+        })
+    }
+
+    fn consider_fn_candidate(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+        bound_sig: ty::PolyFnSig<'tcx>,
+        tuple_args_flag: TupleArgumentsFlag,
+    ) {
+        if bound_sig.unsafety() != Unsafety::Normal || bound_sig.c_variadic() {
+            return;
+        }
+
+        // Binder skipped here (*)
+        let (arguments_tuple, expected_abi) = match tuple_args_flag {
+            TupleArgumentsFlag::No => (bound_sig.skip_binder().inputs()[0], Abi::RustCall),
+            TupleArgumentsFlag::Yes => {
+                (acx.cx.tcx.intern_tup(bound_sig.skip_binder().inputs()), Abi::Rust)
+            }
+        };
+        if expected_abi != bound_sig.abi() {
+            return;
+        }
+        // (*) Rebound here
+        let found_trait_ref = bound_sig.rebind(
+            acx.cx
+                .tcx
+                .mk_trait_ref(goal.predicate.def_id(), [goal.predicate.self_ty(), arguments_tuple]),
+        );
+
+        acx.infcx.probe(|_| {
+            // FIXME: This needs to validate that `fn() -> TY` has `TY: Sized`.
+            match_poly_trait_ref_against_goal(acx, goal, found_trait_ref, CandidateSource::Fn);
         })
     }
 }
@@ -379,7 +419,8 @@ impl<'tcx> EvalCtxt<'tcx> {
             | (CandidateSource::ObjectBound(_), _)
             | (CandidateSource::ObjectAutoBound, _)
             | (CandidateSource::Builtin, _)
-            | (CandidateSource::AutoImpl, _) => unimplemented!(),
+            | (CandidateSource::AutoImpl, _)
+            | (CandidateSource::Fn, _) => unimplemented!(),
         }
     }
 

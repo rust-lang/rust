@@ -241,6 +241,15 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) {
         // Auto traits never have associated types
     }
+
+    fn consider_fn_candidate(
+        _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        _goal: Goal<'tcx, Self>,
+        _bound_sig: ty::PolyFnSig<'tcx>,
+        _tuple_arguments: crate::traits::TupleArgumentsFlag,
+    ) {
+        todo!()
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.
