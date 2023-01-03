@@ -1,8 +1,8 @@
 //! Runs rustfmt on the repository.
 
 use crate::builder::Builder;
-use crate::util::{output, program_out_of_date, t};
-use build_helper::git::get_rust_lang_rust_remote;
+use crate::util::{output, output_result, program_out_of_date, t};
+use build_helper::git::updated_master_branch;
 use ignore::WalkBuilder;
 use std::collections::VecDeque;
 use std::path::{Path, PathBuf};
@@ -79,21 +79,24 @@ fn update_rustfmt_version(build: &Builder<'_>) {
 /// rust-lang/master and what is now on the disk.
 ///
 /// Returns `None` if all files should be formatted.
-fn get_modified_rs_files(build: &Builder<'_>) -> Option<Vec<String>> {
-    let Ok(remote) = get_rust_lang_rust_remote() else { return None; };
+fn get_modified_rs_files(build: &Builder<'_>) -> Result<Option<Vec<String>>, String> {
+    let Ok(updated_master) = updated_master_branch(Some(&build.config.src)) else { return Ok(None); };
+
     if !verify_rustfmt_version(build) {
-        return None;
+        return Ok(None);
     }
 
     let merge_base =
-        output(build.config.git().arg("merge-base").arg(&format!("{remote}/master")).arg("HEAD"));
-    Some(
-        output(build.config.git().arg("diff-index").arg("--name-only").arg(merge_base.trim()))
-            .lines()
-            .map(|s| s.trim().to_owned())
-            .filter(|f| Path::new(f).extension().map_or(false, |ext| ext == "rs"))
-            .collect(),
-    )
+        output_result(build.config.git().arg("merge-base").arg(&updated_master).arg("HEAD"))?;
+    Ok(Some(
+        output_result(
+            build.config.git().arg("diff-index").arg("--name-only").arg(merge_base.trim()),
+        )?
+        .lines()
+        .map(|s| s.trim().to_owned())
+        .filter(|f| Path::new(f).extension().map_or(false, |ext| ext == "rs"))
+        .collect(),
+    ))
 }
 
 #[derive(serde::Deserialize)]
@@ -130,6 +133,9 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
         Ok(status) => status.success(),
         Err(_) => false,
     };
+
+    let mut paths = paths.to_vec();
+
     if git_available {
         let in_working_tree = match build
             .config
@@ -163,10 +169,21 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
                 ignore_fmt.add(&format!("!/{}", untracked_path)).expect(&untracked_path);
             }
             if !check && paths.is_empty() {
-                if let Some(files) = get_modified_rs_files(build) {
-                    for file in files {
-                        println!("formatting modified file {file}");
-                        ignore_fmt.add(&format!("/{file}")).expect(&file);
+                match get_modified_rs_files(build) {
+                    Ok(Some(files)) => {
+                        for file in files {
+                            println!("formatting modified file {file}");
+                            ignore_fmt.add(&format!("/{file}")).expect(&file);
+                        }
+                    }
+                    Ok(None) => {}
+                    Err(err) => {
+                        println!(
+                            "WARN: Something went wrong when running git commands:\n{err}\n\
+                            Falling back to formatting all files."
+                        );
+                        // Something went wrong when getting the version. Just format all the files.
+                        paths.push(".".into());
                     }
                 }
             }
@@ -176,6 +193,7 @@ pub fn format(build: &Builder<'_>, check: bool, paths: &[PathBuf]) {
     } else {
         println!("Could not find usable git. Skipping git-aware format checks");
     }
+
     let ignore_fmt = ignore_fmt.build().unwrap();
 
     let rustfmt_path = build.initial_rustfmt().unwrap_or_else(|| {

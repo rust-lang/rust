@@ -412,6 +412,23 @@ pub fn output(cmd: &mut Command) -> String {
     String::from_utf8(output.stdout).unwrap()
 }
 
+pub fn output_result(cmd: &mut Command) -> Result<String, String> {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        return Err(format!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}\n{}",
+            cmd,
+            output.status,
+            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
+        ));
+    }
+    Ok(String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?)
+}
+
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.
 pub fn mtime(path: &Path) -> SystemTime {
     fs::metadata(path).and_then(|f| f.modified()).unwrap_or(UNIX_EPOCH)
