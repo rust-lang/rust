@@ -1,3 +1,4 @@
+import * as anser from "anser";
 import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";
@@ -139,9 +140,10 @@ export async function createClient(
                         ?.rendered;
                     if (rendered) {
                         if (preview) {
+                            const decolorized = anser.ansiToText(rendered);
                             const index =
-                                rendered.match(/^(note|help):/m)?.index || rendered.length;
-                            diag.message = rendered
+                                decolorized.match(/^(note|help):/m)?.index || rendered.length;
+                            diag.message = decolorized
                                 .substring(0, index)
                                 .replace(/^ -->[^\n]+\n/m, "");
                         }
