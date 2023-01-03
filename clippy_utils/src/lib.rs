@@ -1287,7 +1287,7 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
 
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
-    tcx.hir().parent_iter(id).next().map(|(_, node)| node)
+    tcx.hir().find_parent(id)
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -2075,7 +2075,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().parent_id(hir_id)) {
+    if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false

@@ -100,7 +100,7 @@ impl<'tcx> LateLintPass<'tcx> for NeedlessPassByValue {
         }
 
         // Exclude non-inherent impls
-        if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().parent_id(hir_id)) {
+        if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
             if matches!(
                 item.kind,
                 ItemKind::Impl(Impl { of_trait: Some(_), .. }) | ItemKind::Trait(..)
