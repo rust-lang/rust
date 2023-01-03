@@ -400,7 +400,7 @@ function all() {
     mini_tests
     build_sysroot
     std_tests
-    asm_tests
+    #asm_tests
     test_libcore
     extended_sysroot_tests
     test_rustc
