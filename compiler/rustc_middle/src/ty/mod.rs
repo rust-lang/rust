@@ -1252,6 +1252,10 @@ impl<'tcx> InstantiatedPredicates<'tcx> {
     pub fn is_empty(&self) -> bool {
         self.predicates.is_empty()
     }
+
+    pub fn into_iter(self) -> impl Iterator<Item = (ty::Predicate<'tcx>, Span)> {
+        std::iter::zip(self.predicates, self.spans)
+    }
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, HashStable, TyEncodable, TyDecodable, Lift)]

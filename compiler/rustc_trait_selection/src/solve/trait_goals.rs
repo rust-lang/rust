@@ -23,6 +23,8 @@ use rustc_target::spec::abi::Abi;
 pub(super) enum CandidateSource {
     /// Some user-defined impl with the given `DefId`.
     Impl(DefId),
+    /// The automatic implementation of a trait alias.
+    TraitAlias,
     /// The n-th caller bound in the `param_env` of our goal.
     ///
     /// This is pretty much always a bound from the `where`-clauses of the
@@ -119,6 +121,24 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
 
             let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
             acx.try_insert_candidate(CandidateSource::Impl(impl_def_id), certainty);
+        })
+    }
+
+    fn consider_trait_alias_candidate(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    ) {
+        let tcx = acx.cx.tcx;
+        acx.infcx.probe(|_| {
+            let nested_goals = tcx
+                .predicates_of(goal.predicate.def_id())
+                .instantiate_own(tcx, goal.predicate.trait_ref.substs)
+                .predicates
+                .into_iter()
+                .map(|pred| goal.with(tcx, pred))
+                .collect();
+            let Ok(certainty) = acx.cx.evaluate_all(acx.infcx, nested_goals) else { return };
+            acx.try_insert_candidate(CandidateSource::TraitAlias, certainty);
         })
     }
 
@@ -414,6 +434,7 @@ impl<'tcx> EvalCtxt<'tcx> {
         // FIXME: implement this
         match (candidate.source, other.source) {
             (CandidateSource::Impl(_), _)
+            | (CandidateSource::TraitAlias, _)
             | (CandidateSource::ParamEnv(_), _)
             | (CandidateSource::AliasBound(_), _)
             | (CandidateSource::ObjectBound(_), _)

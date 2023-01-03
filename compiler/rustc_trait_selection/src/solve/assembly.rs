@@ -47,6 +47,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         impl_def_id: DefId,
     );
 
+    fn consider_trait_alias_candidate(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    );
+
     fn consider_alias_bound_candidates(
         acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
         goal: Goal<'tcx, Self>,
@@ -105,6 +110,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_param_env_candidates(goal);
 
         acx.assemble_auto_trait_candidates(goal);
+
+        acx.assemble_trait_alias_candidates(goal);
 
         acx.assemble_fn_like_candidates(goal);
 
@@ -204,6 +211,12 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
     fn assemble_auto_trait_candidates(&mut self, goal: Goal<'tcx, G>) {
         if self.cx.tcx.trait_is_auto(goal.predicate.trait_def_id(self.cx.tcx)) {
             G::consider_auto_trait_candidate(self, goal);
+        }
+    }
+
+    fn assemble_trait_alias_candidates(&mut self, goal: Goal<'tcx, G>) {
+        if self.cx.tcx.is_trait_alias(goal.predicate.trait_def_id(self.cx.tcx)) {
+            G::consider_trait_alias_candidate(self, goal);
         }
     }
 

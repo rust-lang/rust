@@ -212,6 +212,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
         })
     }
 
+    fn consider_trait_alias_candidate(
+        _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        _goal: Goal<'tcx, Self>,
+    ) {
+        // Trait aliases never have (their own) associated types
+    }
+
     fn consider_alias_bound_candidates(
         _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
         _goal: Goal<'tcx, ProjectionPredicate<'tcx>>,
