@@ -1,4 +1,4 @@
-use crate::infer::canonical::{Canonicalized, CanonicalizedQueryResponse};
+use crate::infer::canonical::{Canonical, CanonicalQueryResponse};
 use crate::traits::query::Fallible;
 use rustc_middle::ty::{self, ParamEnvAnd, TyCtxt};
 
@@ -32,8 +32,8 @@ impl<'tcx> super::QueryTypeOp<'tcx> for ProvePredicate<'tcx> {
 
     fn perform_query(
         tcx: TyCtxt<'tcx>,
-        mut canonicalized: Canonicalized<'tcx, ParamEnvAnd<'tcx, Self>>,
-    ) -> Fallible<CanonicalizedQueryResponse<'tcx, ()>> {
+        mut canonicalized: Canonical<'tcx, ParamEnvAnd<'tcx, Self>>,
+    ) -> Fallible<CanonicalQueryResponse<'tcx, ()>> {
         match canonicalized.value.value.predicate.kind().skip_binder() {
             ty::PredicateKind::Clause(ty::Clause::Trait(pred)) => {
                 canonicalized.value.param_env.remap_constness_with(pred.constness);
