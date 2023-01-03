@@ -22,7 +22,7 @@ use std::cell::Cell;
 use std::vec;
 
 pub fn id_to_string(map: &dyn rustc_hir::intravisit::Map<'_>, hir_id: hir::HirId) -> String {
-    to_string(&map, |s| s.print_node(map.find(hir_id).unwrap()))
+    to_string(&map, |s| s.print_node(map.get(hir_id)))
 }
 
 pub enum AnnNode<'a> {

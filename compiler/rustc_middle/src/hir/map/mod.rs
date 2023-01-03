@@ -1096,8 +1096,8 @@ impl<'hir> Map<'hir> {
 }
 
 impl<'hir> intravisit::Map<'hir> for Map<'hir> {
-    fn find(&self, hir_id: HirId) -> Option<Node<'hir>> {
-        Some(self.get(hir_id))
+    fn get(&self, hir_id: HirId) -> Node<'hir> {
+        (*self).get(hir_id)
     }
 
     fn body(&self, id: BodyId) -> &'hir Body<'hir> {

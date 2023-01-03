@@ -108,7 +108,7 @@ impl<'a> FnKind<'a> {
 /// An abstract representation of the HIR `rustc_middle::hir::map::Map`.
 pub trait Map<'hir> {
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
-    fn find(&self, hir_id: HirId) -> Option<Node<'hir>>;
+    fn get(&self, hir_id: HirId) -> Node<'hir>;
     fn body(&self, id: BodyId) -> &'hir Body<'hir>;
     fn item(&self, id: ItemId) -> &'hir Item<'hir>;
     fn trait_item(&self, id: TraitItemId) -> &'hir TraitItem<'hir>;
@@ -118,7 +118,7 @@ pub trait Map<'hir> {
 
 // Used when no map is actually available, forcing manual implementation of nested visitors.
 impl<'hir> Map<'hir> for ! {
-    fn find(&self, _: HirId) -> Option<Node<'hir>> {
+    fn get(&self, _: HirId) -> Node<'hir> {
         *self;
     }
     fn body(&self, _: BodyId) -> &'hir Body<'hir> {
