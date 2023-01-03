@@ -2,7 +2,7 @@ error[E0061]: this method takes 1 argument but 2 arguments were supplied
   --> $DIR/wrong_argument_ice-3.rs:9:16
    |
 LL |     let new_group = vec![String::new()];
-   |                     ------------------- here the type of `new_group` is inferred to be `Vec<_, _>`
+   |                     ------------------- here the type of `new_group` is inferred to be `Vec<String>`
 ...
 LL |         groups.push(new_group, vec![process]);
    |                ^^^^            ------------- argument of type `Vec<&Process>` unexpected

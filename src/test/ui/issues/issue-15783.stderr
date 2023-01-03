@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-15783.rs:8:19
    |
 LL |     let x = Some(&[name]);
-   |             ------------- here the type of `x` is inferred to be `Option<_>`
+   |             ------------- here the type of `x` is inferred to be `Option<&[&str; 1]>`
 LL |     let msg = foo(x);
    |               --- ^ expected slice `[&str]`, found array `[&str; 1]`
    |               |
