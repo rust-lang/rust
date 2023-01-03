@@ -524,11 +524,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let passes: &[&dyn MirPass<'tcx>] = &[
-        &elaborate_box_derefs::ElaborateBoxDerefs,
-        &lower_intrinsics::LowerIntrinsics,
-        &simplify::SimplifyCfg::new("elaborate-drops"),
-    ];
+    let passes: &[&dyn MirPass<'tcx>] =
+        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::new("elaborate-drops")];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 }
