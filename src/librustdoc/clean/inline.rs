@@ -380,23 +380,29 @@ pub(crate) fn build_impl(
     let associated_trait = tcx.impl_trait_ref(did);
 
     // Do not inline compiler-internal items unless we're a compiler-internal crate.
-    let document_compiler_internal =
-        if let Some(stab) = tcx.lookup_stability(LOCAL_CRATE.as_def_id()) {
+    let is_compiler_internal = |did| {
+        if let Some(stab) = tcx.lookup_stability(did) {
             stab.is_unstable() && stab.feature == sym::rustc_private
         } else {
             false
-        };
+        }
+    };
+    let document_compiler_internal = is_compiler_internal(LOCAL_CRATE.as_def_id());
+    let is_directly_public = |cx: &mut DocContext<'_>, did| {
+        if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
+            return false;
+        }
+        if !document_compiler_internal && is_compiler_internal(did) {
+            return false;
+        }
+        true
+    };
 
     // Only inline impl if the implemented trait is
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(traitref) = associated_trait {
-            let did = traitref.def_id;
-            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
-                return;
-            }
-
-            if !document_compiler_internal && let Some(stab) = tcx.lookup_stability(did) && stab.is_unstable() && stab.feature == sym::rustc_private {
+            if !is_directly_public(cx, traitref.def_id) {
                 return;
             }
         }
@@ -419,11 +425,7 @@ pub(crate) fn build_impl(
     // reachable in rustdoc generated documentation
     if !did.is_local() {
         if let Some(did) = for_.def_id(&cx.cache) {
-            if !cx.cache.effective_visibilities.is_directly_public(tcx, did) {
-                return;
-            }
-
-            if !document_compiler_internal && let Some(stab) = tcx.lookup_stability(did) && stab.is_unstable() && stab.feature == sym::rustc_private {
+            if !is_directly_public(cx, did) {
                 return;
             }
         }
