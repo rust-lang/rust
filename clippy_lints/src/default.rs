@@ -170,7 +170,7 @@ impl<'tcx> LateLintPass<'tcx> for Default {
                 // find out if and which field was set by this `consecutive_statement`
                 if let Some((field_ident, assign_rhs)) = field_reassigned_by_stmt(consecutive_statement, binding_name) {
                     // interrupt and cancel lint if assign_rhs references the original binding
-                    if contains_name(binding_name, assign_rhs) {
+                    if contains_name(binding_name, assign_rhs, cx) {
                         cancel_lint = true;
                         break;
                     }
