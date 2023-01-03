@@ -355,6 +355,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
             }
         }
+        if span_labels.len() < 2 {
+            return false;
+        }
         for (sp, label) in span_labels {
             err.span_label(sp, &label);
         }

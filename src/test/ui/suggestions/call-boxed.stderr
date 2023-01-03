@@ -4,10 +4,7 @@ error[E0308]: mismatched types
 LL |     let mut x = 1i32;
    |                 ---- expected due to this value
 LL |     let y = Box::new(|| 1);
-   |             --------------
-   |             |        |
-   |             |        the found closure
-   |             here the type of `y` is inferred to be `Box<[closure@call-boxed.rs:3:22]>`
+   |                      -- the found closure
 LL |     x = y;
    |         ^ expected `i32`, found struct `Box`
    |

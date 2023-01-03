@@ -4,9 +4,6 @@ error[E0308]: mismatched types
 LL | fn floatify_sibling<C>(ints: &C) -> <C as Collection<i32>>::Sibling<f32>
    |                                     ------------------------------------ expected `<C as Collection<i32>>::Sibling<f32>` because of return type
 ...
-LL |     let mut res = <C::Family as CollectionFamily>::Member::<f32>::empty();
-   |                   ------------------------------------------------------- here the type of `res` is inferred to be `<<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>`
-...
 LL |     res
    |     ^^^ expected Collection::Sibling, found CollectionFamily::Member
    |

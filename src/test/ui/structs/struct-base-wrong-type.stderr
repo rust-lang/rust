@@ -13,8 +13,6 @@ LL | static foo_i: Foo = Foo { a: 2, ..4 };
 error[E0308]: mismatched types
   --> $DIR/struct-base-wrong-type.rs:12:27
    |
-LL |     let b = Bar { x: 5 };
-   |             ------------ here the type of `b` is inferred to be `Bar`
 LL |     let f = Foo { a: 2, ..b };
    |                           ^ expected struct `Foo`, found struct `Bar`
 
