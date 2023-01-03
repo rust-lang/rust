@@ -2067,11 +2067,8 @@ impl Step for RustDev {
 
         builder.ensure(crate::native::Llvm { target });
 
-        // If the config has LLD enabled, ensure its step. We'll we want to package it, and use it
-        // in download-ci-llvm.
-        if builder.config.lld_enabled {
-            builder.ensure(crate::native::Lld { target });
-        }
+        // We want to package `lld` to use it with `download-ci-llvm`.
+        builder.ensure(crate::native::Lld { target });
 
         let src_bindir = builder.llvm_out(target).join("bin");
         // If updating this list, you likely want to change
