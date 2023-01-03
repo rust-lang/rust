@@ -16,7 +16,7 @@ error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:24:16
    |
 LL |     let _vec = Box::new(Vec::<u8>::new());
-   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::vec::Vec<u8>>::default()`
+   |                ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<u8>>::default()`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:25:17
@@ -40,13 +40,13 @@ error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:29:28
    |
 LL |     let _in_macro = outer!(Box::new(String::new()));
-   |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::string::String>::default()`
+   |                            ^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:30:34
    |
 LL |     let _string_default = outer!(Box::new(String::from("")));
-   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::string::String>::default()`
+   |                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<String>::default()`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:31:46
@@ -64,7 +64,7 @@ error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:33:25
    |
 LL |     let _vec4: Box<_> = Box::new(Vec::from([false; 0]));
-   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<std::vec::Vec<bool>>::default()`
+   |                         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<Vec<bool>>::default()`
 
 error: `Box::new(_)` of default value
   --> $DIR/box_default.rs:35:16
