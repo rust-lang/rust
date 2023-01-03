@@ -131,7 +131,7 @@ fn is_argument(map: rustc_middle::hir::map::Map<'_>, id: HirId) -> bool {
         _ => return false,
     }
 
-    matches!(map.find(map.get_parent_node(id)), Some(Node::Param(_)))
+    matches!(map.find(map.parent_id(id)), Some(Node::Param(_)))
 }
 
 impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
@@ -156,8 +156,8 @@ impl<'a, 'tcx> Delegate<'tcx> for EscapeDelegate<'a, 'tcx> {
             let map = &self.cx.tcx.hir();
             if is_argument(*map, cmt.hir_id) {
                 // Skip closure arguments
-                let parent_id = map.get_parent_node(cmt.hir_id);
-                if let Some(Node::Expr(..)) = map.find(map.get_parent_node(parent_id)) {
+                let parent_id = map.parent_id(cmt.hir_id);
+                if let Some(Node::Expr(..)) = map.find(map.parent_id(parent_id)) {
                     return;
                 }
 

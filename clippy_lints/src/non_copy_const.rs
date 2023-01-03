@@ -366,7 +366,7 @@ impl<'tcx> LateLintPass<'tcx> for NonCopyConst {
             let mut dereferenced_expr = expr;
             let mut needs_check_adjustment = true;
             loop {
-                let parent_id = cx.tcx.hir().get_parent_node(cur_expr.hir_id);
+                let parent_id = cx.tcx.hir().parent_id(cur_expr.hir_id);
                 if parent_id == cur_expr.hir_id {
                     break;
                 }
