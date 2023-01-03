@@ -134,7 +134,7 @@ impl<T: Write> PrettyFormatter<T> {
 
         let mut results = Vec::new();
         let mut stdouts = String::new();
-        for &(ref f, ref stdout) in inputs {
+        for (f, stdout) in inputs {
             results.push(f.name.to_string());
             if !stdout.is_empty() {
                 stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
@@ -171,9 +171,9 @@ impl<T: Write> PrettyFormatter<T> {
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         if let Some(test_mode) = desc.test_mode() {
-            self.write_plain(&format!("test {name} - {test_mode} ... "))?;
+            self.write_plain(format!("test {name} - {test_mode} ... "))?;
         } else {
-            self.write_plain(&format!("test {name} ... "))?;
+            self.write_plain(format!("test {name} ... "))?;
         }
 
         Ok(())
@@ -188,7 +188,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
         } else {
             String::new()
         };
-        self.write_plain(&format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
+        self.write_plain(format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -221,7 +221,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
             TestResult::TrIgnored => self.write_ignored(desc.ignore_message)?,
             TestResult::TrBench(ref bs) => {
                 self.write_bench()?;
-                self.write_plain(&format!(": {}", fmt_bench_samples(bs)))?;
+                self.write_plain(format!(": {}", fmt_bench_samples(bs)))?;
             }
             TestResult::TrTimedFail => self.write_time_failed()?,
         }
@@ -231,7 +231,7 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_plain(&format!(
+        self.write_plain(format!(
             "test {} has been running for over {} seconds\n",
             desc.name,
             time::TEST_WARN_TIMEOUT_S
@@ -267,11 +267,11 @@ impl<T: Write> OutputFormatter for PrettyFormatter<T> {
             state.passed, state.failed, state.ignored, state.measured, state.filtered_out
         );
 
-        self.write_plain(&s)?;
+        self.write_plain(s)?;
 
         if let Some(ref exec_time) = state.exec_time {
             let time_str = format!("; finished in {exec_time}");
-            self.write_plain(&time_str)?;
+            self.write_plain(time_str)?;
         }
 
         self.write_plain("\n\n")?;
