@@ -873,6 +873,11 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             );
                         }
 
+                        if self.suggest_add_clone_to_arg(&obligation, &mut err, trait_predicate) {
+                            err.emit();
+                            return;
+                        }
+
                         if self.suggest_impl_trait(&mut err, span, &obligation, trait_predicate) {
                             err.emit();
                             return;

@@ -10,7 +10,7 @@ use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
-use hir::HirId;
+use hir::{Expr, HirId};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -206,11 +206,15 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     );
 
-    fn suggest_add_reference_to_arg(
+    fn suggest_add_clone_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
+
+    fn suggest_add_reference_to_arg(
+        err: &mut Diagnostic,
         has_custom_message: bool,
     ) -> bool;
 
@@ -1100,6 +1104,70 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         } else {
             err.span_label(block.span, "this block is missing a tail expression");
         }
+    }
+
+    fn suggest_add_clone_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        let span = obligation.cause.span;
+        let body_id = obligation.cause.body_id;
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let ty = self.tcx.erase_late_bound_regions(self_ty);
+        let owner = self.tcx.hir().get_parent_item(body_id);
+        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() &&
+            let arg_node = self.tcx.hir().get(*arg_hir_id) &&
+            let Node::Expr(Expr { kind: hir::ExprKind::Path(_), ..}) = arg_node &&
+            let Some(generics) = self.tcx.hir().get_generics(owner.def_id) &&
+            let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() &&
+            let ty::Param(param) = inner_ty.kind() &&
+            let Some(generic_param) =
+                    generics.params.iter().find(|p| p.name.ident().as_str() == param.name.as_str())
+        {
+            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+            let has_clone = self
+                .type_implements_trait(clone_trait, [ty], obligation.param_env)
+                .must_apply_modulo_regions();
+
+            let trait_pred_and_suggested_ty =
+                trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty));
+            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+                    obligation.param_env,
+                    trait_pred_and_suggested_ty,
+            );
+
+            if  has_clone && self.predicate_may_hold(&new_obligation) {
+                let clone_bound = generics.bounds_for_param(generic_param.def_id)
+                                                    .flat_map(|bp| bp.bounds)
+                                                    .any(|bound| {
+                    if let hir::GenericBound::Trait( hir::PolyTraitRef { trait_ref, ..}, ..) = bound {
+                            Some(clone_trait) == trait_ref.trait_def_id()
+                        } else {
+                            false
+                        }
+                    });
+                if !clone_bound {
+                    suggest_constraining_type_param(
+                        self.tcx,
+                        generics,
+                        err,
+                        param.name.as_str(),
+                        "Clone",
+                        Some(clone_trait)
+                    );
+                }
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    "consider using clone here",
+                    ".clone()".to_string(),
+                    Applicability::MaybeIncorrect,
+                );
+                return true;
+            }
+        }
+        false
     }
 
     fn suggest_add_reference_to_arg(
