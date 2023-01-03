@@ -1392,7 +1392,7 @@ declare_lint! {
     ///
     /// The attribute must be used in conjunction with the
     /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
-    /// annotation will function as as no-op.
+    /// annotation will function as a no-op.
     ///
     /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
