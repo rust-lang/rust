@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::Range { start: 0, end: 1 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `Range`
+   |     |          expected `&_`, found `Range<{integer}>`
    |     |          help: consider borrowing here: `&std::ops::Range { start: 0, end: 1 }`
    |     arguments to this function are incorrect
    |
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::Range { start: 0, end: 1 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `Range`
+   |     |          expected `&_`, found `Range<{integer}>`
    |     |          help: consider borrowing here: `&::std::ops::Range { start: 0, end: 1 }`
    |     arguments to this function are incorrect
    |
@@ -40,7 +40,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeFrom { start: 1 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeFrom`
+   |     |          expected `&_`, found `RangeFrom<{integer}>`
    |     |          help: consider borrowing here: `&std::ops::RangeFrom { start: 1 }`
    |     arguments to this function are incorrect
    |
@@ -58,7 +58,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeFrom { start: 1 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeFrom`
+   |     |          expected `&_`, found `RangeFrom<{integer}>`
    |     |          help: consider borrowing here: `&::std::ops::RangeFrom { start: 1 }`
    |     arguments to this function are incorrect
    |
@@ -76,7 +76,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeFull {});
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeFull`
+   |     |          expected `&_`, found `RangeFull`
    |     |          help: consider borrowing here: `&std::ops::RangeFull {}`
    |     arguments to this function are incorrect
    |
@@ -94,7 +94,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeFull {});
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeFull`
+   |     |          expected `&_`, found `RangeFull`
    |     |          help: consider borrowing here: `&::std::ops::RangeFull {}`
    |     arguments to this function are incorrect
    |
@@ -112,7 +112,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeInclusive::new(0, 1));
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeInclusive`
+   |     |          expected `&_`, found `RangeInclusive<{integer}>`
    |     |          help: consider borrowing here: `&std::ops::RangeInclusive::new(0, 1)`
    |     arguments to this function are incorrect
    |
@@ -130,7 +130,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeInclusive::new(0, 1));
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeInclusive`
+   |     |          expected `&_`, found `RangeInclusive<{integer}>`
    |     |          help: consider borrowing here: `&::std::ops::RangeInclusive::new(0, 1)`
    |     arguments to this function are incorrect
    |
@@ -148,7 +148,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeTo { end: 5 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeTo`
+   |     |          expected `&_`, found `RangeTo<{integer}>`
    |     |          help: consider borrowing here: `&std::ops::RangeTo { end: 5 }`
    |     arguments to this function are incorrect
    |
@@ -166,7 +166,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeTo { end: 5 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeTo`
+   |     |          expected `&_`, found `RangeTo<{integer}>`
    |     |          help: consider borrowing here: `&::std::ops::RangeTo { end: 5 }`
    |     arguments to this function are incorrect
    |
@@ -184,7 +184,7 @@ error[E0308]: mismatched types
 LL |     take_range(std::ops::RangeToInclusive { end: 5 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeToInclusive`
+   |     |          expected `&_`, found `RangeToInclusive<{integer}>`
    |     |          help: consider borrowing here: `&std::ops::RangeToInclusive { end: 5 }`
    |     arguments to this function are incorrect
    |
@@ -202,7 +202,7 @@ error[E0308]: mismatched types
 LL |     take_range(::std::ops::RangeToInclusive { end: 5 });
    |     ---------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |     |          |
-   |     |          expected reference, found struct `RangeToInclusive`
+   |     |          expected `&_`, found `RangeToInclusive<{integer}>`
    |     |          help: consider borrowing here: `&::std::ops::RangeToInclusive { end: 5 }`
    |     arguments to this function are incorrect
    |

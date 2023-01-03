@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match x {
    |           - this expression has type `&_S`
 LL |         _S(& (mut _y), _v) => {
-   |            ^^^^^^^^^^ expected `u32`, found reference
+   |            ^^^^^^^^^^ expected `u32`, found `&_`
    |
    = note:   expected type `u32`
            found reference `&_`

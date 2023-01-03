@@ -137,25 +137,25 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             diag.help(
                                 "given a type parameter `T` and a method `foo`:
 ```
-trait Trait<T> { fn foo(&tcx) -> T; }
+trait Trait<T> { fn foo(&self) -> T; }
 ```
 the only ways to implement method `foo` are:
 - constrain `T` with an explicit type:
 ```
 impl Trait<String> for X {
-    fn foo(&tcx) -> String { String::new() }
+    fn foo(&self) -> String { String::new() }
 }
 ```
 - add a trait bound to `T` and call a method on that trait that returns `Self`:
 ```
 impl<T: std::default::Default> Trait<T> for X {
-    fn foo(&tcx) -> T { <T as std::default::Default>::default() }
+    fn foo(&self) -> T { <T as std::default::Default>::default() }
 }
 ```
 - change `foo` to return an argument of type `T`:
 ```
 impl<T> Trait<T> for X {
-    fn foo(&tcx, x: T) -> T { x }
+    fn foo(&self, x: T) -> T { x }
 }
 ```",
                             );
@@ -389,14 +389,14 @@ impl<T> Trait<T> for X {
 ```
 trait Trait {
 type T;
-fn foo(&tcx) -> Self::T;
+fn foo(&self) -> Self::T;
 }
 ```
 the only way of implementing method `foo` is to constrain `T` with an explicit associated type:
 ```
 impl Trait for X {
 type T = String;
-fn foo(&tcx) -> Self::T { String::new() }
+fn foo(&self) -> Self::T { String::new() }
 }
 ```",
             );

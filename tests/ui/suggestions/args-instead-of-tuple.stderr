@@ -41,7 +41,7 @@ error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple.rs:14:34
    |
 LL |     let _: Option<(i32,)> = Some(3);
-   |                             ---- ^ expected tuple, found integer
+   |                             ---- ^ expected `(i32,)`, found integer
    |                             |
    |                             arguments to this enum variant are incorrect
    |
@@ -58,7 +58,7 @@ error[E0308]: mismatched types
   --> $DIR/args-instead-of-tuple.rs:17:34
    |
 LL |     let _: Option<(i32,)> = Some((3));
-   |                             ---- ^^^ expected tuple, found integer
+   |                             ---- ^^^ expected `(i32,)`, found integer
    |                             |
    |                             arguments to this enum variant are incorrect
    |

@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let empty_struct::XEmpty2 = ();
    |         ^^^^^^^^^^^^^^^^^^^^^   -- this expression has type `()`
    |         |
-   |         expected `()`, found struct `XEmpty2`
+   |         expected `()`, found `XEmpty2`
 
 error[E0308]: mismatched types
   --> $DIR/issue-37026.rs:7:9
@@ -12,7 +12,7 @@ error[E0308]: mismatched types
 LL |     let empty_struct::XEmpty6(..) = ();
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^   -- this expression has type `()`
    |         |
-   |         expected `()`, found struct `XEmpty6`
+   |         expected `()`, found `XEmpty6`
 
 error: aborting due to 2 previous errors
 

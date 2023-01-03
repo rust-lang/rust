@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-89856.rs:6:20
    |
 LL |     take_str_maybe(option);
-   |     -------------- ^^^^^^ expected `str`, found struct `String`
+   |     -------------- ^^^^^^ expected `Option<&str>`, found `Option<&String>`
    |     |
    |     arguments to this function are incorrect
    |

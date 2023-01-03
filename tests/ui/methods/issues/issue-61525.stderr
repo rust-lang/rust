@@ -21,7 +21,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-61525.rs:14:33
    |
 LL |         1.query::<dyn ToString>("")
-   |           --------------------- ^^ expected trait object `dyn ToString`, found `&str`
+   |           --------------------- ^^ expected `dyn ToString`, found `&str`
    |           |
    |           arguments to this method are incorrect
    |

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:7:29
    |
 LL |     opt.map(|arg| takes_ref(arg));
-   |         ---       --------- ^^^ expected `&Foo`, found struct `Foo`
+   |         ---       --------- ^^^ expected `&Foo`, found `Foo`
    |         |         |
    |         |         arguments to this function are incorrect
    |         help: consider using `as_ref` instead: `as_ref().map`
@@ -17,7 +17,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:8:39
    |
 LL |     opt.and_then(|arg| Some(takes_ref(arg)));
-   |         --------            --------- ^^^ expected `&Foo`, found struct `Foo`
+   |         --------            --------- ^^^ expected `&Foo`, found `Foo`
    |         |                   |
    |         |                   arguments to this function are incorrect
    |         help: consider using `as_ref` instead: `as_ref().and_then`
@@ -32,7 +32,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:10:29
    |
 LL |     opt.map(|arg| takes_ref(arg));
-   |         ---       --------- ^^^ expected `&Foo`, found struct `Foo`
+   |         ---       --------- ^^^ expected `&Foo`, found `Foo`
    |         |         |
    |         |         arguments to this function are incorrect
    |         help: consider using `as_ref` instead: `as_ref().map`
@@ -47,7 +47,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:11:37
    |
 LL |     opt.and_then(|arg| Ok(takes_ref(arg)));
-   |         --------          --------- ^^^ expected `&Foo`, found struct `Foo`
+   |         --------          --------- ^^^ expected `&Foo`, found `Foo`
    |         |                 |
    |         |                 arguments to this function are incorrect
    |         help: consider using `as_ref` instead: `as_ref().and_then`
@@ -64,7 +64,7 @@ error[E0308]: mismatched types
 LL |     let y: Option<&usize> = x;
    |            --------------   ^
    |            |                |
-   |            |                expected enum `Option`, found `&Option<usize>`
+   |            |                expected `Option<&usize>`, found `&Option<usize>`
    |            |                help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`: `x.as_ref()`
    |            expected due to this
    |
@@ -75,7 +75,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:15:37
    |
 LL |     let y: Result<&usize, &usize> = x;
-   |            ----------------------   ^ expected enum `Result`, found reference
+   |            ----------------------   ^ expected `Result<&usize, &usize>`, found `&Result<usize, usize>`
    |            |
    |            expected due to this
    |
@@ -90,7 +90,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:19:36
    |
 LL |     let y: Result<&usize, usize> = x;
-   |            ---------------------   ^ expected enum `Result`, found reference
+   |            ---------------------   ^ expected `Result<&usize, usize>`, found `&Result<usize, usize>`
    |            |
    |            expected due to this
    |
@@ -101,7 +101,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:22:42
    |
 LL |     multiple_ref_opt.map(|arg| takes_ref(arg));
-   |                      ---       --------- ^^^ expected `&Foo`, found struct `Foo`
+   |                      ---       --------- ^^^ expected `&Foo`, found `Foo`
    |                      |         |
    |                      |         arguments to this function are incorrect
    |                      help: consider using `as_ref` instead: `as_ref().map`
@@ -116,7 +116,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:23:52
    |
 LL |     multiple_ref_opt.and_then(|arg| Some(takes_ref(arg)));
-   |                      --------            --------- ^^^ expected `&Foo`, found struct `Foo`
+   |                      --------            --------- ^^^ expected `&Foo`, found `Foo`
    |                      |                   |
    |                      |                   arguments to this function are incorrect
    |                      help: consider using `as_ref` instead: `as_ref().and_then`
@@ -131,7 +131,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:25:45
    |
 LL |     multiple_ref_result.map(|arg| takes_ref(arg));
-   |                         ---       --------- ^^^ expected `&Foo`, found struct `Foo`
+   |                         ---       --------- ^^^ expected `&Foo`, found `Foo`
    |                         |         |
    |                         |         arguments to this function are incorrect
    |                         help: consider using `as_ref` instead: `as_ref().map`
@@ -146,7 +146,7 @@ error[E0308]: mismatched types
   --> $DIR/as-ref.rs:26:53
    |
 LL |     multiple_ref_result.and_then(|arg| Ok(takes_ref(arg)));
-   |                         --------          --------- ^^^ expected `&Foo`, found struct `Foo`
+   |                         --------          --------- ^^^ expected `&Foo`, found `Foo`
    |                         |                 |
    |                         |                 arguments to this function are incorrect
    |                         help: consider using `as_ref` instead: `as_ref().and_then`

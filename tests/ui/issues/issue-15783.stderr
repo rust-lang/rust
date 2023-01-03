@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-15783.rs:8:19
    |
 LL |     let msg = foo(x);
-   |               --- ^ expected slice `[&str]`, found array `[&str; 1]`
+   |               --- ^ expected `Option<&[&str]>`, found `Option<&[&str; 1]>`
    |               |
    |               arguments to this function are incorrect
    |

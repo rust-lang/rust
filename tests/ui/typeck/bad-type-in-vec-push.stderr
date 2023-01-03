@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     vector.sort();
    |     ------ here the type of `vector` is inferred to be `Vec<_>`
 LL |     result.push(vector);
-   |            ---- ^^^^^^ expected integer, found struct `Vec`
+   |            ---- ^^^^^^ expected integer, found `Vec<_>`
    |            |
    |            arguments to this method are incorrect
    |

@@ -6,7 +6,7 @@ LL |     let mut x = 1i32;
 LL |     let y = Box::new(|| 1);
    |                      -- the found closure
 LL |     x = y;
-   |         ^ expected `i32`, found struct `Box`
+   |         ^ expected `i32`, found `Box<[closure@call-boxed.rs:3:22]>`
    |
    = note: expected type `i32`
             found struct `Box<[closure@$DIR/call-boxed.rs:3:22: 3:24]>`

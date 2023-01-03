@@ -2,7 +2,7 @@ error[E0326]: implemented const `FROM` has an incompatible type for trait
   --> $DIR/associated-const-generic-obligations.rs:14:17
    |
 LL |     const FROM: &'static str = "foo";
-   |                 ^^^^^^^^^^^^ expected associated type, found `&str`
+   |                 ^^^^^^^^^^^^ expected associated type, found `&'static str`
    |
 note: type in trait
   --> $DIR/associated-const-generic-obligations.rs:10:17

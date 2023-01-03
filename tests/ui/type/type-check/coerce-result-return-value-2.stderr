@@ -5,7 +5,7 @@ LL | fn foo4(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 LL |     match true {
 LL |         true => x,
-   |                 ^ expected struct `B`, found struct `A`
+   |                 ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
@@ -21,7 +21,7 @@ LL | fn foo5(x: Result<(), A>) -> Result<(), B> {
    |                              ------------- expected `Result<(), B>` because of return type
 LL |     match true {
 LL |         true => return x,
-   |                        ^ expected struct `B`, found struct `A`
+   |                        ^ expected `Result<(), B>`, found `Result<(), A>`
    |
    = note: expected enum `Result<_, B>`
               found enum `Result<_, A>`
@@ -37,7 +37,7 @@ LL |       let _: Result<(), B> = {
    |  ____________________________^
 LL | |         Err(A);
 LL | |     };
-   | |_____^ expected enum `Result`, found `()`
+   | |_____^ expected `Result<(), B>`, found `()`
    |
    = note:   expected enum `Result<(), B>`
            found unit type `()`

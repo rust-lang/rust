@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/normalize-fn-sig.rs:14:22
    |
 LL |     needs_i32_ref_fn(foo::<()>);
-   |     ---------------- ^^^^^^^^^ expected `&i32`, found `i32`
+   |     ---------------- ^^^^^^^^^ expected fn pointer, found fn item
    |     |
    |     arguments to this function are incorrect
    |

@@ -2,7 +2,7 @@ error[E0271]: expected `Iter<'_, _, _>` to be an iterator that yields `&_`, but 
   --> $DIR/issue-33941.rs:6:36
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
-   |                                    ^^^^^^ expected reference, found tuple
+   |                                    ^^^^^^ expected `&_`, found `(&_, &_)`
    |
    = note: expected reference `&_`
                   found tuple `(&_, &_)`
@@ -20,7 +20,7 @@ error[E0271]: expected `Iter<'_, _, _>` to be an iterator that yields `&_`, but 
   --> $DIR/issue-33941.rs:6:14
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(&_, &_)`, found `&_`
    |
    = note:  expected tuple `(&_, &_)`
            found reference `&_`
@@ -31,7 +31,7 @@ error[E0271]: expected `Iter<'_, _, _>` to be an iterator that yields `&_`, but 
   --> $DIR/issue-33941.rs:6:14
    |
 LL |     for _ in HashMap::new().iter().cloned() {}
-   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected tuple, found reference
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `(&_, &_)`, found `&_`
    |
    = note:  expected tuple `(&_, &_)`
            found reference `&_`

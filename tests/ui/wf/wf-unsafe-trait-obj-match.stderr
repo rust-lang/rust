@@ -5,7 +5,7 @@ LL | /     match opt() {
 LL | |         Some(()) => &S,
    | |                     -- this is found to be of type `&S`
 LL | |         None => &R,
-   | |                 ^^ expected struct `S`, found struct `R`
+   | |                 ^^ expected `&S`, found `&R`
 LL | |     }
    | |_____- `match` arms have incompatible types
    |

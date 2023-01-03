@@ -7,7 +7,7 @@ LL | fn main() {
 LL |     match 42 { A => () }
    |           --   ^
    |           |    |
-   |           |    expected integer, found tuple
+   |           |    expected integer, found `(isize, isize)`
    |           |    `A` is interpreted as a constant, not a new binding
    |           |    help: introduce a new binding instead: `other_a`
    |           this expression has type `{integer}`

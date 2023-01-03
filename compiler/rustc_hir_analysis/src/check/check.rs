@@ -444,7 +444,10 @@ fn check_opaque_meets_bounds<'tcx>(
         Err(ty_err) => {
             tcx.sess.delay_span_bug(
                 span,
-                &format!("could not unify `{hidden_ty}` with revealed type:\n{ty_err}"),
+                &format!(
+                    "could not unify `{hidden_ty}` with revealed type:\n{}",
+                    ty_err.to_string(tcx)
+                ),
             );
         }
     }

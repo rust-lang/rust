@@ -2,7 +2,7 @@ error[E0053]: method `foo` has an incompatible type for trait
   --> $DIR/async-example-desugared-boxed-in-trait.rs:15:28
    |
 LL |     async fn foo(&self) -> i32 {
-   |                            ^^^ expected struct `Pin`, found opaque type
+   |                            ^^^ expected `Pin<Box<dyn Future<Output = i32>>>`, found opaque type
    |
 note: type in trait
   --> $DIR/async-example-desugared-boxed-in-trait.rs:11:22

@@ -16,7 +16,7 @@ LL | /     match c {
 LL | |         "baz" => Box::new(Baz),
    | |                  ------------- this is found to be of type `Box<Baz>`
 LL | |         _ => Box::new(Bar),
-   | |              ^^^^^^^^^^^^^ expected struct `Baz`, found struct `Bar`
+   | |              ^^^^^^^^^^^^^ expected `Box<Baz>`, found `Box<Bar>`
 LL | |     };
    | |_____- `match` arms have incompatible types
    |
@@ -39,7 +39,7 @@ error[E0308]: mismatched types
   --> $DIR/match-with-different-arm-types-as-stmt-instead-of-expr.rs:23:22
    |
 LL | fn wrong(c: &str) -> Box<dyn Foo> {
-   |    -----             ^^^^^^^^^^^^ expected struct `Box`, found `()`
+   |    -----             ^^^^^^^^^^^^ expected `Box<dyn Foo>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
    |

@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/mismatched-types.rs:2:20
    |
 LL |     let b: &[u8] = include_str!("file.txt");
-   |            -----   ^^^^^^^^^^^^^^^^^^^^^^^^ expected slice `[u8]`, found `str`
+   |            -----   ^^^^^^^^^^^^^^^^^^^^^^^^ expected `&[u8]`, found `&str`
    |            |
    |            expected due to this
    |
@@ -14,7 +14,7 @@ error[E0308]: mismatched types
   --> $DIR/mismatched-types.rs:3:19
    |
 LL |     let s: &str = include_bytes!("file.txt");
-   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `str`, found array `[u8; 0]`
+   |            ----   ^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found `&[u8; 0]`
    |            |
    |            expected due to this
    |

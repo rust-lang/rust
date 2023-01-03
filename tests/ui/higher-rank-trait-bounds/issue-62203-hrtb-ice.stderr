@@ -42,7 +42,7 @@ LL | |             f: |x| {
 ...  |
 LL | |             },
 LL | |         },
-   | |_________^ expected struct `Unit3`, found struct `Unit4`
+   | |_________^ expected `Unit3`, found `Unit4`
    |
 note: required for `L<[closure@$DIR/issue-62203-hrtb-ice.rs:42:16: 42:19]>` to implement `for<'r> T0<'r, (&'r u8,)>`
   --> $DIR/issue-62203-hrtb-ice.rs:17:16

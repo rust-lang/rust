@@ -9,12 +9,12 @@ LL | || ) {
    | ||_- arguments to this function are incorrect
 LL | |      loop {}
 LL | |  }
-   | |__^ expected struct `Layout`, found struct `core::alloc::Layout`
+   | |__^ expected `Layout`, found `core::alloc::Layout`
    |
-   = note: struct `core::alloc::Layout` and struct `Layout` have similar names, but are actually distinct types
-note: struct `core::alloc::Layout` is defined in crate `core`
+   = note: `core::alloc::Layout` and `Layout` have similar names, but are actually distinct types
+note: `core::alloc::Layout` is defined in crate `core`
   --> $SRC_DIR/core/src/alloc/layout.rs:LL:COL
-note: struct `Layout` is defined in the current crate
+note: `Layout` is defined in the current crate
   --> $DIR/alloc-error-handler-bad-signature-2.rs:7:1
    |
 LL | struct Layout;

@@ -5,7 +5,7 @@ LL | fn hi() -> impl Sized {
    |            ---------- the found opaque type
 ...
 LL |     let b: Box<dyn Fn() -> Box<u8>> = Box::new(hi);
-   |                                       ^^^^^^^^^^^^ expected struct `Box`, found opaque type
+   |                                       ^^^^^^^^^^^^ expected `Box<u8>`, found opaque type
    |
    = note:   expected struct `Box<u8>`
            found opaque type `impl Sized`

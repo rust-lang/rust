@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match String::new() {
    |           ------------- this expression has type `String`
 LL |         "" | _ => {}
-   |         ^^ expected struct `String`, found `&str`
+   |         ^^ expected `String`, found `&str`
 
 error: aborting due to previous error
 

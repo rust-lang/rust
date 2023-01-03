@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-42764.rs:11:43
    |
 LL |     this_function_expects_a_double_option(n);
-   |     ------------------------------------- ^ expected enum `DoubleOption`, found `usize`
+   |     ------------------------------------- ^ expected `DoubleOption<_>`, found `usize`
    |     |
    |     arguments to this function are incorrect
    |
@@ -24,7 +24,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-42764.rs:27:33
    |
 LL |     let _c = Context { wrapper: Payload{} };
-   |                                 ^^^^^^^^^ expected struct `Wrapper`, found struct `Payload`
+   |                                 ^^^^^^^^^ expected `Wrapper`, found `Payload`
    |
 help: try wrapping the expression in `Wrapper`
    |

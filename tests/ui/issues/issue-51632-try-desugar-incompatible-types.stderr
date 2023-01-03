@@ -2,7 +2,7 @@ error[E0308]: `?` operator has incompatible types
   --> $DIR/issue-51632-try-desugar-incompatible-types.rs:8:5
    |
 LL |     missing_discourses()?
-   |     ^^^^^^^^^^^^^^^^^^^^^ expected enum `Result`, found `isize`
+   |     ^^^^^^^^^^^^^^^^^^^^^ expected `Result<isize, ()>`, found `isize`
    |
    = note: `?` operator cannot convert from `isize` to `Result<isize, ()>`
    = note: expected enum `Result<isize, ()>`

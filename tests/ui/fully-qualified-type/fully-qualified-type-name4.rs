@@ -7,7 +7,7 @@ fn bar(x: usize) -> Option<usize> {
     //~^ ERROR mismatched types
     //~| expected enum `Option<usize>`
     //~| found type `usize`
-    //~| expected enum `Option`, found `usize`
+    //~| expected `Option<usize>`, found `usize`
 }
 
 fn main() {

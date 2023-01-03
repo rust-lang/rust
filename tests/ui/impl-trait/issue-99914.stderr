@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-99914.rs:9:27
    |
 LL |     t.and_then(|t| -> _ { bar(t) });
-   |                           ^^^^^^ expected enum `Result`, found opaque type
+   |                           ^^^^^^ expected `Result<_, Error>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-99914.rs:13:23

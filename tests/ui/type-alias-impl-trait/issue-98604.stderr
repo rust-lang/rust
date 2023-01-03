@@ -2,7 +2,7 @@ error[E0271]: expected `fn() -> impl Future<Output = ()> {test}` to be a fn item
   --> $DIR/issue-98604.rs:9:5
    |
 LL |     Box::new(test) as AsyncFnPtr;
-   |     ^^^^^^^^^^^^^^ expected struct `Pin`, found opaque type
+   |     ^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98604.rs:5:17

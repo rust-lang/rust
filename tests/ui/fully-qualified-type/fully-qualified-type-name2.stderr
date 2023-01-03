@@ -4,15 +4,15 @@ error[E0308]: mismatched types
 LL | fn bar(x: x::Foo) -> y::Foo {
    |                      ------ expected `y::Foo` because of return type
 LL |     return x;
-   |            ^ expected enum `y::Foo`, found enum `x::Foo`
+   |            ^ expected `y::Foo`, found `x::Foo`
    |
-   = note: enum `x::Foo` and enum `y::Foo` have similar names, but are actually distinct types
-note: enum `x::Foo` is defined in module `crate::x` of the current crate
+   = note: `x::Foo` and `y::Foo` have similar names, but are actually distinct types
+note: `x::Foo` is defined in module `crate::x` of the current crate
   --> $DIR/fully-qualified-type-name2.rs:4:5
    |
 LL |     pub enum Foo { }
    |     ^^^^^^^^^^^^
-note: enum `y::Foo` is defined in module `crate::y` of the current crate
+note: `y::Foo` is defined in module `crate::y` of the current crate
   --> $DIR/fully-qualified-type-name2.rs:8:5
    |
 LL |     pub enum Foo { }

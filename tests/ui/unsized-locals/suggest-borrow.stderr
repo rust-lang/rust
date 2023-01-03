@@ -18,7 +18,7 @@ error[E0308]: mismatched types
 LL |     let x: &[u8] = vec!(1, 2, 3)[..];
    |            -----   ^^^^^^^^^^^^^^^^^
    |            |       |
-   |            |       expected `&[u8]`, found slice `[{integer}]`
+   |            |       expected `&[u8]`, found `[{integer}]`
    |            |       help: consider borrowing here: `&vec!(1, 2, 3)[..]`
    |            expected due to this
 
@@ -26,7 +26,7 @@ error[E0308]: mismatched types
   --> $DIR/suggest-borrow.rs:4:19
    |
 LL |     let x: [u8] = &vec!(1, 2, 3)[..];
-   |            ----   ^^^^^^^^^^^^^^^^^^ expected slice `[u8]`, found `&[{integer}]`
+   |            ----   ^^^^^^^^^^^^^^^^^^ expected `[u8]`, found `&[{integer}]`
    |            |
    |            expected due to this
    |

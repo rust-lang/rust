@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-92010-trait-bound-not-satisfied.rs:8:43
    |
 LL |     fn y(&self, y: f64) -> Self { P{y, .. self.clone() } }
-   |                                           ^^^^^^^^^^^^ expected struct `P`, found `&P<T>`
+   |                                           ^^^^^^^^^^^^ expected `P<T>`, found `&P<T>`
    |
    = note: expected struct `P<T>`
            found reference `&P<T>`

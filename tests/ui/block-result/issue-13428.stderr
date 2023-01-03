@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-13428.rs:3:13
    |
 LL | fn foo() -> String {
-   |    ---      ^^^^^^ expected struct `String`, found `()`
+   |    ---      ^^^^^^ expected `String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 
@@ -10,7 +10,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-13428.rs:11:13
    |
 LL | fn bar() -> String {
-   |    ---      ^^^^^^ expected struct `String`, found `()`
+   |    ---      ^^^^^^ expected `String`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     "foobar".to_string()

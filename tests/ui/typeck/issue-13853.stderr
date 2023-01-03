@@ -5,7 +5,7 @@ LL |     fn nodes<'a, I: Iterator<Item=&'a N>>(&self) -> I
    |                  - this type parameter              - expected `I` because of return type
 ...
 LL |         self.iter()
-   |         ^^^^^^^^^^^ expected type parameter `I`, found struct `Iter`
+   |         ^^^^^^^^^^^ expected type parameter `I`, found `Iter<'_, N>`
    |
    = note: expected type parameter `I`
                       found struct `std::slice::Iter<'_, N>`
@@ -22,7 +22,7 @@ error[E0308]: mismatched types
 LL |     iterate(graph);
    |     ------- ^^^^^
    |     |       |
-   |     |       expected reference, found struct `Vec`
+   |     |       expected `&_`, found `Vec<Stuff>`
    |     |       help: consider borrowing here: `&graph`
    |     arguments to this function are incorrect
    |

@@ -4,7 +4,7 @@ error[E0053]: method `poll` has an incompatible type for trait
 LL |     fn poll(self, _: &mut Context<'_>) -> Poll<()> {
    |             ^^^^
    |             |
-   |             expected struct `Pin`, found struct `MyFuture`
+   |             expected `Pin<&mut MyFuture>`, found `MyFuture`
    |             help: change the self-receiver type to match the trait: `self: Pin<&mut MyFuture>`
    |
    = note: expected signature `fn(Pin<&mut MyFuture>, &mut Context<'_>) -> Poll<_>`
@@ -16,7 +16,7 @@ error[E0053]: method `foo` has an incompatible type for trait
 LL |     fn foo(self: Box<Self>) {}
    |            ------^^^^^^^^^
    |            |     |
-   |            |     expected struct `MyFuture`, found struct `Box`
+   |            |     expected `MyFuture`, found `Box<MyFuture>`
    |            help: change the self-receiver type to match the trait: `self`
    |
 note: type in trait
@@ -31,7 +31,7 @@ error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/bad-self-type.rs:24:18
    |
 LL |     fn bar(self) {}
-   |                  ^ expected enum `Option`, found `()`
+   |                  ^ expected `Option<()>`, found `()`
    |
 note: type in trait
   --> $DIR/bad-self-type.rs:18:21

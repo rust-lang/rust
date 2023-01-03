@@ -5,7 +5,7 @@ LL |       let Some(x) = Some(1) else {
    |  ________________________________^
 LL | |         Some(2)
 LL | |     };
-   | |_____^ expected `!`, found enum `Option`
+   | |_____^ expected `!`, found `Option<{integer}>`
    |
    = note: expected type `!`
               found enum `Option<{integer}>`
@@ -32,7 +32,7 @@ error[E0308]: `else` clause of `let...else` does not diverge
   --> $DIR/let-else-non-diverging.rs:10:32
    |
 LL |     let Some(x) = Some(1) else { Some(2) };
-   |                                ^^^^^^^^^^^ expected `!`, found enum `Option`
+   |                                ^^^^^^^^^^^ expected `!`, found `Option<{integer}>`
    |
    = note: expected type `!`
               found enum `Option<{integer}>`
@@ -43,7 +43,7 @@ error[E0308]: `else` clause of `let...else` does not diverge
   --> $DIR/let-else-non-diverging.rs:15:32
    |
 LL |     let Some(x) = Some(1) else { foo::<Uninhabited>() };
-   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ expected `!`, found enum `Uninhabited`
+   |                                ^^^^^^^^^^^^^^^^^^^^^^^^ expected `!`, found `Uninhabited`
    |
    = note: expected type `!`
               found enum `Uninhabited`

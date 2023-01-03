@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     match Some("foo") {
    |           ----------- this expression has type `Option<&str>`
 LL |         None::<isize> => {}
-   |         ^^^^^^^^^^^^^ expected `&str`, found `isize`
+   |         ^^^^^^^^^^^^^ expected `Option<&str>`, found `Option<isize>`
    |
    = note: expected enum `Option<&str>`
               found enum `Option<isize>`

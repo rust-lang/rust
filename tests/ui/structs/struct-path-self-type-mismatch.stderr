@@ -34,7 +34,7 @@ LL | |
 LL | |             inner: u
 LL | |
 LL | |         }
-   | |_________^ expected type parameter `U`, found type parameter `T`
+   | |_________^ expected `Foo<U>`, found `Foo<T>`
    |
    = note: expected struct `Foo<U>`
               found struct `Foo<T>`

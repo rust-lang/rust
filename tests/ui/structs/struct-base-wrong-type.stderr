@@ -2,25 +2,25 @@ error[E0308]: mismatched types
   --> $DIR/struct-base-wrong-type.rs:7:33
    |
 LL | static foo: Foo = Foo { a: 2, ..bar };
-   |                                 ^^^ expected struct `Foo`, found struct `Bar`
+   |                                 ^^^ expected `Foo`, found `Bar`
 
 error[E0308]: mismatched types
   --> $DIR/struct-base-wrong-type.rs:8:35
    |
 LL | static foo_i: Foo = Foo { a: 2, ..4 };
-   |                                   ^ expected struct `Foo`, found integer
+   |                                   ^ expected `Foo`, found integer
 
 error[E0308]: mismatched types
   --> $DIR/struct-base-wrong-type.rs:12:27
    |
 LL |     let f = Foo { a: 2, ..b };
-   |                           ^ expected struct `Foo`, found struct `Bar`
+   |                           ^ expected `Foo`, found `Bar`
 
 error[E0308]: mismatched types
   --> $DIR/struct-base-wrong-type.rs:13:34
    |
 LL |     let f__isize = Foo { a: 2, ..4 };
-   |                                  ^ expected struct `Foo`, found integer
+   |                                  ^ expected `Foo`, found integer
 
 error: aborting due to 4 previous errors
 

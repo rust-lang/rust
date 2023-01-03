@@ -2,7 +2,7 @@ error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn 
   --> $DIR/issue-98634.rs:45:23
    |
 LL |         StructAsync { callback }.await;
-   |                       ^^^^^^^^ expected struct `Pin`, found opaque type
+   |                       ^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21
@@ -21,7 +21,7 @@ error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn 
   --> $DIR/issue-98634.rs:45:9
    |
 LL |         StructAsync { callback }.await;
-   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected struct `Pin`, found opaque type
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21
@@ -40,7 +40,7 @@ error[E0271]: expected `fn() -> impl Future<Output = ()> {callback}` to be a fn 
   --> $DIR/issue-98634.rs:45:33
    |
 LL |         StructAsync { callback }.await;
-   |                                 ^^^^^^ expected struct `Pin`, found opaque type
+   |                                 ^^^^^^ expected `Pin<Box<dyn Future<Output = ()>>>`, found opaque type
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-98634.rs:24:21

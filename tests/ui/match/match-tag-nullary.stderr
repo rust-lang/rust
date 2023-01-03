@@ -5,7 +5,7 @@ LL | enum B { B }
    |          - unit variant defined here
 LL |
 LL | fn main() { let x: A = A::A; match x { B::B => { } } }
-   |                                    -   ^^^^ expected enum `A`, found enum `B`
+   |                                    -   ^^^^ expected `A`, found `B`
    |                                    |
    |                                    this expression has type `A`
 

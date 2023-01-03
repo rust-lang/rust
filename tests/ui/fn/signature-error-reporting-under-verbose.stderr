@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/signature-error-reporting-under-verbose.rs:10:15
    |
 LL |     needs_ptr(foo);
-   |     --------- ^^^ expected `u32`, found `i32`
+   |     --------- ^^^ expected fn pointer, found fn item
    |     |
    |     arguments to this function are incorrect
    |

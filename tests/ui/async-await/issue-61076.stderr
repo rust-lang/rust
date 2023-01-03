@@ -62,7 +62,7 @@ LL |     match tuple() {
    |           ------- this expression has type `impl Future<Output = Tuple>`
 LL |
 LL |         Tuple(_) => {}
-   |         ^^^^^^^^ expected opaque type, found struct `Tuple`
+   |         ^^^^^^^^ expected opaque type, found `Tuple`
    |
 note: while checking the return type of the `async fn`
   --> $DIR/issue-61076.rs:56:21

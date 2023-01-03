@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-100605.rs:4:18
    |
 LL |     takes_option(&None);
-   |     ------------ ^^^^^ expected enum `Option`, found `&Option<_>`
+   |     ------------ ^^^^^ expected `Option<&String>`, found `&Option<_>`
    |     |
    |     arguments to this function are incorrect
    |
@@ -29,7 +29,7 @@ error[E0308]: mismatched types
 LL |     takes_option(&res);
    |     ------------ ^^^^
    |     |            |
-   |     |            expected enum `Option`, found `&Option<String>`
+   |     |            expected `Option<&String>`, found `&Option<String>`
    |     |            help: you can convert from `&Option<T>` to `Option<&T>` using `.as_ref()`: `res.as_ref()`
    |     arguments to this function are incorrect
    |

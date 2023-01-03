@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-6458-4.rs:1:20
    |
 LL | fn foo(b: bool) -> Result<bool,String> {
-   |    ---             ^^^^^^^^^^^^^^^^^^^ expected enum `Result`, found `()`
+   |    ---             ^^^^^^^^^^^^^^^^^^^ expected `Result<bool, String>`, found `()`
    |    |
    |    implicitly returns `()` as its body has no tail or `return` expression
 LL |     Err("bar".to_string());

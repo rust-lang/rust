@@ -2,7 +2,7 @@ error[E0308]: mismatched types
   --> $DIR/issue-90213-expected-boxfuture-self-ice.rs:9:19
    |
 LL |         Self::foo(None)
-   |         --------- ^^^^ expected struct `Box`, found enum `Option`
+   |         --------- ^^^^ expected `Box<Option<S>>`, found `Option<_>`
    |         |
    |         arguments to this function are incorrect
    |
