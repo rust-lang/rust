@@ -20,6 +20,7 @@ fn returns_closure() -> _ {
 //~| NOTE not allowed in type signatures
 //~| HELP replace with an appropriate return type
 //~| SUGGESTION impl Fn() -> i32
+//~| NOTE for more information on `Fn` traits and closure types
     || 0
 }
 

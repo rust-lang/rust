@@ -1231,10 +1231,10 @@ fn infer_return_ty_for_fn_sig<'tcx>(
                     Applicability::MachineApplicable,
                 );
             } else if ret_ty.is_closure() {
-                // We're dealing with a closure, so we should suggest using `impl Fn` or trait bounds
-                // to prevent the user from getting a papercut while trying to use the unique closure
-                // syntax (e.g. `[closure@src/lib.rs:2:5: 2:9]`).
                 diag.help("consider using an `Fn`, `FnMut`, or `FnOnce` trait bound");
+            }
+            // Also note how `Fn` traits work just in case!
+            if ret_ty.is_closure() {
                 diag.note(
                     "for more information on `Fn` traits and closure types, see \
                      https://doc.rust-lang.org/book/ch13-01-closures.html",
