@@ -527,26 +527,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // that are *partially* initialized by assigning to a field of an uninitialized
             // binding. We differentiate between them for more accurate wording here.
             "isn't fully initialized"
-        } else if spans
-            .iter()
-            .filter(|i| {
-                // We filter these to avoid misleading wording in cases like the following,
-                // where `x` has an `init`, but it is in the same place we're looking at:
-                // ```
-                // let x;
-                // x += 1;
-                // ```
-                !i.contains(span)
-                    // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
-                        && !visitor
-                            .errors
-                            .iter()
-                            .map(|(sp, _)| *sp)
-                            .any(|sp| span < sp && !sp.contains(span))
-            })
-            .count()
-            == 0
-        {
+        } else if !spans.iter().any(|i| {
+            // We filter these to avoid misleading wording in cases like the following,
+            // where `x` has an `init`, but it is in the same place we're looking at:
+            // ```
+            // let x;
+            // x += 1;
+            // ```
+            !i.contains(span)
+            // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
+            && !visitor
+                .errors
+                .iter()
+                .map(|(sp, _)| *sp)
+                .any(|sp| span < sp && !sp.contains(span))
+        }) {
             show_assign_sugg = true;
             "isn't initialized"
         } else {

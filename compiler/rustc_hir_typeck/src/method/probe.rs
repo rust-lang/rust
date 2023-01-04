@@ -1111,7 +1111,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                 // a raw pointer
                 !step.self_ty.references_error() && !step.from_unsafe_deref
             })
-            .flat_map(|step| {
+            .find_map(|step| {
                 let InferOk { value: self_ty, obligations: _ } = self
                     .fcx
                     .probe_instantiate_query_response(
@@ -1147,7 +1147,6 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                         })
                     })
             })
-            .next()
     }
 
     /// For each type `T` in the step list, this attempts to find a method where

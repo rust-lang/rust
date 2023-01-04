@@ -1244,7 +1244,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     ) -> RValue<'gcc> {
         // FIXME(antoyo): remove when having a proper API.
         let gcc_func = unsafe { std::mem::transmute(func) };
-        let call = if self.functions.borrow().values().find(|value| **value == gcc_func).is_some() {
+        let call = if self.functions.borrow().values().any(|value| *value == gcc_func) {
             self.function_call(func, args, funclet)
         }
         else {

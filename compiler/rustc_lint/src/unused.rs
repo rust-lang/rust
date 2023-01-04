@@ -256,7 +256,7 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         cx.tcx,
                         cx.tcx.explicit_item_bounds(def).iter().cloned(),
                     )
-                    .filter_map(|obligation| {
+                    .find_map(|obligation| {
                         // We only look at the `DefId`, so it is safe to skip the binder here.
                         if let ty::PredicateKind::Clause(ty::Clause::Trait(
                             ref poly_trait_predicate,
@@ -270,22 +270,17 @@ impl<'tcx> LateLintPass<'tcx> for UnusedResults {
                         }
                     })
                     .map(|inner| MustUsePath::Opaque(Box::new(inner)))
-                    .next()
                 }
-                ty::Dynamic(binders, _, _) => binders
-                    .iter()
-                    .filter_map(|predicate| {
-                        if let ty::ExistentialPredicate::Trait(ref trait_ref) =
-                            predicate.skip_binder()
-                        {
-                            let def_id = trait_ref.def_id;
-                            is_def_must_use(cx, def_id, span)
-                        } else {
-                            None
-                        }
-                        .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
-                    })
-                    .next(),
+                ty::Dynamic(binders, _, _) => binders.iter().find_map(|predicate| {
+                    if let ty::ExistentialPredicate::Trait(ref trait_ref) = predicate.skip_binder()
+                    {
+                        let def_id = trait_ref.def_id;
+                        is_def_must_use(cx, def_id, span)
+                            .map(|inner| MustUsePath::TraitObject(Box::new(inner)))
+                    } else {
+                        None
+                    }
+                }),
                 ty::Tuple(tys) => {
                     let elem_exprs = if let hir::ExprKind::Tup(elem_exprs) = expr.kind {
                         debug_assert_eq!(elem_exprs.len(), tys.len());

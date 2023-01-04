@@ -108,11 +108,7 @@ body {
 	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
 	   more aggressively when we want them to. */
 	overflow-wrap: anywhere;
-
-	-webkit-font-feature-settings: "kern", "liga";
-	-moz-font-feature-settings: "kern", "liga";
 	font-feature-settings: "kern", "liga";
-
 	background-color: var(--main-background-color);
 	color: var(--main-color);
 }

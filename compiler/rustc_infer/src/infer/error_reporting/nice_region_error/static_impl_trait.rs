@@ -239,7 +239,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let mut v = TraitObjectVisitor(FxIndexSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
-                self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
+                NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, item_def_id, &v.0)
                 && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
             {
                 override_error_code = Some(ident.name);
@@ -309,19 +309,12 @@ pub fn suggest_new_region_bound(
                 let did = item_id.owner_id.to_def_id();
                 let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
 
-                if let Some(span) = opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime {
-                            res: LifetimeName::Static,
-                            ident,
-                            ..
-                        }) => Some(ident.span),
-                        _ => None,
-                    })
-                    .next()
-                {
+                if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
+                    GenericBound::Outlives(Lifetime {
+                        res: LifetimeName::Static, ident, ..
+                    }) => Some(ident.span),
+                    _ => None,
+                }) {
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
@@ -338,20 +331,14 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else if opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime { ident, .. })
-                            if ident.name.to_string() == lifetime_name =>
-                        {
-                            Some(ident.span)
-                        }
-                        _ => None,
-                    })
-                    .next()
-                    .is_some()
-                {
+                } else if opaque.bounds.iter().any(|arg| match arg {
+                    GenericBound::Outlives(Lifetime { ident, .. })
+                        if ident.name.to_string() == lifetime_name =>
+                    {
+                        true
+                    }
+                    _ => false,
+                }) {
                 } else {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
@@ -403,66 +390,54 @@ pub fn suggest_new_region_bound(
 }
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    fn get_impl_ident_and_self_ty_from_trait(
-        &self,
+    pub fn get_impl_ident_and_self_ty_from_trait(
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
         trait_objects: &FxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
-        let tcx = self.tcx();
-        match tcx.hir().get_if_local(def_id) {
-            Some(Node::ImplItem(impl_item)) => {
-                match tcx.hir().find_by_def_id(tcx.hir().get_parent_item(impl_item.hir_id()).def_id)
+        match tcx.hir().get_if_local(def_id)? {
+            Node::ImplItem(impl_item) => {
+                let impl_did = tcx.hir().get_parent_item(impl_item.hir_id());
+                if let hir::OwnerNode::Item(Item {
+                    kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                    ..
+                }) = tcx.hir().owner(impl_did)
                 {
-                    Some(Node::Item(Item {
-                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                        ..
-                    })) => Some((impl_item.ident, self_ty)),
-                    _ => None,
+                    Some((impl_item.ident, self_ty))
+                } else {
+                    None
                 }
             }
-            Some(Node::TraitItem(trait_item)) => {
-                let trait_did = tcx.hir().get_parent_item(trait_item.hir_id());
-                match tcx.hir().find_by_def_id(trait_did.def_id) {
-                    Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
-                        // The method being called is defined in the `trait`, but the `'static`
-                        // obligation comes from the `impl`. Find that `impl` so that we can point
-                        // at it in the suggestion.
-                        let trait_did = trait_did.to_def_id();
-                        match tcx
-                            .hir()
-                            .trait_impls(trait_did)
-                            .iter()
-                            .filter_map(|&impl_did| {
-                                match tcx.hir().get_if_local(impl_did.to_def_id()) {
-                                    Some(Node::Item(Item {
-                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                                        ..
-                                    })) if trait_objects.iter().all(|did| {
-                                        // FIXME: we should check `self_ty` against the receiver
-                                        // type in the `UnifyReceiver` context, but for now, use
-                                        // this imperfect proxy. This will fail if there are
-                                        // multiple `impl`s for the same trait like
-                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
-                                        // In that case, only the first one will get suggestions.
-                                        let mut traits = vec![];
-                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                                        hir_v.visit_ty(self_ty);
-                                        !traits.is_empty()
-                                    }) =>
-                                    {
-                                        Some(self_ty)
-                                    }
-                                    _ => None,
-                                }
-                            })
-                            .next()
-                        {
-                            Some(self_ty) => Some((trait_item.ident, self_ty)),
-                            _ => None,
-                        }
+            Node::TraitItem(trait_item) => {
+                let trait_id = tcx.hir().get_parent_item(trait_item.hir_id());
+                debug_assert_eq!(tcx.def_kind(trait_id.def_id), hir::def::DefKind::Trait);
+                // The method being called is defined in the `trait`, but the `'static`
+                // obligation comes from the `impl`. Find that `impl` so that we can point
+                // at it in the suggestion.
+                let trait_did = trait_id.to_def_id();
+                tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
+                    if let Node::Item(Item {
+                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                        ..
+                    }) = tcx.hir().find_by_def_id(impl_did)?
+                        && trait_objects.iter().all(|did| {
+                            // FIXME: we should check `self_ty` against the receiver
+                            // type in the `UnifyReceiver` context, but for now, use
+                            // this imperfect proxy. This will fail if there are
+                            // multiple `impl`s for the same trait like
+                            // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
+                            // In that case, only the first one will get suggestions.
+                            let mut traits = vec![];
+                            let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
+                            hir_v.visit_ty(self_ty);
+                            !traits.is_empty()
+                        })
+                    {
+                        Some((trait_item.ident, *self_ty))
+                    } else {
+                        None
                     }
-                    _ => None,
-                }
+                })
             }
             _ => None,
         }
@@ -493,7 +468,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) = self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0) else {
+        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0) else {
             return false;
         };
 

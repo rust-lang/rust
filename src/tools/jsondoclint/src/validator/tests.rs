@@ -2,11 +2,16 @@ use std::collections::HashMap;
 
 use rustdoc_json_types::{Crate, Item, Visibility};
 
+use crate::json_find::SelectorPart;
+
 use super::*;
 
 #[track_caller]
 fn check(krate: &Crate, errs: &[Error]) {
-    let mut validator = Validator::new(krate);
+    let krate_string = serde_json::to_string(krate).unwrap();
+    let krate_json = serde_json::from_str(&krate_string).unwrap();
+
+    let mut validator = Validator::new(krate, krate_json);
     validator.check_crate();
 
     assert_eq!(errs, &validator.errs[..]);
@@ -46,5 +51,16 @@ fn errors_on_missing_links() {
         format_version: rustdoc_json_types::FORMAT_VERSION,
     };
 
-    check(&k, &[Error { kind: ErrorKind::NotFound, id: id("1") }]);
+    check(
+        &k,
+        &[Error {
+            kind: ErrorKind::NotFound(vec![vec![
+                SelectorPart::Field("index".to_owned()),
+                SelectorPart::Field("0".to_owned()),
+                SelectorPart::Field("links".to_owned()),
+                SelectorPart::Field("Not Found".to_owned()),
+            ]]),
+            id: id("1"),
+        }],
+    );
 }
