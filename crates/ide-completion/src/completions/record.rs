@@ -159,8 +159,9 @@ fn baz() {
     #[test]
     fn enum_variant_no_snippets() {
         let conf = CompletionConfig { snippet_cap: SnippetCap::new(false), ..TEST_CONFIG };
+        // tuple variant
         check_edit_with_config(
-            conf,
+            conf.clone(),
             "Variant()",
             r#"
 enum Enum {
@@ -176,6 +177,34 @@ impl Enum {
             r#"
 enum Enum {
     Variant(usize),
+}
+
+impl Enum {
+    fn new(u: usize) -> Self {
+        Self::Variant
+    }
+}
+"#,
+        );
+
+        // record variant
+        check_edit_with_config(
+            conf,
+            "Variant{}",
+            r#"
+enum Enum {
+    Variant{u: usize},
+}
+
+impl Enum {
+    fn new(u: usize) -> Self {
+        Self::Va$0
+    }
+}
+"#,
+            r#"
+enum Enum {
+    Variant{u: usize},
 }
 
 impl Enum {
