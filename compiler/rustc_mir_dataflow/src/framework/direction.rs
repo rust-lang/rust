@@ -287,7 +287,7 @@ impl Direction for Backward {
                 | mir::TerminatorKind::InlineAsm { cleanup: Some(unwind), .. }
                     if unwind == bb =>
                 {
-                    if dead_unwinds.map_or(true, |dead| !dead.contains(bb)) {
+                    if dead_unwinds.map_or(true, |dead| !dead.contains(pred)) {
                         propagate(pred, exit_state);
                     }
                 }
