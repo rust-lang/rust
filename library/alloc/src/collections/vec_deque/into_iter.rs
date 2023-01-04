@@ -17,18 +17,19 @@ use super::VecDeque;
 pub struct IntoIter<
     T,
     #[unstable(feature = "allocator_api", issue = "32838")] A: Allocator = Global,
+    const COOP_PREFERRED: bool = true
 >
-where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
-    inner: VecDeque<T, A>,
+where [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]: {
+    inner: VecDeque<T, A, COOP_PREFERRED>,
 }
 
-impl<T, A: Allocator> IntoIter<T, A>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIter<T, A, COOP_PREFERRED>
 where [(); alloc::co_alloc_metadata_num_slots::<A>()]: {
-    pub(super) fn new(inner: VecDeque<T, A>) -> Self {
+    pub(super) fn new(inner: VecDeque<T, A, COOP_PREFERRED>) -> Self {
         IntoIter { inner }
     }
 
-    pub(super) fn into_vecdeque(self) -> VecDeque<T, A> {
+    pub(super) fn into_vecdeque(self) -> VecDeque<T, A, COOP_PREFERRED> {
         self.inner
     }
 }
