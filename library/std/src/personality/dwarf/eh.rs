@@ -84,7 +84,7 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
             let cs_start = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
             let cs_len = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
             let cs_lpad = read_encoded_pointer(&mut reader, context, call_site_encoding)?;
-            let cs_action = reader.read_uleb128();
+            let cs_action_entry = reader.read_uleb128();
             // Callsite table is sorted by cs_start, so if we've passed the ip, we
             // may stop searching.
             if ip < func_start + cs_start {
@@ -95,7 +95,15 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                     return Ok(EHAction::None);
                 } else {
                     let lpad = lpad_base + cs_lpad;
-                    return Ok(interpret_cs_action(cs_action, lpad));
+                    if cs_action_entry == 0 {
+                        return Ok(interpret_cs_action(0, lpad));
+                    } else {
+                        let action_record =
+                            (action_table as *mut u8).offset(cs_action_entry as isize - 1);
+                        let mut action_reader = DwarfReader::new(action_record);
+                        let ttype_index = action_reader.read_sleb128();
+                        return Ok(interpret_cs_action(ttype_index as u64, lpad));
+                    }
                 }
             }
         }
