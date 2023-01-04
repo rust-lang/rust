@@ -1,8 +1,8 @@
-error: calling `std::string::String::default()` is more clear than this expression
+error: calling `String::default()` is more clear than this expression
   --> $DIR/default_trait_access.rs:15:22
    |
 LL |     let s1: String = Default::default();
-   |                      ^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+   |                      ^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
    |
 note: the lint level is defined here
   --> $DIR/default_trait_access.rs:3:9
@@ -10,23 +10,23 @@ note: the lint level is defined here
 LL | #![deny(clippy::default_trait_access)]
    |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: calling `std::string::String::default()` is more clear than this expression
+error: calling `String::default()` is more clear than this expression
   --> $DIR/default_trait_access.rs:19:22
    |
 LL |     let s3: String = D2::default();
-   |                      ^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+   |                      ^^^^^^^^^^^^^ help: try: `String::default()`
 
-error: calling `std::string::String::default()` is more clear than this expression
+error: calling `String::default()` is more clear than this expression
   --> $DIR/default_trait_access.rs:21:22
    |
 LL |     let s4: String = std::default::Default::default();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
 
-error: calling `std::string::String::default()` is more clear than this expression
+error: calling `String::default()` is more clear than this expression
   --> $DIR/default_trait_access.rs:25:22
    |
 LL |     let s6: String = default::Default::default();
-   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `std::string::String::default()`
+   |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `String::default()`
 
 error: calling `GenericDerivedDefault::default()` is more clear than this expression
   --> $DIR/default_trait_access.rs:35:46
