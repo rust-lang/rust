@@ -411,6 +411,8 @@ fn inner_mir_for_ctfe(tcx: TyCtxt<'_>, def: ty::WithOptConstParam<LocalDefId>) -
         }
     }
 
+    pm::run_passes(tcx, &mut body, &[&ctfe_limit::CtfeLimit], None);
+
     debug_assert!(!body.has_free_regions(), "Free regions in MIR for CTFE");
 
     body
@@ -518,7 +520,6 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
         // CTFE support for aggregates.
         &deaggregator::Deaggregator,
         &Lint(const_prop_lint::ConstProp),
-        &ctfe_limit::CtfeLimit,
     ];
     pm::run_passes_no_validate(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::Initial)));
 }
