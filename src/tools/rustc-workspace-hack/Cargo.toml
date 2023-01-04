@@ -77,6 +77,8 @@ clap = { version = "3.1.1", features = ["derive", "clap_derive"]}
 curl-sys = { version = "0.4.13", features = ["http2", "libnghttp2-sys"], optional = true }
 # Ensure `extra_traits` of libc, which is used transitively by Cargo.
 libc = { version = "0.2", features = ["extra_traits"] }
+# Ensure `js` of getrandom, which is (unfortunately) used transitively by Cargo.
+getrandom = { version = "0.2", features = ["js"] }
 # Ensure default features of libz-sys, which are disabled in some scenarios.
 libz-sys = { version = "1.1.2" }
 # Ensure default features of regex, which are disabled in some scenarios.
