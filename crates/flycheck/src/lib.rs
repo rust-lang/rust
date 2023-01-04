@@ -47,6 +47,7 @@ pub enum FlycheckConfig {
         features: Vec<String>,
         extra_args: Vec<String>,
         extra_env: FxHashMap<String, String>,
+        ansi_color_output: bool,
     },
     CustomCommand {
         command: String,
@@ -293,16 +294,21 @@ impl FlycheckActor {
                 extra_args,
                 features,
                 extra_env,
+                ansi_color_output,
             } => {
                 let mut cmd = Command::new(toolchain::cargo());
                 cmd.arg(command);
                 cmd.current_dir(&self.root);
-                cmd.args([
-                    "--workspace",
-                    "--message-format=json-diagnostic-rendered-ansi",
-                    "--manifest-path",
-                ])
-                .arg(self.root.join("Cargo.toml").as_os_str());
+                cmd.arg("--workspace");
+
+                cmd.arg(if *ansi_color_output {
+                    "--message-format=json-diagnostic-rendered-ansi"
+                } else {
+                    "--message-format=json"
+                });
+
+                cmd.arg("--manifest-path");
+                cmd.arg(self.root.join("Cargo.toml").as_os_str());
 
                 for target in target_triples {
                     cmd.args(["--target", target.as_str()]);

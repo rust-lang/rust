@@ -333,6 +333,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
         caps.codeActionGroup = true;
         caps.hoverActions = true;
         caps.serverStatusNotification = true;
+        caps.colorDiagnosticOutput = true;
         caps.commands = {
             commands: [
                 "rust-analyzer.runSingle",
