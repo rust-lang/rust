@@ -11,7 +11,7 @@ fn is_edition_2021(mut line: &str) -> bool {
 pub fn check(path: &Path, bad: &mut bool) {
     walk(
         path,
-        &mut |path| {
+        |path| {
             filter_dirs(path)
                 || (path.ends_with("tests") && path.join("COMPILER_TESTS.md").exists())
         },
