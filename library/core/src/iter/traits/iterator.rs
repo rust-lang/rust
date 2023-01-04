@@ -1,7 +1,7 @@
 use crate::array;
 use crate::cmp::{self, Ordering};
 use crate::marker::Destruct;
-use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, Residual, Try};
+use crate::ops::{ChangeOutputType, ControlFlow, FromResidual, NeverShortCircuit, Residual, Try};
 
 use super::super::try_process;
 use super::super::ByRefSized;
@@ -2472,16 +2472,12 @@ pub trait Iterator {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     #[rustc_do_not_const_check]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    fn fold<B, F>(mut self, init: B, f: F) -> B
     where
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        let mut accum = init;
-        while let Some(x) = self.next() {
-            accum = f(accum, x);
-        }
-        accum
+        self.try_fold(init, NeverShortCircuit::wrap_mut_2(f)).0
     }
 
     /// Reduces the elements to a single one, by repeatedly applying a reducing
