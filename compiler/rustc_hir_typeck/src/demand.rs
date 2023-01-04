@@ -294,143 +294,151 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let id = map.get_parent_item(hir_id);
         let hir_id: hir::HirId = id.into();
 
-        if let Some(node) = map.find(hir_id) && let Some(body_id) = node.body_id() {
-            let body = map.body(body_id);
-            expr_finder.visit_expr(body.value);
-            let mut eraser = TypeEraser { tcx };
-            let mut prev = eraser.fold_ty(ty);
-            let mut prev_span = None;
+        let Some(node) = map.find(hir_id) else { return false; };
+        let Some(body_id) = node.body_id() else { return false; };
+        let body = map.body(body_id);
+        expr_finder.visit_expr(body.value);
+        let mut eraser = TypeEraser { tcx };
+        let mut prev = eraser.fold_ty(ty);
+        let mut prev_span = None;
 
-            for binding in expr_finder.uses {
-                // In every expression where the binding is referenced, we will look at that
-                // expression's type and see if it is where the incorrect found type was fully
-                // "materialized" and point at it. We will also try to provide a suggestion there.
-                let parent = map.get_parent_node(binding.hir_id);
-                if let Some(hir::Node::Expr(expr))
-                | Some(hir::Node::Stmt(hir::Stmt {
-                    kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
-                    ..
-                })) = &map.find(parent)
-                    && let hir::ExprKind::MethodCall(s, rcvr, args, _span) = expr.kind
-                    && rcvr.hir_id == binding.hir_id
-                    && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
-                {
-                    // We special case methods, because they can influence inference through the
-                    // call's arguments and we can provide a more explicit span.
-                    let sig = self.tcx.fn_sig(def_id);
-                    let def_self_ty = sig.input(0).skip_binder();
-                    let rcvr_ty = self.node_ty(rcvr.hir_id);
-                    // Get the evaluated type *after* calling the method call, so that the influence
-                    // of the arguments can be reflected in the receiver type. The receiver
-                    // expression has the type *before* theis analysis is done.
-                    let ty = match self.lookup_probe(s.ident, rcvr_ty, expr, probe::ProbeScope::TraitsInScope) {
-                        Ok(pick) => pick.self_ty,
-                        Err(_) => rcvr_ty,
-                    };
-                    // Remove one layer of references to account for `&mut self` and
-                    // `&self`, so that we can compare it against the binding.
-                    let (ty, def_self_ty) = match (ty.kind(), def_self_ty.kind()) {
-                        (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if a == b => (*ty, *self_ty),
-                        _ => (ty, def_self_ty),
-                    };
-                    let mut param_args = FxHashMap::default();
-                    let mut param_expected = FxHashMap::default();
-                    let mut param_found = FxHashMap::default();
-                    if self.can_eq(self.param_env, ty, found).is_ok() {
-                        // We only point at the first place where the found type was inferred.
-                        for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
-                            if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
-                                // We found an argument that references a type parameter in `Self`,
-                                // so we assume that this is the argument that caused the found
-                                // type, which we know already because of `can_eq` above was first
-                                // inferred in this method call.
-                                let arg = &args[i];
-                                let arg_ty = self.node_ty(arg.hir_id);
-                                err.span_label(
-                                    arg.span,
-                                    &format!(
-                                        "this is of type `{arg_ty}`, which makes `{ident}` to be \
-                                         inferred as `{ty}`",
-                                    ),
-                                );
-                                param_args.insert(param_ty, (arg, arg_ty));
-                            }
+        for binding in expr_finder.uses {
+            // In every expression where the binding is referenced, we will look at that
+            // expression's type and see if it is where the incorrect found type was fully
+            // "materialized" and point at it. We will also try to provide a suggestion there.
+            let parent = map.get_parent_node(binding.hir_id);
+            if let Some(hir::Node::Expr(expr))
+            | Some(hir::Node::Stmt(hir::Stmt {
+                kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
+                ..
+            })) = &map.find(parent)
+                && let hir::ExprKind::MethodCall(segment, rcvr, args, _span) = expr.kind
+                && rcvr.hir_id == binding.hir_id
+                && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            {
+                // We special case methods, because they can influence inference through the
+                // call's arguments and we can provide a more explicit span.
+                let sig = self.tcx.fn_sig(def_id);
+                let def_self_ty = sig.input(0).skip_binder();
+                let rcvr_ty = self.node_ty(rcvr.hir_id);
+                // Get the evaluated type *after* calling the method call, so that the influence
+                // of the arguments can be reflected in the receiver type. The receiver
+                // expression has the type *before* theis analysis is done.
+                let ty = match self.lookup_probe(
+                    segment.ident,
+                    rcvr_ty,
+                    expr,
+                    probe::ProbeScope::TraitsInScope,
+                ) {
+                    Ok(pick) => pick.self_ty,
+                    Err(_) => rcvr_ty,
+                };
+                // Remove one layer of references to account for `&mut self` and
+                // `&self`, so that we can compare it against the binding.
+                let (ty, def_self_ty) = match (ty.kind(), def_self_ty.kind()) {
+                    (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if a == b => (*ty, *self_ty),
+                    _ => (ty, def_self_ty),
+                };
+                let mut param_args = FxHashMap::default();
+                let mut param_expected = FxHashMap::default();
+                let mut param_found = FxHashMap::default();
+                if self.can_eq(self.param_env, ty, found).is_ok() {
+                    // We only point at the first place where the found type was inferred.
+                    for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
+                        if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
+                            // We found an argument that references a type parameter in `Self`,
+                            // so we assume that this is the argument that caused the found
+                            // type, which we know already because of `can_eq` above was first
+                            // inferred in this method call.
+                            let arg = &args[i];
+                            let arg_ty = self.node_ty(arg.hir_id);
+                            err.span_label(
+                                arg.span,
+                                &format!(
+                                    "this is of type `{arg_ty}`, which makes `{ident}` to be \
+                                     inferred as `{ty}`",
+                                ),
+                            );
+                            param_args.insert(param_ty, (arg, arg_ty));
                         }
                     }
-
-                    // Here we find, for a type param `T`, the type that `T` is in the current
-                    // method call *and* in the original expected type. That way, we can see if we
-                    // can give any structured suggestion for the function argument.
-                    let mut c = CollectAllMismatches {
-                        infcx: &self.infcx,
-                        param_env: self.param_env,
-                        errors: vec![],
-                    };
-                    let _ = c.relate(def_self_ty, ty);
-                    for error in c.errors {
-                        if let TypeError::Sorts(error) = error {
-                            param_found.insert(error.expected, error.found);
-                        }
-                    }
-                    c.errors = vec![];
-                    let _ = c.relate(def_self_ty, expected);
-                    for error in c.errors {
-                        if let TypeError::Sorts(error) = error {
-                            param_expected.insert(error.expected, error.found);
-                        }
-                    }
-                    for (param, (arg,arg_ty)) in param_args.iter() {
-                        let Some(expected) = param_expected.get(param) else { continue; };
-                        let Some(found) = param_found.get(param) else { continue; };
-                        if self.can_eq(self.param_env, *arg_ty, *found).is_err() { continue; }
-                        self.suggest_deref_ref_or_into(err, arg, *expected, *found, None);
-                    }
-
-                    let ty = eraser.fold_ty(ty);
-                    if ty.references_error() {
-                        break;
-                    }
-                    if ty != prev
-                        && param_args.is_empty()
-                        && self.can_eq(self.param_env, ty, found).is_ok()
-                    {
-                        // We only point at the first place where the found type was inferred.
-                        err.span_label(
-                            s.ident.span,
-                            with_forced_trimmed_paths!(format!(
-                                "here the type of `{ident}` is inferred to be `{ty}`",
-                            )),
-                        );
-                        break;
-                    }
-                    prev = ty;
-                } else {
-                    let ty = eraser.fold_ty(self.node_ty(binding.hir_id));
-                    if ty.references_error() {
-                        break;
-                    }
-                    if ty != prev && let Some(span) = prev_span && self.can_eq(self.param_env, ty, found).is_ok() {
-                        // We only point at the first place where the found type was inferred.
-                        // We use the *previous* span because if the type is known *here* it means
-                        // it was *evaluated earlier*. We don't do this for method calls because we
-                        // evaluate the method's self type eagerly, but not in any other case.
-                        err.span_label(
-                            span,
-                            with_forced_trimmed_paths!(format!(
-                                "here the type of `{ident}` is inferred to be `{ty}`",
-                            )),
-                        );
-                        break;
-                    }
-                    prev = ty;
                 }
-                if binding.hir_id == expr.hir_id {
-                    // Do not look at expressions that come after the expression we were originally
-                    // evaluating and had a type error.
+
+                // Here we find, for a type param `T`, the type that `T` is in the current
+                // method call *and* in the original expected type. That way, we can see if we
+                // can give any structured suggestion for the function argument.
+                let mut c = CollectAllMismatches {
+                    infcx: &self.infcx,
+                    param_env: self.param_env,
+                    errors: vec![],
+                };
+                let _ = c.relate(def_self_ty, ty);
+                for error in c.errors {
+                    if let TypeError::Sorts(error) = error {
+                        param_found.insert(error.expected, error.found);
+                    }
+                }
+                c.errors = vec![];
+                let _ = c.relate(def_self_ty, expected);
+                for error in c.errors {
+                    if let TypeError::Sorts(error) = error {
+                        param_expected.insert(error.expected, error.found);
+                    }
+                }
+                for (param, (arg,arg_ty)) in param_args.iter() {
+                    let Some(expected) = param_expected.get(param) else { continue; };
+                    let Some(found) = param_found.get(param) else { continue; };
+                    if self.can_eq(self.param_env, *arg_ty, *found).is_err() { continue; }
+                    self.suggest_deref_ref_or_into(err, arg, *expected, *found, None);
+                }
+
+                let ty = eraser.fold_ty(ty);
+                if ty.references_error() {
                     break;
                 }
-                prev_span = Some(binding.span);
+                if ty != prev
+                    && param_args.is_empty()
+                    && self.can_eq(self.param_env, ty, found).is_ok()
+                {
+                    // We only point at the first place where the found type was inferred.
+                    err.span_label(
+                        segment.ident.span,
+                        with_forced_trimmed_paths!(format!(
+                            "here the type of `{ident}` is inferred to be `{ty}`",
+                        )),
+                    );
+                    break;
+                }
+                prev = ty;
+            } else {
+                let ty = eraser.fold_ty(self.node_ty(binding.hir_id));
+                if ty.references_error() {
+                    break;
+                }
+                if ty != prev
+                    && let Some(span) = prev_span
+                    && self.can_eq(self.param_env, ty, found).is_ok()
+                {
+                    // We only point at the first place where the found type was inferred.
+                    // We use the *previous* span because if the type is known *here* it means
+                    // it was *evaluated earlier*. We don't do this for method calls because we
+                    // evaluate the method's self type eagerly, but not in any other case.
+                    err.span_label(
+                        span,
+                        with_forced_trimmed_paths!(format!(
+                            "here the type of `{ident}` is inferred to be `{ty}`",
+                        )),
+                    );
+                    break;
+                }
+                prev = ty;
             }
+            if binding.hir_id == expr.hir_id {
+                // Do not look at expressions that come after the expression we were originally
+                // evaluating and had a type error.
+                break;
+            }
+            prev_span = Some(binding.span);
         }
         true
     }
