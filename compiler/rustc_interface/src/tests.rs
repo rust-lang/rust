@@ -3,17 +3,16 @@ use crate::interface::parse_cfgspecs;
 
 use rustc_data_structures::fx::FxHashSet;
 use rustc_errors::{emitter::HumanReadableErrorType, registry, ColorConfig};
-use rustc_session::config::InstrumentCoverage;
-use rustc_session::config::Strip;
+use rustc_session::config::rustc_optgroups;
 use rustc_session::config::{build_configuration, build_session_options, to_crate_config};
-use rustc_session::config::{
-    rustc_optgroups, ErrorOutputType, ExternLocation, LocationDetail, Options, Passes,
-};
 use rustc_session::config::{
     BranchProtection, Externs, OomStrategy, OutputType, OutputTypes, PAuthKey, PacRet,
     ProcMacroExecutionStrategy, SymbolManglingVersion, WasiExecModel,
 };
 use rustc_session::config::{CFGuard, ExternEntry, LinkerPluginLto, LtoCli, SwitchWithOptPath};
+use rustc_session::config::{DumpMonoStatsFormat, MirSpanview};
+use rustc_session::config::{ErrorOutputType, ExternLocation, LocationDetail, Options, Strip};
+use rustc_session::config::{InstrumentCoverage, Passes};
 use rustc_session::lint::Level;
 use rustc_session::search_paths::SearchPath;
 use rustc_session::utils::{CanonicalizedPath, NativeLib, NativeLibKind};
@@ -647,6 +646,9 @@ fn test_unstable_options_tracking_hash() {
     untracked!(dump_mir_dir, String::from("abc"));
     untracked!(dump_mir_exclude_pass_number, true);
     untracked!(dump_mir_graphviz, true);
+    untracked!(dump_mir_spanview, Some(MirSpanview::Statement));
+    untracked!(dump_mono_stats, SwitchWithOptPath::Enabled(Some("mono-items-dir/".into())));
+    untracked!(dump_mono_stats_format, DumpMonoStatsFormat::Json);
     untracked!(dylib_lto, true);
     untracked!(emit_stack_sizes, true);
     untracked!(future_incompat_test, true);
