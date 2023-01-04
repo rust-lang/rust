@@ -14,7 +14,7 @@
 //! # How to read this documentation
 //!
 //! If you already know the name of what you are looking for, the fastest way to
-//! find it is to use the <a href="#" onclick="focusSearchBar();">search
+//! find it is to use the <a href="#" onclick="window.searchState.focus();">search
 //! bar</a> at the top of the page.
 //!
 //! Otherwise, you may want to jump to one of these useful sections:
