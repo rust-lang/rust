@@ -3,12 +3,20 @@
 version = 3
 
 [[package]]
+name = "http"
+version = "0.1.0"
+
+[[package]]
 name = "implementors"
 version = "0.1.0"
+dependencies = [
+ "http",
+]
 
 [[package]]
 name = "lib2"
 version = "0.1.0"
 dependencies = [
+ "http",
  "implementors",
 ]
