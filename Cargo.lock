@@ -597,7 +597,7 @@ checksum = "23b71c3ce99b7611011217b366d923f1d0a7e07a92bb2dbf1e84508c673ca3bd"
 dependencies = [
  "atty",
  "bitflags",
- "clap_derive",
+ "clap_derive 3.2.18",
  "clap_lex 0.2.2",
  "indexmap",
  "once_cell",
@@ -614,7 +614,9 @@ checksum = "6bf8832993da70a4c6d13c581f4463c2bdda27b9bf1c5498dc4365543abe6d6f"
 dependencies = [
  "atty",
  "bitflags",
+ "clap_derive 4.0.13",
  "clap_lex 0.3.0",
+ "once_cell",
  "strsim",
  "termcolor",
 ]
@@ -633,6 +635,19 @@ name = "clap_derive"
 version = "3.2.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ea0c8bce528c4be4da13ea6fead8965e95b6073585a2f05204bd8f4119f82a65"
+dependencies = [
+ "heck",
+ "proc-macro-error",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "clap_derive"
+version = "4.0.13"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c42f169caba89a7d512b5418b09864543eeb4d497416c917d7137863bd2076ad"
 dependencies = [
  "heck",
  "proc-macro-error",
@@ -2097,8 +2112,10 @@ name = "jsondoclint"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "clap 4.0.15",
  "fs-err",
  "rustdoc-json-types",
+ "serde",
  "serde_json",
 ]
 

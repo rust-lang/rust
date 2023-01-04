@@ -1,8 +1,9 @@
 use std::fmt::Write;
 
+use serde::Serialize;
 use serde_json::Value;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub enum SelectorPart {
     Field(String),
     Index(usize),
