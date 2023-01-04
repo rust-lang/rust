@@ -256,7 +256,7 @@ impl linux_ext::addr::SocketAddrExt for SocketAddr {
         if let AddressKind::Abstract(name) = self.address() { Some(name) } else { None }
     }
 
-    fn from_abstract_name<N>(name: &N) -> crate::io::Result<Self>
+    fn from_abstract_name<N>(name: N) -> crate::io::Result<Self>
     where
         N: AsRef<[u8]>,
     {
