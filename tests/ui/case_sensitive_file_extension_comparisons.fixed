@@ -25,6 +25,13 @@ fn main() {
         .extension()
         .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
 
+    // The fixup should preserve the indentation level
+    {
+        let _ = std::path::Path::new("str")
+            .extension()
+            .map_or(false, |ext| ext.eq_ignore_ascii_case("ext12"));
+    }
+
     // The test struct should not trigger the lint failure with .ext12
     TestStruct {}.ends_with(".ext12");
 

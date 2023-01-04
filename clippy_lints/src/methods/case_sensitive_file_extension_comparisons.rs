@@ -1,6 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_then;
+use clippy_utils::source::snippet_opt;
 use clippy_utils::source::{indent_of, reindent_multiline};
-use clippy_utils::sugg::Sugg;
 use clippy_utils::ty::is_type_lang_item;
 use if_chain::if_chain;
 use rustc_ast::ast::LitKind;
@@ -19,8 +19,10 @@ pub(super) fn check<'tcx>(
     arg: &'tcx Expr<'_>,
 ) {
     if let ExprKind::MethodCall(path_segment, ..) = recv.kind {
-        let method_name = path_segment.ident.name.as_str();
-        if method_name == "to_lowercase" || method_name == "to_uppercase" {
+        if matches!(
+            path_segment.ident.name.as_str(),
+            "to_lowercase" | "to_uppercase" | "to_ascii_lowercase" | "to_ascii_uppercase"
+        ) {
             return;
         }
     }
@@ -45,28 +47,29 @@ pub(super) fn check<'tcx>(
                 "case-sensitive file extension comparison",
                 |diag| {
                     diag.help("consider using a case-insensitive comparison instead");
-                    let mut recv_source = Sugg::hir(cx, recv, "").to_string();
+                    if let Some(mut recv_source) = snippet_opt(cx, recv.span) {
 
-                    if is_type_lang_item(cx, recv_ty, LangItem::String) {
-                        recv_source = format!("&{recv_source}");
+                        if !cx.typeck_results().expr_ty(recv).is_ref() {
+                            recv_source = format!("&{recv_source}");
+                        }
+
+                        let suggestion_source = reindent_multiline(
+                            format!(
+                                "std::path::Path::new({})
+                                    .extension()
+                                    .map_or(false, |ext| ext.eq_ignore_ascii_case(\"{}\"))",
+                                recv_source, ext_str.strip_prefix('.').unwrap()).into(),
+                            true,
+                            Some(indent_of(cx, call_span).unwrap_or(0) + 4)
+                        );
+
+                        diag.span_suggestion(
+                            recv.span.to(call_span),
+                            "use std::path::Path",
+                            suggestion_source,
+                            Applicability::MaybeIncorrect,
+                        );
                     }
-
-                    let suggestion_source = reindent_multiline(
-                        format!(
-                            "std::path::Path::new({})
-                                .extension()
-                                .map_or(false, |ext| ext.eq_ignore_ascii_case(\"{}\"))",
-                            recv_source, ext_str.strip_prefix('.').unwrap()).into(),
-                        true,
-                        Some(indent_of(cx, call_span).unwrap_or(0) + 4)
-                    );
-
-                    diag.span_suggestion(
-                        recv.span.to(call_span),
-                        "use std::path::Path",
-                        suggestion_source,
-                        Applicability::MaybeIncorrect,
-                    );
                 }
             );
         }

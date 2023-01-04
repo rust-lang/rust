@@ -19,6 +19,11 @@ fn main() {
     let _ = String::new().ends_with(".ext12");
     let _ = "str".ends_with(".ext12");
 
+    // The fixup should preserve the indentation level
+    {
+        let _ = "str".ends_with(".ext12");
+    }
+
     // The test struct should not trigger the lint failure with .ext12
     TestStruct {}.ends_with(".ext12");
 
