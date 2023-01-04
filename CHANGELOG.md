@@ -5236,6 +5236,7 @@ Released 2018-09-13
 [`boxed_local`]: https://rust-lang.github.io/rust-clippy/master/index.html#boxed_local
 [`branches_sharing_code`]: https://rust-lang.github.io/rust-clippy/master/index.html#branches_sharing_code
 [`builtin_type_shadow`]: https://rust-lang.github.io/rust-clippy/master/index.html#builtin_type_shadow
+[`byte_char_slices`]: https://rust-lang.github.io/rust-clippy/master/index.html#byte_char_slices
 [`bytes_count_to_len`]: https://rust-lang.github.io/rust-clippy/master/index.html#bytes_count_to_len
 [`bytes_nth`]: https://rust-lang.github.io/rust-clippy/master/index.html#bytes_nth
 [`cargo_common_metadata`]: https://rust-lang.github.io/rust-clippy/master/index.html#cargo_common_metadata
