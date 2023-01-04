@@ -1,14 +1,15 @@
 // run-rustfix
 
 #![warn(clippy::iter_kv_map)]
-#![allow(clippy::redundant_clone)]
-#![allow(clippy::suspicious_map)]
-#![allow(clippy::map_identity)]
+#![allow(unused_mut, clippy::redundant_clone, clippy::suspicious_map, clippy::map_identity)]
 
 use std::collections::{BTreeMap, HashMap};
 
 fn main() {
     let get_key = |(key, _val)| key;
+    fn ref_acceptor(v: &u32) -> u32 {
+        *v
+    }
 
     let map: HashMap<u32, u32> = HashMap::new();
 
@@ -36,6 +37,22 @@ fn main() {
     let _ = map.iter().map(|(key, _value)| key * 9).count();
     let _ = map.iter().map(|(_key, value)| value * 17).count();
 
+    // Preserve the ref in the fix.
+    let _ = map.clone().into_iter().map(|(_, ref val)| ref_acceptor(val)).count();
+
+    // Preserve the mut in the fix.
+    let _ = map
+        .clone()
+        .into_iter()
+        .map(|(_, mut val)| {
+            val += 2;
+            val
+        })
+        .count();
+
+    // Don't let a mut interfere.
+    let _ = map.clone().into_iter().map(|(_, mut val)| val).count();
+
     let map: BTreeMap<u32, u32> = BTreeMap::new();
 
     let _ = map.iter().map(|(key, _)| key).collect::<Vec<_>>();
@@ -61,4 +78,20 @@ fn main() {
     // Lint
     let _ = map.iter().map(|(key, _value)| key * 9).count();
     let _ = map.iter().map(|(_key, value)| value * 17).count();
+
+    // Preserve the ref in the fix.
+    let _ = map.clone().into_iter().map(|(_, ref val)| ref_acceptor(val)).count();
+
+    // Preserve the mut in the fix.
+    let _ = map
+        .clone()
+        .into_iter()
+        .map(|(_, mut val)| {
+            val += 2;
+            val
+        })
+        .count();
+
+    // Don't let a mut interfere.
+    let _ = map.clone().into_iter().map(|(_, mut val)| val).count();
 }
