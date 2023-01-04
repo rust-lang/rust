@@ -91,9 +91,22 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
         //
         // Treat cdylibs and staticlibs similarly. If `-C prefer-dynamic` is set,
         // the caller may be code-size conscious, but without it, it makes sense
-        // to statically link a cdylib or staticlib.
-        CrateType::Dylib | CrateType::Cdylib | CrateType::Staticlib => {
-            if sess.opts.cg.prefer_dynamic { Linkage::Dynamic } else { Linkage::Static }
+        // to statically link a cdylib or staticlib. For staticlibs we use
+        // `-Z staticlib-prefer-dynamic` for now. This may be merged into
+        // `-C prefer-dynamic` in the future.
+        CrateType::Dylib | CrateType::Cdylib => {
+            if sess.opts.cg.prefer_dynamic {
+                Linkage::Dynamic
+            } else {
+                Linkage::Static
+            }
+        }
+        CrateType::Staticlib => {
+            if sess.opts.unstable_opts.staticlib_prefer_dynamic {
+                Linkage::Dynamic
+            } else {
+                Linkage::Static
+            }
         }
 
         // If the global prefer_dynamic switch is turned off, or the final
@@ -123,9 +136,10 @@ fn calculate_type(tcx: TyCtxt<'_>, ty: CrateType) -> DependencyList {
 
             // Static executables must have all static dependencies.
             // If any are not found, generate some nice pretty errors.
-            if ty == CrateType::Executable
-                && sess.crt_static(Some(ty))
-                && !sess.target.crt_static_allows_dylibs
+            if (ty == CrateType::Staticlib && !sess.opts.unstable_opts.staticlib_allow_rdylib_deps)
+                || (ty == CrateType::Executable
+                    && sess.crt_static(Some(ty))
+                    && !sess.target.crt_static_allows_dylibs)
             {
                 for &cnum in tcx.crates(()).iter() {
                     if tcx.dep_kind(cnum).macros_only() {

@@ -1709,6 +1709,10 @@ options! {
     #[rustc_lint_opt_deny_field_access("use `Session::stack_protector` instead of this field")]
     stack_protector: StackProtector = (StackProtector::None, parse_stack_protector, [TRACKED],
         "control stack smash protection strategy (`rustc --print stack-protector-strategies` for details)"),
+    staticlib_allow_rdylib_deps: bool = (false, parse_bool, [TRACKED],
+        "allow staticlibs to have rust dylib dependencies"),
+    staticlib_prefer_dynamic: bool = (false, parse_bool, [TRACKED],
+        "prefer dynamic linking to static linking for staticlibs (default: no)"),
     strict_init_checks: bool = (false, parse_bool, [TRACKED],
         "control if mem::uninitialized and mem::zeroed panic on more UB"),
     strip: Strip = (Strip::None, parse_strip, [UNTRACKED],
