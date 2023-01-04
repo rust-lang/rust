@@ -556,8 +556,8 @@ pub enum PrintRequest {
 
 #[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
 pub enum TraitSolver {
-    /// Stock trait solver in `rustc_trait_selection::traits::select`
-    Stock,
+    /// Classic trait solver in `rustc_trait_selection::traits::select`
+    Classic,
     /// Chalk trait solver
     Chalk,
     /// Experimental trait solver in `rustc_trait_selection::solve`
