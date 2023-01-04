@@ -193,6 +193,7 @@ symbols! {
         FromIterator,
         FromResidual,
         Future,
+        FutureOutput,
         FxHashMap,
         FxHashSet,
         GlobalAlloc,
