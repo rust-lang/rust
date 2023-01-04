@@ -1,8 +1,11 @@
 error[E0080]: evaluation of constant value failed
-  --> $DIR/issue-52475.rs:6:17
+  --> $DIR/issue-52475.rs:5:9
    |
-LL |             n = (n + 1) % 5;
-   |                 ^^^^^^^^^^^ exceeded interpreter step limit (see `#[const_eval_limit]`)
+LL | /         while n < 5 {
+LL | |             n = (n + 1) % 5;
+LL | |             x = &0; // Materialize a new AllocId
+LL | |         }
+   | |_________^ exceeded interpreter step limit (see `#[const_eval_limit]`)
 
 error: aborting due to previous error
 
