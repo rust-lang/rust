@@ -34,7 +34,7 @@ pub enum LitError {
     InvalidIntSuffix,
     InvalidFloatSuffix,
     NonDecimalFloat(u32),
-    IntTooLarge,
+    IntTooLarge(u32),
 }
 
 impl LitKind {
@@ -333,6 +333,6 @@ fn integer_lit(symbol: Symbol, suffix: Option<Symbol>) -> Result<LitKind, LitErr
         // but these kinds of errors are already reported by the lexer.
         let from_lexer =
             base < 10 && s.chars().any(|c| c.to_digit(10).map_or(false, |d| d >= base));
-        if from_lexer { LitError::LexerError } else { LitError::IntTooLarge }
+        if from_lexer { LitError::LexerError } else { LitError::IntTooLarge(base) }
     })
 }
