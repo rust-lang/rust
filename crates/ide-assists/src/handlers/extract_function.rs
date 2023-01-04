@@ -1799,7 +1799,8 @@ fn make_body(
                 })
                 .collect::<Vec<SyntaxElement>>();
             let tail_expr = tail_expr.map(|expr| expr.dedent(old_indent).indent(body_indent));
-            make::hacky_block_expr_with_comments(elements, tail_expr)
+
+            make::hacky_block_expr(elements, tail_expr)
         }
     };
 
@@ -1881,7 +1882,7 @@ fn with_tail_expr(block: ast::BlockExpr, tail_expr: ast::Expr) -> ast::BlockExpr
         elements.push(syntax::NodeOrToken::Node(stmt_tail.syntax().clone()));
     }
 
-    make::hacky_block_expr_with_comments(elements, Some(tail_expr))
+    make::hacky_block_expr(elements, Some(tail_expr))
 }
 
 fn format_type(ty: &hir::Type, ctx: &AssistContext<'_>, module: hir::Module) -> String {
@@ -4978,9 +4979,8 @@ fn $0fun_name() {
         );
     }
 
-    // FIXME: we do want to preserve whitespace
     #[test]
-    fn extract_function_does_not_preserve_whitespace() {
+    fn extract_function_does_preserve_whitespace() {
         check_assist(
             extract_function,
             r#"
@@ -4999,6 +4999,7 @@ fn func() {
 
 fn $0fun_name() {
     let a = 0;
+
     let x = 0;
 }
 "#,
