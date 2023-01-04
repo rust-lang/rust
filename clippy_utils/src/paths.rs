@@ -15,7 +15,6 @@ pub const APPLICABILITY_VALUES: [[&str; 3]; 4] = [
 ];
 #[cfg(feature = "internal")]
 pub const DIAGNOSTIC_BUILDER: [&str; 3] = ["rustc_errors", "diagnostic_builder", "DiagnosticBuilder"];
-pub const ARC_PTR_EQ: [&str; 4] = ["alloc", "sync", "Arc", "ptr_eq"];
 pub const BTREEMAP_CONTAINS_KEY: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "contains_key"];
 pub const BTREEMAP_INSERT: [&str; 6] = ["alloc", "collections", "btree", "map", "BTreeMap", "insert"];
 pub const BTREESET_ITER: [&str; 6] = ["alloc", "collections", "btree", "set", "BTreeSet", "iter"];
@@ -93,7 +92,6 @@ pub const PTR_WRITE_UNALIGNED: [&str; 3] = ["core", "ptr", "write_unaligned"];
 pub const PTR_WRITE_VOLATILE: [&str; 3] = ["core", "ptr", "write_volatile"];
 pub const PUSH_STR: [&str; 4] = ["alloc", "string", "String", "push_str"];
 pub const RANGE_ARGUMENT_TRAIT: [&str; 3] = ["core", "ops", "RangeBounds"];
-pub const RC_PTR_EQ: [&str; 4] = ["alloc", "rc", "Rc", "ptr_eq"];
 pub const REFCELL_REF: [&str; 3] = ["core", "cell", "Ref"];
 pub const REFCELL_REFMUT: [&str; 3] = ["core", "cell", "RefMut"];
 pub const REGEX_BUILDER_NEW: [&str; 5] = ["regex", "re_builder", "unicode", "RegexBuilder", "new"];
