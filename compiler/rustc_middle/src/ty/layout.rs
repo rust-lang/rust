@@ -670,6 +670,23 @@ where
                         });
                     }
 
+                    let mk_dyn_vtable = || {
+                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        /* FIXME: use actual fn pointers
+                        Warning: naively computing the number of entries in the
+                        vtable by counting the methods on the trait + methods on
+                        all parent traits does not work, because some methods can
+                        be not object safe and thus excluded from the vtable.
+                        Increase this counter if you tried to implement this but
+                        failed to do it without duplicating a lot of code from
+                        other places in the compiler: 2
+                        tcx.mk_tup(&[
+                            tcx.mk_array(tcx.types.usize, 3),
+                            tcx.mk_array(Option<fn()>),
+                        ])
+                        */
+                    };
+
                     let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
                         let metadata = tcx.normalize_erasing_regions(
                             cx.param_env(),
@@ -684,48 +701,14 @@ where
                             && Some(def.did()) == tcx.lang_items().dyn_metadata()
                             && substs.type_at(0).is_trait()
                         {
-                            tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            )
-                            /* FIXME: use actual fn pointers
-                            Warning: naively computing the number of entries in the
-                            vtable by counting the methods on the trait + methods on
-                            all parent traits does not work, because some methods can
-                            be not object safe and thus excluded from the vtable.
-                            Increase this counter if you tried to implement this but
-                            failed to do it without duplicating a lot of code from
-                            other places in the compiler: 2
-                            tcx.mk_tup(&[
-                                tcx.mk_array(tcx.types.usize, 3),
-                                tcx.mk_array(Option<fn()>),
-                            ])
-                            */
+                            mk_dyn_vtable()
                         } else {
                             metadata
                         }
                     } else {
                         match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
                             ty::Slice(_) | ty::Str => tcx.types.usize,
-                            ty::Dynamic(_, _, ty::Dyn) => {
-                                tcx.mk_imm_ref(
-                                    tcx.lifetimes.re_static,
-                                    tcx.mk_array(tcx.types.usize, 3),
-                                )
-                                /* FIXME: use actual fn pointers
-                                Warning: naively computing the number of entries in the
-                                vtable by counting the methods on the trait + methods on
-                                all parent traits does not work, because some methods can
-                                be not object safe and thus excluded from the vtable.
-                                Increase this counter if you tried to implement this but
-                                failed to do it without duplicating a lot of code from
-                                other places in the compiler: 2
-                                tcx.mk_tup(&[
-                                    tcx.mk_array(tcx.types.usize, 3),
-                                    tcx.mk_array(Option<fn()>),
-                                ])
-                                */
-                            }
+                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
                             _ => bug!("TyAndLayout::field({:?}): not applicable", this),
                         }
                     };
