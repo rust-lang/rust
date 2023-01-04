@@ -35,16 +35,14 @@ trait Ty<'a> {
 }
 
 fn main() {
-    let v = Unit2.m(
-        L {
-            //~^ ERROR to be a closure that returns `Unit3`, but it returns `Unit4`
-            //~| ERROR type mismatch
-            f: |x| {
-                drop(x);
-                Unit4
-            },
+    let v = Unit2.m(L {
+        //~^ ERROR type mismatch
+        //~| ERROR to be a closure that returns `Unit3`, but it returns `Unit4`
+        f: |x| {
+            drop(x);
+            Unit4
         },
-    );
+    });
 }
 
 impl<'a> Ty<'a> for Unit2 {
