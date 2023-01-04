@@ -230,6 +230,9 @@ pub fn each_linked_rlib(
                 });
             }
         }
+        if info.dependency_formats.is_empty() {
+            return Err(errors::LinkRlibError::MissingFormat);
+        }
         &info.dependency_formats[0].1
     } else {
         let fmts = info
