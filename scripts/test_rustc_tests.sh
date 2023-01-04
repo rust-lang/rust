@@ -11,7 +11,7 @@ pushd rust
 command -v rg >/dev/null 2>&1 || cargo install ripgrep
 
 rm -r src/test/ui/{extern/,unsized-locals/,lto/,linkage*} || true
-for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" src/test/{ui,incremental}); do
+for test in $(rg --files-with-matches "lto|// needs-asm-support|// needs-unwind" src/test/{codegen-units,ui,incremental}); do
   rm $test
 done
 
@@ -32,6 +32,7 @@ rm src/test/incremental/issue-80691-bad-eval-cache.rs # -Cpanic=abort causes abo
 # requires compiling with -Cpanic=unwind
 rm -r src/test/ui/macros/rfc-2011-nicer-assert-messages/
 rm -r src/test/run-make/test-benches
+rm src/test/ui/test-attrs/test-type.rs
 
 # vendor intrinsics
 rm src/test/ui/sse2.rs # cpuid not supported, so sse2 not detected
@@ -56,10 +57,7 @@ rm src/test/ui/intrinsics/intrinsic-nearby.rs # unimplemented nearbyintf32 and n
 rm src/test/ui/target-feature/missing-plusminus.rs # error not implemented
 rm src/test/ui/fn/dyn-fn-alignment.rs # wants a 256 byte alignment
 rm -r src/test/run-make/emit-named-files # requires full --emit support
-rm src/test/ui/abi/stack-probes.rs # stack probes not yet implemented
-rm src/test/ui/simd/intrinsic/ptr-cast.rs # simd_expose_addr intrinsic unimplemented
 rm -r src/test/run-make/repr128-dwarf # debuginfo test
-rm src/test/codegen-units/item-collection/asm-sym.rs # requires support for sym in asm!()
 
 # optimization tests
 # ==================
@@ -104,9 +102,6 @@ rm src/test/ui/simd/simd-bitmask.rs # crash
 # ======================
 rm src/test/ui/backtrace.rs # TODO warning
 rm src/test/ui/simple_global_asm.rs # TODO add needs-asm-support
-rm src/test/ui/test-attrs/test-type.rs # TODO panic message on stderr. correct stdout
-# not sure if this is actually a bug in the test suite, but the symbol list shows the function without leading _ for some reason
-rm -r src/test/run-make/native-link-modifier-bundle
 rm src/test/ui/process/nofile-limit.rs # TODO some AArch64 linking issue
 rm src/test/ui/dyn-star/dispatch-on-pin-mut.rs # TODO failed assertion in vtable::get_ptr_and_method_ref
 
