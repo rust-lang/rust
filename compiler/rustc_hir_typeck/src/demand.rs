@@ -13,12 +13,10 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::fold::TypeFolder;
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
 use rustc_middle::ty::relate::TypeRelation;
-use rustc_middle::ty::{
-    self, Article, AssocItem, Ty, TyCtxt, TypeAndMut, TypeSuperFoldable, TypeVisitable,
-};
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitable};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
@@ -222,41 +220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         found: Ty<'tcx>,
         expected: Ty<'tcx>,
     ) -> bool {
-        let tcx = self.tcx;
         let map = self.tcx.hir();
-
-        // Hack to make equality checks on types with inference variables and regions useful.
-        struct TypeEraser<'tcx> {
-            tcx: TyCtxt<'tcx>,
-        }
-        impl<'tcx> TypeFolder<'tcx> for TypeEraser<'tcx> {
-            fn tcx<'b>(&'b self) -> TyCtxt<'tcx> {
-                self.tcx
-            }
-            fn fold_region(&mut self, _r: ty::Region<'tcx>) -> ty::Region<'tcx> {
-                self.tcx().lifetimes.re_erased
-            }
-            fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
-                if !t.needs_infer() && !t.has_erasable_regions() {
-                    return t;
-                }
-                match *t.kind() {
-                    ty::Infer(ty::TyVar(_) | ty::FreshTy(_)) => {
-                        self.tcx.mk_ty_infer(ty::TyVar(ty::TyVid::from_u32(0)))
-                    }
-                    ty::Infer(ty::IntVar(_) | ty::FreshIntTy(_)) => {
-                        self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
-                    }
-                    ty::Infer(ty::FloatVar(_) | ty::FreshFloatTy(_)) => {
-                        self.tcx.mk_ty_infer(ty::FloatVar(ty::FloatVid { index: 0 }))
-                    }
-                    _ => t.super_fold_with(self),
-                }
-            }
-            fn fold_const(&mut self, ct: ty::Const<'tcx>) -> ty::Const<'tcx> {
-                ct.super_fold_with(self)
-            }
-        }
 
         let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
         let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
@@ -298,7 +262,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Some(body_id) = node.body_id() else { return false; };
         let body = map.body(body_id);
         expr_finder.visit_expr(body.value);
-        let mut eraser = TypeEraser { tcx };
+        // Hack to make equality checks on types with inference variables and regions useful.
+        let mut eraser = BottomUpFolder {
+            tcx: self.tcx,
+            lt_op: |_| self.tcx.lifetimes.re_erased,
+            ct_op: |c| c,
+            ty_op: |t| match *t.kind() {
+                ty::Infer(ty::TyVar(vid)) => self.tcx.mk_ty_infer(ty::TyVar(self.root_var(vid))),
+                ty::Infer(ty::IntVar(_)) => {
+                    self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
+                }
+                ty::Infer(ty::FloatVar(_)) => {
+                    self.tcx.mk_ty_infer(ty::FloatVar(ty::FloatVid { index: 0 }))
+                }
+                _ => t,
+            },
+        };
         let mut prev = eraser.fold_ty(ty);
         let mut prev_span = None;
 
