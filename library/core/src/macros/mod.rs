@@ -1312,28 +1312,52 @@ pub(crate) mod builtin {
             /* compiler built-in */
         };
     }
-
+    
     /// Parses a file as an expression or an item according to the context.
     ///
-    /// The file is located relative to the current file (similarly to how
-    /// modules are found). The provided path is interpreted in a platform-specific
-    /// way at compile time. So, for instance, an invocation with a Windows path
-    /// containing backslashes `\` would not compile correctly on Unix.
+    /// <div class="example-wrap" style="display:inline-block">
+    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
     ///
-    /// Using this macro is often a bad idea, because if the file is
-    /// parsed as an expression, it is going to be placed in the
-    /// surrounding code unhygienically. This could result in variables
-    /// or functions being different from what the file expected if
-    /// there are variables or functions that have the same name in
-    /// the current file.
+    /// **Warning**: For multi-file Rust projects, the `include!` macro is probably not what you
+    /// are looking for. Usually, multi-file Rust projects use
+    /// [modules](https://doc.rust-lang.org/reference/items/modules.html). Multi-file projects and
+    /// modules are explained in the Rust-by-Example book
+    /// [here](https://doc.rust-lang.org/rust-by-example/mod/split.html) and the module system is
+    /// explained in the Rust Book
+    /// [here](https://doc.rust-lang.org/book/ch07-02-defining-modules-to-control-scope-and-privacy.html).
     ///
+    /// </pre>
+    /// </div>
+    /// 
+    /// If the included file is parsed as an expression, it is placed in the surrounding code
+    /// [unhygienically](https://doc.rust-lang.org/reference/macros-by-example.html#hygiene). This
+    /// could result in variables or functions being different from what the file expected if there
+    /// are variables or functions that have the same name in the current file.
+    /// 
+    /// The included file is located relative to the current file (similarly to how modules are
+    /// found). The provided path is interpreted in a platform-specific way at compile time. So,
+    /// for instance, an invocation with a Windows path containing backslashes `\` would not
+    /// compile correctly on Unix.
+    ///
+    /// # Uses
+    /// 
+    /// The `include!` macro is primarily used for two purposes. It is used to include
+    /// documentation that is written in a separate file and it is used to include [build artifacts
+    /// usually as a result from the `build.rs`
+    /// script](https://doc.rust-lang.org/cargo/reference/build-scripts.html#outputs-of-the-build-script).
+    ///
+    /// When using the `include` macro to include stretches of documentation, remember that the
+    /// included file still needs to be a valid rust syntax. It is also possible to
+    /// use the [`include_str`] macro as `#![doc = include_str!("...")]` (at the module level) or
+    /// `#[doc = include_str!("...")]` (at the item level) to include documentation from a plain
+    /// text or markdown file.
+    /// 
     /// # Examples
-    ///
-    /// Assume there are two files in the same directory with the following
-    /// contents:
-    ///
+    /// 
+    /// Assume there are two files in the same directory with the following contents:
+    /// 
     /// File 'monkeys.in':
-    ///
+    /// 
     /// ```ignore (only-for-syntax-highlight)
     /// ['🙈', '🙊', '🙉']
     ///     .iter()
@@ -1341,9 +1365,9 @@ pub(crate) mod builtin {
     ///     .take(6)
     ///     .collect::<String>()
     /// ```
-    ///
+    /// 
     /// File 'main.rs':
-    ///
+    /// 
     /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
     ///     let my_string = include!("monkeys.in");
@@ -1351,7 +1375,7 @@ pub(crate) mod builtin {
     ///     println!("{my_string}");
     /// }
     /// ```
-    ///
+    /// 
     /// Compiling 'main.rs' and running the resulting binary will print
     /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
