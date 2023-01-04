@@ -1312,7 +1312,7 @@ pub(crate) mod builtin {
             /* compiler built-in */
         };
     }
-    
+
     /// Parses a file as an expression or an item according to the context.
     ///
     /// <div class="example-wrap" style="display:inline-block">
@@ -1328,19 +1328,19 @@ pub(crate) mod builtin {
     ///
     /// </pre>
     /// </div>
-    /// 
+    ///
     /// If the included file is parsed as an expression, it is placed in the surrounding code
     /// [unhygienically](https://doc.rust-lang.org/reference/macros-by-example.html#hygiene). This
     /// could result in variables or functions being different from what the file expected if there
     /// are variables or functions that have the same name in the current file.
-    /// 
+    ///
     /// The included file is located relative to the current file (similarly to how modules are
     /// found). The provided path is interpreted in a platform-specific way at compile time. So,
     /// for instance, an invocation with a Windows path containing backslashes `\` would not
     /// compile correctly on Unix.
     ///
     /// # Uses
-    /// 
+    ///
     /// The `include!` macro is primarily used for two purposes. It is used to include
     /// documentation that is written in a separate file and it is used to include [build artifacts
     /// usually as a result from the `build.rs`
@@ -1351,13 +1351,13 @@ pub(crate) mod builtin {
     /// use the [`include_str`] macro as `#![doc = include_str!("...")]` (at the module level) or
     /// `#[doc = include_str!("...")]` (at the item level) to include documentation from a plain
     /// text or markdown file.
-    /// 
+    ///
     /// # Examples
-    /// 
+    ///
     /// Assume there are two files in the same directory with the following contents:
-    /// 
+    ///
     /// File 'monkeys.in':
-    /// 
+    ///
     /// ```ignore (only-for-syntax-highlight)
     /// ['🙈', '🙊', '🙉']
     ///     .iter()
@@ -1365,9 +1365,9 @@ pub(crate) mod builtin {
     ///     .take(6)
     ///     .collect::<String>()
     /// ```
-    /// 
+    ///
     /// File 'main.rs':
-    /// 
+    ///
     /// ```ignore (cannot-doctest-external-file-dependency)
     /// fn main() {
     ///     let my_string = include!("monkeys.in");
@@ -1375,7 +1375,7 @@ pub(crate) mod builtin {
     ///     println!("{my_string}");
     /// }
     /// ```
-    /// 
+    ///
     /// Compiling 'main.rs' and running the resulting binary will print
     /// "🙈🙊🙉🙈🙊🙉".
     #[stable(feature = "rust1", since = "1.0.0")]
