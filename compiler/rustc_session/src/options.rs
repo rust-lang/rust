@@ -377,6 +377,7 @@ mod desc {
     pub const parse_linker_flavor: &str = ::rustc_target::spec::LinkerFlavorCli::one_of();
     pub const parse_optimization_fuel: &str = "crate=integer";
     pub const parse_mir_spanview: &str = "`statement` (default), `terminator`, or `block`";
+    pub const parse_dump_mono_stats: &str = "`markdown` (default) or `json`";
     pub const parse_instrument_coverage: &str =
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
@@ -818,6 +819,21 @@ mod parse {
             _ => return false,
         });
         true
+    }
+
+    pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
+        match v {
+            None => true,
+            Some("json") => {
+                *slot = DumpMonoStatsFormat::Json;
+                true
+            }
+            Some("markdown") => {
+                *slot = DumpMonoStatsFormat::Markdown;
+                true
+            }
+            Some(_) => false,
+        }
     }
 
     pub(crate) fn parse_instrument_coverage(
@@ -1295,7 +1311,9 @@ options! {
         an additional `.html` file showing the computed coverage spans."),
     dump_mono_stats: SwitchWithOptPath = (SwitchWithOptPath::Disabled,
         parse_switch_with_opt_path, [UNTRACKED],
-        "output statistics about monomorphization collection (format: markdown)"),
+        "output statistics about monomorphization collection"),
+    dump_mono_stats_format: DumpMonoStatsFormat = (DumpMonoStatsFormat::Markdown, parse_dump_mono_stats, [UNTRACKED],
+        "the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)"),
     dwarf_version: Option<u32> = (None, parse_opt_number, [TRACKED],
         "version of DWARF debug information to emit (default: 2 or 4, depending on platform)"),
     dylib_lto: bool = (false, parse_bool, [UNTRACKED],

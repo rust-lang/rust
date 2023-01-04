@@ -2981,3 +2981,21 @@ pub enum ProcMacroExecutionStrategy {
     /// Run the proc-macro code on a different thread.
     CrossThread,
 }
+
+/// Which format to use for `-Z dump-mono-stats`
+#[derive(Clone, Copy, PartialEq, Hash, Debug)]
+pub enum DumpMonoStatsFormat {
+    /// Pretty-print a markdown table
+    Markdown,
+    /// Emit structured JSON
+    Json,
+}
+
+impl DumpMonoStatsFormat {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Markdown => "md",
+            Self::Json => "json",
+        }
+    }
+}
