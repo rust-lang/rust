@@ -445,12 +445,6 @@ pub struct LinkerFileStem;
 pub struct StaticLibraryNativeArtifacts;
 
 #[derive(Diagnostic)]
-#[diag(codegen_ssa_native_static_libs)]
-pub struct NativeStaticLibs {
-    pub arguments: String,
-}
-
-#[derive(Diagnostic)]
 #[diag(codegen_ssa_link_script_unavailable)]
 pub struct LinkScriptUnavailable;
 
