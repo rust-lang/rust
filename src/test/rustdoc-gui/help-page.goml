@@ -61,3 +61,12 @@ click: "#help-button > a"
 assert-css: ("#help", {"display": "none"})
 compare-elements-property-false: (".sub", "#help", ["offsetWidth"])
 compare-elements-position-false: (".sub", "#help", ("x"))
+
+// This test ensures that the "the rustdoc book" anchor link within the help popover works.
+goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
+size: (1000, 1000) // Popover only appears when the screen width is >700px.
+assert-false: "#help"
+click: "#help-button > a"
+click: ".popover a[href='https://doc.rust-lang.org/rustdoc/']"
+wait-for: 2000
+assert-document-property: {"URL": "https://doc.rust-lang.org/rustdoc/"}
