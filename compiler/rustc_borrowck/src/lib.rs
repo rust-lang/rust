@@ -863,7 +863,6 @@ enum WriteKind {
 /// local place can be mutated.
 //
 // FIXME: @nikomatsakis suggested that this flag could be removed with the following modifications:
-// - Merge `check_access_permissions()` and `check_if_reassignment_to_immutable_state()`.
 // - Split `is_mutable()` into `is_assignable()` (can be directly assigned) and
 //   `is_declared_mutable()`.
 // - Take flow state into consideration in `is_assignable()` for local variables.
@@ -1132,20 +1131,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // Write of P[i] or *P requires P init'd.
         self.check_if_assigned_path_is_moved(location, place_span, flow_state);
 
-        // Special case: you can assign an immutable local variable
-        // (e.g., `x = ...`) so long as it has never been initialized
-        // before (at this point in the flow).
-        if let Some(local) = place_span.0.as_local() {
-            if let Mutability::Not = self.body.local_decls[local].mutability {
-                // check for reassignments to immutable local variables
-                self.check_if_reassignment_to_immutable_state(
-                    location, local, place_span, flow_state,
-                );
-                return;
-            }
-        }
-
-        // Otherwise, use the normal access permission rules.
         self.access_place(
             location,
             place_span,
@@ -1551,24 +1536,6 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // We do not need to call `check_if_path_or_subpath_is_moved`
             // again, as we already called it when we made the
             // initial reservation.
-        }
-    }
-
-    fn check_if_reassignment_to_immutable_state(
-        &mut self,
-        location: Location,
-        local: Local,
-        place_span: (Place<'tcx>, Span),
-        flow_state: &Flows<'cx, 'tcx>,
-    ) {
-        debug!("check_if_reassignment_to_immutable_state({:?})", local);
-
-        // Check if any of the initializations of `local` have happened yet:
-        if let Some(init_index) = self.is_local_ever_initialized(local, flow_state) {
-            // And, if so, report an error.
-            let init = &self.move_data.inits[init_index];
-            let span = init.span(&self.body);
-            self.report_illegal_reassignment(location, place_span, span, place_span.0);
         }
     }
 
@@ -2037,12 +2004,19 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // partial initialization, do not complain about mutability
         // errors except for actual mutation (as opposed to an attempt
         // to do a partial initialization).
-        let previously_initialized =
-            self.is_local_ever_initialized(place.local, flow_state).is_some();
+        let previously_initialized = self.is_local_ever_initialized(place.local, flow_state);
 
         // at this point, we have set up the error reporting state.
-        if previously_initialized {
-            self.report_mutability_error(place, span, the_place_err, error_access, location);
+        if let Some(init_index) = previously_initialized {
+            if let (AccessKind::Mutate, Some(_)) = (error_access, place.as_local()) {
+                // If this is a mutate access to an immutable local variable with no projections
+                // report the error as an illegal reassignment
+                let init = &self.move_data.inits[init_index];
+                let assigned_span = init.span(&self.body);
+                self.report_illegal_reassignment(location, (place, span), assigned_span, place);
+            } else {
+                self.report_mutability_error(place, span, the_place_err, error_access, location)
+            }
             true
         } else {
             false
