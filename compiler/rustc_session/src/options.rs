@@ -306,6 +306,7 @@ type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> Result<(), ParseError>;
 
 pub enum ParseError {
     Invalid,
+    Removed(&'static str),
 }
 
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
@@ -343,6 +344,10 @@ fn build_options<O: Default>(
                         ),
                     ),
                 },
+                Err(ParseError::Removed(in_favor_of)) => early_error(
+                    error_format,
+                    &format!("{outputname} option `{key}` removed in favor of `{in_favor_of}`"),
+                ),
             },
             None => early_error(error_format, &format!("unknown {outputname} option: `{key}`")),
         }
@@ -388,6 +393,7 @@ mod desc {
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
     pub const parse_trait_solver: &str =
         "one of the supported solver modes (`classic`, `chalk`, or `next`)";
+    pub const parse_chalk: &str = "";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -955,6 +961,10 @@ mod parse {
         Ok(())
     }
 
+    pub(crate) fn parse_chalk(_slot: &mut (), _v: Option<&str>) -> Result<(), ParseError> {
+        Err(ParseError::Removed("-Z trait-solver=chalk"))
+    }
+
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
@@ -1351,6 +1361,8 @@ options! {
         "instrument control-flow architecture protection"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
+    chalk: () = ((), parse_chalk, [UNTRACKED],
+        "enable chalk solver -- deprecated, use `-Z trait-solver=chalk`"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],

@@ -8,6 +8,7 @@
     -Z                       branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
     -Z                           cf-protection=val -- instrument control-flow architecture protection
     -Z               cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use
+    -Z                                   chalk=val -- enable chalk solver -- deprecated, use `-Z trait-solver=chalk`
     -Z                         codegen-backend=val -- the backend to use
     -Z                             combine-cgu=val -- combine CGUs into a single one
     -Z                              crate-attr=val -- inject the given attribute in the crate
