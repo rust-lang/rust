@@ -1425,6 +1425,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // and `move` will not help here.
             (
                 Some(name),
+                BorrowExplanation::UsedLater(LaterUseKind::ClosureCapture, var_or_use_span, _),
+            ) => self.report_escaping_closure_capture(
+                borrow_spans,
+                borrow_span,
+                &RegionName {
+                    name: self.synthesize_region_name(),
+                    source: RegionNameSource::Static,
+                },
+                ConstraintCategory::CallArgument(None),
+                var_or_use_span,
+                &format!("`{}`", name),
+                "block",
+            ),
+            (
+                Some(name),
                 BorrowExplanation::MustBeValidFor {
                     category:
                         category @ (ConstraintCategory::Return(_)
@@ -1443,6 +1458,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     category,
                     span,
                     &format!("`{}`", name),
+                    "function",
                 ),
             (
                 name,
@@ -1895,6 +1911,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         Some(err)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn report_escaping_closure_capture(
         &mut self,
         use_span: UseSpans<'tcx>,
@@ -1903,6 +1920,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         category: ConstraintCategory<'tcx>,
         constraint_span: Span,
         captured_var: &str,
+        scope: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
@@ -1933,8 +1951,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None => "closure",
         };
 
-        let mut err =
-            self.cannot_capture_in_long_lived_closure(args_span, kind, captured_var, var_span);
+        let mut err = self.cannot_capture_in_long_lived_closure(
+            args_span,
+            kind,
+            captured_var,
+            var_span,
+            scope,
+        );
         err.span_suggestion_verbose(
             sugg_span,
             &format!(
@@ -1956,10 +1979,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
-                    reference or ownership of outside variables they use",
+                         reference or ownership of outside variables they use",
                     );
                 } else {
-                    let msg = format!("function requires argument type to outlive `{}`", fr_name);
+                    let msg = format!("{scope} requires argument type to outlive `{fr_name}`");
                     err.span_note(constraint_span, &msg);
                 }
             }
