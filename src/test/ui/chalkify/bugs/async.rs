@@ -1,6 +1,6 @@
 // check-fail
 // known-bug: unknown
-// compile-flags: -Z chalk --edition=2021
+// compile-flags: -Z trait-solver=chalk --edition=2021
 
 fn main() -> () {}
 
