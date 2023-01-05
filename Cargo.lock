@@ -5607,6 +5607,7 @@ dependencies = [
  "lazy_static",
  "miropt-test-tools",
  "regex",
+ "semver",
  "termcolor",
  "walkdir",
 ]
