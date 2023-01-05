@@ -1,3 +1,25 @@
+error: trait cannot be implemented outside `external_impl_restriction`
+  --> $DIR/impl-restriction.rs:10:1
+   |
+LL | impl external_impl_restriction::TopLevel for LocalType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-impl-restriction.rs:3:5
+   |
+LL | pub impl(crate) trait TopLevel {}
+   |     ----------- trait restricted here
+
+error: trait cannot be implemented outside `external_impl_restriction`
+  --> $DIR/impl-restriction.rs:11:1
+   |
+LL | impl external_impl_restriction::inner::Inner for LocalType {}
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+  ::: $DIR/auxiliary/external-impl-restriction.rs:6:9
+   |
+LL |     pub impl(self) trait Inner {}
+   |         ---------- trait restricted here
+
 error: trait cannot be implemented outside `foo`
   --> $DIR/impl-restriction.rs:21:1
    |
@@ -7,5 +29,5 @@ LL |         pub(crate) impl(super) trait Foo {}
 LL | impl foo::bar::Foo for u8 {}
    | ^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: aborting due to previous error
+error: aborting due to 3 previous errors
 

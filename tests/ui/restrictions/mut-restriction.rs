@@ -60,10 +60,10 @@ fn main() {
     unsafe { *(&foo.alpha as *const _ as *mut _) = 1; }
 
     let mut external_top_level = external_mut_restriction::TopLevel::new();
-    external_top_level.alpha = 1; //~ ERROR field cannot be mutated outside
-    //FIXME~^ ERROR field cannot be mutated outside `external_mut_restriction`
+    external_top_level.alpha = 1;
+    //~^ ERROR field cannot be mutated outside `external_mut_restriction`
 
     let mut external_inner = external_mut_restriction::inner::Inner::new();
-    external_inner.beta = 1; //~ ERROR field cannot be mutated outside
-    //FIXME~^ ERROR field cannot be mutated outside `external_mut_restriction`
+    external_inner.beta = 1;
+    //~^ ERROR field cannot be mutated outside `external_mut_restriction`
 }

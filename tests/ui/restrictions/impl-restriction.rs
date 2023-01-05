@@ -7,8 +7,8 @@ extern crate external_impl_restriction;
 
 struct LocalType; // needed to avoid orphan rule errors
 
-impl external_impl_restriction::TopLevel for LocalType {} //FIXME~ ERROR trait cannot be implemented outside `external_impl_restriction`
-impl external_impl_restriction::inner::Inner for LocalType {} //FIXME~ ERROR trait cannot be implemented outside `external_impl_restriction`
+impl external_impl_restriction::TopLevel for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
+impl external_impl_restriction::inner::Inner for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
 
 pub mod foo {
     pub mod bar {

@@ -944,6 +944,10 @@ fn should_encode_visibility(def_kind: DefKind) -> bool {
     }
 }
 
+fn should_encode_impl_restriction(def_kind: DefKind) -> bool {
+    matches!(def_kind, DefKind::Trait)
+}
+
 fn should_encode_stability(def_kind: DefKind) -> bool {
     match def_kind {
         DefKind::Mod
@@ -1335,6 +1339,10 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 let vis =
                     self.tcx.local_visibility(local_id).map_id(|def_id| def_id.local_def_index);
                 record!(self.tables.visibility[def_id] <- vis);
+            }
+            if should_encode_impl_restriction(def_kind) {
+                let impl_restriction = self.tcx.impl_restriction(def_id);
+                record!(self.tables.impl_restriction[def_id] <- impl_restriction);
             }
             if should_encode_stability(def_kind) {
                 self.encode_stability(def_id);

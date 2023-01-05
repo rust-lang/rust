@@ -1,5 +1,6 @@
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::LocalDefId;
 use rustc_hir::{self as hir, intravisit::Visitor};
+use rustc_middle::bug;
 use rustc_middle::query::Providers;
 use rustc_middle::ty::{self, TyCtxt};
 
@@ -24,9 +25,6 @@ impl<'v> Visitor<'v> for ImplOfRestrictedTraitVisitor<'v> {
         if let hir::ItemKind::Impl(hir::Impl { of_trait: Some(trait_ref), .. }) = &item.kind {
             let trait_def_id = trait_ref.trait_def_id().expect("item is known to be a trait");
 
-            let crate_name = self.tcx.crate_name(hir::def_id::LOCAL_CRATE);
-            tracing::info!(?crate_name);
-
             let restriction = self.tcx.impl_restriction(trait_def_id);
 
             if restriction.is_restricted_in(item.owner_id.to_def_id(), self.tcx) {
@@ -45,10 +43,10 @@ impl<'v> Visitor<'v> for ImplOfRestrictedTraitVisitor<'v> {
     }
 }
 
-fn impl_restriction(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Restriction {
-    match tcx.resolutions(()).impl_restrictions.get(&def_id) {
+fn impl_restriction(tcx: TyCtxt<'_>, def_id: LocalDefId) -> ty::Restriction {
+    match tcx.resolutions(()).impl_restrictions.get(&def_id.to_def_id()) {
         Some(restriction) => *restriction,
-        None => ty::Restriction::Unrestricted, // FIXME(jhpratt) error here
+        None => bug!("impl restriction not found for {def_id:?}"),
     }
 }
 
