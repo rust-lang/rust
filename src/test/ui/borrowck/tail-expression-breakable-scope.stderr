@@ -1,0 +1,15 @@
+error[E0716]: temporary value dropped while borrowed
+  --> $DIR/tail-expression-breakable-scope.rs:19:10
+   |
+LL |         &returns_a()
+   |         -^^^^^^^^^^-
+   |         ||         |
+   |         ||         temporary value is freed at the end of this statement
+   |         |creates a temporary value which is freed while still in use
+   |         borrow later used here
+   |
+   = note: consider using a `let` binding to create a longer lived value
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0716`.

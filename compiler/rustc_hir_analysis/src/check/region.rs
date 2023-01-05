@@ -166,6 +166,13 @@ fn resolve_block<'tcx>(visitor: &mut RegionResolutionVisitor<'tcx>, blk: &'tcx h
                 hir::StmtKind::Expr(..) | hir::StmtKind::Semi(..) => visitor.visit_stmt(statement),
             }
         }
+
+        // We must introduce a terminating scope for tail expressions in breakable
+        // scopes, otherwise incorrect drops and unwind paths are created, see #104736.
+        if blk.targeted_by_break && let Some(expr) = blk.expr {
+            visitor.terminating_scopes.insert(expr.hir_id.local_id);
+        }
+
         walk_list!(visitor, visit_expr, &blk.expr);
     }
 
