@@ -40,7 +40,7 @@ pub mod stdio;
 pub mod thread;
 pub mod thread_local_dtor;
 pub mod thread_local_key;
-pub mod thread_parker;
+pub mod thread_parking;
 pub mod time;
 
 #[cfg(target_os = "espidf")]
@@ -95,6 +95,10 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         'poll: {
             use crate::sys::os::errno;
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+            use libc::open as open64;
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
+            use libc::open64;
             let pfds: &mut [_] = &mut [
                 libc::pollfd { fd: 0, events: 0, revents: 0 },
                 libc::pollfd { fd: 1, events: 0, revents: 0 },
@@ -116,7 +120,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 if pfd.revents & libc::POLLNVAL == 0 {
                     continue;
                 }
-                if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                     // If the stream is closed but we failed to reopen it, abort the
                     // process. Otherwise we wouldn't preserve the safety of
                     // operations on the corresponding Rust object Stdin, Stdout, or
@@ -139,9 +143,13 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
         )))]
         {
             use crate::sys::os::errno;
+            #[cfg(not(all(target_os = "linux", target_env = "gnu")))]
+            use libc::open as open64;
+            #[cfg(all(target_os = "linux", target_env = "gnu"))]
+            use libc::open64;
             for fd in 0..3 {
                 if libc::fcntl(fd, libc::F_GETFD) == -1 && errno() == libc::EBADF {
-                    if libc::open("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
+                    if open64("/dev/null\0".as_ptr().cast(), libc::O_RDWR, 0) == -1 {
                         // If the stream is closed but we failed to reopen it, abort the
                         // process. Otherwise we wouldn't preserve the safety of
                         // operations on the corresponding Rust object Stdin, Stdout, or
@@ -156,7 +164,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
     unsafe fn reset_sigpipe(#[allow(unused_variables)] sigpipe: u8) {
         #[cfg(not(any(target_os = "emscripten", target_os = "fuchsia", target_os = "horizon")))]
         {
-            // We don't want to add this as a public type to libstd, nor do we
+            // We don't want to add this as a public type to std, nor do we
             // want to `include!` a file from the compiler (which would break
             // Miri and xargo for example), so we choose to duplicate these
             // constants from `compiler/rustc_session/src/config/sigpipe.rs`.
@@ -176,12 +184,7 @@ pub unsafe fn init(argc: isize, argv: *const *const u8, sigpipe: u8) {
                 sigpipe::SIG_DFL => (true, Some(libc::SIG_DFL)),
                 _ => unreachable!(),
             };
-            // The bootstrap compiler doesn't know about sigpipe::DEFAULT, and always passes in
-            // SIG_IGN. This causes some tests to fail because they expect SIGPIPE to be reset to
-            // default on process spawning (which doesn't happen if #[unix_sigpipe] is specified).
-            // Since we can't differentiate between the cases here, treat SIG_IGN as DEFAULT
-            // unconditionally.
-            if sigpipe_attr_specified && !(cfg!(bootstrap) && sigpipe == sigpipe::SIG_IGN) {
+            if sigpipe_attr_specified {
                 UNIX_SIGPIPE_ATTR_SPECIFIED.store(true, crate::sync::atomic::Ordering::Relaxed);
             }
             if let Some(handler) = handler {

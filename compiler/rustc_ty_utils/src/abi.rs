@@ -85,7 +85,7 @@ fn fn_sig_for_fn_abi<'tcx>(
                 bound_vars,
             )
         }
-        ty::Generator(_, substs, _) => {
+        ty::Generator(did, substs, _) => {
             let sig = substs.as_generator().poly_sig();
 
             let bound_vars = tcx.mk_bound_variable_kinds(
@@ -104,10 +104,22 @@ fn fn_sig_for_fn_abi<'tcx>(
             let env_ty = tcx.mk_adt(pin_adt_ref, pin_substs);
 
             let sig = sig.skip_binder();
-            let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
-            let state_adt_ref = tcx.adt_def(state_did);
-            let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
-            let ret_ty = tcx.mk_adt(state_adt_ref, state_substs);
+            // The `FnSig` and the `ret_ty` here is for a generators main
+            // `Generator::resume(...) -> GeneratorState` function in case we
+            // have an ordinary generator, or the `Future::poll(...) -> Poll`
+            // function in case this is a special generator backing an async construct.
+            let ret_ty = if tcx.generator_is_async(did) {
+                let state_did = tcx.require_lang_item(LangItem::Poll, None);
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[sig.return_ty.into()]);
+                tcx.mk_adt(state_adt_ref, state_substs)
+            } else {
+                let state_did = tcx.require_lang_item(LangItem::GeneratorState, None);
+                let state_adt_ref = tcx.adt_def(state_did);
+                let state_substs = tcx.intern_substs(&[sig.yield_ty.into(), sig.return_ty.into()]);
+                tcx.mk_adt(state_adt_ref, state_substs)
+            };
+
             ty::Binder::bind_with_vars(
                 tcx.mk_fn_sig(
                     [env_ty, sig.resume_ty].iter(),
@@ -261,9 +273,11 @@ fn adjust_for_rust_scalar<'tcx>(
                 | PointerKind::UniqueBorrowed
                 | PointerKind::UniqueBorrowedPinned => false,
                 PointerKind::UniqueOwned => noalias_for_box,
-                PointerKind::Frozen => !is_return,
+                PointerKind::Frozen => true,
             };
-            if no_alias {
+            // We can never add `noalias` in return position; that LLVM attribute has some very surprising semantics
+            // (see <https://github.com/rust-lang/unsafe-code-guidelines/issues/385#issuecomment-1368055745>).
+            if no_alias && !is_return {
                 attrs.set(ArgAttribute::NoAlias);
             }
 

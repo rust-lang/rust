@@ -51,7 +51,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         if i != 0 || j != lines.len() { Some((i, j)) } else { None }
     }
 
-    fn get_horizontal_trim<'a>(lines: &'a [&str], kind: CommentKind) -> Option<String> {
+    fn get_horizontal_trim(lines: &[&str], kind: CommentKind) -> Option<String> {
         let mut i = usize::MAX;
         let mut first = true;
 
@@ -110,7 +110,7 @@ pub fn beautify_doc_string(data: Symbol, kind: CommentKind) -> Symbol {
         } else {
             &mut lines
         };
-        if let Some(horizontal) = get_horizontal_trim(&lines, kind) {
+        if let Some(horizontal) = get_horizontal_trim(lines, kind) {
             changes = true;
             // remove a "[ \t]*\*" block from each line, if possible
             for line in lines.iter_mut() {
@@ -147,7 +147,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
 
 fn trim_whitespace_prefix(s: &str, col: CharPos) -> &str {
     let len = s.len();
-    match all_whitespace(&s, col) {
+    match all_whitespace(s, col) {
         Some(col) => {
             if col < len {
                 &s[col..]

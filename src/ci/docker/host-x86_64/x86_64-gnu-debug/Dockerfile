@@ -23,7 +23,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
   pkg-config \
   xz-utils \
   lld \
-  clang
+  clang \
+  && rm -rf /var/lib/apt/lists/*
 
 COPY scripts/sccache.sh /scripts/
 RUN sh /scripts/sccache.sh

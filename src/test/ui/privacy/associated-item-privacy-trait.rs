@@ -19,9 +19,9 @@ mod priv_trait {
         Pub.method();
         //~^ ERROR type `for<'a> fn(&'a Self) {<Self as PrivTr>::method}` is private
         <Pub as PrivTr>::CONST;
-        //~^ ERROR associated constant `<Pub as PrivTr>::CONST` is private
+        //~^ ERROR associated constant `PrivTr::CONST` is private
         let _: <Pub as PrivTr>::AssocTy;
-        //~^ ERROR associated type `<Pub as PrivTr>::AssocTy` is private
+        //~^ ERROR associated type `PrivTr::AssocTy` is private
         pub type InSignatureTy = <Pub as PrivTr>::AssocTy;
         //~^ ERROR trait `PrivTr` is private
         pub trait InSignatureTr: PrivTr {}

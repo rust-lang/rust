@@ -3,6 +3,7 @@
 #![allow(non_camel_case_types)]
 #![allow(dead_code)]
 #![feature(never_type)]
+#![feature(pointer_is_aligned)]
 
 use std::mem::size_of;
 use std::num::NonZeroU8;
@@ -168,6 +169,18 @@ pub enum EnumManyVariant<X> {
     _F0, _F1, _F2, _F3, _F4, _F5, _F6, _F7, _F8, _F9, _FA, _FB, _FC, _FD, _FE, _FF,
 }
 
+struct Reorder4 {
+    a: u32,
+    b: u8,
+    ary: [u8; 4],
+}
+
+struct Reorder2 {
+    a: u16,
+    b: u8,
+    ary: [u8; 6],
+}
+
 pub fn main() {
     assert_eq!(size_of::<u8>(), 1 as usize);
     assert_eq!(size_of::<u32>(), 4 as usize);
@@ -249,4 +262,12 @@ pub fn main() {
     assert_eq!(size_of::<EnumManyVariant<Option<NicheU16>>>(), 4);
     assert_eq!(size_of::<EnumManyVariant<Option2<NicheU16,u8>>>(), 6);
     assert_eq!(size_of::<EnumManyVariant<Option<(NicheU16,u8)>>>(), 6);
+
+
+    let v = Reorder4 {a: 0, b: 0, ary: [0; 4]};
+    assert_eq!(size_of::<Reorder4>(), 12);
+    assert!((&v.ary).as_ptr().is_aligned_to(4), "[u8; 4] should group with align-4 fields");
+    let v = Reorder2 {a: 0, b: 0, ary: [0; 6]};
+    assert_eq!(size_of::<Reorder2>(), 10);
+    assert!((&v.ary).as_ptr().is_aligned_to(2), "[u8; 6] should group with align-2 fields");
 }

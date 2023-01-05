@@ -11,9 +11,6 @@
 // [cfail1]compile-flags: -Zincremental-ignore-spans
 // [cfail2]compile-flags: -Zincremental-ignore-spans
 // [cfail3]compile-flags: -Zincremental-ignore-spans
-// [cfail4]compile-flags: -Zincremental-relative-spans
-// [cfail5]compile-flags: -Zincremental-relative-spans
-// [cfail6]compile-flags: -Zincremental-relative-spans
 
 #![allow(warnings)]
 #![feature(rustc_attrs)]
@@ -128,7 +125,7 @@ extern "C" {
 // Change calling convention ---------------------------------------------------
 #[cfg(any(cfail1,cfail4))]
 extern "C" {
-    pub fn change_calling_convention(c: i32);
+    pub fn change_calling_convention(c: (i32,));
 }
 
 #[cfg(not(any(cfail1,cfail4)))]
@@ -137,7 +134,7 @@ extern "C" {
 #[rustc_clean(cfg = "cfail5", except = "hir_owner,hir_owner_nodes")]
 #[rustc_clean(cfg = "cfail6")]
 extern "rust-call" {
-    pub fn change_calling_convention(c: i32);
+    pub fn change_calling_convention(c: (i32,));
 }
 
 // Make function public --------------------------------------------------------

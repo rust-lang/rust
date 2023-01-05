@@ -35,9 +35,11 @@ fn associated_type_bounds<'tcx>(
 
     let bounds_from_parent = trait_predicates.predicates.iter().copied().filter(|(pred, _)| {
         match pred.kind().skip_binder() {
-            ty::PredicateKind::Trait(tr) => tr.self_ty() == item_ty,
-            ty::PredicateKind::Projection(proj) => proj.projection_ty.self_ty() == item_ty,
-            ty::PredicateKind::TypeOutlives(outlives) => outlives.0 == item_ty,
+            ty::PredicateKind::Clause(ty::Clause::Trait(tr)) => tr.self_ty() == item_ty,
+            ty::PredicateKind::Clause(ty::Clause::Projection(proj)) => {
+                proj.projection_ty.self_ty() == item_ty
+            }
+            ty::PredicateKind::Clause(ty::Clause::TypeOutlives(outlives)) => outlives.0 == item_ty,
             _ => false,
         }
     });

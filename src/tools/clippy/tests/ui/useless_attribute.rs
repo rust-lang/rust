@@ -1,6 +1,7 @@
 // run-rustfix
 // aux-build:proc_macro_derive.rs
 
+#![allow(unused)]
 #![warn(clippy::useless_attribute)]
 #![warn(unreachable_pub)]
 #![feature(rustc_private)]
@@ -15,6 +16,13 @@ extern crate rustc_middle;
 
 #[macro_use]
 extern crate proc_macro_derive;
+
+fn test_indented_attr() {
+    #[allow(clippy::almost_swapped)]
+    use std::collections::HashSet;
+
+    let _ = HashSet::<u32>::default();
+}
 
 // don't lint on unused_import for `use` items
 #[allow(unused_imports)]
@@ -63,12 +71,15 @@ mod c {
     pub(crate) struct S;
 }
 
-fn test_indented_attr() {
-    #[allow(clippy::almost_swapped)]
-    use std::collections::HashSet;
-
-    let _ = HashSet::<u32>::default();
+// https://github.com/rust-lang/rust-clippy/issues/7511
+pub mod split {
+    #[allow(clippy::module_name_repetitions)]
+    pub use regex::SplitN;
 }
+
+// https://github.com/rust-lang/rust-clippy/issues/8768
+#[allow(clippy::single_component_path_imports)]
+use regex;
 
 fn main() {
     test_indented_attr();

@@ -32,12 +32,20 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
         self.fields.tcx()
     }
 
+    fn intercrate(&self) -> bool {
+        self.fields.infcx.intercrate
+    }
+
     fn param_env(&self) -> ty::ParamEnv<'tcx> {
         self.fields.param_env
     }
 
     fn a_is_expected(&self) -> bool {
         self.a_is_expected
+    }
+
+    fn mark_ambiguous(&mut self) {
+        self.fields.mark_ambiguous();
     }
 
     fn relate_item_substs(
@@ -92,11 +100,15 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
                 self.fields.instantiate(a, RelationDir::EqTo, b_id, self.a_is_expected)?;
             }
 
-            (&ty::Opaque(a_def_id, _), &ty::Opaque(b_def_id, _)) if a_def_id == b_def_id => {
+            (
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: a_def_id, .. }),
+                &ty::Alias(ty::Opaque, ty::AliasTy { def_id: b_def_id, .. }),
+            ) if a_def_id == b_def_id => {
                 self.fields.infcx.super_combine_tys(self, a, b)?;
             }
-            (&ty::Opaque(did, ..), _) | (_, &ty::Opaque(did, ..))
-                if self.fields.define_opaque_types && did.is_local() =>
+            (&ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }), _)
+            | (_, &ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }))
+                if self.fields.define_opaque_types && def_id.is_local() =>
             {
                 self.fields.obligations.extend(
                     infcx
@@ -170,6 +182,11 @@ impl<'tcx> TypeRelation<'tcx> for Equate<'_, '_, 'tcx> {
     where
         T: Relate<'tcx>,
     {
+        // A binder is equal to itself if it's structually equal to itself
+        if a == b {
+            return Ok(a);
+        }
+
         if a.skip_binder().has_escaping_bound_vars() || b.skip_binder().has_escaping_bound_vars() {
             self.fields.higher_ranked_sub(a, b, self.a_is_expected)?;
             self.fields.higher_ranked_sub(b, a, self.a_is_expected)?;

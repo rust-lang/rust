@@ -40,7 +40,7 @@ macro_rules! unsafe_base {
 
 /// SAFETY: This macro should not be used for anything except Shl or Shr, and passed the appropriate shift intrinsic.
 /// It handles performing a bitand in addition to calling the shift operator, so that the result
-/// is well-defined: LLVM can return a poison value if you shl, lshr, or ashr if rhs >= <Int>::BITS
+/// is well-defined: LLVM can return a poison value if you shl, lshr, or ashr if `rhs >= <Int>::BITS`
 /// At worst, this will maybe add another instruction and cycle,
 /// at best, it may open up more optimization opportunities,
 /// or simply be elided entirely, especially for SIMD ISAs which default to this.

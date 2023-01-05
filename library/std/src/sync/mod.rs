@@ -177,13 +177,17 @@ pub use self::lazy_lock::LazyLock;
 #[unstable(feature = "once_cell", issue = "74465")]
 pub use self::once_lock::OnceLock;
 
+pub(crate) use self::remutex::{ReentrantMutex, ReentrantMutexGuard};
+
 pub mod mpsc;
 
 mod barrier;
 mod condvar;
 mod lazy_lock;
+mod mpmc;
 mod mutex;
 mod once;
 mod once_lock;
 mod poison;
+mod remutex;
 mod rwlock;

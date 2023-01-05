@@ -1,4 +1,4 @@
-error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+error: the following explicit lifetimes could be elided: 'a
   --> $DIR/ice-2774.rs:15:1
    |
 LL | pub fn add_barfoos_to_foos<'a>(bars: &HashSet<&'a Bar>) {

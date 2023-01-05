@@ -3,6 +3,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 #![allow(
     clippy::disallowed_names,
+    clippy::needless_lifetimes,
     clippy::redundant_field_names,
     clippy::uninlined_format_args
 )]

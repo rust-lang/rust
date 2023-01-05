@@ -21,7 +21,6 @@ pub enum Bar {
 // CHECK-LABEL: @lookup_unmodified
 #[no_mangle]
 pub fn lookup_unmodified(buf: &[u8; 5], f: Bar) -> u8 {
-    // FIXME: panic check can be removed by adding the assumes back after https://github.com/rust-lang/rust/pull/98332
-    // CHECK: panic_bounds_check
+    // CHECK-NOT: panic_bounds_check
     buf[f as usize]
 }

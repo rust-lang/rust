@@ -175,13 +175,23 @@ impl EarlyLintPass for NonCamelCaseTypes {
             return;
         }
 
-        match it.kind {
+        match &it.kind {
             ast::ItemKind::TyAlias(..)
             | ast::ItemKind::Enum(..)
             | ast::ItemKind::Struct(..)
             | ast::ItemKind::Union(..) => self.check_case(cx, "type", &it.ident),
             ast::ItemKind::Trait(..) => self.check_case(cx, "trait", &it.ident),
             ast::ItemKind::TraitAlias(..) => self.check_case(cx, "trait alias", &it.ident),
+
+            // N.B. This check is only for inherent associated types, so that we don't lint against
+            // trait impls where we should have warned for the trait definition already.
+            ast::ItemKind::Impl(box ast::Impl { of_trait: None, items, .. }) => {
+                for it in items {
+                    if let ast::AssocItemKind::Type(..) = it.kind {
+                        self.check_case(cx, "associated type", &it.ident);
+                    }
+                }
+            }
             _ => (),
         }
     }

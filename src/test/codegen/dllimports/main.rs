@@ -1,17 +1,6 @@
 // This test is for *-windows-msvc only.
-// ignore-android
-// ignore-dragonfly
-// ignore-emscripten
-// ignore-freebsd
+// only-windows
 // ignore-gnu
-// ignore-haiku
-// ignore-ios
-// ignore-linux
-// ignore-macos
-// ignore-netbsd
-// ignore-openbsd
-// ignore-solaris
-// ignore-sgx no dynamic linking
 
 // aux-build:dummy.rs
 // aux-build:wrapper.rs

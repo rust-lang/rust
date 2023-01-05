@@ -111,7 +111,7 @@ to an SD card to be inserted in the device.
 The `cargo-3ds` tool mentioned in [Building Rust programs](#building-rust-programs)
 supports the use of `3dslink` with `cargo 3ds run`. The default Rust test runner
 is not supported, but
-[custom test frameworks](https://doc.rust-lang.org/beta/unstable-book/language-features/custom-test-frameworks.html)
+[custom test frameworks](../../unstable-book/language-features/custom-test-frameworks.html)
 can be used with `cargo 3ds test` to run unit tests on a device.
 
 The Rust test suite for `library/std` is not yet supported.

@@ -1,7 +1,8 @@
 #![feature(unsized_locals)]
 #![feature(unboxed_closures)]
+#![feature(tuple_trait)]
 
-pub trait FnOnce<Args> {
+pub trait FnOnce<Args: std::marker::Tuple> {
     type Output;
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }

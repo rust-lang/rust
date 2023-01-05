@@ -6,12 +6,13 @@ use core::ops::ControlFlow;
 use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::FnKind;
-use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, MatchSource, PatKind, StmtKind};
+use rustc_hir::{Block, Body, Expr, ExprKind, FnDecl, HirId, LangItem, MatchSource, PatKind, QPath, StmtKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::source_map::Span;
+use rustc_span::{BytePos, Pos};
 
 declare_clippy_lint! {
     /// ### What it does
@@ -206,16 +207,23 @@ fn check_final_expr<'tcx>(
     match &peeled_drop_expr.kind {
         // simple return is always "bad"
         ExprKind::Ret(ref inner) => {
+            // if desugar of `do yeet`, don't lint
+            if let Some(inner_expr) = inner
+                && let ExprKind::Call(path_expr, _) = inner_expr.kind
+                && let ExprKind::Path(QPath::LangItem(LangItem::TryTraitFromYeet, _, _)) = path_expr.kind {
+                    return;
+            }
             if cx.tcx.hir().attrs(expr.hir_id).is_empty() {
                 let borrows = inner.map_or(false, |inner| last_statement_borrows(cx, inner));
                 if !borrows {
-                    emit_return_lint(
-                        cx,
-                        peeled_drop_expr.span,
-                        semi_spans,
-                        inner.as_ref().map(|i| i.span),
-                        replacement,
-                    );
+                    // check if expr return nothing
+                    let ret_span = if inner.is_none() && replacement == RetReplacement::Empty {
+                        extend_span_to_previous_non_ws(cx, peeled_drop_expr.span)
+                    } else {
+                        peeled_drop_expr.span
+                    };
+
+                    emit_return_lint(cx, ret_span, semi_spans, inner.as_ref().map(|i| i.span), replacement);
                 }
             }
         },
@@ -288,4 +296,17 @@ fn last_statement_borrows<'tcx>(cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) 
         }
     })
     .is_some()
+}
+
+// Go backwards while encountering whitespace and extend the given Span to that point.
+fn extend_span_to_previous_non_ws(cx: &LateContext<'_>, sp: Span) -> Span {
+    if let Ok(prev_source) = cx.sess().source_map().span_to_prev_source(sp) {
+        let ws = [' ', '\t', '\n'];
+        if let Some(non_ws_pos) = prev_source.rfind(|c| !ws.contains(&c)) {
+            let len = prev_source.len() - non_ws_pos - 1;
+            return sp.with_lo(sp.lo() - BytePos::from_usize(len));
+        }
+    }
+
+    sp
 }

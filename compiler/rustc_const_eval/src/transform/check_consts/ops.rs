@@ -1,7 +1,7 @@
 //! Concrete error types for all operations which may be invalid in a certain const context.
 
 use hir::def_id::LocalDefId;
-use hir::ConstContext;
+use hir::{ConstContext, LangItem};
 use rustc_errors::{
     error_code, struct_span_err, Applicability, DiagnosticBuilder, ErrorGuaranteed,
 };
@@ -13,10 +13,9 @@ use rustc_middle::mir;
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::subst::{GenericArgKind, SubstsRef};
 use rustc_middle::ty::{
-    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, TraitPredicate,
-    Ty,
+    suggest_constraining_type_param, Adt, Closure, DefIdTree, FnDef, FnPtr, Param, Ty,
 };
-use rustc_middle::ty::{Binder, BoundConstness, ImplPolarity, TraitRef};
+use rustc_middle::ty::{Binder, TraitRef};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{BytePos, Pos, Span, Symbol};
@@ -147,13 +146,10 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                 }
                 Adt(..) => {
                     let obligation = Obligation::new(
+                        tcx,
                         ObligationCause::dummy(),
                         param_env,
-                        Binder::dummy(TraitPredicate {
-                            trait_ref,
-                            constness: BoundConstness::NotConst,
-                            polarity: ImplPolarity::Positive,
-                        }),
+                        Binder::dummy(trait_ref),
                     );
 
                     let infcx = tcx.infer_ctxt().build();
@@ -303,7 +299,7 @@ impl<'tcx> NonConstOp<'tcx> for FnCallNonConst<'tcx> {
                     err.span_note(deref_target, "deref defined here");
                 }
 
-                diag_trait(&mut err, self_ty, tcx.lang_items().deref_trait().unwrap());
+                diag_trait(&mut err, self_ty, tcx.require_lang_item(LangItem::Deref, Some(span)));
                 err
             }
             _ if tcx.opt_parent(callee) == tcx.get_diagnostic_item(sym::ArgumentV1Methods) => {
@@ -380,7 +376,7 @@ impl<'tcx> NonConstOp<'tcx> for Generator {
         ccx: &ConstCx<'_, 'tcx>,
         span: Span,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
-        let msg = format!("{}s are not allowed in {}s", self.0, ccx.const_kind());
+        let msg = format!("{}s are not allowed in {}s", self.0.descr(), ccx.const_kind());
         if let hir::GeneratorKind::Async(hir::AsyncGeneratorKind::Block) = self.0 {
             ccx.tcx.sess.create_feature_err(
                 UnallowedOpInConstContext { span, msg },
@@ -690,7 +686,7 @@ impl<'tcx> NonConstOp<'tcx> for ThreadLocalAccess {
     }
 }
 
-// Types that cannot appear in the signature or locals of a `const fn`.
+/// Types that cannot appear in the signature or locals of a `const fn`.
 pub mod ty {
     use super::*;
 

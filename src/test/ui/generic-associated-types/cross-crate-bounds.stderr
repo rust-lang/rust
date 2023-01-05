@@ -8,7 +8,7 @@ note: required by a bound in `foo_defn::Foo::Bar`
   --> $DIR/auxiliary/foo_defn.rs:4:15
    |
 LL |     type Bar: AsRef<()>;
-   |               ^^^^^^^^^ required by this bound in `foo_defn::Foo::Bar`
+   |               ^^^^^^^^^ required by this bound in `Foo::Bar`
 
 error: aborting due to previous error
 

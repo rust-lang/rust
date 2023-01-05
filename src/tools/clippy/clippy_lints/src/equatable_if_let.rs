@@ -1,7 +1,6 @@
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::snippet_with_context;
 use clippy_utils::ty::implements_trait;
-use if_chain::if_chain;
 use rustc_errors::Applicability;
 use rustc_hir::{Expr, ExprKind, Pat, PatKind};
 use rustc_lint::{LateContext, LateLintPass, LintContext};
@@ -67,16 +66,14 @@ fn is_structural_partial_eq<'tcx>(cx: &LateContext<'tcx>, ty: Ty<'tcx>, other: T
 
 impl<'tcx> LateLintPass<'tcx> for PatternEquality {
     fn check_expr(&mut self, cx: &LateContext<'tcx>, expr: &'tcx Expr<'tcx>) {
-        if_chain! {
-            if !in_external_macro(cx.sess(), expr.span);
-            if let ExprKind::Let(let_expr) = expr.kind;
-            if unary_pattern(let_expr.pat);
+        if !in_external_macro(cx.sess(), expr.span)
+            && let ExprKind::Let(let_expr) = expr.kind
+            && unary_pattern(let_expr.pat) {
             let exp_ty = cx.typeck_results().expr_ty(let_expr.init);
             let pat_ty = cx.typeck_results().pat_ty(let_expr.pat);
-            if is_structural_partial_eq(cx, exp_ty, pat_ty);
-            then {
+            let mut applicability = Applicability::MachineApplicable;
 
-                let mut applicability = Applicability::MachineApplicable;
+            if is_structural_partial_eq(cx, exp_ty, pat_ty) {
                 let pat_str = match let_expr.pat.kind {
                     PatKind::Struct(..) => format!(
                         "({})",
@@ -93,6 +90,20 @@ impl<'tcx> LateLintPass<'tcx> for PatternEquality {
                     format!(
                         "{} == {pat_str}",
                         snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
+                    ),
+                    applicability,
+                );
+            } else {
+                span_lint_and_sugg(
+                    cx,
+                    EQUATABLE_IF_LET,
+                    expr.span,
+                    "this pattern matching can be expressed using `matches!`",
+                    "try",
+                    format!(
+                        "matches!({}, {})",
+                        snippet_with_context(cx, let_expr.init.span, expr.span.ctxt(), "..", &mut applicability).0,
+                        snippet_with_context(cx, let_expr.pat.span, expr.span.ctxt(), "..", &mut applicability).0,
                     ),
                     applicability,
                 );

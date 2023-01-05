@@ -58,7 +58,7 @@ const ADD_ATTR: &str =
 
 impl<'tcx> InherentCollect<'tcx> {
     fn check_def_id(&mut self, item: &hir::Item<'_>, self_ty: Ty<'tcx>, def_id: DefId) {
-        let impl_def_id = item.def_id;
+        let impl_def_id = item.owner_id;
         if let Some(def_id) = def_id.as_local() {
             // Add the implementation to the mapping from implementation to base
             // type def ID, if there is a base type for this implementation and
@@ -89,7 +89,7 @@ impl<'tcx> InherentCollect<'tcx> {
             for impl_item in items {
                 if !self
                     .tcx
-                    .has_attr(impl_item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
+                    .has_attr(impl_item.id.owner_id.to_def_id(), sym::rustc_allow_incoherent_impl)
                 {
                     struct_span_err!(
                         self.tcx.sess,
@@ -135,7 +135,7 @@ impl<'tcx> InherentCollect<'tcx> {
                 for item in items {
                     if !self
                         .tcx
-                        .has_attr(item.id.def_id.to_def_id(), sym::rustc_allow_incoherent_impl)
+                        .has_attr(item.id.owner_id.to_def_id(), sym::rustc_allow_incoherent_impl)
                     {
                         struct_span_err!(
                             self.tcx.sess,
@@ -177,7 +177,7 @@ impl<'tcx> InherentCollect<'tcx> {
     }
 
     fn check_item(&mut self, id: hir::ItemId) {
-        if !matches!(self.tcx.def_kind(id.def_id), DefKind::Impl) {
+        if !matches!(self.tcx.def_kind(id.owner_id), DefKind::Impl) {
             return;
         }
 
@@ -186,7 +186,7 @@ impl<'tcx> InherentCollect<'tcx> {
             return;
         };
 
-        let self_ty = self.tcx.type_of(item.def_id);
+        let self_ty = self.tcx.type_of(item.owner_id);
         match *self_ty.kind() {
             ty::Adt(def, _) => {
                 self.check_def_id(item, self_ty, def.did());
@@ -221,9 +221,9 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Never
             | ty::FnPtr(_)
             | ty::Tuple(..) => {
-                self.check_primitive_impl(item.def_id.def_id, self_ty, items, ty.span)
+                self.check_primitive_impl(item.owner_id.def_id, self_ty, items, ty.span)
             }
-            ty::Projection(..) | ty::Opaque(..) | ty::Param(_) => {
+            ty::Alias(..) | ty::Param(_) => {
                 let mut err = struct_span_err!(
                     self.tcx.sess,
                     ty.span,
@@ -243,7 +243,7 @@ impl<'tcx> InherentCollect<'tcx> {
             | ty::Bound(..)
             | ty::Placeholder(_)
             | ty::Infer(_) => {
-                bug!("unexpected impl self type of impl: {:?} {:?}", item.def_id, self_ty);
+                bug!("unexpected impl self type of impl: {:?} {:?}", item.owner_id, self_ty);
             }
             ty::Error(_) => {}
         }

@@ -22,15 +22,6 @@ LL |         TupleVariant => {}
    |         cannot be named the same as a tuple variant
    |         help: try specify the pattern arguments: `TupleVariant(..)`
 
-error[E0530]: match bindings cannot shadow struct variants
-  --> $DIR/pattern-binding-disambiguation.rs:36:9
-   |
-LL | use E::*;
-   |     ---- the struct variant `BracedVariant` is imported here
-...
-LL |         BracedVariant => {}
-   |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
-
 error[E0530]: match bindings cannot shadow statics
   --> $DIR/pattern-binding-disambiguation.rs:42:9
    |
@@ -58,15 +49,6 @@ LL | use E::*;
 LL |     let TupleVariant = doesnt_matter;
    |         ^^^^^^^^^^^^ cannot be named the same as a tuple variant
 
-error[E0530]: let bindings cannot shadow struct variants
-  --> $DIR/pattern-binding-disambiguation.rs:53:9
-   |
-LL | use E::*;
-   |     ---- the struct variant `BracedVariant` is imported here
-...
-LL |     let BracedVariant = doesnt_matter;
-   |         ^^^^^^^^^^^^^ cannot be named the same as a struct variant
-
 error[E0530]: let bindings cannot shadow statics
   --> $DIR/pattern-binding-disambiguation.rs:55:9
    |
@@ -76,6 +58,6 @@ LL | static STATIC: () = ();
 LL |     let STATIC = doesnt_matter;
    |         ^^^^^^ cannot be named the same as a static
 
-error: aborting due to 8 previous errors
+error: aborting due to 6 previous errors
 
 For more information about this error, try `rustc --explain E0530`.

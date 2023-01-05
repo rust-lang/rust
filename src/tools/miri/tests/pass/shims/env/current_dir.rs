@@ -3,8 +3,9 @@ use std::env;
 use std::io::ErrorKind;
 
 fn main() {
-    // Test that `getcwd` is available
+    // Test that `getcwd` is available and an absolute path
     let cwd = env::current_dir().unwrap();
+    assert!(cwd.is_absolute(), "cwd {:?} is not absolute", cwd);
     // Test that changing dir to `..` actually sets the current directory to the parent of `cwd`.
     // The only exception here is if `cwd` is the root directory, then changing directory must
     // keep the current directory equal to `cwd`.

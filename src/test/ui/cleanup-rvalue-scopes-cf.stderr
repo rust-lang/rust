@@ -4,7 +4,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let x1 = arg(&AddFlags(1));
    |                   ^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                   |
-   |                   creates a temporary which is freed while still in use
+   |                   creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |      -- borrow later used here
@@ -21,7 +21,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let x2 = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |              |
-   |              creates a temporary which is freed while still in use
+   |              creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |          -- borrow later used here
@@ -38,7 +38,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let x3 = &*arg(&AddFlags(1));
    |                     ^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                     |
-   |                     creates a temporary which is freed while still in use
+   |                     creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |              -- borrow later used here
@@ -55,7 +55,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let ref x4 = *arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                        |
-   |                        creates a temporary which is freed while still in use
+   |                        creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |                  -- borrow later used here
@@ -72,7 +72,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let &ref x5 = arg(&AddFlags(1));
    |                        ^^^^^^^^^^^ - temporary value is freed at the end of this statement
    |                        |
-   |                        creates a temporary which is freed while still in use
+   |                        creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |                      -- borrow later used here
@@ -89,7 +89,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let x6 = AddFlags(1).get();
    |              ^^^^^^^^^^^      - temporary value is freed at the end of this statement
    |              |
-   |              creates a temporary which is freed while still in use
+   |              creates a temporary value which is freed while still in use
 ...
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |                          -- borrow later used here
@@ -106,7 +106,7 @@ error[E0716]: temporary value dropped while borrowed
 LL |     let StackBox { f: x7 } = StackBox { f: AddFlags(1).get() };
    |                                            ^^^^^^^^^^^        - temporary value is freed at the end of this statement
    |                                            |
-   |                                            creates a temporary which is freed while still in use
+   |                                            creates a temporary value which is freed while still in use
 LL |
 LL |     (x1, x2, x3, x4, x5, x6, x7);
    |                              -- borrow later used here

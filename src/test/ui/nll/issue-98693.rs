@@ -13,8 +13,8 @@ where
 
 fn test<T>() {
     || {
-        //~^ ERROR the parameter type `T` may not live long enough
         assert_static::<T>();
+        //~^ ERROR the parameter type `T` may not live long enough
     };
 }
 

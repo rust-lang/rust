@@ -9,7 +9,7 @@ pub const MAX_BASE: usize = 64;
 pub const ALPHANUMERIC_ONLY: usize = 62;
 pub const CASE_INSENSITIVE: usize = 36;
 
-const BASE_64: &[u8; MAX_BASE as usize] =
+const BASE_64: &[u8; MAX_BASE] =
     b"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@$";
 
 #[inline]

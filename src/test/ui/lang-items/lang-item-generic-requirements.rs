@@ -22,8 +22,6 @@ trait MyIndex<'a, T> {}
 #[lang = "phantom_data"]
 //~^ ERROR `phantom_data` language item must be applied to a struct with 1 generic argument
 struct MyPhantomData<T, U>;
-//~^ ERROR parameter `T` is never used
-//~| ERROR parameter `U` is never used
 
 #[lang = "owned_box"]
 //~^ ERROR `owned_box` language item must be applied to a struct with at least 1 generic argument

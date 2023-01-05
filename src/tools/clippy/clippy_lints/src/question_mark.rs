@@ -94,7 +94,7 @@ fn check_is_none_or_err_and_early_return<'tcx>(cx: &LateContext<'tcx>, expr: &Ex
         then {
             let mut applicability = Applicability::MachineApplicable;
             let receiver_str = snippet_with_applicability(cx, caller.span, "..", &mut applicability);
-            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx.at(caller.span), cx.param_env) &&
+            let by_ref = !caller_ty.is_copy_modulo_regions(cx.tcx, cx.param_env) &&
                 !matches!(caller.kind, ExprKind::Call(..) | ExprKind::MethodCall(..));
             let sugg = if let Some(else_inner) = r#else {
                 if eq_expr_value(cx, caller, peel_blocks(else_inner)) {
@@ -189,6 +189,7 @@ fn is_early_return(smbl: Symbol, cx: &LateContext<'_>, if_block: &IfBlockType<'_
                             && expr_return_none_or_err(smbl, cx, if_else.unwrap(), let_expr, Some(let_pat_sym)))
                             || is_res_lang_ctor(cx, res, ResultErr)
                                 && expr_return_none_or_err(smbl, cx, if_then, let_expr, Some(let_pat_sym))
+                                && if_else.is_none()
                     },
                     _ => false,
                 }

@@ -61,9 +61,8 @@ pub struct SyntaxContextData {
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct ExpnIndex {
-        ENCODABLE = custom
-    }
+    #[custom_encodable]
+    pub struct ExpnIndex {}
 }
 
 /// A unique ID associated with a macro invocation and expansion.
@@ -76,17 +75,16 @@ pub struct ExpnId {
 impl fmt::Debug for ExpnId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         // Generate crate_::{{expn_}}.
-        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.private)
+        write!(f, "{:?}::{{{{expn{}}}}}", self.krate, self.local_id.as_u32())
     }
 }
 
 rustc_index::newtype_index! {
     /// A unique ID associated with a macro invocation and expansion.
-    pub struct LocalExpnId {
-        ENCODABLE = custom
-        ORD_IMPL = custom
-        DEBUG_FORMAT = "expn{}"
-    }
+    #[custom_encodable]
+    #[no_ord_impl]
+    #[debug_format = "expn{}"]
+    pub struct LocalExpnId {}
 }
 
 // To ensure correctness of incremental compilation,
@@ -106,6 +104,10 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // `-Z incremental-ignore-spans` option. Normally, this option is disabled,
         // which will cause us to require that this method always be called with `Span` hashing
         // enabled.
+        //
+        // Span hashing can also be disabled without `-Z incremental-ignore-spans`.
+        // This is the case for instance when building a hash for name mangling.
+        // Such configuration must not be used for metadata.
         HashingControls { hash_spans }
             if hash_spans == !ctx.unstable_opts_incremental_ignore_spans() => {}
         other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
@@ -318,6 +320,7 @@ impl ExpnId {
             // Stop going up the backtrace once include! is encountered
             if expn_data.is_root()
                 || expn_data.kind == ExpnKind::Macro(MacroKind::Bang, sym::include)
+                || expn_data.kind == ExpnKind::Inlined
             {
                 break;
             }
@@ -381,7 +384,7 @@ impl HygieneData {
     }
 
     pub fn with<T, F: FnOnce(&mut HygieneData) -> T>(f: F) -> T {
-        with_session_globals(|session_globals| f(&mut *session_globals.hygiene_data.borrow_mut()))
+        with_session_globals(|session_globals| f(&mut session_globals.hygiene_data.borrow_mut()))
     }
 
     #[inline]

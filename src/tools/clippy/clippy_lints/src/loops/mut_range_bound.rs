@@ -52,8 +52,8 @@ fn check_for_mutability(cx: &LateContext<'_>, bound: &Expr<'_>) -> Option<HirId>
     None
 }
 
-fn check_for_mutation<'tcx>(
-    cx: &LateContext<'tcx>,
+fn check_for_mutation(
+    cx: &LateContext<'_>,
     body: &Expr<'_>,
     bound_id_start: Option<HirId>,
     bound_id_end: Option<HirId>,
@@ -113,13 +113,7 @@ impl<'tcx> Delegate<'tcx> for MutatePairDelegate<'_, 'tcx> {
         }
     }
 
-    fn fake_read(
-        &mut self,
-        _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>,
-        _: FakeReadCause,
-        _: HirId,
-    ) {
-    }
+    fn fake_read(&mut self, _: &rustc_hir_typeck::expr_use_visitor::PlaceWithHirId<'tcx>, _: FakeReadCause, _: HirId) {}
 }
 
 impl MutatePairDelegate<'_, '_> {

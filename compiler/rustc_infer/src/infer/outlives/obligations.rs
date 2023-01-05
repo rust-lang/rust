@@ -68,6 +68,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
@@ -177,7 +178,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         generic_param_scope: LocalDefId,
         outlives_env: &OutlivesEnvironment<'tcx>,
-    ) {
+    ) -> Result<(), ErrorGuaranteed> {
         self.process_registered_region_obligations(
             outlives_env.region_bound_pairs(),
             outlives_env.param_env,
@@ -210,7 +211,7 @@ pub trait TypeOutlivesDelegate<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        constraint_category: ConstraintCategory,
+        constraint_category: ConstraintCategory<'tcx>,
     );
 
     fn push_verify(
@@ -259,7 +260,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         ty: Ty<'tcx>,
         region: ty::Region<'tcx>,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         assert!(!ty.has_escaping_bound_vars());
 
@@ -273,7 +274,7 @@ where
         origin: infer::SubregionOrigin<'tcx>,
         components: &[Component<'tcx>],
         region: ty::Region<'tcx>,
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
     ) {
         for component in components.iter() {
             let origin = origin.clone();
@@ -338,7 +339,7 @@ where
             substs,
             true,
             |ty| match *ty.kind() {
-                ty::Opaque(def_id, substs) => (def_id, substs),
+                ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => (def_id, substs),
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -349,17 +350,19 @@ where
         &mut self,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
-        projection_ty: ty::ProjectionTy<'tcx>,
+        projection_ty: ty::AliasTy<'tcx>,
     ) {
         self.generic_must_outlive(
             origin,
             region,
             GenericKind::Projection(projection_ty),
-            projection_ty.item_def_id,
+            projection_ty.def_id,
             projection_ty.substs,
             false,
             |ty| match ty.kind() {
-                ty::Projection(projection_ty) => (projection_ty.item_def_id, projection_ty.substs),
+                ty::Alias(ty::Projection, projection_ty) => {
+                    (projection_ty.def_id, projection_ty.substs)
+                }
                 _ => bug!("expected only projection types from env, not {:?}", ty),
             },
         );
@@ -529,7 +532,7 @@ impl<'cx, 'tcx> TypeOutlivesDelegate<'tcx> for &'cx InferCtxt<'tcx> {
         origin: SubregionOrigin<'tcx>,
         a: ty::Region<'tcx>,
         b: ty::Region<'tcx>,
-        _constraint_category: ConstraintCategory,
+        _constraint_category: ConstraintCategory<'tcx>,
     ) {
         self.sub_regions(origin, a, b)
     }

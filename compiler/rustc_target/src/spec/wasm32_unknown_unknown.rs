@@ -33,12 +33,6 @@ pub fn target() -> Target {
             // For now this target just never has an entry symbol no matter the output
             // type, so unconditionally pass this.
             "--no-entry",
-            // Rust really needs a way for users to specify exports and imports in
-            // the source code. --export-dynamic isn't the right tool for this job,
-            // however it does have the side effect of automatically exporting a lot
-            // of symbols, which approximates what people want when compiling for
-            // wasm32-unknown-unknown expect, so use it for now.
-            "--export-dynamic",
         ],
     );
     options.add_pre_link_args(
@@ -48,7 +42,6 @@ pub fn target() -> Target {
             // otherwise
             "--target=wasm32-unknown-unknown",
             "-Wl,--no-entry",
-            "-Wl,--export-dynamic",
         ],
     );
 

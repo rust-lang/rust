@@ -1,7 +1,6 @@
-// run-pass
+// known-bug: #104800
 
 #![feature(dyn_star, trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait Foo: Bar {
     fn hello(&self);

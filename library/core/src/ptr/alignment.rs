@@ -9,7 +9,8 @@ use crate::{cmp, fmt, hash, mem, num};
 /// Note that particularly large alignments, while representable in this type,
 /// are likely not to be supported by actual allocators and linkers.
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq)]
+#[derive_const(PartialEq)]
 #[repr(transparent)]
 pub struct Alignment(AlignmentEnum);
 
@@ -76,7 +77,12 @@ impl Alignment {
     #[inline]
     pub const unsafe fn new_unchecked(align: usize) -> Self {
         // SAFETY: Precondition passed to the caller.
-        unsafe { assert_unsafe_precondition!((align: usize) => align.is_power_of_two()) };
+        unsafe {
+            assert_unsafe_precondition!(
+               "Alignment::new_unchecked requires a power of two",
+                (align: usize) => align.is_power_of_two()
+            )
+        };
 
         // SAFETY: By precondition, this must be a power of two, and
         // our variants encompass all possible powers of two.
@@ -162,16 +168,18 @@ impl From<Alignment> for usize {
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::Ord for Alignment {
+impl const cmp::Ord for Alignment {
     #[inline]
     fn cmp(&self, other: &Self) -> cmp::Ordering {
-        self.as_nonzero().cmp(&other.as_nonzero())
+        self.as_nonzero().get().cmp(&other.as_nonzero().get())
     }
 }
 
+#[rustc_const_unstable(feature = "const_alloc_layout", issue = "67521")]
 #[unstable(feature = "ptr_alignment_type", issue = "102070")]
-impl cmp::PartialOrd for Alignment {
+impl const cmp::PartialOrd for Alignment {
     #[inline]
     fn partial_cmp(&self, other: &Self) -> Option<cmp::Ordering> {
         Some(self.cmp(other))
@@ -193,7 +201,8 @@ type AlignmentEnum = AlignmentEnum32;
 #[cfg(target_pointer_width = "64")]
 type AlignmentEnum = AlignmentEnum64;
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq)]
+#[derive_const(PartialEq)]
 #[repr(u16)]
 enum AlignmentEnum16 {
     _Align1Shl0 = 1 << 0,
@@ -214,7 +223,8 @@ enum AlignmentEnum16 {
     _Align1Shl15 = 1 << 15,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq)]
+#[derive_const(PartialEq)]
 #[repr(u32)]
 enum AlignmentEnum32 {
     _Align1Shl0 = 1 << 0,
@@ -251,7 +261,8 @@ enum AlignmentEnum32 {
     _Align1Shl31 = 1 << 31,
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq)]
+#[derive_const(PartialEq)]
 #[repr(u64)]
 enum AlignmentEnum64 {
     _Align1Shl0 = 1 << 0,

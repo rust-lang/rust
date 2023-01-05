@@ -35,6 +35,8 @@
     -Z            dump-mir-exclude-pass-number=val -- exclude the pass number when dumping MIR (used in tests) (default: no)
     -Z                       dump-mir-graphviz=val -- in addition to `.mir` files, create graphviz `.dot` files (and with `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived coverage graph) (default: no)
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
+    -Z                         dump-mono-stats=val -- output statistics about monomorphization collection
+    -Z                  dump-mono-stats-format=val -- the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
     -Z                               dylib-lto=val -- enables LTO for dylib crate type
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
@@ -77,6 +79,7 @@
     -Z                         location-detail=val -- what location details should be tracked when using caller_location, either `none`, or a comma separated list of location details, for which valid options are `file`, `line`, and `column` (default: `file,line,column`)
     -Z                                      ls=val -- list the symbols defined by a library crate (default: no)
     -Z                         macro-backtrace=val -- show macro backtraces (default: no)
+    -Z             maximal-hir-to-mir-coverage=val -- save as much information as possible about the correspondence between MIR and HIR as source scopes (default: no)
     -Z                         merge-functions=val -- control the operation of the MergeFunctions LLVM pass, taking the same values as the target option of the same name
     -Z                              meta-stats=val -- gather metadata statistics (default: no)
     -Z                          mir-emit-retag=val -- emit Retagging MIR statements, interpreted e.g., by miri; implies -Zmir-opt-level=0 (default: no)
@@ -90,7 +93,7 @@
     -Z                             no-analysis=val -- parse and expand the source, but run no analysis
     -Z                              no-codegen=val -- run all passes except codegen; no output
     -Z              no-generate-arange-section=val -- omit DWARF address ranges that give faster lookups
-    -Z                     no-interleave-lints=val -- execute lints separately; allows benchmarking individual lints
+    -Z                          no-jump-tables=val -- disable the jump tables and lookup tables that can be generated from a switch case lowering
     -Z                           no-leak-check=val -- disable the 'leak check' for subtyping; unsound, but useful for tests
     -Z                                 no-link=val -- compile without linking
     -Z                        no-parallel-llvm=val -- run LLVM in non-parallel mode (while keeping codegen-units and ThinLTO)
@@ -171,6 +174,7 @@
     -Z                             time-passes=val -- measure time of each rustc pass (default: no)
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
     -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
+    -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted
     -Z                translate-additional-ftl=val -- additional fluent translation to preferentially use (for testing translation)
     -Z        translate-directionality-markers=val -- emit directionality isolation markers in translated diagnostics
     -Z                          translate-lang=val -- language identifier for diagnostic output

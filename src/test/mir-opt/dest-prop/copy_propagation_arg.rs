@@ -1,6 +1,6 @@
 // Check that DestinationPropagation does not propagate an assignment to a function argument
 // (doing so can break usages of the original argument value)
-// compile-flags: -Zunsound-mir-opts
+// unit-test: DestinationPropagation
 fn dummy(x: u8) -> u8 {
     x
 }
@@ -18,9 +18,10 @@ fn bar(mut x: u8) {
 }
 
 // EMIT_MIR copy_propagation_arg.baz.DestinationPropagation.diff
-fn baz(mut x: i32) {
+fn baz(mut x: i32) -> i32 {
     // self-assignment to a function argument should be eliminated
     x = x;
+    x
 }
 
 // EMIT_MIR copy_propagation_arg.arg_src.DestinationPropagation.diff

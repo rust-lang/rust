@@ -10,7 +10,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:17:28
    |
 LL |     let _: &'static u32 = &foo();
-   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            ------------    ^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL | }
@@ -20,7 +20,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:21:28
    |
 LL |     let _: &'static u32 = &meh();
-   |            ------------    ^^^^^ creates a temporary which is freed while still in use
+   |            ------------    ^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 ...
@@ -31,7 +31,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/dont_promote_unstable_const_fn.rs:22:26
    |
 LL |     let x: &'static _ = &std::time::Duration::from_millis(42).subsec_millis();
-   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            ----------    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |

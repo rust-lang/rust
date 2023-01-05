@@ -112,7 +112,7 @@ macro_rules! define_dispatcher_impl {
                                 $name::$method(server, $($arg),*)
                             };
                             // HACK(eddyb) don't use `panic::catch_unwind` in a panic.
-                            // If client and server happen to use the same `libstd`,
+                            // If client and server happen to use the same `std`,
                             // `catch_unwind` asserts that the panic counter was 0,
                             // even when the closure passed to it didn't panic.
                             let r = if thread::panicking() {

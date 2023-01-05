@@ -1,6 +1,7 @@
 //~ ERROR overflow evaluating the requirement `T: Trait<_>`
-
+// revisions: current negative
 #![feature(specialization)]
+#![cfg_attr(negative, feature(with_negative_coherence))]
 #![allow(incomplete_features)]
 
 pub trait Trait<T> {}

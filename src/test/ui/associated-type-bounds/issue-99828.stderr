@@ -15,9 +15,6 @@ LL | fn get_iter(vec: &[i32]) -> impl Iterator<Item = {}> + '_ {
    |
 note: associated type defined here
   --> $SRC_DIR/core/src/iter/traits/iterator.rs:LL:COL
-   |
-LL |     type Item;
-   |     ^^^^^^^^^
 
 error: aborting due to 2 previous errors
 

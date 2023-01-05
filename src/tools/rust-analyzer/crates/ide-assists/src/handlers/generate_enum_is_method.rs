@@ -52,7 +52,7 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>
     let fn_name = format!("is_{}", &to_lower_snake_case(&variant_name.text()));
 
     // Return early if we've found an existing new fn
-    let impl_def = find_struct_impl(ctx, &parent_enum, &fn_name)?;
+    let impl_def = find_struct_impl(ctx, &parent_enum, &[fn_name.clone()])?;
 
     let target = variant.syntax().text_range();
     acc.add_group(
@@ -61,21 +61,15 @@ pub(crate) fn generate_enum_is_method(acc: &mut Assists, ctx: &AssistContext<'_>
         "Generate an `is_` method for this enum variant",
         target,
         |builder| {
-            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{} ", v));
+            let vis = parent_enum.visibility().map_or(String::new(), |v| format!("{v} "));
             let method = format!(
-                "    /// Returns `true` if the {} is [`{variant}`].
+                "    /// Returns `true` if the {enum_lowercase_name} is [`{variant_name}`].
     ///
-    /// [`{variant}`]: {}::{variant}
+    /// [`{variant_name}`]: {enum_name}::{variant_name}
     #[must_use]
-    {}fn {}(&self) -> bool {{
-        matches!(self, Self::{variant}{})
+    {vis}fn {fn_name}(&self) -> bool {{
+        matches!(self, Self::{variant_name}{pattern_suffix})
     }}",
-                enum_lowercase_name,
-                enum_name,
-                vis,
-                fn_name,
-                pattern_suffix,
-                variant = variant_name
             );
 
             add_method_to_adt(builder, &parent_enum, impl_def, &method);

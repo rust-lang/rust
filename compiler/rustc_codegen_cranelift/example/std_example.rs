@@ -164,6 +164,8 @@ unsafe fn test_simd() {
     let cmp_eq = _mm_cmpeq_epi8(y, y);
     let cmp_lt = _mm_cmplt_epi8(y, y);
 
+    let (zero0, zero1) = std::mem::transmute::<_, (u64, u64)>(x);
+    assert_eq!((zero0, zero1), (0, 0));
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(or), [7, 7, 7, 7, 7, 7, 7, 7]);
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_eq), [0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff, 0xffff]);
     assert_eq!(std::mem::transmute::<_, [u16; 8]>(cmp_lt), [0, 0, 0, 0, 0, 0, 0, 0]);

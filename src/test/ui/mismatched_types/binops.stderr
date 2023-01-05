@@ -24,15 +24,10 @@ LL |     2 as usize - Some(1);
    |
    = help: the trait `Sub<Option<{integer}>>` is not implemented for `usize`
    = help: the following other types implement trait `Sub<Rhs>`:
-             <&'a f32 as Sub<f32>>
-             <&'a f64 as Sub<f64>>
-             <&'a i128 as Sub<i128>>
-             <&'a i16 as Sub<i16>>
-             <&'a i32 as Sub<i32>>
-             <&'a i64 as Sub<i64>>
-             <&'a i8 as Sub<i8>>
-             <&'a isize as Sub<isize>>
-           and 48 others
+             <&'a usize as Sub<usize>>
+             <&usize as Sub<&usize>>
+             <usize as Sub<&usize>>
+             <usize as Sub>
 
 error[E0277]: cannot multiply `{integer}` by `()`
   --> $DIR/binops.rs:4:7

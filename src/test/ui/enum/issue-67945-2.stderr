@@ -1,8 +1,8 @@
 error: generic parameters may not be used in const operations
-  --> $DIR/issue-67945-2.rs:4:14
+  --> $DIR/issue-67945-2.rs:4:28
    |
-LL |     Var = 0: S,
-   |              ^ cannot perform const operation using `S`
+LL |     Var = type_ascribe!(0, S),
+   |                            ^ cannot perform const operation using `S`
    |
    = note: type parameters may not be used in const expressions
    = help: use `#![feature(generic_const_exprs)]` to allow generic const expressions

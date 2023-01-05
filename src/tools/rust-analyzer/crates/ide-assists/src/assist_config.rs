@@ -14,4 +14,5 @@ pub struct AssistConfig {
     pub allowed: Option<Vec<AssistKind>>,
     pub insert_use: InsertUseConfig,
     pub prefer_no_std: bool,
+    pub assist_emit_must_use: bool,
 }

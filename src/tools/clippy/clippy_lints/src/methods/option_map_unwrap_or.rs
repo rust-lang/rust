@@ -84,7 +84,7 @@ pub(super) fn check<'tcx>(
                 suggestion.push((map_arg_span.with_hi(map_arg_span.lo()), format!("{unwrap_snippet}, ")));
             }
 
-            diag.multipart_suggestion(&format!("use `{suggest}` instead"), suggestion, applicability);
+            diag.multipart_suggestion(format!("use `{suggest}` instead"), suggestion, applicability);
         });
     }
 }
@@ -97,7 +97,7 @@ struct UnwrapVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for UnwrapVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         self.identifiers.insert(ident(path));
         walk_path(self, path);
     }
@@ -116,7 +116,7 @@ struct MapExprVisitor<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for MapExprVisitor<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &'tcx Path<'_>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         if self.identifiers.contains(&ident(path)) {
             self.found_identifier = true;
             return;

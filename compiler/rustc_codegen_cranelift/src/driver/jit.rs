@@ -159,7 +159,7 @@ pub(crate) fn run_jit(tcx: TyCtxt<'_>, backend_config: BackendConfig) -> ! {
 
     tcx.sess.abort_if_errors();
 
-    jit_module.finalize_definitions();
+    jit_module.finalize_definitions().unwrap();
     unsafe { cx.unwind_context.register_jit(&jit_module) };
 
     println!(
@@ -245,7 +245,11 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
             let backend_config = lazy_jit_state.backend_config.clone();
 
             let name = tcx.symbol_name(instance).name;
-            let sig = crate::abi::get_function_sig(tcx, jit_module.isa().triple(), instance);
+            let sig = crate::abi::get_function_sig(
+                tcx,
+                jit_module.target_config().default_call_conv,
+                instance,
+            );
             let func_id = jit_module.declare_function(name, Linkage::Export, &sig).unwrap();
 
             let current_ptr = jit_module.read_got_entry(func_id);
@@ -278,7 +282,7 @@ fn jit_fn(instance_ptr: *const Instance<'static>, trampoline_ptr: *const u8) -> 
             });
 
             assert!(cx.global_asm.is_empty());
-            jit_module.finalize_definitions();
+            jit_module.finalize_definitions().unwrap();
             unsafe { cx.unwind_context.register_jit(&jit_module) };
             jit_module.get_finalized_function(func_id)
         })
@@ -344,7 +348,7 @@ fn codegen_shim<'tcx>(
     let pointer_type = module.target_config().pointer_type();
 
     let name = tcx.symbol_name(inst).name;
-    let sig = crate::abi::get_function_sig(tcx, module.isa().triple(), inst);
+    let sig = crate::abi::get_function_sig(tcx, module.target_config().default_call_conv, inst);
     let func_id = module.declare_function(name, Linkage::Export, &sig).unwrap();
 
     let instance_ptr = Box::into_raw(Box::new(inst));

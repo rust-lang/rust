@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 
 // This file illustrates how padding is handled: alignment
@@ -9,7 +9,6 @@
 // aligned (while on most it is 8-byte aligned) and so the resulting
 // padding and overall computed sizes can be quite different.
 
-#![feature(start)]
 #![allow(dead_code)]
 
 struct S {
@@ -26,9 +25,4 @@ enum E1 {
 enum E2 {
     A(i8, i32),
     B(S),
-}
-
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
-    0
 }

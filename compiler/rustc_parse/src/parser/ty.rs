@@ -1,16 +1,21 @@
 use super::{Parser, PathStyle, TokenType};
 
+use crate::errors::{ExpectedFnPathFoundFnKeyword, FnPtrWithGenerics, FnPtrWithGenericsSugg};
 use crate::{maybe_recover_from_interpolated_ty_qpath, maybe_whole};
 
+use ast::DUMMY_NODE_ID;
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Token, TokenKind};
+use rustc_ast::util::case::Case;
 use rustc_ast::{
     self as ast, BareFnTy, FnRetTy, GenericBound, GenericBounds, GenericParam, Generics, Lifetime,
     MacCall, MutTy, Mutability, PolyTraitRef, TraitBoundModifier, TraitObjectSyntax, Ty, TyKind,
 };
 use rustc_errors::{pluralize, struct_span_err, Applicability, PResult};
 use rustc_span::source_map::Span;
-use rustc_span::symbol::{kw, sym};
+use rustc_span::symbol::{kw, sym, Ident};
+use rustc_span::Symbol;
+use thin_vec::thin_vec;
 
 /// Any `?` or `~const` modifiers that appear at the start of a bound.
 struct BoundModifiers {
@@ -267,16 +272,21 @@ impl<'a> Parser<'a> {
         } else if self.eat_keyword(kw::Underscore) {
             // A type to be inferred `_`
             TyKind::Infer
-        } else if self.check_fn_front_matter(false) {
+        } else if self.check_fn_front_matter(false, Case::Sensitive) {
             // Function pointer type
-            self.parse_ty_bare_fn(lo, Vec::new(), recover_return_sign)?
+            self.parse_ty_bare_fn(lo, Vec::new(), None, recover_return_sign)?
         } else if self.check_keyword(kw::For) {
             // Function pointer type or bound list (trait object type) starting with a poly-trait.
             //   `for<'lt> [unsafe] [extern "ABI"] fn (&'lt S) -> T`
             //   `for<'lt> Trait1<'lt> + Trait2 + 'a`
             let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-            if self.check_fn_front_matter(false) {
-                self.parse_ty_bare_fn(lo, lifetime_defs, recover_return_sign)?
+            if self.check_fn_front_matter(false, Case::Sensitive) {
+                self.parse_ty_bare_fn(
+                    lo,
+                    lifetime_defs,
+                    Some(self.prev_token.span.shrink_to_lo()),
+                    recover_return_sign,
+                )?
             } else {
                 let path = self.parse_path(PathStyle::Type)?;
                 let parse_plus = allow_plus == AllowPlus::Yes && self.check_plus();
@@ -401,7 +411,7 @@ impl<'a> Parser<'a> {
                 .span_suggestions(
                     span.shrink_to_hi(),
                     "add `mut` or `const` here",
-                    ["mut ".to_string(), "const ".to_string()].into_iter(),
+                    ["mut ".to_string(), "const ".to_string()],
                     Applicability::HasPlaceholders,
                 )
                 .emit();
@@ -494,7 +504,7 @@ impl<'a> Parser<'a> {
             self.bump_with((dyn_tok, dyn_tok_sp));
         }
         let ty = self.parse_ty_no_plus()?;
-        Ok(TyKind::Rptr(opt_lifetime, MutTy { ty, mutbl }))
+        Ok(TyKind::Ref(opt_lifetime, MutTy { ty, mutbl }))
     }
 
     // Parses the `typeof(EXPR)`.
@@ -518,7 +528,8 @@ impl<'a> Parser<'a> {
     fn parse_ty_bare_fn(
         &mut self,
         lo: Span,
-        params: Vec<GenericParam>,
+        mut params: Vec<GenericParam>,
+        param_insertion_point: Option<Span>,
         recover_return_sign: RecoverReturnSign,
     ) -> PResult<'a, TyKind> {
         let inherited_vis = rustc_ast::Visibility {
@@ -528,7 +539,10 @@ impl<'a> Parser<'a> {
         };
         let span_start = self.token.span;
         let ast::FnHeader { ext, unsafety, constness, asyncness } =
-            self.parse_fn_front_matter(&inherited_vis)?;
+            self.parse_fn_front_matter(&inherited_vis, Case::Sensitive)?;
+        if self.may_recover() && self.token.kind == TokenKind::Lt {
+            self.recover_fn_ptr_with_generics(lo, &mut params, param_insertion_point)?;
+        }
         let decl = self.parse_fn_decl(|_| false, AllowPlus::No, recover_return_sign)?;
         let whole_span = lo.to(self.prev_token.span);
         if let ast::Const::Yes(span) = constness {
@@ -542,6 +556,48 @@ impl<'a> Parser<'a> {
         }
         let decl_span = span_start.to(self.token.span);
         Ok(TyKind::BareFn(P(BareFnTy { ext, unsafety, generic_params: params, decl, decl_span })))
+    }
+
+    /// Recover from function pointer types with a generic parameter list (e.g. `fn<'a>(&'a str)`).
+    fn recover_fn_ptr_with_generics(
+        &mut self,
+        lo: Span,
+        params: &mut Vec<GenericParam>,
+        param_insertion_point: Option<Span>,
+    ) -> PResult<'a, ()> {
+        let generics = self.parse_generics()?;
+        let arity = generics.params.len();
+
+        let mut lifetimes: Vec<_> = generics
+            .params
+            .into_iter()
+            .filter(|param| matches!(param.kind, ast::GenericParamKind::Lifetime))
+            .collect();
+
+        let sugg = if !lifetimes.is_empty() {
+            let snippet =
+                lifetimes.iter().map(|param| param.ident.as_str()).intersperse(", ").collect();
+
+            let (left, snippet) = if let Some(span) = param_insertion_point {
+                (span, if params.is_empty() { snippet } else { format!(", {snippet}") })
+            } else {
+                (lo.shrink_to_lo(), format!("for<{snippet}> "))
+            };
+
+            Some(FnPtrWithGenericsSugg {
+                left,
+                snippet,
+                right: generics.span,
+                arity,
+                for_param_list_exists: param_insertion_point.is_some(),
+            })
+        } else {
+            None
+        };
+
+        self.sess.emit_err(FnPtrWithGenerics { span: generics.span, sugg });
+        params.append(&mut lifetimes);
+        Ok(())
     }
 
     /// Emit an error for the given bad function pointer qualifier.
@@ -560,6 +616,25 @@ impl<'a> Parser<'a> {
     /// Parses an `impl B0 + ... + Bn` type.
     fn parse_impl_ty(&mut self, impl_dyn_multi: &mut bool) -> PResult<'a, TyKind> {
         // Always parse bounds greedily for better error recovery.
+        if self.token.is_lifetime() {
+            self.look_ahead(1, |t| {
+                if let token::Ident(symname, _) = t.kind {
+                    // parse pattern with "'a Sized" we're supposed to give suggestion like
+                    // "'a + Sized"
+                    self.struct_span_err(
+                        self.token.span,
+                        &format!("expected `+` between lifetime and {}", symname),
+                    )
+                    .span_suggestion_verbose(
+                        self.token.span.shrink_to_hi(),
+                        "add `+`",
+                        " +",
+                        Applicability::MaybeIncorrect,
+                    )
+                    .emit();
+                }
+            })
+        }
         let bounds = self.parse_generic_bounds(None)?;
         *impl_dyn_multi = bounds.len() > 1 || self.prev_token.kind == TokenKind::BinOp(token::Plus);
         Ok(TyKind::ImplTrait(ast::DUMMY_NODE_ID, bounds))
@@ -612,7 +687,7 @@ impl<'a> Parser<'a> {
             // Macro invocation in type position
             Ok(TyKind::MacCall(P(MacCall {
                 path,
-                args: self.parse_mac_args()?,
+                args: self.parse_delim_args()?,
                 prior_type_ascription: self.last_type_ascription,
             })))
         } else if allow_plus == AllowPlus::Yes && self.check_plus() {
@@ -858,8 +933,20 @@ impl<'a> Parser<'a> {
         has_parens: bool,
         modifiers: BoundModifiers,
     ) -> PResult<'a, GenericBound> {
-        let lifetime_defs = self.parse_late_bound_lifetime_defs()?;
-        let path = self.parse_path(PathStyle::Type)?;
+        let mut lifetime_defs = self.parse_late_bound_lifetime_defs()?;
+        let mut path = if self.token.is_keyword(kw::Fn)
+            && self.look_ahead(1, |tok| tok.kind == TokenKind::OpenDelim(Delimiter::Parenthesis))
+            && let Some(path) = self.recover_path_from_fn()
+        {
+            path
+        } else {
+            self.parse_path(PathStyle::Type)?
+        };
+
+        if self.may_recover() && self.token == TokenKind::OpenDelim(Delimiter::Parenthesis) {
+            self.recover_fn_trait_with_lifetime_params(&mut path, &mut lifetime_defs)?;
+        }
+
         if has_parens {
             if self.token.is_like_plus() {
                 // Someone has written something like `&dyn (Trait + Other)`. The correct code
@@ -888,6 +975,38 @@ impl<'a> Parser<'a> {
         Ok(GenericBound::Trait(poly_trait, modifier))
     }
 
+    // recovers a `Fn(..)` parenthesized-style path from `fn(..)`
+    fn recover_path_from_fn(&mut self) -> Option<ast::Path> {
+        let fn_token_span = self.token.span;
+        self.bump();
+        let args_lo = self.token.span;
+        let snapshot = self.create_snapshot_for_diagnostic();
+        match self.parse_fn_decl(|_| false, AllowPlus::No, RecoverReturnSign::OnlyFatArrow) {
+            Ok(decl) => {
+                self.sess.emit_err(ExpectedFnPathFoundFnKeyword { fn_token_span });
+                Some(ast::Path {
+                    span: fn_token_span.to(self.prev_token.span),
+                    segments: thin_vec![ast::PathSegment {
+                        ident: Ident::new(Symbol::intern("Fn"), fn_token_span),
+                        id: DUMMY_NODE_ID,
+                        args: Some(P(ast::GenericArgs::Parenthesized(ast::ParenthesizedArgs {
+                            span: args_lo.to(self.prev_token.span),
+                            inputs: decl.inputs.iter().map(|a| a.ty.clone()).collect(),
+                            inputs_span: args_lo.until(decl.output.span()),
+                            output: decl.output.clone(),
+                        }))),
+                    }],
+                    tokens: None,
+                })
+            }
+            Err(diag) => {
+                diag.cancel();
+                self.restore_snapshot(snapshot);
+                None
+            }
+        }
+    }
+
     /// Optionally parses `for<$generic_params>`.
     pub(super) fn parse_late_bound_lifetime_defs(&mut self) -> PResult<'a, Vec<GenericParam>> {
         if self.eat_keyword(kw::For) {
@@ -900,6 +1019,92 @@ impl<'a> Parser<'a> {
         } else {
             Ok(Vec::new())
         }
+    }
+
+    /// Recover from `Fn`-family traits (Fn, FnMut, FnOnce) with lifetime arguments
+    /// (e.g. `FnOnce<'a>(&'a str) -> bool`). Up to generic arguments have already
+    /// been eaten.
+    fn recover_fn_trait_with_lifetime_params(
+        &mut self,
+        fn_path: &mut ast::Path,
+        lifetime_defs: &mut Vec<GenericParam>,
+    ) -> PResult<'a, ()> {
+        let fn_path_segment = fn_path.segments.last_mut().unwrap();
+        let generic_args = if let Some(p_args) = &fn_path_segment.args {
+            p_args.clone().into_inner()
+        } else {
+            // Normally it wouldn't come here because the upstream should have parsed
+            // generic parameters (otherwise it's impossible to call this function).
+            return Ok(());
+        };
+        let lifetimes =
+            if let ast::GenericArgs::AngleBracketed(ast::AngleBracketedArgs { span: _, args }) =
+                &generic_args
+            {
+                args.into_iter()
+                    .filter_map(|arg| {
+                        if let ast::AngleBracketedArg::Arg(generic_arg) = arg
+                            && let ast::GenericArg::Lifetime(lifetime) = generic_arg {
+                            Some(lifetime)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            } else {
+                Vec::new()
+            };
+        // Only try to recover if the trait has lifetime params.
+        if lifetimes.is_empty() {
+            return Ok(());
+        }
+
+        // Parse `(T, U) -> R`.
+        let inputs_lo = self.token.span;
+        let inputs: Vec<_> =
+            self.parse_fn_params(|_| false)?.into_iter().map(|input| input.ty).collect();
+        let inputs_span = inputs_lo.to(self.prev_token.span);
+        let output = self.parse_ret_ty(AllowPlus::No, RecoverQPath::No, RecoverReturnSign::No)?;
+        let args = ast::ParenthesizedArgs {
+            span: fn_path_segment.span().to(self.prev_token.span),
+            inputs,
+            inputs_span,
+            output,
+        }
+        .into();
+        *fn_path_segment =
+            ast::PathSegment { ident: fn_path_segment.ident, args, id: ast::DUMMY_NODE_ID };
+
+        // Convert parsed `<'a>` in `Fn<'a>` into `for<'a>`.
+        let mut generic_params = lifetimes
+            .iter()
+            .map(|lt| GenericParam {
+                id: lt.id,
+                ident: lt.ident,
+                attrs: ast::AttrVec::new(),
+                bounds: Vec::new(),
+                is_placeholder: false,
+                kind: ast::GenericParamKind::Lifetime,
+                colon_span: None,
+            })
+            .collect::<Vec<GenericParam>>();
+        lifetime_defs.append(&mut generic_params);
+
+        let generic_args_span = generic_args.span();
+        let mut err =
+            self.struct_span_err(generic_args_span, "`Fn` traits cannot take lifetime parameters");
+        let snippet = format!(
+            "for<{}> ",
+            lifetimes.iter().map(|lt| lt.ident.as_str()).intersperse(", ").collect::<String>(),
+        );
+        let before_fn_path = fn_path.span.shrink_to_lo();
+        err.multipart_suggestion(
+            "consider using a higher-ranked trait bound instead",
+            vec![(generic_args_span, "".to_owned()), (before_fn_path, snippet)],
+            Applicability::MaybeIncorrect,
+        )
+        .emit();
+        Ok(())
     }
 
     pub(super) fn check_lifetime(&mut self) -> bool {

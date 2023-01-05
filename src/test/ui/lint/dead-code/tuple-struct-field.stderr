@@ -16,7 +16,7 @@ help: consider changing the field to be of unit type to suppress this warning wh
 LL | struct SingleUnused(i32, (), String);
    |                          ~~
 
-error: fields `0`, `1`, `2` and `3` are never read
+error: fields `0`, `1`, `2`, and `3` are never read
   --> $DIR/tuple-struct-field.rs:13:23
    |
 LL | struct MultipleUnused(i32, f32, String, u8);

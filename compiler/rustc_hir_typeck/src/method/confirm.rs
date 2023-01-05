@@ -45,7 +45,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_expr: &'tcx hir::Expr<'tcx>,
         call_expr: &'tcx hir::Expr<'tcx>,
         unadjusted_self_ty: Ty<'tcx>,
-        pick: probe::Pick<'tcx>,
+        pick: &probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         debug!(
@@ -71,7 +71,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     fn confirm(
         &mut self,
         unadjusted_self_ty: Ty<'tcx>,
-        pick: probe::Pick<'tcx>,
+        pick: &probe::Pick<'tcx>,
         segment: &hir::PathSegment<'_>,
     ) -> ConfirmResult<'tcx> {
         // Adjust the self expression the user provided and obtain the adjusted type.
@@ -106,7 +106,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         // traits, no trait system method can be called before this point because they
         // could alter our Self-type, except for normalizing the receiver from the
         // signature (which is also done during probing).
-        let method_sig_rcvr = self.normalize_associated_types_in(self.span, method_sig.inputs()[0]);
+        let method_sig_rcvr = self.normalize(self.span, method_sig.inputs()[0]);
         debug!(
             "confirm: self_ty={:?} method_sig_rcvr={:?} method_sig={:?} method_predicates={:?}",
             self_ty, method_sig_rcvr, method_sig, method_predicates
@@ -114,7 +114,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         self.unify_receivers(self_ty, method_sig_rcvr, &pick, all_substs);
 
         let (method_sig, method_predicates) =
-            self.normalize_associated_types_in(self.span, (method_sig, method_predicates));
+            self.normalize(self.span, (method_sig, method_predicates));
         let method_sig = ty::Binder::dummy(method_sig);
 
         // Make sure nobody calls `drop()` explicitly.
@@ -151,8 +151,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
     ) -> Ty<'tcx> {
         // Commit the autoderefs by calling `autoderef` again, but this
         // time writing the results into the various typeck results.
-        let mut autoderef =
-            self.autoderef_overloaded_span(self.span, unadjusted_self_ty, self.call_expr.span);
+        let mut autoderef = self.autoderef(self.call_expr.span, unadjusted_self_ty);
         let Some((ty, n)) = autoderef.nth(pick.autoderefs) else {
             return self.tcx.ty_error_with_message(
                 rustc_span::DUMMY_SP,
@@ -171,14 +170,11 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
                 let base_ty = target;
 
                 target = self.tcx.mk_ref(region, ty::TypeAndMut { mutbl, ty: target });
-                let mutbl = match mutbl {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                        // Method call receivers are the primary use case
-                        // for two-phase borrows.
-                        allow_two_phase_borrow: AllowTwoPhase::Yes,
-                    },
-                };
+
+                // Method call receivers are the primary use case
+                // for two-phase borrows.
+                let mutbl = AutoBorrowMutability::new(mutbl, AllowTwoPhase::Yes);
+
                 adjustments.push(Adjustment {
                     kind: Adjust::Borrow(AutoBorrow::Ref(region, mutbl)),
                     target,
@@ -203,7 +199,7 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
             Some(probe::AutorefOrPtrAdjustment::ToConstPtr) => {
                 target = match target.kind() {
                     &ty::RawPtr(ty::TypeAndMut { ty, mutbl }) => {
-                        assert_eq!(mutbl, hir::Mutability::Mut);
+                        assert!(mutbl.is_mut());
                         self.tcx.mk_ptr(ty::TypeAndMut { mutbl: hir::Mutability::Not, ty })
                     }
                     other => panic!("Cannot adjust receiver type {:?} to const ptr", other),
@@ -532,7 +528,9 @@ impl<'a, 'tcx> ConfirmContext<'a, 'tcx> {
         traits::elaborate_predicates(self.tcx, predicates.predicates.iter().copied())
             // We don't care about regions here.
             .filter_map(|obligation| match obligation.predicate.kind().skip_binder() {
-                ty::PredicateKind::Trait(trait_pred) if trait_pred.def_id() == sized_def_id => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                    if trait_pred.def_id() == sized_def_id =>
+                {
                     let span = iter::zip(&predicates.predicates, &predicates.spans)
                         .find_map(
                             |(p, span)| {

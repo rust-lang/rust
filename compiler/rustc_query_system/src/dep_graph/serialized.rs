@@ -22,15 +22,13 @@ use rustc_index::vec::{Idx, IndexVec};
 use rustc_serialize::opaque::{FileEncodeResult, FileEncoder, IntEncodedWithFixedSize, MemDecoder};
 use rustc_serialize::{Decodable, Decoder, Encodable};
 use smallvec::SmallVec;
-use std::convert::TryInto;
 
 // The maximum value of `SerializedDepNodeIndex` leaves the upper two bits
 // unused so that we can store multiple index types in `CompressedHybridIndex`,
 // and use those bits to encode which index type it contains.
 rustc_index::newtype_index! {
-    pub struct SerializedDepNodeIndex {
-        MAX = 0x7FFF_FFFF
-    }
+    #[max = 0x7FFF_FFFF]
+    pub struct SerializedDepNodeIndex {}
 }
 
 /// Data for use when recompiling the **current crate**.

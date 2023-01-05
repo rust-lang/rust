@@ -8,7 +8,7 @@ LL |         let obj = std::mem::transmute::<FatPointer, *mut FunnyPointer>(obj)
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `FunnyPointer::from_data_ptr` at $DIR/issue-miri-1112.rs:LL:CC
-note: inside `main` at $DIR/issue-miri-1112.rs:LL:CC
+note: inside `main`
   --> $DIR/issue-miri-1112.rs:LL:CC
    |
 LL |         let _raw: &FunnyPointer = FunnyPointer::from_data_ptr(&hello, &meta as *const _);

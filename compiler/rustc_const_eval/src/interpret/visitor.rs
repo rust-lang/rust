@@ -324,7 +324,7 @@ impl<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>> ValueMut<'mir, 'tcx, M>
 
 macro_rules! make_value_visitor {
     ($visitor_trait:ident, $value_trait:ident, $($mutability:ident)?) => {
-        // How to traverse a value and what to do when we are at the leaves.
+        /// How to traverse a value and what to do when we are at the leaves.
         pub trait $visitor_trait<'mir, 'tcx: 'mir, M: Machine<'mir, 'tcx>>: Sized {
             type V: $value_trait<'mir, 'tcx, M>;
 

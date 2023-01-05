@@ -92,7 +92,7 @@ pub(crate) fn move_format_string_arg(acc: &mut Assists, ctx: &AssistContext<'_>)
                         NodeOrToken::Node(n) => {
                             format_to!(current_arg, "{n}");
                         },
-                        NodeOrToken::Token(t) if t.kind() == COMMA=> {
+                        NodeOrToken::Token(t) if t.kind() == COMMA => {
                             existing_args.push(current_arg.trim().into());
                             current_arg.clear();
                         },
@@ -238,14 +238,14 @@ fn main() {
             &add_macro_decl(
                 r#"
 fn main() {
-    print!("{} {x + 1:b} {Struct(1, 2)}$0", 1);
+    print!("{:b} {x + 1:b} {Struct(1, 2)}$0", 1);
 }
 "#,
             ),
             &add_macro_decl(
                 r#"
 fn main() {
-    print!("{} {:b} {}"$0, 1, x + 1, Struct(1, 2));
+    print!("{:b} {:b} {}"$0, 1, x + 1, Struct(1, 2));
 }
 "#,
             ),

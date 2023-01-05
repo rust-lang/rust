@@ -8,8 +8,7 @@ struct A {
 
 fn a() {
     let q = A { c: 5..Default::default() };
-    //~^ ERROR mismatched types
-    //~| ERROR missing fields
+    //~^ ERROR missing fields
     //~| HELP separate the last named field with a comma
     let r = A { c: 5, ..Default::default() };
     assert_eq!(q, r);

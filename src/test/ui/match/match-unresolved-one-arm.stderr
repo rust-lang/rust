@@ -6,8 +6,8 @@ LL |     let x = match () {
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: _ = match () {
-   |          +++
+LL |     let x: /* Type */ = match () {
+   |          ++++++++++++
 
 error: aborting due to previous error
 

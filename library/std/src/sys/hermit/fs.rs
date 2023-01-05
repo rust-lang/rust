@@ -1,10 +1,8 @@
-use crate::convert::TryFrom;
-use crate::ffi::{CStr, CString, OsString};
+use crate::ffi::{CStr, OsString};
 use crate::fmt;
 use crate::hash::{Hash, Hasher};
 use crate::io::{self, Error, ErrorKind};
 use crate::io::{BorrowedCursor, IoSlice, IoSliceMut, SeekFrom};
-use crate::os::unix::ffi::OsStrExt;
 use crate::path::{Path, PathBuf};
 use crate::sys::common::small_c_string::run_path_with_cstr;
 use crate::sys::cvt;

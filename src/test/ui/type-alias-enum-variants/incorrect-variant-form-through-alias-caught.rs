@@ -6,7 +6,7 @@ type Alias = Enum;
 
 fn main() {
     Alias::Braced;
-    //~^ ERROR expected unit struct, unit variant or constant, found struct variant `Alias::Braced` [E0533]
+    //~^ ERROR expected value, found struct variant `Alias::Braced` [E0533]
     let Alias::Braced = panic!();
     //~^ ERROR expected unit struct, unit variant or constant, found struct variant `Alias::Braced` [E0533]
     let Alias::Braced(..) = panic!();

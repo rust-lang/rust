@@ -86,7 +86,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                 .traits
                 .iter()
                 .filter(|trait_name| {
-                    // Loops have two expressions so this might collide, therefor manual impl it
+                    // Loops have two expressions so this might collide, therefore manual impl it
                     node.name != "ForExpr" && node.name != "WhileExpr"
                         || trait_name.as_str() != "HasLoopBody"
                 })

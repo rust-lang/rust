@@ -4,7 +4,7 @@ use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
-use rustc_data_structures::fx::FxHashSet;
+use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
@@ -236,10 +236,10 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             // Same case of `impl Foo for dyn Bar { fn qux(&self) {} }` introducing a `'static`
             // lifetime as above, but called using a fully-qualified path to the method:
             // `Foo::qux(bar)`.
-            let mut v = TraitObjectVisitor(FxHashSet::default());
+            let mut v = TraitObjectVisitor(FxIndexSet::default());
             v.visit_ty(param.param_ty);
             if let Some((ident, self_ty)) =
-                self.get_impl_ident_and_self_ty_from_trait(item_def_id, &v.0)
+                NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, item_def_id, &v.0)
                 && self.suggest_constrain_dyn_trait_in_impl(&mut err, &v.0, ident, self_ty)
             {
                 override_error_code = Some(ident.name);
@@ -306,22 +306,15 @@ pub fn suggest_new_region_bound(
                 };
 
                 // Get the identity type for this RPIT
-                let did = item_id.def_id.to_def_id();
+                let did = item_id.owner_id.to_def_id();
                 let ty = tcx.mk_opaque(did, ty::InternalSubsts::identity_for_item(tcx, did));
 
-                if let Some(span) = opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime {
-                            name: LifetimeName::Static,
-                            span,
-                            ..
-                        }) => Some(*span),
-                        _ => None,
-                    })
-                    .next()
-                {
+                if let Some(span) = opaque.bounds.iter().find_map(|arg| match arg {
+                    GenericBound::Outlives(Lifetime {
+                        res: LifetimeName::Static, ident, ..
+                    }) => Some(ident.span),
+                    _ => None,
+                }) {
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
                             span,
@@ -330,7 +323,7 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                    if let Some((param_span, param_ty)) = param.clone() {
+                    if let Some((param_span, ref param_ty)) = param {
                         err.span_suggestion_verbose(
                             param_span,
                             add_static_bound,
@@ -338,20 +331,14 @@ pub fn suggest_new_region_bound(
                             Applicability::MaybeIncorrect,
                         );
                     }
-                } else if opaque
-                    .bounds
-                    .iter()
-                    .filter_map(|arg| match arg {
-                        GenericBound::Outlives(Lifetime { name, span, .. })
-                            if name.ident().to_string() == lifetime_name =>
-                        {
-                            Some(*span)
-                        }
-                        _ => None,
-                    })
-                    .next()
-                    .is_some()
-                {
+                } else if opaque.bounds.iter().any(|arg| match arg {
+                    GenericBound::Outlives(Lifetime { ident, .. })
+                        if ident.name.to_string() == lifetime_name =>
+                    {
+                        true
+                    }
+                    _ => false,
+                }) {
                 } else {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
@@ -361,8 +348,8 @@ pub fn suggest_new_region_bound(
                     );
                 }
             }
-            TyKind::TraitObject(_, lt, _) => match lt.name {
-                LifetimeName::ImplicitObjectLifetimeDefault => {
+            TyKind::TraitObject(_, lt, _) => {
+                if let LifetimeName::ImplicitObjectLifetimeDefault = lt.res {
                     err.span_suggestion_verbose(
                         fn_return.span.shrink_to_hi(),
                         &format!(
@@ -374,15 +361,14 @@ pub fn suggest_new_region_bound(
                         &plus_lt,
                         Applicability::MaybeIncorrect,
                     );
-                }
-                name if name.ident().to_string() != lifetime_name => {
+                } else if lt.ident.name.to_string() != lifetime_name {
                     // With this check we avoid suggesting redundant bounds. This
                     // would happen if there are nested impl/dyn traits and only
                     // one of them has the bound we'd suggest already there, like
                     // in `impl Foo<X = dyn Bar> + '_`.
                     if let Some(explicit_static) = &explicit_static {
                         err.span_suggestion_verbose(
-                            lt.span,
+                            lt.ident.span,
                             &format!("{} the trait object's {}", consider, explicit_static),
                             &lifetime_name,
                             Applicability::MaybeIncorrect,
@@ -397,74 +383,61 @@ pub fn suggest_new_region_bound(
                         );
                     }
                 }
-                _ => {}
-            },
+            }
             _ => {}
         }
     }
 }
 
 impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
-    fn get_impl_ident_and_self_ty_from_trait(
-        &self,
+    pub fn get_impl_ident_and_self_ty_from_trait(
+        tcx: TyCtxt<'tcx>,
         def_id: DefId,
-        trait_objects: &FxHashSet<DefId>,
+        trait_objects: &FxIndexSet<DefId>,
     ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
-        let tcx = self.tcx();
-        match tcx.hir().get_if_local(def_id) {
-            Some(Node::ImplItem(impl_item)) => {
-                match tcx.hir().find_by_def_id(tcx.hir().get_parent_item(impl_item.hir_id()).def_id)
+        match tcx.hir().get_if_local(def_id)? {
+            Node::ImplItem(impl_item) => {
+                let impl_did = tcx.hir().get_parent_item(impl_item.hir_id());
+                if let hir::OwnerNode::Item(Item {
+                    kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                    ..
+                }) = tcx.hir().owner(impl_did)
                 {
-                    Some(Node::Item(Item {
-                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                        ..
-                    })) => Some((impl_item.ident, self_ty)),
-                    _ => None,
+                    Some((impl_item.ident, self_ty))
+                } else {
+                    None
                 }
             }
-            Some(Node::TraitItem(trait_item)) => {
-                let trait_did = tcx.hir().get_parent_item(trait_item.hir_id());
-                match tcx.hir().find_by_def_id(trait_did.def_id) {
-                    Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
-                        // The method being called is defined in the `trait`, but the `'static`
-                        // obligation comes from the `impl`. Find that `impl` so that we can point
-                        // at it in the suggestion.
-                        let trait_did = trait_did.to_def_id();
-                        match tcx
-                            .hir()
-                            .trait_impls(trait_did)
-                            .iter()
-                            .filter_map(|&impl_did| {
-                                match tcx.hir().get_if_local(impl_did.to_def_id()) {
-                                    Some(Node::Item(Item {
-                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                                        ..
-                                    })) if trait_objects.iter().all(|did| {
-                                        // FIXME: we should check `self_ty` against the receiver
-                                        // type in the `UnifyReceiver` context, but for now, use
-                                        // this imperfect proxy. This will fail if there are
-                                        // multiple `impl`s for the same trait like
-                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
-                                        // In that case, only the first one will get suggestions.
-                                        let mut traits = vec![];
-                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                                        hir_v.visit_ty(self_ty);
-                                        !traits.is_empty()
-                                    }) =>
-                                    {
-                                        Some(self_ty)
-                                    }
-                                    _ => None,
-                                }
-                            })
-                            .next()
-                        {
-                            Some(self_ty) => Some((trait_item.ident, self_ty)),
-                            _ => None,
-                        }
+            Node::TraitItem(trait_item) => {
+                let trait_id = tcx.hir().get_parent_item(trait_item.hir_id());
+                debug_assert_eq!(tcx.def_kind(trait_id.def_id), hir::def::DefKind::Trait);
+                // The method being called is defined in the `trait`, but the `'static`
+                // obligation comes from the `impl`. Find that `impl` so that we can point
+                // at it in the suggestion.
+                let trait_did = trait_id.to_def_id();
+                tcx.hir().trait_impls(trait_did).iter().find_map(|&impl_did| {
+                    if let Node::Item(Item {
+                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
+                        ..
+                    }) = tcx.hir().find_by_def_id(impl_did)?
+                        && trait_objects.iter().all(|did| {
+                            // FIXME: we should check `self_ty` against the receiver
+                            // type in the `UnifyReceiver` context, but for now, use
+                            // this imperfect proxy. This will fail if there are
+                            // multiple `impl`s for the same trait like
+                            // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
+                            // In that case, only the first one will get suggestions.
+                            let mut traits = vec![];
+                            let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
+                            hir_v.visit_ty(self_ty);
+                            !traits.is_empty()
+                        })
+                    {
+                        Some((trait_item.ident, *self_ty))
+                    } else {
+                        None
                     }
-                    _ => None,
-                }
+                })
             }
             _ => None,
         }
@@ -490,12 +463,12 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             return false;
         };
 
-        let mut v = TraitObjectVisitor(FxHashSet::default());
+        let mut v = TraitObjectVisitor(FxIndexSet::default());
         v.visit_ty(ty);
 
         // Get the `Ident` of the method being called and the corresponding `impl` (to point at
         // `Bar` in `impl Foo for dyn Bar {}` and the definition of the method being called).
-        let Some((ident, self_ty)) = self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &v.0) else {
+        let Some((ident, self_ty)) = NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &v.0) else {
             return false;
         };
 
@@ -506,7 +479,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
     fn suggest_constrain_dyn_trait_in_impl(
         &self,
         err: &mut Diagnostic,
-        found_dids: &FxHashSet<DefId>,
+        found_dids: &FxIndexSet<DefId>,
         ident: Ident,
         self_ty: &hir::Ty<'_>,
     ) -> bool {
@@ -538,7 +511,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
 }
 
 /// Collect all the trait objects in a type that could have received an implicit `'static` lifetime.
-pub struct TraitObjectVisitor(pub FxHashSet<DefId>);
+pub struct TraitObjectVisitor(pub FxIndexSet<DefId>);
 
 impl<'tcx> TypeVisitor<'tcx> for TraitObjectVisitor {
     fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
@@ -561,7 +534,7 @@ impl<'a, 'tcx> Visitor<'tcx> for HirTraitObjectVisitor<'a> {
     fn visit_ty(&mut self, t: &'tcx hir::Ty<'tcx>) {
         if let TyKind::TraitObject(
             poly_trait_refs,
-            Lifetime { name: LifetimeName::ImplicitObjectLifetimeDefault, .. },
+            Lifetime { res: LifetimeName::ImplicitObjectLifetimeDefault, .. },
             _,
         ) = t.kind
         {

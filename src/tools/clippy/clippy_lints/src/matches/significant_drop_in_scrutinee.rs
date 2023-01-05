@@ -83,8 +83,8 @@ fn set_diagnostic<'tcx>(diag: &mut Diagnostic, cx: &LateContext<'tcx>, expr: &'t
 
 /// If the expression is an `ExprKind::Match`, check if the scrutinee has a significant drop that
 /// may have a surprising lifetime.
-fn has_significant_drop_in_scrutinee<'tcx, 'a>(
-    cx: &'a LateContext<'tcx>,
+fn has_significant_drop_in_scrutinee<'tcx>(
+    cx: &LateContext<'tcx>,
     scrutinee: &'tcx Expr<'tcx>,
     source: MatchSource,
 ) -> Option<(Vec<FoundSigDrop>, &'static str)> {
@@ -226,7 +226,7 @@ impl<'a, 'tcx> SigDropHelper<'a, 'tcx> {
     /// This will try to set the current suggestion (so it can be moved into the suggestions vec
     /// later). If `allow_move_and_clone` is false, the suggestion *won't* be set -- this gives us
     /// an opportunity to look for another type in the chain that will be trivially copyable.
-    /// However, if we are at the the end of the chain, we want to accept whatever is there. (The
+    /// However, if we are at the end of the chain, we want to accept whatever is there. (The
     /// suggestion won't actually be output, but the diagnostic message will be output, so the user
     /// can determine the best way to handle the lint.)
     fn try_setting_current_suggestion(&mut self, expr: &'tcx Expr<'_>, allow_move_and_clone: bool) {
@@ -377,7 +377,7 @@ impl<'a, 'tcx> ArmSigDropHelper<'a, 'tcx> {
     }
 }
 
-fn has_significant_drop_in_arms<'tcx, 'a>(cx: &'a LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
+fn has_significant_drop_in_arms<'tcx>(cx: &LateContext<'tcx>, arms: &'tcx [Arm<'_>]) -> FxHashSet<Span> {
     let mut helper = ArmSigDropHelper::new(cx);
     for arm in arms {
         helper.visit_expr(arm.body);

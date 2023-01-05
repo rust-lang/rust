@@ -28,5 +28,5 @@ ENV \
 
 ENV HOSTS=s390x-unknown-linux-gnu
 
-ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --disable-docs
+ENV RUST_CONFIGURE_ARGS --enable-extended --enable-lld --enable-profiler --disable-docs
 ENV SCRIPT python3 ../x.py dist --host $HOSTS --target $HOSTS

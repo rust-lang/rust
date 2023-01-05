@@ -1,4 +1,4 @@
-#![feature(unboxed_closures)]
+#![feature(unboxed_closures, tuple_trait)]
 
 // Tests that we can't assign to or mutably borrow upvars from `Fn`
 // closures (issue #17780)
@@ -7,10 +7,10 @@ fn set(x: &mut usize) {
     *x = 5;
 }
 
-fn to_fn<A, F: Fn<A>>(f: F) -> F {
+fn to_fn<A: std::marker::Tuple, F: Fn<A>>(f: F) -> F {
     f
 }
-fn to_fn_mut<A, F: FnMut<A>>(f: F) -> F {
+fn to_fn_mut<A: std::marker::Tuple, F: FnMut<A>>(f: F) -> F {
     f
 }
 

@@ -74,7 +74,7 @@ fn check_method(cx: &LateContext<'_>, decl: &FnDecl<'_>, fn_def: LocalDefId, spa
         if !in_external_macro(cx.sess(), span);
         if decl.implicit_self.has_implicit_self();
         // We only show this warning for public exported methods.
-        if cx.access_levels.is_exported(fn_def);
+        if cx.effective_visibilities.is_exported(fn_def);
         // We don't want to emit this lint if the `#[must_use]` attribute is already there.
         if !cx.tcx.hir().attrs(hir_id).iter().any(|attr| attr.has_name(sym::must_use));
         if cx.tcx.visibility(fn_def.to_def_id()).is_public();
@@ -128,7 +128,7 @@ impl<'tcx> LateLintPass<'tcx> for ReturnSelfNotMustUse {
 
     fn check_trait_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx TraitItem<'tcx>) {
         if let TraitItemKind::Fn(ref sig, _) = item.kind {
-            check_method(cx, sig.decl, item.def_id.def_id, item.span, item.hir_id());
+            check_method(cx, sig.decl, item.owner_id.def_id, item.span, item.hir_id());
         }
     }
 }

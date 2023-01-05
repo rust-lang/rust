@@ -79,9 +79,9 @@ impl<'a, 'tcx> Expectation<'tcx> {
         }
     }
 
-    // Resolves `expected` by a single level if it is a variable. If
-    // there is no expected type or resolution is not possible (e.g.,
-    // no constraints yet present), just returns `self`.
+    /// Resolves `expected` by a single level if it is a variable. If
+    /// there is no expected type or resolution is not possible (e.g.,
+    /// no constraints yet present), just returns `self`.
     fn resolve(self, fcx: &FnCtxt<'a, 'tcx>) -> Expectation<'tcx> {
         match self {
             NoExpectation => NoExpectation,

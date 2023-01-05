@@ -69,10 +69,6 @@ pub(crate) fn complete_postfix(
         }
     }
 
-    if !ctx.config.snippets.is_empty() {
-        add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
-    }
-
     let try_enum = TryEnum::from_ty(&ctx.sema, &receiver_ty.strip_references());
     if let Some(try_enum) = &try_enum {
         match try_enum {
@@ -139,6 +135,10 @@ pub(crate) fn complete_postfix(
         Some(it) => it,
         None => return,
     };
+
+    if !ctx.config.snippets.is_empty() {
+        add_custom_postfix_completions(acc, ctx, &postfix_snippet, &receiver_text);
+    }
 
     match try_enum {
         Some(try_enum) => match try_enum {
@@ -611,6 +611,27 @@ fn main() {
             "loge",
             r#"fn main() { "{2+2}".$0 }"#,
             r#"fn main() { log::error!("{}", 2+2) }"#,
+        );
+    }
+
+    #[test]
+    fn postfix_custom_snippets_completion_for_references() {
+        check_edit_with_config(
+            CompletionConfig {
+                snippets: vec![Snippet::new(
+                    &[],
+                    &["ok".into()],
+                    &["Ok(${receiver})".into()],
+                    "",
+                    &[],
+                    crate::SnippetScope::Expr,
+                )
+                .unwrap()],
+                ..TEST_CONFIG
+            },
+            "ok",
+            r#"fn main() { &&42.$0 }"#,
+            r#"fn main() { Ok(&&42) }"#,
         );
     }
 }

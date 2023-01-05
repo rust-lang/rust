@@ -12,20 +12,19 @@
     </Expand>
   </Type>
   <Type Name="alloc::collections::vec_deque::VecDeque&lt;*&gt;">
-    <DisplayString>{{ len={tail &lt;= head ? head - tail : buf.cap - tail + head} }}</DisplayString>
+    <DisplayString>{{ len={len} }}</DisplayString>
     <Expand>
-      <Item Name="[len]" ExcludeView="simple">tail &lt;= head ? head - tail : buf.cap - tail + head</Item>
+      <Item Name="[len]" ExcludeView="simple">len</Item>
       <Item Name="[capacity]" ExcludeView="simple">buf.cap</Item>
       <CustomListItems>
-        <Variable Name="i" InitialValue="tail" />
-
-        <Size>tail &lt;= head ? head - tail : buf.cap - tail + head</Size>
+        <Variable Name="i" InitialValue="0" />
+        <Size>len</Size>
         <Loop>
-          <If Condition="i == head">
+          <If Condition="i == len">
             <Break/>
           </If>
-          <Item>buf.ptr.pointer.pointer[i]</Item>
-          <Exec>i = (i + 1 == buf.cap ? 0 : i + 1)</Exec>
+          <Item>buf.ptr.pointer.pointer[(i + head) % buf.cap]</Item>
+          <Exec>i = i + 1</Exec>
         </Loop>
       </CustomListItems>
     </Expand>
@@ -85,7 +84,7 @@
   </Type>
 
   <!-- alloc::rc::Rc<[T]> -->
-  <Type Name="alloc::rc::Rc&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::rc::Rc&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -115,7 +114,7 @@
   </Type>
 
   <!-- alloc::rc::Weak<[T]> -->
-  <Type Name="alloc::rc::Weak&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::rc::Weak&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -144,7 +143,7 @@
   </Type>
 
   <!-- alloc::sync::Arc<[T]> -->
-  <Type Name="alloc::sync::Arc&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::sync::Arc&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>
@@ -173,7 +172,7 @@
   </Type>
 
   <!-- alloc::sync::Weak<[T]> -->
-  <Type Name="alloc::sync::Weak&lt;slice$&lt;*&gt; &gt;">
+  <Type Name="alloc::sync::Weak&lt;slice2$&lt;*&gt; &gt;">
     <DisplayString>{{ len={ptr.pointer.length} }}</DisplayString>
     <Expand>
       <Item Name="[Length]" ExcludeView="simple">ptr.pointer.length</Item>

@@ -25,6 +25,7 @@ use crate::{
     types::{transparent_newtype_field, CItemKind},
     EarlyContext, EarlyLintPass, LateContext, LateLintPass, LintContext,
 };
+use hir::IsAsync;
 use rustc_ast::attr;
 use rustc_ast::tokenstream::{TokenStream, TokenTree};
 use rustc_ast::visit::{FnCtxt, FnKind};
@@ -40,7 +41,10 @@ use rustc_feature::{deprecated_attributes, AttributeGate, BuiltinAttribute, Gate
 use rustc_hir as hir;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::def_id::{DefId, LocalDefId, LocalDefIdSet, CRATE_DEF_ID};
-use rustc_hir::{ForeignItemKind, GenericParamKind, HirId, PatKind, PredicateOrigin};
+use rustc_hir::intravisit::FnKind as HirFnKind;
+use rustc_hir::{
+    Body, FnDecl, ForeignItemKind, GenericParamKind, HirId, Node, PatKind, PredicateOrigin,
+};
 use rustc_index::vec::Idx;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::layout::{LayoutError, LayoutOf};
@@ -52,8 +56,9 @@ use rustc_span::edition::Edition;
 use rustc_span::source_map::Spanned;
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{BytePos, InnerSpan, Span};
-use rustc_target::abi::VariantIdx;
-use rustc_trait_selection::traits::{self, misc::can_type_implement_copy};
+use rustc_target::abi::{Abi, VariantIdx};
+use rustc_trait_selection::infer::{InferCtxtExt, TyCtxtInferExt};
+use rustc_trait_selection::traits::{self, misc::can_type_implement_copy, EvaluationResult};
 
 use crate::nonstandard_style::{method_context, MethodLateContext};
 
@@ -96,11 +101,13 @@ fn pierce_parens(mut expr: &ast::Expr) -> &ast::Expr {
 }
 
 impl EarlyLintPass for WhileTrue {
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::While(cond, _, label) = &e.kind
-            && let ast::ExprKind::Lit(ref lit) = pierce_parens(cond).kind
-            && let ast::LitKind::Bool(true) = lit.kind
-            && !lit.span.from_expansion()
+            && let cond = pierce_parens(cond)
+            && let ast::ExprKind::Lit(token_lit) = cond.kind
+            && let token::Lit { kind: token::Bool, symbol: kw::True, .. } = token_lit
+            && !cond.span.from_expansion()
         {
             let condition_span = e.span.with_hi(cond.span.hi());
             cx.struct_span_lint(
@@ -177,7 +184,7 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
             | hir::ItemKind::Enum(..)
             | hir::ItemKind::Struct(..)
             | hir::ItemKind::Union(..) => {
-                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.def_id))
+                self.check_heap_type(cx, it.span, cx.tcx.type_of(it.owner_id))
             }
             _ => (),
         }
@@ -185,9 +192,8 @@ impl<'tcx> LateLintPass<'tcx> for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.kind {
             hir::ItemKind::Struct(ref struct_def, _) | hir::ItemKind::Union(ref struct_def, _) => {
-                for struct_field in struct_def.fields() {
-                    let def_id = cx.tcx.hir().local_def_id(struct_field.hir_id);
-                    self.check_heap_type(cx, struct_field.span, cx.tcx.type_of(def_id));
+                for field in struct_def.fields() {
+                    self.check_heap_type(cx, field.span, cx.tcx.type_of(field.def_id));
                 }
             }
             _ => (),
@@ -259,7 +265,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                 }
                 if let PatKind::Binding(binding_annot, _, ident, None) = fieldpat.pat.kind {
                     if cx.tcx.find_field_index(ident, &variant)
-                        == Some(cx.tcx.field_index(fieldpat.hir_id, cx.typeck_results()))
+                        == Some(cx.typeck_results().field_index(fieldpat.hir_id))
                     {
                         cx.struct_span_lint(
                             NON_SHORTHAND_FIELD_PATTERNS,
@@ -268,7 +274,7 @@ impl<'tcx> LateLintPass<'tcx> for NonShorthandFieldPatterns {
                             |lint| {
                                 let suggested_ident =
                                     format!("{}{}", binding_annot.prefix_str(), ident);
-                                lint.set_arg("ident", ident.clone()).span_suggestion(
+                                lint.set_arg("ident", ident).span_suggestion(
                                     fieldpat.span,
                                     fluent::suggestion,
                                     suggested_ident,
@@ -360,6 +366,7 @@ impl EarlyLintPass for UnsafeCode {
         }
     }
 
+    #[inline]
     fn check_expr(&mut self, cx: &EarlyContext<'_>, e: &ast::Expr) {
         if let ast::ExprKind::Block(ref blk, _) = e.kind {
             // Don't warn about generated blocks; that'll just pollute the output.
@@ -563,7 +570,7 @@ impl MissingDoc {
         // It's an option so the crate root can also use this function (it doesn't
         // have a `NodeId`).
         if def_id != CRATE_DEF_ID {
-            if !cx.access_levels.is_exported(def_id) {
+            if !cx.effective_visibilities.is_exported(def_id) {
                 return;
             }
         }
@@ -582,6 +589,7 @@ impl MissingDoc {
 }
 
 impl<'tcx> LateLintPass<'tcx> for MissingDoc {
+    #[inline]
     fn enter_lint_attrs(&mut self, _cx: &LateContext<'_>, attrs: &[ast::Attribute]) {
         let doc_hidden = self.doc_hidden()
             || attrs.iter().any(|attr| {
@@ -606,9 +614,9 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
         match it.kind {
             hir::ItemKind::Trait(..) => {
                 // Issue #11592: traits are always considered exported, even when private.
-                if cx.tcx.visibility(it.def_id)
+                if cx.tcx.visibility(it.owner_id)
                     == ty::Visibility::Restricted(
-                        cx.tcx.parent_module_from_def_id(it.def_id.def_id).to_def_id(),
+                        cx.tcx.parent_module_from_def_id(it.owner_id.def_id).to_def_id(),
                     )
                 {
                     return;
@@ -627,15 +635,15 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             _ => return,
         };
 
-        let (article, desc) = cx.tcx.article_and_description(it.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(it.owner_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, it.def_id.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, it.owner_id.def_id, article, desc);
     }
 
     fn check_trait_item(&mut self, cx: &LateContext<'_>, trait_item: &hir::TraitItem<'_>) {
-        let (article, desc) = cx.tcx.article_and_description(trait_item.def_id.to_def_id());
+        let (article, desc) = cx.tcx.article_and_description(trait_item.owner_id.to_def_id());
 
-        self.check_missing_docs_attrs(cx, trait_item.def_id.def_id, article, desc);
+        self.check_missing_docs_attrs(cx, trait_item.owner_id.def_id, article, desc);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
@@ -662,24 +670,23 @@ impl<'tcx> LateLintPass<'tcx> for MissingDoc {
             }
         }
 
-        let (article, desc) = cx.tcx.article_and_description(impl_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, impl_item.def_id.def_id, article, desc);
+        let (article, desc) = cx.tcx.article_and_description(impl_item.owner_id.to_def_id());
+        self.check_missing_docs_attrs(cx, impl_item.owner_id.def_id, article, desc);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'_>) {
-        let (article, desc) = cx.tcx.article_and_description(foreign_item.def_id.to_def_id());
-        self.check_missing_docs_attrs(cx, foreign_item.def_id.def_id, article, desc);
+        let (article, desc) = cx.tcx.article_and_description(foreign_item.owner_id.to_def_id());
+        self.check_missing_docs_attrs(cx, foreign_item.owner_id.def_id, article, desc);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, sf: &hir::FieldDef<'_>) {
         if !sf.is_positional() {
-            let def_id = cx.tcx.hir().local_def_id(sf.hir_id);
-            self.check_missing_docs_attrs(cx, def_id, "a", "struct field")
+            self.check_missing_docs_attrs(cx, sf.def_id, "a", "struct field")
         }
     }
 
     fn check_variant(&mut self, cx: &LateContext<'_>, v: &hir::Variant<'_>) {
-        self.check_missing_docs_attrs(cx, cx.tcx.hir().local_def_id(v.id), "a", "variant");
+        self.check_missing_docs_attrs(cx, v.def_id, "a", "variant");
     }
 }
 
@@ -721,7 +728,7 @@ declare_lint_pass!(MissingCopyImplementations => [MISSING_COPY_IMPLEMENTATIONS])
 
 impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
             return;
         }
         let (def, ty) = match item.kind {
@@ -729,21 +736,21 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(item.def_id);
+                let def = cx.tcx.adt_def(item.owner_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Union(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(item.def_id);
+                let def = cx.tcx.adt_def(item.owner_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             hir::ItemKind::Enum(_, ref ast_generics) => {
                 if !ast_generics.params.is_empty() {
                     return;
                 }
-                let def = cx.tcx.adt_def(item.def_id);
+                let def = cx.tcx.adt_def(item.owner_id);
                 (def, cx.tcx.mk_adt(def, cx.tcx.intern_substs(&[])))
             }
             _ => return,
@@ -751,10 +758,39 @@ impl<'tcx> LateLintPass<'tcx> for MissingCopyImplementations {
         if def.has_dtor(cx.tcx) {
             return;
         }
+
+        // If the type contains a raw pointer, it may represent something like a handle,
+        // and recommending Copy might be a bad idea.
+        for field in def.all_fields() {
+            let did = field.did;
+            if cx.tcx.type_of(did).is_unsafe_ptr() {
+                return;
+            }
+        }
         let param_env = ty::ParamEnv::empty();
-        if ty.is_copy_modulo_regions(cx.tcx.at(item.span), param_env) {
+        if ty.is_copy_modulo_regions(cx.tcx, param_env) {
             return;
         }
+
+        // We shouldn't recommend implementing `Copy` on stateful things,
+        // such as iterators.
+        if let Some(iter_trait) = cx.tcx.get_diagnostic_item(sym::Iterator) {
+            if cx.tcx.infer_ctxt().build().type_implements_trait(iter_trait, [ty], param_env)
+                == EvaluationResult::EvaluatedToOk
+            {
+                return;
+            }
+        }
+
+        // Default value of clippy::trivially_copy_pass_by_ref
+        const MAX_SIZE: u64 = 256;
+
+        if let Some(size) = cx.layout_of(ty).ok().map(|l| l.size.bytes()) {
+            if size > MAX_SIZE {
+                return;
+            }
+        }
+
         if can_type_implement_copy(
             cx.tcx,
             param_env,
@@ -814,7 +850,7 @@ impl_lint_pass!(MissingDebugImplementations => [MISSING_DEBUG_IMPLEMENTATIONS]);
 
 impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
     fn check_item(&mut self, cx: &LateContext<'_>, item: &hir::Item<'_>) {
-        if !cx.access_levels.is_reachable(item.def_id.def_id) {
+        if !cx.effective_visibilities.is_reachable(item.owner_id.def_id) {
             return;
         }
 
@@ -841,7 +877,7 @@ impl<'tcx> LateLintPass<'tcx> for MissingDebugImplementations {
             debug!("{:?}", self.impling_types);
         }
 
-        if !self.impling_types.as_ref().unwrap().contains(&item.def_id.def_id) {
+        if !self.impling_types.as_ref().unwrap().contains(&item.owner_id.def_id) {
             cx.struct_span_lint(
                 MISSING_DEBUG_IMPLEMENTATIONS,
                 item.span,
@@ -1226,7 +1262,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidNoMangleItems {
                             check_no_mangle_on_generic_fn(
                                 no_mangle_attr,
                                 Some(generics),
-                                cx.tcx.hir().get_generics(it.id.def_id.def_id).unwrap(),
+                                cx.tcx.hir().get_generics(it.id.owner_id.def_id).unwrap(),
                                 it.span,
                             );
                         }
@@ -1269,10 +1305,10 @@ declare_lint_pass!(MutableTransmutes => [MUTABLE_TRANSMUTES]);
 
 impl<'tcx> LateLintPass<'tcx> for MutableTransmutes {
     fn check_expr(&mut self, cx: &LateContext<'_>, expr: &hir::Expr<'_>) {
-        if let Some((&ty::Ref(_, _, from_mt), &ty::Ref(_, _, to_mt))) =
+        if let Some((&ty::Ref(_, _, from_mutbl), &ty::Ref(_, _, to_mutbl))) =
             get_transmute_from_to(cx, expr).map(|(ty1, ty2)| (ty1.kind(), ty2.kind()))
         {
-            if to_mt == hir::Mutability::Mut && from_mt == hir::Mutability::Not {
+            if from_mutbl < to_mutbl {
                 cx.struct_span_lint(
                     MUTABLE_TRANSMUTES,
                     expr.span,
@@ -1339,6 +1375,72 @@ impl<'tcx> LateLintPass<'tcx> for UnstableFeatures {
 }
 
 declare_lint! {
+    /// The `ungated_async_fn_track_caller` lint warns when the
+    /// `#[track_caller]` attribute is used on an async function, method, or
+    /// closure, without enabling the corresponding unstable feature flag.
+    ///
+    /// ### Example
+    ///
+    /// ```rust
+    /// #[track_caller]
+    /// async fn foo() {}
+    /// ```
+    ///
+    /// {{produces}}
+    ///
+    /// ### Explanation
+    ///
+    /// The attribute must be used in conjunction with the
+    /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
+    /// annotation will function as a no-op.
+    ///
+    /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
+    UNGATED_ASYNC_FN_TRACK_CALLER,
+    Warn,
+    "enabling track_caller on an async fn is a no-op unless the closure_track_caller feature is enabled"
+}
+
+declare_lint_pass!(
+    /// Explains corresponding feature flag must be enabled for the `#[track_caller] attribute to
+    /// do anything
+    UngatedAsyncFnTrackCaller => [UNGATED_ASYNC_FN_TRACK_CALLER]
+);
+
+impl<'tcx> LateLintPass<'tcx> for UngatedAsyncFnTrackCaller {
+    fn check_fn(
+        &mut self,
+        cx: &LateContext<'_>,
+        fn_kind: HirFnKind<'_>,
+        _: &'tcx FnDecl<'_>,
+        _: &'tcx Body<'_>,
+        span: Span,
+        hir_id: HirId,
+    ) {
+        if fn_kind.asyncness() == IsAsync::Async
+            && !cx.tcx.features().closure_track_caller
+            && let attrs = cx.tcx.hir().attrs(hir_id)
+            // Now, check if the function has the `#[track_caller]` attribute
+            && let Some(attr) = attrs.iter().find(|attr| attr.has_name(sym::track_caller))
+            {
+                cx.struct_span_lint(
+                    UNGATED_ASYNC_FN_TRACK_CALLER,
+                    attr.span,
+                    fluent::lint_ungated_async_fn_track_caller,
+                    |lint| {
+                        lint.span_label(span, fluent::label);
+                        rustc_session::parse::add_feature_diagnostics(
+                            lint,
+                            &cx.tcx.sess.parse_sess,
+                            sym::closure_track_caller,
+                        );
+                        lint
+                    },
+                );
+            }
+    }
+}
+
+declare_lint! {
     /// The `unreachable_pub` lint triggers for `pub` items not reachable from
     /// the crate root.
     ///
@@ -1385,7 +1487,8 @@ impl UnreachablePub {
         exportable: bool,
     ) {
         let mut applicability = Applicability::MachineApplicable;
-        if cx.tcx.visibility(def_id).is_public() && !cx.access_levels.is_reachable(def_id) {
+        if cx.tcx.visibility(def_id).is_public() && !cx.effective_visibilities.is_reachable(def_id)
+        {
             if vis_span.from_expansion() {
                 applicability = Applicability::MaybeIncorrect;
             }
@@ -1414,22 +1517,25 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
         if let hir::ItemKind::Use(_, hir::UseKind::ListStem) = &item.kind {
             return;
         }
-        self.perform_lint(cx, "item", item.def_id.def_id, item.vis_span, true);
+        self.perform_lint(cx, "item", item.owner_id.def_id, item.vis_span, true);
     }
 
     fn check_foreign_item(&mut self, cx: &LateContext<'_>, foreign_item: &hir::ForeignItem<'tcx>) {
-        self.perform_lint(cx, "item", foreign_item.def_id.def_id, foreign_item.vis_span, true);
+        self.perform_lint(cx, "item", foreign_item.owner_id.def_id, foreign_item.vis_span, true);
     }
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
-        let def_id = cx.tcx.hir().local_def_id(field.hir_id);
-        self.perform_lint(cx, "field", def_id, field.vis_span, false);
+        let map = cx.tcx.hir();
+        if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
+            return;
+        }
+        self.perform_lint(cx, "field", field.def_id, field.vis_span, false);
     }
 
     fn check_impl_item(&mut self, cx: &LateContext<'_>, impl_item: &hir::ImplItem<'_>) {
         // Only lint inherent impl items.
-        if cx.tcx.associated_item(impl_item.def_id).trait_item_def_id.is_none() {
-            self.perform_lint(cx, "item", impl_item.def_id.def_id, impl_item.vis_span, false);
+        if cx.tcx.associated_item(impl_item.owner_id).trait_item_def_id.is_none() {
+            self.perform_lint(cx, "item", impl_item.owner_id.def_id, impl_item.vis_span, false);
         }
     }
 }
@@ -1635,19 +1741,20 @@ declare_lint_pass!(
 impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         use rustc_middle::ty::visit::TypeVisitable;
+        use rustc_middle::ty::Clause;
         use rustc_middle::ty::PredicateKind::*;
 
         if cx.tcx.features().trivial_bounds {
-            let predicates = cx.tcx.predicates_of(item.def_id);
+            let predicates = cx.tcx.predicates_of(item.owner_id);
             for &(predicate, span) in predicates.predicates {
                 let predicate_kind_name = match predicate.kind().skip_binder() {
-                    Trait(..) => "trait",
-                    TypeOutlives(..) |
-                    RegionOutlives(..) => "lifetime",
+                    Clause(Clause::Trait(..)) => "trait",
+                    Clause(Clause::TypeOutlives(..)) |
+                    Clause(Clause::RegionOutlives(..)) => "lifetime",
 
                     // Ignore projections, as they can only be global
                     // if the trait bound is global
-                    Projection(..) |
+                    Clause(Clause::Projection(..)) |
                     // Ignore bounds that a user can't type
                     WellFormed(..) |
                     ObjectSafe(..) |
@@ -1656,6 +1763,7 @@ impl<'tcx> LateLintPass<'tcx> for TrivialConstraints {
                     Coerce(..) |
                     ConstEvaluatable(..) |
                     ConstEquate(..) |
+                    Ambiguous |
                     TypeWellFormedFromEnv(..) => continue,
                 };
                 if predicate.is_global() {
@@ -1881,7 +1989,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
             if let hir::ItemKind::Mod(..) = it.kind {
             } else {
                 self.items_nameable = false;
-                self.boundary = Some(it.def_id);
+                self.boundary = Some(it.owner_id);
             }
             return;
         }
@@ -1898,7 +2006,7 @@ impl<'tcx> LateLintPass<'tcx> for UnnameableTestItems {
     }
 
     fn check_item_post(&mut self, _cx: &LateContext<'_>, it: &hir::Item<'_>) {
-        if !self.items_nameable && self.boundary == Some(it.def_id) {
+        if !self.items_nameable && self.boundary == Some(it.owner_id) {
             self.items_nameable = true;
         }
     }
@@ -2014,7 +2122,7 @@ impl KeywordIdents {
             ident.span,
             fluent::lint_builtin_keyword_idents,
             |lint| {
-                lint.set_arg("kw", ident.clone()).set_arg("next", next_edition).span_suggestion(
+                lint.set_arg("kw", ident).set_arg("next", next_edition).span_suggestion(
                     ident.span,
                     fluent::suggestion,
                     format!("r#{}", ident),
@@ -2027,10 +2135,10 @@ impl KeywordIdents {
 
 impl EarlyLintPass for KeywordIdents {
     fn check_mac_def(&mut self, cx: &EarlyContext<'_>, mac_def: &ast::MacroDef) {
-        self.check_tokens(cx, mac_def.body.inner_tokens());
+        self.check_tokens(cx, mac_def.body.tokens.clone());
     }
     fn check_mac(&mut self, cx: &EarlyContext<'_>, mac: &ast::MacCall) {
-        self.check_tokens(cx, mac.args.inner_tokens());
+        self.check_tokens(cx, mac.args.tokens.clone());
     }
     fn check_ident(&mut self, cx: &EarlyContext<'_>, ident: Ident) {
         self.check_ident_token(cx, UnderMacro(false), ident);
@@ -2041,13 +2149,13 @@ declare_lint_pass!(ExplicitOutlivesRequirements => [EXPLICIT_OUTLIVES_REQUIREMEN
 
 impl ExplicitOutlivesRequirements {
     fn lifetimes_outliving_lifetime<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
         def_id: DefId,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
+            .filter_map(|(clause, _)| match *clause {
+                ty::Clause::RegionOutlives(ty::OutlivesPredicate(a, b)) => match *a {
                     ty::ReEarlyBound(ebr) if ebr.def_id == def_id => Some(b),
                     _ => None,
                 },
@@ -2057,13 +2165,13 @@ impl ExplicitOutlivesRequirements {
     }
 
     fn lifetimes_outliving_type<'tcx>(
-        inferred_outlives: &'tcx [(ty::Predicate<'tcx>, Span)],
+        inferred_outlives: &'tcx [(ty::Clause<'tcx>, Span)],
         index: u32,
     ) -> Vec<ty::Region<'tcx>> {
         inferred_outlives
             .iter()
-            .filter_map(|(pred, _)| match pred.kind().skip_binder() {
-                ty::PredicateKind::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
+            .filter_map(|(clause, _)| match *clause {
+                ty::Clause::TypeOutlives(ty::OutlivesPredicate(a, b)) => {
                     a.is_param(index).then_some(b)
                 }
                 _ => None,
@@ -2076,6 +2184,7 @@ impl ExplicitOutlivesRequirements {
         tcx: TyCtxt<'tcx>,
         bounds: &hir::GenericBounds<'_>,
         inferred_outlives: &[ty::Region<'tcx>],
+        predicate_span: Span,
     ) -> Vec<(usize, Span)> {
         use rustc_middle::middle::resolve_lifetime::Region;
 
@@ -2083,23 +2192,28 @@ impl ExplicitOutlivesRequirements {
             .iter()
             .enumerate()
             .filter_map(|(i, bound)| {
-                if let hir::GenericBound::Outlives(lifetime) = bound {
-                    let is_inferred = match tcx.named_region(lifetime.hir_id) {
-                        Some(Region::EarlyBound(def_id)) => inferred_outlives.iter().any(|r| {
-                            if let ty::ReEarlyBound(ebr) = **r {
-                                ebr.def_id == def_id
-                            } else {
-                                false
-                            }
-                        }),
-                        _ => false,
-                    };
-                    is_inferred.then_some((i, bound.span()))
-                } else {
-                    None
+                let hir::GenericBound::Outlives(lifetime) = bound else {
+                    return None;
+                };
+
+                let is_inferred = match tcx.named_region(lifetime.hir_id) {
+                    Some(Region::EarlyBound(def_id)) => inferred_outlives
+                        .iter()
+                        .any(|r| matches!(**r, ty::ReEarlyBound(ebr) if { ebr.def_id == def_id })),
+                    _ => false,
+                };
+
+                if !is_inferred {
+                    return None;
                 }
+
+                let span = bound.span().find_ancestor_inside(predicate_span)?;
+                if in_external_macro(tcx.sess, span) {
+                    return None;
+                }
+
+                Some((i, span))
             })
-            .filter(|(_, span)| !in_external_macro(tcx.sess, *span))
             .collect()
     }
 
@@ -2164,10 +2278,10 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {
         use rustc_middle::middle::resolve_lifetime::Region;
 
-        let def_id = item.def_id.def_id;
-        if let hir::ItemKind::Struct(_, ref hir_generics)
-        | hir::ItemKind::Enum(_, ref hir_generics)
-        | hir::ItemKind::Union(_, ref hir_generics) = item.kind
+        let def_id = item.owner_id.def_id;
+        if let hir::ItemKind::Struct(_, hir_generics)
+        | hir::ItemKind::Enum(_, hir_generics)
+        | hir::ItemKind::Union(_, hir_generics) = item.kind
         {
             let inferred_outlives = cx.tcx.inferred_outlives_of(def_id);
             if inferred_outlives.is_empty() {
@@ -2182,53 +2296,58 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
             let mut dropped_predicate_count = 0;
             let num_predicates = hir_generics.predicates.len();
             for (i, where_predicate) in hir_generics.predicates.iter().enumerate() {
-                let (relevant_lifetimes, bounds, span, in_where_clause) = match where_predicate {
-                    hir::WherePredicate::RegionPredicate(predicate) => {
-                        if let Some(Region::EarlyBound(region_def_id)) =
-                            cx.tcx.named_region(predicate.lifetime.hir_id)
-                        {
-                            (
-                                Self::lifetimes_outliving_lifetime(
-                                    inferred_outlives,
-                                    region_def_id,
-                                ),
-                                &predicate.bounds,
-                                predicate.span,
-                                predicate.in_where_clause,
-                            )
-                        } else {
-                            continue;
-                        }
-                    }
-                    hir::WherePredicate::BoundPredicate(predicate) => {
-                        // FIXME we can also infer bounds on associated types,
-                        // and should check for them here.
-                        match predicate.bounded_ty.kind {
-                            hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) => {
-                                let Res::Def(DefKind::TyParam, def_id) = path.res else {
-                                    continue
-                                };
-                                let index = ty_generics.param_def_id_to_index[&def_id];
+                let (relevant_lifetimes, bounds, predicate_span, in_where_clause) =
+                    match where_predicate {
+                        hir::WherePredicate::RegionPredicate(predicate) => {
+                            if let Some(Region::EarlyBound(region_def_id)) =
+                                cx.tcx.named_region(predicate.lifetime.hir_id)
+                            {
                                 (
-                                    Self::lifetimes_outliving_type(inferred_outlives, index),
+                                    Self::lifetimes_outliving_lifetime(
+                                        inferred_outlives,
+                                        region_def_id,
+                                    ),
                                     &predicate.bounds,
                                     predicate.span,
-                                    predicate.origin == PredicateOrigin::WhereClause,
+                                    predicate.in_where_clause,
                                 )
-                            }
-                            _ => {
+                            } else {
                                 continue;
                             }
                         }
-                    }
-                    _ => continue,
-                };
+                        hir::WherePredicate::BoundPredicate(predicate) => {
+                            // FIXME we can also infer bounds on associated types,
+                            // and should check for them here.
+                            match predicate.bounded_ty.kind {
+                                hir::TyKind::Path(hir::QPath::Resolved(None, path)) => {
+                                    let Res::Def(DefKind::TyParam, def_id) = path.res else {
+                                    continue;
+                                };
+                                    let index = ty_generics.param_def_id_to_index[&def_id];
+                                    (
+                                        Self::lifetimes_outliving_type(inferred_outlives, index),
+                                        &predicate.bounds,
+                                        predicate.span,
+                                        predicate.origin == PredicateOrigin::WhereClause,
+                                    )
+                                }
+                                _ => {
+                                    continue;
+                                }
+                            }
+                        }
+                        _ => continue,
+                    };
                 if relevant_lifetimes.is_empty() {
                     continue;
                 }
 
-                let bound_spans =
-                    self.collect_outlives_bound_spans(cx.tcx, bounds, &relevant_lifetimes);
+                let bound_spans = self.collect_outlives_bound_spans(
+                    cx.tcx,
+                    bounds,
+                    &relevant_lifetimes,
+                    predicate_span,
+                );
                 bound_count += bound_spans.len();
 
                 let drop_predicate = bound_spans.len() == bounds.len();
@@ -2237,15 +2356,15 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                 }
 
                 if drop_predicate && !in_where_clause {
-                    lint_spans.push(span);
+                    lint_spans.push(predicate_span);
                 } else if drop_predicate && i + 1 < num_predicates {
                     // If all the bounds on a predicate were inferable and there are
                     // further predicates, we want to eat the trailing comma.
                     let next_predicate_span = hir_generics.predicates[i + 1].span();
-                    where_lint_spans.push(span.to(next_predicate_span.shrink_to_lo()));
+                    where_lint_spans.push(predicate_span.to(next_predicate_span.shrink_to_lo()));
                 } else {
                     where_lint_spans.extend(self.consolidate_outlives_bound_spans(
-                        span.shrink_to_lo(),
+                        predicate_span.shrink_to_lo(),
                         bounds,
                         bound_spans,
                     ));
@@ -2266,12 +2385,26 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     } else {
                         hir_generics.span.shrink_to_hi().to(where_span)
                     };
-                lint_spans.push(full_where_span);
+
+                // Due to macro expansions, the `full_where_span` might not actually contain all predicates.
+                if where_lint_spans.iter().all(|&sp| full_where_span.contains(sp)) {
+                    lint_spans.push(full_where_span);
+                } else {
+                    lint_spans.extend(where_lint_spans);
+                }
             } else {
                 lint_spans.extend(where_lint_spans);
             }
 
             if !lint_spans.is_empty() {
+                // Do not automatically delete outlives requirements from macros.
+                let applicability = if lint_spans.iter().all(|sp| sp.can_be_used_for_suggestions())
+                {
+                    Applicability::MachineApplicable
+                } else {
+                    Applicability::MaybeIncorrect
+                };
+
                 cx.struct_span_lint(
                     EXPLICIT_OUTLIVES_REQUIREMENTS,
                     lint_spans.clone(),
@@ -2279,11 +2412,8 @@ impl<'tcx> LateLintPass<'tcx> for ExplicitOutlivesRequirements {
                     |lint| {
                         lint.set_arg("count", bound_count).multipart_suggestion(
                             fluent::suggestion,
-                            lint_spans
-                                .into_iter()
-                                .map(|span| (span, String::new()))
-                                .collect::<Vec<_>>(),
-                            Applicability::MachineApplicable,
+                            lint_spans.into_iter().map(|span| (span, String::new())).collect(),
+                            applicability,
                         )
                     },
                 );
@@ -2404,8 +2534,34 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
         }
 
         /// Information about why a type cannot be initialized this way.
-        /// Contains an error message and optionally a span to point at.
-        type InitError = (String, Option<Span>);
+        struct InitError {
+            message: String,
+            /// Spans from struct fields and similar that can be obtained from just the type.
+            span: Option<Span>,
+            /// Used to report a trace through adts.
+            nested: Option<Box<InitError>>,
+        }
+        impl InitError {
+            fn spanned(self, span: Span) -> InitError {
+                Self { span: Some(span), ..self }
+            }
+
+            fn nested(self, nested: impl Into<Option<InitError>>) -> InitError {
+                assert!(self.nested.is_none());
+                Self { nested: nested.into().map(Box::new), ..self }
+            }
+        }
+
+        impl<'a> From<&'a str> for InitError {
+            fn from(s: &'a str) -> Self {
+                s.to_owned().into()
+            }
+        }
+        impl From<String> for InitError {
+            fn from(message: String) -> Self {
+                Self { message, span: None, nested: None }
+            }
+        }
 
         /// Test if this constant is all-0.
         fn is_zero(expr: &hir::Expr<'_>) -> bool {
@@ -2461,25 +2617,54 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
 
         fn variant_find_init_error<'tcx>(
             cx: &LateContext<'tcx>,
+            ty: Ty<'tcx>,
             variant: &VariantDef,
             substs: ty::SubstsRef<'tcx>,
             descr: &str,
             init: InitKind,
         ) -> Option<InitError> {
-            variant.fields.iter().find_map(|field| {
-                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|(mut msg, span)| {
-                    if span.is_none() {
-                        // Point to this field, should be helpful for figuring
-                        // out where the source of the error is.
-                        let span = cx.tcx.def_span(field.did);
-                        write!(&mut msg, " (in this {descr})").unwrap();
-                        (msg, Some(span))
+            let mut field_err = variant.fields.iter().find_map(|field| {
+                ty_find_init_error(cx, field.ty(cx.tcx, substs), init).map(|mut err| {
+                    if !field.did.is_local() {
+                        err
+                    } else if err.span.is_none() {
+                        err.span = Some(cx.tcx.def_span(field.did));
+                        write!(&mut err.message, " (in this {descr})").unwrap();
+                        err
                     } else {
-                        // Just forward.
-                        (msg, span)
+                        InitError::from(format!("in this {descr}"))
+                            .spanned(cx.tcx.def_span(field.did))
+                            .nested(err)
                     }
                 })
-            })
+            });
+
+            // Check if this ADT has a constrained layout (like `NonNull` and friends).
+            if let Ok(layout) = cx.tcx.layout_of(cx.param_env.and(ty)) {
+                if let Abi::Scalar(scalar) | Abi::ScalarPair(scalar, _) = &layout.abi {
+                    let range = scalar.valid_range(cx);
+                    let msg = if !range.contains(0) {
+                        "must be non-null"
+                    } else if init == InitKind::Uninit && !scalar.is_always_valid(cx) {
+                        // Prefer reporting on the fields over the entire struct for uninit,
+                        // as the information bubbles out and it may be unclear why the type can't
+                        // be null from just its outside signature.
+
+                        "must be initialized inside its custom valid range"
+                    } else {
+                        return field_err;
+                    };
+                    if let Some(field_err) = &mut field_err {
+                        // Most of the time, if the field error is the same as the struct error,
+                        // the struct error only happens because of the field error.
+                        if field_err.message.contains(msg) {
+                            field_err.message = format!("because {}", field_err.message);
+                        }
+                    }
+                    return Some(InitError::from(format!("`{ty}` {msg}")).nested(field_err));
+                }
+            }
+            field_err
         }
 
         /// Return `Some` only if we are sure this type does *not*
@@ -2492,63 +2677,36 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             use rustc_type_ir::sty::TyKind::*;
             match ty.kind() {
                 // Primitive types that don't like 0 as a value.
-                Ref(..) => Some(("references must be non-null".to_string(), None)),
-                Adt(..) if ty.is_box() => Some(("`Box` must be non-null".to_string(), None)),
-                FnPtr(..) => Some(("function pointers must be non-null".to_string(), None)),
-                Never => Some(("the `!` type has no valid value".to_string(), None)),
+                Ref(..) => Some("references must be non-null".into()),
+                Adt(..) if ty.is_box() => Some("`Box` must be non-null".into()),
+                FnPtr(..) => Some("function pointers must be non-null".into()),
+                Never => Some("the `!` type has no valid value".into()),
                 RawPtr(tm) if matches!(tm.ty.kind(), Dynamic(..)) =>
                 // raw ptr to dyn Trait
                 {
-                    Some(("the vtable of a wide raw pointer must be non-null".to_string(), None))
+                    Some("the vtable of a wide raw pointer must be non-null".into())
                 }
                 // Primitive types with other constraints.
                 Bool if init == InitKind::Uninit => {
-                    Some(("booleans must be either `true` or `false`".to_string(), None))
+                    Some("booleans must be either `true` or `false`".into())
                 }
                 Char if init == InitKind::Uninit => {
-                    Some(("characters must be a valid Unicode codepoint".to_string(), None))
+                    Some("characters must be a valid Unicode codepoint".into())
                 }
                 Int(_) | Uint(_) if init == InitKind::Uninit => {
-                    Some(("integers must not be uninitialized".to_string(), None))
+                    Some("integers must be initialized".into())
                 }
-                Float(_) if init == InitKind::Uninit => {
-                    Some(("floats must not be uninitialized".to_string(), None))
-                }
+                Float(_) if init == InitKind::Uninit => Some("floats must be initialized".into()),
                 RawPtr(_) if init == InitKind::Uninit => {
-                    Some(("raw pointers must not be uninitialized".to_string(), None))
+                    Some("raw pointers must be initialized".into())
                 }
                 // Recurse and checks for some compound types. (but not unions)
                 Adt(adt_def, substs) if !adt_def.is_union() => {
-                    // First check if this ADT has a layout attribute (like `NonNull` and friends).
-                    use std::ops::Bound;
-                    match cx.tcx.layout_scalar_valid_range(adt_def.did()) {
-                        // We exploit here that `layout_scalar_valid_range` will never
-                        // return `Bound::Excluded`.  (And we have tests checking that we
-                        // handle the attribute correctly.)
-                        // We don't add a span since users cannot declare such types anyway.
-                        (Bound::Included(lo), Bound::Included(hi)) if 0 < lo && lo < hi => {
-                            return Some((format!("`{}` must be non-null", ty), None));
-                        }
-                        (Bound::Included(lo), Bound::Unbounded) if 0 < lo => {
-                            return Some((format!("`{}` must be non-null", ty), None));
-                        }
-                        (Bound::Included(_), _) | (_, Bound::Included(_))
-                            if init == InitKind::Uninit =>
-                        {
-                            return Some((
-                                format!(
-                                    "`{}` must be initialized inside its custom valid range",
-                                    ty,
-                                ),
-                                None,
-                            ));
-                        }
-                        _ => {}
-                    }
                     // Handle structs.
                     if adt_def.is_struct() {
                         return variant_find_init_error(
                             cx,
+                            ty,
                             adt_def.non_enum_variant(),
                             substs,
                             "struct field",
@@ -2572,13 +2730,14 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                         Some((variant, definitely_inhabited))
                     });
                     let Some(first_variant) = potential_variants.next() else {
-                        return Some(("enums with no inhabited variants have no valid value".to_string(), Some(span)));
+                        return Some(InitError::from("enums with no inhabited variants have no valid value").spanned(span));
                     };
                     // So we have at least one potentially inhabited variant. Might we have two?
                     let Some(second_variant) = potential_variants.next() else {
                         // There is only one potentially inhabited variant. So we can recursively check that variant!
                         return variant_find_init_error(
                             cx,
+                            ty,
                             &first_variant.0,
                             substs,
                             "field of the only potentially inhabited enum variant",
@@ -2596,10 +2755,9 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                                 .filter(|(_variant, definitely_inhabited)| *definitely_inhabited)
                                 .count();
                         if definitely_inhabited > 1 {
-                            return Some((
-                                "enums with multiple inhabited variants have to be initialized to a variant".to_string(),
-                                Some(span),
-                            ));
+                            return Some(InitError::from(
+                                "enums with multiple inhabited variants have to be initialized to a variant",
+                            ).spanned(span));
                         }
                     }
                     // We couldn't find anything wrong here.
@@ -2628,8 +2786,7 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
             // using zeroed or uninitialized memory.
             // We are extremely conservative with what we warn about.
             let conjured_ty = cx.typeck_results().expr_ty(expr);
-            if let Some((msg, span)) =
-                with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
+            if let Some(mut err) = with_no_trimmed_paths!(ty_find_init_error(cx, conjured_ty, init))
             {
                 // FIXME(davidtwco): make translatable
                 cx.struct_span_lint(
@@ -2655,10 +2812,17 @@ impl<'tcx> LateLintPass<'tcx> for InvalidValue {
                             "help: use `MaybeUninit<T>` instead, \
                             and only call `assume_init` after initialization is done",
                         );
-                        if let Some(span) = span {
-                            lint.span_note(span, &msg);
-                        } else {
-                            lint.note(&msg);
+                        loop {
+                            if let Some(span) = err.span {
+                                lint.span_note(span, &err.message);
+                            } else {
+                                lint.note(&err.message);
+                            }
+                            if let Some(e) = err.nested {
+                                err = *e;
+                            } else {
+                                break;
+                            }
                         }
                         lint
                     },
@@ -2743,7 +2907,7 @@ impl ClashingExternDeclarations {
     /// Insert a new foreign item into the seen set. If a symbol with the same name already exists
     /// for the item, return its HirId without updating the set.
     fn insert(&mut self, tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> Option<HirId> {
-        let did = fi.def_id.to_def_id();
+        let did = fi.owner_id.to_def_id();
         let instance = Instance::new(did, ty::List::identity_for_item(tcx, did));
         let name = Symbol::intern(tcx.symbol_name(instance).name);
         if let Some(&hir_id) = self.seen_decls.get(&name) {
@@ -2761,14 +2925,14 @@ impl ClashingExternDeclarations {
     /// symbol's name.
     fn name_of_extern_decl(tcx: TyCtxt<'_>, fi: &hir::ForeignItem<'_>) -> SymbolName {
         if let Some((overridden_link_name, overridden_link_name_span)) =
-            tcx.codegen_fn_attrs(fi.def_id).link_name.map(|overridden_link_name| {
+            tcx.codegen_fn_attrs(fi.owner_id).link_name.map(|overridden_link_name| {
                 // FIXME: Instead of searching through the attributes again to get span
                 // information, we could have codegen_fn_attrs also give span information back for
                 // where the attribute was defined. However, until this is found to be a
                 // bottleneck, this does just fine.
                 (
                     overridden_link_name,
-                    tcx.get_attr(fi.def_id.to_def_id(), sym::link_name).unwrap().span,
+                    tcx.get_attr(fi.owner_id.to_def_id(), sym::link_name).unwrap().span,
                 )
             })
         {
@@ -2944,8 +3108,8 @@ impl ClashingExternDeclarations {
                         | (Closure(..), Closure(..))
                         | (Generator(..), Generator(..))
                         | (GeneratorWitness(..), GeneratorWitness(..))
-                        | (Projection(..), Projection(..))
-                        | (Opaque(..), Opaque(..)) => false,
+                        | (Alias(ty::Projection, ..), Alias(ty::Projection, ..))
+                        | (Alias(ty::Opaque, ..), Alias(ty::Opaque, ..)) => false,
 
                         // These definitely should have been caught above.
                         (Bool, Bool) | (Char, Char) | (Never, Never) | (Str, Str) => unreachable!(),
@@ -2985,10 +3149,10 @@ impl<'tcx> LateLintPass<'tcx> for ClashingExternDeclarations {
             let tcx = cx.tcx;
             if let Some(existing_hid) = self.insert(tcx, this_fi) {
                 let existing_decl_ty = tcx.type_of(tcx.hir().local_def_id(existing_hid));
-                let this_decl_ty = tcx.type_of(this_fi.def_id);
+                let this_decl_ty = tcx.type_of(this_fi.owner_id);
                 debug!(
                     "ClashingExternDeclarations: Comparing existing {:?}: {:?} to this {:?}: {:?}",
-                    existing_hid, existing_decl_ty, this_fi.def_id, this_decl_ty
+                    existing_hid, existing_decl_ty, this_fi.owner_id, this_decl_ty
                 );
                 // Check that the declarations match.
                 if !Self::structurally_same_type(

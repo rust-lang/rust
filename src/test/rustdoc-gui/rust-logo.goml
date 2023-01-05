@@ -17,6 +17,15 @@ define-function: (
         ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
         ("reload"),
         ("assert-css", (".rust-logo", {"filter": |filter|})),
+        // Now we check that the non-rust logos don't have a CSS filter set.
+        ("goto", "file://" + |DOC_PATH| + "/huge_logo/index.html"),
+        // Changing theme on the new page (again...).
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        // Check there is no rust logo
+        ("assert-false", ".rust-logo"),
+        // Check there is no filter.
+        ("assert-css", (".sidebar .logo-container img", {"filter": "none"})),
     ],
 )
 

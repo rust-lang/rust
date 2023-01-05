@@ -3,6 +3,8 @@ error: no rules expected the token `@`
    |
 LL |     panic!(@);
    |            ^ no rules expected this token in macro call
+   |
+   = note: while trying to match end of macro
 
 error: aborting due to previous error
 

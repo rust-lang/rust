@@ -28,26 +28,21 @@ fn move_into_fn() {
         let X(_t) = x;
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &x
         if let Either::One(_t) = e { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &e
         while let Either::One(_t) = e { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &e
         match e {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &e
             Either::One(_t)
             | Either::Two(_t) => (),
         }
         match e {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &e
             Either::One(_t) => (),
             Either::Two(ref _t) => (),
             // FIXME: should suggest removing `ref` too
@@ -56,26 +51,21 @@ fn move_into_fn() {
         let X(mut _t) = x;
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &x
         if let Either::One(mut _t) = em { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &em
         while let Either::One(mut _t) = em { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &em
         match em {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &em
             Either::One(mut _t)
             | Either::Two(mut _t) => (),
         }
         match em {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &em
             Either::One(mut _t) => (),
             Either::Two(ref _t) => (),
             // FIXME: should suggest removing `ref` too
@@ -95,26 +85,21 @@ fn move_into_fnmut() {
         let X(_t) = x;
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &x
         if let Either::One(_t) = e { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &e
         while let Either::One(_t) = e { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &e
         match e {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &e
             Either::One(_t)
             | Either::Two(_t) => (),
         }
         match e {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &e
             Either::One(_t) => (),
             Either::Two(ref _t) => (),
             // FIXME: should suggest removing `ref` too
@@ -123,26 +108,21 @@ fn move_into_fnmut() {
         let X(mut _t) = x;
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &x
         if let Either::One(mut _t) = em { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &em
         while let Either::One(mut _t) = em { }
         //~^ ERROR cannot move
         //~| HELP consider borrowing here
-        //~| SUGGESTION &em
         match em {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &em
             Either::One(mut _t)
             | Either::Two(mut _t) => (),
         }
         match em {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &em
             Either::One(mut _t) => (),
             Either::Two(ref _t) => (),
             // FIXME: should suggest removing `ref` too
@@ -150,7 +130,6 @@ fn move_into_fnmut() {
         match em {
             //~^ ERROR cannot move
             //~| HELP consider borrowing here
-            //~| SUGGESTION &em
             Either::One(mut _t) => (),
             Either::Two(ref mut _t) => (),
             // FIXME: should suggest removing `ref` too

@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/transmute-const-promotion.rs:4:37
    |
 LL |     let x: &'static u32 = unsafe { &mem::transmute(3.0f32) };
-   |            ------------             ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |            ------------             ^^^^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
    |            |
    |            type annotation requires that borrow lasts for `'static`
 LL |

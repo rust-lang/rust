@@ -38,7 +38,7 @@ pub(crate) fn reformat_number_literal(acc: &mut Assists, ctx: &AssistContext<'_>
     converted.push_str(suffix);
 
     let group_id = GroupLabel("Reformat number literal".into());
-    let label = format!("Convert {} to {}", literal, converted);
+    let label = format!("Convert {literal} to {converted}");
     let range = literal.syntax().text_range();
     acc.add_group(
         &group_id,

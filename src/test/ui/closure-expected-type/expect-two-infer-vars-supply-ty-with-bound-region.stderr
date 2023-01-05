@@ -6,8 +6,8 @@ LL |     with_closure(|x: u32, y| {});
    |
 help: consider giving this closure parameter an explicit type
    |
-LL |     with_closure(|x: u32, y: _| {});
-   |                            +++
+LL |     with_closure(|x: u32, y: /* Type */| {});
+   |                            ++++++++++++
 
 error: aborting due to previous error
 

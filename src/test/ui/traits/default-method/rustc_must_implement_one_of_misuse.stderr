@@ -22,19 +22,19 @@ LL |
 LL | struct Struct {}
    | ---------------- not a trait
 
-error: Function not found in this trait
+error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:31
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                               ^
 
-error: Function not found in this trait
+error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:3:34
    |
 LL | #[rustc_must_implement_one_of(a, b)]
    |                                  ^
 
-error: Function not found in this trait
+error: function not found in this trait
   --> $DIR/rustc_must_implement_one_of_misuse.rs:8:34
    |
 LL | #[rustc_must_implement_one_of(a, b)]
@@ -46,7 +46,7 @@ error: the `#[rustc_must_implement_one_of]` attribute must be used with at least
 LL | #[rustc_must_implement_one_of(a)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: Not a function
+error: not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:26:5
    |
 LL |     const A: u8 = 1;
@@ -57,9 +57,9 @@ note: required by this annotation
    |
 LL | #[rustc_must_implement_one_of(A, B)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: All `#[rustc_must_implement_one_of]` arguments must be associated function names
+   = note: all `#[rustc_must_implement_one_of]` arguments must be associated function names
 
-error: Not a function
+error: not a function
   --> $DIR/rustc_must_implement_one_of_misuse.rs:28:5
    |
 LL |     type B;
@@ -70,9 +70,9 @@ note: required by this annotation
    |
 LL | #[rustc_must_implement_one_of(A, B)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: All `#[rustc_must_implement_one_of]` arguments must be associated function names
+   = note: all `#[rustc_must_implement_one_of]` arguments must be associated function names
 
-error: This function doesn't have a default implementation
+error: function doesn't have a default implementation
   --> $DIR/rustc_must_implement_one_of_misuse.rs:33:5
    |
 LL |     fn a();
@@ -84,7 +84,7 @@ note: required by this annotation
 LL | #[rustc_must_implement_one_of(a, b)]
    | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-error: This function doesn't have a default implementation
+error: function doesn't have a default implementation
   --> $DIR/rustc_must_implement_one_of_misuse.rs:35:5
    |
 LL |     fn b();

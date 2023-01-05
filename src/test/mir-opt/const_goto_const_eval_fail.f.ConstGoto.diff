@@ -10,7 +10,7 @@
           StorageLive(_1);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:11: +6:6
           StorageLive(_2);                 // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
           _2 = const A;                    // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:15: +2:16
-          switchInt(_2) -> [1_i32: bb2, 2_i32: bb2, 3_i32: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:9: +2:16
+          switchInt(_2) -> [1: bb2, 2: bb2, 3: bb2, otherwise: bb1]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+2:9: +2:16
       }
   
       bb1: {
@@ -21,11 +21,11 @@
       bb2: {
           _1 = const B;                    // scope 0 at $DIR/const_goto_const_eval_fail.rs:+3:26: +3:27
 -         goto -> bb3;                     // scope 0 at $DIR/const_goto_const_eval_fail.rs:+3:26: +3:27
-+         switchInt(_1) -> [false: bb4, otherwise: bb3]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
++         switchInt(_1) -> [0: bb4, otherwise: bb3]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
       }
   
       bb3: {
--         switchInt(_1) -> [false: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
+-         switchInt(_1) -> [0: bb5, otherwise: bb4]; // scope 0 at $DIR/const_goto_const_eval_fail.rs:+1:5: +6:6
 -     }
 - 
 -     bb4: {

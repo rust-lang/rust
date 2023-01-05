@@ -38,7 +38,7 @@
           _3 = Lt(move _4, move _5);       // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
           StorageDead(_5);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
           StorageDead(_4);                 // scope 0 at $DIR/lower_array_len.rs:+1:26: +1:27
-          switchInt(move _3) -> [false: bb4, otherwise: bb2]; // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
+          switchInt(move _3) -> [0: bb4, otherwise: bb2]; // scope 0 at $DIR/lower_array_len.rs:+1:8: +1:27
       }
   
       bb2: {

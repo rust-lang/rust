@@ -1,3 +1,5 @@
+// run-rustfix
+#![allow(unused)]
 struct S(String);
 impl Drop for S {
     fn drop(&mut self) { }

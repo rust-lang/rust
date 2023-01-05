@@ -324,7 +324,7 @@ pub(crate) struct MatchCheckCtxt<'p, 'tcx> {
 impl<'a, 'tcx> MatchCheckCtxt<'a, 'tcx> {
     pub(super) fn is_uninhabited(&self, ty: Ty<'tcx>) -> bool {
         if self.tcx.features().exhaustive_patterns {
-            self.tcx.is_ty_uninhabited_from(self.module, ty, self.param_env)
+            !ty.is_inhabited_from(self.tcx, self.module, self.param_env)
         } else {
             false
         }
@@ -845,7 +845,7 @@ fn is_useful<'p, 'tcx>(
 
         // Opaque types can't get destructured/split, but the patterns can
         // actually hint at hidden types, so we use the patterns' types instead.
-        if let ty::Opaque(..) = ty.kind() {
+        if let ty::Alias(ty::Opaque, ..) = ty.kind() {
             if let Some(row) = rows.first() {
                 ty = row.head().ty();
             }

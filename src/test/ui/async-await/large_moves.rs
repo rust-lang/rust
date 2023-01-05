@@ -7,6 +7,7 @@
 // [option]compile-flags: -Zmove-size-limit=1000
 
 // edition:2018
+// compile-flags: -Zmir-opt-level=0
 
 fn main() {
     let x = async { //~ ERROR large_assignments

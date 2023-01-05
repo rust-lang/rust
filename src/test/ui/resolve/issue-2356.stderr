@@ -85,7 +85,7 @@ LL |         static_method();
 help: consider using the associated function
    |
 LL |         Self::static_method();
-   |         ~~~~~~~~~~~~~~~~~~~
+   |         ++++++
 
 error[E0425]: cannot find function `purr` in this scope
   --> $DIR/issue-2356.rs:54:9
@@ -114,7 +114,7 @@ LL |     grow_older();
 help: consider using the associated function
    |
 LL |     Self::grow_older();
-   |     ~~~~~~~~~~~~~~~~
+   |     ++++++
 
 error[E0425]: cannot find function `shave` in this scope
   --> $DIR/issue-2356.rs:74:5

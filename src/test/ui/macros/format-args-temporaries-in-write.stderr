@@ -12,11 +12,6 @@ LL |     };
    |     |
    |     `mutex` dropped here while still borrowed
    |
-help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
-   |
-LL |         $dst.write_fmt($crate::format_args!($($arg)*));
-   |                                                       +
 
 error[E0597]: `mutex` does not live long enough
   --> $DIR/format-args-temporaries-in-write.rs:47:29
@@ -32,11 +27,6 @@ LL |     };
    |     |
    |     `mutex` dropped here while still borrowed
    |
-help: consider adding semicolon after the expression so its temporaries are dropped sooner, before the local variables declared by the block are dropped
-  --> $SRC_DIR/core/src/macros/mod.rs:LL:COL
-   |
-LL |         $dst.write_fmt($crate::format_args_nl!($($arg)*));
-   |                                                          +
 
 error: aborting due to 2 previous errors
 

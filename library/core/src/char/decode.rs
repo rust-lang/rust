@@ -67,7 +67,7 @@ impl<I: Iterator<Item = u16>> Iterator for DecodeUtf16<I> {
             }
 
             // all ok, so lets decode it.
-            let c = (((u - 0xD800) as u32) << 10 | (u2 - 0xDC00) as u32) + 0x1_0000;
+            let c = (((u & 0x3ff) as u32) << 10 | (u2 & 0x3ff) as u32) + 0x1_0000;
             // SAFETY: we checked that it's a legal unicode value
             Some(Ok(unsafe { from_u32_unchecked(c) }))
         }

@@ -256,8 +256,8 @@ impl<'tcx> LateLintPass<'tcx> for LintWithoutLintPass {
     }
 }
 
-pub(super) fn is_lint_ref_type<'tcx>(cx: &LateContext<'tcx>, ty: &hir::Ty<'_>) -> bool {
-    if let TyKind::Rptr(
+pub(super) fn is_lint_ref_type(cx: &LateContext<'_>, ty: &hir::Ty<'_>) -> bool {
+    if let TyKind::Ref(
         _,
         MutTy {
             ty: inner,
@@ -330,7 +330,7 @@ struct LintCollector<'a, 'tcx> {
 impl<'a, 'tcx> Visitor<'tcx> for LintCollector<'a, 'tcx> {
     type NestedFilter = nested_filter::All;
 
-    fn visit_path(&mut self, path: &'tcx Path<'_>, _: HirId) {
+    fn visit_path(&mut self, path: &Path<'_>, _: HirId) {
         if path.segments.len() == 1 {
             self.output.insert(path.segments[0].ident.name);
         }

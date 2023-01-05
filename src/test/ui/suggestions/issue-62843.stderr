@@ -10,9 +10,6 @@ LL |     println!("{:?}", line.find(pattern));
    = note: required for `String` to implement `Pattern<'_>`
 note: required by a bound in `core::str::<impl str>::find`
   --> $SRC_DIR/core/src/str/mod.rs:LL:COL
-   |
-LL |     pub fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
-   |                        ^^^^^^^^^^^ required by this bound in `core::str::<impl str>::find`
 help: consider borrowing here
    |
 LL |     println!("{:?}", line.find(&pattern));

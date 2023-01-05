@@ -23,7 +23,7 @@ pub enum Component<'tcx> {
     // is not in a position to judge which is the best technique, so
     // we just product the projection as a component and leave it to
     // the consumer to decide (but see `EscapingProjection` below).
-    Projection(ty::ProjectionTy<'tcx>),
+    Projection(ty::AliasTy<'tcx>),
 
     // In the case where a projection has escaping regions -- meaning
     // regions bound within the type itself -- we always use
@@ -130,7 +130,7 @@ fn compute_components<'tcx>(
             // outlives any other lifetime, which is unsound.
             // See https://github.com/rust-lang/rust/issues/84305 for
             // more details.
-            ty::Opaque(def_id, substs) => {
+            ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => {
                 out.push(Component::Opaque(def_id, substs));
             },
 
@@ -142,7 +142,7 @@ fn compute_components<'tcx>(
             // trait-ref. Therefore, if we see any higher-ranked regions,
             // we simply fallback to the most restrictive rule, which
             // requires that `Pi: 'a` for all `i`.
-            ty::Projection(ref data) => {
+            ty::Alias(ty::Projection, ref data) => {
                 if !data.has_escaping_bound_vars() {
                     // best case: no escaping regions, so push the
                     // projection and skip the subtree (thus generating no

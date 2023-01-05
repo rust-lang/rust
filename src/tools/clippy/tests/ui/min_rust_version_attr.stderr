@@ -23,5 +23,29 @@ LL |     let log2_10 = 3.321928094887362;
    |
    = help: consider using the constant directly
 
-error: aborting due to 3 previous errors
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:38:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:48:19
+   |
+LL |     let log2_10 = 3.321928094887362;
+   |                   ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: approximate value of `f{32, 64}::consts::LOG2_10` found
+  --> $DIR/min_rust_version_attr.rs:55:27
+   |
+LL |             let log2_10 = 3.321928094887362;
+   |                           ^^^^^^^^^^^^^^^^^
+   |
+   = help: consider using the constant directly
+
+error: aborting due to 6 previous errors
 

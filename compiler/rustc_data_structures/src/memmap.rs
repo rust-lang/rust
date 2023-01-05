@@ -36,6 +36,12 @@ impl Deref for Mmap {
 
     #[inline]
     fn deref(&self) -> &[u8] {
+        &self.0
+    }
+}
+
+impl AsRef<[u8]> for Mmap {
+    fn as_ref(&self) -> &[u8] {
         &*self.0
     }
 }
@@ -96,13 +102,13 @@ impl Deref for MmapMut {
 
     #[inline]
     fn deref(&self) -> &[u8] {
-        &*self.0
+        &self.0
     }
 }
 
 impl DerefMut for MmapMut {
     #[inline]
     fn deref_mut(&mut self) -> &mut [u8] {
-        &mut *self.0
+        &mut self.0
     }
 }

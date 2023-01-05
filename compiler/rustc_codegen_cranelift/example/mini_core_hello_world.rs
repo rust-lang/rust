@@ -171,8 +171,6 @@ fn main() {
 
     assert_eq!(slice_ptr as usize % 4, 0);
 
-    //return;
-
     unsafe {
         printf("Hello %s\n\0" as *const str as *const i8, "printf\0" as *const str as *const i8);
 

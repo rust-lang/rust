@@ -21,7 +21,7 @@ use crate::{
 use super::{find_use, RegionName, UseSpans};
 
 #[derive(Debug)]
-pub(crate) enum BorrowExplanation {
+pub(crate) enum BorrowExplanation<'tcx> {
     UsedLater(LaterUseKind, Span, Option<Span>),
     UsedLaterInLoop(LaterUseKind, Span, Option<Span>),
     UsedLaterWhenDropped {
@@ -30,7 +30,7 @@ pub(crate) enum BorrowExplanation {
         should_note_order: bool,
     },
     MustBeValidFor {
-        category: ConstraintCategory,
+        category: ConstraintCategory<'tcx>,
         from_closure: bool,
         span: Span,
         region_name: RegionName,
@@ -49,7 +49,7 @@ pub(crate) enum LaterUseKind {
     Other,
 }
 
-impl<'tcx> BorrowExplanation {
+impl<'tcx> BorrowExplanation<'tcx> {
     pub(crate) fn is_explained(&self) -> bool {
         !matches!(self, BorrowExplanation::Unexplained)
     }
@@ -270,7 +270,7 @@ impl<'tcx> BorrowExplanation {
                 for extra in extra_info {
                     match extra {
                         ExtraConstraintInfo::PlaceholderFromPredicate(span) => {
-                            err.span_note(*span, format!("due to current limitations in the borrow checker, this implies a `'static` lifetime"));
+                            err.span_note(*span, "due to current limitations in the borrow checker, this implies a `'static` lifetime");
                         }
                     }
                 }
@@ -284,7 +284,7 @@ impl<'tcx> BorrowExplanation {
     fn add_lifetime_bound_suggestion_to_diagnostic(
         &self,
         err: &mut Diagnostic,
-        category: &ConstraintCategory,
+        category: &ConstraintCategory<'tcx>,
         span: Span,
         region_name: &RegionName,
     ) {
@@ -316,7 +316,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         &self,
         borrow_region: RegionVid,
         outlived_region: RegionVid,
-    ) -> (ConstraintCategory, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
+    ) -> (ConstraintCategory<'tcx>, bool, Span, Option<RegionName>, Vec<ExtraConstraintInfo>) {
         let (blame_constraint, extra_info) = self.regioncx.best_blame_constraint(
             borrow_region,
             NllRegionVariableOrigin::FreeRegion,
@@ -348,7 +348,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         location: Location,
         borrow: &BorrowData<'tcx>,
         kind_place: Option<(WriteKind, Place<'tcx>)>,
-    ) -> BorrowExplanation {
+    ) -> BorrowExplanation<'tcx> {
         let regioncx = &self.regioncx;
         let body: &Body<'_> = &self.body;
         let tcx = self.infcx.tcx;
@@ -469,8 +469,8 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {
-                    if let TerminatorKind::Call { ref func, from_hir_call: true, .. } =
-                        block.terminator().kind
+                    if let TerminatorKind::Call { func, from_hir_call: true, .. } =
+                        &block.terminator().kind
                     {
                         // Just point to the function, to reduce the chance of overlapping spans.
                         let function_span = match func {
@@ -515,19 +515,16 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         // will only ever have one item at any given time, but by using a vector, we can pop from
         // it which simplifies the termination logic.
         let mut queue = vec![location];
-        let mut target = if let Some(&Statement {
-            kind: StatementKind::Assign(box (ref place, _)),
-            ..
-        }) = stmt
-        {
-            if let Some(local) = place.as_local() {
-                local
+        let mut target =
+            if let Some(Statement { kind: StatementKind::Assign(box (place, _)), .. }) = stmt {
+                if let Some(local) = place.as_local() {
+                    local
+                } else {
+                    return false;
+                }
             } else {
                 return false;
-            }
-        } else {
-            return false;
-        };
+            };
 
         debug!("was_captured_by_trait: target={:?} queue={:?}", target, queue);
         while let Some(current_location) = queue.pop() {

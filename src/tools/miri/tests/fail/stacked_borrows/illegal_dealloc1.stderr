@@ -1,0 +1,30 @@
+error: Undefined Behavior: attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+  --> RUSTLIB/alloc/src/alloc.rs:LL:CC
+   |
+LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
+   |              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ attempting deallocation using <TAG> at ALLOC, but that tag does not exist in the borrow stack for this location
+   |
+   = help: this indicates a potential bug in the program: it performed an invalid operation, but the Stacked Borrows rules it violated are still experimental
+   = help: see https://github.com/rust-lang/unsafe-code-guidelines/blob/master/wip/stacked-borrows.md for further information
+help: <TAG> was created by a SharedReadWrite retag at offsets [0x0..0x1]
+  --> $DIR/illegal_deALLOC.rs:LL:CC
+   |
+LL |         let ptr2 = (&mut *ptr1) as *mut u8;
+   |                    ^^^^^^^^^^^^
+help: <TAG> was later invalidated at offsets [0x0..0x1] by a write access
+  --> $DIR/illegal_deALLOC.rs:LL:CC
+   |
+LL |         ptr1.write(0);
+   |         ^^^^^^^^^^^^^
+   = note: BACKTRACE (of the first span):
+   = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
+note: inside `main`
+  --> $DIR/illegal_deALLOC.rs:LL:CC
+   |
+LL |         dealloc(ptr2, Layout::from_size_align_unchecked(1, 1));
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+note: some details are omitted, run with `MIRIFLAGS=-Zmiri-backtrace=full` for a verbose backtrace
+
+error: aborting due to previous error
+

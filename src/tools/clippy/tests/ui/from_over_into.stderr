@@ -59,7 +59,7 @@ LL ~         val.0
    |
 
 error: an implementation of `From` is preferred since it gives you `Into<_>` for free where the reverse isn't true
-  --> $DIR/from_over_into.rs:80:5
+  --> $DIR/from_over_into.rs:78:5
    |
 LL |     impl<T> Into<FromOverInto<T>> for Vec<T> {
    |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

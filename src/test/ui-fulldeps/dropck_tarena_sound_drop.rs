@@ -14,6 +14,11 @@
 
 extern crate rustc_arena;
 
+// Necessary to pull in object code as the rest of the rustc crates are shipped only as rmeta
+// files.
+#[allow(unused_extern_crates)]
+extern crate rustc_driver;
+
 use rustc_arena::TypedArena;
 
 trait HasId { fn count(&self) -> usize; }

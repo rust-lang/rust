@@ -3,6 +3,7 @@
 use std::{collections::HashMap, path::PathBuf};
 
 use lsp_types::request::Request;
+use lsp_types::PositionEncodingKind;
 use lsp_types::{
     notification::Notification, CodeActionKind, DocumentOnTypeFormattingParams,
     PartialResultParams, Position, Range, TextDocumentIdentifier, WorkDoneProgressParams,
@@ -455,7 +456,15 @@ pub(crate) enum CodeLensResolveData {
 }
 
 pub fn supports_utf8(caps: &lsp_types::ClientCapabilities) -> bool {
-    caps.offset_encoding.as_deref().unwrap_or_default().iter().any(|it| it == "utf-8")
+    match &caps.general {
+        Some(general) => general
+            .position_encodings
+            .as_deref()
+            .unwrap_or_default()
+            .iter()
+            .any(|it| it == &PositionEncodingKind::UTF8),
+        _ => false,
+    }
 }
 
 pub enum MoveItem {}

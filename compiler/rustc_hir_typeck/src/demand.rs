@@ -1,7 +1,9 @@
 use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
+use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
+use rustc_hir::def::CtorKind;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_infer::infer::InferOk;
@@ -18,9 +20,42 @@ use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
 
+use std::cmp::min;
 use std::iter;
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
+    pub fn emit_type_mismatch_suggestions(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expr_ty: Ty<'tcx>,
+        expected: Ty<'tcx>,
+        expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
+        error: Option<TypeError<'tcx>>,
+    ) {
+        if expr_ty == expected {
+            return;
+        }
+
+        self.annotate_alternative_method_deref(err, expr, error);
+
+        // Use `||` to give these suggestions a precedence
+        let _ = self.suggest_missing_parentheses(err, expr)
+            || self.suggest_remove_last_method_call(err, expr, expected)
+            || self.suggest_associated_const(err, expr, expected)
+            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
+            || self.suggest_option_to_bool(err, expr, expr_ty, expected)
+            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
+            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
+            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_no_capture_closure(err, expected, expr_ty)
+            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
+            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
+            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_into(err, expr, expr_ty, expected)
+            || self.suggest_floating_point_literal(err, expr, expected);
+    }
+
     pub fn emit_coerce_suggestions(
         &self,
         err: &mut Diagnostic,
@@ -30,27 +65,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expected_ty_expr: Option<&'tcx hir::Expr<'tcx>>,
         error: Option<TypeError<'tcx>>,
     ) {
+        if expr_ty == expected {
+            return;
+        }
+
         self.annotate_expected_due_to_let_ty(err, expr, error);
-
-        // Use `||` to give these suggestions a precedence
-        let _ = self.suggest_missing_parentheses(err, expr)
-            || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
-            || self.suggest_compatible_variants(err, expr, expected, expr_ty)
-            || self.suggest_non_zero_new_unwrap(err, expr, expected, expr_ty)
-            || self.suggest_calling_boxed_future_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_no_capture_closure(err, expected, expr_ty)
-            || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
-            || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
-            || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
-            || self.suggest_into(err, expr, expr_ty, expected);
-
+        self.emit_type_mismatch_suggestions(err, expr, expr_ty, expected, expected_ty_expr, error);
         self.note_type_is_not_clone(err, expected, expr_ty, expr);
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
+        self.check_for_range_as_method_call(err, expr, expr_ty, expected);
     }
 
-    // Requires that the two types unify, and prints an error message if
-    // they don't.
+    /// Requires that the two types unify, and prints an error message if
+    /// they don't.
     pub fn demand_suptype(&self, sp: Span, expected: Ty<'tcx>, actual: Ty<'tcx>) {
         if let Some(mut e) = self.demand_suptype_diag(sp, expected, actual) {
             e.emit();
@@ -148,11 +176,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(e) => e,
         };
 
-        self.set_tainted_by_errors();
+        self.set_tainted_by_errors(self.tcx.sess.delay_span_bug(
+            expr.span,
+            "`TypeError` when attempting coercion but no error emitted",
+        ));
         let expr = expr.peel_drop_temps();
         let cause = self.misc(expr.span);
         let expr_ty = self.resolve_vars_with_obligations(checked_ty);
-        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e.clone());
+        let mut err = self.err_ctxt().report_mismatched_types(&cause, expected, expr_ty, e);
 
         let is_insufficiently_polymorphic =
             matches!(e, TypeError::RegionsInsufficientlyPolymorphic(..));
@@ -178,7 +209,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
-        error: Option<TypeError<'_>>,
+        error: Option<TypeError<'tcx>>,
     ) {
         let parent = self.tcx.hir().get_parent_node(expr.hir_id);
         match (self.tcx.hir().find(parent), error) {
@@ -275,8 +306,174 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     err.downgrade_to_delayed_bug();
                 }
             }
+            (
+                Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Binary(_, lhs, rhs), ..
+                })),
+                Some(TypeError::Sorts(ExpectedFound { expected, .. })),
+            ) if rhs.hir_id == expr.hir_id
+                && self.typeck_results.borrow().expr_ty_adjusted_opt(lhs) == Some(expected) =>
+            {
+                err.span_label(lhs.span, &format!("expected because this is `{expected}`"));
+            }
             _ => {}
         }
+    }
+
+    fn annotate_alternative_method_deref(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        error: Option<TypeError<'tcx>>,
+    ) {
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
+        let Some(hir::Node::Expr(hir::Expr {
+                    kind: hir::ExprKind::Assign(lhs, rhs, _), ..
+                })) = self.tcx.hir().find(parent) else {return; };
+        if rhs.hir_id != expr.hir_id || expected.is_closure() {
+            return;
+        }
+        let hir::ExprKind::Unary(hir::UnOp::Deref, deref) = lhs.kind else { return; };
+        let hir::ExprKind::MethodCall(path, base, args, _) = deref.kind else { return; };
+        let Some(self_ty) = self.typeck_results.borrow().expr_ty_adjusted_opt(base) else { return; };
+
+        let Ok(pick) = self
+            .probe_for_name(
+                probe::Mode::MethodCall,
+                path.ident,
+                probe::IsSuggestion(true),
+                self_ty,
+                deref.hir_id,
+                probe::ProbeScope::TraitsInScope,
+            ) else {
+                return;
+            };
+        let in_scope_methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::TraitsInScope,
+        );
+        let other_methods_in_scope: Vec<_> =
+            in_scope_methods.iter().filter(|c| c.item.def_id != pick.item.def_id).collect();
+
+        let all_methods = self.probe_for_name_many(
+            probe::Mode::MethodCall,
+            path.ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            deref.hir_id,
+            probe::ProbeScope::AllTraits,
+        );
+        let suggestions: Vec<_> = all_methods
+            .into_iter()
+            .filter(|c| c.item.def_id != pick.item.def_id)
+            .map(|c| {
+                let m = c.item;
+                let substs = ty::InternalSubsts::for_item(self.tcx, m.def_id, |param, _| {
+                    self.var_for_def(deref.span, param)
+                });
+                vec![
+                    (
+                        deref.span.until(base.span),
+                        format!(
+                            "{}({}",
+                            with_no_trimmed_paths!(
+                                self.tcx.def_path_str_with_substs(m.def_id, substs,)
+                            ),
+                            match self.tcx.fn_sig(m.def_id).input(0).skip_binder().kind() {
+                                ty::Ref(_, _, hir::Mutability::Mut) => "&mut ",
+                                ty::Ref(_, _, _) => "&",
+                                _ => "",
+                            },
+                        ),
+                    ),
+                    match &args[..] {
+                        [] => (base.span.shrink_to_hi().with_hi(deref.span.hi()), ")".to_string()),
+                        [first, ..] => (base.span.between(first.span), ", ".to_string()),
+                    },
+                ]
+            })
+            .collect();
+        if suggestions.is_empty() {
+            return;
+        }
+        let mut path_span: MultiSpan = path.ident.span.into();
+        path_span.push_span_label(
+            path.ident.span,
+            with_no_trimmed_paths!(format!(
+                "refers to `{}`",
+                self.tcx.def_path_str(pick.item.def_id),
+            )),
+        );
+        let container_id = pick.item.container_id(self.tcx);
+        let container = with_no_trimmed_paths!(self.tcx.def_path_str(container_id));
+        for def_id in pick.import_ids {
+            let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
+            path_span.push_span_label(
+                self.tcx.hir().span(hir_id),
+                format!("`{container}` imported here"),
+            );
+        }
+        let tail = with_no_trimmed_paths!(match &other_methods_in_scope[..] {
+            [] => return,
+            [candidate] => format!(
+                "the method of the same name on {} `{}`",
+                match candidate.kind {
+                    probe::CandidateKind::InherentImplCandidate(..) => "the inherent impl for",
+                    _ => "trait",
+                },
+                self.tcx.def_path_str(candidate.item.container_id(self.tcx))
+            ),
+            [.., last] if other_methods_in_scope.len() < 5 => {
+                format!(
+                    "the methods of the same name on {} and `{}`",
+                    other_methods_in_scope[..other_methods_in_scope.len() - 1]
+                        .iter()
+                        .map(|c| format!(
+                            "`{}`",
+                            self.tcx.def_path_str(c.item.container_id(self.tcx))
+                        ))
+                        .collect::<Vec<String>>()
+                        .join(", "),
+                    self.tcx.def_path_str(last.item.container_id(self.tcx))
+                )
+            }
+            _ => format!(
+                "the methods of the same name on {} other traits",
+                other_methods_in_scope.len()
+            ),
+        });
+        err.span_note(
+            path_span,
+            &format!(
+                "the `{}` call is resolved to the method in `{container}`, shadowing {tail}",
+                path.ident,
+            ),
+        );
+        if suggestions.len() > other_methods_in_scope.len() {
+            err.note(&format!(
+                "additionally, there are {} other available methods that aren't in scope",
+                suggestions.len() - other_methods_in_scope.len()
+            ));
+        }
+        err.multipart_suggestions(
+            &format!(
+                "you might have meant to call {}; you can use the fully-qualified path to call {} \
+                 explicitly",
+                if suggestions.len() == 1 {
+                    "the other method"
+                } else {
+                    "one of the other methods"
+                },
+                if suggestions.len() == 1 { "it" } else { "one of them" },
+            ),
+            suggestions,
+            Applicability::MaybeIncorrect,
+        );
     }
 
     /// If the expected type is an enum (Issue #55250) with any variants whose
@@ -385,7 +582,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     }
 
                     let note_about_variant_field_privacy = (field_is_local && !field_is_accessible)
-                        .then(|| format!(" (its field is private, but it's local to this crate and its privacy can be changed)"));
+                        .then(|| " (its field is private, but it's local to this crate and its privacy can be changed)".to_string());
 
                     let sole_field_ty = sole_field.ty(self.tcx, substs);
                     if self.can_coerce(expr_ty, sole_field_ty) {
@@ -395,27 +592,27 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(path) = variant_path.strip_prefix("std::prelude::")
                             && let Some((_, path)) = path.split_once("::")
                         {
-                            return Some((path.to_string(), variant.ctor_kind, sole_field.name, note_about_variant_field_privacy));
+                            return Some((path.to_string(), variant.ctor_kind(), sole_field.name, note_about_variant_field_privacy));
                         }
-                        Some((variant_path, variant.ctor_kind, sole_field.name, note_about_variant_field_privacy))
+                        Some((variant_path, variant.ctor_kind(), sole_field.name, note_about_variant_field_privacy))
                     } else {
                         None
                     }
                 })
                 .collect();
 
-            let suggestions_for = |variant: &_, ctor, field_name| {
+            let suggestions_for = |variant: &_, ctor_kind, field_name| {
                 let prefix = match self.maybe_get_struct_pattern_shorthand_field(expr) {
                     Some(ident) => format!("{ident}: "),
                     None => String::new(),
                 };
 
-                let (open, close) = match ctor {
-                    hir::def::CtorKind::Fn => ("(".to_owned(), ")"),
-                    hir::def::CtorKind::Fictive => (format!(" {{ {field_name}: "), " }"),
+                let (open, close) = match ctor_kind {
+                    Some(CtorKind::Fn) => ("(".to_owned(), ")"),
+                    None => (format!(" {{ {field_name}: "), " }"),
 
                     // unit variants don't have fields
-                    hir::def::CtorKind::Const => unreachable!(),
+                    Some(CtorKind::Const) => unreachable!(),
                 };
 
                 // Suggest constructor as deep into the block tree as possible.
@@ -530,24 +727,29 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         checked_ty: Ty<'tcx>,
         hir_id: hir::HirId,
     ) -> Vec<AssocItem> {
-        let mut methods =
-            self.probe_for_return_type(span, probe::Mode::MethodCall, expected, checked_ty, hir_id);
-        methods.retain(|m| {
-            self.has_only_self_parameter(m)
-                && self
-                    .tcx
-                    // This special internal attribute is used to permit
-                    // "identity-like" conversion methods to be suggested here.
-                    //
-                    // FIXME (#46459 and #46460): ideally
-                    // `std::convert::Into::into` and `std::borrow:ToOwned` would
-                    // also be `#[rustc_conversion_suggestion]`, if not for
-                    // method-probing false-positives and -negatives (respectively).
-                    //
-                    // FIXME? Other potential candidate methods: `as_ref` and
-                    // `as_mut`?
-                    .has_attr(m.def_id, sym::rustc_conversion_suggestion)
-        });
+        let methods = self.probe_for_return_type(
+            span,
+            probe::Mode::MethodCall,
+            expected,
+            checked_ty,
+            hir_id,
+            |m| {
+                self.has_only_self_parameter(m)
+                    && self
+                        .tcx
+                        // This special internal attribute is used to permit
+                        // "identity-like" conversion methods to be suggested here.
+                        //
+                        // FIXME (#46459 and #46460): ideally
+                        // `std::convert::Into::into` and `std::borrow:ToOwned` would
+                        // also be `#[rustc_conversion_suggestion]`, if not for
+                        // method-probing false-positives and -negatives (respectively).
+                        //
+                        // FIXME? Other potential candidate methods: `as_ref` and
+                        // `as_mut`?
+                        .has_attr(m.def_id, sym::rustc_conversion_suggestion)
+            },
+        );
 
         methods
     }
@@ -840,31 +1042,21 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             ..
                         })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
                         {
-                            if mutability == hir::Mutability::Mut {
+                            if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
                                 return None;
                             }
                         }
 
                         let sugg_expr = if needs_parens { format!("({src})") } else { src };
-                        return Some(match mutability {
-                            hir::Mutability::Mut => (
-                                sp,
-                                "consider mutably borrowing here".to_string(),
-                                format!("{prefix}&mut {sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                            hir::Mutability::Not => (
-                                sp,
-                                "consider borrowing here".to_string(),
-                                format!("{prefix}&{sugg_expr}"),
-                                Applicability::MachineApplicable,
-                                false,
-                                false,
-                            ),
-                        });
+                        return Some((
+                            sp,
+                            format!("consider {}borrowing here", mutability.mutably_str()),
+                            format!("{prefix}{}{sugg_expr}", mutability.ref_prefix_str()),
+                            Applicability::MachineApplicable,
+                            false,
+                            false,
+                        ));
                     }
                 }
             }
@@ -922,51 +1114,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     && let Ok(src) = sm.span_to_snippet(sp)
                 {
                     let derefs = "*".repeat(steps);
-                    if let Some((span, src, applicability)) = match mutbl_b {
-                        hir::Mutability::Mut => {
-                            let new_prefix = "&mut ".to_owned() + &derefs;
-                            match mutbl_a {
-                                hir::Mutability::Mut => {
-                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(5);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                                hir::Mutability::Not => {
-                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(1);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (
-                                            sp,
-                                            format!("mut {derefs}"),
-                                            Applicability::Unspecified,
-                                        )
-                                    })
-                                }
-                            }
-                        }
-                        hir::Mutability::Not => {
-                            let new_prefix = "&".to_owned() + &derefs;
-                            match mutbl_a {
-                                hir::Mutability::Mut => {
-                                    replace_prefix(&src, "&mut ", &new_prefix).map(|_| {
-                                        let lo = sp.lo() + BytePos(1);
-                                        let hi = sp.lo() + BytePos(5);
-                                        let sp = sp.with_lo(lo).with_hi(hi);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                                hir::Mutability::Not => {
-                                    replace_prefix(&src, "&", &new_prefix).map(|_| {
-                                        let pos = sp.lo() + BytePos(1);
-                                        let sp = sp.with_lo(pos).with_hi(pos);
-                                        (sp, derefs, Applicability::MachineApplicable)
-                                    })
-                                }
-                            }
-                        }
-                    } {
+                    let old_prefix = mutbl_a.ref_prefix_str();
+                    let new_prefix = mutbl_b.ref_prefix_str().to_owned() + &derefs;
+
+                    let suggestion = replace_prefix(&src, old_prefix, &new_prefix).map(|_| {
+                        // skip `&` or `&mut ` if both mutabilities are mutable
+                        let lo = sp.lo() + BytePos(min(old_prefix.len(), mutbl_b.ref_prefix_str().len()) as _);
+                        // skip `&` or `&mut `
+                        let hi = sp.lo() + BytePos(old_prefix.len() as _);
+                        let sp = sp.with_lo(lo).with_hi(hi);
+
+                        (
+                            sp,
+                            format!("{}{derefs}", if mutbl_a != mutbl_b { mutbl_b.prefix_str() } else { "" }),
+                            if mutbl_b <= mutbl_a { Applicability::MachineApplicable } else { Applicability::MaybeIncorrect }
+                        )
+                    });
+
+                    if let Some((span, src, applicability)) = suggestion {
                         return Some((
                             span,
                             "consider dereferencing".to_string(),
@@ -990,10 +1155,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             // If the expression has `&`, removing it would fix the error
                             prefix_span = prefix_span.with_hi(inner.span.lo());
                             expr = inner;
-                            remove += match mutbl {
-                                hir::Mutability::Not => "&",
-                                hir::Mutability::Mut => "&mut ",
-                            };
+                            remove.push_str(mutbl.ref_prefix_str());
                             steps -= 1;
                         } else {
                             break;
@@ -1289,7 +1451,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             };
 
         match (&expected_ty.kind(), &checked_ty.kind()) {
-            (&ty::Int(ref exp), &ty::Int(ref found)) => {
+            (ty::Int(exp), ty::Int(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -1302,7 +1464,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Uint(ref exp), &ty::Uint(ref found)) => {
+            (ty::Uint(exp), ty::Uint(found)) => {
                 let (f2e_is_fallible, e2f_is_fallible) = match (exp.bit_width(), found.bit_width())
                 {
                     (Some(exp), Some(found)) if exp < found => (true, false),
@@ -1335,7 +1497,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 suggest_to_change_suffix_or_into(err, f2e_is_fallible, e2f_is_fallible);
                 true
             }
-            (&ty::Float(ref exp), &ty::Float(ref found)) => {
+            (ty::Float(exp), ty::Float(found)) => {
                 if found.bit_width() < exp.bit_width() {
                     suggest_to_change_suffix_or_into(err, false, true);
                 } else if literal_is_ty_suffixed(expr) {
@@ -1371,7 +1533,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Uint(ref found)) => {
+            (ty::Float(exp), ty::Uint(found)) => {
                 // if `found` is `None` (meaning found is `usize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
@@ -1400,7 +1562,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }
                 true
             }
-            (&ty::Float(ref exp), &ty::Int(ref found)) => {
+            (ty::Float(exp), ty::Int(found)) => {
                 // if `found` is `None` (meaning found is `isize`), don't suggest `.into()`
                 if exp.bit_width() > found.bit_width().unwrap_or(256) {
                     err.multipart_suggestion_verbose(
@@ -1445,5 +1607,70 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
             _ => false,
         }
+    }
+
+    /// Identify when the user has written `foo..bar()` instead of `foo.bar()`.
+    pub fn check_for_range_as_method_call(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if !hir::is_range_literal(expr) {
+            return;
+        }
+        let hir::ExprKind::Struct(
+            hir::QPath::LangItem(LangItem::Range, ..),
+            [start, end],
+            _,
+        ) = expr.kind else { return; };
+        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
+            // Ignore `Foo { field: a..Default::default() }`
+            return;
+        }
+        let mut expr = end.expr;
+        while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
+            // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
+            // `src/test/ui/methods/issues/issue-90315.stderr`.
+            expr = rcvr;
+        }
+        let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
+        let ty::Adt(adt, _) = checked_ty.kind() else { return; };
+        if self.tcx.lang_items().range_struct() != Some(adt.did()) {
+            return;
+        }
+        if let ty::Adt(adt, _) = expected_ty.kind()
+            && self.tcx.lang_items().range_struct() == Some(adt.did())
+        {
+            return;
+        }
+        // Check if start has method named end.
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = method_name.kind else { return; };
+        let [hir::PathSegment { ident, .. }] = p.segments else { return; };
+        let self_ty = self.typeck_results.borrow().expr_ty(start.expr);
+        let Ok(_pick) = self.probe_for_name(
+            probe::Mode::MethodCall,
+            *ident,
+            probe::IsSuggestion(true),
+            self_ty,
+            expr.hir_id,
+            probe::ProbeScope::AllTraits,
+        ) else { return; };
+        let mut sugg = ".";
+        let mut span = start.expr.span.between(end.expr.span);
+        if span.lo() + BytePos(2) == span.hi() {
+            // There's no space between the start, the range op and the end, suggest removal which
+            // will be more noticeable than the replacement of `..` with `.`.
+            span = span.with_lo(span.lo() + BytePos(1));
+            sugg = "";
+        }
+        err.span_suggestion_verbose(
+            span,
+            "you likely meant to write a method call instead of a range",
+            sugg,
+            Applicability::MachineApplicable,
+        );
     }
 }

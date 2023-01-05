@@ -468,7 +468,7 @@ fn check_nested_occurrences(
                 // We check that the meta-variable is correctly used.
                 check_occurrences(sess, node_id, tt, macros, binders, ops, valid);
             }
-            (NestedMacroState::MacroName, &TokenTree::Delimited(_, ref del))
+            (NestedMacroState::MacroName, TokenTree::Delimited(_, del))
                 if del.delim == Delimiter::Parenthesis =>
             {
                 state = NestedMacroState::MacroNameParen;
@@ -483,7 +483,7 @@ fn check_nested_occurrences(
                     valid,
                 );
             }
-            (NestedMacroState::MacroNameParen, &TokenTree::Delimited(_, ref del))
+            (NestedMacroState::MacroNameParen, TokenTree::Delimited(_, del))
                 if del.delim == Delimiter::Brace =>
             {
                 state = NestedMacroState::Empty;

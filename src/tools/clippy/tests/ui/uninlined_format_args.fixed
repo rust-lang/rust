@@ -1,6 +1,5 @@
 // aux-build:proc_macro_with_span.rs
 // run-rustfix
-#![feature(custom_inner_attributes)]
 #![warn(clippy::uninlined_format_args)]
 #![allow(named_arguments_used_positionally, unused_imports, unused_macros, unused_variables)]
 #![allow(clippy::eq_op, clippy::format_in_format_args, clippy::print_literal)]
@@ -44,9 +43,7 @@ fn tester(fn_arg: i32) {
     println!("val='{local_i32}'"); // space+tab
     println!("val='{local_i32}'"); // tab+space
     println!(
-        "val='{
-    }'",
-        local_i32
+        "val='{local_i32}'"
     );
     println!("{local_i32}");
     println!("{fn_arg}");
@@ -57,11 +54,11 @@ fn tester(fn_arg: i32) {
     println!("{local_i32:<3}");
     println!("{local_i32:#010x}");
     println!("{local_f64:.1}");
-    println!("Hello {} is {local_f64:.local_i32$}", "x");
-    println!("Hello {local_i32} is {local_f64:.*}", 5);
-    println!("Hello {local_i32} is {local_f64:.*}", 5);
+    println!("Hello {} is {:.*}", "x", local_i32, local_f64);
+    println!("Hello {} is {:.*}", local_i32, 5, local_f64);
+    println!("Hello {} is {2:.*}", local_i32, 5, local_f64);
     println!("{local_i32} {local_f64}");
-    println!("{local_i32}, {}", local_opt.unwrap());
+    println!("{}, {}", local_i32, local_opt.unwrap());
     println!("{val}");
     println!("{val}");
     println!("{} {1}", local_i32, 42);
@@ -110,8 +107,7 @@ fn tester(fn_arg: i32) {
     println!("{local_f64:width$.prec$}");
     println!("{local_f64:width$.prec$} {local_f64} {width} {prec}");
     println!(
-        "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$}",
-        local_i32, width, prec,
+        "{local_i32:width$.prec$} {local_i32:prec$.width$} {width:local_i32$.prec$} {width:prec$.local_i32$} {prec:local_i32$.width$} {prec:width$.local_i32$}",
     );
     println!(
         "{0:1$.2$} {0:2$.1$} {1:0$.2$} {1:2$.0$} {2:0$.1$} {2:1$.0$} {3}",
@@ -142,9 +138,7 @@ fn tester(fn_arg: i32) {
     println!(no_param_str!(), local_i32);
 
     println!(
-        "{}",
-        // comment with a comma , in it
-        val,
+        "{val}",
     );
     println!("{val}");
 
@@ -169,14 +163,14 @@ fn main() {
     tester(42);
 }
 
+#[clippy::msrv = "1.57"]
 fn _under_msrv() {
-    #![clippy::msrv = "1.57"]
     let local_i32 = 1;
     println!("don't expand='{}'", local_i32);
 }
 
+#[clippy::msrv = "1.58"]
 fn _meets_msrv() {
-    #![clippy::msrv = "1.58"]
     let local_i32 = 1;
     println!("expand='{local_i32}'");
 }

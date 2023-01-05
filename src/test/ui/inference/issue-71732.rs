@@ -15,7 +15,8 @@ use std::collections::hash_map::HashMap;
 
 fn foo(parameters: &HashMap<String, String>) -> bool {
     parameters
-        .get(&"key".into()) //~ ERROR: type annotations needed
+        .get(&"key".into())
+        //~^ ERROR type annotations needed
         .and_then(|found: &String| Some(false))
         .unwrap_or(false)
 }

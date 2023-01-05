@@ -15,7 +15,7 @@ fn return_targets_async_block_not_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR expected `impl Future<Output = u8>` to be a future that resolves to `()`, but it resolves to `u8`
+    //~^ ERROR to be a future that resolves to `()`, but it resolves to `u8`
 }
 
 async fn return_targets_async_block_not_async_fn() -> u8 {
@@ -24,7 +24,7 @@ async fn return_targets_async_block_not_async_fn() -> u8 {
         return 0u8;
     };
     let _: &dyn Future<Output = ()> = &block;
-    //~^ ERROR expected `impl Future<Output = u8>` to be a future that resolves to `()`, but it resolves to `u8`
+    //~^ ERROR to be a future that resolves to `()`, but it resolves to `u8`
 }
 
 fn no_break_in_async_block() {

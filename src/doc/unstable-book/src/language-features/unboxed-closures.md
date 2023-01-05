@@ -12,7 +12,7 @@ The `unboxed_closures` feature allows you to write functions using the `"rust-ca
 required for implementing the [`Fn*`] family of traits. `"rust-call"` functions must have
 exactly one (non self) argument, a tuple representing the argument list.
 
-[`Fn*`]: https://doc.rust-lang.org/std/ops/trait.Fn.html
+[`Fn*`]: ../../std/ops/trait.Fn.html
 
 ```rust
 #![feature(unboxed_closures)]

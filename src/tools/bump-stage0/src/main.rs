@@ -1,4 +1,4 @@
-use anyhow::Error;
+use anyhow::{Context, Error};
 use curl::easy::Easy;
 use indexmap::IndexMap;
 use std::collections::HashMap;
@@ -13,12 +13,13 @@ struct Tool {
     comments: Vec<String>,
 
     channel: Channel,
+    date: Option<String>,
     version: [u16; 3],
     checksums: IndexMap<String, String>,
 }
 
 impl Tool {
-    fn new() -> Result<Self, Error> {
+    fn new(date: Option<String>) -> Result<Self, Error> {
         let channel = match std::fs::read_to_string("src/ci/channel")?.trim() {
             "stable" => Channel::Stable,
             "beta" => Channel::Beta,
@@ -40,6 +41,7 @@ impl Tool {
         Ok(Self {
             channel,
             version,
+            date,
             config: existing.config,
             comments: existing.comments,
             checksums: IndexMap::new(),
@@ -84,7 +86,7 @@ impl Tool {
             Channel::Nightly => "beta".to_string(),
         };
 
-        let manifest = fetch_manifest(&self.config, &channel)?;
+        let manifest = fetch_manifest(&self.config, &channel, self.date.as_deref())?;
         self.collect_checksums(&manifest, COMPILER_COMPONENTS)?;
         Ok(Stage0Toolchain {
             date: manifest.date,
@@ -110,7 +112,7 @@ impl Tool {
             return Ok(None);
         }
 
-        let manifest = fetch_manifest(&self.config, "nightly")?;
+        let manifest = fetch_manifest(&self.config, "nightly", self.date.as_deref())?;
         self.collect_checksums(&manifest, RUSTFMT_COMPONENTS)?;
         Ok(Some(Stage0Toolchain { date: manifest.date, version: "nightly".into() }))
     }
@@ -141,16 +143,19 @@ impl Tool {
 }
 
 fn main() -> Result<(), Error> {
-    let tool = Tool::new()?;
+    let tool = Tool::new(std::env::args().nth(1))?;
     tool.update_json()?;
     Ok(())
 }
 
-fn fetch_manifest(config: &Config, channel: &str) -> Result<Manifest, Error> {
-    Ok(toml::from_slice(&http_get(&format!(
-        "{}/dist/channel-rust-{}.toml",
-        config.dist_server, channel
-    ))?)?)
+fn fetch_manifest(config: &Config, channel: &str, date: Option<&str>) -> Result<Manifest, Error> {
+    let url = if let Some(date) = date {
+        format!("{}/dist/{}/channel-rust-{}.toml", config.dist_server, date, channel)
+    } else {
+        format!("{}/dist/channel-rust-{}.toml", config.dist_server, channel)
+    };
+
+    Ok(toml::from_slice(&http_get(&url)?)?)
 }
 
 fn http_get(url: &str) -> Result<Vec<u8>, Error> {
@@ -164,7 +169,7 @@ fn http_get(url: &str) -> Result<Vec<u8>, Error> {
             data.extend_from_slice(new_data);
             Ok(new_data.len())
         })?;
-        transfer.perform()?;
+        transfer.perform().context(format!("failed to fetch {url}"))?;
     }
     Ok(data)
 }

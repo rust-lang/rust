@@ -1,7 +1,4 @@
-//! Linux and Android-specific definitions for socket options.
+//! OS-specific networking functionality.
 
-#![unstable(feature = "tcp_quickack", issue = "96256")]
-#![doc(cfg(any(target_os = "linux", target_os = "android",)))]
-pub mod tcp;
-#[cfg(test)]
-mod tests;
+#[cfg(any(target_os = "linux", target_os = "android", doc))]
+pub(super) mod linux_ext;

@@ -76,6 +76,7 @@ impl AsRef<str> for Foo {
 ///
 /// # title!
 #[doc(alias = "ThisIsAnAlias")]
+#[non_exhaustive]
 pub enum WhoLetTheDogOut {
     /// Woof!
     Woof,
@@ -152,6 +153,11 @@ pub mod huge_amount_of_consts {
 
 /// Very long code text `hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`.
 pub mod long_code_block {}
+
+/// Very long code text [`hereIgoWithLongTextBecauseWhyNotAndWhyWouldntI`][lnk].
+///
+/// [lnk]: crate::long_code_block_link
+pub mod long_code_block_link {}
 
 #[macro_export]
 macro_rules! repro {
@@ -342,6 +348,9 @@ pub mod doc_block_table {
     /// | header1                  | header2                  |
     /// |--------------------------|--------------------------|
     /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
+    /// | Lorem Ipsum, Lorem Ipsum | Lorem Ipsum, Lorem Ipsum |
     pub struct DocBlockTable {}
 
     impl DocBlockTableTrait for DocBlockTable {
@@ -408,6 +417,11 @@ pub struct WithGenerics<T: TraitWithNoDocblocks, S = String, E = WhoLetTheDogOut
     p: P,
 }
 
+pub struct StructWithPublicUndocumentedFields {
+    pub first: u32,
+    pub second: u32,
+}
+
 pub const CONST: u8 = 0;
 
 pub trait TraitWithoutGenerics {
@@ -416,3 +430,47 @@ pub trait TraitWithoutGenerics {
 
     fn foo();
 }
+
+pub mod trait_members {
+    pub trait TraitMembers {
+        /// Some type
+        type Type;
+        /// Some function
+        fn function();
+        /// Some other function
+        fn function2();
+    }
+    pub struct HasTrait;
+    impl TraitMembers for HasTrait {
+        type Type = u8;
+        fn function() {}
+        fn function2() {}
+    }
+}
+
+pub struct TypeWithImplDoc;
+
+/// impl doc
+impl TypeWithImplDoc {
+    /// fn doc
+    pub fn test_fn() {}
+}
+
+/// <sub id="codeblock-sub-1">
+///
+/// ```
+/// one
+/// ```
+///
+/// </sub>
+///
+/// <sub id="codeblock-sub-3">
+///
+/// ```
+/// one
+/// two
+/// three
+/// ```
+///
+/// </sub>
+pub mod codeblock_sub {}

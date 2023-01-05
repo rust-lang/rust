@@ -86,7 +86,6 @@ use crate::fx::FxHashMap;
 
 use std::borrow::Borrow;
 use std::collections::hash_map::Entry;
-use std::convert::Into;
 use std::error::Error;
 use std::fs;
 use std::path::Path;
@@ -192,7 +191,7 @@ impl SelfProfilerRef {
             F: for<'a> FnOnce(&'a SelfProfiler) -> TimingGuard<'a>,
         {
             let profiler = profiler_ref.profiler.as_ref().unwrap();
-            f(&**profiler)
+            f(profiler)
         }
 
         if self.event_filter_mask.contains(event_filter) {
@@ -206,10 +205,7 @@ impl SelfProfilerRef {
     /// VerboseTimingGuard returned from this call is dropped. In addition to recording
     /// a measureme event, "verbose" generic activities also print a timing entry to
     /// stderr if the compiler is invoked with -Ztime-passes.
-    pub fn verbose_generic_activity<'a>(
-        &'a self,
-        event_label: &'static str,
-    ) -> VerboseTimingGuard<'a> {
+    pub fn verbose_generic_activity(&self, event_label: &'static str) -> VerboseTimingGuard<'_> {
         let message =
             if self.print_verbose_generic_activities { Some(event_label.to_owned()) } else { None };
 
@@ -217,11 +213,11 @@ impl SelfProfilerRef {
     }
 
     /// Like `verbose_generic_activity`, but with an extra arg.
-    pub fn verbose_generic_activity_with_arg<'a, A>(
-        &'a self,
+    pub fn verbose_generic_activity_with_arg<A>(
+        &self,
         event_label: &'static str,
         event_arg: A,
-    ) -> VerboseTimingGuard<'a>
+    ) -> VerboseTimingGuard<'_>
     where
         A: Borrow<str> + Into<String>,
     {
@@ -466,7 +462,7 @@ impl SelfProfilerRef {
 
     pub fn with_profiler(&self, f: impl FnOnce(&SelfProfiler)) {
         if let Some(profiler) = &self.profiler {
-            f(&profiler)
+            f(profiler)
         }
     }
 
@@ -733,7 +729,7 @@ impl Drop for VerboseTimingGuard<'_> {
         if let Some((start_time, start_rss, ref message)) = self.start_and_message {
             let end_rss = get_resident_set_size();
             let dur = start_time.elapsed();
-            print_time_passes_entry(&message, dur, start_rss, end_rss);
+            print_time_passes_entry(message, dur, start_rss, end_rss);
         }
     }
 }

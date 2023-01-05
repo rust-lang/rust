@@ -20,7 +20,7 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
         trace!("get_blanket_impls({:?})", ty);
         let mut impls = Vec::new();
         for trait_def_id in cx.tcx.all_traits() {
-            if !cx.cache.access_levels.is_public(trait_def_id)
+            if !cx.cache.effective_visibilities.is_directly_public(cx.tcx, trait_def_id)
                 || cx.generated_synthetics.get(&(ty.0, trait_def_id)).is_some()
             {
                 continue;
@@ -67,15 +67,11 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                     .instantiate(cx.tcx, impl_substs)
                     .predicates
                     .into_iter()
-                    .chain(Some(
-                        ty::Binder::dummy(impl_trait_ref)
-                            .to_poly_trait_predicate()
-                            .map_bound(ty::PredicateKind::Trait)
-                            .to_predicate(infcx.tcx),
-                    ));
+                    .chain(Some(ty::Binder::dummy(impl_trait_ref).to_predicate(infcx.tcx)));
                 for predicate in predicates {
                     debug!("testing predicate {:?}", predicate);
                     let obligation = traits::Obligation::new(
+                        infcx.tcx,
                         traits::ObligationCause::dummy(),
                         param_env,
                         predicate,
@@ -97,7 +93,6 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                 impls.push(Item {
                     name: None,
                     attrs: Default::default(),
-                    visibility: Inherited,
                     item_id: ItemId::Blanket { impl_id: impl_def_id, for_: item_def_id },
                     kind: Box::new(ImplItem(Box::new(Impl {
                         unsafety: hir::Unsafety::Normal,
@@ -110,10 +105,10 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                         // the post-inference `trait_ref`, as it's more accurate.
                         trait_: Some(clean_trait_ref_with_bindings(
                             cx,
-                            trait_ref.0,
+                            ty::Binder::dummy(trait_ref.0),
                             ThinVec::new(),
                         )),
-                        for_: clean_middle_ty(ty.0, cx, None),
+                        for_: clean_middle_ty(ty::Binder::dummy(ty.0), cx, None),
                         items: cx
                             .tcx
                             .associated_items(impl_def_id)
@@ -122,12 +117,13 @@ impl<'a, 'tcx> BlanketImplFinder<'a, 'tcx> {
                             .collect::<Vec<_>>(),
                         polarity: ty::ImplPolarity::Positive,
                         kind: ImplKind::Blanket(Box::new(clean_middle_ty(
-                            trait_ref.0.self_ty(),
+                            ty::Binder::dummy(trait_ref.0.self_ty()),
                             cx,
                             None,
                         ))),
                     }))),
                     cfg: None,
+                    inline_stmt_id: None,
                 });
             }
         }

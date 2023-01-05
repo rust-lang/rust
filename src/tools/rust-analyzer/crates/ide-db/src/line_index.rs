@@ -58,8 +58,11 @@ impl LineIndex {
         let mut utf16_lines = NoHashHashMap::default();
         let mut utf16_chars = Vec::new();
 
-        let mut newlines = vec![0.into()];
-        let mut curr_row @ mut curr_col = 0.into();
+        let mut newlines = Vec::with_capacity(16);
+        newlines.push(TextSize::from(0));
+
+        let mut curr_row = 0.into();
+        let mut curr_col = 0.into();
         let mut line = 0;
         for c in text.chars() {
             let c_len = TextSize::of(c);

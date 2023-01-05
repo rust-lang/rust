@@ -18,6 +18,12 @@ LL |     macro_rules! use_expr {
 ...
 LL |     use_expr!(let 0 = 1);
    |               ^^^ no rules expected this token in macro call
+   |
+note: while trying to match meta-variable `$e:expr`
+  --> $DIR/feature-gate.rs:50:10
+   |
+LL |         ($e:expr) => {
+   |          ^^^^^^^
 
 error[E0658]: `let` expressions in this position are unstable
   --> $DIR/feature-gate.rs:14:16

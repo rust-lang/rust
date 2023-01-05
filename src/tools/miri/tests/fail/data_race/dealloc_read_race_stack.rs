@@ -1,4 +1,4 @@
-//@compile-flags: -Zmiri-disable-isolation -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0
+//@compile-flags: -Zmiri-disable-weak-memory-emulation -Zmiri-preemption-rate=0 -Zmiri-disable-stacked-borrows
 
 use std::ptr::null_mut;
 use std::sync::atomic::{AtomicPtr, Ordering};
@@ -35,7 +35,7 @@ pub fn main() {
                 sleep(Duration::from_millis(200));
 
                 // Now `stack_var` gets deallocated.
-            } //~ ERROR: Data race detected between Deallocate on thread `<unnamed>` and Read on thread `<unnamed>`
+            } //~ ERROR: Data race detected between (1) Read on thread `<unnamed>` and (2) Deallocate on thread `<unnamed>`
         });
 
         let j2 = spawn(move || {

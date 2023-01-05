@@ -1,5 +1,6 @@
 LIBRARY extern
 EXPORTS
+    LooksLikeAPrivateGlobal
     cdecl_fn_undecorated
     cdecl_fn_undecorated2
     cdecl_fn_noprefix

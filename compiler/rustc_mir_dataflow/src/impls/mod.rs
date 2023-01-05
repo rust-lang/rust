@@ -19,13 +19,11 @@ use crate::{drop_flag_effects, on_all_children_bits};
 use crate::{lattice, AnalysisDomain, GenKill, GenKillAnalysis};
 
 mod borrowed_locals;
-mod init_locals;
 mod liveness;
 mod storage_liveness;
 
 pub use self::borrowed_locals::borrowed_locals;
 pub use self::borrowed_locals::MaybeBorrowedLocals;
-pub use self::init_locals::MaybeInitializedLocals;
 pub use self::liveness::MaybeLiveLocals;
 pub use self::liveness::MaybeTransitiveLiveLocals;
 pub use self::storage_liveness::{MaybeRequiresStorage, MaybeStorageLive};

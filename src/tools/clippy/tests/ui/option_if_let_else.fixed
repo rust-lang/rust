@@ -189,3 +189,12 @@ fn main() {
     let _ = res.map_or(1, |a| a + 1);
     let _ = res.map_or(5, |a| a + 1);
 }
+
+#[allow(dead_code)]
+fn issue9742() -> Option<&'static str> {
+    // should not lint because of guards
+    match Some("foo  ") {
+        Some(name) if name.starts_with("foo") => Some(name.trim()),
+        _ => None,
+    }
+}

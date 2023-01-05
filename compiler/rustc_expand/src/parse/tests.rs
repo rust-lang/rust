@@ -291,7 +291,7 @@ fn ttdelim_span() {
         .unwrap();
 
         let tts: Vec<_> = match expr.kind {
-            ast::ExprKind::MacCall(ref mac) => mac.args.inner_tokens().into_trees().collect(),
+            ast::ExprKind::MacCall(ref mac) => mac.args.tokens.clone().into_trees().collect(),
             _ => panic!("not a macro"),
         };
 

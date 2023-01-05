@@ -76,51 +76,51 @@ fn invalid_precision() {
 fn format_nothing() {
     same(
         "{}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: fmtdflt(),
-        })],
+        }))],
     );
 }
 #[test]
 fn format_position() {
     same(
         "{3}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: fmtdflt(),
-        })],
+        }))],
     );
 }
 #[test]
 fn format_position_nothing_else() {
     same(
         "{3:}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: fmtdflt(),
-        })],
+        }))],
     );
 }
 #[test]
 fn format_named() {
     same(
         "{name}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentNamed("name"),
             position_span: InnerSpan { start: 2, end: 6 },
             format: fmtdflt(),
-        })],
+        }))],
     )
 }
 #[test]
 fn format_type() {
     same(
         "{3:x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
@@ -134,14 +134,14 @@ fn format_type() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
 }
 #[test]
 fn format_align_fill() {
     same(
         "{3:>}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
@@ -155,11 +155,11 @@ fn format_align_fill() {
                 ty: "",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{3:0<}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
@@ -173,11 +173,11 @@ fn format_align_fill() {
                 ty: "",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{3:*<abcd}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(3),
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
@@ -191,14 +191,14 @@ fn format_align_fill() {
                 ty: "abcd",
                 ty_span: Some(InnerSpan::new(6, 10)),
             },
-        })],
+        }))],
     );
 }
 #[test]
 fn format_counts() {
     same(
         "{:10x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -212,11 +212,11 @@ fn format_counts() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:10$.10x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -230,11 +230,11 @@ fn format_counts() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{1:0$.10x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentIs(1),
             position_span: InnerSpan { start: 2, end: 3 },
             format: FormatSpec {
@@ -248,11 +248,11 @@ fn format_counts() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:.*x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(1),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -266,11 +266,11 @@ fn format_counts() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:.10$x}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -284,11 +284,11 @@ fn format_counts() {
                 ty: "x",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:a$.b$?}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -302,11 +302,11 @@ fn format_counts() {
                 ty: "?",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:.4}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -320,14 +320,14 @@ fn format_counts() {
                 ty: "",
                 ty_span: None,
             },
-        })],
+        }))],
     )
 }
 #[test]
 fn format_flags() {
     same(
         "{:-}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -341,11 +341,11 @@ fn format_flags() {
                 ty: "",
                 ty_span: None,
             },
-        })],
+        }))],
     );
     same(
         "{:+#}",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 2 },
             format: FormatSpec {
@@ -359,7 +359,7 @@ fn format_flags() {
                 ty: "",
                 ty_span: None,
             },
-        })],
+        }))],
     );
 }
 #[test]
@@ -368,7 +368,7 @@ fn format_mixture() {
         "abcd {3:x} efg",
         &[
             String("abcd "),
-            NextArgument(Argument {
+            NextArgument(Box::new(Argument {
                 position: ArgumentIs(3),
                 position_span: InnerSpan { start: 7, end: 8 },
                 format: FormatSpec {
@@ -382,7 +382,7 @@ fn format_mixture() {
                     ty: "x",
                     ty_span: None,
                 },
-            }),
+            })),
             String(" efg"),
         ],
     );
@@ -391,18 +391,18 @@ fn format_mixture() {
 fn format_whitespace() {
     same(
         "{ }",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 3 },
             format: fmtdflt(),
-        })],
+        }))],
     );
     same(
         "{  }",
-        &[NextArgument(Argument {
+        &[NextArgument(Box::new(Argument {
             position: ArgumentImplicitlyIs(0),
             position_span: InnerSpan { start: 2, end: 4 },
             format: fmtdflt(),
-        })],
+        }))],
     );
 }

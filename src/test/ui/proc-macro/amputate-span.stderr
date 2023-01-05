@@ -2,7 +2,7 @@ error[E0433]: failed to resolve: use of undeclared type `Command`
   --> $DIR/amputate-span.rs:49:5
    |
 LL |     Command::new("git");
-   |     ^^^^^^^ not found in this scope
+   |     ^^^^^^^ use of undeclared type `Command`
    |
 help: consider importing this struct
    |
@@ -13,7 +13,7 @@ error[E0433]: failed to resolve: use of undeclared type `Command`
   --> $DIR/amputate-span.rs:63:9
    |
 LL |         Command::new("git");
-   |         ^^^^^^^ not found in this scope
+   |         ^^^^^^^ use of undeclared type `Command`
    |
 help: consider importing this struct
    |

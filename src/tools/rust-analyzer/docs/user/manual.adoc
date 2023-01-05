@@ -367,7 +367,7 @@ if executable('rust-analyzer')
 endif
 ----
 
-There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<_configuration,Configuration>> section.
+There is no dedicated UI for the server configuration, so you would need to send any options as a value of the `initialization_options` field, as described in the <<configuration,Configuration>> section.
 Here is an example of how to enable the proc-macro support:
 
 [source,vim]
@@ -486,6 +486,12 @@ hook global WinSetOption filetype=rust %{
 https://docs.helix-editor.com/[Helix] supports LSP by default.
 However, it won't install `rust-analyzer` automatically.
 You can follow instructions for installing <<rust-analyzer-language-server-binary,`rust-analyzer` binary>>.
+
+=== Crates
+
+There is a package named `ra_ap_rust_analyzer` available on https://crates.io/crates/ra_ap_rust-analyzer[crates.io], for someone who wants to use it programmatically.
+
+For more details, see https://github.com/rust-lang/rust-analyzer/blob/master/.github/workflows/publish.yml[the publish workflow].
 
 == Troubleshooting
 

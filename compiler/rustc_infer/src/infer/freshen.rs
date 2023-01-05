@@ -102,7 +102,7 @@ impl<'a, 'tcx> TypeFreshener<'a, 'tcx> {
             Entry::Vacant(entry) => {
                 let index = self.const_freshen_count;
                 self.const_freshen_count += 1;
-                let ct = self.infcx.tcx.mk_const_infer(freshener(index), ty);
+                let ct = self.infcx.tcx.mk_const(freshener(index), ty);
                 entry.insert(ct);
                 ct
             }
@@ -205,12 +205,11 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             | ty::Dynamic(..)
             | ty::Never
             | ty::Tuple(..)
-            | ty::Projection(..)
+            | ty::Alias(..)
             | ty::Foreign(..)
             | ty::Param(..)
             | ty::Closure(..)
-            | ty::GeneratorWitness(..)
-            | ty::Opaque(..) => t.super_fold_with(self),
+            | ty::GeneratorWitness(..) => t.super_fold_with(self),
 
             ty::Placeholder(..) | ty::Bound(..) => bug!("unexpected type {:?}", t),
         }
@@ -248,6 +247,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ConstKind::Param(_)
             | ty::ConstKind::Value(_)
             | ty::ConstKind::Unevaluated(..)
+            | ty::ConstKind::Expr(..)
             | ty::ConstKind::Error(_) => ct.super_fold_with(self),
         }
     }

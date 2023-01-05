@@ -46,7 +46,7 @@ use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
 use rustc_infer::infer::{Coercion, InferOk, InferResult};
-use rustc_infer::traits::{Obligation, TraitEngine, TraitEngineExt};
+use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
     Adjust, Adjustment, AllowTwoPhase, AutoBorrow, AutoBorrowMutability, PointerCast,
@@ -55,14 +55,16 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::relate::RelateResult;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, ToPredicate, Ty, TypeAndMut};
+use rustc_middle::ty::{self, Ty, TypeAndMut};
 use rustc_session::parse::feature_err;
 use rustc_span::symbol::sym;
 use rustc_span::{self, BytePos, DesugaringKind, Span};
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::infer::InferCtxtExt as _;
 use rustc_trait_selection::traits::error_reporting::TypeErrCtxtExt as _;
-use rustc_trait_selection::traits::{self, ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{
+    self, NormalizeExt, ObligationCause, ObligationCauseCode, ObligationCtxt,
+};
 
 use smallvec::{smallvec, SmallVec};
 use std::ops::Deref;
@@ -108,11 +110,7 @@ fn coerce_mutbls<'tcx>(
     from_mutbl: hir::Mutability,
     to_mutbl: hir::Mutability,
 ) -> RelateResult<'tcx, ()> {
-    match (from_mutbl, to_mutbl) {
-        (hir::Mutability::Mut, hir::Mutability::Mut | hir::Mutability::Not)
-        | (hir::Mutability::Not, hir::Mutability::Not) => Ok(()),
-        (hir::Mutability::Not, hir::Mutability::Mut) => Err(TypeError::Mutability),
-    }
+    if from_mutbl >= to_mutbl { Ok(()) } else { Err(TypeError::Mutability) }
 }
 
 /// Do not require any adjustments, i.e. coerce `x -> x`.
@@ -120,7 +118,7 @@ fn identity(_: Ty<'_>) -> Vec<Adjustment<'_>> {
     vec![]
 }
 
-fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'tcx>> {
+fn simple<'tcx>(kind: Adjust<'tcx>) -> impl FnOnce(Ty<'tcx>) -> Vec<Adjustment<'_>> {
     move |target| vec![Adjustment { kind, target }]
 }
 
@@ -173,6 +171,10 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         // Just ignore error types.
         if a.references_error() || b.references_error() {
+            // Best-effort try to unify these types -- we're already on the error path,
+            // so this will have the side-effect of making sure we have no ambiguities
+            // due to `[type error]` and `_` not coercing together.
+            let _ = self.commit_if_ok(|_| self.at(&self.cause, self.param_env).eq(a, b));
             return success(vec![], self.fcx.tcx.ty_error(), vec![]);
         }
 
@@ -198,10 +200,6 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             Ok(_) => {
                 debug!("coerce: unsize successful");
                 return unsize;
-            }
-            Err(TypeError::ObjectUnsafeCoercion(did)) => {
-                debug!("coerce: unsize not object safe");
-                return Err(TypeError::ObjectUnsafeCoercion(did));
             }
             Err(error) => {
                 debug!(?error, "coerce: unsize failed");
@@ -277,13 +275,13 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             for &source_ty in &[a, b] {
                 if source_ty != target_ty {
                     obligations.push(Obligation::new(
+                        self.tcx(),
                         self.cause.clone(),
                         self.param_env,
                         ty::Binder::dummy(ty::PredicateKind::Coerce(ty::CoercePredicate {
                             a: source_ty,
                             b: target_ty,
-                        }))
-                        .to_predicate(self.tcx()),
+                        })),
                     ));
                 }
             }
@@ -456,7 +454,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             return Err(err);
         };
 
-        if ty == a && mt_a.mutbl == hir::Mutability::Not && autoderef.step_count() == 1 {
+        if ty == a && mt_a.mutbl.is_not() && autoderef.step_count() == 1 {
             // As a special case, if we would produce `&'a *x`, that's
             // a total no-op. We end up with the type `&'a T` just as
             // we started with.  In that case, just skip it
@@ -468,7 +466,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             // `self.x` both have `&mut `type would be a move of
             // `self.x`, but we auto-coerce it to `foo(&mut *self.x)`,
             // which is a borrow.
-            assert_eq!(mutbl_b, hir::Mutability::Not); // can only coerce &T -> &U
+            assert!(mutbl_b.is_not()); // can only coerce &T -> &U
             return success(vec![], ty, obligations);
         }
 
@@ -482,12 +480,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         let ty::Ref(r_borrow, _, _) = ty.kind() else {
             span_bug!(span, "expected a ref type, got {:?}", ty);
         };
-        let mutbl = match mutbl_b {
-            hir::Mutability::Not => AutoBorrowMutability::Not,
-            hir::Mutability::Mut => {
-                AutoBorrowMutability::Mut { allow_two_phase_borrow: self.allow_two_phase }
-            }
-        };
+        let mutbl = AutoBorrowMutability::new(mutbl_b, self.allow_two_phase);
         adjustments.push(Adjustment {
             kind: Adjust::Borrow(AutoBorrow::Ref(*r_borrow, mutbl)),
             target: ty,
@@ -507,27 +500,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         target = self.shallow_resolve(target);
         debug!(?source, ?target);
 
-        // These 'if' statements require some explanation.
-        // The `CoerceUnsized` trait is special - it is only
-        // possible to write `impl CoerceUnsized<B> for A` where
-        // A and B have 'matching' fields. This rules out the following
-        // two types of blanket impls:
-        //
-        // `impl<T> CoerceUnsized<T> for SomeType`
-        // `impl<T> CoerceUnsized<SomeType> for T`
-        //
-        // Both of these trigger a special `CoerceUnsized`-related error (E0376)
-        //
-        // We can take advantage of this fact to avoid performing unnecessary work.
-        // If either `source` or `target` is a type variable, then any applicable impl
-        // would need to be generic over the self-type (`impl<T> CoerceUnsized<SomeType> for T`)
-        // or generic over the `CoerceUnsized` type parameter (`impl<T> CoerceUnsized<T> for
-        // SomeType`).
-        //
-        // However, these are exactly the kinds of impls which are forbidden by
-        // the compiler! Therefore, we can be sure that coercion will always fail
-        // when either the source or target type is a type variable. This allows us
-        // to skip performing any trait selection, and immediately bail out.
+        // We don't apply any coercions incase either the source or target
+        // aren't sufficiently well known but tend to instead just equate
+        // them both.
         if source.is_ty_var() {
             debug!("coerce_unsized: source is a TyVar, bailing out");
             return Err(TypeError::Mismatch);
@@ -556,15 +531,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 let coercion = Coercion(self.cause.span);
                 let r_borrow = self.next_region_var(coercion);
-                let mutbl = match mutbl_b {
-                    hir::Mutability::Not => AutoBorrowMutability::Not,
-                    hir::Mutability::Mut => AutoBorrowMutability::Mut {
-                        // We don't allow two-phase borrows here, at least for initial
-                        // implementation. If it happens that this coercion is a function argument,
-                        // the reborrow in coerce_borrowed_ptr will pick it up.
-                        allow_two_phase_borrow: AllowTwoPhase::No,
-                    },
-                };
+
+                // We don't allow two-phase borrows here, at least for initial
+                // implementation. If it happens that this coercion is a function argument,
+                // the reborrow in coerce_borrowed_ptr will pick it up.
+                let mutbl = AutoBorrowMutability::new(mutbl_b, AllowTwoPhase::No);
+
                 Some((
                     Adjustment { kind: Adjust::Deref(None), target: ty_a },
                     Adjustment {
@@ -588,7 +560,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             }
             _ => None,
         };
-        let coerce_source = reborrow.as_ref().map_or(source, |&(_, ref r)| r.target);
+        let coerce_source = reborrow.as_ref().map_or(source, |(_, r)| r.target);
 
         // Setup either a subtyping or a LUB relationship between
         // the `CoerceUnsized` target type and the expected type.
@@ -629,8 +601,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             cause,
             coerce_unsized_did,
             0,
-            coerce_source,
-            &[coerce_target.into()]
+            [coerce_source, coerce_target]
         )];
 
         let mut has_unsized_tuple_coercion = false;
@@ -645,7 +616,9 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
             debug!("coerce_unsized resolve step: {:?}", obligation);
             let bound_predicate = obligation.predicate.kind();
             let trait_pred = match bound_predicate.skip_binder() {
-                ty::PredicateKind::Trait(trait_pred) if traits.contains(&trait_pred.def_id()) => {
+                ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred))
+                    if traits.contains(&trait_pred.def_id()) =>
+                {
                     if unsize_did == trait_pred.def_id() {
                         let self_ty = trait_pred.self_ty();
                         let unsize_ty = trait_pred.trait_ref.substs[1].expect_ty();
@@ -668,7 +641,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     continue;
                 }
             };
-            match selcx.select(&obligation.with(trait_pred)) {
+            match selcx.select(&obligation.with(selcx.tcx(), trait_pred)) {
                 // Uncertain or unimplemented.
                 Ok(None) => {
                     if trait_pred.def_id() == unsize_did {
@@ -705,12 +678,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
                 // Object safety violations or miscellaneous.
                 Err(err) => {
-                    self.err_ctxt().report_selection_error(
-                        obligation.clone(),
-                        &obligation,
-                        &err,
-                        false,
-                    );
+                    self.err_ctxt().report_selection_error(obligation.clone(), &obligation, &err);
                     // Treat this like an obligation and follow through
                     // with the unsizing - the lack of a coercion should
                     // be silent, as it causes a type mismatch later.
@@ -752,7 +720,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         &self,
         a: Ty<'tcx>,
         b: Ty<'tcx>,
-        predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+        predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
         b_region: ty::Region<'tcx>,
     ) -> CoerceResult<'tcx> {
         if !self.tcx.features().dyn_star {
@@ -761,25 +729,14 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         if let ty::Dynamic(a_data, _, _) = a.kind()
             && let ty::Dynamic(b_data, _, _) = b.kind()
+            && a_data.principal_def_id() == b_data.principal_def_id()
         {
-            if a_data.principal_def_id() == b_data.principal_def_id() {
-                return self.unify_and(a, b, |_| vec![]);
-            } else if !self.tcx().features().trait_upcasting {
-                let mut err = feature_err(
-                    &self.tcx.sess.parse_sess,
-                    sym::trait_upcasting,
-                    self.cause.span,
-                    &format!(
-                        "cannot cast `{a}` to `{b}`, trait upcasting coercion is experimental"
-                    ),
-                );
-                err.emit();
-            }
+            return self.unify_and(a, b, |_| vec![]);
         }
 
         // Check the obligations of the cast -- for example, when casting
         // `usize` to `dyn* Clone + 'static`:
-        let obligations = predicates
+        let mut obligations: Vec<_> = predicates
             .iter()
             .map(|predicate| {
                 // For each existential predicate (e.g., `?Self: Clone`) substitute
@@ -787,17 +744,30 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 // and then require that the resulting predicate (e.g., `usize: Clone`)
                 // holds (it does).
                 let predicate = predicate.with_self_ty(self.tcx, a);
-                Obligation::new(self.cause.clone(), self.param_env, predicate)
+                Obligation::new(self.tcx, self.cause.clone(), self.param_env, predicate)
             })
-            // Enforce the region bound (e.g., `usize: 'static`, in our example).
-            .chain([Obligation::new(
-                self.cause.clone(),
-                self.param_env,
-                self.tcx.mk_predicate(ty::Binder::dummy(ty::PredicateKind::TypeOutlives(
-                    ty::OutlivesPredicate(a, b_region),
-                ))),
-            )])
+            .chain([
+                // Enforce the region bound (e.g., `usize: 'static`, in our example).
+                Obligation::new(
+                    self.tcx,
+                    self.cause.clone(),
+                    self.param_env,
+                    ty::Binder::dummy(ty::PredicateKind::Clause(ty::Clause::TypeOutlives(
+                        ty::OutlivesPredicate(a, b_region),
+                    ))),
+                ),
+            ])
             .collect();
+
+        // Enforce that the type is `usize`/pointer-sized.
+        obligations.push(Obligation::new(
+            self.tcx,
+            self.cause.clone(),
+            self.param_env,
+            ty::Binder::dummy(
+                self.tcx.at(self.cause.span).mk_trait_ref(hir::LangItem::PointerSized, [a]),
+            ),
+        ));
 
         Ok(InferOk {
             value: (vec![Adjustment { kind: Adjust::DynStar, target: b }], b),
@@ -868,7 +838,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let b = self.shallow_resolve(b);
         let InferOk { value: b, mut obligations } =
-            self.normalize_associated_types_in_as_infer_ok(self.cause.span, b);
+            self.at(&self.cause, self.param_env).normalize(b);
         debug!("coerce_from_fn_item(a={:?}, b={:?})", a, b);
 
         match b.kind() {
@@ -890,7 +860,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                 }
 
                 let InferOk { value: a_sig, obligations: o1 } =
-                    self.normalize_associated_types_in_as_infer_ok(self.cause.span, a_sig);
+                    self.at(&self.cause, self.param_env).normalize(a_sig);
                 obligations.extend(o1);
 
                 let a_fn_pointer = self.tcx.mk_fn_ptr(a_sig);
@@ -1043,9 +1013,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             let Ok(ok) = coerce.coerce(source, target) else {
                 return false;
             };
-            let mut fcx = traits::FulfillmentContext::new_in_snapshot();
-            fcx.register_predicate_obligations(self, ok.obligations);
-            fcx.select_where_possible(&self).is_empty()
+            let ocx = ObligationCtxt::new_in_snapshot(self);
+            ocx.register_obligations(ok.obligations);
+            ocx.select_where_possible().is_empty()
         })
     }
 
@@ -1072,8 +1042,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.infcx
                 .type_implements_trait(
                     self.tcx.lang_items().deref_mut_trait()?,
-                    expr_ty,
-                    ty::List::empty(),
+                    [expr_ty],
                     self.param_env,
                 )
                 .may_apply()
@@ -1116,15 +1085,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Special-case that coercion alone cannot handle:
         // Function items or non-capturing closures of differing IDs or InternalSubsts.
         let (a_sig, b_sig) = {
-            #[allow(rustc::usage_of_ty_tykind)]
-            let is_capturing_closure = |ty: &ty::TyKind<'tcx>| {
-                if let &ty::Closure(closure_def_id, _substs) = ty {
+            let is_capturing_closure = |ty: Ty<'tcx>| {
+                if let &ty::Closure(closure_def_id, _substs) = ty.kind() {
                     self.tcx.upvars_mentioned(closure_def_id.expect_local()).is_some()
                 } else {
                     false
                 }
             };
-            if is_capturing_closure(prev_ty.kind()) || is_capturing_closure(new_ty.kind()) {
+            if is_capturing_closure(prev_ty) || is_capturing_closure(new_ty) {
                 (None, None)
             } else {
                 match (prev_ty.kind(), new_ty.kind()) {
@@ -1179,8 +1147,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 return Err(TypeError::IntrinsicCast);
             }
             // The signature must match.
-            let a_sig = self.normalize_associated_types_in(new.span, a_sig);
-            let b_sig = self.normalize_associated_types_in(new.span, b_sig);
+            let (a_sig, b_sig) = self.normalize(new.span, (a_sig, b_sig));
             let sig = self
                 .at(cause, self.param_env)
                 .trace(prev_ty, new_ty)
@@ -1547,7 +1514,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 // Mark that we've failed to coerce the types here to suppress
                 // any superfluous errors we might encounter while trying to
                 // emit or provide suggestions on how to fix the initial error.
-                fcx.set_tainted_by_errors();
+                fcx.set_tainted_by_errors(
+                    fcx.tcx.sess.delay_span_bug(cause.span, "coercion error but no error emitted"),
+                );
                 let (expected, found) = if label_expression_as_expected {
                     // In the case where this is a "forced unit", like
                     // `break`, we want to call the `()` "expected"
@@ -1583,7 +1552,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             cause,
                             expected,
                             found,
-                            coercion_error.clone(),
+                            coercion_error,
                             fcx,
                             parent_id,
                             expression,
@@ -1602,7 +1571,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             cause,
                             expected,
                             found,
-                            coercion_error.clone(),
+                            coercion_error,
                             fcx,
                             id,
                             expression,
@@ -1618,7 +1587,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             cause,
                             expected,
                             found,
-                            coercion_error.clone(),
+                            coercion_error,
                         );
                     }
                 }
@@ -1644,9 +1613,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                 if visitor.ret_exprs.len() > 0 && let Some(expr) = expression {
                     self.note_unreachable_loop_return(&mut err, &expr, &visitor.ret_exprs);
                 }
-                err.emit_unless(unsized_return);
+                let reported = err.emit_unless(unsized_return);
 
-                self.final_ty = Some(fcx.tcx.ty_error());
+                self.final_ty = Some(fcx.tcx.ty_error_with_guaranteed(reported));
             }
         }
     }
@@ -1782,7 +1751,8 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             // may occur at the first return expression we see in the closure
             // (if it conflicts with the declared return type). Skip adding a
             // note in this case, since it would be incorrect.
-            && !fcx.return_type_pre_known
+            && let Some(fn_sig) = fcx.body_fn_sig()
+            && fn_sig.output().is_ty_var()
         {
             err.span_note(
                 sp,
@@ -1839,7 +1809,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         {
             let ty = <dyn AstConv<'_>>::ast_ty_to_ty(fcx, ty);
             // Get the `impl Trait`'s `DefId`.
-            if let ty::Opaque(def_id, _) = ty.kind()
+            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = ty.kind()
                 // Get the `impl Trait`'s `Item` so that we can get its trait bounds and
                 // get the `Trait`'s `DefId`.
                 && let hir::ItemKind::OpaqueTy(hir::OpaqueTy { bounds, .. }) =

@@ -8,6 +8,11 @@ LL |     Box::new((x, x))
    |               -  ^ value used here after move
    |               |
    |               value moved here
+   |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     Box::new((x.clone(), x))
+   |                ++++++++
 
 error: aborting due to previous error
 

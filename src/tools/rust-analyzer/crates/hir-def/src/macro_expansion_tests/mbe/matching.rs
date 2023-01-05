@@ -94,11 +94,11 @@ macro_rules! m {
     ($($s:stmt)*) => (stringify!($($s |)*);)
 }
 stringify!(;
-|;
-|92|;
-|let x = 92|;
+| ;
+|92| ;
+|let x = 92| ;
 |loop {}
-|;
+| ;
 |);
 "#]],
     );
@@ -118,7 +118,7 @@ m!(.. .. ..);
 macro_rules! m {
     ($($p:pat)*) => (stringify!($($p |)*);)
 }
-stringify!(.. .. ..|);
+stringify!(.. .. .. |);
 "#]],
     );
 }

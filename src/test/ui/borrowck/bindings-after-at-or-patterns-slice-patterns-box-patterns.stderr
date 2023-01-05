@@ -27,6 +27,11 @@ LL |         a @ [.., _] => (),
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., _] => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as immutable because it is also borrowed as mutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:28:5
@@ -71,13 +76,15 @@ LL | fn bindings_after_at_or_patterns_move(x: Option<Test>) {
    |                                       - move occurs because `x` has type `Option<Test>`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         foo @ Some(Test::Foo | Test::Bar) => (),
-   |         ---
-   |         |
-   |         value moved here
-   |         value moved here
+   |         --- value moved here
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref foo @ Some(Test::Foo | Test::Bar) => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:86:5
@@ -122,13 +129,15 @@ LL | fn bindings_after_at_slice_patterns_or_patterns_moves(x: [Option<Test>; 4])
    |                                                       - move occurs because `x` has type `[Option<Test>; 4]`, which does not implement the `Copy` trait
 LL |     match x {
 LL |         a @ [.., Some(Test::Foo | Test::Bar)] => (),
-   |         -
-   |         |
-   |         value moved here
-   |         value moved here
+   |         - value moved here
 ...
 LL |     &x;
    |     ^^ value borrowed here after move
+   |
+help: borrow this binding in the pattern to avoid moving the value
+   |
+LL |         ref a @ [.., Some(Test::Foo | Test::Bar)] => (),
+   |         +++
 
 error[E0502]: cannot borrow `x` as mutable because it is also borrowed as immutable
   --> $DIR/bindings-after-at-or-patterns-slice-patterns-box-patterns.rs:144:5

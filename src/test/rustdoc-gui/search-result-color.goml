@@ -65,14 +65,25 @@ local-storage: {
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
+assert-css: (
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(197, 197, 197)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(0, 150, 207)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color of "keyword" text.
@@ -153,7 +164,7 @@ assert-css: (
 )
 
 // Checking color and background on hover.
-move-cursor-to: "//*[@class='desc']//*[text()='Just a normal struct.']"
+move-cursor-to: "//*[@class='desc'][text()='Just a normal struct.']"
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(255, 255, 255)"},
@@ -171,14 +182,25 @@ local-storage: {
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
+assert-css: (
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(221, 221, 221)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(221, 221, 221)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.
@@ -262,14 +284,25 @@ local-storage: {"rustdoc-theme": "light", "rustdoc-use-system-theme": "false"}
 reload:
 
 // Waiting for the search results to appear...
-wait-for: "#titles"
+wait-for: "#search-tabs"
 assert-css: (
-    "//*[@class='desc']//*[text()='Just a normal struct.']",
+    "#search-tabs > button > .count",
+    {"color": "rgb(136, 136, 136)"},
+    ALL,
+)
+assert-css: (
+    "//*[@class='desc'][text()='Just a normal struct.']",
     {"color": "rgb(0, 0, 0)"},
 )
 assert-css: (
     "//*[@class='result-name']/*[text()='test_docs::']",
     {"color": "rgb(0, 0, 0)"},
+)
+
+// Checking the color of the bottom border.
+assert-css: (
+    ".search-results > a",
+    {"border-bottom-color": "rgba(170, 170, 170, 0.2)"}
 )
 
 // Checking the color for "keyword" text.
@@ -348,23 +381,42 @@ assert-css: (
     {"color": "rgb(0, 0, 0)", "background-color": "rgba(0, 0, 0, 0)"},
 )
 
-// Check the alias more specifically in the dark theme.
+// Check the alias.
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
-// We set the theme so we're sure that the correct values will be used, whatever the computer
-// this test is running on.
-local-storage: {
-    "rustdoc-theme": "dark",
-    "rustdoc-use-system-theme": "false",
-}
 // If the text isn't displayed, the browser doesn't compute color style correctly...
 show-text: true
-// We reload the page so the local storage settings are being used.
-reload:
-write: (".search-input", "thisisanalias")
-// To be SURE that the search will be run.
-press-key: 'Enter'
-// Waiting for the search results to appear...
-wait-for: "#titles"
-// Checking that the colors for the alias element are the ones expected.
-assert-css: (".result-name > .alias", {"color": "rgb(255, 255, 255)"})
-assert-css: (".result-name > .alias > .grey", {"color": "rgb(204, 204, 204)"})
+
+define-function: (
+    "check-alias",
+    (theme, alias, grey),
+    [
+        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        ("reload"),
+        ("write", (".search-input", "thisisanalias")),
+        // To be SURE that the search will be run.
+        ("press-key", 'Enter'),
+        // Waiting for the search results to appear...
+        ("wait-for", "#search-tabs"),
+        // Checking that the colors for the alias element are the ones expected.
+        ("assert-css", (".result-name > .alias", {"color": |alias|})),
+        ("assert-css", (".result-name > .alias > .grey", {"color": |grey|})),
+        // Leave the search results to prevent reloading with an already filled search input.
+        ("press-key", "Escape"),
+    ],
+)
+
+call-function: ("check-alias", {
+    "theme": "ayu",
+    "alias": "rgb(197, 197, 197)",
+    "grey": "rgb(153, 153, 153)",
+})
+call-function: ("check-alias", {
+    "theme": "dark",
+    "alias": "rgb(255, 255, 255)",
+    "grey": "rgb(204, 204, 204)",
+})
+call-function: ("check-alias", {
+    "theme": "light",
+    "alias": "rgb(0, 0, 0)",
+    "grey": "rgb(153, 153, 153)",
+})

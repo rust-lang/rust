@@ -28,12 +28,12 @@ fn main() -> () {
         StorageLive(_3);                 // scope 2 at $DIR/match_test.rs:+6:5: +11:6
         FakeRead(ForMatchedPlace(None), _1); // scope 2 at $DIR/match_test.rs:+6:11: +6:12
         _6 = Le(const 0_i32, _1);        // scope 2 at $DIR/match_test.rs:+7:9: +7:14
-        switchInt(move _6) -> [false: bb4, otherwise: bb1]; // scope 2 at $DIR/match_test.rs:+7:9: +7:14
+        switchInt(move _6) -> [0: bb4, otherwise: bb1]; // scope 2 at $DIR/match_test.rs:+7:9: +7:14
     }
 
     bb1: {
         _7 = Lt(_1, const 10_i32);       // scope 2 at $DIR/match_test.rs:+7:9: +7:14
-        switchInt(move _7) -> [false: bb4, otherwise: bb2]; // scope 2 at $DIR/match_test.rs:+7:9: +7:14
+        switchInt(move _7) -> [0: bb4, otherwise: bb2]; // scope 2 at $DIR/match_test.rs:+7:9: +7:14
     }
 
     bb2: {
@@ -47,12 +47,12 @@ fn main() -> () {
 
     bb4: {
         _4 = Le(const 10_i32, _1);       // scope 2 at $DIR/match_test.rs:+8:9: +8:16
-        switchInt(move _4) -> [false: bb7, otherwise: bb5]; // scope 2 at $DIR/match_test.rs:+8:9: +8:16
+        switchInt(move _4) -> [0: bb7, otherwise: bb5]; // scope 2 at $DIR/match_test.rs:+8:9: +8:16
     }
 
     bb5: {
         _5 = Le(_1, const 20_i32);       // scope 2 at $DIR/match_test.rs:+8:9: +8:16
-        switchInt(move _5) -> [false: bb7, otherwise: bb6]; // scope 2 at $DIR/match_test.rs:+8:9: +8:16
+        switchInt(move _5) -> [0: bb7, otherwise: bb6]; // scope 2 at $DIR/match_test.rs:+8:9: +8:16
     }
 
     bb6: {
@@ -60,7 +60,7 @@ fn main() -> () {
     }
 
     bb7: {
-        switchInt(_1) -> [-1_i32: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:+6:5: +6:12
+        switchInt(_1) -> [4294967295: bb8, otherwise: bb3]; // scope 2 at $DIR/match_test.rs:+6:5: +6:12
     }
 
     bb8: {
@@ -71,7 +71,7 @@ fn main() -> () {
         _8 = &shallow _1;                // scope 2 at $DIR/match_test.rs:+6:11: +6:12
         StorageLive(_9);                 // scope 2 at $DIR/match_test.rs:+7:18: +7:19
         _9 = _2;                         // scope 2 at $DIR/match_test.rs:+7:18: +7:19
-        switchInt(move _9) -> [false: bb11, otherwise: bb10]; // scope 2 at $DIR/match_test.rs:+7:18: +7:19
+        switchInt(move _9) -> [0: bb11, otherwise: bb10]; // scope 2 at $DIR/match_test.rs:+7:18: +7:19
     }
 
     bb10: {

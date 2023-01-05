@@ -20,7 +20,7 @@ use crate::cli::{
     load_cargo::{load_workspace, LoadCargoConfig},
     Result,
 };
-use crate::line_index::{LineEndings, LineIndex, OffsetEncoding};
+use crate::line_index::{LineEndings, LineIndex, PositionEncoding};
 use crate::to_proto;
 use crate::version::version;
 
@@ -106,12 +106,12 @@ impl LsifManager<'_> {
                 manager: "cargo".to_string(),
                 uri: None,
                 content: None,
-                repository: Some(lsif::Repository {
-                    url: pi.repo,
+                repository: pi.repo.map(|url| lsif::Repository {
+                    url,
                     r#type: "git".to_string(),
                     commit_id: None,
                 }),
-                version: Some(pi.version),
+                version: pi.version,
             }));
         self.package_map.insert(package_information, result_set_id);
         result_set_id
@@ -126,7 +126,7 @@ impl LsifManager<'_> {
         let line_index = self.db.line_index(file_id);
         let line_index = LineIndex {
             index: line_index,
-            encoding: OffsetEncoding::Utf16,
+            encoding: PositionEncoding::Utf16,
             endings: LineEndings::Unix,
         };
         let range_id = self.add_vertex(lsif::Vertex::Range {
@@ -248,7 +248,7 @@ impl LsifManager<'_> {
         let line_index = self.db.line_index(file_id);
         let line_index = LineIndex {
             index: line_index,
-            encoding: OffsetEncoding::Utf16,
+            encoding: PositionEncoding::Utf16,
             endings: LineEndings::Unix,
         };
         let result = folds

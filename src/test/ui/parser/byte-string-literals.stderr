@@ -20,18 +20,18 @@ error: invalid character in numeric character escape: `Z`
 LL |     b"\x0Z";
    |          ^ invalid character in numeric character escape
 
-error: non-ASCII character in byte constant
+error: non-ASCII character in byte string literal
   --> $DIR/byte-string-literals.rs:6:7
    |
 LL |     b"é";
-   |       ^ byte constant must be ASCII
+   |       ^ must be ASCII
    |
 help: if you meant to use the unicode code point for 'é', use a \xHH escape
    |
 LL |     b"\xE9";
    |       ~~~~
 
-error: raw byte string must be ASCII
+error: non-ASCII character in raw byte string literal
   --> $DIR/byte-string-literals.rs:7:10
    |
 LL |     br##"é"##;

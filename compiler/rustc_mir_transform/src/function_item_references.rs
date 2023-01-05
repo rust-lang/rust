@@ -110,7 +110,7 @@ impl<'tcx> FunctionItemRefChecker<'_, 'tcx> {
 
     /// If the given predicate is the trait `fmt::Pointer`, returns the bound parameter type.
     fn is_pointer_trait(&self, bound: &PredicateKind<'tcx>) -> Option<Ty<'tcx>> {
-        if let ty::PredicateKind::Trait(predicate) = bound {
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(predicate)) = bound {
             if self.tcx.is_diagnostic_item(sym::Pointer, predicate.def_id()) {
                 Some(predicate.trait_ref.self_ty())
             } else {

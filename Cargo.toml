@@ -11,6 +11,7 @@ members = [
   "src/tools/error_index_generator",
   "src/tools/linkchecker",
   "src/tools/lint-docs",
+  "src/tools/miropt-test-tools",
   "src/tools/rustbook",
   "src/tools/unstable-book-gen",
   "src/tools/tidy",
@@ -24,6 +25,8 @@ members = [
   "src/tools/cargo/crates/credential/cargo-credential-1password",
   "src/tools/cargo/crates/credential/cargo-credential-macos-keychain",
   "src/tools/cargo/crates/credential/cargo-credential-wincred",
+  "src/tools/cargo/crates/mdman",
+  # "src/tools/cargo/crates/resolver-tests",
   "src/tools/rustdoc",
   "src/tools/rls",
   "src/tools/rustfmt",
@@ -38,6 +41,8 @@ members = [
   "src/tools/bump-stage0",
   "src/tools/replace-version-placeholder",
   "src/tools/lld-wrapper",
+  "src/tools/collect-license-metadata",
+  "src/tools/generate-copyright",
 ]
 
 exclude = [

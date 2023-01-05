@@ -419,7 +419,7 @@
 //!         // documentation for details, and the function `pad` can be used
 //!         // to pad strings.
 //!         let decimals = f.precision().unwrap_or(3);
-//!         let string = format!("{:.*}", decimals, magnitude);
+//!         let string = format!("{magnitude:.decimals$}");
 //!         f.pad_integral(true, "", &string)
 //!     }
 //! }
@@ -518,7 +518,7 @@
 //! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
 //! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
+//!     write!(&mut io::stdout(), "{args}");
 //! }
 //! my_fmt_fn(format_args!(", or a {} too", "function"));
 //! ```

@@ -158,6 +158,7 @@ use core::hash::{Hash, Hasher};
 #[cfg(not(no_global_oom_handling))]
 use core::iter::FromIterator;
 use core::iter::{FusedIterator, Iterator};
+use core::marker::Tuple;
 use core::marker::{Destruct, Unpin, Unsize};
 use core::mem;
 use core::ops::{
@@ -185,7 +186,7 @@ pub use thin::ThinBox;
 
 mod thin;
 
-/// A pointer type for heap allocation.
+/// A pointer type that uniquely owns a heap allocation of type `T`.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
@@ -952,7 +953,7 @@ impl<T: ?Sized> Box<T> {
     /// [`Layout`]: crate::Layout
     #[stable(feature = "box_raw", since = "1.4.0")]
     #[inline]
-    #[must_use = "call `drop(from_raw(ptr))` if you intend to drop the `Box`"]
+    #[must_use = "call `drop(Box::from_raw(ptr))` if you intend to drop the `Box`"]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         unsafe { Self::from_raw_in(raw, Global) }
     }
@@ -1659,7 +1660,7 @@ impl<T, const N: usize> TryFrom<Box<[T]>> for Box<[T; N]> {
 }
 
 #[cfg(not(no_global_oom_handling))]
-#[stable(feature = "boxed_array_try_from_vec", since = "CURRENT_RUSTC_VERSION")]
+#[stable(feature = "boxed_array_try_from_vec", since = "1.66.0")]
 impl<T, const N: usize> TryFrom<Vec<T>> for Box<[T; N]> {
     type Error = Vec<T>;
 
@@ -1980,7 +1981,7 @@ impl<I: ExactSizeIterator + ?Sized, A: Allocator> ExactSizeIterator for Box<I, A
 impl<I: FusedIterator + ?Sized, A: Allocator> FusedIterator for Box<I, A> {}
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
+impl<Args: Tuple, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
     type Output = <F as FnOnce<Args>>::Output;
 
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output {
@@ -1989,20 +1990,20 @@ impl<Args, F: FnOnce<Args> + ?Sized, A: Allocator> FnOnce<Args> for Box<F, A> {
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
+impl<Args: Tuple, F: FnMut<Args> + ?Sized, A: Allocator> FnMut<Args> for Box<F, A> {
     extern "rust-call" fn call_mut(&mut self, args: Args) -> Self::Output {
         <F as FnMut<Args>>::call_mut(self, args)
     }
 }
 
 #[stable(feature = "boxed_closure_impls", since = "1.35.0")]
-impl<Args, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
+impl<Args: Tuple, F: Fn<Args> + ?Sized, A: Allocator> Fn<Args> for Box<F, A> {
     extern "rust-call" fn call(&self, args: Args) -> Self::Output {
         <F as Fn<Args>>::call(self, args)
     }
 }
 
-#[unstable(feature = "coerce_unsized", issue = "27732")]
+#[unstable(feature = "coerce_unsized", issue = "18598")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, A: Allocator> CoerceUnsized<Box<U, A>> for Box<T, A> {}
 
 #[unstable(feature = "dispatch_from_dyn", issue = "none")]

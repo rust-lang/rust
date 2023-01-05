@@ -19,9 +19,11 @@ use std::mem::discriminant;
 
 pub mod codec;
 pub mod sty;
+pub mod ty_info;
 
 pub use codec::*;
 pub use sty::*;
+pub use ty_info::*;
 
 /// Needed so we can use #[derive(HashStable_Generic)]
 pub trait HashStableContext {}
@@ -40,12 +42,12 @@ pub trait Interner {
     type ListBinderExistentialPredicate: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BinderListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ListTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type ProjectionTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type AliasTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type ParamTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type BoundTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PlaceholderType: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type InferTy: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
-    type DelaySpanBugEmitted: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
+    type ErrorGuaranteed: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
     type PredicateKind: Clone + Debug + Hash + PartialEq + Eq;
     type AllocId: Clone + Debug + Hash + PartialEq + Eq + PartialOrd + Ord;
 
@@ -60,10 +62,10 @@ pub trait InternAs<T: ?Sized, R> {
     type Output;
     fn intern_with<F>(self, f: F) -> Self::Output
     where
-        F: FnOnce(&T) -> R;
+        F: FnOnce(&[T]) -> R;
 }
 
-impl<I, T, R, E> InternAs<[T], R> for I
+impl<I, T, R, E> InternAs<T, R> for I
 where
     E: InternIteratorElement<T, R>,
     I: Iterator<Item = E>,
@@ -299,9 +301,9 @@ rustc_index::newtype_index! {
     ///
     /// [dbi]: https://en.wikipedia.org/wiki/De_Bruijn_index
     #[derive(HashStable_Generic)]
+    #[debug_format = "DebruijnIndex({})"]
     pub struct DebruijnIndex {
-        DEBUG_FORMAT = "DebruijnIndex({})",
-        const INNERMOST = 0,
+        const INNERMOST = 0;
     }
 }
 
@@ -497,9 +499,8 @@ pub struct FloatVarValue(pub FloatTy);
 
 rustc_index::newtype_index! {
     /// A **ty**pe **v**ariable **ID**.
-    pub struct TyVid {
-        DEBUG_FORMAT = "_#{}t"
-    }
+    #[debug_format = "_#{}t"]
+    pub struct TyVid {}
 }
 
 /// An **int**egral (`u32`, `i32`, `usize`, etc.) type **v**ariable **ID**.
@@ -786,9 +787,8 @@ rustc_index::newtype_index! {
     /// type -- an idealized representative of "types in general" that we
     /// use for checking generic functions.
     #[derive(HashStable_Generic)]
-    pub struct UniverseIndex {
-        DEBUG_FORMAT = "U{}",
-    }
+    #[debug_format = "U{}"]
+    pub struct UniverseIndex {}
 }
 
 impl UniverseIndex {

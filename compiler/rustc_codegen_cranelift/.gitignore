@@ -14,5 +14,6 @@ perf.data.old
 /build_sysroot/sysroot_src
 /build_sysroot/compiler-builtins
 /build_sysroot/rustc_version
+/dist
 /rust
 /download

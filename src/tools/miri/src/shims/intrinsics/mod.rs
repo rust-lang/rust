@@ -11,7 +11,7 @@ use rustc_middle::{
     mir,
     ty::{self, FloatTy, Ty},
 };
-use rustc_target::abi::Integer;
+use rustc_target::abi::{Integer, Size};
 
 use crate::*;
 use atomic::EvalContextExt as _;
@@ -111,13 +111,24 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 let ty_layout = this.layout_of(ty)?;
                 let val_byte = this.read_scalar(val_byte)?.to_u8()?;
                 let ptr = this.read_pointer(ptr)?;
-                let count = this.read_scalar(count)?.to_machine_usize(this)?;
+                let count = this.read_machine_usize(count)?;
                 // `checked_mul` enforces a too small bound (the correct one would probably be machine_isize_max),
                 // but no actual allocation can be big enough for the difference to be noticeable.
                 let byte_count = ty_layout.size.checked_mul(count, this).ok_or_else(|| {
                     err_ub_format!("overflow computing total size of `{intrinsic_name}`")
                 })?;
                 this.write_bytes_ptr(ptr, iter::repeat(val_byte).take(byte_count.bytes_usize()))?;
+            }
+
+            "ptr_mask" => {
+                let [ptr, mask] = check_arg_count(args)?;
+
+                let ptr = this.read_pointer(ptr)?;
+                let mask = this.read_machine_usize(mask)?;
+
+                let masked_addr = Size::from_bytes(ptr.addr().bytes() & mask);
+
+                this.write_pointer(Pointer::new(ptr.provenance, masked_addr), dest)?;
             }
 
             // Floating-point operations
@@ -357,11 +368,6 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
             }
 
             // Other
-            "exact_div" => {
-                let [num, denom] = check_arg_count(args)?;
-                this.exact_div(&this.read_immediate(num)?, &this.read_immediate(denom)?, dest)?;
-            }
-
             "breakpoint" => {
                 let [] = check_arg_count(args)?;
                 // normally this would raise a SIGTRAP, which aborts if no debugger is connected

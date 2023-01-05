@@ -334,6 +334,10 @@ pub fn block_expr(
     ast_from_text(&format!("fn f() {buf}"))
 }
 
+pub fn tail_only_block_expr(tail_expr: ast::Expr) -> ast::BlockExpr {
+    ast_from_text(&format!("fn f() {{ {tail_expr} }}"))
+}
+
 /// Ideally this function wouldn't exist since it involves manual indenting.
 /// It differs from `make::block_expr` by also supporting comments.
 ///
@@ -656,6 +660,22 @@ pub fn let_stmt(
     };
     ast_from_text(&format!("fn f() {{ {text} }}"))
 }
+
+pub fn let_else_stmt(
+    pattern: ast::Pat,
+    ty: Option<ast::Type>,
+    expr: ast::Expr,
+    diverging: ast::BlockExpr,
+) -> ast::LetStmt {
+    let mut text = String::new();
+    format_to!(text, "let {pattern}");
+    if let Some(ty) = ty {
+        format_to!(text, ": {ty}");
+    }
+    format_to!(text, " = {expr} else {diverging};");
+    ast_from_text(&format!("fn f() {{ {text} }}"))
+}
+
 pub fn expr_stmt(expr: ast::Expr) -> ast::ExprStmt {
     let semi = if expr.is_block_like() { "" } else { ";" };
     ast_from_text(&format!("fn f() {{ {expr}{semi} (); }}"))

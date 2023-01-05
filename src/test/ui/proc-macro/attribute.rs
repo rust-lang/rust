@@ -53,19 +53,19 @@ pub fn foo11(input: TokenStream) -> TokenStream { input }
 pub fn foo12(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d13, attributes("a"))]
-//~^ ERROR: not a meta item
+//~^ ERROR: attribute must be a meta item, not a literal
 pub fn foo13(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d14, attributes(a = ""))]
-//~^ ERROR: must only be one word
+//~^ ERROR: attribute must only be a single word
 pub fn foo14(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d15, attributes(m::a))]
-//~^ ERROR: must only be one word
+//~^ ERROR: attribute must only be a single word
 pub fn foo15(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d16, attributes(a(b)))]
-//~^ ERROR: must only be one word
+//~^ ERROR: attribute must only be a single word
 pub fn foo16(input: TokenStream) -> TokenStream { input }
 
 #[proc_macro_derive(d17, attributes(self))]

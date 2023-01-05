@@ -27,7 +27,6 @@
 //!     generator: pin
 //!     hash:
 //!     index: sized
-//!     infallible:
 //!     iterator: option
 //!     iterators: iterator, fn
 //!     option:
@@ -37,7 +36,7 @@
 //!     result:
 //!     sized:
 //!     slice:
-//!     try: infallible
+//!     try:
 //!     unsize: sized
 
 pub mod marker {
@@ -151,9 +150,6 @@ pub mod convert {
         fn as_ref(&self) -> &T;
     }
     // endregion:as_ref
-    // region:infallible
-    pub enum Infallible {}
-    // endregion:infallible
 }
 
 pub mod ops {
@@ -330,7 +326,7 @@ pub mod ops {
             Continue(C),
             Break(B),
         }
-        pub trait FromResidual<R = <Self as Try>::Residual> {
+        pub trait FromResidual<R = Self::Residual> {
             #[lang = "from_residual"]
             fn from_residual(residual: R) -> Self;
         }
@@ -346,13 +342,13 @@ pub mod ops {
 
         impl<B, C> Try for ControlFlow<B, C> {
             type Output = C;
-            type Residual = ControlFlow<B, crate::convert::Infallible>;
+            type Residual = ControlFlow<B, convert::Infallible>;
             fn from_output(output: Self::Output) -> Self {}
             fn branch(self) -> ControlFlow<Self::Residual, Self::Output> {}
         }
 
         impl<B, C> FromResidual for ControlFlow<B, C> {
-            fn from_residual(residual: ControlFlow<B, crate::convert::Infallible>) -> Self {}
+            fn from_residual(residual: ControlFlow<B, convert::Infallible>) -> Self {}
         }
     }
     pub use self::try_::{ControlFlow, FromResidual, Try};
@@ -473,33 +469,6 @@ pub mod option {
             }
         }
     }
-    // region:try
-    impl<T> crate::ops::Try for Option<T> {
-        type Output = T;
-        type Residual = Option<crate::convert::Infallible>;
-
-        #[inline]
-        fn from_output(output: Self::Output) -> Self {
-            Some(output)
-        }
-
-        #[inline]
-        fn branch(self) -> crate::ops::ControlFlow<Self::Residual, Self::Output> {
-            match self {
-                Some(v) => crate::ops::ControlFlow::Continue(v),
-                None => crate::ops::ControlFlow::Break(None),
-            }
-        }
-    }
-    impl<T> crate::ops::FromResidual for Option<T> {
-        #[inline]
-        fn from_residual(residual: Option<crate::convert::Infallible>) -> Self {
-            match residual {
-                None => None,
-            }
-        }
-    }
-    // endregion:try
 }
 // endregion:option
 

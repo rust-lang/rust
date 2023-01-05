@@ -4,18 +4,12 @@ error[E0080]: evaluation of `PrintName::<i32>::VOID` failed
 LL |     const VOID: () = [()][2];
    |                      ^^^^^^^ index out of bounds: the length is 1 but the index is 2
 
-error[E0080]: could not evaluate static initializer
+note: erroneous constant used
   --> $DIR/erroneous-const.rs:13:17
    |
 LL |         let _ = PrintName::<T>::VOID;
    |                 ^^^^^^^^^^^^^^^^^^^^
-   |                 |
-   |                 referenced constant has errors
-   |                 inside `no_codegen::<i32>` at $DIR/erroneous-const.rs:13:17
-...
-LL | pub static FOO: () = no_codegen::<i32>();
-   |                      ------------------- inside `FOO` at $DIR/erroneous-const.rs:17:22
 
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

@@ -59,7 +59,7 @@ pub async fn const_generics<const N: usize>(_: impl Trait<N>) {}
 // @has - '//pre[@class="rust fn"]' 'pub async fn elided(foo: &str) -> &str'
 pub async fn elided(foo: &str) -> &str {}
 // This should really be shown as written, but for implementation reasons it's difficult.
-// See `impl Clean for TyKind::Rptr`.
+// See `impl Clean for TyKind::Ref`.
 // @has async_fn/fn.user_elided.html
 // @has - '//pre[@class="rust fn"]' 'pub async fn user_elided(foo: &str) -> &str'
 pub async fn user_elided(foo: &'_ str) -> &str {}

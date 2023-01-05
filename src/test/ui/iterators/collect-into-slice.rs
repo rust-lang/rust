@@ -1,6 +1,4 @@
 fn process_slice(data: &[i32]) {
-    //~^ NOTE required by a bound in this
-    //~| NOTE required by a bound in this
     todo!()
 }
 
@@ -15,6 +13,5 @@ fn main() {
     //~| NOTE all local variables must have a statically known size
     //~| NOTE doesn't have a size known at compile-time
     //~| NOTE doesn't have a size known at compile-time
-    //~| NOTE required by a bound introduced by this call
     process_slice(&some_generated_vec);
 }

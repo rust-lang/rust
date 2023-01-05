@@ -3,7 +3,7 @@ use aho_corasick::AhoCorasickBuilder;
 use indoc::writedoc;
 use itertools::Itertools;
 use rustc_lexer::{tokenize, unescape, LiteralKind, TokenKind};
-use std::collections::{BTreeSet, HashMap, HashSet};
+use std::collections::{HashMap, HashSet};
 use std::ffi::OsStr;
 use std::fmt::Write;
 use std::fs::{self, OpenOptions};
@@ -36,6 +36,60 @@ pub enum UpdateMode {
 pub fn update(update_mode: UpdateMode) {
     let (lints, deprecated_lints, renamed_lints) = gather_all();
     generate_lint_files(update_mode, &lints, &deprecated_lints, &renamed_lints);
+    remove_old_files(update_mode);
+}
+
+/// Remove files no longer needed after <https://github.com/rust-lang/rust-clippy/pull/9541>
+/// that may be reintroduced unintentionally
+///
+/// FIXME: This is a temporary measure that should be removed when there are no more PRs that
+/// include the stray files
+fn remove_old_files(update_mode: UpdateMode) {
+    let mut failed = false;
+    let mut remove_file = |path: &Path| match update_mode {
+        UpdateMode::Check => {
+            if path.exists() {
+                failed = true;
+                println!("unexpected file: {}", path.display());
+            }
+        },
+        UpdateMode::Change => {
+            if fs::remove_file(path).is_ok() {
+                println!("removed file: {}", path.display());
+            }
+        },
+    };
+
+    let files = [
+        "clippy_lints/src/lib.register_all.rs",
+        "clippy_lints/src/lib.register_cargo.rs",
+        "clippy_lints/src/lib.register_complexity.rs",
+        "clippy_lints/src/lib.register_correctness.rs",
+        "clippy_lints/src/lib.register_internal.rs",
+        "clippy_lints/src/lib.register_lints.rs",
+        "clippy_lints/src/lib.register_nursery.rs",
+        "clippy_lints/src/lib.register_pedantic.rs",
+        "clippy_lints/src/lib.register_perf.rs",
+        "clippy_lints/src/lib.register_restriction.rs",
+        "clippy_lints/src/lib.register_style.rs",
+        "clippy_lints/src/lib.register_suspicious.rs",
+        "src/docs.rs",
+    ];
+
+    for file in files {
+        remove_file(Path::new(file));
+    }
+
+    if let Ok(docs_dir) = fs::read_dir("src/docs") {
+        for doc_file in docs_dir {
+            let path = doc_file.unwrap().path();
+            remove_file(&path);
+        }
+    }
+
+    if failed {
+        exit_with_failure();
+    }
 }
 
 fn generate_lint_files(
@@ -104,9 +158,9 @@ fn generate_lint_files(
     );
 
     process_file(
-        "clippy_lints/src/lib.register_lints.rs",
+        "clippy_lints/src/declared_lints.rs",
         update_mode,
-        &gen_register_lint_list(internal_lints.iter(), usable_lints.iter()),
+        &gen_declared_lints(internal_lints.iter(), usable_lints.iter()),
     );
     process_file(
         "clippy_lints/src/lib.deprecated.rs",
@@ -114,87 +168,11 @@ fn generate_lint_files(
         &gen_deprecated(deprecated_lints),
     );
 
-    let all_group_lints = usable_lints.iter().filter(|l| {
-        matches!(
-            &*l.group,
-            "correctness" | "suspicious" | "style" | "complexity" | "perf"
-        )
-    });
-    let content = gen_lint_group_list("all", all_group_lints);
-    process_file("clippy_lints/src/lib.register_all.rs", update_mode, &content);
-
-    update_docs(update_mode, &usable_lints);
-
-    for (lint_group, lints) in Lint::by_lint_group(usable_lints.into_iter().chain(internal_lints)) {
-        let content = gen_lint_group_list(&lint_group, lints.iter());
-        process_file(
-            format!("clippy_lints/src/lib.register_{lint_group}.rs"),
-            update_mode,
-            &content,
-        );
-    }
-
     let content = gen_deprecated_lints_test(deprecated_lints);
     process_file("tests/ui/deprecated.rs", update_mode, &content);
 
     let content = gen_renamed_lints_test(renamed_lints);
     process_file("tests/ui/rename.rs", update_mode, &content);
-}
-
-fn update_docs(update_mode: UpdateMode, usable_lints: &[Lint]) {
-    replace_region_in_file(update_mode, Path::new("src/docs.rs"), "docs! {\n", "\n}\n", |res| {
-        for name in usable_lints.iter().map(|lint| lint.name.clone()).sorted() {
-            writeln!(res, r#"    "{name}","#).unwrap();
-        }
-    });
-
-    if update_mode == UpdateMode::Check {
-        let mut extra = BTreeSet::new();
-        let mut lint_names = usable_lints
-            .iter()
-            .map(|lint| lint.name.clone())
-            .collect::<BTreeSet<_>>();
-        for file in std::fs::read_dir("src/docs").unwrap() {
-            let filename = file.unwrap().file_name().into_string().unwrap();
-            if let Some(name) = filename.strip_suffix(".txt") {
-                if !lint_names.remove(name) {
-                    extra.insert(name.to_string());
-                }
-            }
-        }
-
-        let failed = print_lint_names("extra lint docs:", &extra) | print_lint_names("missing lint docs:", &lint_names);
-
-        if failed {
-            exit_with_failure();
-        }
-    } else {
-        if std::fs::remove_dir_all("src/docs").is_err() {
-            eprintln!("could not remove src/docs directory");
-        }
-        if std::fs::create_dir("src/docs").is_err() {
-            eprintln!("could not recreate src/docs directory");
-        }
-    }
-    for lint in usable_lints {
-        process_file(
-            Path::new("src/docs").join(lint.name.clone() + ".txt"),
-            update_mode,
-            &lint.documentation,
-        );
-    }
-}
-
-fn print_lint_names(header: &str, lints: &BTreeSet<String>) -> bool {
-    if lints.is_empty() {
-        return false;
-    }
-    println!("{header}");
-    for lint in lints.iter().sorted() {
-        println!("    {lint}");
-    }
-    println!();
-    true
 }
 
 pub fn print_lints() {
@@ -641,26 +619,17 @@ struct Lint {
     desc: String,
     module: String,
     declaration_range: Range<usize>,
-    documentation: String,
 }
 
 impl Lint {
     #[must_use]
-    fn new(
-        name: &str,
-        group: &str,
-        desc: &str,
-        module: &str,
-        declaration_range: Range<usize>,
-        documentation: String,
-    ) -> Self {
+    fn new(name: &str, group: &str, desc: &str, module: &str, declaration_range: Range<usize>) -> Self {
         Self {
             name: name.to_lowercase(),
             group: group.into(),
             desc: remove_line_splices(desc),
             module: module.into(),
             declaration_range,
-            documentation,
         }
     }
 
@@ -716,25 +685,6 @@ impl RenamedLint {
     }
 }
 
-/// Generates the code for registering a group
-fn gen_lint_group_list<'a>(group_name: &str, lints: impl Iterator<Item = &'a Lint>) -> String {
-    let mut details: Vec<_> = lints.map(|l| (&l.module, l.name.to_uppercase())).collect();
-    details.sort_unstable();
-
-    let mut output = GENERATED_FILE_COMMENT.to_string();
-
-    let _ = writeln!(
-        output,
-        "store.register_group(true, \"clippy::{group_name}\", Some(\"clippy_{group_name}\"), vec![",
-    );
-    for (module, name) in details {
-        let _ = writeln!(output, "    LintId::of({module}::{name}),");
-    }
-    output.push_str("])\n");
-
-    output
-}
-
 /// Generates the `register_removed` code
 #[must_use]
 fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
@@ -759,7 +709,7 @@ fn gen_deprecated(lints: &[DeprecatedLint]) -> String {
 
 /// Generates the code for registering lints
 #[must_use]
-fn gen_register_lint_list<'a>(
+fn gen_declared_lints<'a>(
     internal_lints: impl Iterator<Item = &'a Lint>,
     usable_lints: impl Iterator<Item = &'a Lint>,
 ) -> String {
@@ -770,15 +720,15 @@ fn gen_register_lint_list<'a>(
     details.sort_unstable();
 
     let mut output = GENERATED_FILE_COMMENT.to_string();
-    output.push_str("store.register_lints(&[\n");
+    output.push_str("pub(crate) static LINTS: &[&crate::LintInfo] = &[\n");
 
     for (is_public, module_name, lint_name) in details {
         if !is_public {
             output.push_str("    #[cfg(feature = \"internal\")]\n");
         }
-        let _ = writeln!(output, "    {module_name}::{lint_name},");
+        let _ = writeln!(output, "    crate::{module_name}::{lint_name}_INFO,");
     }
-    output.push_str("])\n");
+    output.push_str("];\n");
 
     output
 }
@@ -910,35 +860,26 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
          }| token_kind == &TokenKind::Ident && *content == "declare_clippy_lint",
     ) {
         let start = range.start;
-        let mut docs = String::with_capacity(128);
-        let mut iter = iter.by_ref().filter(|t| !matches!(t.token_kind, TokenKind::Whitespace));
+        let mut iter = iter
+            .by_ref()
+            .filter(|t| !matches!(t.token_kind, TokenKind::Whitespace | TokenKind::LineComment { .. }));
         // matches `!{`
         match_tokens!(iter, Bang OpenBrace);
-        let mut in_code = false;
-        while let Some(t) = iter.next() {
-            match t.token_kind {
-                TokenKind::LineComment { .. } => {
-                    if let Some(line) = t.content.strip_prefix("/// ").or_else(|| t.content.strip_prefix("///")) {
-                        if line.starts_with("```") {
-                            docs += "```\n";
-                            in_code = !in_code;
-                        } else if !(in_code && line.starts_with("# ")) {
-                            docs += line;
-                            docs.push('\n');
-                        }
-                    }
-                },
-                TokenKind::Pound => {
-                    match_tokens!(iter, OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket Ident);
-                    break;
-                },
-                TokenKind::Ident => {
-                    break;
-                },
-                _ => {},
-            }
+        match iter.next() {
+            // #[clippy::version = "version"] pub
+            Some(LintDeclSearchResult {
+                token_kind: TokenKind::Pound,
+                ..
+            }) => {
+                match_tokens!(iter, OpenBracket Ident Colon Colon Ident Eq Literal{..} CloseBracket Ident);
+            },
+            // pub
+            Some(LintDeclSearchResult {
+                token_kind: TokenKind::Ident,
+                ..
+            }) => (),
+            _ => continue,
         }
-        docs.pop(); // remove final newline
 
         let (name, group, desc) = match_tokens!(
             iter,
@@ -956,7 +897,7 @@ fn parse_contents(contents: &str, module: &str, lints: &mut Vec<Lint>) {
             ..
         }) = iter.next()
         {
-            lints.push(Lint::new(name, group, desc, module, start..range.end, docs));
+            lints.push(Lint::new(name, group, desc, module, start..range.end));
         }
     }
 }
@@ -1186,7 +1127,6 @@ mod tests {
                 "\"really long text\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
             Lint::new(
                 "doc_markdown",
@@ -1194,7 +1134,6 @@ mod tests {
                 "\"single line\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
         ];
         assert_eq!(expected, result);
@@ -1234,7 +1173,6 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
             Lint::new(
                 "should_assert_eq2",
@@ -1242,7 +1180,6 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
             Lint::new(
                 "should_assert_eq2",
@@ -1250,7 +1187,6 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
         ];
         let expected = vec![Lint::new(
@@ -1259,7 +1195,6 @@ mod tests {
             "\"abc\"",
             "module_name",
             Range::default(),
-            String::new(),
         )];
         assert_eq!(expected, Lint::usable_lints(&lints));
     }
@@ -1267,51 +1202,22 @@ mod tests {
     #[test]
     fn test_by_lint_group() {
         let lints = vec![
-            Lint::new(
-                "should_assert_eq",
-                "group1",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-                String::new(),
-            ),
+            Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
             Lint::new(
                 "should_assert_eq2",
                 "group2",
                 "\"abc\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             ),
-            Lint::new(
-                "incorrect_match",
-                "group1",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-                String::new(),
-            ),
+            Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
         ];
         let mut expected: HashMap<String, Vec<Lint>> = HashMap::new();
         expected.insert(
             "group1".to_string(),
             vec![
-                Lint::new(
-                    "should_assert_eq",
-                    "group1",
-                    "\"abc\"",
-                    "module_name",
-                    Range::default(),
-                    String::new(),
-                ),
-                Lint::new(
-                    "incorrect_match",
-                    "group1",
-                    "\"abc\"",
-                    "module_name",
-                    Range::default(),
-                    String::new(),
-                ),
+                Lint::new("should_assert_eq", "group1", "\"abc\"", "module_name", Range::default()),
+                Lint::new("incorrect_match", "group1", "\"abc\"", "module_name", Range::default()),
             ],
         );
         expected.insert(
@@ -1322,7 +1228,6 @@ mod tests {
                 "\"abc\"",
                 "module_name",
                 Range::default(),
-                String::new(),
             )],
         );
         assert_eq!(expected, Lint::by_lint_group(lints.into_iter()));
@@ -1356,49 +1261,5 @@ mod tests {
             + "\n";
 
         assert_eq!(expected, gen_deprecated(&lints));
-    }
-
-    #[test]
-    fn test_gen_lint_group_list() {
-        let lints = vec![
-            Lint::new(
-                "abc",
-                "group1",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-                String::new(),
-            ),
-            Lint::new(
-                "should_assert_eq",
-                "group1",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-                String::new(),
-            ),
-            Lint::new(
-                "internal",
-                "internal_style",
-                "\"abc\"",
-                "module_name",
-                Range::default(),
-                String::new(),
-            ),
-        ];
-        let expected = GENERATED_FILE_COMMENT.to_string()
-            + &[
-                "store.register_group(true, \"clippy::group1\", Some(\"clippy_group1\"), vec![",
-                "    LintId::of(module_name::ABC),",
-                "    LintId::of(module_name::INTERNAL),",
-                "    LintId::of(module_name::SHOULD_ASSERT_EQ),",
-                "])",
-            ]
-            .join("\n")
-            + "\n";
-
-        let result = gen_lint_group_list("group1", lints.iter());
-
-        assert_eq!(expected, result);
     }
 }

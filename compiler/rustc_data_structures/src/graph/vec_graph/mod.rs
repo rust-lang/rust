@@ -1,5 +1,3 @@
-use std::cmp::Ord;
-
 use crate::graph::{DirectedGraph, GraphSuccessors, WithNumEdges, WithNumNodes, WithSuccessors};
 use rustc_index::vec::{Idx, IndexVec};
 

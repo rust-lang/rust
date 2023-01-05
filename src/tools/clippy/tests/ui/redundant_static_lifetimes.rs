@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![allow(unused)]
 
 #[derive(Debug)]
@@ -40,8 +39,14 @@ static STATIC_VAR_TUPLE: &'static (u8, u8) = &(1, 2); // ERROR Consider removing
 
 static STATIC_VAR_ARRAY: &'static [u8; 1] = b"T"; // ERROR Consider removing 'static.
 
+static mut STATIC_MUT_SLICE: &'static mut [u32] = &mut [0];
+
 fn main() {
     let false_positive: &'static str = "test";
+
+    unsafe {
+        STATIC_MUT_SLICE[0] = 0;
+    }
 }
 
 trait Bar {
@@ -56,14 +61,12 @@ impl Bar for Foo {
     const TRAIT_VAR: &'static str = "foo";
 }
 
+#[clippy::msrv = "1.16"]
 fn msrv_1_16() {
-    #![clippy::msrv = "1.16"]
-
     static V: &'static u8 = &16;
 }
 
+#[clippy::msrv = "1.17"]
 fn msrv_1_17() {
-    #![clippy::msrv = "1.17"]
-
     static V: &'static u8 = &17;
 }

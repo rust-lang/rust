@@ -14,9 +14,8 @@ use self::abs_domain::{AbstractElem, Lift};
 mod abs_domain;
 
 rustc_index::newtype_index! {
-    pub struct MovePathIndex {
-        DEBUG_FORMAT = "mp{}"
-    }
+    #[debug_format = "mp{}"]
+    pub struct MovePathIndex {}
 }
 
 impl polonius_engine::Atom for MovePathIndex {
@@ -26,15 +25,13 @@ impl polonius_engine::Atom for MovePathIndex {
 }
 
 rustc_index::newtype_index! {
-    pub struct MoveOutIndex {
-        DEBUG_FORMAT = "mo{}"
-    }
+    #[debug_format = "mo{}"]
+    pub struct MoveOutIndex {}
 }
 
 rustc_index::newtype_index! {
-    pub struct InitIndex {
-        DEBUG_FORMAT = "in{}"
-    }
+    #[debug_format = "in{}"]
+    pub struct InitIndex {}
 }
 
 impl MoveOutIndex {

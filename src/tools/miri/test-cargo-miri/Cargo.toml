@@ -1,5 +1,6 @@
 [workspace]
 members = ["subcrate", "issue-1567", "exported-symbol-dep"]
+exclude = ["no-std-smoke"] # it wants to be panic="abort"
 
 [package]
 name = "cargo-miri-test"

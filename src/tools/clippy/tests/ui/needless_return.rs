@@ -1,6 +1,7 @@
 // run-rustfix
 
 #![feature(lint_reasons)]
+#![feature(yeet_expr)]
 #![allow(unused)]
 #![allow(
     clippy::if_same_then_else,
@@ -267,6 +268,23 @@ fn issue9503(x: usize) -> isize {
             return !*(x as *const isize);
         };
     };
+}
+
+mod issue9416 {
+    pub fn with_newline() {
+        let _ = 42;
+
+        return;
+    }
+
+    #[rustfmt::skip]
+    pub fn oneline() {
+        let _ = 42; return;
+    }
+}
+
+fn issue9947() -> Result<(), String> {
+    do yeet "hello";
 }
 
 fn main() {}

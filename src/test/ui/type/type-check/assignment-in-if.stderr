@@ -68,7 +68,9 @@ error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:44:18
    |
 LL |     if x == x && x = x && x == x {
-   |                  ^ expected `bool`, found `usize`
+   |        ------    ^ expected `bool`, found `usize`
+   |        |
+   |        expected because this is `bool`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:44:22
@@ -91,7 +93,9 @@ error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:51:28
    |
 LL |     if x == x && x == x && x = x {
-   |                            ^ expected `bool`, found `usize`
+   |        ----------------    ^ expected `bool`, found `usize`
+   |        |
+   |        expected because this is `bool`
 
 error[E0308]: mismatched types
   --> $DIR/assignment-in-if.rs:51:8

@@ -45,7 +45,7 @@ if let ExprKind::Closure(CaptureBy::Value, fn_decl, body_id, _, None) = expr.kin
     && expr1 = &cx.tcx.hir().body(body_id).value
     && let ExprKind::Call(func, args) = expr1.kind
     && let ExprKind::Path(ref qpath) = func.kind
-    && matches!(qpath, QPath::LangItem(LangItem::FromGenerator, _))
+    && matches!(qpath, QPath::LangItem(LangItem::IdentityFuture, _))
     && args.len() == 1
     && let ExprKind::Closure(CaptureBy::Value, fn_decl1, body_id1, _, Some(Movability::Static)) = args[0].kind
     && let FnRetTy::DefaultReturn(_) = fn_decl1.output

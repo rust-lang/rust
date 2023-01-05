@@ -109,10 +109,10 @@ use rustc_data_structures::{base_n, flock};
 use rustc_errors::ErrorGuaranteed;
 use rustc_fs_util::{link_or_copy, LinkOrCopy};
 use rustc_session::{Session, StableCrateId};
+use rustc_span::Symbol;
 
 use std::fs as std_fs;
 use std::io::{self, ErrorKind};
-use std::mem;
 use std::path::{Path, PathBuf};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
@@ -202,7 +202,7 @@ pub fn in_incr_comp_dir(incr_comp_session_dir: &Path, file_name: &str) -> PathBu
 /// [`rustc_interface::queries::dep_graph`]: ../../rustc_interface/struct.Queries.html#structfield.dep_graph
 pub fn prepare_session_directory(
     sess: &Session,
-    crate_name: &str,
+    crate_name: Symbol,
     stable_crate_id: StableCrateId,
 ) -> Result<(), ErrorGuaranteed> {
     if sess.opts.incremental.is_none() {
@@ -304,7 +304,7 @@ pub fn prepare_session_directory(
             }
 
             delete_session_dir_lock_file(sess, &lock_file_path);
-            mem::drop(directory_lock);
+            drop(directory_lock);
         }
     }
 }
@@ -322,7 +322,7 @@ pub fn finalize_session_directory(sess: &Session, svh: Svh) {
 
     let incr_comp_session_dir: PathBuf = sess.incr_comp_session_dir().clone();
 
-    if sess.has_errors_or_delayed_span_bugs() {
+    if let Some(_) = sess.has_errors_or_delayed_span_bugs() {
         // If there have been any errors during compilation, we don't want to
         // publish this session directory. Rather, we'll just delete it.
 
@@ -657,7 +657,7 @@ fn string_to_timestamp(s: &str) -> Result<SystemTime, ()> {
     Ok(UNIX_EPOCH + duration)
 }
 
-fn crate_path(sess: &Session, crate_name: &str, stable_crate_id: StableCrateId) -> PathBuf {
+fn crate_path(sess: &Session, crate_name: Symbol, stable_crate_id: StableCrateId) -> PathBuf {
     let incr_dir = sess.opts.incremental.as_ref().unwrap().clone();
 
     let stable_crate_id = base_n::encode(stable_crate_id.to_u64() as u128, INT_ENCODE_BASE);
@@ -863,7 +863,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
                     // Let's make it explicit that the file lock is released at this point,
                     // or rather, that we held on to it until here
-                    mem::drop(lock);
+                    drop(lock);
                 }
                 Err(_) => {
                     debug!(
@@ -897,7 +897,7 @@ pub fn garbage_collect_session_directories(sess: &Session) -> io::Result<()> {
 
         // Let's make it explicit that the file lock is released at this point,
         // or rather, that we held on to it until here
-        mem::drop(lock);
+        drop(lock);
     }
 
     Ok(())

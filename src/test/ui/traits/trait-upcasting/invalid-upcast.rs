@@ -1,5 +1,4 @@
 #![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 trait Foo {
     fn a(&self) -> i32 {

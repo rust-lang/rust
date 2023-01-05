@@ -3,7 +3,7 @@ use rustc_errors::struct_span_err;
 use rustc_hir as hir;
 use rustc_index::vec::Idx;
 use rustc_middle::ty::layout::{LayoutError, SizeSkeleton};
-use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{self, Ty, TyCtxt, TypeVisitable};
 use rustc_target::abi::{Pointer, VariantIdx};
 
 use super::FnCtxt;
@@ -46,7 +46,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let from = normalize(from);
         let to = normalize(to);
         trace!(?from, ?to);
-
+        if from.has_non_region_infer() || to.has_non_region_infer() {
+            tcx.sess.delay_span_bug(span, "argument to transmute has inference variables");
+            return;
+        }
         // Transmutes that are only changing lifetimes are always ok.
         if from == to {
             return;

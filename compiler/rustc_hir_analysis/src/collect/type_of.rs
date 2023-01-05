@@ -5,6 +5,7 @@ use rustc_hir::intravisit;
 use rustc_hir::intravisit::Visitor;
 use rustc_hir::{HirId, Node};
 use rustc_middle::hir::nested_filter;
+use rustc_middle::ty::print::with_forced_trimmed_paths;
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::util::IntTypeExt;
 use rustc_middle::ty::{self, DefIdTree, Ty, TyCtxt, TypeFolder, TypeSuperFoldable, TypeVisitable};
@@ -52,7 +53,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // Using the ItemCtxt convert the HIR for the unresolved assoc type into a
             // ty which is a fully resolved projection.
             // For the code example above, this would mean converting Self::Assoc<3>
-            // into a ty::Projection(<Self as Foo>::Assoc<3>)
+            // into a ty::Alias(ty::Projection, <Self as Foo>::Assoc<3>)
             let item_hir_id = tcx
                 .hir()
                 .parent_iter(hir_id)
@@ -68,8 +69,8 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
             // the def_id that this query was called with. We filter to only type and const args here
             // as a precaution for if it's ever allowed to elide lifetimes in GAT's. It currently isn't
             // but it can't hurt to be safe ^^
-            if let ty::Projection(projection) = ty.kind() {
-                let generics = tcx.generics_of(projection.item_def_id);
+            if let ty::Alias(ty::Projection, projection) = ty.kind() {
+                let generics = tcx.generics_of(projection.def_id);
 
                 let arg_index = segment
                     .args
@@ -319,7 +320,15 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                     }
                 }
                 ItemKind::TyAlias(self_ty, _) => icx.to_ty(self_ty),
-                ItemKind::Impl(hir::Impl { self_ty, .. }) => icx.to_ty(*self_ty),
+                ItemKind::Impl(hir::Impl { self_ty, .. }) => {
+                    match self_ty.find_self_aliases() {
+                        spans if spans.len() > 0 => {
+                            tcx.sess.emit_err(crate::errors::SelfInImplSelf { span: spans.into(), note: (), });
+                            tcx.ty_error()
+                        },
+                        _ => icx.to_ty(*self_ty),
+                    }
+                },
                 ItemKind::Fn(..) => {
                     let substs = InternalSubsts::identity_for_item(tcx, def_id.to_def_id());
                     tcx.mk_fn_def(def_id.to_def_id(), substs)
@@ -506,10 +515,10 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 }
 
                 Node::GenericParam(&GenericParam {
-                    hir_id: param_hir_id,
+                    def_id: param_def_id,
                     kind: GenericParamKind::Const { default: Some(ct), .. },
                     ..
-                }) if ct.hir_id == hir_id => tcx.type_of(tcx.hir().local_def_id(param_hir_id)),
+                }) if ct.hir_id == hir_id => tcx.type_of(param_def_id),
 
                 x => tcx.ty_error_with_message(
                     DUMMY_SP,
@@ -628,38 +637,37 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure { .. } = ex.kind {
-                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
+            if let hir::ExprKind::Closure(closure) = ex.kind {
+                self.check(closure.def_id);
             }
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            trace!(?it.def_id);
-            self.check(it.def_id.def_id);
+            trace!(?it.owner_id);
+            self.check(it.owner_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
 
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let scope = tcx.hir().get_defining_scope(hir_id);
-    let mut locator = ConstraintLocator { def_id: def_id, tcx, found: None, typeck_types: vec![] };
+    let mut locator = ConstraintLocator { def_id, tcx, found: None, typeck_types: vec![] };
 
     debug!(?scope);
 
@@ -690,11 +698,17 @@ fn find_opaque_ty_constraints_for_tait(tcx: TyCtxt<'_>, def_id: LocalDefId) -> T
     }
 
     let Some(hidden) = locator.found else {
-        tcx.sess.emit_err(UnconstrainedOpaqueType {
+        let reported = tcx.sess.emit_err(UnconstrainedOpaqueType {
             span: tcx.def_span(def_id),
             name: tcx.item_name(tcx.local_parent(def_id).to_def_id()),
+            what: match tcx.hir().get(scope) {
+                _ if scope == hir::CRATE_HIR_ID => "module",
+                Node::Item(hir::Item { kind: hir::ItemKind::Mod(_), .. }) => "module",
+                Node::Item(hir::Item { kind: hir::ItemKind::Impl(_), .. }) => "impl",
+                _ => "item",
+            },
         });
-        return tcx.ty_error();
+        return tcx.ty_error_with_guaranteed(reported);
     };
 
     // Only check against typeck if we didn't already error
@@ -757,31 +771,30 @@ fn find_opaque_ty_constraints_for_rpit(
             self.tcx.hir()
         }
         fn visit_expr(&mut self, ex: &'tcx Expr<'tcx>) {
-            if let hir::ExprKind::Closure { .. } = ex.kind {
-                let def_id = self.tcx.hir().local_def_id(ex.hir_id);
-                self.check(def_id);
+            if let hir::ExprKind::Closure(closure) = ex.kind {
+                self.check(closure.def_id);
             }
             intravisit::walk_expr(self, ex);
         }
         fn visit_item(&mut self, it: &'tcx Item<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_item(self, it);
             }
         }
         fn visit_impl_item(&mut self, it: &'tcx ImplItem<'tcx>) {
-            trace!(?it.def_id);
+            trace!(?it.owner_id);
             // The opaque type itself or its children are not within its reveal scope.
-            if it.def_id.def_id != self.def_id {
-                self.check(it.def_id.def_id);
+            if it.owner_id.def_id != self.def_id {
+                self.check(it.owner_id.def_id);
                 intravisit::walk_impl_item(self, it);
             }
         }
         fn visit_trait_item(&mut self, it: &'tcx TraitItem<'tcx>) {
-            trace!(?it.def_id);
-            self.check(it.def_id.def_id);
+            trace!(?it.owner_id);
+            self.check(it.owner_id.def_id);
             intravisit::walk_trait_item(self, it);
         }
     }
@@ -791,7 +804,7 @@ fn find_opaque_ty_constraints_for_rpit(
     if let Some(concrete) = concrete {
         let scope = tcx.hir().local_def_id_to_hir_id(owner_def_id);
         debug!(?scope);
-        let mut locator = ConstraintChecker { def_id: def_id, tcx, found: concrete };
+        let mut locator = ConstraintChecker { def_id, tcx, found: concrete };
 
         match tcx.hir().get(scope) {
             Node::Item(it) => intravisit::walk_item(&mut locator, it),
@@ -895,10 +908,10 @@ fn infer_placeholder_type<'a>(
                         Applicability::MachineApplicable,
                     );
                 } else {
-                    err.span_note(
+                    with_forced_trimmed_paths!(err.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty),
-                    );
+                        &format!("however, the inferred type `{ty}` cannot be named"),
+                    ));
                 }
             }
 
@@ -919,10 +932,10 @@ fn infer_placeholder_type<'a>(
                         Applicability::MaybeIncorrect,
                     );
                 } else {
-                    diag.span_note(
+                    with_forced_trimmed_paths!(diag.span_note(
                         tcx.hir().body(body_id).value.span,
-                        &format!("however, the inferred type `{}` cannot be named", ty),
-                    );
+                        &format!("however, the inferred type `{ty}` cannot be named"),
+                    ));
                 }
             }
 

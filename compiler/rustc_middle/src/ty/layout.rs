@@ -1,8 +1,6 @@
 use crate::middle::codegen_fn_attrs::CodegenFnAttrFlags;
 use crate::ty::normalize_erasing_regions::NormalizationError;
 use crate::ty::{self, ReprOptions, Ty, TyCtxt, TypeVisitable};
-use rustc_ast as ast;
-use rustc_attr as attr;
 use rustc_errors::{DiagnosticBuilder, Handler, IntoDiagnostic};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
@@ -20,7 +18,6 @@ use std::ops::Bound;
 
 pub trait IntegerExt {
     fn to_ty<'tcx>(&self, tcx: TyCtxt<'tcx>, signed: bool) -> Ty<'tcx>;
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer;
     fn from_int_ty<C: HasDataLayout>(cx: &C, ity: ty::IntTy) -> Integer;
     fn from_uint_ty<C: HasDataLayout>(cx: &C, uty: ty::UintTy) -> Integer;
     fn repr_discr<'tcx>(
@@ -46,22 +43,6 @@ impl IntegerExt for Integer {
             (I32, true) => tcx.types.i32,
             (I64, true) => tcx.types.i64,
             (I128, true) => tcx.types.i128,
-        }
-    }
-
-    /// Gets the Integer type from an attr::IntType.
-    fn from_attr<C: HasDataLayout>(cx: &C, ity: attr::IntType) -> Integer {
-        let dl = cx.data_layout();
-
-        match ity {
-            attr::SignedInt(ast::IntTy::I8) | attr::UnsignedInt(ast::UintTy::U8) => I8,
-            attr::SignedInt(ast::IntTy::I16) | attr::UnsignedInt(ast::UintTy::U16) => I16,
-            attr::SignedInt(ast::IntTy::I32) | attr::UnsignedInt(ast::UintTy::U32) => I32,
-            attr::SignedInt(ast::IntTy::I64) | attr::UnsignedInt(ast::UintTy::U64) => I64,
-            attr::SignedInt(ast::IntTy::I128) | attr::UnsignedInt(ast::UintTy::U128) => I128,
-            attr::SignedInt(ast::IntTy::Isize) | attr::UnsignedInt(ast::UintTy::Usize) => {
-                dl.ptr_sized_integer()
-            }
         }
     }
 
@@ -189,8 +170,8 @@ pub enum LayoutError<'tcx> {
     NormalizationFailure(Ty<'tcx>, NormalizationError<'tcx>),
 }
 
-impl<'a> IntoDiagnostic<'a, !> for LayoutError<'a> {
-    fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, !> {
+impl IntoDiagnostic<'_, !> for LayoutError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         let mut diag = handler.struct_fatal("");
 
         match self {
@@ -237,6 +218,18 @@ pub struct LayoutCx<'tcx, C> {
     pub param_env: ty::ParamEnv<'tcx>,
 }
 
+impl<'tcx> LayoutCalculator for LayoutCx<'tcx, TyCtxt<'tcx>> {
+    type TargetDataLayoutRef = &'tcx TargetDataLayout;
+
+    fn delay_bug(&self, txt: &str) {
+        self.tcx.sess.delay_span_bug(DUMMY_SP, txt);
+    }
+
+    fn current_data_layout(&self) -> Self::TargetDataLayoutRef {
+        &self.tcx.data_layout
+    }
+}
+
 /// Type size "skeleton", i.e., the only information determining a type's size.
 /// While this is conservative, (aside from constant sizes, only pointers,
 /// newtypes thereof and null pointer optimized enums are allowed), it is
@@ -278,7 +271,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 let non_zero = !ty.is_unsafe_ptr();
                 let tail = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
                 match tail.kind() {
-                    ty::Param(_) | ty::Projection(_) => {
+                    ty::Param(_) | ty::Alias(ty::Projection, _) => {
                         debug_assert!(tail.has_non_region_param());
                         Ok(SizeSkeleton::Pointer { non_zero, tail: tcx.erase_regions(tail) })
                     }
@@ -356,7 +349,7 @@ impl<'tcx> SizeSkeleton<'tcx> {
                 }
             }
 
-            ty::Projection(_) | ty::Opaque(..) => {
+            ty::Alias(..) => {
                 let normalized = tcx.normalize_erasing_regions(param_env, ty);
                 if ty == normalized {
                     Err(err)
@@ -610,7 +603,7 @@ where
                 })
             }
 
-            Variants::Multiple { ref variants, .. } => variants[variant_index],
+            Variants::Multiple { ref variants, .. } => cx.tcx().intern_layout(variants[variant_index].clone()),
         };
 
         assert_eq!(*layout.variants(), Variants::Single { index: variant_index });
@@ -677,29 +670,50 @@ where
                         });
                     }
 
-                    match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
-                        ty::Slice(_) | ty::Str => TyMaybeWithLayout::Ty(tcx.types.usize),
-                        ty::Dynamic(_, _, ty::Dyn) => {
-                            TyMaybeWithLayout::Ty(tcx.mk_imm_ref(
-                                tcx.lifetimes.re_static,
-                                tcx.mk_array(tcx.types.usize, 3),
-                            ))
-                            /* FIXME: use actual fn pointers
-                            Warning: naively computing the number of entries in the
-                            vtable by counting the methods on the trait + methods on
-                            all parent traits does not work, because some methods can
-                            be not object safe and thus excluded from the vtable.
-                            Increase this counter if you tried to implement this but
-                            failed to do it without duplicating a lot of code from
-                            other places in the compiler: 2
-                            tcx.mk_tup(&[
-                                tcx.mk_array(tcx.types.usize, 3),
-                                tcx.mk_array(Option<fn()>),
-                            ])
-                            */
+                    let mk_dyn_vtable = || {
+                        tcx.mk_imm_ref(tcx.lifetimes.re_static, tcx.mk_array(tcx.types.usize, 3))
+                        /* FIXME: use actual fn pointers
+                        Warning: naively computing the number of entries in the
+                        vtable by counting the methods on the trait + methods on
+                        all parent traits does not work, because some methods can
+                        be not object safe and thus excluded from the vtable.
+                        Increase this counter if you tried to implement this but
+                        failed to do it without duplicating a lot of code from
+                        other places in the compiler: 2
+                        tcx.mk_tup(&[
+                            tcx.mk_array(tcx.types.usize, 3),
+                            tcx.mk_array(Option<fn()>),
+                        ])
+                        */
+                    };
+
+                    let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+                        let metadata = tcx.normalize_erasing_regions(
+                            cx.param_env(),
+                            tcx.mk_projection(metadata_def_id, [pointee]),
+                        );
+
+                        // Map `Metadata = DynMetadata<dyn Trait>` back to a vtable, since it
+                        // offers better information than `std::ptr::metadata::VTable`,
+                        // and we rely on this layout information to trigger a panic in
+                        // `std::mem::uninitialized::<&dyn Trait>()`, for example.
+                        if let ty::Adt(def, substs) = metadata.kind()
+                            && Some(def.did()) == tcx.lang_items().dyn_metadata()
+                            && substs.type_at(0).is_trait()
+                        {
+                            mk_dyn_vtable()
+                        } else {
+                            metadata
                         }
-                        _ => bug!("TyAndLayout::field({:?}): not applicable", this),
-                    }
+                    } else {
+                        match tcx.struct_tail_erasing_lifetimes(pointee, cx.param_env()).kind() {
+                            ty::Slice(_) | ty::Str => tcx.types.usize,
+                            ty::Dynamic(_, _, ty::Dyn) => mk_dyn_vtable(),
+                            _ => bug!("TyAndLayout::field({:?}): not applicable", this),
+                        }
+                    };
+
+                    TyMaybeWithLayout::Ty(metadata)
                 }
 
                 // Arrays and slices.
@@ -764,10 +778,9 @@ where
                     }
                 }
 
-                ty::Projection(_)
+                ty::Alias(..)
                 | ty::Bound(..)
                 | ty::Placeholder(..)
-                | ty::Opaque(..)
                 | ty::Param(_)
                 | ty::Infer(_)
                 | ty::Error(_) => bug!("TyAndLayout::field: unexpected type `{}`", this.ty),
@@ -830,7 +843,7 @@ where
                 } else {
                     match mt {
                         hir::Mutability::Not => {
-                            if ty.is_freeze(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_freeze(tcx, cx.param_env()) {
                                 PointerKind::Frozen
                             } else {
                                 PointerKind::SharedMutable
@@ -841,7 +854,7 @@ where
                             // noalias, as another pointer to the structure can be obtained, that
                             // is not based-on the original reference. We consider all !Unpin
                             // types to be potentially self-referential here.
-                            if ty.is_unpin(tcx.at(DUMMY_SP), cx.param_env()) {
+                            if ty.is_unpin(tcx, cx.param_env()) {
                                 PointerKind::UniqueBorrowed
                             } else {
                                 PointerKind::UniqueBorrowedPinned
@@ -1001,7 +1014,7 @@ where
 /// might (from a foreign exception or similar).
 #[inline]
 #[tracing::instrument(level = "debug", skip(tcx))]
-pub fn fn_can_unwind<'tcx>(tcx: TyCtxt<'tcx>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
+pub fn fn_can_unwind(tcx: TyCtxt<'_>, fn_def_id: Option<DefId>, abi: SpecAbi) -> bool {
     if let Some(did) = fn_def_id {
         // Special attribute for functions which can't unwind.
         if tcx.codegen_fn_attrs(did).flags.contains(CodegenFnAttrFlags::NEVER_UNWIND) {
@@ -1126,8 +1139,8 @@ impl<'tcx> fmt::Display for FnAbiError<'tcx> {
     }
 }
 
-impl<'tcx> IntoDiagnostic<'tcx, !> for FnAbiError<'tcx> {
-    fn into_diagnostic(self, handler: &'tcx Handler) -> DiagnosticBuilder<'tcx, !> {
+impl IntoDiagnostic<'_, !> for FnAbiError<'_> {
+    fn into_diagnostic(self, handler: &Handler) -> DiagnosticBuilder<'_, !> {
         handler.struct_fatal(self.to_string())
     }
 }

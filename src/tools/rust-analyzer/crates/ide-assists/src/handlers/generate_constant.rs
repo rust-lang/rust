@@ -77,7 +77,7 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
         target_data_for_generate_constant(ctx, current_module, constant_module).unwrap_or_else(
             || {
                 let indent = IndentLevel::from_node(statement.syntax());
-                (statement.syntax().text_range().start(), indent, None, format!("\n{}", indent))
+                (statement.syntax().text_range().start(), indent, None, format!("\n{indent}"))
             },
         );
 
@@ -90,7 +90,7 @@ pub(crate) fn generate_constant(acc: &mut Assists, ctx: &AssistContext<'_>) -> O
             if let Some(file_id) = file_id {
                 builder.edit_file(file_id);
             }
-            builder.insert(offset, format!("{}{}", text, post_string));
+            builder.insert(offset, format!("{text}{post_string}"));
         },
     )
 }
@@ -103,13 +103,13 @@ fn get_text_for_generate_constant(
 ) -> Option<String> {
     let constant_token = not_exist_name_ref.pop()?;
     let vis = if not_exist_name_ref.len() == 0 && !outer_exists { "" } else { "\npub " };
-    let mut text = format!("{}const {}: {} = $0;", vis, constant_token, type_name);
+    let mut text = format!("{vis}const {constant_token}: {type_name} = $0;");
     while let Some(name_ref) = not_exist_name_ref.pop() {
         let vis = if not_exist_name_ref.len() == 0 && !outer_exists { "" } else { "\npub " };
         text = text.replace("\n", "\n    ");
-        text = format!("{}mod {} {{{}\n}}", vis, name_ref.to_string(), text);
+        text = format!("{vis}mod {name_ref} {{{text}\n}}");
     }
-    Some(text.replace("\n", &format!("\n{}", indent)))
+    Some(text.replace("\n", &format!("\n{indent}")))
 }
 
 fn target_data_for_generate_constant(
@@ -134,7 +134,7 @@ fn target_data_for_generate_constant(
                 .find(|it| it.kind() == SyntaxKind::WHITESPACE && it.to_string().contains("\n"))
                 .is_some();
             let post_string =
-                if siblings_has_newline { format!("{}", indent) } else { format!("\n{}", indent) };
+                if siblings_has_newline { format!("{indent}") } else { format!("\n{indent}") };
             Some((offset, indent + 1, Some(file_id), post_string))
         }
         _ => Some((TextSize::from(0), 0.into(), Some(file_id), "\n".into())),

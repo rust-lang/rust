@@ -17,7 +17,9 @@ impl<T: ~const Default> const A for T {
     }
 }
 
-impl<T: Default + Sup> A for T { //~ ERROR: cannot specialize
+impl<T: Default + Sup> A for T {
+//~^ ERROR: cannot specialize
+//~| ERROR: missing `~const` qualifier
     fn a() -> u32 {
         3
     }

@@ -4,10 +4,11 @@ mod checks;
 mod suggestions;
 
 pub use _impl::*;
+use rustc_errors::ErrorGuaranteed;
 pub use suggestions::*;
 
 use crate::coercion::DynamicCoerceMany;
-use crate::{Diverges, EnclosingBreakables, Inherited, UnsafetyState};
+use crate::{Diverges, EnclosingBreakables, Inherited};
 use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir_analysis::astconv::AstConv;
@@ -21,7 +22,7 @@ use rustc_middle::ty::{self, Const, Ty, TyCtxt};
 use rustc_session::Session;
 use rustc_span::symbol::Ident;
 use rustc_span::{self, Span};
-use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode};
+use rustc_trait_selection::traits::{ObligationCause, ObligationCauseCode, ObligationCtxt};
 
 use std::cell::{Cell, RefCell};
 use std::ops::Deref;
@@ -68,16 +69,10 @@ pub struct FnCtxt<'a, 'tcx> {
     /// any).
     pub(super) ret_coercion: Option<RefCell<DynamicCoerceMany<'tcx>>>,
 
-    /// Used exclusively to reduce cost of advanced evaluation used for
-    /// more helpful diagnostics.
-    pub(super) in_tail_expr: bool,
-
     /// First span of a return site that we find. Used in error messages.
     pub(super) ret_coercion_span: Cell<Option<Span>>,
 
     pub(super) resume_yield_tys: Option<(Ty<'tcx>, Ty<'tcx>)>,
-
-    pub(super) ps: Cell<UnsafetyState>,
 
     /// Whether the last checked node generates a divergence (e.g.,
     /// `return` will set this to `Always`). In general, when entering
@@ -112,21 +107,11 @@ pub struct FnCtxt<'a, 'tcx> {
     /// the diverges flag is set to something other than `Maybe`.
     pub(super) diverges: Cell<Diverges>,
 
-    /// Whether any child nodes have any type errors.
-    pub(super) has_errors: Cell<bool>,
-
     pub(super) enclosing_breakables: RefCell<EnclosingBreakables<'tcx>>,
 
     pub(super) inh: &'a Inherited<'tcx>,
 
-    /// True if the function or closure's return type is known before
-    /// entering the function/closure, i.e. if the return type is
-    /// either given explicitly or inferred from, say, an `Fn*` trait
-    /// bound. Used for diagnostic purposes only.
-    pub(super) return_type_pre_known: bool,
-
-    /// True if the return type has an Opaque type
-    pub(super) return_type_has_opaque: bool,
+    pub(super) fallback_has_occurred: Cell<bool>,
 }
 
 impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
@@ -140,19 +125,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             param_env,
             err_count_on_creation: inh.tcx.sess.err_count(),
             ret_coercion: None,
-            in_tail_expr: false,
             ret_coercion_span: Cell::new(None),
             resume_yield_tys: None,
-            ps: Cell::new(UnsafetyState::function(hir::Unsafety::Normal, hir::CRATE_HIR_ID)),
             diverges: Cell::new(Diverges::Maybe),
-            has_errors: Cell::new(false),
             enclosing_breakables: RefCell::new(EnclosingBreakables {
                 stack: Vec::new(),
                 by_id: Default::default(),
             }),
             inh,
-            return_type_pre_known: true,
-            return_type_has_opaque: false,
+            fallback_has_occurred: Cell::new(false),
         }
     }
 
@@ -174,7 +155,28 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     ///
     /// [`InferCtxt::err_ctxt`]: infer::InferCtxt::err_ctxt
     pub fn err_ctxt(&'a self) -> TypeErrCtxt<'a, 'tcx> {
-        TypeErrCtxt { infcx: &self.infcx, typeck_results: Some(self.typeck_results.borrow()) }
+        TypeErrCtxt {
+            infcx: &self.infcx,
+            typeck_results: Some(self.typeck_results.borrow()),
+            fallback_has_occurred: self.fallback_has_occurred.get(),
+            normalize_fn_sig: Box::new(|fn_sig| {
+                if fn_sig.has_escaping_bound_vars() {
+                    return fn_sig;
+                }
+                self.probe(|_| {
+                    let ocx = ObligationCtxt::new_in_snapshot(self);
+                    let normalized_fn_sig =
+                        ocx.normalize(&ObligationCause::dummy(), self.param_env, fn_sig);
+                    if ocx.select_all_or_error().is_empty() {
+                        let normalized_fn_sig = self.resolve_vars_if_possible(normalized_fn_sig);
+                        if !normalized_fn_sig.needs_infer() {
+                            return normalized_fn_sig;
+                        }
+                    }
+                    fn_sig
+                })
+            }),
+        }
     }
 
     pub fn errors_reported_since_creation(&self) -> bool {
@@ -194,8 +196,8 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         self.tcx
     }
 
-    fn item_def_id(&self) -> Option<DefId> {
-        None
+    fn item_def_id(&self) -> DefId {
+        self.body_id.owner.to_def_id()
     }
 
     fn get_type_parameter_bounds(
@@ -213,7 +215,9 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
             predicates: tcx.arena.alloc_from_iter(
                 self.param_env.caller_bounds().iter().filter_map(|predicate| {
                     match predicate.kind().skip_binder() {
-                        ty::PredicateKind::Trait(data) if data.self_ty().is_param(index) => {
+                        ty::PredicateKind::Clause(ty::Clause::Trait(data))
+                            if data.self_ty().is_param(index) =>
+                        {
                             // HACK(eddyb) should get the original `Span`.
                             let span = tcx.def_span(def_id);
                             Some((predicate, span))
@@ -298,12 +302,12 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         if ty.has_escaping_bound_vars() {
             ty // FIXME: normalization and escaping regions
         } else {
-            self.normalize_associated_types_in(span, ty)
+            self.normalize(span, ty)
         }
     }
 
-    fn set_tainted_by_errors(&self) {
-        self.infcx.set_tainted_by_errors()
+    fn set_tainted_by_errors(&self, e: ErrorGuaranteed) {
+        self.infcx.set_tainted_by_errors(e)
     }
 
     fn record_ty(&self, hir_id: hir::HirId, ty: Ty<'tcx>, _span: Span) {

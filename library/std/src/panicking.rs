@@ -517,7 +517,7 @@ pub fn panicking() -> bool {
     !panic_count::count_is_zero()
 }
 
-/// Entry point of panics from the libcore crate (`panic_impl` lang item).
+/// Entry point of panics from the core crate (`panic_impl` lang item).
 #[cfg(not(test))]
 #[panic_handler]
 pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
@@ -594,8 +594,8 @@ pub fn begin_panic_handler(info: &PanicInfo<'_>) -> ! {
 // lang item for CTFE panic support
 // never inline unless panic_immediate_abort to avoid code
 // bloat at the call sites as much as possible
-#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never))]
-#[cold]
+#[cfg_attr(not(feature = "panic_immediate_abort"), inline(never), cold)]
+#[cfg_attr(feature = "panic_immediate_abort", inline)]
 #[track_caller]
 #[rustc_do_not_const_check] // hooked by const-eval
 pub const fn begin_panic<M: Any + Send>(msg: M) -> ! {
@@ -699,7 +699,11 @@ fn rust_panic_with_hook(
         // have limited options. Currently our preference is to
         // just abort. In the future we may consider resuming
         // unwinding or otherwise exiting the thread cleanly.
-        rtprintpanic!("thread panicked while panicking. aborting.\n");
+        if !can_unwind {
+            rtprintpanic!("thread caused non-unwinding panic. aborting.\n");
+        } else {
+            rtprintpanic!("thread panicked while panicking. aborting.\n");
+        }
         crate::sys::abort_internal();
     }
 

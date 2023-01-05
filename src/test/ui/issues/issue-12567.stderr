@@ -11,6 +11,14 @@ LL |         (&[hd1, ..], &[hd2, ..])
    |            --- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         (&[], &[ref hd, ..]) | (&[hd, ..], &[])
+   |                 +++
+help: consider borrowing the pattern binding
+   |
+LL |         (&[ref hd1, ..], &[hd2, ..])
+   |            +++
 
 error[E0508]: cannot move out of type `[T]`, a non-copy slice
   --> $DIR/issue-12567.rs:2:11
@@ -25,6 +33,14 @@ LL |         (&[hd1, ..], &[hd2, ..])
    |                        --- ...and here
    |
    = note: move occurs because these variables have types that don't implement the `Copy` trait
+help: consider borrowing the pattern binding
+   |
+LL |         (&[], &[ref hd, ..]) | (&[hd, ..], &[])
+   |                 +++
+help: consider borrowing the pattern binding
+   |
+LL |         (&[hd1, ..], &[ref hd2, ..])
+   |                        +++
 
 error: aborting due to 2 previous errors
 

@@ -144,11 +144,9 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     one!("hello", "world");
    |     ---------------------- in this macro invocation
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     -- similarly named tuple variant `Ok` defined here
+   = note: similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `one` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -160,11 +158,9 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     two!("yay", "rust");
    |     ------------------- in this macro invocation
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     -- similarly named tuple variant `Ok` defined here
+   = note: similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `two` (in Nightly builds, run with -Z macro-backtrace for more info)
 
@@ -176,11 +172,9 @@ LL |     parent_source_spans!($($tokens)*);
 ...
 LL |     three!("hip", "hop");
    |     -------------------- in this macro invocation
+  --> $SRC_DIR/core/src/result.rs:LL:COL
    |
-  ::: $SRC_DIR/core/src/result.rs:LL:COL
-   |
-LL |     Ok(#[stable(feature = "rust1", since = "1.0.0")] T),
-   |     -- similarly named tuple variant `Ok` defined here
+   = note: similarly named tuple variant `Ok` defined here
    |
    = note: this error originates in the macro `parent_source_spans` which comes from the expansion of the macro `three` (in Nightly builds, run with -Z macro-backtrace for more info)
 

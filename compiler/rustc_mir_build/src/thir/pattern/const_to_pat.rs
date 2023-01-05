@@ -70,7 +70,7 @@ mod fallback_to_const_ref {
     /// hoops to get a reference to the value.
     pub(super) struct FallbackToConstRef(());
 
-    pub(super) fn fallback_to_const_ref<'tcx>(c2p: &super::ConstToPat<'tcx>) -> FallbackToConstRef {
+    pub(super) fn fallback_to_const_ref(c2p: &super::ConstToPat<'_>) -> FallbackToConstRef {
         assert!(c2p.behind_reference.get());
         FallbackToConstRef(())
     }
@@ -121,7 +121,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 ty::Dynamic(..) => {
                     "trait objects cannot be used in patterns".to_string()
                 }
-                ty::Opaque(..) => {
+                ty::Alias(ty::Opaque, ..) => {
                     "opaque types cannot be used in patterns".to_string()
                 }
                 ty::Closure(..) => {
@@ -232,8 +232,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ObligationCause::misc(self.span, self.id),
             partial_eq_trait_id,
             0,
-            ty,
-            &[],
+            [ty, ty],
         );
         // FIXME: should this call a `predicate_must_hold` variant instead?
 
@@ -506,7 +505,7 @@ impl<'tcx> ConstToPat<'tcx> {
                 // convert the dereferenced constant to a pattern that is the sub-pattern of the
                 // deref pattern.
                 _ => {
-                    if !pointee_ty.is_sized(tcx.at(span), param_env) {
+                    if !pointee_ty.is_sized(tcx, param_env) {
                         // `tcx.deref_mir_constant()` below will ICE with an unsized type
                         // (except slices, which are handled in a separate arm above).
                         let msg = format!("cannot use unsized non-slice type `{}` in constant patterns", pointee_ty);
@@ -534,7 +533,7 @@ impl<'tcx> ConstToPat<'tcx> {
             ty::Bool | ty::Char | ty::Int(_) | ty::Uint(_) | ty::FnDef(..) => {
                 PatKind::Constant { value: cv }
             }
-            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx.at(span), param_env) => {
+            ty::RawPtr(pointee) if pointee.ty.is_sized(tcx, param_env) => {
                 PatKind::Constant { value: cv }
             }
             // FIXME: these can have very surprising behaviour where optimization levels or other

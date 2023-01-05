@@ -7,7 +7,8 @@
 
 use std::fmt::{Debug, Display};
 
-#[marker] trait MyMarker {}
+#[marker]
+trait MyMarker {}
 
 impl<T: Debug> MyMarker for T {}
 impl<T: Display> MyMarker for T {}

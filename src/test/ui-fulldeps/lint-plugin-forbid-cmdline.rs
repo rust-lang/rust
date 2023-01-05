@@ -9,7 +9,7 @@ fn lintme() { } //~ ERROR item is named 'lintme'
 
 #[allow(test_lint)] //~ ERROR allow(test_lint) incompatible
                     //~| ERROR allow(test_lint) incompatible
-                    //~| ERROR allow(test_lint)
+
 pub fn main() {
     lintme();
 }

@@ -32,7 +32,7 @@ fn test_btree_map() {
     //         spawn(f());
     //     }
     //
-    // where with some unintentionally overconstrained Send impls in liballoc's
+    // where with some unintentionally overconstrained Send impls in alloc's
     // internals, the future might incorrectly not be Send even though every
     // single type involved in the program is Send and Sync.
     require_send_sync(async {

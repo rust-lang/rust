@@ -22,7 +22,7 @@ struct PreOrderFrame<Iter> {
 }
 
 rustc_index::newtype_index! {
-    struct PreorderIndex { .. }
+    struct PreorderIndex {}
 }
 
 pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {

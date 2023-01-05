@@ -37,9 +37,6 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |
-LL |         F: FnOnce<ARG, Output = RET>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error: this argument must be a function item
   --> $DIR/const-eval-select-bad.rs:10:31
@@ -62,9 +59,6 @@ LL |     const_eval_select((), 42, 0xDEADBEEF);
    = note: wrap the `{integer}` in a closure with no arguments: `|| { /* code */ }`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |
-LL |         G: FnOnce<ARG, Output = RET>,
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0271]: expected `fn(i32) -> bool {bar}` to be a fn item that returns `i32`, but it returns `bool`
   --> $DIR/const-eval-select-bad.rs:32:34
@@ -76,9 +70,6 @@ LL |     const_eval_select((1,), foo, bar);
    |
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |
-LL |         G: FnOnce<ARG, Output = RET>,
-   |                        ^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error[E0631]: type mismatch in function arguments
   --> $DIR/const-eval-select-bad.rs:37:32
@@ -95,9 +86,6 @@ LL |     const_eval_select((true,), foo, baz);
               found function signature `fn(i32) -> _`
 note: required by a bound in `const_eval_select`
   --> $SRC_DIR/core/src/intrinsics.rs:LL:COL
-   |
-LL |         F: FnOnce<ARG, Output = RET>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^ required by this bound in `const_eval_select`
 
 error: this argument must be a `const fn`
   --> $DIR/const-eval-select-bad.rs:42:29

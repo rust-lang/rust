@@ -58,10 +58,12 @@ error[E0507]: cannot move out of static item `x`
   --> $DIR/check-static-values-constraints.rs:110:45
    |
 LL |     let y = { static x: Box<isize> = box 3; x };
-   |                                             ^
-   |                                             |
-   |                                             move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
-   |                                             help: consider borrowing here: `&x`
+   |                                             ^ move occurs because `x` has type `Box<isize>`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |     let y = { static x: Box<isize> = box 3; &x };
+   |                                             +
 
 error[E0010]: allocations are not allowed in statics
   --> $DIR/check-static-values-constraints.rs:110:38

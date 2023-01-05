@@ -62,7 +62,7 @@ fn entry_point_type(ctxt: &EntryContext<'_>, id: ItemId, at_root: bool) -> Entry
     } else if ctxt.tcx.sess.contains_name(attrs, sym::rustc_main) {
         EntryPointType::RustcMainAttr
     } else {
-        if let Some(name) = ctxt.tcx.opt_item_name(id.def_id.to_def_id())
+        if let Some(name) = ctxt.tcx.opt_item_name(id.owner_id.to_def_id())
             && name == sym::main {
             if at_root {
                 // This is a top-level function so can be `main`.
@@ -82,7 +82,7 @@ fn attr_span_by_symbol(ctxt: &EntryContext<'_>, id: ItemId, sym: Symbol) -> Opti
 }
 
 fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
-    let at_root = ctxt.tcx.opt_local_parent(id.def_id.def_id) == Some(CRATE_DEF_ID);
+    let at_root = ctxt.tcx.opt_local_parent(id.owner_id.def_id) == Some(CRATE_DEF_ID);
 
     match entry_point_type(ctxt, id, at_root) {
         EntryPointType::None => {
@@ -90,7 +90,7 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
                 ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
             }
         }
-        _ if !matches!(ctxt.tcx.def_kind(id.def_id), DefKind::Fn) => {
+        _ if !matches!(ctxt.tcx.def_kind(id.owner_id), DefKind::Fn) => {
             for attr in [sym::start, sym::rustc_main] {
                 if let Some(span) = attr_span_by_symbol(ctxt, id, attr) {
                     ctxt.tcx.sess.emit_err(AttrOnlyInFunctions { span, attr });
@@ -102,16 +102,16 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
             if let Some(span) = attr_span_by_symbol(ctxt, id, sym::unix_sigpipe) {
                 ctxt.tcx.sess.emit_err(AttrOnlyOnRootMain { span, attr: sym::unix_sigpipe });
             }
-            ctxt.non_main_fns.push(ctxt.tcx.def_span(id.def_id));
+            ctxt.non_main_fns.push(ctxt.tcx.def_span(id.owner_id));
         }
         EntryPointType::RustcMainAttr => {
             if ctxt.attr_main_fn.is_none() {
-                ctxt.attr_main_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
+                ctxt.attr_main_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
             } else {
                 ctxt.tcx.sess.emit_err(MultipleRustcMain {
-                    span: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    span: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                     first: ctxt.attr_main_fn.unwrap().1,
-                    additional: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    additional: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                 });
             }
         }
@@ -120,11 +120,11 @@ fn find_item(id: ItemId, ctxt: &mut EntryContext<'_>) {
                 ctxt.tcx.sess.emit_err(AttrOnlyOnMain { span, attr: sym::unix_sigpipe });
             }
             if ctxt.start_fn.is_none() {
-                ctxt.start_fn = Some((id.def_id.def_id, ctxt.tcx.def_span(id.def_id)));
+                ctxt.start_fn = Some((id.owner_id.def_id, ctxt.tcx.def_span(id.owner_id)));
             } else {
                 ctxt.tcx.sess.emit_err(MultipleStartFunctions {
-                    span: ctxt.tcx.def_span(id.def_id),
-                    labeled: ctxt.tcx.def_span(id.def_id.to_def_id()),
+                    span: ctxt.tcx.def_span(id.owner_id),
+                    labeled: ctxt.tcx.def_span(id.owner_id.to_def_id()),
                     previous: ctxt.start_fn.unwrap().1,
                 });
             }

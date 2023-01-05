@@ -1707,3 +1707,19 @@ impl<T, const N: usize> Trait for [T; N] {
         "#,
     );
 }
+
+#[test]
+fn unsize_array_with_inference_variable() {
+    check_types(
+        r#"
+//- minicore: try, slice
+use core::ops::ControlFlow;
+fn foo() -> ControlFlow<(), [usize; 1]> { loop {} }
+fn bar() -> ControlFlow<(), ()> {
+    let a = foo()?.len();
+      //^ usize
+    ControlFlow::Continue(())
+}
+"#,
+    );
+}

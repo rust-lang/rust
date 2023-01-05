@@ -64,4 +64,16 @@ fn asteroids() -> impl FnOnce() -> bool {
     { foo(); } || { true } //~ ERROR E0308
 }
 
+// https://github.com/rust-lang/rust/issues/105179
+fn r#match() -> i32 {
+    (match () { () => 1 }) + match () { () => 1 } //~ ERROR expected expression, found `+`
+    //~^ ERROR mismatched types
+}
+
+// https://github.com/rust-lang/rust/issues/102171
+fn r#unsafe() -> i32 {
+    (unsafe { 1 }) + unsafe { 1 } //~ ERROR expected expression, found `+`
+    //~^ ERROR mismatched types
+}
+
 fn main() {}

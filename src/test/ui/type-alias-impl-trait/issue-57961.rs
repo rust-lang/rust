@@ -8,7 +8,7 @@ trait Foo {
 
 impl Foo for () {
     type Bar = std::vec::IntoIter<u32>;
-    //~^ ERROR expected `std::vec::IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
+    //~^ ERROR expected `IntoIter<u32>` to be an iterator that yields `X`, but it yields `u32`
 }
 
 fn incoherent() {

@@ -4,7 +4,7 @@ warning: unused generator that must be used
 LL | /     move || {
 LL | |         A.test(yield);
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: generators are lazy and do nothing unless resumed
    = note: `#[warn(unused_must_use)]` on by default
@@ -16,7 +16,7 @@ LL | /     static move || {
 LL | |         yield *y.borrow();
 LL | |         return "Done";
 LL | |     };
-   | |______^
+   | |_____^
    |
    = note: generators are lazy and do nothing unless resumed
 

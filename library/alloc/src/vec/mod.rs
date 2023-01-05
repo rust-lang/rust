@@ -166,7 +166,7 @@ mod spec_extend;
 /// vec[0] = 7;
 /// assert_eq!(vec[0], 7);
 ///
-/// vec.extend([1, 2, 3].iter().copied());
+/// vec.extend([1, 2, 3]);
 ///
 /// for x in &vec {
 ///     println!("{x}");
@@ -1070,7 +1070,8 @@ impl<T, A: Allocator> Vec<T, A> {
 
     /// Converts the vector into [`Box<[T]>`][owned slice].
     ///
-    /// Note that this will drop any excess capacity.
+    /// If the vector has excess capacity, its items will be moved into a
+    /// newly-allocated buffer with exactly the right capacity.
     ///
     /// [owned slice]: Box
     ///
@@ -2163,7 +2164,7 @@ impl<T, A: Allocator> Vec<T, A> {
     {
         let len = self.len();
         if new_len > len {
-            self.extend_with(new_len - len, ExtendFunc(f));
+            self.extend_trusted(iter::repeat_with(f).take(new_len - len));
         } else {
             self.truncate(new_len);
         }
@@ -2491,16 +2492,6 @@ impl<T: Clone> ExtendWith<T> for ExtendElement<T> {
     }
 }
 
-struct ExtendFunc<F>(F);
-impl<T, F: FnMut() -> T> ExtendWith<T> for ExtendFunc<F> {
-    fn next(&mut self) -> T {
-        (self.0)()
-    }
-    fn last(mut self) -> T {
-        (self.0)()
-    }
-}
-
 impl<T, A: Allocator> Vec<T, A> {
     #[cfg(not(no_global_oom_handling))]
     /// Extend the vector by `n` values, using the given generator.
@@ -2588,7 +2579,7 @@ impl<T: Clone, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
         let (this, spare, len) = unsafe { self.split_at_spare_mut_with_len() };
 
         // SAFETY:
-        // - caller guaratees that src is a valid index
+        // - caller guarantees that src is a valid index
         let to_clone = unsafe { this.get_unchecked(src) };
 
         iter::zip(to_clone, spare)
@@ -2607,7 +2598,7 @@ impl<T: Copy, A: Allocator> ExtendFromWithinSpec for Vec<T, A> {
             let (init, spare) = self.split_at_spare_mut();
 
             // SAFETY:
-            // - caller guaratees that `src` is a valid index
+            // - caller guarantees that `src` is a valid index
             let source = unsafe { init.get_unchecked(src) };
 
             // SAFETY:
@@ -2780,7 +2771,7 @@ impl<T, A: Allocator> IntoIterator for Vec<T, A> {
     /// assert_eq!(v_iter.next(), None);
     /// ```
     #[inline]
-    fn into_iter(self) -> IntoIter<T, A> {
+    fn into_iter(self) -> Self::IntoIter {
         unsafe {
             let mut me = ManuallyDrop::new(self);
             let alloc = ManuallyDrop::new(ptr::read(me.allocator()));
@@ -2808,7 +2799,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a Vec<T, A> {
     type Item = &'a T;
     type IntoIter = slice::Iter<'a, T>;
 
-    fn into_iter(self) -> slice::Iter<'a, T> {
+    fn into_iter(self) -> Self::IntoIter {
         self.iter()
     }
 }
@@ -2818,7 +2809,7 @@ impl<'a, T, A: Allocator> IntoIterator for &'a mut Vec<T, A> {
     type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
-    fn into_iter(self) -> slice::IterMut<'a, T> {
+    fn into_iter(self) -> Self::IntoIter {
         self.iter_mut()
     }
 }
@@ -2867,6 +2858,40 @@ impl<T, A: Allocator> Vec<T, A> {
                 // NB can't overflow since we would have had to alloc the address space
                 self.set_len(len + 1);
             }
+        }
+    }
+
+    // specific extend for `TrustedLen` iterators, called both by the specializations
+    // and internal places where resolving specialization makes compilation slower
+    #[cfg(not(no_global_oom_handling))]
+    fn extend_trusted(&mut self, iterator: impl iter::TrustedLen<Item = T>) {
+        let (low, high) = iterator.size_hint();
+        if let Some(additional) = high {
+            debug_assert_eq!(
+                low,
+                additional,
+                "TrustedLen iterator's size hint is not exact: {:?}",
+                (low, high)
+            );
+            self.reserve(additional);
+            unsafe {
+                let ptr = self.as_mut_ptr();
+                let mut local_len = SetLenOnDrop::new(&mut self.len);
+                iterator.for_each(move |element| {
+                    ptr::write(ptr.add(local_len.current_len()), element);
+                    // Since the loop executes user code which can panic we have to update
+                    // the length every step to correctly drop what we've written.
+                    // NB can't overflow since we would have had to alloc the address space
+                    local_len.increment_len(1);
+                });
+            }
+        } else {
+            // Per TrustedLen contract a `None` upper bound means that the iterator length
+            // truly exceeds usize::MAX, which would eventually lead to a capacity overflow anyway.
+            // Since the other branch already panics eagerly (via `reserve()`) we do the same here.
+            // This avoids additional codegen for a fallback code path which would eventually
+            // panic anyway.
+            panic!("capacity overflow");
         }
     }
 
@@ -3166,7 +3191,7 @@ where
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "vec_from_box", since = "1.18.0")]
 impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
@@ -3184,7 +3209,7 @@ impl<T, A: Allocator> From<Box<[T], A>> for Vec<T, A> {
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(no_global_oom_handling))]
 #[cfg(not(test))]
 #[stable(feature = "box_from_vec", since = "1.20.0")]
@@ -3198,6 +3223,14 @@ impl<T, A: Allocator> From<Vec<T, A>> for Box<[T], A> {
     ///
     /// ```
     /// assert_eq!(Box::from(vec![1, 2, 3]), vec![1, 2, 3].into_boxed_slice());
+    /// ```
+    ///
+    /// Any excess capacity is removed:
+    /// ```
+    /// let mut vec = Vec::with_capacity(10);
+    /// vec.extend([1, 2, 3]);
+    ///
+    /// assert_eq!(Box::from(vec), vec![1, 2, 3].into_boxed_slice());
     /// ```
     fn from(v: Vec<T, A>) -> Self {
         v.into_boxed_slice()

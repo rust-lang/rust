@@ -9,11 +9,9 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | struct Foo<T> where T: Bar, <T as Bar>::Baz: String {
    |                                              ^^^^^^ not a trait
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-LL | pub trait ToString {
-   | ------------------ similarly named trait `ToString` defined here
+   = note: similarly named trait `ToString` defined here
    |
 help: constrain the associated type to `String`
    |
@@ -29,11 +27,9 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | struct Qux<'a, T> where T: Bar, <&'a T as Bar>::Baz: String {
    |                                                      ^^^^^^ not a trait
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-LL | pub trait ToString {
-   | ------------------ similarly named trait `ToString` defined here
+   = note: similarly named trait `ToString` defined here
    |
 help: constrain the associated type to `String`
    |
@@ -49,11 +45,9 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | fn foo<T: Bar>(_: T) where <T as Bar>::Baz: String {
    |                                             ^^^^^^ not a trait
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-LL | pub trait ToString {
-   | ------------------ similarly named trait `ToString` defined here
+   = note: similarly named trait `ToString` defined here
    |
 help: constrain the associated type to `String`
    |
@@ -69,11 +63,9 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | fn qux<'a, T: Bar>(_: &'a T) where <&'a T as Bar>::Baz: String {
    |                                                         ^^^^^^ not a trait
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-LL | pub trait ToString {
-   | ------------------ similarly named trait `ToString` defined here
+   = note: similarly named trait `ToString` defined here
    |
 help: constrain the associated type to `String`
    |
@@ -89,11 +81,9 @@ error[E0404]: expected trait, found struct `String`
    |
 LL | fn issue_95327() where <u8 as Unresolved>::Assoc: String {}
    |                                                   ^^^^^^ help: a trait with a similar name exists: `ToString`
+  --> $SRC_DIR/alloc/src/string.rs:LL:COL
    |
-  ::: $SRC_DIR/alloc/src/string.rs:LL:COL
-   |
-LL | pub trait ToString {
-   | ------------------ similarly named trait `ToString` defined here
+   = note: similarly named trait `ToString` defined here
 
 error: aborting due to 6 previous errors
 

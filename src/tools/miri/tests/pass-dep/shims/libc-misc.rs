@@ -7,15 +7,23 @@ use std::os::unix::io::AsRawFd;
 use std::path::PathBuf;
 
 fn tmp() -> PathBuf {
-    std::env::var("MIRI_TEMP")
-        .map(|tmp| {
-            // MIRI_TEMP is set outside of our emulated
-            // program, so it may have path separators that don't
-            // correspond to our target platform. We normalize them here
-            // before constructing a `PathBuf`
-            return PathBuf::from(tmp.replace("\\", "/"));
-        })
-        .unwrap_or_else(|_| std::env::temp_dir())
+    use std::ffi::{CStr, CString};
+
+    let path = std::env::var("MIRI_TEMP")
+        .unwrap_or_else(|_| std::env::temp_dir().into_os_string().into_string().unwrap());
+    // These are host paths. We need to convert them to the target.
+    let path = CString::new(path).unwrap();
+    let mut out = Vec::with_capacity(1024);
+
+    unsafe {
+        extern "Rust" {
+            fn miri_host_to_target_path(path: *const i8, out: *mut i8, out_size: usize) -> usize;
+        }
+        let ret = miri_host_to_target_path(path.as_ptr(), out.as_mut_ptr(), out.capacity());
+        assert_eq!(ret, 0);
+        let out = CStr::from_ptr(out.as_ptr()).to_str().unwrap();
+        PathBuf::from(out)
+    }
 }
 
 /// Test allocating variant of `realpath`.
@@ -87,7 +95,7 @@ fn test_posix_realpath_errors() {
     assert_eq!(e.kind(), ErrorKind::NotFound);
 }
 
-#[cfg(any(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 fn test_posix_fadvise() {
     use std::convert::TryInto;
     use std::io::Write;
@@ -115,7 +123,7 @@ fn test_posix_fadvise() {
     assert_eq!(result, 0);
 }
 
-#[cfg(any(target_os = "linux"))]
+#[cfg(target_os = "linux")]
 fn test_sync_file_range() {
     use std::io::Write;
 
@@ -181,17 +189,25 @@ fn test_thread_local_errno() {
 }
 
 /// Tests whether clock support exists at all
-#[cfg(any(target_os = "linux"))]
 fn test_clocks() {
     let mut tp = std::mem::MaybeUninit::<libc::timespec>::uninit();
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
     let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC, tp.as_mut_ptr()) };
     assert_eq!(is_error, 0);
-    let is_error = unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
-    assert_eq!(is_error, 0);
+    #[cfg(target_os = "linux")]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_REALTIME_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+        let is_error =
+            unsafe { libc::clock_gettime(libc::CLOCK_MONOTONIC_COARSE, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
+    #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
+    {
+        let is_error = unsafe { libc::clock_gettime(libc::CLOCK_UPTIME_RAW, tp.as_mut_ptr()) };
+        assert_eq!(is_error, 0);
+    }
 }
 
 fn test_posix_gettimeofday() {
@@ -283,9 +299,6 @@ fn test_posix_mkstemp() {
 }
 
 fn main() {
-    #[cfg(any(target_os = "linux"))]
-    test_posix_fadvise();
-
     test_posix_gettimeofday();
     test_posix_mkstemp();
 
@@ -293,13 +306,14 @@ fn main() {
     test_posix_realpath_noalloc();
     test_posix_realpath_errors();
 
-    #[cfg(any(target_os = "linux"))]
-    test_sync_file_range();
-
     test_thread_local_errno();
 
-    #[cfg(any(target_os = "linux"))]
+    test_isatty();
     test_clocks();
 
-    test_isatty();
+    #[cfg(target_os = "linux")]
+    {
+        test_posix_fadvise();
+        test_sync_file_range();
+    }
 }

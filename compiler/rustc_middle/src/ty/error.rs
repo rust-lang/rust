@@ -1,6 +1,6 @@
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use crate::ty::diagnostics::suggest_constraining_type_param;
-use crate::ty::print::{FmtPrinter, Printer};
+use crate::ty::print::{with_forced_trimmed_paths, FmtPrinter, Printer};
 use crate::ty::{self, BoundRegionKind, Region, Ty, TyCtxt};
 use hir::def::DefKind;
 use rustc_errors::Applicability::{MachineApplicable, MaybeIncorrect};
@@ -12,7 +12,12 @@ use rustc_span::{BytePos, Span};
 use rustc_target::spec::abi;
 
 use std::borrow::Cow;
+use std::collections::hash_map::DefaultHasher;
 use std::fmt;
+use std::hash::{Hash, Hasher};
+use std::path::PathBuf;
+
+use super::print::PrettyPrinter;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, TypeFoldable, TypeVisitable, Lift)]
 pub struct ExpectedFound<T> {
@@ -64,10 +69,7 @@ pub enum TypeError<'tcx> {
     CyclicTy(Ty<'tcx>),
     CyclicConst(ty::Const<'tcx>),
     ProjectionMismatched(ExpectedFound<DefId>),
-    ExistentialMismatch(
-        ExpectedFound<&'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>>,
-    ),
-    ObjectUnsafeCoercion(DefId),
+    ExistentialMismatch(ExpectedFound<&'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>>),
     ConstMismatch(ExpectedFound<ty::Const<'tcx>>),
 
     IntrinsicCast,
@@ -160,17 +162,29 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
             ),
             RegionsPlaceholderMismatch => write!(f, "one type is more general than the other"),
             ArgumentSorts(values, _) | Sorts(values) => ty::tls::with(|tcx| {
-                report_maybe_different(
-                    f,
-                    &values.expected.sort_string(tcx),
-                    &values.found.sort_string(tcx),
-                )
+                let (mut expected, mut found) = with_forced_trimmed_paths!((
+                    values.expected.sort_string(tcx),
+                    values.found.sort_string(tcx),
+                ));
+                if expected == found {
+                    expected = values.expected.sort_string(tcx);
+                    found = values.found.sort_string(tcx);
+                }
+                report_maybe_different(f, &expected, &found)
             }),
             Traits(values) => ty::tls::with(|tcx| {
+                let (mut expected, mut found) = with_forced_trimmed_paths!((
+                    tcx.def_path_str(values.expected),
+                    tcx.def_path_str(values.found),
+                ));
+                if expected == found {
+                    expected = tcx.def_path_str(values.expected);
+                    found = tcx.def_path_str(values.found);
+                }
                 report_maybe_different(
                     f,
-                    &format!("trait `{}`", tcx.def_path_str(values.expected)),
-                    &format!("trait `{}`", tcx.def_path_str(values.found)),
+                    &format!("trait `{expected}`"),
+                    &format!("trait `{found}`"),
                 )
             }),
             IntMismatch(ref values) => {
@@ -219,7 +233,6 @@ impl<'tcx> fmt::Display for TypeError<'tcx> {
                 f,
                 "cannot coerce functions with `#[target_feature]` to safe function pointers"
             ),
-            ObjectUnsafeCoercion(_) => write!(f, "coercion to object-unsafe trait object"),
         }
     }
 }
@@ -246,8 +259,7 @@ impl<'tcx> TypeError<'tcx> {
             | ProjectionMismatched(_)
             | ExistentialMismatch(_)
             | ConstMismatch(_)
-            | IntrinsicCast
-            | ObjectUnsafeCoercion(_) => true,
+            | IntrinsicCast => true,
         }
     }
 }
@@ -325,9 +337,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Infer(ty::FreshTy(_)) => "fresh type".into(),
             ty::Infer(ty::FreshIntTy(_)) => "fresh integral type".into(),
             ty::Infer(ty::FreshFloatTy(_)) => "fresh floating-point type".into(),
-            ty::Projection(_) => "associated type".into(),
+            ty::Alias(ty::Projection, _) => "associated type".into(),
             ty::Param(p) => format!("type parameter `{}`", p).into(),
-            ty::Opaque(..) => "opaque type".into(),
+            ty::Alias(ty::Opaque, ..) => "opaque type".into(),
             ty::Error(_) => "type error".into(),
         }
     }
@@ -363,9 +375,9 @@ impl<'tcx> Ty<'tcx> {
             ty::Tuple(..) => "tuple".into(),
             ty::Placeholder(..) => "higher-ranked type".into(),
             ty::Bound(..) => "bound type variable".into(),
-            ty::Projection(_) => "associated type".into(),
+            ty::Alias(ty::Projection, _) => "associated type".into(),
             ty::Param(_) => "type parameter".into(),
-            ty::Opaque(..) => "opaque type".into(),
+            ty::Alias(ty::Opaque, ..) => "opaque type".into(),
         }
     }
 }
@@ -388,7 +400,7 @@ impl<'tcx> TyCtxt<'tcx> {
                         diag.note("no two closures, even if identical, have the same type");
                         diag.help("consider boxing your closure and/or using it as a trait object");
                     }
-                    (ty::Opaque(..), ty::Opaque(..)) => {
+                    (ty::Alias(ty::Opaque, ..), ty::Alias(ty::Opaque, ..)) => {
                         // Issue #63167
                         diag.note("distinct uses of `impl Trait` result in different opaque types");
                     }
@@ -427,10 +439,12 @@ impl<'tcx> TyCtxt<'tcx> {
                              #traits-as-parameters",
                         );
                     }
-                    (ty::Projection(_), ty::Projection(_)) => {
+                    (ty::Alias(ty::Projection, _), ty::Alias(ty::Projection, _)) => {
                         diag.note("an associated type was expected, but a different one was found");
                     }
-                    (ty::Param(p), ty::Projection(proj)) | (ty::Projection(proj), ty::Param(p)) => {
+                    (ty::Param(p), ty::Alias(ty::Projection, proj)) | (ty::Alias(ty::Projection, proj), ty::Param(p))
+                        if self.def_kind(proj.def_id) != DefKind::ImplTraitPlaceholder =>
+                    {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
@@ -452,7 +466,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             let (trait_ref, assoc_substs) = proj.trait_ref_and_own_substs(self);
                             let path =
                                 self.def_path_str_with_substs(trait_ref.def_id, trait_ref.substs);
-                            let item_name = self.item_name(proj.item_def_id);
+                            let item_name = self.item_name(proj.def_id);
                             let item_args = self.format_generic_args(assoc_substs);
 
                             let path = if path.ends_with('>') {
@@ -479,8 +493,8 @@ impl<'tcx> TyCtxt<'tcx> {
                             diag.note("you might be missing a type parameter or trait bound");
                         }
                     }
-                    (ty::Param(p), ty::Dynamic(..) | ty::Opaque(..))
-                    | (ty::Dynamic(..) | ty::Opaque(..), ty::Param(p)) => {
+                    (ty::Param(p), ty::Dynamic(..) | ty::Alias(ty::Opaque, ..))
+                    | (ty::Dynamic(..) | ty::Alias(ty::Opaque, ..), ty::Param(p)) => {
                         let generics = self.generics_of(body_owner_def_id);
                         let p_span = self.def_span(generics.type_param(p, self).def_id);
                         if !sp.contains(p_span) {
@@ -539,7 +553,7 @@ impl<T> Trait<T> for X {
                             diag.span_label(p_span, "this type parameter");
                         }
                     }
-                    (ty::Projection(proj_ty), _) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
+                    (ty::Alias(ty::Projection, proj_ty), _) if self.def_kind(proj_ty.def_id) != DefKind::ImplTraitPlaceholder => {
                         self.expected_projection(
                             diag,
                             proj_ty,
@@ -548,7 +562,7 @@ impl<T> Trait<T> for X {
                             cause.code(),
                         );
                     }
-                    (_, ty::Projection(proj_ty)) if self.def_kind(proj_ty.item_def_id) != DefKind::ImplTraitPlaceholder => {
+                    (_, ty::Alias(ty::Projection, proj_ty)) if self.def_kind(proj_ty.def_id) != DefKind::ImplTraitPlaceholder => {
                         let msg = format!(
                             "consider constraining the associated type `{}` to `{}`",
                             values.found, values.expected,
@@ -610,10 +624,10 @@ impl<T> Trait<T> for X {
         diag: &mut Diagnostic,
         msg: &str,
         body_owner_def_id: DefId,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
-        let assoc = self.associated_item(proj_ty.item_def_id);
+        let assoc = self.associated_item(proj_ty.def_id);
         let (trait_ref, assoc_substs) = proj_ty.trait_ref_and_own_substs(self);
         if let Some(item) = self.hir().get_if_local(body_owner_def_id) {
             if let Some(hir_generics) = item.generics() {
@@ -666,7 +680,7 @@ impl<T> Trait<T> for X {
     fn expected_projection(
         self,
         diag: &mut Diagnostic,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         values: ExpectedFound<Ty<'tcx>>,
         body_owner_def_id: DefId,
         cause_code: &ObligationCauseCode<'_>,
@@ -689,7 +703,7 @@ impl<T> Trait<T> for X {
         );
         let impl_comparison =
             matches!(cause_code, ObligationCauseCode::CompareImplItemObligation { .. });
-        let assoc = self.associated_item(proj_ty.item_def_id);
+        let assoc = self.associated_item(proj_ty.def_id);
         if !callable_scope || impl_comparison {
             // We do not want to suggest calling functions when the reason of the
             // type error is a comparison of an `impl` with its `trait` or when the
@@ -702,7 +716,7 @@ impl<T> Trait<T> for X {
                 diag,
                 assoc.container_id(self),
                 current_method_ident,
-                proj_ty.item_def_id,
+                proj_ty.def_id,
                 values.expected,
             );
             // Possibly suggest constraining the associated type to conform to the
@@ -761,11 +775,11 @@ fn foo(&self) -> Self::T { String::new() }
         self,
         diag: &mut Diagnostic,
         msg: &str,
-        proj_ty: &ty::ProjectionTy<'tcx>,
+        proj_ty: &ty::AliasTy<'tcx>,
         ty: Ty<'tcx>,
     ) -> bool {
-        let assoc = self.associated_item(proj_ty.item_def_id);
-        if let ty::Opaque(def_id, _) = *proj_ty.self_ty().kind() {
+        let assoc = self.associated_item(proj_ty.def_id);
+        if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }) = *proj_ty.self_ty().kind() {
             let opaque_local_def_id = def_id.as_local();
             let opaque_hir_ty = if let Some(opaque_local_def_id) = opaque_local_def_id {
                 match &self.hir().expect_item(opaque_local_def_id).kind {
@@ -814,7 +828,7 @@ fn foo(&self) -> Self::T { String::new() }
             .filter_map(|(_, item)| {
                 let method = self.fn_sig(item.def_id);
                 match *method.output().skip_binder().kind() {
-                    ty::Projection(ty::ProjectionTy { item_def_id, .. })
+                    ty::Alias(ty::Projection, ty::AliasTy { def_id: item_def_id, .. })
                         if item_def_id == proj_ty_item_def_id =>
                     {
                         Some((
@@ -872,9 +886,9 @@ fn foo(&self) -> Self::T { String::new() }
                             // FIXME: account for returning some type in a trait fn impl that has
                             // an assoc type as a return type (#72076).
                             if let hir::Defaultness::Default { has_value: true } =
-                                self.impl_defaultness(item.id.def_id)
+                                self.impl_defaultness(item.id.owner_id)
                             {
-                                if self.type_of(item.id.def_id) == found {
+                                if self.type_of(item.id.owner_id) == found {
                                     diag.span_label(
                                         item.span,
                                         "associated type defaults can't be assumed inside the \
@@ -894,7 +908,7 @@ fn foo(&self) -> Self::T { String::new() }
             })) => {
                 for item in &items[..] {
                     if let hir::AssocItemKind::Type = item.kind {
-                        if self.type_of(item.id.def_id) == found {
+                        if self.type_of(item.id.owner_id) == found {
                             diag.span_label(item.span, "expected this associated type");
                             return true;
                         }
@@ -981,6 +995,49 @@ fn foo(&self) -> Self::T { String::new() }
             return true;
         }
         false
+    }
+
+    pub fn short_ty_string(self, ty: Ty<'tcx>) -> (String, Option<PathBuf>) {
+        let width = self.sess.diagnostic_width();
+        let length_limit = width.saturating_sub(30);
+        let mut type_limit = 50;
+        let regular = FmtPrinter::new(self, hir::def::Namespace::TypeNS)
+            .pretty_print_type(ty)
+            .expect("could not write to `String`")
+            .into_buffer();
+        if regular.len() <= width {
+            return (regular, None);
+        }
+        let mut short;
+        loop {
+            // Look for the longest properly trimmed path that still fits in length_limit.
+            short = with_forced_trimmed_paths!(
+                FmtPrinter::new_with_limit(
+                    self,
+                    hir::def::Namespace::TypeNS,
+                    rustc_session::Limit(type_limit),
+                )
+                .pretty_print_type(ty)
+                .expect("could not write to `String`")
+                .into_buffer()
+            );
+            if short.len() <= length_limit || type_limit == 0 {
+                break;
+            }
+            type_limit -= 1;
+        }
+        if regular == short {
+            return (regular, None);
+        }
+        // Multiple types might be shortened in a single error, ensure we create a file for each.
+        let mut s = DefaultHasher::new();
+        ty.hash(&mut s);
+        let hash = s.finish();
+        let path = self.output_filenames(()).temp_path_ext(&format!("long-type-{hash}.txt"), None);
+        match std::fs::write(&path, &regular) {
+            Ok(_) => (short, Some(path)),
+            Err(_) => (regular, None),
+        }
     }
 
     fn format_generic_args(self, args: &[ty::GenericArg<'tcx>]) -> String {

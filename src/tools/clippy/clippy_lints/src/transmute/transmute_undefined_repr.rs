@@ -5,7 +5,6 @@ use rustc_hir::Expr;
 use rustc_lint::LateContext;
 use rustc_middle::ty::SubstsRef;
 use rustc_middle::ty::{self, IntTy, Ty, TypeAndMut, UintTy};
-use rustc_span::DUMMY_SP;
 
 #[expect(clippy::too_many_lines)]
 pub(super) fn check<'tcx>(
@@ -78,7 +77,7 @@ pub(super) fn check<'tcx>(
                     &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty.peel_refs() {
-                            diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
+                            diag.note(format!("the contained type `{from_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -92,7 +91,7 @@ pub(super) fn check<'tcx>(
                     &format!("transmute to `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty.peel_refs() {
-                            diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
+                            diag.note(format!("the contained type `{to_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -120,16 +119,16 @@ pub(super) fn check<'tcx>(
                     ),
                     |diag| {
                         if let Some(same_adt_did) = same_adt_did {
-                            diag.note(&format!(
+                            diag.note(format!(
                                 "two instances of the same generic type (`{}`) may have different layouts",
                                 cx.tcx.item_name(same_adt_did)
                             ));
                         } else {
                             if from_ty_orig.peel_refs() != from_ty {
-                                diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
+                                diag.note(format!("the contained type `{from_ty}` has an undefined layout"));
                             }
                             if to_ty_orig.peel_refs() != to_ty {
-                                diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
+                                diag.note(format!("the contained type `{to_ty}` has an undefined layout"));
                             }
                         }
                     },
@@ -147,7 +146,7 @@ pub(super) fn check<'tcx>(
                     &format!("transmute from `{from_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if from_ty_orig.peel_refs() != from_ty {
-                            diag.note(&format!("the contained type `{from_ty}` has an undefined layout"));
+                            diag.note(format!("the contained type `{from_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -164,7 +163,7 @@ pub(super) fn check<'tcx>(
                     &format!("transmute into `{to_ty_orig}` which has an undefined layout"),
                     |diag| {
                         if to_ty_orig.peel_refs() != to_ty {
-                            diag.note(&format!("the contained type `{to_ty}` has an undefined layout"));
+                            diag.note(format!("the contained type `{to_ty}` has an undefined layout"));
                         }
                     },
                 );
@@ -210,12 +209,12 @@ fn reduce_refs<'tcx>(cx: &LateContext<'tcx>, mut from_ty: Ty<'tcx>, mut to_ty: T
                 continue;
             },
             (&(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })), _)
-                if !unsized_ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (true, false)
             },
             (_, &(ty::Ref(_, unsized_ty, _) | ty::RawPtr(TypeAndMut { ty: unsized_ty, .. })))
-                if !unsized_ty.is_sized(cx.tcx.at(DUMMY_SP), cx.param_env) =>
+                if !unsized_ty.is_sized(cx.tcx, cx.param_env) =>
             {
                 (false, true)
             },

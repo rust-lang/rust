@@ -8,7 +8,7 @@ LL |     unsafe { __rust_dealloc(ptr, layout.size(), layout.align()) }
    = help: see https://doc.rust-lang.org/nightly/reference/behavior-considered-undefined.html for further information
    = note: BACKTRACE:
    = note: inside `std::alloc::dealloc` at RUSTLIB/alloc/src/alloc.rs:LL:CC
-note: inside `main` at $DIR/deallocate-bad-alignment.rs:LL:CC
+note: inside `main`
   --> $DIR/deallocate-bad-alignment.rs:LL:CC
    |
 LL |         dealloc(x, Layout::from_size_align_unchecked(1, 2));

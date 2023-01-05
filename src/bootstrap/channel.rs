@@ -13,8 +13,10 @@ use crate::util::output;
 use crate::util::t;
 use crate::Build;
 
+#[derive(Clone, Default)]
 pub enum GitInfo {
     /// This is not a git repository.
+    #[default]
     Absent,
     /// This is a git repository.
     /// If the info should be used (`ignore_git` is false), this will be
@@ -25,6 +27,7 @@ pub enum GitInfo {
     RecordedForTarball(Info),
 }
 
+#[derive(Clone)]
 pub struct Info {
     pub commit_date: String,
     pub sha: String,

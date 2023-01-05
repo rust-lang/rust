@@ -25,6 +25,14 @@ pub struct LibRequired<'a> {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_rustc_lib_required)]
+#[help]
+pub struct RustcLibRequired<'a> {
+    pub crate_name: Symbol,
+    pub kind: &'a str,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_crate_dep_multiple)]
 #[help]
 pub struct CrateDepMultiple {
@@ -344,8 +352,25 @@ pub struct NoMultipleGlobalAlloc {
 }
 
 #[derive(Diagnostic)]
+#[diag(metadata_no_multiple_alloc_error_handler)]
+pub struct NoMultipleAllocErrorHandler {
+    #[primary_span]
+    #[label]
+    pub span2: Span,
+    #[label(metadata_prev_alloc_error_handler)]
+    pub span1: Span,
+}
+
+#[derive(Diagnostic)]
 #[diag(metadata_conflicting_global_alloc)]
 pub struct ConflictingGlobalAlloc {
+    pub crate_name: Symbol,
+    pub other_crate_name: Symbol,
+}
+
+#[derive(Diagnostic)]
+#[diag(metadata_conflicting_alloc_error_handler)]
+pub struct ConflictingAllocErrorHandler {
     pub crate_name: Symbol,
     pub other_crate_name: Symbol,
 }
@@ -469,23 +494,13 @@ impl IntoDiagnostic<'_> for MultipleCandidates {
         let mut diag = handler.struct_err(rustc_errors::fluent::metadata_multiple_candidates);
         diag.set_arg("crate_name", self.crate_name);
         diag.set_arg("flavor", self.flavor);
-        diag.code(error_code!(E0465));
+        diag.code(error_code!(E0464));
         diag.set_span(self.span);
         for (i, candidate) in self.candidates.iter().enumerate() {
-            diag.span_note(self.span, &format!("candidate #{}: {}", i + 1, candidate.display()));
+            diag.note(&format!("candidate #{}: {}", i + 1, candidate.display()));
         }
         diag
     }
-}
-
-#[derive(Diagnostic)]
-#[diag(metadata_multiple_matching_crates, code = "E0464")]
-#[note]
-pub struct MultipleMatchingCrates {
-    #[primary_span]
-    pub span: Span,
-    pub crate_name: Symbol,
-    pub candidates: String,
 }
 
 #[derive(Diagnostic)]
@@ -578,6 +593,7 @@ pub struct InvalidMetadataFiles {
 }
 
 impl IntoDiagnostic<'_> for InvalidMetadataFiles {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -606,6 +622,7 @@ pub struct CannotFindCrate {
 }
 
 impl IntoDiagnostic<'_> for CannotFindCrate {
+    #[track_caller]
     fn into_diagnostic(
         self,
         handler: &'_ rustc_errors::Handler,
@@ -665,6 +682,7 @@ pub struct CrateLocationUnknownType<'a> {
     #[primary_span]
     pub span: Span,
     pub path: &'a Path,
+    pub crate_name: Symbol,
 }
 
 #[derive(Diagnostic)]

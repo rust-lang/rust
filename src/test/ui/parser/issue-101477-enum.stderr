@@ -3,6 +3,8 @@ error: unexpected `==`
    |
 LL |     B == 2
    |       ^^ help: try using `=` instead
+   |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
 
 error: expected item, found `==`
   --> $DIR/issue-101477-enum.rs:6:7

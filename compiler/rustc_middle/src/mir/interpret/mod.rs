@@ -95,7 +95,6 @@ mod pointer;
 mod queries;
 mod value;
 
-use std::convert::TryFrom;
 use std::fmt;
 use std::io;
 use std::io::{Read, Write};
@@ -106,6 +105,7 @@ use rustc_ast::LitKind;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::{HashMapExt, Lock};
 use rustc_data_structures::tiny_list::TinyList;
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
 use rustc_macros::HashStable;
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -127,8 +127,8 @@ pub use self::error::{
 pub use self::value::{get_slice_bytes, ConstAlloc, ConstValue, Scalar};
 
 pub use self::allocation::{
-    alloc_range, AllocRange, Allocation, ConstAllocation, InitChunk, InitChunkIter, InitMask,
-    ProvenanceMap,
+    alloc_range, AllocError, AllocRange, AllocResult, Allocation, ConstAllocation, InitChunk,
+    InitChunkIter,
 };
 
 pub use self::pointer::{Pointer, PointerArithmetic, Provenance};
@@ -176,7 +176,7 @@ pub enum LitToConstError {
     /// This is used for graceful error handling (`delay_span_bug`) in
     /// type checking (`Const::from_anon_const`).
     TypeError,
-    Reported,
+    Reported(ErrorGuaranteed),
 }
 
 #[derive(Copy, Clone, Eq, Hash, Ord, PartialEq, PartialOrd)]

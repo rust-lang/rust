@@ -1,8 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_help;
-use clippy_utils::ty::{implements_trait, is_type_diagnostic_item};
+use clippy_utils::ty::{implements_trait, is_type_lang_item};
 use clippy_utils::{return_ty, trait_ref_of_method};
 use if_chain::if_chain;
-use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind};
+use rustc_hir::{GenericParamKind, ImplItem, ImplItemKind, LangItem};
 use rustc_lint::{LateContext, LateLintPass};
 use rustc_session::{declare_lint_pass, declare_tool_lint};
 use rustc_span::sym;
@@ -105,10 +105,10 @@ impl<'tcx> LateLintPass<'tcx> for InherentToString {
             if impl_item.generics.params.iter().all(|p| matches!(p.kind, GenericParamKind::Lifetime { .. }));
 
             // Check if return type is String
-            if is_type_diagnostic_item(cx, return_ty(cx, impl_item.hir_id()), sym::String);
+            if is_type_lang_item(cx, return_ty(cx, impl_item.hir_id()), LangItem::String);
 
             // Filters instances of to_string which are required by a trait
-            if trait_ref_of_method(cx, impl_item.def_id.def_id).is_none();
+            if trait_ref_of_method(cx, impl_item.owner_id.def_id).is_none();
 
             then {
                 show_lint(cx, impl_item);
@@ -124,7 +124,7 @@ fn show_lint(cx: &LateContext<'_>, item: &ImplItem<'_>) {
         .expect("Failed to get trait ID of `Display`!");
 
     // Get the real type of 'self'
-    let self_type = cx.tcx.fn_sig(item.def_id).input(0);
+    let self_type = cx.tcx.fn_sig(item.owner_id).input(0);
     let self_type = self_type.skip_binder().peel_refs();
 
     // Emit either a warning or an error

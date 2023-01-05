@@ -2,12 +2,11 @@ use clippy_utils::consts::{constant, Constant};
 use clippy_utils::diagnostics::span_lint;
 use clippy_utils::expr_or_init;
 use clippy_utils::ty::{get_discriminant_value, is_isize_or_usize};
-use rustc_ast::ast;
-use rustc_attr::IntType;
 use rustc_hir::def::{DefKind, Res};
 use rustc_hir::{BinOpKind, Expr, ExprKind};
 use rustc_lint::LateContext;
 use rustc_middle::ty::{self, FloatTy, Ty};
+use rustc_target::abi::IntegerType;
 
 use super::{utils, CAST_ENUM_TRUNCATION, CAST_POSSIBLE_TRUNCATION};
 
@@ -119,12 +118,7 @@ pub(super) fn check(cx: &LateContext<'_>, expr: &Expr<'_>, cast_expr: &Expr<'_>,
             };
             let to_nbits = utils::int_ty_to_nbits(cast_to, cx.tcx);
 
-            let cast_from_ptr_size = def.repr().int.map_or(true, |ty| {
-                matches!(
-                    ty,
-                    IntType::SignedInt(ast::IntTy::Isize) | IntType::UnsignedInt(ast::UintTy::Usize)
-                )
-            });
+            let cast_from_ptr_size = def.repr().int.map_or(true, |ty| matches!(ty, IntegerType::Pointer(_),));
             let suffix = match (cast_from_ptr_size, is_isize_or_usize(cast_to)) {
                 (false, false) if from_nbits > to_nbits => "",
                 (true, false) if from_nbits > to_nbits => "",

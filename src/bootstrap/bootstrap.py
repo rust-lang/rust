@@ -441,6 +441,7 @@ class RustBuild(object):
 
             self.fix_bin_or_dylib("{}/bin/rustc".format(bin_root))
             self.fix_bin_or_dylib("{}/bin/rustdoc".format(bin_root))
+            self.fix_bin_or_dylib("{}/libexec/rust-analyzer-proc-macro-srv".format(bin_root))
             lib_dir = "{}/lib".format(bin_root)
             for lib in os.listdir(lib_dir):
                 if lib.endswith(".so"):
@@ -752,6 +753,9 @@ class RustBuild(object):
             target_features += ["-crt-static"]
         if target_features:
             env["RUSTFLAGS"] += " -C target-feature=" + (",".join(target_features))
+        target_linker = self.get_toml("linker", build_section)
+        if target_linker is not None:
+            env["RUSTFLAGS"] += " -C linker=" + target_linker
         env["RUSTFLAGS"] += " -Wrust_2018_idioms -Wunused_lifetimes"
         env["RUSTFLAGS"] += " -Wsemicolon_in_expressions_from_macros"
         if self.get_toml("deny-warnings", "rust") != "false":
@@ -930,8 +934,7 @@ def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'help':
         sys.argv = [sys.argv[0], '-h'] + sys.argv[2:]
 
-    help_triggered = (
-        '-h' in sys.argv) or ('--help' in sys.argv) or (len(sys.argv) == 1)
+    help_triggered = len(sys.argv) == 1 or any(x in ["-h", "--help", "--version"] for x in sys.argv)
     try:
         bootstrap(help_triggered)
         if not help_triggered:

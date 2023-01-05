@@ -4,7 +4,7 @@ use rustc_infer::infer::TyCtxtInferExt;
 use rustc_middle::traits::CodegenObligationError;
 use rustc_middle::ty::subst::SubstsRef;
 use rustc_middle::ty::{self, Instance, TyCtxt, TypeVisitable};
-use rustc_span::{sym, DUMMY_SP};
+use rustc_span::sym;
 use rustc_trait_selection::traits;
 use traits::{translate_substs, Reveal};
 
@@ -44,7 +44,13 @@ fn inner_resolve_instance<'tcx>(
 
     let result = if let Some(trait_def_id) = tcx.trait_of_item(def.did) {
         debug!(" => associated item, attempting to find impl in param_env {:#?}", param_env);
-        resolve_associated_item(tcx, def.did, param_env, trait_def_id, substs)
+        resolve_associated_item(
+            tcx,
+            def.did,
+            param_env,
+            trait_def_id,
+            tcx.normalize_erasing_regions(param_env, substs),
+        )
     } else {
         let ty = tcx.type_of(def.def_id_for_type_of());
         let item_type = tcx.subst_and_normalize_erasing_regions(substs, param_env, ty);
@@ -188,7 +194,7 @@ fn resolve_associated_item<'tcx>(
                 && trait_item_id != leaf_def.item.def_id
                 && let Some(leaf_def_item) = leaf_def.item.def_id.as_local()
             {
-                tcx.compare_assoc_const_impl_item_with_trait_item((
+                tcx.compare_impl_const((
                     leaf_def_item,
                     trait_item_id,
                 ))?;
@@ -202,8 +208,14 @@ fn resolve_associated_item<'tcx>(
             )),
             substs: generator_data.substs,
         }),
+        traits::ImplSource::Future(future_data) => Some(Instance {
+            def: ty::InstanceDef::Item(ty::WithOptConstParam::unknown(
+                future_data.generator_def_id,
+            )),
+            substs: future_data.substs,
+        }),
         traits::ImplSource::Closure(closure_data) => {
-            let trait_closure_kind = tcx.fn_trait_kind_from_lang_item(trait_id).unwrap();
+            let trait_closure_kind = tcx.fn_trait_kind_from_def_id(trait_id).unwrap();
             Instance::resolve_closure(
                 tcx,
                 closure_data.closure_def_id,
@@ -236,7 +248,7 @@ fn resolve_associated_item<'tcx>(
                 if name == sym::clone {
                     let self_ty = trait_ref.self_ty();
 
-                    let is_copy = self_ty.is_copy_modulo_regions(tcx.at(DUMMY_SP), param_env);
+                    let is_copy = self_ty.is_copy_modulo_regions(tcx, param_env);
                     match self_ty.kind() {
                         _ if is_copy => (),
                         ty::Generator(..)
@@ -264,8 +276,6 @@ fn resolve_associated_item<'tcx>(
         traits::ImplSource::AutoImpl(..)
         | traits::ImplSource::Param(..)
         | traits::ImplSource::TraitAlias(..)
-        | traits::ImplSource::DiscriminantKind(..)
-        | traits::ImplSource::Pointee(..)
         | traits::ImplSource::TraitUpcasting(_)
         | traits::ImplSource::ConstDestruct(_) => None,
     })

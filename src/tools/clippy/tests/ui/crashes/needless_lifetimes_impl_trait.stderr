@@ -1,4 +1,4 @@
-error: explicit lifetimes given in parameter types where they could be elided (or replaced with `'_` if needed by type declaration)
+error: the following explicit lifetimes could be elided: 'a
   --> $DIR/needless_lifetimes_impl_trait.rs:15:5
    |
 LL |     fn baz<'a>(&'a self) -> impl Foo + 'a {

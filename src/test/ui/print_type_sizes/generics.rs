@@ -1,4 +1,4 @@
-// compile-flags: -Z print-type-sizes
+// compile-flags: -Z print-type-sizes --crate-type=lib
 // build-pass
 // ignore-pass
 // ^-- needed because `--pass check` does not emit the output needed.
@@ -8,24 +8,6 @@
 // monomorphized, in the MIR of the original function in which they
 // occur, to have their size reported.
 
-#![feature(start)]
-
-// In an ad-hoc attempt to avoid the injection of unwinding code
-// (which clutters the output of `-Z print-type-sizes` with types from
-// `unwind::libunwind`):
-//
-//   * I am not using Default to build values because that seems to
-//     cause the injection of unwinding code. (Instead I just make `fn new`
-//     methods.)
-//
-//   * Pair derive Copy to ensure that we don't inject
-//     unwinding code into generic uses of Pair when T itself is also
-//     Copy.
-//
-//     (I suspect this reflect some naivety within the rust compiler
-//      itself; it should be checking for drop glue, i.e., a destructor
-//      somewhere in the monomorphized types. It should not matter whether
-//      the type is Copy.)
 #[derive(Copy, Clone)]
 pub struct Pair<T> {
     _car: T,
@@ -61,11 +43,9 @@ pub fn f1<T:Copy>(x: T) {
         Pair::new(FiftyBytes::new(), FiftyBytes::new());
 }
 
-#[start]
-fn start(_: isize, _: *const *const u8) -> isize {
+pub fn start() {
     let _b: Pair<u8> = Pair::new(0, 0);
     let _s: Pair<SevenBytes> = Pair::new(SevenBytes::new(), SevenBytes::new());
     let ref _z: ZeroSized = ZeroSized;
     f1::<SevenBytes>(SevenBytes::new());
-    0
 }

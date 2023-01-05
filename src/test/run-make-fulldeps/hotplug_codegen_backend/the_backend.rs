@@ -67,7 +67,7 @@ impl CodegenBackend for TheBackend {
             if crate_type != CrateType::Rlib {
                 sess.fatal(&format!("Crate type is {:?}", crate_type));
             }
-            let output_name = out_filename(sess, crate_type, &outputs, &*crate_name.as_str());
+            let output_name = out_filename(sess, crate_type, &outputs, crate_name);
             let mut out_file = ::std::fs::File::create(output_name).unwrap();
             write!(out_file, "This has been \"compiled\" successfully.").unwrap();
         }

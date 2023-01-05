@@ -19,4 +19,11 @@ fn main() {
         &E::Foo => {}
         &E::Bar(ref identifier) => println!("{}", *identifier)
     };
+    if let &E::Bar(identifier) = &s.x { //~ ERROR cannot move
+        f(identifier.clone());
+    };
+    let &E::Bar(identifier) = &s.x else { //~ ERROR cannot move
+        return;
+    };
+    f(identifier.clone());
 }

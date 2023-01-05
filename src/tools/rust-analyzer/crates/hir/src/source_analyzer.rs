@@ -38,8 +38,7 @@ use hir_ty::{
         UnsafeExpr,
     },
     method_resolution::{self, lang_names_for_bin_op},
-    Adjust, Adjustment, AutoBorrow, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind,
-    TyLoweringContext,
+    Adjustment, InferenceResult, Interner, Substitution, Ty, TyExt, TyKind, TyLoweringContext,
 };
 use itertools::Itertools;
 use smallvec::SmallVec;
@@ -156,21 +155,14 @@ impl SourceAnalyzer {
         Some(res)
     }
 
-    pub(crate) fn is_implicit_reborrow(
+    pub(crate) fn expr_adjustments(
         &self,
         db: &dyn HirDatabase,
         expr: &ast::Expr,
-    ) -> Option<Mutability> {
+    ) -> Option<&[Adjustment]> {
         let expr_id = self.expr_id(db, expr)?;
         let infer = self.infer.as_ref()?;
-        let adjustments = infer.expr_adjustments.get(&expr_id)?;
-        adjustments.windows(2).find_map(|slice| match slice {
-            &[Adjustment {kind: Adjust::Deref(None), ..}, Adjustment {kind: Adjust::Borrow(AutoBorrow::Ref(m)), ..}] => Some(match m {
-                hir_ty::Mutability::Mut => Mutability::Mut,
-                hir_ty::Mutability::Not => Mutability::Shared,
-            }),
-            _ => None,
-        })
+        infer.expr_adjustments.get(&expr_id).map(|v| &**v)
     }
 
     pub(crate) fn type_of_expr(
@@ -270,7 +262,7 @@ impl SourceAnalyzer {
         let expr_id = self.expr_id(db, &call.clone().into())?;
         let (f_in_trait, substs) = self.infer.as_ref()?.method_resolution(expr_id)?;
 
-        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, f_in_trait, substs))
     }
 
     pub(crate) fn resolve_await_to_poll(
@@ -311,7 +303,7 @@ impl SourceAnalyzer {
         // HACK: subst for `poll()` coincides with that for `Future` because `poll()` itself
         // doesn't have any generic parameters, so we skip building another subst for `poll()`.
         let substs = hir_ty::TyBuilder::subst_for_def(db, future_trait, None).push(ty).build();
-        Some(self.resolve_impl_method_or_trait_def(db, poll_fn, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, poll_fn, substs))
     }
 
     pub(crate) fn resolve_prefix_expr(
@@ -331,7 +323,7 @@ impl SourceAnalyzer {
         // don't have any generic parameters, so we skip building another subst for the methods.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
 
-        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
     }
 
     pub(crate) fn resolve_index_expr(
@@ -351,7 +343,7 @@ impl SourceAnalyzer {
             .push(base_ty.clone())
             .push(index_ty.clone())
             .build();
-        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
     }
 
     pub(crate) fn resolve_bin_expr(
@@ -372,7 +364,7 @@ impl SourceAnalyzer {
             .push(rhs.clone())
             .build();
 
-        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
     }
 
     pub(crate) fn resolve_try_expr(
@@ -392,7 +384,7 @@ impl SourceAnalyzer {
         // doesn't have any generic parameters, so we skip building another subst for `branch()`.
         let substs = hir_ty::TyBuilder::subst_for_def(db, op_trait, None).push(ty.clone()).build();
 
-        Some(self.resolve_impl_method_or_trait_def(db, op_fn, &substs))
+        Some(self.resolve_impl_method_or_trait_def(db, op_fn, substs))
     }
 
     pub(crate) fn resolve_field(
@@ -487,9 +479,9 @@ impl SourceAnalyzer {
 
         let mut prefer_value_ns = false;
         let resolved = (|| {
+            let infer = self.infer.as_deref()?;
             if let Some(path_expr) = parent().and_then(ast::PathExpr::cast) {
                 let expr_id = self.expr_id(db, &path_expr.into())?;
-                let infer = self.infer.as_ref()?;
                 if let Some(assoc) = infer.assoc_resolutions_for_expr(expr_id) {
                     let assoc = match assoc {
                         AssocItemId::FunctionId(f_in_trait) => {
@@ -497,9 +489,12 @@ impl SourceAnalyzer {
                                 None => assoc,
                                 Some(func_ty) => {
                                     if let TyKind::FnDef(_fn_def, subs) = func_ty.kind(Interner) {
-                                        self.resolve_impl_method(db, f_in_trait, subs)
-                                            .map(AssocItemId::FunctionId)
-                                            .unwrap_or(assoc)
+                                        self.resolve_impl_method_or_trait_def(
+                                            db,
+                                            f_in_trait,
+                                            subs.clone(),
+                                        )
+                                        .into()
                                     } else {
                                         assoc
                                     }
@@ -520,18 +515,18 @@ impl SourceAnalyzer {
                 prefer_value_ns = true;
             } else if let Some(path_pat) = parent().and_then(ast::PathPat::cast) {
                 let pat_id = self.pat_id(&path_pat.into())?;
-                if let Some(assoc) = self.infer.as_ref()?.assoc_resolutions_for_pat(pat_id) {
+                if let Some(assoc) = infer.assoc_resolutions_for_pat(pat_id) {
                     return Some(PathResolution::Def(AssocItem::from(assoc).into()));
                 }
                 if let Some(VariantId::EnumVariantId(variant)) =
-                    self.infer.as_ref()?.variant_resolution_for_pat(pat_id)
+                    infer.variant_resolution_for_pat(pat_id)
                 {
                     return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
                 }
             } else if let Some(rec_lit) = parent().and_then(ast::RecordExpr::cast) {
                 let expr_id = self.expr_id(db, &rec_lit.into())?;
                 if let Some(VariantId::EnumVariantId(variant)) =
-                    self.infer.as_ref()?.variant_resolution_for_expr(expr_id)
+                    infer.variant_resolution_for_expr(expr_id)
                 {
                     return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
                 }
@@ -541,8 +536,7 @@ impl SourceAnalyzer {
                     || parent().and_then(ast::TupleStructPat::cast).map(ast::Pat::from);
                 if let Some(pat) = record_pat.or_else(tuple_struct_pat) {
                     let pat_id = self.pat_id(&pat)?;
-                    let variant_res_for_pat =
-                        self.infer.as_ref()?.variant_resolution_for_pat(pat_id);
+                    let variant_res_for_pat = infer.variant_resolution_for_pat(pat_id);
                     if let Some(VariantId::EnumVariantId(variant)) = variant_res_for_pat {
                         return Some(PathResolution::Def(ModuleDef::Variant(variant.into())));
                     }
@@ -780,37 +774,22 @@ impl SourceAnalyzer {
         false
     }
 
-    fn resolve_impl_method(
-        &self,
-        db: &dyn HirDatabase,
-        func: FunctionId,
-        substs: &Substitution,
-    ) -> Option<FunctionId> {
-        let impled_trait = match func.lookup(db.upcast()).container {
-            ItemContainerId::TraitId(trait_id) => trait_id,
-            _ => return None,
-        };
-        if substs.is_empty(Interner) {
-            return None;
-        }
-        let self_ty = substs.at(Interner, 0).ty(Interner)?;
-        let krate = self.resolver.krate();
-        let trait_env = self.resolver.body_owner()?.as_generic_def_id().map_or_else(
-            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
-            |d| db.trait_environment(d),
-        );
-
-        let fun_data = db.function_data(func);
-        method_resolution::lookup_impl_method(self_ty, db, trait_env, impled_trait, &fun_data.name)
-    }
-
     fn resolve_impl_method_or_trait_def(
         &self,
         db: &dyn HirDatabase,
         func: FunctionId,
-        substs: &Substitution,
+        substs: Substitution,
     ) -> FunctionId {
-        self.resolve_impl_method(db, func, substs).unwrap_or(func)
+        let krate = self.resolver.krate();
+        let owner = match self.resolver.body_owner() {
+            Some(it) => it,
+            None => return func,
+        };
+        let env = owner.as_generic_def_id().map_or_else(
+            || Arc::new(hir_ty::TraitEnvironment::empty(krate)),
+            |d| db.trait_environment(d),
+        );
+        method_resolution::lookup_impl_method(db, env, func, substs)
     }
 
     fn lang_trait_fn(

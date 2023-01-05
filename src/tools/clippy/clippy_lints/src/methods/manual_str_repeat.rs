@@ -36,14 +36,14 @@ fn parse_repeat_arg(cx: &LateContext<'_>, e: &Expr<'_>) -> Option<RepeatKind> {
         }
     } else {
         let ty = cx.typeck_results().expr_ty(e);
-        if is_type_diagnostic_item(cx, ty, sym::String)
+        if is_type_lang_item(cx, ty, LangItem::String)
             || (is_type_lang_item(cx, ty, LangItem::OwnedBox) && get_ty_param(ty).map_or(false, Ty::is_str))
             || (is_type_diagnostic_item(cx, ty, sym::Cow) && get_ty_param(ty).map_or(false, Ty::is_str))
         {
             Some(RepeatKind::String)
         } else {
             let ty = ty.peel_refs();
-            (ty.is_str() || is_type_diagnostic_item(cx, ty, sym::String)).then_some(RepeatKind::String)
+            (ty.is_str() || is_type_lang_item(cx, ty, LangItem::String)).then_some(RepeatKind::String)
         }
     }
 }
@@ -58,11 +58,9 @@ pub(super) fn check(
     if_chain! {
         if let ExprKind::Call(repeat_fn, [repeat_arg]) = take_self_arg.kind;
         if is_path_diagnostic_item(cx, repeat_fn, sym::iter_repeat);
-        if is_type_diagnostic_item(cx, cx.typeck_results().expr_ty(collect_expr), sym::String);
-        if let Some(collect_id) = cx.typeck_results().type_dependent_def_id(collect_expr.hir_id);
+        if is_type_lang_item(cx, cx.typeck_results().expr_ty(collect_expr), LangItem::String);
         if let Some(take_id) = cx.typeck_results().type_dependent_def_id(take_expr.hir_id);
         if let Some(iter_trait_id) = cx.tcx.get_diagnostic_item(sym::Iterator);
-        if cx.tcx.trait_of_item(collect_id) == Some(iter_trait_id);
         if cx.tcx.trait_of_item(take_id) == Some(iter_trait_id);
         if let Some(repeat_kind) = parse_repeat_arg(cx, repeat_arg);
         let ctxt = collect_expr.span.ctxt();

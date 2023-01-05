@@ -1,4 +1,5 @@
 use crate::iter::{FusedIterator, TrustedLen};
+use crate::ops::Try;
 
 /// Creates a new iterator that repeats elements of type `A` endlessly by
 /// applying the provided closure, the repeater, `F: FnMut() -> A`.
@@ -88,6 +89,22 @@ impl<A, F: FnMut() -> A> Iterator for RepeatWith<F> {
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (usize::MAX, None)
+    }
+
+    #[inline]
+    fn try_fold<Acc, Fold, R>(&mut self, mut init: Acc, mut fold: Fold) -> R
+    where
+        Fold: FnMut(Acc, Self::Item) -> R,
+        R: Try<Output = Acc>,
+    {
+        // This override isn't strictly needed, but avoids the need to optimize
+        // away the `next`-always-returns-`Some` and emphasizes that the `?`
+        // is the only way to exit the loop.
+
+        loop {
+            let item = (self.repeater)();
+            init = fold(init, item)?;
+        }
     }
 }
 

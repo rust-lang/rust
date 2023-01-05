@@ -103,7 +103,7 @@ extern "platform-intrinsic" {
     /// val: vector of values to select if a lane is masked
     /// ptr: vector of pointers to read from
     /// mask: a "wide" mask of integers, selects as if simd_select(mask, read(ptr), val)
-    /// note, the LLVM intrinsic accepts a mask vector of <N x i1>
+    /// note, the LLVM intrinsic accepts a mask vector of `<N x i1>`
     /// FIXME: review this if/when we fix up our mask story in general?
     pub(crate) fn simd_gather<T, U, V>(val: T, ptr: U, mask: V) -> T;
     /// llvm.masked.scatter

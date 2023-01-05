@@ -8,7 +8,7 @@ use crate::formats::cache::Cache;
 use crate::visit::DocVisitor;
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
-use rustc_hir::def_id::DefId;
+use rustc_hir::def_id::{DefId, LOCAL_CRATE};
 use rustc_middle::ty::{self, DefIdTree};
 use rustc_span::symbol::sym;
 
@@ -19,13 +19,21 @@ pub(crate) const COLLECT_TRAIT_IMPLS: Pass = Pass {
 };
 
 pub(crate) fn collect_trait_impls(mut krate: Crate, cx: &mut DocContext<'_>) -> Crate {
+    // We need to check if there are errors before running this pass because it would crash when
+    // we try to get auto and blanket implementations.
+    if cx.tcx.sess.diagnostic().has_errors_or_lint_errors().is_some() {
+        return krate;
+    }
+
     let synth_impls = cx.sess().time("collect_synthetic_impls", || {
         let mut synth = SyntheticImplCollector { cx, impls: Vec::new() };
         synth.visit_crate(&krate);
         synth.impls
     });
 
-    let prims: FxHashSet<PrimitiveType> = krate.primitives.iter().map(|p| p.1).collect();
+    let local_crate = ExternalCrate { crate_num: LOCAL_CRATE };
+    let prims: FxHashSet<PrimitiveType> =
+        local_crate.primitives(cx.tcx).iter().map(|p| p.1).collect();
 
     let crate_items = {
         let mut coll = ItemCollector::new();

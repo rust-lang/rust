@@ -20,7 +20,6 @@ use rustc_middle::ty::{
     Const, Ty, TyCtxt,
 };
 use rustc_span::symbol::sym;
-use std::convert::TryInto;
 use std::ops::ControlFlow;
 
 use crate::errors::UnusedGenericParams;

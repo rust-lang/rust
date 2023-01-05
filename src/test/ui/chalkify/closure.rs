@@ -1,4 +1,3 @@
-// check-fail
 // compile-flags: -Z chalk
 
 fn main() -> () {

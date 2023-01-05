@@ -12,11 +12,11 @@ fn test_copy_expand_simple() {
 #[derive(Copy)]
 struct Foo;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[derive(Copy)]
 struct Foo;
 
-impl < > core::marker::Copy for Foo< > {}"##]],
+impl < > core::marker::Copy for Foo< > {}"#]],
     );
 }
 
@@ -33,7 +33,7 @@ macro Copy {}
 #[derive(Copy)]
 struct Foo;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[rustc_builtin_macro]
 macro derive {}
 #[rustc_builtin_macro]
@@ -41,7 +41,7 @@ macro Copy {}
 #[derive(Copy)]
 struct Foo;
 
-impl < > crate ::marker::Copy for Foo< > {}"##]],
+impl < > crate ::marker::Copy for Foo< > {}"#]],
     );
 }
 
@@ -53,11 +53,11 @@ fn test_copy_expand_with_type_params() {
 #[derive(Copy)]
 struct Foo<A, B>;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[derive(Copy)]
 struct Foo<A, B>;
 
-impl <T0: core::marker::Copy, T1: core::marker::Copy> core::marker::Copy for Foo<T0, T1> {}"##]],
+impl <T0: core::marker::Copy, T1: core::marker::Copy, > core::marker::Copy for Foo<T0, T1, > {}"#]],
     );
 }
 
@@ -70,11 +70,11 @@ fn test_copy_expand_with_lifetimes() {
 #[derive(Copy)]
 struct Foo<A, B, 'a, 'b>;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[derive(Copy)]
 struct Foo<A, B, 'a, 'b>;
 
-impl <T0: core::marker::Copy, T1: core::marker::Copy> core::marker::Copy for Foo<T0, T1> {}"##]],
+impl <T0: core::marker::Copy, T1: core::marker::Copy, > core::marker::Copy for Foo<T0, T1, > {}"#]],
     );
 }
 
@@ -86,10 +86,26 @@ fn test_clone_expand() {
 #[derive(Clone)]
 struct Foo<A, B>;
 "#,
-        expect![[r##"
+        expect![[r#"
 #[derive(Clone)]
 struct Foo<A, B>;
 
-impl <T0: core::clone::Clone, T1: core::clone::Clone> core::clone::Clone for Foo<T0, T1> {}"##]],
+impl <T0: core::clone::Clone, T1: core::clone::Clone, > core::clone::Clone for Foo<T0, T1, > {}"#]],
+    );
+}
+
+#[test]
+fn test_clone_expand_with_const_generics() {
+    check(
+        r#"
+//- minicore: derive, clone
+#[derive(Clone)]
+struct Foo<const X: usize, T>(u32);
+"#,
+        expect![[r#"
+#[derive(Clone)]
+struct Foo<const X: usize, T>(u32);
+
+impl <const T0: usize, T1: core::clone::Clone, > core::clone::Clone for Foo<T0, T1, > {}"#]],
     );
 }

@@ -8,7 +8,6 @@ use rustc_middle::mir::{self, BasicBlock, Local, Location, Statement, StatementK
 use rustc_mir_dataflow::fmt::DebugWithContext;
 use rustc_mir_dataflow::JoinSemiLattice;
 use rustc_mir_dataflow::{Analysis, AnalysisDomain, CallReturnPlaces};
-use rustc_span::DUMMY_SP;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -120,10 +119,7 @@ where
     ///
     /// [rust-lang/unsafe-code-guidelines#134]: https://github.com/rust-lang/unsafe-code-guidelines/issues/134
     fn shared_borrow_allows_mutation(&self, place: mir::Place<'tcx>) -> bool {
-        !place
-            .ty(self.ccx.body, self.ccx.tcx)
-            .ty
-            .is_freeze(self.ccx.tcx.at(DUMMY_SP), self.ccx.param_env)
+        !place.ty(self.ccx.body, self.ccx.tcx).ty.is_freeze(self.ccx.tcx, self.ccx.param_env)
     }
 }
 

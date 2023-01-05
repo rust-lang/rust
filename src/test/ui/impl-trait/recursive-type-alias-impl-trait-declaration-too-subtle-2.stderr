@@ -1,14 +1,15 @@
-error: cannot implement trait on type alias impl trait
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:7:17
+error[E0277]: can't compare `Bar` with `(Bar, i32)`
+  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:13:13
    |
-LL | impl PartialEq<(Foo, i32)> for Bar {
-   |                 ^^^
+LL | fn foo() -> Foo {
+   |             ^^^ no implementation for `Bar == (Bar, i32)`
+LL |
+LL |     Bar
+   |     --- return type was inferred to be `Bar` here
    |
-note: type alias impl trait defined here
-  --> $DIR/recursive-type-alias-impl-trait-declaration-too-subtle-2.rs:3:12
-   |
-LL | type Foo = impl PartialEq<(Foo, i32)>;
-   |            ^^^^^^^^^^^^^^^^^^^^^^^^^^
+   = help: the trait `PartialEq<(Bar, i32)>` is not implemented for `Bar`
+   = help: the trait `PartialEq<(Foo, i32)>` is implemented for `Bar`
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0277`.

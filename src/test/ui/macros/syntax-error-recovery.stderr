@@ -7,6 +7,7 @@ LL |                 $token $($inner)? = $value,
 LL | values!(STRING(1) as (String) => cfg(test),);
    | -------------------------------------------- in this macro invocation
    |
+   = help: enum variants can be `Variant`, `Variant = <integer>`, `Variant(Type, ..., TypeN)` or `Variant { fields: Types }`
    = note: this error originates in the macro `values` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error: macro expansion ignores token `(String)` and any following

@@ -6,7 +6,9 @@ LL | trait BrokenAdd: Copy + Add<Output=Self> {
 LL |     fn broken_add<T>(&self, rhs: T) -> Self {
    |                   - found type parameter
 LL |         *self + rhs
-   |                 ^^^ expected type parameter `Self`, found type parameter `T`
+   |         -----   ^^^ expected type parameter `Self`, found type parameter `T`
+   |         |
+   |         expected because this is `Self`
    |
    = note: expected type parameter `Self`
               found type parameter `T`

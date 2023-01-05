@@ -1,6 +1,5 @@
 // run-rustfix
 
-#![feature(custom_inner_attributes)]
 #![warn(clippy::manual_range_contains)]
 #![allow(unused)]
 #![allow(clippy::no_effect)]
@@ -65,16 +64,14 @@ pub const fn in_range(a: i32) -> bool {
     3 <= a && a <= 20
 }
 
+#[clippy::msrv = "1.34"]
 fn msrv_1_34() {
-    #![clippy::msrv = "1.34"]
-
     let x = 5;
     x >= 8 && x < 34;
 }
 
+#[clippy::msrv = "1.35"]
 fn msrv_1_35() {
-    #![clippy::msrv = "1.35"]
-
     let x = 5;
     x >= 8 && x < 35;
 }

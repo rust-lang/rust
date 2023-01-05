@@ -252,11 +252,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
 
             hir::ExprKind::Match(ref discr, arms, _) => {
                 let discr_place = return_if_err!(self.mc.cat_expr(discr));
-                self.maybe_read_scrutinee(
+                return_if_err!(self.maybe_read_scrutinee(
                     discr,
                     discr_place.clone(),
                     arms.iter().map(|arm| arm.pat),
-                );
+                ));
 
                 // treatment of the discriminant is handled while walking the arms.
                 for arm in arms {
@@ -352,8 +352,8 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                 self.consume_expr(base);
             }
 
-            hir::ExprKind::Closure { .. } => {
-                self.walk_captures(expr);
+            hir::ExprKind::Closure(closure) => {
+                self.walk_captures(closure);
             }
 
             hir::ExprKind::Box(ref base) => {
@@ -390,7 +390,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         discr: &Expr<'_>,
         discr_place: PlaceWithHirId<'tcx>,
         pats: impl Iterator<Item = &'t hir::Pat<'t>>,
-    ) {
+    ) -> Result<(), ()> {
         // Matching should not always be considered a use of the place, hence
         // discr does not necessarily need to be borrowed.
         // We only want to borrow discr if the pattern contain something other
@@ -398,7 +398,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         let ExprUseVisitor { ref mc, body_owner: _, delegate: _ } = *self;
         let mut needs_to_be_read = false;
         for pat in pats {
-            return_if_err!(mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
+            mc.cat_pattern(discr_place.clone(), pat, |place, pat| {
                 match &pat.kind {
                     PatKind::Binding(.., opt_sub_pat) => {
                         // If the opt_sub_pat is None, than the binding does not count as
@@ -453,7 +453,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // examined
                     }
                 }
-            }));
+            })?
         }
 
         if needs_to_be_read {
@@ -474,6 +474,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             // that the discriminant has been initialized.
             self.walk_expr(discr);
         }
+        Ok(())
     }
 
     fn walk_local<F>(
@@ -490,7 +491,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         f(self);
         if let Some(els) = els {
             // borrowing because we need to test the discriminant
-            self.maybe_read_scrutinee(expr, expr_place.clone(), from_ref(pat).iter());
+            return_if_err!(self.maybe_read_scrutinee(
+                expr,
+                expr_place.clone(),
+                from_ref(pat).iter()
+            ));
             self.walk_block(els)
         }
         self.walk_irrefutable_pat(&expr_place, &pat);
@@ -518,6 +523,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         // Consume the expressions supplying values for each field.
         for field in fields {
             self.consume_expr(field.expr);
+
+            // The struct path probably didn't resolve
+            if self.mc.typeck_results.opt_field_index(field.hir_id).is_none() {
+                self.tcx().sess.delay_span_bug(field.span, "couldn't resolve index for field");
+            }
         }
 
         let with_expr = match *opt_with {
@@ -535,9 +545,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
             ty::Adt(adt, substs) if adt.is_struct() => {
                 // Consume those fields of the with expression that are needed.
                 for (f_index, with_field) in adt.non_enum_variant().fields.iter().enumerate() {
-                    let is_mentioned = fields.iter().any(|f| {
-                        self.tcx().field_index(f.hir_id, self.mc.typeck_results) == f_index
-                    });
+                    let is_mentioned = fields
+                        .iter()
+                        .any(|f| self.mc.typeck_results.opt_field_index(f.hir_id) == Some(f_index));
                     if !is_mentioned {
                         let field_place = self.mc.cat_projection(
                             &*with_expr,
@@ -745,9 +755,9 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
     ///
     /// - When reporting the Place back to the Delegate, ensure that the UpvarId uses the enclosing
     /// closure as the DefId.
-    fn walk_captures(&mut self, closure_expr: &hir::Expr<'_>) {
-        fn upvar_is_local_variable<'tcx>(
-            upvars: Option<&'tcx FxIndexMap<hir::HirId, hir::Upvar>>,
+    fn walk_captures(&mut self, closure_expr: &hir::Closure<'_>) {
+        fn upvar_is_local_variable(
+            upvars: Option<&FxIndexMap<hir::HirId, hir::Upvar>>,
             upvar_id: hir::HirId,
             body_owner_is_closure: bool,
         ) -> bool {
@@ -757,7 +767,7 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
         debug!("walk_captures({:?})", closure_expr);
 
         let tcx = self.tcx();
-        let closure_def_id = tcx.hir().local_def_id(closure_expr.hir_id);
+        let closure_def_id = closure_expr.def_id;
         let upvars = tcx.upvars_mentioned(self.body_owner);
 
         // For purposes of this function, generator and closures are equivalent.
@@ -829,10 +839,11 @@ impl<'a, 'tcx> ExprUseVisitor<'a, 'tcx> {
                         // be a local variable
                         PlaceBase::Local(*var_hir_id)
                     };
+                    let closure_hir_id = tcx.hir().local_def_id_to_hir_id(closure_def_id);
                     let place_with_id = PlaceWithHirId::new(
-                        capture_info.path_expr_id.unwrap_or(
-                            capture_info.capture_kind_expr_id.unwrap_or(closure_expr.hir_id),
-                        ),
+                        capture_info
+                            .path_expr_id
+                            .unwrap_or(capture_info.capture_kind_expr_id.unwrap_or(closure_hir_id)),
                         place.base_ty,
                         place_base,
                         place.projections.clone(),

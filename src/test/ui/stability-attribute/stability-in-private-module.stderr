@@ -6,9 +6,6 @@ LL |     let _ = std::thread::thread_info::current_thread();
    |
 note: the module `thread_info` is defined here
   --> $SRC_DIR/std/src/thread/mod.rs:LL:COL
-   |
-LL | use crate::sys_common::thread_info;
-   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 error: aborting due to previous error
 

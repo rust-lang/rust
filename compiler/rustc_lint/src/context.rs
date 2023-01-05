@@ -31,7 +31,7 @@ use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::{CrateNum, DefId};
 use rustc_hir::definitions::{DefPathData, DisambiguatedDefPathData};
-use rustc_middle::middle::privacy::AccessLevels;
+use rustc_middle::middle::privacy::EffectiveVisibilities;
 use rustc_middle::middle::stability;
 use rustc_middle::ty::layout::{LayoutError, LayoutOfHelpers, TyAndLayout};
 use rustc_middle::ty::print::with_no_trimmed_paths;
@@ -206,7 +206,7 @@ impl LintStore {
         self.late_module_passes.push(Box::new(pass));
     }
 
-    // Helper method for register_early/late_pass
+    /// Helper method for register_early/late_pass
     pub fn register_lints(&mut self, lints: &[&'static Lint]) {
         for lint in lints {
             self.lints.push(lint);
@@ -355,14 +355,12 @@ impl LintStore {
                     sub: RequestedLevel { level, lint_name },
                 });
             }
-            CheckLintNameResult::Tool(result) => {
-                if let Err((Some(_), new_name)) = result {
-                    sess.emit_warning(CheckNameDeprecated {
-                        lint_name: lint_name.clone(),
-                        new_name,
-                        sub: RequestedLevel { level, lint_name },
-                    });
-                }
+            CheckLintNameResult::Tool(Err((Some(_), new_name))) => {
+                sess.emit_warning(CheckNameDeprecated {
+                    lint_name: lint_name.clone(),
+                    new_name,
+                    sub: RequestedLevel { level, lint_name },
+                });
             }
             CheckLintNameResult::NoTool => {
                 sess.emit_err(CheckNameUnknownTool {
@@ -438,18 +436,18 @@ impl LintStore {
                         return CheckLintNameResult::Tool(Ok(&lint_ids));
                     }
                 },
-                Some(&Id(ref id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
+                Some(Id(id)) => return CheckLintNameResult::Tool(Ok(slice::from_ref(id))),
                 // If the lint was registered as removed or renamed by the lint tool, we don't need
                 // to treat tool_lints and rustc lints different and can use the code below.
                 _ => {}
             }
         }
         match self.by_name.get(&complete_name) {
-            Some(&Renamed(ref new_name, _)) => CheckLintNameResult::Warning(
+            Some(Renamed(new_name, _)) => CheckLintNameResult::Warning(
                 format!("lint `{}` has been renamed to `{}`", complete_name, new_name),
                 Some(new_name.to_owned()),
             ),
-            Some(&Removed(ref reason)) => CheckLintNameResult::Warning(
+            Some(Removed(reason)) => CheckLintNameResult::Warning(
                 format!("lint `{}` has been removed: {}", complete_name, reason),
                 None,
             ),
@@ -470,7 +468,7 @@ impl LintStore {
                     CheckLintNameResult::Ok(&lint_ids)
                 }
             },
-            Some(&Id(ref id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
+            Some(Id(id)) => CheckLintNameResult::Ok(slice::from_ref(id)),
             Some(&Ignored) => CheckLintNameResult::Ok(&[]),
         }
     }
@@ -483,7 +481,16 @@ impl LintStore {
             return CheckLintNameResult::NoLint(Some(Symbol::intern(&name_lower)));
         }
         // ...if not, search for lints with a similar name
-        let groups = self.lint_groups.keys().copied().map(Symbol::intern);
+        // Note: find_best_match_for_name depends on the sort order of its input vector.
+        // To ensure deterministic output, sort elements of the lint_groups hash map.
+        // Also, never suggest deprecated lint groups.
+        let mut groups: Vec<_> = self
+            .lint_groups
+            .iter()
+            .filter_map(|(k, LintGroup { depr, .. })| if depr.is_none() { Some(k) } else { None })
+            .collect();
+        groups.sort();
+        let groups = groups.iter().map(|k| Symbol::intern(k));
         let lints = self.lints.iter().map(|l| Symbol::intern(&l.name_lower()));
         let names: Vec<Symbol> = groups.chain(lints).collect();
         let suggestion = find_best_match_for_name(&names, Symbol::intern(&name_lower), None);
@@ -513,7 +520,7 @@ impl LintStore {
                     CheckLintNameResult::Tool(Err((Some(&lint_ids), complete_name)))
                 }
             },
-            Some(&Id(ref id)) => {
+            Some(Id(id)) => {
                 CheckLintNameResult::Tool(Err((Some(slice::from_ref(id)), complete_name)))
             }
             Some(other) => {
@@ -542,7 +549,7 @@ pub struct LateContext<'tcx> {
     pub param_env: ty::ParamEnv<'tcx>,
 
     /// Items accessible from the crate being checked.
-    pub access_levels: &'tcx AccessLevels,
+    pub effective_visibilities: &'tcx EffectiveVisibilities,
 
     /// The store of registered lints and the lint levels.
     pub lint_store: &'tcx LintStore,
@@ -579,6 +586,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lookup_with_diagnostics(
         &self,
         lint: &'static Lint,
@@ -882,6 +890,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lookup<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -908,6 +917,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn struct_span_lint<S: Into<MultiSpan>>(
         &self,
         lint: &'static Lint,
@@ -933,6 +943,7 @@ pub trait LintContext: Sized {
     /// Return value of the `decorate` closure is ignored, see [`struct_lint_level`] for a detailed explanation.
     ///
     /// [`struct_lint_level`]: rustc_middle::lint::struct_lint_level#decorate-signature
+    #[rustc_lint_diagnostics]
     fn lint(
         &self,
         lint: &'static Lint,
@@ -1155,7 +1166,7 @@ impl<'tcx> LateContext<'tcx> {
 
             fn print_dyn_existential(
                 self,
-                _predicates: &'tcx ty::List<ty::Binder<'tcx, ty::ExistentialPredicate<'tcx>>>,
+                _predicates: &'tcx ty::List<ty::PolyExistentialPredicate<'tcx>>,
             ) -> Result<Self::DynExistential, Self::Error> {
                 Ok(())
             }
@@ -1240,6 +1251,23 @@ impl<'tcx> LateContext<'tcx> {
         }
 
         AbsolutePathPrinter { tcx: self.tcx }.print_def_path(def_id, &[]).unwrap()
+    }
+
+    /// Returns the associated type `name` for `self_ty` as an implementation of `trait_id`.
+    /// Do not invoke without first verifying that the type implements the trait.
+    pub fn get_associated_type(
+        &self,
+        self_ty: Ty<'tcx>,
+        trait_id: DefId,
+        name: &str,
+    ) -> Option<Ty<'tcx>> {
+        let tcx = self.tcx;
+        tcx.associated_items(trait_id)
+            .find_by_name_and_kind(tcx, Ident::from_str(name), ty::AssocKind::Type, trait_id)
+            .and_then(|assoc| {
+                let proj = tcx.mk_projection(assoc.def_id, [self_ty]);
+                tcx.try_normalize_erasing_regions(self.param_env, proj).ok()
+            })
     }
 }
 

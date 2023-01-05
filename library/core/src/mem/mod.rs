@@ -21,11 +21,6 @@ mod maybe_uninit;
 #[stable(feature = "maybe_uninit", since = "1.36.0")]
 pub use maybe_uninit::MaybeUninit;
 
-// FIXME: This is left here for now to avoid complications around pending reverts.
-// Once <https://github.com/rust-lang/rust/issues/101899> is fully resolved,
-// this should be removed and the references in `alloc::Layout` updated.
-pub(crate) use ptr::Alignment as ValidAlign;
-
 mod transmutability;
 #[unstable(feature = "transmutability", issue = "99571")]
 pub use transmutability::{Assume, BikeshedIntrinsicFrom};
@@ -687,7 +682,8 @@ pub unsafe fn zeroed<T>() -> T {
 pub unsafe fn uninitialized<T>() -> T {
     // SAFETY: the caller must guarantee that an uninitialized value is valid for `T`.
     unsafe {
-        intrinsics::assert_uninit_valid::<T>();
+        #[cfg(not(bootstrap))] // If the compiler hits this itself then it deserves the UB.
+        intrinsics::assert_mem_uninitialized_valid::<T>();
         let mut val = MaybeUninit::<T>::uninit();
 
         // Fill memory with 0x01, as an imperfect mitigation for old code that uses this function on
@@ -730,10 +726,7 @@ pub const fn swap<T>(x: &mut T, y: &mut T) {
     // understanding `mem::replace`, `Option::take`, etc. - a better overall
     // solution might be to make `ptr::swap_nonoverlapping` into an intrinsic, which
     // a backend can choose to implement using the block optimization, or not.
-    // NOTE(scottmcm) MIRI is disabled here as reading in smaller units is a
-    // pessimization for it.  Also, if the type contains any unaligned pointers,
-    // copying those over multiple reads is difficult to support.
-    #[cfg(not(any(target_arch = "spirv", miri)))]
+    #[cfg(not(any(target_arch = "spirv")))]
     {
         // For types that are larger multiples of their alignment, the simple way
         // tends to copy the whole thing to stack rather than doing it one part
@@ -1004,7 +997,7 @@ pub fn drop<T>(_x: T) {}
 /// ```
 #[inline]
 #[unstable(feature = "mem_copy_fn", issue = "98262")]
-pub fn copy<T: Copy>(x: &T) -> T {
+pub const fn copy<T: Copy>(x: &T) -> T {
     *x
 }
 
@@ -1121,7 +1114,10 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// # Stability
 ///
 /// The discriminant of an enum variant may change if the enum definition changes. A discriminant
-/// of some variant will not change between compilations with the same compiler.
+/// of some variant will not change between compilations with the same compiler. See the [Reference]
+/// for more information.
+///
+/// [Reference]: ../../reference/items/enumerations.html#custom-discriminant-values-for-fieldless-enumerations
 ///
 /// # Examples
 ///
@@ -1136,6 +1132,62 @@ impl<T> fmt::Debug for Discriminant<T> {
 /// assert_eq!(mem::discriminant(&Foo::A("bar")), mem::discriminant(&Foo::A("baz")));
 /// assert_eq!(mem::discriminant(&Foo::B(1)), mem::discriminant(&Foo::B(2)));
 /// assert_ne!(mem::discriminant(&Foo::B(3)), mem::discriminant(&Foo::C(3)));
+/// ```
+///
+/// ## Accessing the numeric value of the discriminant
+///
+/// Note that it is *undefined behavior* to [`transmute`] from [`Discriminant`] to a primitive!
+///
+/// If an enum has only unit variants, then the numeric value of the discriminant can be accessed
+/// with an [`as`] cast:
+///
+/// ```
+/// enum Enum {
+///     Foo,
+///     Bar,
+///     Baz,
+/// }
+///
+/// assert_eq!(0, Enum::Foo as isize);
+/// assert_eq!(1, Enum::Bar as isize);
+/// assert_eq!(2, Enum::Baz as isize);
+/// ```
+///
+/// If an enum has opted-in to having a [primitive representation] for its discriminant,
+/// then it's possible to use pointers to read the memory location storing the discriminant.
+/// That **cannot** be done for enums using the [default representation], however, as it's
+/// undefined what layout the discriminant has and where it's stored — it might not even be
+/// stored at all!
+///
+/// [`as`]: ../../std/keyword.as.html
+/// [primitive representation]: ../../reference/type-layout.html#primitive-representations
+/// [default representation]: ../../reference/type-layout.html#the-default-representation
+/// ```
+/// #[repr(u8)]
+/// enum Enum {
+///     Unit,
+///     Tuple(bool),
+///     Struct { a: bool },
+/// }
+///
+/// impl Enum {
+///     fn discriminant(&self) -> u8 {
+///         // SAFETY: Because `Self` is marked `repr(u8)`, its layout is a `repr(C)` `union`
+///         // between `repr(C)` structs, each of which has the `u8` discriminant as its first
+///         // field, so we can read the discriminant without offsetting the pointer.
+///         unsafe { *<*const _>::from(self).cast::<u8>() }
+///     }
+/// }
+///
+/// let unit_like = Enum::Unit;
+/// let tuple_like = Enum::Tuple(true);
+/// let struct_like = Enum::Struct { a: false };
+/// assert_eq!(0, unit_like.discriminant());
+/// assert_eq!(1, tuple_like.discriminant());
+/// assert_eq!(2, struct_like.discriminant());
+///
+/// // ⚠️ This is undefined behavior. Don't do this. ⚠️
+/// // assert_eq!(0, unsafe { std::mem::transmute::<_, u8>(std::mem::discriminant(&unit_like)) });
 /// ```
 #[stable(feature = "discriminant_value", since = "1.21.0")]
 #[rustc_const_unstable(feature = "const_discriminant", issue = "69821")]

@@ -1,3 +1,4 @@
+// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 trait Foo {}
 
 struct Bar<T>(T);

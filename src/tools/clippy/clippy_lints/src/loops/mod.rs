@@ -9,7 +9,6 @@ mod manual_flatten;
 mod manual_memcpy;
 mod missing_spin_loop;
 mod mut_range_bound;
-mod needless_collect;
 mod needless_range_loop;
 mod never_loop;
 mod same_item_push;
@@ -203,28 +202,6 @@ declare_clippy_lint! {
     pub WHILE_LET_LOOP,
     complexity,
     "`loop { if let { ... } else break }`, which can be written as a `while let` loop"
-}
-
-declare_clippy_lint! {
-    /// ### What it does
-    /// Checks for functions collecting an iterator when collect
-    /// is not needed.
-    ///
-    /// ### Why is this bad?
-    /// `collect` causes the allocation of a new data structure,
-    /// when this allocation may not be needed.
-    ///
-    /// ### Example
-    /// ```rust
-    /// # let iterator = vec![1].into_iter();
-    /// let len = iterator.clone().collect::<Vec<_>>().len();
-    /// // should be
-    /// let len = iterator.count();
-    /// ```
-    #[clippy::version = "1.30.0"]
-    pub NEEDLESS_COLLECT,
-    perf,
-    "collecting an iterator when collect is not needed"
 }
 
 declare_clippy_lint! {
@@ -605,7 +582,6 @@ declare_lint_pass!(Loops => [
     EXPLICIT_INTO_ITER_LOOP,
     ITER_NEXT_LOOP,
     WHILE_LET_LOOP,
-    NEEDLESS_COLLECT,
     EXPLICIT_COUNTER_LOOP,
     EMPTY_LOOP,
     WHILE_LET_ON_ITERATOR,
@@ -667,8 +643,6 @@ impl<'tcx> LateLintPass<'tcx> for Loops {
             while_immutable_condition::check(cx, condition, body);
             missing_spin_loop::check(cx, condition, body);
         }
-
-        needless_collect::check(expr, cx);
     }
 }
 

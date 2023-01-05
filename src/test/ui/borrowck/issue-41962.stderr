@@ -5,7 +5,7 @@ LL |         if let Some(thing) = maybe {
    |                     ^^^^^ value moved here, in previous iteration of loop
    |
    = note: move occurs because value has type `Vec<bool>`, which does not implement the `Copy` trait
-help: borrow this field in the pattern to avoid moving `maybe.0`
+help: borrow this binding in the pattern to avoid moving the value
    |
 LL |         if let Some(ref thing) = maybe {
    |                     +++

@@ -1,7 +1,8 @@
 use clippy_utils::diagnostics::span_lint_and_then;
 use clippy_utils::macros::span_is_local;
+use clippy_utils::msrvs::{self, Msrv};
+use clippy_utils::path_def_id;
 use clippy_utils::source::snippet_opt;
-use clippy_utils::{meets_msrv, msrvs, path_def_id};
 use rustc_errors::Applicability;
 use rustc_hir::intravisit::{walk_path, Visitor};
 use rustc_hir::{
@@ -9,8 +10,7 @@ use rustc_hir::{
     TyKind,
 };
 use rustc_lint::{LateContext, LateLintPass};
-use rustc_middle::hir::nested_filter::OnlyBodies;
-use rustc_semver::RustcVersion;
+use rustc_middle::{hir::nested_filter::OnlyBodies, ty};
 use rustc_session::{declare_tool_lint, impl_lint_pass};
 use rustc_span::symbol::{kw, sym};
 use rustc_span::{Span, Symbol};
@@ -49,12 +49,12 @@ declare_clippy_lint! {
 }
 
 pub struct FromOverInto {
-    msrv: Option<RustcVersion>,
+    msrv: Msrv,
 }
 
 impl FromOverInto {
     #[must_use]
-    pub fn new(msrv: Option<RustcVersion>) -> Self {
+    pub fn new(msrv: Msrv) -> Self {
         FromOverInto { msrv }
     }
 }
@@ -63,7 +63,7 @@ impl_lint_pass!(FromOverInto => [FROM_OVER_INTO]);
 
 impl<'tcx> LateLintPass<'tcx> for FromOverInto {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx Item<'_>) {
-        if !meets_msrv(self.msrv, msrvs::RE_REBALANCING_COHERENCE) || !span_is_local(item.span) {
+        if !self.msrv.meets(msrvs::RE_REBALANCING_COHERENCE) || !span_is_local(item.span) {
             return;
         }
 
@@ -76,8 +76,9 @@ impl<'tcx> LateLintPass<'tcx> for FromOverInto {
             && let Some(into_trait_seg) = hir_trait_ref.path.segments.last()
             // `impl Into<target_ty> for self_ty`
             && let Some(GenericArgs { args: [GenericArg::Type(target_ty)], .. }) = into_trait_seg.args
-            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.def_id)
+            && let Some(middle_trait_ref) = cx.tcx.impl_trait_ref(item.owner_id)
             && cx.tcx.is_diagnostic_item(sym::Into, middle_trait_ref.def_id)
+            && !matches!(middle_trait_ref.substs.type_at(1).kind(), ty::Alias(ty::Opaque, _))
         {
             span_lint_and_then(
                 cx,
@@ -126,7 +127,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SelfFinder<'a, 'tcx> {
         self.cx.tcx.hir()
     }
 
-    fn visit_path(&mut self, path: &'tcx Path<'tcx>, _id: HirId) {
+    fn visit_path(&mut self, path: &Path<'tcx>, _id: HirId) {
         for segment in path.segments {
             match segment.ident.name {
                 kw::SelfLower => self.lower.push(segment.ident.span),

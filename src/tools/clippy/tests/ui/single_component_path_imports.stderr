@@ -1,16 +1,16 @@
 error: this import is redundant
-  --> $DIR/single_component_path_imports.rs:23:5
-   |
-LL |     use regex;
-   |     ^^^^^^^^^^ help: remove it entirely
-   |
-   = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
-
-error: this import is redundant
   --> $DIR/single_component_path_imports.rs:5:1
    |
 LL | use regex;
    | ^^^^^^^^^^ help: remove it entirely
+   |
+   = note: `-D clippy::single-component-path-imports` implied by `-D warnings`
+
+error: this import is redundant
+  --> $DIR/single_component_path_imports.rs:23:5
+   |
+LL |     use regex;
+   |     ^^^^^^^^^^ help: remove it entirely
 
 error: aborting due to 2 previous errors
 

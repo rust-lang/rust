@@ -38,7 +38,9 @@ error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:45
    |
 LL |     let x: Vec2 = Vec2 { x: 1.0, y: 2.0 } * 2.0; // trait had reversed order
-   |                                             ^^^ expected struct `Vec2`, found floating-point number
+   |                   -----------------------   ^^^ expected struct `Vec2`, found floating-point number
+   |                   |
+   |                   expected because this is `Vec2`
 
 error[E0308]: mismatched types
   --> $DIR/wrong-mul-method-signature.rs:63:19

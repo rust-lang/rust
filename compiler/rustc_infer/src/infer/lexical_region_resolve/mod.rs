@@ -488,7 +488,7 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
                         // If this empty region is from a universe that can
                         // name the placeholder, then the placeholder is
                         // larger; otherwise, the only ancestor is `'static`.
-                        if a_ui.can_name(placeholder.universe) { true } else { false }
+                        return a_ui.can_name(placeholder.universe);
                     }
                 }
             }
@@ -842,6 +842,9 @@ impl<'cx, 'tcx> LexicalResolver<'cx, 'tcx> {
         // are placeholders as upper bounds, but the universe of the
         // variable `'a`, or some variable that `'a` has to outlive, doesn't
         // permit those placeholders.
+        //
+        // We only iterate to find the min, which means it doesn't cause reproducibility issues
+        #[allow(rustc::potential_query_instability)]
         let min_universe = lower_vid_bounds
             .into_iter()
             .map(|vid| self.var_infos[vid].universe)

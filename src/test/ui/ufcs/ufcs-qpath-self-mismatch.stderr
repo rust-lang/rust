@@ -8,15 +8,10 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
              <&'a i32 as Add<i32>>
-             <&'a i64 as Add<i64>>
-             <&'a i8 as Add<i8>>
-             <&'a isize as Add<isize>>
-           and 48 others
+             <&i32 as Add<&i32>>
+             <i32 as Add<&i32>>
+             <i32 as Add>
 
 error[E0308]: mismatched types
   --> $DIR/ufcs-qpath-self-mismatch.rs:7:28
@@ -28,9 +23,6 @@ LL |     <i32 as Add<i32>>::add(1u32, 2);
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |        ^^^
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |     <i32 as Add<i32>>::add(1i32, 2);
@@ -46,9 +38,6 @@ LL |     <i32 as Add<i32>>::add(1, 2u32);
    |
 note: associated function defined here
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |        ^^^
 help: change the type of the numeric literal from `u32` to `i32`
    |
 LL |     <i32 as Add<i32>>::add(1, 2i32);
@@ -62,15 +51,10 @@ LL |     <i32 as Add<u32>>::add(1, 2);
    |
    = help: the trait `Add<u32>` is not implemented for `i32`
    = help: the following other types implement trait `Add<Rhs>`:
-             <&'a f32 as Add<f32>>
-             <&'a f64 as Add<f64>>
-             <&'a i128 as Add<i128>>
-             <&'a i16 as Add<i16>>
              <&'a i32 as Add<i32>>
-             <&'a i64 as Add<i64>>
-             <&'a i8 as Add<i8>>
-             <&'a isize as Add<isize>>
-           and 48 others
+             <&i32 as Add<&i32>>
+             <i32 as Add<&i32>>
+             <i32 as Add>
 
 error: aborting due to 4 previous errors
 

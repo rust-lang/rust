@@ -8,10 +8,12 @@ LL |     take_mut(|| {
    |              -- captured by this `FnMut` closure
 LL |
 LL |         let _foo: String = val;
-   |                            ^^^
-   |                            |
-   |                            move occurs because `val` has type `String`, which does not implement the `Copy` trait
-   |                            help: consider borrowing here: `&val`
+   |                            ^^^ move occurs because `val` has type `String`, which does not implement the `Copy` trait
+   |
+help: consider borrowing here
+   |
+LL |         let _foo: String = &val;
+   |                            +
 
 error: aborting due to previous error
 

@@ -6,8 +6,8 @@ LL |     let x = "hello".chars().rev().collect();
    |
 help: consider giving `x` an explicit type
    |
-LL |     let x: _ = "hello".chars().rev().collect();
-   |          +++
+LL |     let x: Vec<_> = "hello".chars().rev().collect();
+   |          ++++++++
 
 error: aborting due to previous error
 

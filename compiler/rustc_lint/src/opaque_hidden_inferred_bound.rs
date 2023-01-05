@@ -26,19 +26,23 @@ declare_lint! {
     ///
     /// ### Example
     ///
-    /// ```
+    /// ```rust
+    /// trait Duh {}
+    ///
+    /// impl Duh for i32 {}
+    ///
     /// trait Trait {
-    ///     type Assoc: Send;
+    ///     type Assoc: Duh;
     /// }
     ///
     /// struct Struct;
     ///
-    /// impl Trait for Struct {
-    ///     type Assoc = i32;
+    /// impl<F: Duh> Trait for F {
+    ///     type Assoc = F;
     /// }
     ///
     /// fn test() -> impl Trait<Assoc = impl Sized> {
-    ///     Struct
+    ///     42
     /// }
     /// ```
     ///
@@ -61,7 +65,7 @@ declare_lint_pass!(OpaqueHiddenInferredBound => [OPAQUE_HIDDEN_INFERRED_BOUND]);
 impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'tcx>) {
         let hir::ItemKind::OpaqueTy(_) = &item.kind else { return; };
-        let def_id = item.def_id.def_id.to_def_id();
+        let def_id = item.owner_id.def_id.to_def_id();
         let infcx = &cx.tcx.infer_ctxt().build();
         // For every projection predicate in the opaque type's explicit bounds,
         // check that the type that we're assigning actually satisfies the bounds
@@ -70,7 +74,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // Liberate bound regions in the predicate since we
             // don't actually care about lifetimes in this check.
             let predicate = cx.tcx.liberate_late_bound_regions(def_id, pred.kind());
-            let ty::PredicateKind::Projection(proj) = predicate else {
+            let ty::PredicateKind::Clause(ty::Clause::Projection(proj)) = predicate else {
                 continue;
             };
             // Only check types, since those are the only things that may
@@ -78,7 +82,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             let Some(proj_term) = proj.term.ty() else { continue };
 
             let proj_ty =
-                cx.tcx.mk_projection(proj.projection_ty.item_def_id, proj.projection_ty.substs);
+                cx.tcx.mk_projection(proj.projection_ty.def_id, proj.projection_ty.substs);
             // For every instance of the projection type in the bounds,
             // replace them with the term we're assigning to the associated
             // type in our opaque type.
@@ -93,7 +97,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
             // with `impl Send: OtherTrait`.
             for (assoc_pred, assoc_pred_span) in cx
                 .tcx
-                .bound_explicit_item_bounds(proj.projection_ty.item_def_id)
+                .bound_explicit_item_bounds(proj.projection_ty.def_id)
                 .subst_iter_copied(cx.tcx, &proj.projection_ty.substs)
             {
                 let assoc_pred = assoc_pred.fold_with(proj_replacer);
@@ -104,6 +108,7 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                 // then we must've taken advantage of the hack in `project_and_unify_types` where
                 // we replace opaques with inference vars. Emit a warning!
                 if !infcx.predicate_must_hold_modulo_regions(&traits::Obligation::new(
+                    cx.tcx,
                     traits::ObligationCause::dummy(),
                     cx.param_env,
                     assoc_pred,
@@ -111,12 +116,13 @@ impl<'tcx> LateLintPass<'tcx> for OpaqueHiddenInferredBound {
                     // If it's a trait bound and an opaque that doesn't satisfy it,
                     // then we can emit a suggestion to add the bound.
                     let add_bound = match (proj_term.kind(), assoc_pred.kind().skip_binder()) {
-                        (ty::Opaque(def_id, _), ty::PredicateKind::Trait(trait_pred)) => {
-                            Some(AddBound {
-                                suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
-                                trait_ref: trait_pred.print_modifiers_and_trait_path(),
-                            })
-                        }
+                        (
+                            ty::Alias(ty::Opaque, ty::AliasTy { def_id, .. }),
+                            ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)),
+                        ) => Some(AddBound {
+                            suggest_span: cx.tcx.def_span(*def_id).shrink_to_hi(),
+                            trait_ref: trait_pred.print_modifiers_and_trait_path(),
+                        }),
                         _ => None,
                     };
                     cx.emit_spanned_lint(
@@ -150,8 +156,9 @@ struct OpaqueHiddenInferredBoundLint<'tcx> {
 }
 
 #[derive(Subdiagnostic)]
-#[suggestion_verbose(
+#[suggestion(
     lint_opaque_hidden_inferred_bound_sugg,
+    style = "verbose",
     applicability = "machine-applicable",
     code = " + {trait_ref}"
 )]

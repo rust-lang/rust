@@ -33,7 +33,7 @@ fn main() {
         TupleVariant => {} //~ ERROR match bindings cannot shadow tuple variants
     }
     match doesnt_matter {
-        BracedVariant => {} //~ ERROR match bindings cannot shadow struct variants
+        BracedVariant => {} // OK, `BracedVariant` is a fresh binding
     }
     match CONST {
         CONST => {} // OK, `CONST` is a const pattern
@@ -50,7 +50,7 @@ fn main() {
     let BracedStruct = doesnt_matter; // OK, `BracedStruct` is a fresh binding
     let UnitVariant = UnitVariant; // OK, `UnitVariant` is a unit variant pattern
     let TupleVariant = doesnt_matter; //~ ERROR let bindings cannot shadow tuple variants
-    let BracedVariant = doesnt_matter; //~ ERROR let bindings cannot shadow struct variants
+    let BracedVariant = doesnt_matter; // OK, `BracedVariant` is a fresh binding
     let CONST = CONST; // OK, `CONST` is a const pattern
     let STATIC = doesnt_matter; //~ ERROR let bindings cannot shadow statics
     let function = doesnt_matter; // OK, `function` is a fresh binding

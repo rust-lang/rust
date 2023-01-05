@@ -153,7 +153,7 @@ fn pat_in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'a>, pat: &Pat<'_>) ->
 }
 
 /// Returns `true` if the given type is an enum we know won't be expanded in the future
-fn in_candidate_enum<'a>(cx: &LateContext<'a>, ty: Ty<'_>) -> bool {
+fn in_candidate_enum(cx: &LateContext<'_>, ty: Ty<'_>) -> bool {
     // list of candidate `Enum`s we know will never get any more members
     let candidates = [sym::Cow, sym::Option, sym::Result];
 

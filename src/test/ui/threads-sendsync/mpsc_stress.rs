@@ -64,9 +64,11 @@ fn shared_close_sender_does_not_lose_messages_iter() {
 
 #[test]
 fn shared_close_sender_does_not_lose_messages() {
-    for _ in 0..10000 {
-        shared_close_sender_does_not_lose_messages_iter();
-    }
+    with_minimum_timer_resolution(|| {
+        for _ in 0..10000 {
+            shared_close_sender_does_not_lose_messages_iter();
+        }
+    });
 }
 
 
@@ -96,17 +98,11 @@ fn concurrent_recv_timeout_and_upgrade_iter() {
 
 #[test]
 fn concurrent_recv_timeout_and_upgrade() {
-    // FIXME: fix and enable
-    if true { return }
-
-    // at the moment of writing this test fails like this:
-    // thread '<unnamed>' panicked at 'assertion failed: `(left == right)`
-    //  left: `4561387584`,
-    // right: `0`', libstd/sync/mpsc/shared.rs:253:13
-
-    for _ in 0..10000 {
-        concurrent_recv_timeout_and_upgrade_iter();
-    }
+    with_minimum_timer_resolution(|| {
+        for _ in 0..10000 {
+            concurrent_recv_timeout_and_upgrade_iter();
+        }
+    });
 }
 
 
@@ -159,7 +155,46 @@ fn concurrent_writes_iter() {
 
 #[test]
 fn concurrent_writes() {
-    for _ in 0..100 {
-        concurrent_writes_iter();
+    with_minimum_timer_resolution(|| {
+        for _ in 0..100 {
+            concurrent_writes_iter();
+        }
+    });
+}
+
+#[cfg(windows)]
+pub mod timeapi {
+    #![allow(non_snake_case)]
+    use std::ffi::c_uint;
+
+    pub const TIMERR_NOERROR: c_uint = 0;
+
+    #[link(name = "winmm")]
+    extern "system" {
+        pub fn timeBeginPeriod(uPeriod: c_uint) -> c_uint;
+        pub fn timeEndPeriod(uPeriod: c_uint) -> c_uint;
+    }
+}
+
+/// Window's minimum sleep time can be as much as 16ms.
+// This function evaluates the closure with this resolution
+// set as low as possible.
+///
+/// This takes the above test's duration from 10000*16/1000/60=2.67 minutes to ~16 seconds.
+fn with_minimum_timer_resolution(f: impl Fn()) {
+    #[cfg(windows)]
+    unsafe {
+        let ret = timeapi::timeBeginPeriod(1);
+        assert_eq!(ret, timeapi::TIMERR_NOERROR);
+
+        f();
+
+        let ret = timeapi::timeEndPeriod(1);
+        assert_eq!(ret, timeapi::TIMERR_NOERROR);
+    }
+
+    #[cfg(not(windows))]
+    {
+        f();
     }
 }

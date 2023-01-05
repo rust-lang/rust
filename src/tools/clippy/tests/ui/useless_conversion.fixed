@@ -33,12 +33,71 @@ fn test_issue_3913() -> Result<(), std::io::Error> {
     Ok(())
 }
 
-fn test_issue_5833() -> Result<(), ()> {
+fn dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr() {
     let text = "foo\r\nbar\n\nbaz\n";
     let lines = text.lines();
     if Some("ok") == lines.into_iter().next() {}
+}
 
-    Ok(())
+fn lint_into_iter_on_mutable_local_implementing_iterator_in_expr() {
+    let text = "foo\r\nbar\n\nbaz\n";
+    let mut lines = text.lines();
+    if Some("ok") == lines.next() {}
+}
+
+fn lint_into_iter_on_expr_implementing_iterator() {
+    let text = "foo\r\nbar\n\nbaz\n";
+    let mut lines = text.lines();
+    if Some("ok") == lines.next() {}
+}
+
+fn lint_into_iter_on_expr_implementing_iterator_2() {
+    let text = "foo\r\nbar\n\nbaz\n";
+    if Some("ok") == text.lines().next() {}
+}
+
+#[allow(const_item_mutation)]
+fn lint_into_iter_on_const_implementing_iterator() {
+    const NUMBERS: std::ops::Range<i32> = 0..10;
+    let _ = NUMBERS.next();
+}
+
+fn lint_into_iter_on_const_implementing_iterator_2() {
+    const NUMBERS: std::ops::Range<i32> = 0..10;
+    let mut n = NUMBERS;
+    n.next();
+}
+
+#[derive(Clone, Copy)]
+struct CopiableCounter {
+    counter: u32,
+}
+
+impl Iterator for CopiableCounter {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.counter = self.counter.wrapping_add(1);
+        Some(self.counter)
+    }
+}
+
+fn dont_lint_into_iter_on_copy_iter() {
+    let mut c = CopiableCounter { counter: 0 };
+    assert_eq!(c.into_iter().next(), Some(1));
+    assert_eq!(c.into_iter().next(), Some(1));
+    assert_eq!(c.next(), Some(1));
+    assert_eq!(c.next(), Some(2));
+}
+
+fn dont_lint_into_iter_on_static_copy_iter() {
+    static mut C: CopiableCounter = CopiableCounter { counter: 0 };
+    unsafe {
+        assert_eq!(C.into_iter().next(), Some(1));
+        assert_eq!(C.into_iter().next(), Some(1));
+        assert_eq!(C.next(), Some(1));
+        assert_eq!(C.next(), Some(2));
+    }
 }
 
 fn main() {
@@ -46,7 +105,15 @@ fn main() {
     test_generic2::<i32, i32>(10i32);
     test_questionmark().unwrap();
     test_issue_3913().unwrap();
-    test_issue_5833().unwrap();
+
+    dont_lint_into_iter_on_immutable_local_implementing_iterator_in_expr();
+    lint_into_iter_on_mutable_local_implementing_iterator_in_expr();
+    lint_into_iter_on_expr_implementing_iterator();
+    lint_into_iter_on_expr_implementing_iterator_2();
+    lint_into_iter_on_const_implementing_iterator();
+    lint_into_iter_on_const_implementing_iterator_2();
+    dont_lint_into_iter_on_copy_iter();
+    dont_lint_into_iter_on_static_copy_iter();
 
     let _: String = "foo".into();
     let _: String = From::from("foo");

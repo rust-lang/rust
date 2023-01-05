@@ -2,7 +2,7 @@ error[E0716]: temporary value dropped while borrowed
   --> $DIR/slice-borrow.rs:6:28
    |
 LL |         let x: &[isize] = &vec![1, 2, 3, 4, 5];
-   |                            ^^^^^^^^^^^^^^^^^^^ creates a temporary which is freed while still in use
+   |                            ^^^^^^^^^^^^^^^^^^^ creates a temporary value which is freed while still in use
 ...
 LL |     }
    |     - temporary value is freed at the end of this statement

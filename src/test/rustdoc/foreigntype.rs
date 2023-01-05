@@ -6,7 +6,7 @@ extern "C" {
 }
 
 impl ExtType {
-    // @has - '//a[@class="fnname"]' 'do_something'
+    // @has - '//a[@class="fn"]' 'do_something'
     pub fn do_something(&self) {}
 }
 

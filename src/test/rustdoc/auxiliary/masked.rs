@@ -8,3 +8,7 @@ pub trait MaskedTrait {
 impl MaskedTrait for String {
     fn masked_method() {}
 }
+
+pub trait MaskedBlanketTrait {}
+
+impl<T> MaskedBlanketTrait for T {}

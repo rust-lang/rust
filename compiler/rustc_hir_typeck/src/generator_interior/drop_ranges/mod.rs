@@ -43,9 +43,9 @@ pub fn compute_drop_ranges<'a, 'tcx>(
         let typeck_results = &fcx.typeck_results.borrow();
         let num_exprs = fcx.tcx.region_scope_tree(def_id).body_expr_count(body.id()).unwrap_or(0);
         let (mut drop_ranges, borrowed_temporaries) = build_control_flow_graph(
-            fcx.tcx.hir(),
-            fcx.tcx,
+            &fcx,
             typeck_results,
+            fcx.param_env,
             consumed_borrowed_places,
             body,
             num_exprs,
@@ -79,7 +79,7 @@ pub fn compute_drop_ranges<'a, 'tcx>(
 /// result of `foo`. On the other hand, if `place` points to `x` then `f` will
 /// be called both on the `ExprKind::Path` node that represents the expression
 /// as well as the HirId of the local `x` itself.
-fn for_each_consumable<'tcx>(hir: Map<'tcx>, place: TrackedValue, mut f: impl FnMut(TrackedValue)) {
+fn for_each_consumable(hir: Map<'_>, place: TrackedValue, mut f: impl FnMut(TrackedValue)) {
     f(place);
     let node = hir.find(place.hir_id());
     if let Some(Node::Expr(expr)) = node {
@@ -96,15 +96,13 @@ fn for_each_consumable<'tcx>(hir: Map<'tcx>, place: TrackedValue, mut f: impl Fn
 }
 
 rustc_index::newtype_index! {
-    pub struct PostOrderId {
-        DEBUG_FORMAT = "id({})",
-    }
+    #[debug_format = "id({})"]
+    pub struct PostOrderId {}
 }
 
 rustc_index::newtype_index! {
-    pub struct TrackedValueIndex {
-        DEBUG_FORMAT = "hidx({})",
-    }
+    #[debug_format = "hidx({})"]
+    pub struct TrackedValueIndex {}
 }
 
 /// Identifies a value whose drop state we need to track.

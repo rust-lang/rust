@@ -10,9 +10,8 @@ use crate::fmt;
 use crate::fs::File;
 use crate::io::{self, BufReader, IoSlice, IoSliceMut, LineWriter, Lines};
 use crate::sync::atomic::{AtomicBool, Ordering};
-use crate::sync::{Arc, Mutex, MutexGuard, OnceLock};
+use crate::sync::{Arc, Mutex, MutexGuard, OnceLock, ReentrantMutex, ReentrantMutexGuard};
 use crate::sys::stdio;
-use crate::sys_common::remutex::{ReentrantMutex, ReentrantMutexGuard};
 
 type LocalStream = Arc<Mutex<Vec<u8>>>;
 

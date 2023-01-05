@@ -11,7 +11,7 @@
 //!   [`Ipv6Addr`] are respectively IPv4 and IPv6 addresses
 //! * [`SocketAddr`] represents socket addresses of either IPv4 or IPv6; [`SocketAddrV4`]
 //!   and [`SocketAddrV6`] are respectively IPv4 and IPv6 socket addresses
-//! * [`ToSocketAddrs`] is a trait that used for generic address resolution when interacting
+//! * [`ToSocketAddrs`] is a trait that is used for generic address resolution when interacting
 //!   with networking objects like [`TcpListener`], [`TcpStream`] or [`UdpSocket`]
 //! * Other types are return or parameter types for various methods in this module
 //!

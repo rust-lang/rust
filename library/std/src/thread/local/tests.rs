@@ -1,15 +1,34 @@
 use crate::cell::{Cell, UnsafeCell};
 use crate::sync::atomic::{AtomicU8, Ordering};
-use crate::sync::mpsc::{channel, Sender};
+use crate::sync::{Arc, Condvar, Mutex};
 use crate::thread::{self, LocalKey};
 use crate::thread_local;
 
-struct Foo(Sender<()>);
+#[derive(Clone, Default)]
+struct Signal(Arc<(Mutex<bool>, Condvar)>);
+
+impl Signal {
+    fn notify(&self) {
+        let (set, cvar) = &*self.0;
+        *set.lock().unwrap() = true;
+        cvar.notify_one();
+    }
+
+    fn wait(&self) {
+        let (set, cvar) = &*self.0;
+        let mut set = set.lock().unwrap();
+        while !*set {
+            set = cvar.wait(set).unwrap();
+        }
+    }
+}
+
+struct Foo(Signal);
 
 impl Drop for Foo {
     fn drop(&mut self) {
-        let Foo(ref s) = *self;
-        s.send(()).unwrap();
+        let Foo(ref f) = *self;
+        f.notify();
     }
 }
 
@@ -69,14 +88,15 @@ fn smoke_dtor() {
     run(&FOO2);
 
     fn run(key: &'static LocalKey<UnsafeCell<Option<Foo>>>) {
-        let (tx, rx) = channel();
+        let signal = Signal::default();
+        let signal2 = signal.clone();
         let t = thread::spawn(move || unsafe {
-            let mut tx = Some(tx);
+            let mut signal = Some(signal2);
             key.with(|f| {
-                *f.get() = Some(Foo(tx.take().unwrap()));
+                *f.get() = Some(Foo(signal.take().unwrap()));
             });
         });
-        rx.recv().unwrap();
+        signal.wait();
         t.join().unwrap();
     }
 }
@@ -165,48 +185,50 @@ fn self_referential() {
 // requires the destructor to be run to pass the test).
 #[test]
 fn dtors_in_dtors_in_dtors() {
-    struct S1(Sender<()>);
+    struct S1(Signal);
     thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
     thread_local!(static K2: UnsafeCell<Option<Foo>> = UnsafeCell::new(None));
 
     impl Drop for S1 {
         fn drop(&mut self) {
-            let S1(ref tx) = *self;
+            let S1(ref signal) = *self;
             unsafe {
-                let _ = K2.try_with(|s| *s.get() = Some(Foo(tx.clone())));
+                let _ = K2.try_with(|s| *s.get() = Some(Foo(signal.clone())));
             }
         }
     }
 
-    let (tx, rx) = channel();
+    let signal = Signal::default();
+    let signal2 = signal.clone();
     let _t = thread::spawn(move || unsafe {
-        let mut tx = Some(tx);
-        K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
+        let mut signal = Some(signal2);
+        K1.with(|s| *s.get() = Some(S1(signal.take().unwrap())));
     });
-    rx.recv().unwrap();
+    signal.wait();
 }
 
 #[test]
 fn dtors_in_dtors_in_dtors_const_init() {
-    struct S1(Sender<()>);
+    struct S1(Signal);
     thread_local!(static K1: UnsafeCell<Option<S1>> = const { UnsafeCell::new(None) });
     thread_local!(static K2: UnsafeCell<Option<Foo>> = const { UnsafeCell::new(None) });
 
     impl Drop for S1 {
         fn drop(&mut self) {
-            let S1(ref tx) = *self;
+            let S1(ref signal) = *self;
             unsafe {
-                let _ = K2.try_with(|s| *s.get() = Some(Foo(tx.clone())));
+                let _ = K2.try_with(|s| *s.get() = Some(Foo(signal.clone())));
             }
         }
     }
 
-    let (tx, rx) = channel();
+    let signal = Signal::default();
+    let signal2 = signal.clone();
     let _t = thread::spawn(move || unsafe {
-        let mut tx = Some(tx);
-        K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
+        let mut signal = Some(signal2);
+        K1.with(|s| *s.get() = Some(S1(signal.take().unwrap())));
     });
-    rx.recv().unwrap();
+    signal.wait();
 }
 
 // This test tests that TLS destructors have run before the thread joins. The

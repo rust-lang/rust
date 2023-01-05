@@ -18,11 +18,7 @@ use rustc_span::symbol::{kw::Empty, sym, Symbol};
 
 use crate::errors::{DuplicateDiagnosticItem, DuplicateDiagnosticItemInCrate};
 
-fn observe_item<'tcx>(
-    tcx: TyCtxt<'tcx>,
-    diagnostic_items: &mut DiagnosticItems,
-    def_id: LocalDefId,
-) {
+fn observe_item(tcx: TyCtxt<'_>, diagnostic_items: &mut DiagnosticItems, def_id: LocalDefId) {
     let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
     let attrs = tcx.hir().attrs(hir_id);
     if let Some(name) = extract(attrs) {
@@ -63,7 +59,7 @@ fn extract(attrs: &[ast::Attribute]) -> Option<Symbol> {
 }
 
 /// Traverse and collect the diagnostic items in the current
-fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> DiagnosticItems {
+fn diagnostic_items(tcx: TyCtxt<'_>, cnum: CrateNum) -> DiagnosticItems {
     assert_eq!(cnum, LOCAL_CRATE);
 
     // Initialize the collector.
@@ -73,26 +69,26 @@ fn diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, cnum: CrateNum) -> DiagnosticItems 
     let crate_items = tcx.hir_crate_items(());
 
     for id in crate_items.items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.owner_id.def_id);
     }
 
     for id in crate_items.trait_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.owner_id.def_id);
     }
 
     for id in crate_items.impl_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.owner_id.def_id);
     }
 
     for id in crate_items.foreign_items() {
-        observe_item(tcx, &mut diagnostic_items, id.def_id.def_id);
+        observe_item(tcx, &mut diagnostic_items, id.owner_id.def_id);
     }
 
     diagnostic_items
 }
 
 /// Traverse and collect all the diagnostic items in all crates.
-fn all_diagnostic_items<'tcx>(tcx: TyCtxt<'tcx>, (): ()) -> DiagnosticItems {
+fn all_diagnostic_items(tcx: TyCtxt<'_>, (): ()) -> DiagnosticItems {
     // Initialize the collector.
     let mut items = DiagnosticItems::default();
 

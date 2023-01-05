@@ -2,6 +2,7 @@
 // compile-flags: -Zinline-mir=no
 // error-pattern: overflow evaluating the requirement `(): Sized`
 // error-pattern: function cannot return without recursing
+// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
 
 // Regression test for #91949.
 // This hanged *forever* on 1.56, fixed by #90423.

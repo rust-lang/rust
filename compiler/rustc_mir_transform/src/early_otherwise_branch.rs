@@ -121,7 +121,6 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
 
             let TerminatorKind::SwitchInt {
                 discr: parent_op,
-                switch_ty: parent_ty,
                 targets: parent_targets
             } = &bbs[parent].terminator().kind else {
                 unreachable!()
@@ -132,6 +131,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 Operand::Copy(x) => Operand::Copy(*x),
                 Operand::Constant(x) => Operand::Constant(x.clone()),
             };
+            let parent_ty = parent_op.ty(body.local_decls(), tcx);
             let statements_before = bbs[parent].statements.len();
             let parent_end = Location { block: parent, statement_index: statements_before };
 
@@ -153,7 +153,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             // create temp to store inequality comparison between the two discriminants, `_t` in
             // example above
             let nequal = BinOp::Ne;
-            let comp_res_type = nequal.ty(tcx, *parent_ty, opt_data.child_ty);
+            let comp_res_type = nequal.ty(tcx, parent_ty, opt_data.child_ty);
             let comp_temp = patch.new_temp(comp_res_type, opt_data.child_source.span);
             patch.add_statement(parent_end, StatementKind::StorageLive(comp_temp));
 
@@ -181,7 +181,6 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
                 kind: TerminatorKind::SwitchInt {
                     // switch on the first discriminant, so we can mark the second one as dead
                     discr: parent_op,
-                    switch_ty: opt_data.child_ty,
                     targets: eq_targets,
                 },
             }));
@@ -193,12 +192,7 @@ impl<'tcx> MirPass<'tcx> for EarlyOtherwiseBranch {
             let false_case = eq_bb;
             patch.patch_terminator(
                 parent,
-                TerminatorKind::if_(
-                    tcx,
-                    Operand::Move(Place::from(comp_temp)),
-                    true_case,
-                    false_case,
-                ),
+                TerminatorKind::if_(Operand::Move(Place::from(comp_temp)), true_case, false_case),
             );
 
             // generate StorageDead for the second_discriminant_temp not in use anymore
@@ -319,11 +313,11 @@ fn evaluate_candidate<'tcx>(
     let bbs = &body.basic_blocks;
     let TerminatorKind::SwitchInt {
         targets,
-        switch_ty: parent_ty,
-        ..
+        discr: parent_discr,
     } = &bbs[parent].terminator().kind else {
         return None
     };
+    let parent_ty = parent_discr.ty(body.local_decls(), tcx);
     let parent_dest = {
         let poss = targets.otherwise();
         // If the fallthrough on the parent is trivially unreachable, we can let the
@@ -339,12 +333,12 @@ fn evaluate_candidate<'tcx>(
     let (_, child) = targets.iter().next()?;
     let child_terminator = &bbs[child].terminator();
     let TerminatorKind::SwitchInt {
-        switch_ty: child_ty,
         targets: child_targets,
-        ..
+        discr: child_discr,
     } = &child_terminator.kind else {
         return None
     };
+    let child_ty = child_discr.ty(body.local_decls(), tcx);
     if child_ty != parent_ty {
         return None;
     }
@@ -372,7 +366,7 @@ fn evaluate_candidate<'tcx>(
     Some(OptimizationData {
         destination,
         child_place: *child_place,
-        child_ty: *child_ty,
+        child_ty,
         child_source: child_terminator.source_info,
     })
 }

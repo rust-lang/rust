@@ -3,6 +3,6 @@ pub trait ToNbt<T> {
 }
 
 impl dyn ToNbt<Self> {}
-//~^ ERROR cycle detected
+//~^ ERROR `Self` is not valid in the self type of an impl block
 
 fn main() {}

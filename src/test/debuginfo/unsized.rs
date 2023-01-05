@@ -32,13 +32,13 @@
 
 // cdb-command: g
 // cdb-command:dx a
-// cdb-check:a                [Type: ref$<unsized::Foo<slice$<u8> > >]
-// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: unsized::Foo<slice$<u8> > *]
+// cdb-check:a                [Type: ref$<unsized::Foo<slice2$<u8> > >]
+// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: unsized::Foo<slice2$<u8> > *]
 // cdb-check:    [...] length           : 0x4 [Type: unsigned [...]int[...]
 
 // cdb-command:dx b
-// cdb-check:b                [Type: ref$<unsized::Foo<unsized::Foo<slice$<u8> > > >]
-// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: unsized::Foo<unsized::Foo<slice$<u8> > > *]
+// cdb-check:b                [Type: ref$<unsized::Foo<unsized::Foo<slice2$<u8> > > >]
+// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: unsized::Foo<unsized::Foo<slice2$<u8> > > *]
 // cdb-check:    [...] length           : 0x4 [Type: unsigned [...]int[...]
 
 // cdb-command:dx c
@@ -53,8 +53,8 @@
 // cdb-check:[...] vtable           : 0x[...] [Type: unsigned [...]int[...] (*)[3]]
 
 // cdb-command:dx tuple_slice
-// cdb-check:tuple_slice      [Type: ref$<tuple$<i32,i32,slice$<i32> > >]
-// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: tuple$<i32,i32,slice$<i32> > *]
+// cdb-check:tuple_slice      [Type: ref$<tuple$<i32,i32,slice2$<i32> > >]
+// cdb-check:    [+0x000] data_ptr         : 0x[...] [Type: tuple$<i32,i32,slice2$<i32> > *]
 // cdb-check:    [...] length           : 0x2 [Type: unsigned [...]int[...]
 
 // cdb-command:dx tuple_dyn

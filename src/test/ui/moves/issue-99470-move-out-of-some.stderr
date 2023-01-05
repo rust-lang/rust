@@ -5,11 +5,16 @@ LL |     match x {
    |           ^
 LL |
 LL |         &Some(_y) => (),
-   |         ---------
-   |         |     |
-   |         |     data moved here
-   |         |     move occurs because `_y` has type `Box<i32>`, which does not implement the `Copy` trait
-   |         help: consider removing the `&`: `Some(_y)`
+   |               --
+   |               |
+   |               data moved here
+   |               move occurs because `_y` has type `Box<i32>`, which does not implement the `Copy` trait
+   |
+help: consider removing the borrow
+   |
+LL -         &Some(_y) => (),
+LL +         Some(_y) => (),
+   |
 
 error: aborting due to previous error
 

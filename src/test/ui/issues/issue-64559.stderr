@@ -10,11 +10,8 @@ LL |     let _closure = || orig;
    |                    |
    |                    value used here after move
    |
-note: this function takes ownership of the receiver `self`, which moves `orig`
+note: `into_iter` takes ownership of the receiver `self`, which moves `orig`
   --> $SRC_DIR/core/src/iter/traits/collect.rs:LL:COL
-   |
-LL |     fn into_iter(self) -> Self::IntoIter;
-   |                  ^^^^
 help: consider iterating over a slice of the `Vec<bool>`'s content to avoid moving into the `for` loop
    |
 LL |     for _val in &orig {}

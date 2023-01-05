@@ -6,12 +6,15 @@ use log::trace;
 
 use crate::helpers::check_arg_count;
 use crate::shims::windows::handle::{EvalContextExt as _, Handle, PseudoHandle};
+use crate::shims::windows::sync::EvalContextExt as _;
 use crate::*;
 
 #[derive(Debug, Copy, Clone)]
 pub enum Dlsym {
     NtWriteFile,
     SetThreadDescription,
+    WaitOnAddress,
+    WakeByAddressSingle,
 }
 
 impl Dlsym {
@@ -22,6 +25,8 @@ impl Dlsym {
             "GetSystemTimePreciseAsFileTime" => None,
             "NtWriteFile" => Some(Dlsym::NtWriteFile),
             "SetThreadDescription" => Some(Dlsym::SetThreadDescription),
+            "WaitOnAddress" => Some(Dlsym::WaitOnAddress),
+            "WakeByAddressSingle" => Some(Dlsym::WakeByAddressSingle),
             _ => throw_unsup_format!("unsupported Windows dlsym: {}", name),
         })
     }
@@ -62,10 +67,10 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                     byte_offset,
                     _key,
                 ] = check_arg_count(args)?;
-                let handle = this.read_scalar(handle)?.to_machine_isize(this)?;
+                let handle = this.read_machine_isize(handle)?;
                 let buf = this.read_pointer(buf)?;
                 let n = this.read_scalar(n)?.to_u32()?;
-                let byte_offset = this.read_scalar(byte_offset)?.to_machine_usize(this)?; // is actually a pointer
+                let byte_offset = this.read_machine_usize(byte_offset)?; // is actually a pointer
                 let io_status_block = this.deref_operand(io_status_block)?;
 
                 if byte_offset != 0 {
@@ -126,6 +131,16 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
                 this.set_thread_name_wide(thread, &name);
 
                 this.write_null(dest)?;
+            }
+            Dlsym::WaitOnAddress => {
+                let [ptr_op, compare_op, size_op, timeout_op] = check_arg_count(args)?;
+
+                this.WaitOnAddress(ptr_op, compare_op, size_op, timeout_op, dest)?;
+            }
+            Dlsym::WakeByAddressSingle => {
+                let [ptr_op] = check_arg_count(args)?;
+
+                this.WakeByAddressSingle(ptr_op)?;
             }
         }
 

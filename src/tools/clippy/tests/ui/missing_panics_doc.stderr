@@ -1,11 +1,8 @@
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:6:1
    |
-LL | / pub fn unwrap() {
-LL | |     let result = Err("Hi");
-LL | |     result.unwrap()
-LL | | }
-   | |_^
+LL | pub fn unwrap() {
+   | ^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:8:5
@@ -17,10 +14,8 @@ LL |     result.unwrap()
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:12:1
    |
-LL | / pub fn panic() {
-LL | |     panic!("This function panics")
-LL | | }
-   | |_^
+LL | pub fn panic() {
+   | ^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:13:5
@@ -31,10 +26,8 @@ LL |     panic!("This function panics")
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:17:1
    |
-LL | / pub fn todo() {
-LL | |     todo!()
-LL | | }
-   | |_^
+LL | pub fn todo() {
+   | ^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:18:5
@@ -45,14 +38,8 @@ LL |     todo!()
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:22:1
    |
-LL | / pub fn inner_body(opt: Option<u32>) {
-LL | |     opt.map(|x| {
-LL | |         if x == 10 {
-LL | |             panic!()
-LL | |         }
-LL | |     });
-LL | | }
-   | |_^
+LL | pub fn inner_body(opt: Option<u32>) {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:25:13
@@ -63,10 +50,8 @@ LL |             panic!()
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:31:1
    |
-LL | / pub fn unreachable_and_panic() {
-LL | |     if true { unreachable!() } else { panic!() }
-LL | | }
-   | |_^
+LL | pub fn unreachable_and_panic() {
+   | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:32:39
@@ -77,11 +62,8 @@ LL |     if true { unreachable!() } else { panic!() }
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:36:1
    |
-LL | / pub fn assert_eq() {
-LL | |     let x = 0;
-LL | |     assert_eq!(x, 0);
-LL | | }
-   | |_^
+LL | pub fn assert_eq() {
+   | ^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:38:5
@@ -92,11 +74,8 @@ LL |     assert_eq!(x, 0);
 error: docs for function which may panic missing `# Panics` section
   --> $DIR/missing_panics_doc.rs:42:1
    |
-LL | / pub fn assert_ne() {
-LL | |     let x = 0;
-LL | |     assert_ne!(x, 0);
-LL | | }
-   | |_^
+LL | pub fn assert_ne() {
+   | ^^^^^^^^^^^^^^^^^^
    |
 note: first possible panic found here
   --> $DIR/missing_panics_doc.rs:44:5

@@ -110,10 +110,16 @@ impl<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> FunctionCx<'a, 'tcx, Bx> {
                     _ => bug!(),
                 };
                 let value = meth::VirtualIndex::from_index(idx).get_usize(bx, vtable);
-                if name == sym::vtable_align {
+                match name {
+                    // Size is always <= isize::MAX.
+                    sym::vtable_size => {
+                        let size_bound = bx.data_layout().ptr_sized_integer().signed_max() as u128;
+                        bx.range_metadata(value, WrappingRange { start: 0, end: size_bound });
+                    },
                     // Alignment is always nonzero.
-                    bx.range_metadata(value, WrappingRange { start: 1, end: !0 });
-                };
+                    sym::vtable_align => bx.range_metadata(value, WrappingRange { start: 1, end: !0 }),
+                    _ => {}
+                }
                 value
             }
             sym::pref_align_of

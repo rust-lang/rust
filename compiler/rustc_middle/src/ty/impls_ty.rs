@@ -112,19 +112,6 @@ impl<'a> HashStable<StableHashingContext<'a>> for mir::interpret::AllocId {
     }
 }
 
-// `Relocations` with default type parameters is a sorted map.
-impl<'a, Prov> HashStable<StableHashingContext<'a>> for mir::interpret::ProvenanceMap<Prov>
-where
-    Prov: HashStable<StableHashingContext<'a>>,
-{
-    fn hash_stable(&self, hcx: &mut StableHashingContext<'a>, hasher: &mut StableHasher) {
-        self.len().hash_stable(hcx, hasher);
-        for reloc in self.iter() {
-            reloc.hash_stable(hcx, hasher);
-        }
-    }
-}
-
 impl<'a> ToStableHashKey<StableHashingContext<'a>> for region::Scope {
     type KeyType = region::Scope;
 

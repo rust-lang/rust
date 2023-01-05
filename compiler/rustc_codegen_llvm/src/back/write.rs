@@ -203,7 +203,7 @@ pub fn target_machine_factory(
         sess.opts.unstable_opts.trap_unreachable.unwrap_or(sess.target.trap_unreachable);
     let emit_stack_size_section = sess.opts.unstable_opts.emit_stack_sizes;
 
-    let asm_comments = sess.asm_comments();
+    let asm_comments = sess.opts.unstable_opts.asm_comments;
     let relax_elf_relocations =
         sess.opts.unstable_opts.relax_elf_relocations.unwrap_or(sess.target.relax_elf_relocations);
 
@@ -765,11 +765,21 @@ pub(crate) unsafe fn codegen(
         drop(handlers);
     }
 
+    // `.dwo` files are only emitted if:
+    //
+    // - Object files are being emitted (i.e. bitcode only or metadata only compilations will not
+    //   produce dwarf objects, even if otherwise enabled)
+    // - Target supports Split DWARF
+    // - Split debuginfo is enabled
+    // - Split DWARF kind is `split` (i.e. debuginfo is split into `.dwo` files, not different
+    //   sections in the `.o` files).
+    let dwarf_object_emitted = matches!(config.emit_obj, EmitObj::ObjectCode(_))
+        && cgcx.target_can_use_split_dwarf
+        && cgcx.split_debuginfo != SplitDebuginfo::Off
+        && cgcx.split_dwarf_kind == SplitDwarfKind::Split;
     Ok(module.into_compiled_module(
         config.emit_obj != EmitObj::None,
-        cgcx.target_can_use_split_dwarf
-            && cgcx.split_debuginfo != SplitDebuginfo::Off
-            && cgcx.split_dwarf_kind == SplitDwarfKind::Split,
+        dwarf_object_emitted,
         config.emit_bc,
         &cgcx.output_filenames,
     ))

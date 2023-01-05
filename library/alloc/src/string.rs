@@ -362,8 +362,8 @@ use crate::vec::Vec;
 /// [`Deref`]: core::ops::Deref "ops::Deref"
 /// [`as_str()`]: String::as_str
 #[derive(PartialOrd, Eq, Ord)]
-#[cfg_attr(not(test), rustc_diagnostic_item = "String")]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg_attr(not(test), lang = "String")]
 pub struct String {
     vec: Vec<u8>,
 }
@@ -949,7 +949,7 @@ impl String {
     /// assert_eq!(string, "abcdecdeabecde");
     /// ```
     #[cfg(not(no_global_oom_handling))]
-    #[unstable(feature = "string_extend_from_within", issue = "none")]
+    #[unstable(feature = "string_extend_from_within", issue = "103806")]
     pub fn extend_from_within<R>(&mut self, src: R)
     where
         R: RangeBounds<usize>,
@@ -2678,7 +2678,7 @@ impl From<&String> for String {
     }
 }
 
-// note: test pulls in libstd, which causes errors here
+// note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
 impl From<Box<str>> for String {

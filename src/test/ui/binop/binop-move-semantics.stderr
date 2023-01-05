@@ -13,9 +13,6 @@ LL | |     x;
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 help: consider further restricting this bound
    |
 LL | fn double_move<T: Add<Output=()> + Copy>(x: T) {
@@ -32,6 +29,10 @@ LL |     +
 LL |     x.clone();
    |     ^^^^^^^^^ value borrowed here after move
    |
+help: consider cloning the value if the performance cost is acceptable
+   |
+LL |     x.clone()
+   |      ++++++++
 help: consider further restricting this bound
    |
 LL | fn move_then_borrow<T: Add<Output=()> + Clone + Copy>(x: T) {
@@ -74,9 +75,6 @@ LL | |     *n;
    |
 note: calling this operator moves the left-hand side
   --> $SRC_DIR/core/src/ops/arith.rs:LL:COL
-   |
-LL |     fn add(self, rhs: Rhs) -> Self::Output;
-   |            ^^^^
 
 error[E0507]: cannot move out of `*n` which is behind a shared reference
   --> $DIR/binop-move-semantics.rs:32:5

@@ -23,10 +23,30 @@ pub(crate) fn get_host_triple() -> String {
         .to_owned()
 }
 
+pub(crate) fn get_cargo_path() -> PathBuf {
+    let cargo_path = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["which", "cargo"])
+        .output()
+        .unwrap()
+        .stdout;
+    Path::new(String::from_utf8(cargo_path).unwrap().trim()).to_owned()
+}
+
 pub(crate) fn get_rustc_path() -> PathBuf {
     let rustc_path = Command::new("rustup")
         .stderr(Stdio::inherit())
         .args(&["which", "rustc"])
+        .output()
+        .unwrap()
+        .stdout;
+    Path::new(String::from_utf8(rustc_path).unwrap().trim()).to_owned()
+}
+
+pub(crate) fn get_rustdoc_path() -> PathBuf {
+    let rustc_path = Command::new("rustup")
+        .stderr(Stdio::inherit())
+        .args(&["which", "rustdoc"])
         .output()
         .unwrap()
         .stdout;

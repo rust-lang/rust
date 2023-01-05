@@ -76,7 +76,7 @@ fn mut_range_bound_no_immediate_break() {
     let mut n = 3;
     for i in n..10 {
         if n == 4 {
-            n = 1; // FIXME: warning because is is not immediately followed by break
+            n = 1; // FIXME: warning because it is not immediately followed by break
             let _ = 2;
             break;
         }

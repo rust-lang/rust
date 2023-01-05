@@ -46,6 +46,7 @@ fn config() -> Config {
         "--jsondocck-path=",
         "--src-base=",
         "--build-base=",
+        "--sysroot-base=",
         "--stage-id=stage2",
         "--cc=c",
         "--cxx=c++",

@@ -1,6 +1,5 @@
 // build-pass
 #![feature(trait_upcasting)]
-#![allow(incomplete_features)]
 
 pub trait A {}
 pub trait B {}

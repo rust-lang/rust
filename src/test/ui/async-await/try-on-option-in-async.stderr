@@ -1,8 +1,7 @@
 error[E0277]: the `?` operator can only be used in an async block that returns `Result` or `Option` (or another type that implements `FromResidual`)
   --> $DIR/try-on-option-in-async.rs:8:10
    |
-LL |       async {
-   |  ___________-
+LL | /     async {
 LL | |         let x: Option<u32> = None;
 LL | |         x?;
    | |          ^ cannot use the `?` operator in an async block that returns `{integer}`

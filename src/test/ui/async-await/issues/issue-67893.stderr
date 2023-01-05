@@ -9,14 +9,10 @@ note: future is not `Send` as this value is used across an await
   --> $DIR/auxiliary/issue_67893.rs:9:26
    |
 LL |     f(*x.lock().unwrap()).await;
-   |        ----------------- ^^^^^^ await occurs here, with `x.lock().unwrap()` maybe used later
-   |        |
+   |        ----------------- ^^^^^^- `x.lock().unwrap()` is later dropped here
+   |        |                 |
+   |        |                 await occurs here, with `x.lock().unwrap()` maybe used later
    |        has type `MutexGuard<'_, ()>` which is not `Send`
-note: `x.lock().unwrap()` is later dropped here
-  --> $DIR/auxiliary/issue_67893.rs:9:32
-   |
-LL |     f(*x.lock().unwrap()).await;
-   |                                ^
 note: required by a bound in `g`
   --> $DIR/issue-67893.rs:6:14
    |

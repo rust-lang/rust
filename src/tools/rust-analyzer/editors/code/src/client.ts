@@ -4,9 +4,7 @@ import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
 import { WorkspaceEdit } from "vscode";
-import { Workspace } from "./ctx";
-import { substituteVariablesInEnv } from "./config";
-import { outputChannel, traceOutputChannel } from "./main";
+import { Config, substituteVSCodeVariables } from "./config";
 import { randomUUID } from "crypto";
 
 export interface Env {
@@ -65,40 +63,80 @@ function renderHoverActions(actions: ra.CommandLinkGroup[]): vscode.MarkdownStri
 }
 
 export async function createClient(
-    serverPath: string,
-    workspace: Workspace,
-    extraEnv: Env
+    traceOutputChannel: vscode.OutputChannel,
+    outputChannel: vscode.OutputChannel,
+    initializationOptions: vscode.WorkspaceConfiguration,
+    serverOptions: lc.ServerOptions,
+    config: Config
 ): Promise<lc.LanguageClient> {
-    // '.' Is the fallback if no folder is open
-    // TODO?: Workspace folders support Uri's (eg: file://test.txt).
-    // It might be a good idea to test if the uri points to a file.
-
-    const newEnv = substituteVariablesInEnv(Object.assign({}, process.env, extraEnv));
-    const run: lc.Executable = {
-        command: serverPath,
-        options: { env: newEnv },
-    };
-    const serverOptions: lc.ServerOptions = {
-        run,
-        debug: run,
-    };
-
-    let initializationOptions = vscode.workspace.getConfiguration("rust-analyzer");
-
-    if (workspace.kind === "Detached Files") {
-        initializationOptions = {
-            detachedFiles: workspace.files.map((file) => file.uri.fsPath),
-            ...initializationOptions,
-        };
-    }
-
     const clientOptions: lc.LanguageClientOptions = {
         documentSelector: [{ scheme: "file", language: "rust" }],
         initializationOptions,
         diagnosticCollectionName: "rustc",
-        traceOutputChannel: traceOutputChannel(),
-        outputChannel: outputChannel(),
+        traceOutputChannel,
+        outputChannel,
         middleware: {
+            workspace: {
+                // HACK: This is a workaround, when the client has been disposed, VSCode
+                // continues to emit events to the client and the default one for this event
+                // attempt to restart the client for no reason
+                async didChangeWatchedFile(event, next) {
+                    if (client.isRunning()) {
+                        await next(event);
+                    }
+                },
+                async configuration(
+                    params: lc.ConfigurationParams,
+                    token: vscode.CancellationToken,
+                    next: lc.ConfigurationRequest.HandlerSignature
+                ) {
+                    const resp = await next(params, token);
+                    if (resp && Array.isArray(resp)) {
+                        return resp.map((val) => {
+                            return substituteVSCodeVariables(val);
+                        });
+                    } else {
+                        return resp;
+                    }
+                },
+            },
+            async handleDiagnostics(
+                uri: vscode.Uri,
+                diagnostics: vscode.Diagnostic[],
+                next: lc.HandleDiagnosticsSignature
+            ) {
+                const preview = config.previewRustcOutput;
+                diagnostics.forEach((diag, idx) => {
+                    // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
+                    // Diagnostic class, if they ever break this we are out of luck and have to go
+                    // back to the worst diagnostics experience ever:)
+
+                    // We encode the rendered output of a rustc diagnostic in the rendered field of
+                    // the data payload of the lsp diagnostic. If that field exists, overwrite the
+                    // diagnostic code such that clicking it opens the diagnostic in a readonly
+                    // text editor for easy inspection
+                    const rendered = (diag as unknown as { data?: { rendered?: string } }).data
+                        ?.rendered;
+                    if (rendered) {
+                        if (preview) {
+                            const index = rendered.match(/^(note|help):/m)?.index || 0;
+                            diag.message = rendered
+                                .substring(0, index)
+                                .replace(/^ -->[^\n]+\n/m, "");
+                        }
+                        diag.code = {
+                            target: vscode.Uri.from({
+                                scheme: "rust-analyzer-diagnostics-view",
+                                path: "/diagnostic message",
+                                fragment: uri.toString(),
+                                query: idx.toString(),
+                            }),
+                            value: "Click for full compiler diagnostic",
+                        };
+                    }
+                });
+                return next(uri, diagnostics);
+            },
             async provideHover(
                 document: vscode.TextDocument,
                 position: vscode.Position,
@@ -255,6 +293,9 @@ export async function createClient(
 }
 
 class ExperimentalFeatures implements lc.StaticFeature {
+    getState(): lc.FeatureState {
+        return { kind: "static" };
+    }
     fillClientCapabilities(capabilities: lc.ClientCapabilities): void {
         const caps: any = capabilities.experimental ?? {};
         caps.snippetTextEdit = true;

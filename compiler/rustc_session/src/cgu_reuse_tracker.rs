@@ -121,7 +121,7 @@ impl CguReuseTracker {
                         let at_least = if at_least { 1 } else { 0 };
                         IncorrectCguReuseType {
                             span: error_span.0,
-                            cgu_user_name: &cgu_user_name,
+                            cgu_user_name,
                             actual_reuse,
                             expected_reuse,
                             at_least,
