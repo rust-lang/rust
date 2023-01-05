@@ -5,6 +5,7 @@ use std::process;
 use self::utils::is_ci;
 
 mod abi_cafe;
+mod bench;
 mod build_backend;
 mod build_sysroot;
 mod config;
@@ -20,6 +21,7 @@ USAGE:
     ./y.rs prepare [--out-dir DIR]
     ./y.rs build [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
     ./y.rs test [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
+    ./y.rs bench [--debug] [--sysroot none|clif|llvm] [--out-dir DIR] [--no-unstable-features]
 
 OPTIONS:
     --sysroot none|clif|llvm
@@ -54,6 +56,7 @@ enum Command {
     Prepare,
     Build,
     Test,
+    Bench,
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -67,7 +70,7 @@ pub fn main() {
     if env::var("RUST_BACKTRACE").is_err() {
         env::set_var("RUST_BACKTRACE", "1");
     }
-    env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1");
+    env::set_var("CG_CLIF_DISPLAY_CG_TIME", "1"); // FIXME disable this by default
     env::set_var("CG_CLIF_DISABLE_INCR_CACHE", "1");
 
     if is_ci() {
@@ -83,6 +86,7 @@ pub fn main() {
         Some("prepare") => Command::Prepare,
         Some("build") => Command::Build,
         Some("test") => Command::Test,
+        Some("bench") => Command::Bench,
         Some(flag) if flag.starts_with('-') => arg_error!("Expected command found flag {}", flag),
         Some(command) => arg_error!("Unknown command {}", command),
         None => {
@@ -197,6 +201,17 @@ pub fn main() {
                 &host_triple,
                 &target_triple,
             );
+        }
+        Command::Bench => {
+            build_sysroot::build_sysroot(
+                &dirs,
+                channel,
+                sysroot_kind,
+                &cg_clif_dylib,
+                &host_triple,
+                &target_triple,
+            );
+            bench::benchmark(&dirs);
         }
     }
 }

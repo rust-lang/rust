@@ -6,8 +6,6 @@ task:
     - pkg install -y curl git bash
     - curl https://sh.rustup.rs -sSf --output rustup.sh
     - sh rustup.sh --default-toolchain none -y --profile=minimal
-  cargo_bin_cache:
-    folder: ~/.cargo/bin
   target_cache:
     folder: target
   prepare_script:

@@ -13,12 +13,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
-    - name: Cache cargo installed crates
-      uses: actions/cache@v3
-      with:
-        path: ~/.cargo/bin
-        key: ubuntu-latest-cargo-installed-crates
-
     - name: Prepare dependencies
       run: |
         git config --global user.email "user@example.com"
