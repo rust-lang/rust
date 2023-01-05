@@ -670,8 +670,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Note: this check is pessimistic, as the inference type could be matched with something other
         // than the opaque type, but then we need a new `TypeRelation` just for this specific case and
         // can't re-use `sup` below.
-        // See src/test/ui/impl-trait/hidden-type-is-opaque.rs and
-        // src/test/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
+        // See tests/ui/impl-trait/hidden-type-is-opaque.rs and
+        // tests/ui/impl-trait/hidden-type-is-opaque-2.rs for examples that hit this path.
         if formal_ret.has_infer_types() {
             for ty in ret_ty.walk() {
                 if let ty::subst::GenericArgKind::Type(ty) = ty.unpack()

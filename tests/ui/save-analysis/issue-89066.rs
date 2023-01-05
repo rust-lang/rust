@@ -1,7 +1,7 @@
 // compile-flags: -Zsave-analysis
 
 // Check that this does not ICE.
-// Stolen from src/test/ui/const-generics/generic_arg_infer/infer-arg-test.rs
+// Stolen from tests/ui/const-generics/generic_arg_infer/infer-arg-test.rs
 
 #![feature(generic_arg_infer)]
 

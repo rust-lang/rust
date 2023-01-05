@@ -58,7 +58,7 @@ prepare:
 	$(Q)$(BOOTSTRAP) build --stage 2 nonexistent/path/to/trigger/cargo/metadata
 
 TESTS_IN_2 := \
-	src/test/ui \
+	tests/ui \
 	src/tools/linkchecker
 
 ## MSVC native builders
@@ -72,7 +72,7 @@ ci-subset-2:
 ## MingW native builders
 
 TESTS_IN_MINGW_2 := \
-	src/test/ui
+	tests/ui
 
 ci-mingw-subset-1:
 	$(Q)$(CFG_SRC_DIR)/x test --stage 2 $(TESTS_IN_MINGW_2:%=--exclude %)

@@ -1,7 +1,7 @@
 // This test check that even if we mixup target feature of function with homogenous floats,
 // the abi is sound and still produce the right answer.
 //
-// This is basically the same test as src/test/ui/simd/target-feature-mixup.rs but for floats and
+// This is basically the same test as tests/ui/simd/target-feature-mixup.rs but for floats and
 // without #[repr(simd)]
 
 // run-pass

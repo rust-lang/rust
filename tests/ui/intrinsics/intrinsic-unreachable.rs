@@ -3,7 +3,7 @@
 
 use std::intrinsics;
 
-// See also src/test/run-make/intrinsic-unreachable.
+// See also tests/run-make/intrinsic-unreachable.
 
 unsafe fn f(x: usize) -> usize {
     match x {

@@ -2,7 +2,7 @@ include ../../run-make-fulldeps/tools.mk
 
 # How to run this
 # $ ./x.py clean
-# $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi src/test/run-make
+# $ ./x.py test --target thumbv6m-none-eabi,thumbv7m-none-eabi tests/run-make
 
 # Supported targets:
 # - thumbv6m-none-eabi (Bare Cortex-M0, M0+, M1)

@@ -1,5 +1,5 @@
 // run-pass
-// adapted from src/test/ui/binding/if-let.rs
+// adapted from tests/ui/binding/if-let.rs
 
 #![allow(dead_code)]
 

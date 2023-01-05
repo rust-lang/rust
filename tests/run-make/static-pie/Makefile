@@ -5,7 +5,7 @@ include ../../run-make-fulldeps/tools.mk
 # ignore-gnux32
 
 # How to manually run this
-# $ ./x.py test --target x86_64-unknown-linux-[musl,gnu] src/test/run-make/static-pie
+# $ ./x.py test --target x86_64-unknown-linux-[musl,gnu] tests/run-make/static-pie
 
 all: test-clang test-gcc
 

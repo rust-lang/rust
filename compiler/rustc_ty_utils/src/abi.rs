@@ -35,7 +35,7 @@ fn fn_sig_for_fn_abi<'tcx>(
             // HACK(davidtwco,eddyb): This is a workaround for polymorphization considering
             // parameters unused if they show up in the signature, but not in the `mir::Body`
             // (i.e. due to being inside a projection that got normalized, see
-            // `src/test/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
+            // `tests/ui/polymorphization/normalized_sig_types.rs`), and codegen not keeping
             // track of a polymorphization `ParamEnv` to allow normalizing later.
             //
             // We normalize the `fn_sig` again after substituting at a later point.

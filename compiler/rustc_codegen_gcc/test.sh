@@ -253,25 +253,25 @@ rustc = "$HOME/.rustup/toolchains/$rust_toolchain-$TARGET_TRIPLE/bin/rustc"
 EOF
 
     rustc -V | cut -d' ' -f3 | tr -d '('
-    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') src/test
+    git checkout $(rustc -V | cut -d' ' -f3 | tr -d '(') tests
 
-    for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" src/test/ui); do
+    for test in $(rg -i --files-with-matches "//(\[\w+\])?~|// error-pattern:|// build-fail|// run-fail|-Cllvm-args" tests/ui); do
       rm $test
     done
 
-    git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
+    git checkout -- tests/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,test*,*lto*.rs} || true
-    for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
+    rm -r tests/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,test*,*lto*.rs} || true
+    for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" tests/ui); do
       rm $test
     done
-    git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
-    git checkout src/test/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
+    git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice.rs
+    git checkout tests/ui/type-alias-impl-trait/auxiliary/cross_crate_ice2.rs
 
     RUSTC_ARGS="-Zpanic-abort-tests -Csymbol-mangling-version=v0 -Zcodegen-backend="$(pwd)"/../target/"$CHANNEL"/librustc_codegen_gcc."$dylib_ext" --sysroot "$(pwd)"/../build_sysroot/sysroot -Cpanic=abort"
 
     echo "[TEST] rustc test suite"
-    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 src/test/ui/ --rustc-args "$RUSTC_ARGS"
+    COMPILETEST_FORCE_STAGE0=1 ./x.py test --run always --stage 0 tests/ui/ --rustc-args "$RUSTC_ARGS"
 }
 
 function clean_ui_tests() {

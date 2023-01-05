@@ -8,7 +8,7 @@ use proc_macro::{TokenStream, TokenTree as Tt};
 use std::str::FromStr;
 
 // String containing the current version number of the tip, i.e. "1.41.2"
-static VERSION_NUMBER: &str = include_str!("../../../../../version");
+static VERSION_NUMBER: &str = include_str!("../../../../../src/version");
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord)]
 struct Version {

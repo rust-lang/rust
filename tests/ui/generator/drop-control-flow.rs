@@ -18,7 +18,7 @@ impl !Send for NonSend {}
 
 fn assert_send<T: Send>(_: T) {}
 
-// This test case is reduced from src/test/ui/drop/dynamic-drop-async.rs
+// This test case is reduced from tests/ui/drop/dynamic-drop-async.rs
 fn one_armed_if(arg: bool) {
     let _ = || {
         let arr = [Ptr];

@@ -4,7 +4,7 @@ include ../tools.mk
 # together with the borrow checker information.
 
 # How to run this
-# $ ./x.py test src/test/run-make-fulldeps/obtain-borrowck
+# $ ./x.py test tests/run-make-fulldeps/obtain-borrowck
 
 DRIVER_BINARY := "$(TMPDIR)"/driver
 SYSROOT := $(shell $(RUSTC) --print sysroot)

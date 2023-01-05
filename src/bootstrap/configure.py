@@ -45,7 +45,7 @@ o("llvm-static-stdcpp", "llvm.static-libstdcpp", "statically link to libstdc++ f
 o("llvm-link-shared", "llvm.link-shared", "prefer shared linking to LLVM (llvm-config --link-shared)")
 o("rpath", "rust.rpath", "build rpaths into rustc itself")
 o("llvm-version-check", "llvm.version-check", "check if the LLVM version is supported, build anyway")
-o("codegen-tests", "rust.codegen-tests", "run the src/test/codegen tests")
+o("codegen-tests", "rust.codegen-tests", "run the tests/codegen tests")
 o("option-checking", None, "complain about unrecognized options in this configure script")
 o("ninja", "llvm.ninja", "build LLVM using the Ninja generator (for MSVC, requires building in the correct environment)")
 o("locked-deps", "build.locked-deps", "force Cargo.lock to be up to date")

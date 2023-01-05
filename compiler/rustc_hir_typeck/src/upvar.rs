@@ -663,7 +663,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // fields of some type, the observable drop order will remain the same as it previously
         // was even though we're dropping each capture individually.
         // See https://github.com/rust-lang/project-rfc-2229/issues/42 and
-        // `src/test/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
+        // `tests/ui/closures/2229_closure_analysis/preserve_field_drop_order.rs`.
         for (_, captures) in &mut root_var_min_capture_list {
             captures.sort_by(|capture1, capture2| {
                 for (p1, p2) in capture1.place.projections.iter().zip(&capture2.place.projections) {

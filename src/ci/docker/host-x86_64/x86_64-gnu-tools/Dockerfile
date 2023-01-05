@@ -84,5 +84,5 @@ ENV RUST_CONFIGURE_ARGS \
   --save-toolstates=/tmp/toolstate/toolstates.json
 
 ENV SCRIPT /tmp/checktools.sh ../x.py && \
-  NODE_PATH=`npm root -g` python3 ../x.py test src/test/rustdoc-gui --stage 2 \
+  NODE_PATH=`npm root -g` python3 ../x.py test tests/rustdoc-gui --stage 2 \
     --test-args "'--no-sandbox --jobs 1'"

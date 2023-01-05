@@ -11,14 +11,14 @@ You can find more information and its documentation in its [repository][browser-
 If you need to have more information on the tests run, you can use `--test-args`:
 
 ```bash
-$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --debug
+$ ./x.py test tests/rustdoc-gui --stage 1 --test-args --debug
 ```
 
 If you don't want to run in headless mode (helpful to debug sometimes), you can use
 `--no-headless`:
 
 ```bash
-$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --no-headless
+$ ./x.py test tests/rustdoc-gui --stage 1 --test-args --no-headless
 ```
 
 To see the supported options, use `--help`.
@@ -27,7 +27,7 @@ Important to be noted: if the chromium instance crashes when you run it, you mig
 use `--no-sandbox` to make it work:
 
 ```bash
-$ ./x.py test src/test/rustdoc-gui --stage 1 --test-args --no-sandbox
+$ ./x.py test tests/rustdoc-gui --stage 1 --test-args --no-sandbox
 ```
 
 [browser-ui-test]: https://github.com/GuillaumeGomez/browser-UI-test/
