@@ -364,11 +364,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         param_expected.insert(error.expected, error.found);
                     }
                 }
-                for (param, (arg,arg_ty)) in param_args.iter() {
+                for (param, (arg, arg_ty)) in param_args.iter() {
                     let Some(expected) = param_expected.get(param) else { continue; };
                     let Some(found) = param_found.get(param) else { continue; };
                     if self.can_eq(self.param_env, *arg_ty, *found).is_err() { continue; }
-                    self.suggest_deref_ref_or_into(err, arg, *expected, *found, None);
+                    self.emit_coerce_suggestions(err, arg, *found, *expected, None, None);
                 }
 
                 let ty = eraser.fold_ty(ty);
