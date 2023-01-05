@@ -224,7 +224,7 @@ fn typeck_with_fallback<'tcx>(
                     _ => None,
                 })
                 .unwrap_or_else(|| match tcx.hir().get(id) {
-                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().get_parent_node(id)) {
+                    Node::AnonConst(_) => match tcx.hir().get(tcx.hir().parent_id(id)) {
                         Node::Expr(&hir::Expr {
                             kind: hir::ExprKind::ConstBlock(ref anon_const),
                             ..

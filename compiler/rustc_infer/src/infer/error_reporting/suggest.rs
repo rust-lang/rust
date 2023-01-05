@@ -411,7 +411,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) {
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.get_parent_node(cause.body_id);
+        let fn_hir_id = hir.parent_id(cause.body_id);
         if let Some(node) = self.tcx.hir().find(fn_hir_id) &&
             let hir::Node::Item(hir::Item {
                     kind: hir::ItemKind::Fn(_sig, _, body_id), ..
@@ -585,45 +585,42 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             let hir::StmtKind::Local(local) = &stmt.kind else { continue; };
             local.pat.walk(&mut find_compatible_candidates);
         }
-        match hir.find(hir.get_parent_node(blk.hir_id)) {
-            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => {
-                match hir.find(hir.get_parent_node(*hir_id)) {
-                    Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
-                        pat.walk(&mut find_compatible_candidates);
-                    }
-                    Some(
-                        hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
-                        | hir::Node::ImplItem(hir::ImplItem {
-                            kind: hir::ImplItemKind::Fn(_, body),
-                            ..
-                        })
-                        | hir::Node::TraitItem(hir::TraitItem {
-                            kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
-                            ..
-                        })
-                        | hir::Node::Expr(hir::Expr {
-                            kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
-                            ..
-                        }),
-                    ) => {
-                        for param in hir.body(*body).params {
-                            param.pat.walk(&mut find_compatible_candidates);
-                        }
-                    }
-                    Some(hir::Node::Expr(hir::Expr {
-                        kind:
-                            hir::ExprKind::If(
-                                hir::Expr { kind: hir::ExprKind::Let(let_), .. },
-                                then_block,
-                                _,
-                            ),
-                        ..
-                    })) if then_block.hir_id == *hir_id => {
-                        let_.pat.walk(&mut find_compatible_candidates);
-                    }
-                    _ => {}
+        match hir.find_parent(blk.hir_id) {
+            Some(hir::Node::Expr(hir::Expr { hir_id, .. })) => match hir.find_parent(*hir_id) {
+                Some(hir::Node::Arm(hir::Arm { pat, .. })) => {
+                    pat.walk(&mut find_compatible_candidates);
                 }
-            }
+                Some(
+                    hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body), .. })
+                    | hir::Node::ImplItem(hir::ImplItem {
+                        kind: hir::ImplItemKind::Fn(_, body), ..
+                    })
+                    | hir::Node::TraitItem(hir::TraitItem {
+                        kind: hir::TraitItemKind::Fn(_, hir::TraitFn::Provided(body)),
+                        ..
+                    })
+                    | hir::Node::Expr(hir::Expr {
+                        kind: hir::ExprKind::Closure(hir::Closure { body, .. }),
+                        ..
+                    }),
+                ) => {
+                    for param in hir.body(*body).params {
+                        param.pat.walk(&mut find_compatible_candidates);
+                    }
+                }
+                Some(hir::Node::Expr(hir::Expr {
+                    kind:
+                        hir::ExprKind::If(
+                            hir::Expr { kind: hir::ExprKind::Let(let_), .. },
+                            then_block,
+                            _,
+                        ),
+                    ..
+                })) if then_block.hir_id == *hir_id => {
+                    let_.pat.walk(&mut find_compatible_candidates);
+                }
+                _ => {}
+            },
             _ => {}
         }
 

@@ -2936,7 +2936,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
         let hir::Node::ImplItem(hir::ImplItem { kind: hir::ImplItemKind::Fn(..), ident, .. }) =
             hir.get(fn_hir_id) else { return None };
         let hir::Node::Item(hir::Item { kind: hir::ItemKind::Impl(i), .. }) =
-                hir.get(hir.get_parent_node(fn_hir_id)) else { bug!("ImplItem should have Impl parent") };
+                hir.get_parent(fn_hir_id) else { bug!("ImplItem should have Impl parent") };
 
         let trait_ref = self.instantiate_mono_trait_ref(
             i.of_trait.as_ref()?,

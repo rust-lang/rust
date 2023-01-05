@@ -103,7 +103,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
                 // `min_const_generics`.
                 Some(parent_def_id.to_def_id())
             } else {
-                let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+                let parent_node = tcx.hir().get_parent(hir_id);
                 match parent_node {
                     // HACK(eddyb) this provides the correct generics for repeat
                     // expressions' count (i.e. `N` in `[x; N]`), and explicit
@@ -320,7 +320,7 @@ pub(super) fn generics_of(tcx: TyCtxt<'_>, def_id: DefId) -> ty::Generics {
 
     // provide junk type parameter defs for const blocks.
     if let Node::AnonConst(_) = node {
-        let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+        let parent_node = tcx.hir().get_parent(hir_id);
         if let Node::Expr(&Expr { kind: ExprKind::ConstBlock(_), .. }) = parent_node {
             params.push(ty::GenericParamDef {
                 index: next_index(),
