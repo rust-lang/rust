@@ -1,6 +1,6 @@
 //! Unification and canonicalization logic.
 
-use std::{fmt, mem, sync::Arc};
+use std::{fmt, iter, mem, sync::Arc};
 
 use chalk_ir::{
     cast::Cast, fold::TypeFoldable, interner::HasInterner, zip::Zip, CanonicalVarKind, FloatTy,
@@ -128,9 +128,11 @@ pub(crate) fn unify(
     ))
 }
 
-#[derive(Copy, Clone, Debug)]
-pub(crate) struct TypeVariableData {
-    diverging: bool,
+bitflags::bitflags! {
+    #[derive(Default)]
+    pub(crate) struct TypeVariableFlags: u8 {
+        const DIVERGING = 1 << 0;
+    }
 }
 
 type ChalkInferenceTable = chalk_solve::infer::InferenceTable<Interner>;
@@ -140,14 +142,14 @@ pub(crate) struct InferenceTable<'a> {
     pub(crate) db: &'a dyn HirDatabase,
     pub(crate) trait_env: Arc<TraitEnvironment>,
     var_unification_table: ChalkInferenceTable,
-    type_variable_table: Vec<TypeVariableData>,
+    type_variable_table: Vec<TypeVariableFlags>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
 }
 
 pub(crate) struct InferenceTableSnapshot {
     var_table_snapshot: chalk_solve::infer::InferenceSnapshot<Interner>,
     pending_obligations: Vec<Canonicalized<InEnvironment<Goal>>>,
-    type_variable_table_snapshot: Vec<TypeVariableData>,
+    type_variable_table_snapshot: Vec<TypeVariableFlags>,
 }
 
 impl<'a> InferenceTable<'a> {
@@ -169,19 +171,19 @@ impl<'a> InferenceTable<'a> {
     /// result.
     pub(super) fn propagate_diverging_flag(&mut self) {
         for i in 0..self.type_variable_table.len() {
-            if !self.type_variable_table[i].diverging {
+            if !self.type_variable_table[i].contains(TypeVariableFlags::DIVERGING) {
                 continue;
             }
             let v = InferenceVar::from(i as u32);
             let root = self.var_unification_table.inference_var_root(v);
             if let Some(data) = self.type_variable_table.get_mut(root.index() as usize) {
-                data.diverging = true;
+                *data |= TypeVariableFlags::DIVERGING;
             }
         }
     }
 
     pub(super) fn set_diverging(&mut self, iv: InferenceVar, diverging: bool) {
-        self.type_variable_table[iv.index() as usize].diverging = diverging;
+        self.type_variable_table[iv.index() as usize].set(TypeVariableFlags::DIVERGING, diverging);
     }
 
     fn fallback_value(&self, iv: InferenceVar, kind: TyVariableKind) -> Ty {
@@ -189,7 +191,7 @@ impl<'a> InferenceTable<'a> {
             _ if self
                 .type_variable_table
                 .get(iv.index() as usize)
-                .map_or(false, |data| data.diverging) =>
+                .map_or(false, |data| data.contains(TypeVariableFlags::DIVERGING)) =>
             {
                 TyKind::Never
             }
@@ -247,10 +249,8 @@ impl<'a> InferenceTable<'a> {
     }
 
     fn extend_type_variable_table(&mut self, to_index: usize) {
-        self.type_variable_table.extend(
-            (0..1 + to_index - self.type_variable_table.len())
-                .map(|_| TypeVariableData { diverging: false }),
-        );
+        let count = to_index - self.type_variable_table.len() + 1;
+        self.type_variable_table.extend(iter::repeat(TypeVariableFlags::default()).take(count));
     }
 
     fn new_var(&mut self, kind: TyVariableKind, diverging: bool) -> Ty {
@@ -258,7 +258,9 @@ impl<'a> InferenceTable<'a> {
         // Chalk might have created some type variables for its own purposes that we don't know about...
         self.extend_type_variable_table(var.index() as usize);
         assert_eq!(var.index() as usize, self.type_variable_table.len() - 1);
-        self.type_variable_table[var.index() as usize].diverging = diverging;
+        if diverging {
+            self.type_variable_table[var.index() as usize] |= TypeVariableFlags::DIVERGING;
+        }
         var.to_ty_with_kind(Interner, kind)
     }
 
