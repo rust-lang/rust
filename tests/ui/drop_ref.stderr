@@ -107,5 +107,41 @@ note: argument has type `&SomeStruct`
 LL |     std::mem::drop(&SomeStruct);
    |                    ^^^^^^^^^^^
 
-error: aborting due to 9 previous errors
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
+  --> $DIR/drop_ref.rs:91:13
+   |
+LL |             drop(println_and(&13)); // Lint, even if we only care about the side-effect, it's already in a block
+   |             ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:91:18
+   |
+LL |             drop(println_and(&13)); // Lint, even if we only care about the side-effect, it's already in a block
+   |                  ^^^^^^^^^^^^^^^^
+
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
+  --> $DIR/drop_ref.rs:93:14
+   |
+LL |         3 if drop(println_and(&14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
+   |              ^^^^^^^^^^^^^^^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:93:19
+   |
+LL |         3 if drop(println_and(&14)) == () => (), // Lint, idiomatic use is only in body of `Arm`
+   |                   ^^^^^^^^^^^^^^^^
+
+error: calls to `std::mem::drop` with a reference instead of an owned value. Dropping a reference does nothing
+  --> $DIR/drop_ref.rs:94:14
+   |
+LL |         4 => drop(&2),                           // Lint, not a fn/method call
+   |              ^^^^^^^^
+   |
+note: argument has type `&i32`
+  --> $DIR/drop_ref.rs:94:19
+   |
+LL |         4 => drop(&2),                           // Lint, not a fn/method call
+   |                   ^^
+
+error: aborting due to 12 previous errors
 
