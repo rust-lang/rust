@@ -5309,6 +5309,7 @@ dependencies = [
  "lazy_static",
  "miropt-test-tools",
  "regex",
+ "serde",
  "termcolor",
  "toml",
  "walkdir",
