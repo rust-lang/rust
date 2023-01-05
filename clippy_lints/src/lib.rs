@@ -639,7 +639,7 @@ pub fn register_plugins(store: &mut rustc_lint::LintStore, sess: &Session, conf:
     store.register_late_pass(|_| Box::new(panic_unimplemented::PanicUnimplemented));
     store.register_late_pass(|_| Box::new(strings::StringLitAsBytes));
     store.register_late_pass(|_| Box::new(derive::Derive));
-    store.register_late_pass(|_| Box::new(derivable_impls::DerivableImpls));
+    store.register_late_pass(move |_| Box::new(derivable_impls::DerivableImpls::new(msrv())));
     store.register_late_pass(|_| Box::new(drop_forget_ref::DropForgetRef));
     store.register_late_pass(|_| Box::new(empty_enum::EmptyEnum));
     store.register_late_pass(|_| Box::new(invalid_upcast_comparisons::InvalidUpcastComparisons));
