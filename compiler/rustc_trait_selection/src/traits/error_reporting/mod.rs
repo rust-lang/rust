@@ -33,7 +33,7 @@ use rustc_infer::infer::error_reporting::TypeErrCtxt;
 use rustc_infer::infer::{InferOk, TypeTrace};
 use rustc_middle::traits::select::OverflowError;
 use rustc_middle::ty::abstract_const::NotConstEvaluatable;
-use rustc_middle::ty::error::ExpectedFound;
+use rustc_middle::ty::error::{ExpectedFound, TypeError};
 use rustc_middle::ty::fold::{TypeFolder, TypeSuperFoldable};
 use rustc_middle::ty::print::{with_forced_trimmed_paths, FmtPrinter, Print};
 use rustc_middle::ty::{
@@ -1215,6 +1215,25 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
 
+            OutputTypeParameterMismatch(
+                found_trait_ref,
+                expected_trait_ref,
+                terr @ TypeError::CyclicTy(_),
+            ) => {
+                let self_ty = found_trait_ref.self_ty().skip_binder();
+                let (cause, terr) = if let ty::Closure(def_id, _) = self_ty.kind() {
+                    (
+                        ObligationCause::dummy_with_span(tcx.def_span(def_id)),
+                        TypeError::CyclicTy(self_ty),
+                    )
+                } else {
+                    (obligation.cause.clone(), terr)
+                };
+                self.report_and_explain_type_error(
+                    TypeTrace::poly_trait_refs(&cause, true, expected_trait_ref, found_trait_ref),
+                    terr,
+                )
+            }
             OutputTypeParameterMismatch(found_trait_ref, expected_trait_ref, _) => {
                 let found_trait_ref = self.resolve_vars_if_possible(found_trait_ref);
                 let expected_trait_ref = self.resolve_vars_if_possible(expected_trait_ref);
