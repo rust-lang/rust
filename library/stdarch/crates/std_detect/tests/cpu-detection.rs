@@ -152,6 +152,7 @@ fn x86_all() {
     println!("abm: {:?}", is_x86_feature_detected!("abm"));
     println!("lzcnt: {:?}", is_x86_feature_detected!("lzcnt"));
     println!("tbm: {:?}", is_x86_feature_detected!("tbm"));
+    println!("movbe: {:?}", is_x86_feature_detected!("movbe"));
     println!("popcnt: {:?}", is_x86_feature_detected!("popcnt"));
     println!("fxsr: {:?}", is_x86_feature_detected!("fxsr"));
     println!("xsave: {:?}", is_x86_feature_detected!("xsave"));

@@ -64,6 +64,7 @@ fn dump() {
     println!("cmpxchg16b: {:?}", is_x86_feature_detected!("cmpxchg16b"));
     println!("adx: {:?}", is_x86_feature_detected!("adx"));
     println!("rtm: {:?}", is_x86_feature_detected!("rtm"));
+    println!("movbe: {:?}", is_x86_feature_detected!("movbe"));
 }
 
 #[cfg(feature = "std_detect_env_override")]
@@ -152,4 +153,5 @@ fn compare_with_cupid() {
     );
     assert_eq!(is_x86_feature_detected!("adx"), information.adx(),);
     assert_eq!(is_x86_feature_detected!("rtm"), information.rtm(),);
+    assert_eq!(is_x86_feature_detected!("movbe"), information.movbe(),);
 }

@@ -111,6 +111,7 @@ pub(crate) fn detect_features() -> cache::Initializer {
         enable(proc_info_ecx, 13, Feature::cmpxchg16b);
         enable(proc_info_ecx, 19, Feature::sse4_1);
         enable(proc_info_ecx, 20, Feature::sse4_2);
+        enable(proc_info_ecx, 22, Feature::movbe);
         enable(proc_info_ecx, 23, Feature::popcnt);
         enable(proc_info_ecx, 25, Feature::aes);
         enable(proc_info_ecx, 29, Feature::f16c);
