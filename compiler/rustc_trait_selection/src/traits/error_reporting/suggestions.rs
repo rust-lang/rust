@@ -211,10 +211,13 @@ pub trait TypeErrCtxtExt<'tcx> {
         obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
-    );
+    ) -> bool;
 
     fn suggest_add_reference_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
         err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
         has_custom_message: bool,
     ) -> bool;
 
@@ -1112,60 +1115,58 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
-        let span = obligation.cause.span;
-        let body_id = obligation.cause.body_id;
         let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
         let ty = self.tcx.erase_late_bound_regions(self_ty);
-        let owner = self.tcx.hir().get_parent_item(body_id);
-        if let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() &&
-            let arg_node = self.tcx.hir().get(*arg_hir_id) &&
-            let Node::Expr(Expr { kind: hir::ExprKind::Path(_), ..}) = arg_node &&
-            let Some(generics) = self.tcx.hir().get_generics(owner.def_id) &&
-            let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() &&
-            let ty::Param(param) = inner_ty.kind() &&
-            let Some(generic_param) =
-                    generics.params.iter().find(|p| p.name.ident().as_str() == param.name.as_str())
-        {
-            let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
-            let has_clone = self
-                .type_implements_trait(clone_trait, [ty], obligation.param_env)
-                .must_apply_modulo_regions();
+        let owner = self.tcx.hir().get_parent_item(obligation.cause.body_id);
+        let Some(generics) = self.tcx.hir().get_generics(owner.def_id) else { return false };
+        let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
+        let ty::Param(param) = inner_ty.kind() else { return false };
+        let Some(generic_param) = generics.get_named(param.name) else { return false };
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() else { return false };
+        let arg_node = self.tcx.hir().get(*arg_hir_id);
+        let Node::Expr(Expr { kind: hir::ExprKind::Path(_), ..}) = arg_node else { return false };
 
-            let trait_pred_and_suggested_ty =
-                trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty));
-            let new_obligation = self.mk_trait_obligation_with_new_self_ty(
-                    obligation.param_env,
-                    trait_pred_and_suggested_ty,
-            );
+        let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+        let has_clone = self
+            .type_implements_trait(clone_trait, [ty], obligation.param_env)
+            .must_apply_modulo_regions();
 
-            if  has_clone && self.predicate_may_hold(&new_obligation) {
-                let clone_bound = generics.bounds_for_param(generic_param.def_id)
-                                                    .flat_map(|bp| bp.bounds)
-                                                    .any(|bound| {
-                    if let hir::GenericBound::Trait( hir::PolyTraitRef { trait_ref, ..}, ..) = bound {
-                            Some(clone_trait) == trait_ref.trait_def_id()
-                        } else {
-                            false
-                        }
-                    });
-                if !clone_bound {
-                    suggest_constraining_type_param(
-                        self.tcx,
-                        generics,
-                        err,
-                        param.name.as_str(),
-                        "Clone",
-                        Some(clone_trait)
-                    );
-                }
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "consider using clone here",
-                    ".clone()".to_string(),
-                    Applicability::MaybeIncorrect,
+        let trait_pred_and_suggested_ty =
+            trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty));
+        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred_and_suggested_ty,
+        );
+
+        if has_clone && self.predicate_may_hold(&new_obligation) {
+            let clone_bound = generics
+                .bounds_for_param(generic_param.def_id)
+                .flat_map(|bp| bp.bounds)
+                .any(|bound| {
+                    if let hir::GenericBound::Trait(hir::PolyTraitRef { trait_ref, .. }, ..) = bound
+                    {
+                        Some(clone_trait) == trait_ref.trait_def_id()
+                    } else {
+                        false
+                    }
+                });
+            if !clone_bound {
+                suggest_constraining_type_param(
+                    self.tcx,
+                    generics,
+                    err,
+                    param.name.as_str(),
+                    "Clone",
+                    Some(clone_trait),
                 );
-                return true;
             }
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_hi(),
+                "consider using clone here",
+                ".clone()".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
         }
         false
     }
