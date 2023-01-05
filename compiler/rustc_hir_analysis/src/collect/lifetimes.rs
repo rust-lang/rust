@@ -682,7 +682,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     };
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
-                    let parent_id = self.tcx.hir().get_parent_node(hir_id);
+                    let parent_id = self.tcx.hir().parent_id(hir_id);
                     if !parent_id.is_owner() {
                         struct_span_err!(
                             self.tcx.sess,

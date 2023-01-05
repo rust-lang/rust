@@ -692,7 +692,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let tcx = self.tcx;
         if let PatKind::Ref(inner, mutbl) = pat.kind
         && let PatKind::Binding(_, _, binding, ..) = inner.kind {
-            let binding_parent_id = tcx.hir().get_parent_node(pat.hir_id);
+            let binding_parent_id = tcx.hir().parent_id(pat.hir_id);
             let binding_parent = tcx.hir().get(binding_parent_id);
             debug!(?inner, ?pat, ?binding_parent);
 
@@ -936,7 +936,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         res.descr(),
                     ),
                 );
-                match self.tcx.hir().get(self.tcx.hir().get_parent_node(pat.hir_id)) {
+                match self.tcx.hir().get_parent(pat.hir_id) {
                     hir::Node::PatField(..) => {
                         e.span_suggestion_verbose(
                             ident.span.shrink_to_hi(),

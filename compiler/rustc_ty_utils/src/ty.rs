@@ -162,7 +162,7 @@ fn param_env(tcx: TyCtxt<'_>, def_id: DefId) -> ty::ParamEnv<'_> {
                 kind: hir::ImplItemKind::Type(..) | hir::ImplItemKind::Fn(..),
                 ..
             }) => {
-                let parent_hir_id = tcx.hir().get_parent_node(hir_id);
+                let parent_hir_id = tcx.hir().parent_id(hir_id);
                 match tcx.hir().get(parent_hir_id) {
                     hir::Node::Item(hir::Item {
                         kind: hir::ItemKind::Impl(hir::Impl { constness, .. }),

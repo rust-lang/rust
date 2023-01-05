@@ -32,7 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().get_parent_node(self.body_id))
+            .get(self.tcx.hir().parent_id(self.body_id))
             .copied()
     }
 
@@ -642,7 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check if the parent expression is a call to Pin::new.  If it
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
-                let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+                let parent = self.tcx.hir().parent_id(expr.hir_id);
                 let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
                     return false;
                 };

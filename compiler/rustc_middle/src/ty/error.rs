@@ -457,7 +457,7 @@ impl<'tcx> TyCtxt<'tcx> {
                             .def_id
                             .as_local()
                             .map(|id| hir.local_def_id_to_hir_id(id))
-                            .and_then(|id| self.hir().find(self.hir().get_parent_node(id)))
+                            .and_then(|id| self.hir().find_parent(id))
                             .as_ref()
                             .and_then(|node| node.generics())
                         {

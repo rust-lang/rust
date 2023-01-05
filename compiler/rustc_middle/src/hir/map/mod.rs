@@ -69,7 +69,7 @@ impl<'hir> Iterator for ParentHirIterator<'hir> {
         }
         loop {
             // There are nodes that do not have entries, so we need to skip them.
-            let parent_id = self.map.get_parent_node(self.current_id);
+            let parent_id = self.map.parent_id(self.current_id);
 
             if parent_id == self.current_id {
                 self.current_id = CRATE_HIR_ID;
@@ -246,7 +246,7 @@ impl<'hir> Map<'hir> {
             },
             Node::Variant(_) => DefKind::Variant,
             Node::Ctor(variant_data) => {
-                let ctor_of = match self.find(self.get_parent_node(hir_id)) {
+                let ctor_of = match self.find_parent(hir_id) {
                     Some(Node::Item(..)) => def::CtorOf::Struct,
                     Some(Node::Variant(..)) => def::CtorOf::Variant,
                     _ => unreachable!(),
@@ -257,7 +257,7 @@ impl<'hir> Map<'hir> {
                 }
             }
             Node::AnonConst(_) => {
-                let inline = match self.find(self.get_parent_node(hir_id)) {
+                let inline = match self.find_parent(hir_id) {
                     Some(Node::Expr(&Expr {
                         kind: ExprKind::ConstBlock(ref anon_const), ..
                     })) if anon_const.hir_id == hir_id => true,
@@ -298,7 +298,7 @@ impl<'hir> Map<'hir> {
     /// Finds the id of the parent node to this one.
     ///
     /// If calling repeatedly and iterating over parents, prefer [`Map::parent_iter`].
-    pub fn find_parent_node(self, id: HirId) -> Option<HirId> {
+    pub fn opt_parent_id(self, id: HirId) -> Option<HirId> {
         if id.local_id == ItemLocalId::from_u32(0) {
             Some(self.tcx.hir_owner_parent(id.owner))
         } else {
@@ -312,9 +312,17 @@ impl<'hir> Map<'hir> {
     }
 
     #[track_caller]
-    pub fn get_parent_node(self, hir_id: HirId) -> HirId {
-        self.find_parent_node(hir_id)
+    pub fn parent_id(self, hir_id: HirId) -> HirId {
+        self.opt_parent_id(hir_id)
             .unwrap_or_else(|| bug!("No parent for node {:?}", self.node_to_string(hir_id)))
+    }
+
+    pub fn get_parent(self, hir_id: HirId) -> Node<'hir> {
+        self.get(self.parent_id(hir_id))
+    }
+
+    pub fn find_parent(self, hir_id: HirId) -> Option<Node<'hir>> {
+        self.find(self.opt_parent_id(hir_id)?)
     }
 
     /// Retrieves the `Node` corresponding to `id`, returning `None` if cannot be found.
@@ -414,7 +422,7 @@ impl<'hir> Map<'hir> {
     /// which this is the body of, i.e., a `fn`, `const` or `static`
     /// item (possibly associated), a closure, or a `hir::AnonConst`.
     pub fn body_owner(self, BodyId { hir_id }: BodyId) -> HirId {
-        let parent = self.get_parent_node(hir_id);
+        let parent = self.parent_id(hir_id);
         assert!(self.find(parent).map_or(false, |n| is_body_owner(n, hir_id)), "{hir_id:?}");
         parent
     }
@@ -642,21 +650,21 @@ impl<'hir> Map<'hir> {
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_id_iter(self, current_id: HirId) -> impl Iterator<Item = HirId> + 'hir {
         ParentHirIterator { current_id, map: self }
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_iter(self, current_id: HirId) -> impl Iterator<Item = (HirId, Node<'hir>)> {
         self.parent_id_iter(current_id).filter_map(move |id| Some((id, self.find(id)?)))
     }
 
     /// Returns an iterator for the nodes in the ancestor tree of the `current_id`
-    /// until the crate root is reached. Prefer this over your own loop using `get_parent_node`.
+    /// until the crate root is reached. Prefer this over your own loop using `parent_id`.
     #[inline]
     pub fn parent_owner_iter(self, current_id: HirId) -> ParentOwnerIterator<'hir> {
         ParentOwnerIterator { current_id, map: self }
@@ -664,7 +672,7 @@ impl<'hir> Map<'hir> {
 
     /// Checks if the node is left-hand side of an assignment.
     pub fn is_lhs(self, id: HirId) -> bool {
-        match self.find(self.get_parent_node(id)) {
+        match self.find_parent(id) {
             Some(Node::Expr(expr)) => match expr.kind {
                 ExprKind::Assign(lhs, _rhs, _span) => lhs.hir_id == id,
                 _ => false,
@@ -892,7 +900,7 @@ impl<'hir> Map<'hir> {
             Node::Pat(&Pat { kind: PatKind::Binding(_, _, ident, _), .. }) => Some(ident),
             // A `Ctor` doesn't have an identifier itself, but its parent
             // struct/variant does. Compare with `hir::Map::opt_span`.
-            Node::Ctor(..) => match self.find(self.get_parent_node(id))? {
+            Node::Ctor(..) => match self.find_parent(id)? {
                 Node::Item(item) => Some(item.ident),
                 Node::Variant(variant) => Some(variant.ident),
                 _ => unreachable!(),
@@ -1021,7 +1029,7 @@ impl<'hir> Map<'hir> {
                 ForeignItemKind::Fn(decl, _, _) => until_within(item.span, decl.output.span()),
                 _ => named_span(item.span, item.ident, None),
             },
-            Node::Ctor(_) => return self.opt_span(self.get_parent_node(hir_id)),
+            Node::Ctor(_) => return self.opt_span(self.parent_id(hir_id)),
             Node::Expr(Expr {
                 kind: ExprKind::Closure(Closure { fn_decl_span, .. }),
                 span,
@@ -1063,7 +1071,7 @@ impl<'hir> Map<'hir> {
             Node::PatField(field) => field.span,
             Node::Arm(arm) => arm.span,
             Node::Block(block) => block.span,
-            Node::Ctor(..) => self.span_with_body(self.get_parent_node(hir_id)),
+            Node::Ctor(..) => self.span_with_body(self.parent_id(hir_id)),
             Node::Lifetime(lifetime) => lifetime.ident.span,
             Node::GenericParam(param) => param.span,
             Node::Infer(i) => i.span,
@@ -1093,7 +1101,7 @@ impl<'hir> Map<'hir> {
     /// Returns the HirId of `N` in `struct Foo<const N: usize = { ... }>` when
     /// called with the HirId for the `{ ... }` anon const
     pub fn opt_const_param_default_param_def_id(self, anon_const: HirId) -> Option<LocalDefId> {
-        match self.get(self.get_parent_node(anon_const)) {
+        match self.get_parent(anon_const) {
             Node::GenericParam(GenericParam {
                 def_id: param_id,
                 kind: GenericParamKind::Const { .. },

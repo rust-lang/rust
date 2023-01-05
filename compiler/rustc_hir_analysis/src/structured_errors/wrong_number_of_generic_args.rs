@@ -716,7 +716,7 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
             num = num_trait_generics_except_self,
         );
 
-        if let Some(parent_node) = self.tcx.hir().find_parent_node(self.path_segment.hir_id)
+        if let Some(parent_node) = self.tcx.hir().opt_parent_id(self.path_segment.hir_id)
         && let Some(parent_node) = self.tcx.hir().find(parent_node)
         && let hir::Node::Expr(expr) = parent_node {
             match expr.kind {

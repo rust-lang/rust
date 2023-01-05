@@ -143,7 +143,7 @@ impl<'tcx> LateLintPass<'tcx> for TyTyKind {
             TyKind::Path(QPath::Resolved(_, path)) => {
                 if lint_ty_kind_usage(cx, &path.res) {
                     let hir = cx.tcx.hir();
-                    let span = match hir.find(hir.get_parent_node(ty.hir_id)) {
+                    let span = match hir.find_parent(ty.hir_id) {
                         Some(Node::Pat(Pat {
                             kind:
                                 PatKind::Path(qpath)

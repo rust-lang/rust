@@ -28,7 +28,7 @@ pub(super) fn opt_const_param_of(tcx: TyCtxt<'_>, def_id: LocalDefId) -> Option<
         _ => return None,
     };
 
-    let parent_node_id = tcx.hir().get_parent_node(hir_id);
+    let parent_node_id = tcx.hir().parent_id(hir_id);
     let parent_node = tcx.hir().get(parent_node_id);
 
     let (generics, arg_idx) = match parent_node {
@@ -402,7 +402,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
         }
 
         Node::AnonConst(_) => {
-            let parent_node = tcx.hir().get(tcx.hir().get_parent_node(hir_id));
+            let parent_node = tcx.hir().get_parent(hir_id);
             match parent_node {
                 Node::Ty(&Ty { kind: TyKind::Array(_, ref constant), .. })
                 | Node::Expr(&Expr { kind: ExprKind::Repeat(_, ref constant), .. })
@@ -445,7 +445,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                         ..
                     },
                 ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get(tcx.hir().get_parent_node(binding_id))
+                    tcx.hir().get_parent(binding_id)
                     && e.hir_id == hir_id =>
                 {
                     let Some(trait_def_id) = trait_ref.trait_def_id() else {
@@ -472,7 +472,7 @@ pub(super) fn type_of(tcx: TyCtxt<'_>, def_id: DefId) -> Ty<'_> {
                 Node::TypeBinding(
                     binding @ &TypeBinding { hir_id: binding_id, gen_args, ref kind, .. },
                 ) if let Node::TraitRef(trait_ref) =
-                    tcx.hir().get(tcx.hir().get_parent_node(binding_id))
+                    tcx.hir().get_parent(binding_id)
                     && let Some((idx, _)) =
                         gen_args.args.iter().enumerate().find(|(_, arg)| {
                             if let GenericArg::Const(ct) = arg {
