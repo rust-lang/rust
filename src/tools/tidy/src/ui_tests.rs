@@ -13,13 +13,13 @@ const ROOT_ENTRY_LIMIT: usize = 939;
 const ISSUES_ENTRY_LIMIT: usize = 1998;
 
 fn check_entries(path: &Path, bad: &mut bool) {
-    for dir in Walk::new(&path.join("test/ui")) {
+    for dir in Walk::new(&path.join("ui")) {
         if let Ok(entry) = dir {
             if entry.file_type().map(|ft| ft.is_dir()).unwrap_or(false) {
                 let dir_path = entry.path();
                 // Use special values for these dirs.
-                let is_root = path.join("test/ui") == dir_path;
-                let is_issues_dir = path.join("test/ui/issues") == dir_path;
+                let is_root = path.join("ui") == dir_path;
+                let is_issues_dir = path.join("ui/issues") == dir_path;
                 let limit = if is_root {
                     ROOT_ENTRY_LIMIT
                 } else if is_issues_dir {
@@ -53,7 +53,7 @@ fn check_entries(path: &Path, bad: &mut bool) {
 
 pub fn check(path: &Path, bad: &mut bool) {
     check_entries(&path, bad);
-    for path in &[&path.join("test/ui"), &path.join("test/ui-fulldeps")] {
+    for path in &[&path.join("ui"), &path.join("ui-fulldeps")] {
         crate::walk::walk_no_read(path, &mut |_| false, &mut |entry| {
             let file_path = entry.path();
             if let Some(ext) = file_path.extension() {

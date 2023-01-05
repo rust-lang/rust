@@ -1,5 +1,5 @@
 # ignore-windows
-# This test should be replaced with one in src/test/debuginfo once GDB or LLDB support 128-bit
+# This test should be replaced with one in tests/debuginfo once GDB or LLDB support 128-bit
 # enums.
 
 include ../../run-make-fulldeps/tools.mk

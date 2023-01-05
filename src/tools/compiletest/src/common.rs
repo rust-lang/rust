@@ -240,7 +240,7 @@ pub struct Config {
     pub mode: Mode,
 
     /// The test suite (essentially which directory is running, but without the
-    /// directory prefix such as src/test)
+    /// directory prefix such as tests)
     pub suite: String,
 
     /// The debugger to use in debuginfo mode. Unset otherwise.

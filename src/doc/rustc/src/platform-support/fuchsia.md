@@ -705,7 +705,7 @@ Where `${RUST_SRC_PATH}/install` is the `prefix` set in `config.toml` and
 
 Once our environment is started, we can run our tests using `x.py` as usual. The
 test runner script will run the compiled tests on an emulated Fuchsia device. To
-run the full `src/test/ui` test suite:
+run the full `tests/ui` test suite:
 
 ```sh
 ( \
@@ -713,7 +713,7 @@ run the full `src/test/ui` test suite:
     ./x.py                                                                    \
     --config config.toml                                                      \
     --stage=2                                                                 \
-    test src/test/ui                                                          \
+    test tests/ui                                                             \
     --target x86_64-unknown-fuchsia                                           \
     --run=always --jobs 1                                                     \
     --test-args --target-rustcflags                                           \

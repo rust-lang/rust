@@ -90,5 +90,5 @@ mod map_reduce {
 
 pub fn main() {
     map_reduce::map_reduce(
-        vec!["../src/test/run-pass/hashmap-memory.rs".to_string()]);
+        vec!["../tests/run-pass/hashmap-memory.rs".to_string()]);
 }

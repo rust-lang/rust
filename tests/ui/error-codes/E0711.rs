@@ -1,4 +1,4 @@
-// copied from: src/test/ui/feature-gates/stability-attribute-consistency.rs
+// copied from: tests/ui/feature-gates/stability-attribute-consistency.rs
 
 #![feature(staged_api)]
 

@@ -13,7 +13,7 @@
 //! useful for freezing mut things (that is, when the expected type is &T
 //! but you have &mut T) and also for avoiding the linearity
 //! of mut things (when the expected is &mut T and you have &mut T). See
-//! the various `src/test/ui/coerce/*.rs` tests for
+//! the various `tests/ui/coerce/*.rs` tests for
 //! examples of where this is useful.
 //!
 //! ## Subtle note

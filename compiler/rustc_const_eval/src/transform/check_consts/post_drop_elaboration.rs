@@ -95,7 +95,7 @@ impl<'tcx> Visitor<'tcx> for CheckLiveDrops<'_, 'tcx> {
                 }
 
                 // Drop elaboration is not precise enough to accept code like
-                // `src/test/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
+                // `tests/ui/consts/control-flow/drop-pass.rs`; e.g., when an `Option<Vec<T>>` is
                 // initialized with `None` and never changed, it still emits drop glue.
                 // Hence we additionally check the qualifs here to allow more code to pass.
                 if self.qualifs.needs_non_const_drop(self.ccx, dropped_place.local, location) {

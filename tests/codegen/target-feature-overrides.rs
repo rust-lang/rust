@@ -4,7 +4,7 @@
 // [COMPAT] compile-flags: -Ctarget-feature=+avx2,+avx
 // [INCOMPAT] compile-flags: -Ctarget-feature=-avx2,-avx
 
-// See also src/test/assembly/target-feature-multiple.rs
+// See also tests/assembly/target-feature-multiple.rs
 #![feature(no_core, lang_items)]
 #![crate_type = "lib"]
 #![no_core]

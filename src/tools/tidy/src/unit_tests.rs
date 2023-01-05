@@ -22,7 +22,7 @@ pub fn check(root_path: &Path, bad: &mut bool) {
         let file_name = path.file_name().unwrap_or_default();
         if path.is_dir() {
             filter_dirs(path)
-                || path.ends_with("src/test")
+                || path.ends_with("tests")
                 || path.ends_with("src/doc")
                 || (file_name == "tests" || file_name == "benches") && !is_core(path)
         } else {

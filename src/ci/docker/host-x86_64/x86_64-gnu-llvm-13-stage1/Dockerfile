@@ -45,5 +45,5 @@ ENV SCRIPT python2.7 ../x.py --stage 1 test --exclude src/tools/tidy && \
     # the PR is approved and tested for merging.
     # It will also detect tests lacking `// EMIT_MIR_FOR_EACH_BIT_WIDTH`,
     # despite having different output on 32-bit vs 64-bit targets.
-    python2.7 ../x.py --stage 1 test src/test/mir-opt \
+    python2.7 ../x.py --stage 1 test tests/mir-opt \
     --host='' --target=i686-unknown-linux-gnu

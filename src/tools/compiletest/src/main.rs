@@ -774,7 +774,7 @@ fn make_test_name(
     revision: Option<&String>,
 ) -> test::TestName {
     // Print the name of the file, relative to the repository root.
-    // `src_base` looks like `/path/to/rust/src/test/ui`
+    // `src_base` looks like `/path/to/rust/tests/ui`
     let root_directory = config.src_base.parent().unwrap().parent().unwrap().parent().unwrap();
     let path = testpaths.file.strip_prefix(root_directory).unwrap();
     let debugger = match config.debugger {

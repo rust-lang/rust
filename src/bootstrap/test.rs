@@ -841,7 +841,7 @@ impl Step for RustdocJSStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("src/test/rustdoc-js-std")
+        run.suite_path("tests/rustdoc-js-std")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -860,10 +860,10 @@ impl Step for RustdocJSStd {
                 .arg("--doc-folder")
                 .arg(builder.doc_out(self.target))
                 .arg("--test-folder")
-                .arg(builder.src.join("src/test/rustdoc-js-std"));
+                .arg(builder.src.join("tests/rustdoc-js-std"));
             for path in &builder.paths {
                 if let Some(p) =
-                    util::is_valid_test_suite_arg(path, "src/test/rustdoc-js-std", builder)
+                    util::is_valid_test_suite_arg(path, "tests/rustdoc-js-std", builder)
                 {
                     if !p.ends_with(".js") {
                         eprintln!("A non-js file was given: `{}`", path.display());
@@ -879,7 +879,7 @@ impl Step for RustdocJSStd {
             });
             builder.run(&mut command);
         } else {
-            builder.info("No nodejs found, skipping \"src/test/rustdoc-js-std\" tests");
+            builder.info("No nodejs found, skipping \"tests/rustdoc-js-std\" tests");
         }
     }
 }
@@ -896,7 +896,7 @@ impl Step for RustdocJSNotStd {
     const ONLY_HOSTS: bool = true;
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
-        run.suite_path("src/test/rustdoc-js")
+        run.suite_path("tests/rustdoc-js")
     }
 
     fn make_run(run: RunConfig<'_>) {
@@ -911,11 +911,11 @@ impl Step for RustdocJSNotStd {
                 target: self.target,
                 mode: "js-doc-test",
                 suite: "rustdoc-js",
-                path: "src/test/rustdoc-js",
+                path: "tests/rustdoc-js",
                 compare_mode: None,
             });
         } else {
-            builder.info("No nodejs found, skipping \"src/test/rustdoc-js\" tests");
+            builder.info("No nodejs found, skipping \"tests/rustdoc-js\" tests");
         }
     }
 }
@@ -976,7 +976,7 @@ impl Step for RustdocGUI {
 
     fn should_run(run: ShouldRun<'_>) -> ShouldRun<'_> {
         let builder = run.builder;
-        let run = run.suite_path("src/test/rustdoc-gui");
+        let run = run.suite_path("tests/rustdoc-gui");
         run.lazy_default_condition(Box::new(move || {
             builder.config.nodejs.is_some()
                 && builder
@@ -1025,7 +1025,7 @@ impl Step for RustdocGUI {
         // We remove existing folder to be sure there won't be artifacts remaining.
         builder.clear_if_dirty(&out_dir, &builder.rustdoc(self.compiler));
 
-        let src_path = builder.build.src.join("src/test/rustdoc-gui/src");
+        let src_path = builder.build.src.join("tests/rustdoc-gui/src");
         // We generate docs for the libraries present in the rustdoc-gui's src folder.
         for entry in src_path.read_dir().expect("read_dir call failed") {
             if let Ok(entry) = entry {
@@ -1064,9 +1064,9 @@ impl Step for RustdocGUI {
             .arg("--doc-folder")
             .arg(out_dir.join("doc"))
             .arg("--tests-folder")
-            .arg(builder.build.src.join("src/test/rustdoc-gui"));
+            .arg(builder.build.src.join("tests/rustdoc-gui"));
         for path in &builder.paths {
-            if let Some(p) = util::is_valid_test_suite_arg(path, "src/test/rustdoc-gui", builder) {
+            if let Some(p) = util::is_valid_test_suite_arg(path, "tests/rustdoc-gui", builder) {
                 if !p.ends_with(".goml") {
                     eprintln!("A non-goml file was given: `{}`", path.display());
                     panic!("Cannot run rustdoc-gui tests");
@@ -1308,59 +1308,51 @@ macro_rules! test_definitions {
     };
 }
 
-default_test!(Ui { path: "src/test/ui", mode: "ui", suite: "ui" });
+default_test!(Ui { path: "tests/ui", mode: "ui", suite: "ui" });
 
 default_test!(RunPassValgrind {
-    path: "src/test/run-pass-valgrind",
+    path: "tests/run-pass-valgrind",
     mode: "run-pass-valgrind",
     suite: "run-pass-valgrind"
 });
 
-default_test!(MirOpt { path: "src/test/mir-opt", mode: "mir-opt", suite: "mir-opt" });
+default_test!(MirOpt { path: "tests/mir-opt", mode: "mir-opt", suite: "mir-opt" });
 
-default_test!(Codegen { path: "src/test/codegen", mode: "codegen", suite: "codegen" });
+default_test!(Codegen { path: "tests/codegen", mode: "codegen", suite: "codegen" });
 
 default_test!(CodegenUnits {
-    path: "src/test/codegen-units",
+    path: "tests/codegen-units",
     mode: "codegen-units",
     suite: "codegen-units"
 });
 
-default_test!(Incremental {
-    path: "src/test/incremental",
-    mode: "incremental",
-    suite: "incremental"
-});
+default_test!(Incremental { path: "tests/incremental", mode: "incremental", suite: "incremental" });
 
 default_test_with_compare_mode!(Debuginfo {
-    path: "src/test/debuginfo",
+    path: "tests/debuginfo",
     mode: "debuginfo",
     suite: "debuginfo",
     compare_mode: "split-dwarf"
 });
 
-host_test!(UiFullDeps { path: "src/test/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
+host_test!(UiFullDeps { path: "tests/ui-fulldeps", mode: "ui", suite: "ui-fulldeps" });
 
-host_test!(Rustdoc { path: "src/test/rustdoc", mode: "rustdoc", suite: "rustdoc" });
-host_test!(RustdocUi { path: "src/test/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
+host_test!(Rustdoc { path: "tests/rustdoc", mode: "rustdoc", suite: "rustdoc" });
+host_test!(RustdocUi { path: "tests/rustdoc-ui", mode: "ui", suite: "rustdoc-ui" });
 
-host_test!(RustdocJson {
-    path: "src/test/rustdoc-json",
-    mode: "rustdoc-json",
-    suite: "rustdoc-json"
-});
+host_test!(RustdocJson { path: "tests/rustdoc-json", mode: "rustdoc-json", suite: "rustdoc-json" });
 
-host_test!(Pretty { path: "src/test/pretty", mode: "pretty", suite: "pretty" });
+host_test!(Pretty { path: "tests/pretty", mode: "pretty", suite: "pretty" });
 
-default_test!(RunMake { path: "src/test/run-make", mode: "run-make", suite: "run-make" });
+default_test!(RunMake { path: "tests/run-make", mode: "run-make", suite: "run-make" });
 
 host_test!(RunMakeFullDeps {
-    path: "src/test/run-make-fulldeps",
+    path: "tests/run-make-fulldeps",
     mode: "run-make",
     suite: "run-make-fulldeps"
 });
 
-default_test!(Assembly { path: "src/test/assembly", mode: "assembly", suite: "assembly" });
+default_test!(Assembly { path: "tests/assembly", mode: "assembly", suite: "assembly" });
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 struct Compiletest {
@@ -1472,7 +1464,7 @@ note: if you're sure you want to do this, please open an issue as to why. In the
             cmd.arg("--rust-demangler-path").arg(rust_demangler);
         }
 
-        cmd.arg("--src-base").arg(builder.src.join("src/test").join(suite));
+        cmd.arg("--src-base").arg(builder.src.join("tests").join(suite));
         cmd.arg("--build-base").arg(testdir(builder, compiler.host).join(suite));
         cmd.arg("--sysroot-base").arg(builder.sysroot(compiler));
         cmd.arg("--stage-id").arg(format!("stage{}-{}", compiler.stage, target));
@@ -1936,7 +1928,7 @@ impl Step for ErrorIndex {
     fn make_run(run: RunConfig<'_>) {
         // error_index_generator depends on librustdoc. Use the compiler that
         // is normally used to build rustdoc for other tests (like compiletest
-        // tests in src/test/rustdoc) so that it shares the same artifacts.
+        // tests in tests/rustdoc) so that it shares the same artifacts.
         let compiler = run.builder.compiler(run.builder.top_stage, run.builder.config.build);
         run.builder.ensure(ErrorIndex { compiler });
     }
@@ -2233,7 +2225,7 @@ impl Step for CrateRustdoc {
             builder.compiler(builder.top_stage, target)
         } else {
             // Use the previous stage compiler to reuse the artifacts that are
-            // created when running compiletest for src/test/rustdoc. If this used
+            // created when running compiletest for tests/rustdoc. If this used
             // `compiler`, then it would cause rustdoc to be built *again*, which
             // isn't really necessary.
             builder.compiler_for(builder.top_stage, target, target)
@@ -2349,7 +2341,7 @@ impl Step for CrateRustdocJsonTypes {
         let target = self.host;
 
         // Use the previous stage compiler to reuse the artifacts that are
-        // created when running compiletest for src/test/rustdoc. If this used
+        // created when running compiletest for tests/rustdoc. If this used
         // `compiler`, then it would cause rustdoc to be built *again*, which
         // isn't really necessary.
         let compiler = builder.compiler_for(builder.top_stage, target, target);

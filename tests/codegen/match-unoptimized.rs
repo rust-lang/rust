@@ -9,7 +9,7 @@ pub enum E2 {
 }
 
 // For unoptimized code we produce a `br` instead of a `switch`. Compare with
-// `src/test/codegen/match-optimized.rs`
+// `tests/codegen/match-optimized.rs`
 
 // CHECK-LABEL: @exhaustive_match_2
 #[no_mangle]

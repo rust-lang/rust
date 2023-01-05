@@ -42,7 +42,7 @@ pub enum E2 {
 }
 
 // For optimized code we produce a switch with an unreachable target as the `otherwise` so LLVM
-// knows the possible values. Compare with `src/test/codegen/match-unoptimized.rs`.
+// knows the possible values. Compare with `tests/codegen/match-unoptimized.rs`.
 
 // CHECK-LABEL: @exhaustive_match_2
 #[no_mangle]

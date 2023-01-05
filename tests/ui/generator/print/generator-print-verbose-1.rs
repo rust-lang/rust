@@ -1,6 +1,6 @@
 // compile-flags: -Zverbose
 
-// Same as: src/test/ui/generator/issue-68112.stderr
+// Same as: tests/ui/generator/issue-68112.stderr
 
 #![feature(generators, generator_trait)]
 

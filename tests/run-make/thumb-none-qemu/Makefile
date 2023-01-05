@@ -4,7 +4,7 @@ include ../../run-make-fulldeps/tools.mk
 
 # How to run this
 # $ ./x.py clean
-# $ ./x.py test --target thumbv7m-none-eabi src/test/run-make
+# $ ./x.py test --target thumbv7m-none-eabi tests/run-make
 
 # For cargo setting
 export RUSTC := $(RUSTC_ORIGINAL)

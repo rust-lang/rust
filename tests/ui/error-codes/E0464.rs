@@ -6,7 +6,7 @@
 // normalize-stderr-test: "\\\?\\" -> ""
 // normalize-stderr-test: "(lib)?crateresolve1-([123])\.[a-z]+" -> "libcrateresolve1-$2.somelib"
 
-// NOTE: This test is duplicated from `src/test/ui/crate-loading/crateresolve1.rs`.
+// NOTE: This test is duplicated from `tests/ui/crate-loading/crateresolve1.rs`.
 
 extern crate crateresolve1;
 //~^ ERROR multiple candidates for `rlib` dependency `crateresolve1` found
