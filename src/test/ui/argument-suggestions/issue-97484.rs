@@ -10,5 +10,5 @@ fn foo(a: &A, d: D, e: &E, g: G) {}
 
 fn main() {
     foo(&&A, B, C, D, E, F, G);
-    //~^ ERROR this function takes 4 arguments but 7 arguments were supplied
+    //~^ ERROR function takes 4 arguments but 7 arguments were supplied
 }

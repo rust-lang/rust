@@ -4,8 +4,8 @@ fn foo<const X: usize, const Y: usize>() -> usize {
 
 fn main() {
     foo::<0>();
-    //~^ ERROR this function takes 2
+    //~^ ERROR function takes 2
 
     foo::<0, 0, 0>();
-    //~^ ERROR this function takes 2
+    //~^ ERROR function takes 2
 }

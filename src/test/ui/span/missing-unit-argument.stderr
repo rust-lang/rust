@@ -59,7 +59,7 @@ help: provide the argument
 LL |     bar(());
    |        ~~~~
 
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:15:7
    |
 LL |     S.baz();
@@ -75,7 +75,7 @@ help: provide the argument
 LL |     S.baz(());
    |          ~~~~
 
-error[E0061]: this function takes 1 argument but 0 arguments were supplied
+error[E0061]: this method takes 1 argument but 0 arguments were supplied
   --> $DIR/missing-unit-argument.rs:16:7
    |
 LL |     S.generic::<()>();

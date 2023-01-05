@@ -78,7 +78,7 @@ error[E0308]: mismatched types
 LL |     x.funk(3);
    |       ---- ^ expected associated type, found integer
    |       |
-   |       arguments to this function are incorrect
+   |       arguments to this method are incorrect
    |
    = note: expected associated type `<T as Trait<i32>>::A`
                          found type `{integer}`
