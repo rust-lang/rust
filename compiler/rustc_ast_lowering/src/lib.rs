@@ -1426,9 +1426,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     ///
     /// we will create a TAIT definition in the HIR like
     /// type TestReturn<'a, 'x, T> = impl Debug + 'x;
-    /// 
-    ///
-    /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
+    /// and return a type like `TestReturn<'a, 'x, 'T>`, so that the function looks like:
     ///
     /// ```rust
     /// #![feature(type_alias_impl_trait)]
