@@ -234,8 +234,10 @@ pub struct Parser<'a> {
     last_opening_brace: Option<InnerSpan>,
     /// Whether the source string is comes from `println!` as opposed to `format!` or `print!`
     append_newline: bool,
-    /// Whether this formatting string is a literal or it comes from a macro.
-    pub is_literal: bool,
+    /// Whether this formatting string was written directly in the source. This controls whether we
+    /// can use spans to refer into it and give better error messages.
+    /// N.B: This does _not_ control whether implicit argument captures can be used.
+    pub is_source_literal: bool,
     /// Start position of the current line.
     cur_line_start: usize,
     /// Start and end byte offset of every line of the format string. Excludes
@@ -262,7 +264,7 @@ impl<'a> Iterator for Parser<'a> {
                     } else {
                         let arg = self.argument(lbrace_end);
                         if let Some(rbrace_pos) = self.must_consume('}') {
-                            if self.is_literal {
+                            if self.is_source_literal {
                                 let lbrace_byte_pos = self.to_span_index(pos);
                                 let rbrace_byte_pos = self.to_span_index(rbrace_pos);
 
@@ -302,7 +304,7 @@ impl<'a> Iterator for Parser<'a> {
                 _ => Some(String(self.string(pos))),
             }
         } else {
-            if self.is_literal {
+            if self.is_source_literal {
                 let span = self.span(self.cur_line_start, self.input.len());
                 if self.line_spans.last() != Some(&span) {
                     self.line_spans.push(span);
@@ -323,7 +325,7 @@ impl<'a> Parser<'a> {
         mode: ParseMode,
     ) -> Parser<'a> {
         let input_string_kind = find_width_map_from_snippet(snippet, style);
-        let (width_map, is_literal) = match input_string_kind {
+        let (width_map, is_source_literal) = match input_string_kind {
             InputStringKind::Literal { width_mappings } => (width_mappings, true),
             InputStringKind::NotALiteral => (Vec::new(), false),
         };
@@ -339,7 +341,7 @@ impl<'a> Parser<'a> {
             width_map,
             last_opening_brace: None,
             append_newline,
-            is_literal,
+            is_source_literal,
             cur_line_start: 0,
             line_spans: vec![],
         }
@@ -532,13 +534,13 @@ impl<'a> Parser<'a> {
                 '{' | '}' => {
                     return &self.input[start..pos];
                 }
-                '\n' if self.is_literal => {
+                '\n' if self.is_source_literal => {
                     self.line_spans.push(self.span(self.cur_line_start, pos));
                     self.cur_line_start = pos + 1;
                     self.cur.next();
                 }
                 _ => {
-                    if self.is_literal && pos == self.cur_line_start && c.is_whitespace() {
+                    if self.is_source_literal && pos == self.cur_line_start && c.is_whitespace() {
                         self.cur_line_start = pos + c.len_utf8();
                     }
                     self.cur.next();
