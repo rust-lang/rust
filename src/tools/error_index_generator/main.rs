@@ -171,9 +171,6 @@ This page lists all the error codes emitted by the Rust compiler.
 </html>"#,
     )?;
 
-    // No need for a 404 file, it's already handled by the server.
-    fs::remove_file(output_path.join("error_codes/404.html"))?;
-
     Ok(())
 }
 
