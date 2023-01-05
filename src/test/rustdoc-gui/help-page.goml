@@ -39,7 +39,7 @@ call-function: ("check-colors", {
 })
 call-function: ("check-colors", {
     "theme": "dark",
-    "color": "rgb(221, 221, 221)",
+    "color": "rgb(0, 0, 0)",
     "background": "rgb(250, 251, 252)",
     "box_shadow": "rgb(198, 203, 209)",
 })
