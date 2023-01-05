@@ -473,7 +473,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         call_expr: &hir::Expr<'tcx>,
     ) {
         // Next, let's construct the error
-        let (error_span, full_call_span, ctor_of, is_method) = match &call_expr.kind {
+        let (error_span, full_call_span, call_name, is_method) = match &call_expr.kind {
             hir::ExprKind::Call(
                 hir::Expr { hir_id, span, kind: hir::ExprKind::Path(qpath), .. },
                 _,
@@ -481,12 +481,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 if let Res::Def(DefKind::Ctor(of, _), _) =
                     self.typeck_results.borrow().qpath_res(qpath, *hir_id)
                 {
-                    (call_span, *span, Some(of), false)
+                    let name = match of {
+                        CtorOf::Struct => "struct",
+                        CtorOf::Variant => "enum variant",
+                    };
+                    (call_span, *span, name, false)
                 } else {
-                    (call_span, *span, None, false)
+                    (call_span, *span, "function", false)
                 }
             }
-            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, None, false),
+            hir::ExprKind::Call(hir::Expr { span, .. }, _) => (call_span, *span, "function", false),
             hir::ExprKind::MethodCall(path_segment, _, _, span) => {
                 let ident_span = path_segment.ident.span;
                 let ident_span = if let Some(args) = path_segment.args {
@@ -494,17 +498,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 } else {
                     ident_span
                 };
-                // methods are never ctors
-                (*span, ident_span, None, true)
+                (*span, ident_span, "method", true)
             }
             k => span_bug!(call_span, "checking argument types on a non-call: `{:?}`", k),
         };
         let args_span = error_span.trim_start(full_call_span).unwrap_or(error_span);
-        let call_name = match ctor_of {
-            Some(CtorOf::Struct) => "struct",
-            Some(CtorOf::Variant) => "enum variant",
-            None => "function",
-        };
 
         // Don't print if it has error types or is just plain `_`
         fn has_error_or_infer<'tcx>(tys: impl IntoIterator<Item = Ty<'tcx>>) -> bool {
@@ -690,8 +688,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         err = tcx.sess.struct_span_err_with_code(
                             full_call_span,
                             &format!(
-                                "this {} takes {}{} but {} {} supplied",
-                                call_name,
+                                "{call_name} takes {}{} but {} {} supplied",
                                 if c_variadic { "at least " } else { "" },
                                 potentially_plural_count(
                                     formal_and_expected_inputs.len(),
@@ -1803,7 +1800,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     hir_id: call_hir_id,
                     span: call_span,
                     ..
-                }) = hir.get(hir.get_parent_node(expr.hir_id))
+                }) = hir.get_parent(expr.hir_id)
                     && callee.hir_id == expr.hir_id
                 {
                     if self.closure_span_overlaps_error(error, *call_span) {

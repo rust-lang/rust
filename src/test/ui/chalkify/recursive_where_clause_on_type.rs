@@ -1,6 +1,6 @@
 // FIXME(chalk): should fail, see comments
 // check-fail
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 #![feature(trivial_bounds)]
 

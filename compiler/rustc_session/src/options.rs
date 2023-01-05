@@ -382,6 +382,8 @@ mod desc {
         "`all` (default), `except-unused-generics`, `except-unused-functions`, or `off`";
     pub const parse_unpretty: &str = "`string` or `string=string`";
     pub const parse_treat_err_as_bug: &str = "either no value or a number bigger than 0";
+    pub const parse_trait_solver: &str =
+        "one of the supported solver modes (`classic`, `chalk`, or `next`)";
     pub const parse_lto: &str =
         "either a boolean (`yes`, `no`, `on`, `off`, etc), `thin`, `fat`, or omitted";
     pub const parse_linker_plugin_lto: &str =
@@ -880,6 +882,18 @@ mod parse {
         }
     }
 
+    pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
+        match v {
+            Some("classic") => *slot = TraitSolver::Classic,
+            Some("chalk") => *slot = TraitSolver::Chalk,
+            Some("next") => *slot = TraitSolver::Next,
+            // default trait solver is subject to change..
+            Some("default") => *slot = TraitSolver::Classic,
+            _ => return false,
+        }
+        true
+    }
+
     pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
         if v.is_some() {
             let mut bool_arg = None;
@@ -1249,8 +1263,6 @@ options! {
         "instrument control-flow architecture protection"),
     cgu_partitioning_strategy: Option<String> = (None, parse_opt_string, [TRACKED],
         "the codegen unit partitioning strategy to use"),
-    chalk: bool = (false, parse_bool, [TRACKED],
-        "enable the experimental Chalk-based trait solving engine"),
     codegen_backend: Option<String> = (None, parse_opt_string, [TRACKED],
         "the backend to use"),
     combine_cgu: bool = (false, parse_bool, [TRACKED],
@@ -1609,6 +1621,8 @@ options! {
         "for every macro invocation, print its name and arguments (default: no)"),
     track_diagnostics: bool = (false, parse_bool, [UNTRACKED],
         "tracks where in rustc a diagnostic was emitted"),
+    trait_solver: TraitSolver = (TraitSolver::Classic, parse_trait_solver, [TRACKED],
+        "specify the trait solver mode used by rustc (default: classic)"),
     // Diagnostics are considered side-effects of a query (see `QuerySideEffects`) and are saved
     // alongside query results and changes to translation options can affect diagnostics - so
     // translation options should be tracked.

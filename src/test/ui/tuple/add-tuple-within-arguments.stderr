@@ -1,4 +1,4 @@
-error[E0061]: this function takes 3 arguments but 4 arguments were supplied
+error[E0061]: function takes 3 arguments but 4 arguments were supplied
   --> $DIR/add-tuple-within-arguments.rs:6:5
    |
 LL |     foo("hi", 1, 2, "hi");

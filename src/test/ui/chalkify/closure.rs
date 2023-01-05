@@ -1,4 +1,4 @@
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 fn main() -> () {
     let t = || {};

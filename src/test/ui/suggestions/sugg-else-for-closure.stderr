@@ -4,7 +4,7 @@ error[E0308]: mismatched types
 LL |     let _s = y.unwrap_or(|| x.split('.').nth(1).unwrap());
    |                --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ expected `&str`, found closure
    |                |
-   |                arguments to this function are incorrect
+   |                arguments to this method are incorrect
    |
    = note: expected reference `&str`
                 found closure `[closure@$DIR/sugg-else-for-closure.rs:6:26: 6:28]`

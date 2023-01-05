@@ -352,6 +352,7 @@ img {
 .sub-logo-container, .logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
+	display: block;
 }
 
 .sub-logo-container {
@@ -495,7 +496,7 @@ ul.block, .block li {
 	color: var(--sidebar-link-color);
 }
 .sidebar .current,
-.sidebar a:hover {
+.sidebar a:hover:not(.logo-container) {
 	background-color: var(--sidebar-current-link-background-color);
 }
 
@@ -1570,7 +1571,7 @@ in storage.js
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
-	.sidebar .sidebar-logo,
+	.sidebar .logo-container,
 	.sidebar .location {
 		display: none;
 	}

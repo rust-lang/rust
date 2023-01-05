@@ -4,7 +4,7 @@ fn bar(s: &str, a: (&str,), s2: &str) {}
 
 fn main() {
     foo("hi", 1, 2, "hi");
-    //~^ ERROR this function takes 3 arguments but 4 arguments were supplied
+    //~^ ERROR function takes 3 arguments but 4 arguments were supplied
     bar("hi", "hi", "hi");
     //~^ ERROR mismatched types
 }

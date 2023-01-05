@@ -554,6 +554,16 @@ pub enum PrintRequest {
     SplitDebuginfo,
 }
 
+#[derive(Debug, Copy, Clone, Hash, PartialEq, Eq)]
+pub enum TraitSolver {
+    /// Classic trait solver in `rustc_trait_selection::traits::select`
+    Classic,
+    /// Chalk trait solver
+    Chalk,
+    /// Experimental trait solver in `rustc_trait_selection::solve`
+    Next,
+}
+
 pub enum Input {
     /// Load source code from a file.
     File(PathBuf),
@@ -2761,7 +2771,7 @@ pub(crate) mod dep_tracking {
         BranchProtection, CFGuard, CFProtection, CrateType, DebugInfo, ErrorOutputType,
         InstrumentCoverage, LdImpl, LinkerPluginLto, LocationDetail, LtoCli, OomStrategy, OptLevel,
         OutputType, OutputTypes, Passes, SourceFileHashAlgorithm, SplitDwarfKind,
-        SwitchWithOptPath, SymbolManglingVersion, TrimmedDefPaths,
+        SwitchWithOptPath, SymbolManglingVersion, TraitSolver, TrimmedDefPaths,
     };
     use crate::lint;
     use crate::options::WasiExecModel;
@@ -2861,6 +2871,7 @@ pub(crate) mod dep_tracking {
         BranchProtection,
         OomStrategy,
         LanguageIdentifier,
+        TraitSolver,
     );
 
     impl<T1, T2> DepTrackingHash for (T1, T2)
