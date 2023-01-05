@@ -24,7 +24,7 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
 
     bb1: {
         _0 = Option::<i32>::None;        // scope 1 at $DIR/simple_option_map_e2e.rs:8:17: 8:21
-        return;                          // scope 1 at $DIR/simple_option_map_e2e.rs:8:17: 8:21
+        return;                          // scope 1 at $DIR/simple_option_map_e2e.rs:10:1: 10:2
     }
 
     bb2: {
@@ -37,6 +37,6 @@ fn ezmap(_1: Option<i32>) -> Option<i32> {
         _4 = Add(_3, const 1_i32);       // scope 3 at $DIR/simple_option_map_e2e.rs:+1:16: +1:21
         _0 = Option::<i32>::Some(move _4); // scope 2 at $DIR/simple_option_map_e2e.rs:7:20: 7:30
         StorageDead(_4);                 // scope 2 at $DIR/simple_option_map_e2e.rs:7:29: 7:30
-        return;                          // scope 1 at $DIR/simple_option_map_e2e.rs:10:1: 10:2
+        return;                          // scope 0 at $DIR/simple_option_map_e2e.rs:10:1: 10:2
     }
 }

@@ -94,6 +94,7 @@ mod ssa;
 pub mod simplify;
 mod simplify_branches;
 mod simplify_comparison_integral;
+mod sink_const_assignments;
 mod sroa;
 mod uninhabited_enum_branching;
 mod unreachable_prop;
@@ -574,6 +575,8 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &early_otherwise_branch::EarlyOtherwiseBranch,
             &simplify_comparison_integral::SimplifyComparisonIntegral,
             &dead_store_elimination::DeadStoreElimination,
+            &sink_const_assignments::SinkConstAssignments,
+            &const_goto::ConstGoto,
             &dest_prop::DestinationPropagation,
             &o1(simplify_branches::SimplifyConstCondition::new("final")),
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
