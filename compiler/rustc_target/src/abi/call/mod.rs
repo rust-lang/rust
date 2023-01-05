@@ -71,12 +71,7 @@ mod attr_impl {
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
-            // Due to past miscompiles in LLVM, we use a separate attribute for
-            // &mut arguments, so that the codegen backend can decide whether
-            // or not to actually emit the attribute. It can also be controlled
-            // with the `-Zmutable-noalias` debugging option.
-            const NoAliasMutRef = 1 << 6;
-            const NoUndef = 1 << 7;
+            const NoUndef = 1 << 6;
         }
     }
 }
