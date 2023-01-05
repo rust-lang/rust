@@ -1369,7 +1369,7 @@ kbd {
 	vertical-align: middle;
 	border: solid 1px var(--border-color);
 	border-radius: 3px;
-	color: var(--kbd--color);
+	color: var(--kbd-color);
 	background-color: var(--kbd-background);
 	box-shadow: inset 0 -1px 0 var(--kbd-box-shadow-color);
 }
