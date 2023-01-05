@@ -3,9 +3,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::build_sysroot::{SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
+use crate::build_system::rustc_info::get_default_sysroot;
+
+use super::build_sysroot::{BUILD_SYSROOT, ORIG_BUILD_SYSROOT, SYSROOT_RUSTC_VERSION, SYSROOT_SRC};
 use super::path::{Dirs, RelPath};
-use super::rustc_info::{get_file_name, get_rustc_path, get_rustc_version};
+use super::rustc_info::{get_file_name, get_rustc_version};
 use super::utils::{copy_dir_recursively, spawn_and_wait, Compiler};
 
 pub(crate) fn prepare(dirs: &Dirs) {
@@ -49,27 +51,27 @@ pub(crate) fn prepare(dirs: &Dirs) {
 }
 
 fn prepare_sysroot(dirs: &Dirs) {
-    let rustc_path = get_rustc_path();
-    let sysroot_src_orig = rustc_path.parent().unwrap().join("../lib/rustlib/src/rust");
-    let sysroot_src = SYSROOT_SRC;
-
+    let sysroot_src_orig = get_default_sysroot().join("lib/rustlib/src/rust");
     assert!(sysroot_src_orig.exists());
 
-    sysroot_src.ensure_fresh(dirs);
-    fs::create_dir_all(sysroot_src.to_path(dirs).join("library")).unwrap();
     eprintln!("[COPY] sysroot src");
+
+    BUILD_SYSROOT.ensure_fresh(dirs);
+    copy_dir_recursively(&ORIG_BUILD_SYSROOT.to_path(dirs), &BUILD_SYSROOT.to_path(dirs));
+
+    fs::create_dir_all(SYSROOT_SRC.to_path(dirs).join("library")).unwrap();
     copy_dir_recursively(
         &sysroot_src_orig.join("library"),
-        &sysroot_src.to_path(dirs).join("library"),
+        &SYSROOT_SRC.to_path(dirs).join("library"),
     );
 
     let rustc_version = get_rustc_version();
     fs::write(SYSROOT_RUSTC_VERSION.to_path(dirs), &rustc_version).unwrap();
 
     eprintln!("[GIT] init");
-    init_git_repo(&sysroot_src.to_path(dirs));
+    init_git_repo(&SYSROOT_SRC.to_path(dirs));
 
-    apply_patches(dirs, "sysroot", &sysroot_src.to_path(dirs));
+    apply_patches(dirs, "sysroot", &SYSROOT_SRC.to_path(dirs));
 }
 
 pub(crate) struct GitRepo {

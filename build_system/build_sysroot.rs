@@ -146,10 +146,11 @@ pub(crate) fn build_sysroot(
     }
 }
 
-// FIXME move to download/ or dist/
-pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = RelPath::BUILD_SYSROOT.join("rustc_version");
-pub(crate) static SYSROOT_SRC: RelPath = RelPath::BUILD_SYSROOT.join("sysroot_src");
-static STANDARD_LIBRARY: CargoProject = CargoProject::new(&RelPath::BUILD_SYSROOT, "build_sysroot");
+pub(crate) static ORIG_BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
+pub(crate) static BUILD_SYSROOT: RelPath = RelPath::DOWNLOAD.join("sysroot");
+pub(crate) static SYSROOT_RUSTC_VERSION: RelPath = BUILD_SYSROOT.join("rustc_version");
+pub(crate) static SYSROOT_SRC: RelPath = BUILD_SYSROOT.join("sysroot_src");
+static STANDARD_LIBRARY: CargoProject = CargoProject::new(&BUILD_SYSROOT, "build_sysroot");
 
 fn build_clif_sysroot_for_triple(
     dirs: &Dirs,

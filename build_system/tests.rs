@@ -1,3 +1,5 @@
+use crate::build_system::build_sysroot::SYSROOT_SRC;
+
 use super::build_sysroot;
 use super::config;
 use super::path::{Dirs, RelPath};
@@ -262,7 +264,7 @@ pub(crate) static SIMPLE_RAYTRACER: CargoProject =
     CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
 
 static LIBCORE_TESTS: CargoProject =
-    CargoProject::new(&RelPath::BUILD_SYSROOT.join("sysroot_src/library/core/tests"), "core_tests");
+    CargoProject::new(&SYSROOT_SRC.join("library/core/tests"), "core_tests");
 
 const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
     TestCase::new("test.rust-random/rand", &|runner| {

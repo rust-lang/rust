@@ -42,7 +42,6 @@ impl RelPath {
     pub(crate) const DIST: RelPath = RelPath::Base(PathBase::Dist);
 
     pub(crate) const SCRIPTS: RelPath = RelPath::SOURCE.join("scripts");
-    pub(crate) const BUILD_SYSROOT: RelPath = RelPath::SOURCE.join("build_sysroot");
     pub(crate) const PATCHES: RelPath = RelPath::SOURCE.join("patches");
 
     pub(crate) const fn join(&'static self, suffix: &'static str) -> RelPath {
