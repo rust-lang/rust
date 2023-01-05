@@ -378,7 +378,8 @@ impl<K: DepKind> DepGraph<K> {
     /// Executes something within an "anonymous" task, that is, a task the
     /// `DepNode` of which is determined by the list of inputs it read from.
     #[inline]
-    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(        &self,
+    pub fn with_anon_task<Tcx: DepContext<DepKind = K>, OP, R>(
+        &self,
         cx: Tcx,
         dep_kind: K,
         op: OP,
@@ -386,16 +387,7 @@ impl<K: DepKind> DepGraph<K> {
     where
         OP: FnOnce() -> R,
     {
-        self.with_hash_task(cx, dep_kind, op, |task_deps| {
-            // The dep node indices are hashed here instead of hashing the dep nodes of the
-            // dependencies. These indices may refer to different nodes per session, but this isn't
-            // a problem here because we that ensure the final dep node hash is per session only by
-            // combining it with the per session random number `anon_id_seed`. This hash only need
-            // to map the dependencies to a single value on a per session basis.
-            let mut hasher = StableHasher::new();
-            task_deps.reads.hash(&mut hasher);
-            hasher.finish()
-        })
+        self.with_hash_task(cx, dep_kind, op, None::<()>)
     }
 
     /// Executes something within an "anonymous" task. The `hash` is used for
@@ -405,11 +397,11 @@ impl<K: DepKind> DepGraph<K> {
         cx: Ctxt,
         dep_kind: K,
         op: OP,
-        hash: H,
+        hash: Option<H>,
     ) -> (R, DepNodeIndex)
     where
         OP: FnOnce() -> R,
-        H: FnOnce(&TaskDeps<K>) -> Fingerprint,
+        H: Hash,
     {
         debug_assert!(!cx.is_eval_always(dep_kind));
 
@@ -417,8 +409,9 @@ impl<K: DepKind> DepGraph<K> {
             let task_deps = Lock::new(TaskDeps::default());
             let result = K::with_deps(TaskDepsRef::Allow(&task_deps), op);
             let task_deps = task_deps.into_inner();
+            let task_deps = task_deps.reads;
 
-            let dep_node_index = match task_deps.reads.len() {
+            let dep_node_index = match task_deps.len() {
                 0 => {
                     // Because the dep-node id of anon nodes is computed from the sets of its
                     // dependencies we already know what the ID of this dependency-less node is
@@ -429,23 +422,33 @@ impl<K: DepKind> DepGraph<K> {
                 }
                 1 => {
                     // When there is only one dependency, don't bother creating a node.
-                    task_deps.reads[0]
+                    task_deps[0]
                 }
                 _ => {
-                    let hash_result = hash(&task_deps);
+                    let mut hasher = StableHasher::new();
+                    if let Some(hash) = hash {
+                        hash.hash(&mut hasher);
+                    } else {
+                        // The dep node indices are hashed here instead of hashing the dep nodes of the
+                        // dependencies. These indices may refer to different nodes per session, but this isn't
+                        // a problem here because we that ensure the final dep node hash is per session only by
+                        // combining it with the per session random number `anon_id_seed`. This hash only need
+                        // to map the dependencies to a single value on a per session basis.
+                        task_deps.hash(&mut hasher);
+                    }
 
                     let target_dep_node = DepNode {
                         kind: dep_kind,
                         // Fingerprint::combine() is faster than sending Fingerprint
                         // through the StableHasher (at least as long as StableHasher
                         // is so slow).
-                        hash: data.current.anon_id_seed.combine(hash_result).into(),
+                        hash: data.current.anon_id_seed.combine(hasher.finish()).into(),
                     };
 
                     data.current.intern_new_node(
                         cx.profiler(),
                         target_dep_node,
-                        task_deps.reads,
+                        task_deps,
                         Fingerprint::ZERO,
                     )
                 }

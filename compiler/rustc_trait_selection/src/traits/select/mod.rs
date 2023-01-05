@@ -49,8 +49,6 @@ use rustc_middle::ty::{self, EarlyBinder, PolyProjectionPredicate, ToPolyTraitRe
 use rustc_middle::ty::{Ty, TyCtxt, TypeFoldable, TypeVisitable};
 use rustc_span::symbol::sym;
 
-use rustc_data_structures::fingerprint::Fingerprint;
-use rustc_data_structures::stable_hasher::StableHasher;
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt::{self, Display};
@@ -59,8 +57,6 @@ use std::iter;
 
 pub use rustc_middle::traits::select::*;
 use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_query_system::dep_graph::TaskDeps;
-
 mod candidate_assembly;
 mod confirmation;
 
@@ -1021,18 +1017,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return Ok(cycle_result);
         }
 
-        let (result, dep_node) = if cfg!(parallel_compiler) {
-            self.in_task_with_hash(
-                |this| this.evaluate_stack(&stack),
-                |_| {
-                    let mut hasher = StableHasher::new();
-                    (param_env, fresh_trait_pred).hash(&mut hasher);
-                    hasher.finish()
-                },
-            )
-        } else {
-            self.in_task(|this| this.evaluate_stack(&stack))
-        };
+        let (result, dep_node) = self
+            .in_task_with_hash(|this| this.evaluate_stack(&stack), &(param_env, fresh_trait_pred));
 
         let result = result?;
 
@@ -1359,13 +1345,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn in_task_with_hash<OP, R, H>(&mut self, op: OP, hash: H) -> (R, DepNodeIndex)
     where
         OP: FnOnce(&mut Self) -> R,
-        H: FnOnce(&TaskDeps<DepKind>) -> Fingerprint,
+        H: Hash,
     {
         let (result, dep_node) = self.tcx().dep_graph.with_hash_task(
             self.tcx(),
             DepKind::TraitSelect,
             || op(self),
-            hash,
+            Some(hash),
         );
         self.tcx().dep_graph.read_index(dep_node);
         (result, dep_node)
