@@ -198,6 +198,9 @@ target = ["<host_platform>", "aarch64-fuchsia", "x86_64-fuchsia"]
 [rust]
 lld = true
 
+[llvm]
+download-ci-llvm = false
+
 [target.x86_64-fuchsia]
 cc = "clang"
 cxx = "clang++"
