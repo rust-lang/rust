@@ -14,7 +14,7 @@ fn main() {
         a = d;
     };
     Pin::new(&mut b).resume();
-    //~^ ERROR this function takes 1 argument but 0 arguments were supplied
+    //~^ ERROR this method takes 1 argument but 0 arguments were supplied
     // This type error is required to reproduce the ICE...
 }
 

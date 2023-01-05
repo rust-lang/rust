@@ -31,7 +31,7 @@ fn three_diff(_a: T1, _b: T2, _c: T3) {}
 fn four_shuffle(_a: T1, _b: T2, _c: T3, _d: T4) {}
 
 fn main() {
-    three_diff(T2::new(0)); //~ ERROR this function takes
+    three_diff(T2::new(0)); //~ ERROR function takes
     four_shuffle(T3::default(), T4::default(), T1::default(), T2::default()); //~ ERROR 35:5: 35:17: arguments to this function are incorrect [E0308]
     four_shuffle(T3::default(), T2::default(), T1::default(), T3::default()); //~ ERROR 36:5: 36:17: arguments to this function are incorrect [E0308]
 
