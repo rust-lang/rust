@@ -1418,21 +1418,23 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// Given a function definition like:
     ///
     /// ```rust
+    /// use std::fmt::Debug;
     /// fn test<'a, T: Debug>(x: &'a T) -> impl Debug + 'a {
     ///     x
     /// }
     /// ```
     ///
     /// we will create a TAIT definition in the HIR like
-    ///
-    /// ```
-    /// type TestReturn<'a, T, 'x> = impl Debug + 'x
-    /// ```
+    /// type TestReturn<'a, 'x, T> = impl Debug + 'x;
+    /// 
     ///
     /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
     ///
     /// ```rust
-    /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
+    /// #![feature(type_alias_impl_trait)]
+    /// use std::fmt::Debug;
+    /// type TestReturn<'a, 'x, T> = impl Debug + 'x;
+    /// fn test<'a, 'x, T: Debug>(x: &'a T) -> TestReturn<'a, 'x, T>{}
     /// ```
     ///
     /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the
