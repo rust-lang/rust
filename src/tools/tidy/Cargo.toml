@@ -13,6 +13,8 @@ walkdir = "2"
 ignore = "0.4.18"
 semver = "1.0.14"
 termcolor = "1.1.3"
+fiat-crypto = "0.1.17"
+subtle = "2.4.1"
 
 [[bin]]
 name = "rust-tidy"
