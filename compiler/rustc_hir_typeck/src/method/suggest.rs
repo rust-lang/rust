@@ -176,7 +176,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates, needs_mut, bound_span, self_expr) => {
+            MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
                 let msg = if needs_mut {
                     with_forced_trimmed_paths!(format!(
                         "the `{item_name}` method cannot be invoked on `{rcvr_ty}`"
