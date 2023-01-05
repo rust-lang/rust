@@ -19,8 +19,8 @@ extern "C" fn bar(f: isize, x: u8) {}
 
 fn main() {
     unsafe {
-        foo(); //~ ERROR this function takes at least 2 arguments but 0 arguments were supplied
-        foo(1); //~ ERROR this function takes at least 2 arguments but 1 argument was supplied
+        foo(); //~ ERROR function takes at least 2 arguments but 0 arguments were supplied
+        foo(1); //~ ERROR function takes at least 2 arguments but 1 argument was supplied
 
         let x: unsafe extern "C" fn(f: isize, x: u8) = foo; //~ ERROR mismatched types
         let y: extern "C" fn(f: isize, x: u8, ...) = bar; //~ ERROR mismatched types

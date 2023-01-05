@@ -1,4 +1,4 @@
-error[E0061]: this function takes 2 arguments but 1 argument was supplied
+error[E0061]: this method takes 2 arguments but 1 argument was supplied
   --> $DIR/issue-3044.rs:3:23
    |
 LL |       needlesArr.iter().fold(|x, y| {

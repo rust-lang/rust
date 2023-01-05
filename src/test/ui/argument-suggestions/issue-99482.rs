@@ -1,5 +1,5 @@
 fn main() {
     let f = |_: (), f: fn()| f;
     let _f = f(main);
-    //~^ ERROR this function takes 2 arguments but 1 argument was supplied
+    //~^ ERROR function takes 2 arguments but 1 argument was supplied
 }
