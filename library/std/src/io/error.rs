@@ -286,7 +286,7 @@ pub enum ErrorKind {
     NotSeekable,
     /// Filesystem quota was exceeded.
     #[stable(feature = "io_error_more", since = "CURRENT_RUSTC_VERSION")]
-    FilesystemQuotaExceeded,
+    QuotaExceeded,
     /// File larger than allowed or supported.
     ///
     /// This might arise from a hard limit of the underlying filesystem or file access API, or from
@@ -403,7 +403,7 @@ impl ErrorKind {
             ExecutableFileBusy => "executable file busy",
             FileTooLarge => "file too large",
             FilesystemLoop => "filesystem loop or indirection limit (e.g. symlink loop)",
-            FilesystemQuotaExceeded => "filesystem quota exceeded",
+            QuotaExceeded => "quota exceeded",
             HostUnreachable => "host unreachable",
             Interrupted => "operation interrupted",
             InvalidData => "invalid data",
