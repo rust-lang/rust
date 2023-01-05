@@ -65,6 +65,7 @@ pub mod pal;
 pub mod primitive_docs;
 pub mod style;
 pub mod target_specific_tests;
+pub mod triagebot;
 pub mod ui_tests;
 pub mod unit_tests;
 pub mod unstable_book;

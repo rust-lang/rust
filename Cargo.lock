@@ -5310,6 +5310,7 @@ dependencies = [
  "miropt-test-tools",
  "regex",
  "termcolor",
+ "toml",
  "walkdir",
 ]
 
@@ -5366,9 +5367,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.5.7"
+version = "0.5.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "75cf45bb0bef80604d001caaec0d09da99611b3c0fd39d3080468875cdb65645"
+checksum = "1333c76748e868a4d9d1017b5ab53171dfd095f70c712fdb4653a406547f598f"
 dependencies = [
  "serde",
 ]
