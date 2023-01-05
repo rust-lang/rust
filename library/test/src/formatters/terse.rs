@@ -70,7 +70,7 @@ impl<T: Write> TerseFormatter<T> {
             // screen when dealing with line-buffered output (e.g., piping to
             // `stamp` in the rust CI).
             let out = format!(" {}/{}\n", self.test_count + 1, self.total_test_count);
-            self.write_plain(&out)?;
+            self.write_plain(out)?;
         }
 
         self.test_count += 1;
@@ -106,7 +106,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nsuccesses:\n")?;
         let mut successes = Vec::new();
         let mut stdouts = String::new();
-        for &(ref f, ref stdout) in &state.not_failures {
+        for (f, stdout) in &state.not_failures {
             successes.push(f.name.to_string());
             if !stdout.is_empty() {
                 stdouts.push_str(&format!("---- {} stdout ----\n", f.name));
@@ -132,7 +132,7 @@ impl<T: Write> TerseFormatter<T> {
         self.write_plain("\nfailures:\n")?;
         let mut failures = Vec::new();
         let mut fail_out = String::new();
-        for &(ref f, ref stdout) in &state.failures {
+        for (f, stdout) in &state.failures {
             failures.push(f.name.to_string());
             if !stdout.is_empty() {
                 fail_out.push_str(&format!("---- {} stdout ----\n", f.name));
@@ -157,9 +157,9 @@ impl<T: Write> TerseFormatter<T> {
     fn write_test_name(&mut self, desc: &TestDesc) -> io::Result<()> {
         let name = desc.padded_name(self.max_name_len, desc.name.padding());
         if let Some(test_mode) = desc.test_mode() {
-            self.write_plain(&format!("test {name} - {test_mode} ... "))?;
+            self.write_plain(format!("test {name} - {test_mode} ... "))?;
         } else {
-            self.write_plain(&format!("test {name} ... "))?;
+            self.write_plain(format!("test {name} ... "))?;
         }
 
         Ok(())
@@ -175,7 +175,7 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
         } else {
             String::new()
         };
-        self.write_plain(&format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
+        self.write_plain(format!("\nrunning {test_count} {noun}{shuffle_seed_msg}\n"))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
@@ -209,13 +209,13 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
                     self.write_test_name(desc)?;
                 }
                 self.write_bench()?;
-                self.write_plain(&format!(": {}\n", fmt_bench_samples(bs)))
+                self.write_plain(format!(": {}\n", fmt_bench_samples(bs)))
             }
         }
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.write_plain(&format!(
+        self.write_plain(format!(
             "test {} has been running for over {} seconds\n",
             desc.name,
             time::TEST_WARN_TIMEOUT_S
@@ -245,11 +245,11 @@ impl<T: Write> OutputFormatter for TerseFormatter<T> {
             state.passed, state.failed, state.ignored, state.measured, state.filtered_out
         );
 
-        self.write_plain(&s)?;
+        self.write_plain(s)?;
 
         if let Some(ref exec_time) = state.exec_time {
             let time_str = format!("; finished in {exec_time}");
-            self.write_plain(&time_str)?;
+            self.write_plain(time_str)?;
         }
 
         self.write_plain("\n\n")?;

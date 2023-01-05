@@ -147,7 +147,7 @@ pub fn list_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Res
     let mut ntest = 0;
     let mut nbench = 0;
 
-    for test in filter_tests(&opts, tests).into_iter() {
+    for test in filter_tests(opts, tests).into_iter() {
         use crate::TestFn::*;
 
         let TestDescAndFn { desc: TestDesc { name, .. }, testfn } = test;
@@ -244,7 +244,7 @@ fn on_test_event(
             let stdout = &completed_test.stdout;
 
             st.write_log_result(test, result, exec_time.as_ref())?;
-            out.write_result(test, result, exec_time.as_ref(), &*stdout, st)?;
+            out.write_result(test, result, exec_time.as_ref(), stdout, st)?;
             handle_test_result(st, completed_test);
         }
     }
@@ -262,7 +262,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> io::Resu
 
     let max_name_len = tests
         .iter()
-        .max_by_key(|t| len_if_padded(*t))
+        .max_by_key(|t| len_if_padded(t))
         .map(|t| t.desc.name.as_slice().len())
         .unwrap_or(0);
 

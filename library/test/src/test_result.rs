@@ -33,7 +33,7 @@ pub fn calc_result<'a>(
 ) -> TestResult {
     let result = match (&desc.should_panic, task_result) {
         (&ShouldPanic::No, Ok(())) | (&ShouldPanic::Yes, Err(_)) => TestResult::TrOk,
-        (&ShouldPanic::YesWithMessage(msg), Err(ref err)) => {
+        (&ShouldPanic::YesWithMessage(msg), Err(err)) => {
             let maybe_panic_str = err
                 .downcast_ref::<String>()
                 .map(|e| &**e)
@@ -52,7 +52,7 @@ pub fn calc_result<'a>(
                     r#"expected panic with string value,
  found non-string value: `{:?}`
      expected substring: `{:?}`"#,
-                    (**err).type_id(),
+                    (*err).type_id(),
                     msg
                 ))
             }
