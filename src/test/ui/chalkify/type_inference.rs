@@ -1,4 +1,4 @@
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 trait Foo { }
 impl Foo for i32 { }

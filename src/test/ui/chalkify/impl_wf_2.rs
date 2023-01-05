@@ -1,6 +1,6 @@
 // Split out of impl_wf.rs to work around rust aborting compilation early
 
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 trait Foo: Sized { }
 

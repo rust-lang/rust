@@ -15,6 +15,7 @@ use rustc_middle::ty::{
     self, Binder, GenericArg, GenericArgKind, GenericParamDefKind, InternalSubsts, SubstsRef,
     ToPolyTraitRef, ToPredicate, TraitRef, Ty, TyCtxt,
 };
+use rustc_session::config::TraitSolver;
 use rustc_span::def_id::DefId;
 
 use crate::traits::project::{normalize_with_depth, normalize_with_depth_to};
@@ -767,8 +768,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         debug!(?closure_def_id, ?trait_ref, ?nested, "confirm closure candidate obligations");
 
         // FIXME: Chalk
-
-        if !self.tcx().sess.opts.unstable_opts.chalk {
+        if self.tcx().sess.opts.unstable_opts.trait_solver != TraitSolver::Chalk {
             nested.push(obligation.with(
                 self.tcx(),
                 ty::Binder::dummy(ty::PredicateKind::ClosureKind(closure_def_id, substs, kind)),
