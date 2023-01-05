@@ -213,7 +213,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, Some(err))
     }
 
-    fn point_at_expr_source_of_inferred_type(
+    pub fn point_at_expr_source_of_inferred_type(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
@@ -386,6 +386,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             "here the type of `{ident}` is inferred to be `{ty}`",
                         )),
                     );
+                    break;
+                } else if !param_args.is_empty() {
                     break;
                 }
                 prev = ty;
