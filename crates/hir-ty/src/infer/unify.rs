@@ -132,6 +132,8 @@ bitflags::bitflags! {
     #[derive(Default)]
     pub(crate) struct TypeVariableFlags: u8 {
         const DIVERGING = 1 << 0;
+        const INTEGER = 1 << 1;
+        const FLOAT = 1 << 2;
     }
 }
 
@@ -258,8 +260,14 @@ impl<'a> InferenceTable<'a> {
         // Chalk might have created some type variables for its own purposes that we don't know about...
         self.extend_type_variable_table(var.index() as usize);
         assert_eq!(var.index() as usize, self.type_variable_table.len() - 1);
+        let flags = self.type_variable_table.get_mut(var.index() as usize).unwrap();
         if diverging {
-            self.type_variable_table[var.index() as usize] |= TypeVariableFlags::DIVERGING;
+            *flags |= TypeVariableFlags::DIVERGING;
+        }
+        if matches!(kind, TyVariableKind::Integer) {
+            *flags |= TypeVariableFlags::INTEGER;
+        } else if matches!(kind, TyVariableKind::Float) {
+            *flags |= TypeVariableFlags::FLOAT;
         }
         var.to_ty_with_kind(Interner, kind)
     }
