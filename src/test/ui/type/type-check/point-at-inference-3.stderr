@@ -1,0 +1,17 @@
+error[E0308]: mismatched types
+  --> $DIR/point-at-inference-3.rs:6:12
+   |
+LL |     v.push(0);
+   |            - this is of type `{integer}`, which makes `v` to be inferred as `Vec<{integer}>`
+...
+LL |     v.push("");
+   |       ---- ^^ expected integer, found `&str`
+   |       |
+   |       arguments to this function are incorrect
+   |
+note: associated function defined here
+  --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
+
+error: aborting due to previous error
+
+For more information about this error, try `rustc --explain E0308`.
