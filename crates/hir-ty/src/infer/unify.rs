@@ -350,6 +350,51 @@ impl<'a> InferenceTable<'a> {
         self.resolve_with_fallback(t, &|_, _, d, _| d)
     }
 
+    /// Apply a fallback to unresolved scalar types. Integer type variables and float type
+    /// variables are replaced with i32 and f64, respectively.
+    ///
+    /// This method is only intended to be called just before returning inference results (i.e. in
+    /// `InferenceContext::resolve_all()`).
+    ///
+    /// FIXME: This method currently doesn't apply fallback to unconstrained general type variables
+    /// whereas rustc replaces them with `()` or `!`.
+    pub(super) fn fallback_if_possible(&mut self) {
+        let int_fallback = TyKind::Scalar(Scalar::Int(IntTy::I32)).intern(Interner);
+        let float_fallback = TyKind::Scalar(Scalar::Float(FloatTy::F64)).intern(Interner);
+
+        let scalar_vars: Vec<_> = self
+            .type_variable_table
+            .iter()
+            .enumerate()
+            .filter_map(|(index, flags)| {
+                let kind = if flags.contains(TypeVariableFlags::INTEGER) {
+                    TyVariableKind::Integer
+                } else if flags.contains(TypeVariableFlags::FLOAT) {
+                    TyVariableKind::Float
+                } else {
+                    return None;
+                };
+
+                // FIXME: This is not really the nicest way to get `InferenceVar`s. Can we get them
+                // without directly constructing them from `index`?
+                let var = InferenceVar::from(index as u32).to_ty(Interner, kind);
+                Some(var)
+            })
+            .collect();
+
+        for var in scalar_vars {
+            let maybe_resolved = self.resolve_ty_shallow(&var);
+            if let TyKind::InferenceVar(_, kind) = maybe_resolved.kind(Interner) {
+                let fallback = match kind {
+                    TyVariableKind::Integer => &int_fallback,
+                    TyVariableKind::Float => &float_fallback,
+                    TyVariableKind::General => unreachable!(),
+                };
+                self.unify(&var, fallback);
+            }
+        }
+    }
+
     /// Unify two relatable values (e.g. `Ty`) and register new trait goals that arise from that.
     pub(crate) fn unify<T: ?Sized + Zip<Interner>>(&mut self, ty1: &T, ty2: &T) -> bool {
         let result = match self.try_unify(ty1, ty2) {
