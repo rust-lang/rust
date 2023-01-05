@@ -33,14 +33,14 @@ pub(crate) fn prepare(dirs: &Dirs) {
     super::tests::RAND_REPO.fetch(dirs);
     super::tests::REGEX_REPO.fetch(dirs);
     super::tests::PORTABLE_SIMD_REPO.fetch(dirs);
-    super::tests::SIMPLE_RAYTRACER_REPO.fetch(dirs);
+    super::bench::SIMPLE_RAYTRACER_REPO.fetch(dirs);
 
     eprintln!("[LLVM BUILD] simple-raytracer");
     let host_compiler = Compiler::host();
-    let build_cmd = super::tests::SIMPLE_RAYTRACER.build(&host_compiler, dirs);
+    let build_cmd = super::bench::SIMPLE_RAYTRACER.build(&host_compiler, dirs);
     spawn_and_wait(build_cmd);
     fs::copy(
-        super::tests::SIMPLE_RAYTRACER
+        super::bench::SIMPLE_RAYTRACER
             .target_dir(dirs)
             .join(&host_compiler.triple)
             .join("debug")

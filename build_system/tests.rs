@@ -1,13 +1,9 @@
-use crate::build_system::build_sysroot::SYSROOT_SRC;
-
-use super::build_sysroot;
+use super::bench::SIMPLE_RAYTRACER;
+use super::build_sysroot::{self, SYSROOT_SRC};
 use super::config;
 use super::path::{Dirs, RelPath};
 use super::prepare::GitRepo;
-use super::rustc_info::{get_file_name, get_wrapper_file_name};
-use super::utils::{
-    hyperfine_command, is_ci, spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler,
-};
+use super::utils::{spawn_and_wait, spawn_and_wait_with_input, CargoProject, Compiler};
 use super::SysrootKind;
 use std::env;
 use std::ffi::OsStr;
@@ -253,16 +249,6 @@ pub(crate) static PORTABLE_SIMD_REPO: GitRepo = GitRepo::github(
 static PORTABLE_SIMD: CargoProject =
     CargoProject::new(&PORTABLE_SIMD_REPO.source_dir(), "portable_simd");
 
-pub(crate) static SIMPLE_RAYTRACER_REPO: GitRepo = GitRepo::github(
-    "ebobby",
-    "simple-raytracer",
-    "804a7a21b9e673a482797aa289a18ed480e4d813",
-    "<none>",
-);
-
-pub(crate) static SIMPLE_RAYTRACER: CargoProject =
-    CargoProject::new(&SIMPLE_RAYTRACER_REPO.source_dir(), "simple_raytracer");
-
 static LIBCORE_TESTS: CargoProject =
     CargoProject::new(&SYSROOT_SRC.join("library/core/tests"), "core_tests");
 
@@ -282,67 +268,9 @@ const EXTENDED_SYSROOT_SUITE: &[TestCase] = &[
             spawn_and_wait(build_cmd);
         }
     }),
-    TestCase::new("bench.simple-raytracer", &|runner| {
-        let run_runs = env::var("RUN_RUNS")
-            .unwrap_or(if is_ci() { "2" } else { "10" }.to_string())
-            .parse()
-            .unwrap();
-
-        if runner.is_native {
-            eprintln!("[BENCH COMPILE] ebobby/simple-raytracer");
-            let cargo_clif = RelPath::DIST
-                .to_path(&runner.dirs)
-                .join(get_wrapper_file_name("cargo-clif", "bin"));
-            let manifest_path = SIMPLE_RAYTRACER.manifest_path(&runner.dirs);
-            let target_dir = SIMPLE_RAYTRACER.target_dir(&runner.dirs);
-
-            let clean_cmd = format!(
-                "cargo clean --manifest-path {manifest_path} --target-dir {target_dir}",
-                manifest_path = manifest_path.display(),
-                target_dir = target_dir.display(),
-            );
-            let llvm_build_cmd = format!(
-                "cargo build --manifest-path {manifest_path} --target-dir {target_dir}",
-                manifest_path = manifest_path.display(),
-                target_dir = target_dir.display(),
-            );
-            let clif_build_cmd = format!(
-                "{cargo_clif} build --manifest-path {manifest_path} --target-dir {target_dir}",
-                cargo_clif = cargo_clif.display(),
-                manifest_path = manifest_path.display(),
-                target_dir = target_dir.display(),
-            );
-
-            let bench_compile =
-                hyperfine_command(1, run_runs, Some(&clean_cmd), &llvm_build_cmd, &clif_build_cmd);
-
-            spawn_and_wait(bench_compile);
-
-            eprintln!("[BENCH RUN] ebobby/simple-raytracer");
-            fs::copy(
-                target_dir.join("debug").join(get_file_name("main", "bin")),
-                RelPath::BUILD
-                    .to_path(&runner.dirs)
-                    .join(get_file_name("raytracer_cg_clif", "bin")),
-            )
-            .unwrap();
-
-            let mut bench_run = hyperfine_command(
-                0,
-                run_runs,
-                None,
-                Path::new(".").join(get_file_name("raytracer_cg_llvm", "bin")).to_str().unwrap(),
-                Path::new(".").join(get_file_name("raytracer_cg_clif", "bin")).to_str().unwrap(),
-            );
-            bench_run.current_dir(RelPath::BUILD.to_path(&runner.dirs));
-            spawn_and_wait(bench_run);
-        } else {
-            spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.target_compiler.cargo, &runner.dirs));
-            eprintln!("[BENCH COMPILE] ebobby/simple-raytracer (skipped)");
-            eprintln!("[COMPILE] ebobby/simple-raytracer");
-            spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler, &runner.dirs));
-            eprintln!("[BENCH RUN] ebobby/simple-raytracer (skipped)");
-        }
+    TestCase::new("test.simple-raytracer", &|runner| {
+        spawn_and_wait(SIMPLE_RAYTRACER.clean(&runner.host_compiler.cargo, &runner.dirs));
+        spawn_and_wait(SIMPLE_RAYTRACER.build(&runner.target_compiler, &runner.dirs));
     }),
     TestCase::new("test.libcore", &|runner| {
         spawn_and_wait(LIBCORE_TESTS.clean(&runner.host_compiler.cargo, &runner.dirs));
