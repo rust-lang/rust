@@ -511,7 +511,7 @@ impl TokenStream {
     fn try_glue_to_last(vec: &mut Vec<TokenTree>, tt: &TokenTree) -> bool {
         if let Some(TokenTree::Token(last_tok, Spacing::Joint)) = vec.last()
             && let TokenTree::Token(tok, spacing) = tt
-            && let Some(glued_tok) = last_tok.glue(tok)
+            && let Some(glued_tok) = last_tok.check_is_multiple_char_token(tok)
         {
             // ...then overwrite the last token tree in `vec` with the
             // glued token, and skip the first token tree from `stream`.
@@ -527,9 +527,7 @@ impl TokenStream {
     pub fn push_tree(&mut self, tt: TokenTree) {
         let vec_mut = Lrc::make_mut(&mut self.0);
 
-        if Self::try_glue_to_last(vec_mut, &tt) {
-            // nothing else to do
-        } else {
+        if !Self::try_glue_to_last(vec_mut, &tt) {
             vec_mut.push(tt);
         }
     }

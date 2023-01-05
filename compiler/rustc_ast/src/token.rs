@@ -710,7 +710,11 @@ impl Token {
         }
     }
 
-    pub fn glue(&self, joint: &Token) -> Option<Token> {
+    /// Checks if the current token is a multiple-character token (or glued like `==`, `<=`, `...`)
+    /// and returns the corresponding `TokenKind` if it is.
+    ///
+    /// if the current tokens is already complete, returns `None`.
+    pub fn check_is_multiple_char_token(&self, joint: &Token) -> Option<Token> {
         let kind = match self.kind {
             Eq => match joint.kind {
                 Eq => EqEq,
