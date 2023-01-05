@@ -1329,10 +1329,11 @@ pub(crate) mod builtin {
     /// </pre>
     /// </div>
     ///
-    /// If the included file is parsed as an expression, it is placed in the surrounding code
-    /// [unhygienically](https://doc.rust-lang.org/reference/macros-by-example.html#hygiene). This
-    /// could result in variables or functions being different from what the file expected if there
-    /// are variables or functions that have the same name in the current file.
+    /// The included file is placed in the surrounding code
+    /// [unhygienically](https://doc.rust-lang.org/reference/macros-by-example.html#hygiene). If
+    /// the included file is parsed as an expression and variables or functions share names across
+    /// both files, it could result in variables or functions being different from what the
+    /// included file expected.
     ///
     /// The included file is located relative to the current file (similarly to how modules are
     /// found). The provided path is interpreted in a platform-specific way at compile time. So,
