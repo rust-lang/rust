@@ -226,12 +226,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
         let hir::def::Res::Local(hir_id) = p.res else { return false; };
         let Some(hir::Node::Pat(pat)) = map.find(hir_id) else { return false; };
-        let parent = map.get_parent_node(pat.hir_id);
         let Some(hir::Node::Local(hir::Local {
             ty: None,
             init: Some(init),
             ..
-        })) = map.find(parent) else { return false; };
+        })) = map.find_parent(pat.hir_id) else { return false; };
         let Some(ty) = self.node_ty_opt(init.hir_id) else { return false; };
         if ty.is_closure() || init.span.overlaps(expr.span) || pat.span.from_expansion() {
             return false;
@@ -285,12 +284,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             // In every expression where the binding is referenced, we will look at that
             // expression's type and see if it is where the incorrect found type was fully
             // "materialized" and point at it. We will also try to provide a suggestion there.
-            let parent = map.get_parent_node(binding.hir_id);
-            if let Some(hir::Node::Expr(expr))
-            | Some(hir::Node::Stmt(hir::Stmt {
+            if let Some(hir::Node::Expr(expr)
+            | hir::Node::Stmt(hir::Stmt {
                 kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
                 ..
-            })) = &map.find(parent)
+            })) = &map.find_parent(binding.hir_id)
                 && let hir::ExprKind::MethodCall(segment, rcvr, args, _span) = expr.kind
                 && rcvr.hir_id == binding.hir_id
                 && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)

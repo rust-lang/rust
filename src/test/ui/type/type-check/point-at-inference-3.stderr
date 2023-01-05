@@ -7,7 +7,7 @@ LL |     v.push(0i32);
 LL |     v.push(1u32);
    |       ---- ^^^^ expected `i32`, found `u32`
    |       |
-   |       arguments to this function are incorrect
+   |       arguments to this method are incorrect
    |
 note: associated function defined here
   --> $SRC_DIR/alloc/src/vec/mod.rs:LL:COL
