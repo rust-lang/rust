@@ -334,7 +334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             err.span_label(
                                 arg.span,
                                 &format!(
-                                    "this is of type `{arg_ty}`, which makes `{ident}` to be \
+                                    "this is of type `{arg_ty}`, which causes `{ident}` to be \
                                      inferred as `{ty}`",
                                 ),
                             );
