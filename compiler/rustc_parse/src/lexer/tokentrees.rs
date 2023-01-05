@@ -71,7 +71,8 @@ impl<'a> TokenTreesReader<'a> {
                         let (next_tok, is_next_tok_preceded_by_whitespace) =
                             self.string_reader.next_token();
                         if !is_next_tok_preceded_by_whitespace {
-                            if let Some(glued) = self.token.check_is_multiple_char_token(&next_tok) {
+                            if let Some(glued) = self.token.check_is_multiple_char_token(&next_tok)
+                            {
                                 self.token = glued;
                             } else {
                                 let this_spacing =
