@@ -77,11 +77,11 @@ assert-count: ("//*[@id='source-sidebar']/details[not(text()='lib2') and not(@op
 
 // We now switch to mobile mode.
 size: (600, 600)
-wait-for-css: (".source-sidebar-expanded nav.sidebar", {"width": "600px"})
+wait-for-css: (".source-sidebar-expanded nav.sidebar", {"left": "0px"})
 // We collapse the sidebar.
 click: (10, 10)
-// We check that the sidebar has the expected width (0).
-assert-css: ("nav.sidebar", {"width": "0px"})
+// We check that the sidebar has been moved off-screen.
+assert-css: ("nav.sidebar", {"left": "-1000px"})
 // We ensure that the class has been removed.
 assert-false: ".source-sidebar-expanded"
 assert: "nav.sidebar"
