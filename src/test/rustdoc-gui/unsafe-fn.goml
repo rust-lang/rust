@@ -14,13 +14,13 @@ define-function: (
     // `theme` is the theme being tested.
     // `color` is the expected color of the `<sup>` element.
     (theme, color),
-    [
+    block {
         // Set the theme.
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
-        ("reload"),
-        ("assert-css", (".item-left sup", {"color": |color|})),
-    ],
+        reload:
+        assert-css: (".item-left sup", {"color": |color|})
+    },
 )
 
 call-function: ("sup-check", ("dark", "rgb(221, 221, 221)"))

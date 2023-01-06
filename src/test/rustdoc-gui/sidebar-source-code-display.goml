@@ -35,88 +35,88 @@ define-function: (
         theme, color, color_hover, background, background_hover, background_toggle,
         background_toggle_hover,
     ),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("wait-for-css", ("#src-sidebar-toggle", {"visibility": "visible"})),
-        ("assert-css", (
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        wait-for-css: ("#src-sidebar-toggle", {"visibility": "visible"})
+        assert-css: (
             "#source-sidebar details[open] > .files a.selected",
             {"color": |color_hover|, "background-color": |background|},
-        )),
+        )
 
         // Without hover or focus.
-        ("assert-css", ("#src-sidebar-toggle > button", {"background-color": |background_toggle|})),
+        assert-css: ("#src-sidebar-toggle > button", {"background-color": |background_toggle|})
         // With focus.
-        ("focus", "#src-sidebar-toggle > button"),
-        ("assert-css", (
+        focus: "#src-sidebar-toggle > button"
+        assert-css: (
             "#src-sidebar-toggle > button:focus",
             {"background-color": |background_toggle_hover|},
-        )),
-        ("focus", ".search-input"),
+        )
+        focus: ".search-input"
         // With hover.
-        ("move-cursor-to", "#src-sidebar-toggle > button"),
-        ("assert-css", (
+        move-cursor-to: "#src-sidebar-toggle > button"
+        assert-css: (
             "#src-sidebar-toggle > button:hover",
             {"background-color": |background_toggle_hover|},
-        )),
+        )
 
         // Without hover or focus.
-        ("assert-css", (
+        assert-css: (
             "#source-sidebar details[open] > .files a:not(.selected)",
             {"color": |color|, "background-color": |background_toggle|},
-        )),
+        )
         // With focus.
-        ("focus", "#source-sidebar details[open] > .files a:not(.selected)"),
-        ("wait-for-css", (
+        focus: "#source-sidebar details[open] > .files a:not(.selected)"
+        wait-for-css: (
             "#source-sidebar details[open] > .files a:not(.selected):focus",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
-        ("focus", ".search-input"),
+        )
+        focus: ".search-input"
         // With hover.
-        ("move-cursor-to", "#source-sidebar details[open] > .files a:not(.selected)"),
-        ("assert-css", (
+        move-cursor-to: "#source-sidebar details[open] > .files a:not(.selected)"
+        assert-css: (
             "#source-sidebar details[open] > .files a:not(.selected):hover",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
+        )
 
         // Without hover or focus.
-        ("assert-css", (
+        assert-css: (
             "#source-sidebar .dir-entry summary",
             {"color": |color|, "background-color": |background_toggle|},
-        )),
+        )
         // With focus.
-        ("focus", "#source-sidebar .dir-entry summary"),
-        ("wait-for-css", (
+        focus: "#source-sidebar .dir-entry summary"
+        wait-for-css: (
             "#source-sidebar .dir-entry summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
-        ("focus", ".search-input"),
+        )
+        focus: ".search-input"
         // With hover.
-        ("move-cursor-to", "#source-sidebar .dir-entry summary"),
-        ("assert-css", (
+        move-cursor-to: "#source-sidebar .dir-entry summary"
+        assert-css: (
             "#source-sidebar .dir-entry summary:hover",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
+        )
 
         // Without hover or focus.
-        ("assert-css", (
+        assert-css: (
             "#source-sidebar details[open] > .folders > details > summary",
             {"color": |color|, "background-color": |background_toggle|},
-        )),
+        )
         // With focus.
-        ("focus", "#source-sidebar details[open] > .folders > details > summary"),
-        ("wait-for-css", (
+        focus: "#source-sidebar details[open] > .folders > details > summary"
+        wait-for-css: (
             "#source-sidebar details[open] > .folders > details > summary:focus",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
-        ("focus", ".search-input"),
+        )
+        focus: ".search-input"
         // With hover.
-        ("move-cursor-to", "#source-sidebar details[open] > .folders > details > summary"),
-        ("assert-css", (
+        move-cursor-to: "#source-sidebar details[open] > .folders > details > summary"
+        assert-css: (
             "#source-sidebar details[open] > .folders > details > summary:hover",
             {"color": |color_hover|, "background-color": |background_hover|},
-        )),
-    ],
+        )
+    },
 )
 
 call-function: ("check-colors", {

@@ -8,27 +8,27 @@ show-text: true
 define-function: (
     "check-run-button",
     (theme, color, background, hover_color, hover_background),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("assert-css", (".test-arrow", {"visibility": "hidden"})),
-        ("move-cursor-to", ".example-wrap"),
-        ("assert-css", (".test-arrow", {
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: (".test-arrow", {"visibility": "hidden"})
+        move-cursor-to: ".example-wrap"
+        assert-css: (".test-arrow", {
             "visibility": "visible",
             "color": |color|,
             "background-color": |background|,
             "font-size": "22px",
             "border-radius": "5px",
-        })),
-        ("move-cursor-to", ".test-arrow"),
-        ("assert-css", (".test-arrow:hover", {
+        })
+        move-cursor-to: ".test-arrow"
+        assert-css: (".test-arrow:hover", {
             "visibility": "visible",
             "color": |hover_color|,
             "background-color": |hover_background|,
             "font-size": "22px",
             "border-radius": "5px",
-        })),
-    ],
+        })
+    },
 )
 
 call-function: ("check-run-button", {

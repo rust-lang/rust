@@ -12,80 +12,80 @@ define-function: (
         trait_hover_background, fn, fn_hover, fn_hover_background, type, type_hover,
         type_hover_background, keyword, keyword_hover, keyword_hover_background,
     ),
-    [
-        ("local-storage", { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }),
-        ("reload"),
+    block {
+        local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false" }
+        reload:
         // Struct
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.struct a:not(.current)",
             {"color": |struct|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.struct a:not(.current)"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.struct a:not(.current)"
+        assert-css: (
             ".sidebar .block.struct a:hover",
             {"color": |struct_hover|, "background-color": |struct_hover_background|},
-        )),
+        )
         // Enum
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.enum a",
             {"color": |enum|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.enum a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.enum a"
+        assert-css: (
             ".sidebar .block.enum a:hover",
             {"color": |enum_hover|, "background-color": |enum_hover_background|},
-        )),
+        )
         // Union
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.union a",
             {"color": |union|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.union a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.union a"
+        assert-css: (
             ".sidebar .block.union a:hover",
             {"color": |union_hover|, "background-color": |union_hover_background|},
-        )),
+        )
         // Trait
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.trait a",
             {"color": |trait|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.trait a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.trait a"
+        assert-css: (
             ".sidebar .block.trait a:hover",
             {"color": |trait_hover|, "background-color": |trait_hover_background|},
-        )),
+        )
         // Function
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.fn a",
             {"color": |fn|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.fn a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.fn a"
+        assert-css: (
             ".sidebar .block.fn a:hover",
             {"color": |fn_hover|, "background-color": |fn_hover_background|},
-        )),
+        )
         // Type definition
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.type a",
             {"color": |type|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.type a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.type a"
+        assert-css: (
             ".sidebar .block.type a:hover",
             {"color": |type_hover|, "background-color": |type_hover_background|},
-        )),
+        )
         // Keyword
-        ("assert-css", (
+        assert-css: (
             ".sidebar .block.keyword a",
             {"color": |keyword|, "background-color": "rgba(0, 0, 0, 0)"},
-        )),
-        ("move-cursor-to", ".sidebar .block.keyword a"),
-        ("assert-css", (
+        )
+        move-cursor-to: ".sidebar .block.keyword a"
+        assert-css: (
             ".sidebar .block.keyword a:hover",
             {"color": |keyword_hover|, "background-color": |keyword_hover_background|},
-        )),
-    ]
+        )
+    }
 )
 
 call-function: (

@@ -22,20 +22,20 @@ assert-attribute-false: (".src-line-numbers > a:nth-child(7)", {"class": "line-h
 define-function: (
     "check-colors",
     (theme, color, background_color, highlight_color, highlight_background_color),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("assert-css", (
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: (
             ".src-line-numbers > a:not(.line-highlighted)",
             {"color": |color|, "background-color": |background_color|},
             ALL,
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             ".src-line-numbers > a.line-highlighted",
             {"color": |highlight_color|, "background-color": |highlight_background_color|},
             ALL,
-        )),
-    ],
+        )
+    },
 )
 
 call-function: ("check-colors", {
@@ -124,28 +124,28 @@ store-property: (
 define-function: (
     "check-sidebar-dir-entry",
     (x, y),
-    [
-        ("assert", "details:first-of-type.dir-entry[open] > summary::marker"),
-        ("assert-css", ("#source-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})),
+    block {
+        assert: "details:first-of-type.dir-entry[open] > summary::marker"
+        assert-css: ("#source-sidebar > details:first-of-type.dir-entry", {"padding-left": "4px"})
         // This check ensures that the summary is only one line.
-       ("assert-property", (
+        assert-property: (
             "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
             {"offsetHeight": |link_height|}
-        )),
-        ("assert-position", (
+        )
+        assert-position: (
             "#source-sidebar > details:first-of-type.dir-entry[open] > summary",
             {"x": |x|, "y": |y|}
-        )),
-        ("assert-property", (
+        )
+        assert-property: (
             "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
             {"offsetHeight": |link_height|}
-        )),
-        ("assert-position", (
+        )
+        assert-position: (
             "#source-sidebar > details:first-of-type.dir-entry[open] > .files > a",
             // left margin
             {"x": |x| + 27, "y": |y| + |link_height|}
-        )),
-    ]
+        )
+    }
 )
 store-property: (
     source_sidebar_title_height,
