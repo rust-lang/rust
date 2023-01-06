@@ -1,3 +1,5 @@
+//! A pass that inserts the `ConstEvalCounter` instruction into any blocks that have a back edge
+//! (thus indicating there is a loop in the CFG), or whose terminator is a function call.
 use crate::MirPass;
 
 use rustc_middle::mir::{

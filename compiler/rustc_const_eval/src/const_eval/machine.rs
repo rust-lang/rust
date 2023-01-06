@@ -561,11 +561,6 @@ impl<'mir, 'tcx> interpret::Machine<'mir, 'tcx> for CompileTimeInterpreter<'mir,
         throw_unsup_format!("pointer arithmetic or comparison is not supported at compile-time");
     }
 
-    // Not used here, but used by Miri (see `src/tools/miri/src/machine.rs`).
-    fn before_terminator(_ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
-        Ok(())
-    }
-
     fn increment_const_eval_counter(ecx: &mut InterpCx<'mir, 'tcx, Self>) -> InterpResult<'tcx> {
         // The step limit has already been hit in a previous call to `increment_const_eval_counter`.
         if ecx.machine.steps_remaining == 0 {
