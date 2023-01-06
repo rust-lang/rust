@@ -304,13 +304,18 @@ fn compress(
     }
 }
 
+/// Tracks the list of dominators for each node.
 #[derive(Clone, Debug)]
 pub struct Dominators<N: Idx> {
     post_order_rank: IndexVec<N, usize>,
+    // Even though we track only the immediate dominator of each node, it's
+    // possible to get its full list of dominators by looking up the dominator
+    // of each dominator. (See the `impl Iterator for Iter` definition).
     immediate_dominators: IndexVec<N, Option<N>>,
 }
 
 impl<Node: Idx> Dominators<Node> {
+    /// Whether the given Node has an immediate dominator.
     pub fn is_reachable(&self, node: Node) -> bool {
         self.immediate_dominators[node].is_some()
     }
@@ -320,6 +325,8 @@ impl<Node: Idx> Dominators<Node> {
         self.immediate_dominators[node].unwrap()
     }
 
+    /// Provides an iterator over each dominator up the CFG, for the given Node.
+    /// See the `impl Iterator for Iter` definition to understand how this works.
     pub fn dominators(&self, node: Node) -> Iter<'_, Node> {
         assert!(self.is_reachable(node), "node {node:?} is not reachable");
         Iter { dominators: self, node: Some(node) }
