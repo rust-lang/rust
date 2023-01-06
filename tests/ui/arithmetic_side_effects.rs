@@ -2,6 +2,7 @@
     clippy::assign_op_pattern,
     clippy::erasing_op,
     clippy::identity_op,
+    clippy::no_effect,
     clippy::op_ref,
     clippy::unnecessary_owned_empty_strings,
     arithmetic_overflow,
@@ -125,6 +126,18 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n *= &0;
     _n *= 1;
     _n *= &1;
+    _n += -0;
+    _n += &-0;
+    _n -= -0;
+    _n -= &-0;
+    _n /= -99;
+    _n /= &-99;
+    _n %= -99;
+    _n %= &-99;
+    _n *= -0;
+    _n *= &-0;
+    _n *= -1;
+    _n *= &-1;
 
     // Binary
     _n = _n + 0;
@@ -158,7 +171,7 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
     _n = -&i32::MIN;
 }
 
-pub fn runtime_ops() {
+pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     let mut _n = i32::MAX;
 
     // Assign
@@ -172,6 +185,16 @@ pub fn runtime_ops() {
     _n %= &0;
     _n *= 2;
     _n *= &2;
+    _n += -1;
+    _n += &-1;
+    _n -= -1;
+    _n -= &-1;
+    _n /= -0;
+    _n /= &-0;
+    _n %= -0;
+    _n %= &-0;
+    _n *= -2;
+    _n *= &-2;
 
     // Binary
     _n = _n + 1;
@@ -223,6 +246,48 @@ pub fn runtime_ops() {
     // Unary
     _n = -_n;
     _n = -&_n;
+}
+
+// Copied and pasted from the `integer_arithmetic` lint for comparison.
+pub fn integer_arithmetic() {
+    let mut i = 1i32;
+    let mut var1 = 0i32;
+    let mut var2 = -1i32;
+
+    1 + i;
+    i * 2;
+    1 % i / 2;
+    i - 2 + 2 - i;
+    -i;
+    i >> 1;
+    i << 1;
+
+    -1;
+    -(-1);
+
+    i & 1;
+    i | 1;
+    i ^ 1;
+
+    i += 1;
+    i -= 1;
+    i *= 2;
+    i /= 2;
+    i /= 0;
+    i /= -1;
+    i /= var1;
+    i /= var2;
+    i %= 2;
+    i %= 0;
+    i %= -1;
+    i %= var1;
+    i %= var2;
+    i <<= 3;
+    i >>= 2;
+
+    i |= 1;
+    i &= 1;
+    i ^= i;
 }
 
 fn main() {}
