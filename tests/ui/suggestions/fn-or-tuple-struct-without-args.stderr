@@ -23,12 +23,12 @@ LL | struct S(usize, usize);
    | -------- fn(usize, usize) -> S {S} defined here
 ...
 LL |     let _: S = S;
-   |            -   ^ expected struct `S`, found fn item
+   |            -   ^ expected struct `S`, found struct constructor
    |            |
    |            expected due to this
    |
-   = note: expected struct `S`
-             found fn item `fn(usize, usize) -> S {S}`
+   = note:          expected struct `S`
+           found struct constructor `fn(usize, usize) -> S {S}`
 help: use parentheses to construct this tuple struct
    |
 LL |     let _: S = S(/* usize */, /* usize */);
@@ -59,12 +59,12 @@ LL | struct V();
    | -------- fn() -> V {V} defined here
 ...
 LL |     let _: V = V;
-   |            -   ^ expected struct `V`, found fn item
+   |            -   ^ expected struct `V`, found struct constructor
    |            |
    |            expected due to this
    |
-   = note: expected struct `V`
-             found fn item `fn() -> V {V}`
+   = note:          expected struct `V`
+           found struct constructor `fn() -> V {V}`
 help: use parentheses to construct this tuple struct
    |
 LL |     let _: V = V();
@@ -113,12 +113,12 @@ LL |     A(usize),
    |     - fn(usize) -> E {E::A} defined here
 ...
 LL |     let _: E = E::A;
-   |            -   ^^^^ expected enum `E`, found fn item
+   |            -   ^^^^ expected enum `E`, found enum constructor
    |            |
    |            expected due to this
    |
-   = note: expected enum `E`
-           found fn item `fn(usize) -> E {E::A}`
+   = note:          expected enum `E`
+           found enum constructor `fn(usize) -> E {E::A}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::A(/* usize */);

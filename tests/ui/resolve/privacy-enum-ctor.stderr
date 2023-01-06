@@ -267,12 +267,12 @@ LL |             Fn(u8),
    |             -- fn(u8) -> Z {Z::Fn} defined here
 ...
 LL |         let _: Z = Z::Fn;
-   |                -   ^^^^^ expected enum `Z`, found fn item
+   |                -   ^^^^^ expected enum `Z`, found enum constructor
    |                |
    |                expected due to this
    |
-   = note: expected enum `Z`
-           found fn item `fn(u8) -> Z {Z::Fn}`
+   = note:          expected enum `Z`
+           found enum constructor `fn(u8) -> Z {Z::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |         let _: Z = Z::Fn(/* u8 */);
@@ -308,12 +308,12 @@ LL |         Fn(u8),
    |         -- fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = m::E::Fn;
-   |            -   ^^^^^^^^ expected enum `E`, found fn item
+   |            -   ^^^^^^^^ expected enum `E`, found enum constructor
    |            |
    |            expected due to this
    |
-   = note: expected enum `E`
-           found fn item `fn(u8) -> E {E::Fn}`
+   = note:          expected enum `E`
+           found enum constructor `fn(u8) -> E {E::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = m::E::Fn(/* u8 */);
@@ -349,12 +349,12 @@ LL |         Fn(u8),
    |         -- fn(u8) -> E {E::Fn} defined here
 ...
 LL |     let _: E = E::Fn;
-   |            -   ^^^^^ expected enum `E`, found fn item
+   |            -   ^^^^^ expected enum `E`, found enum constructor
    |            |
    |            expected due to this
    |
-   = note: expected enum `E`
-           found fn item `fn(u8) -> E {E::Fn}`
+   = note:          expected enum `E`
+           found enum constructor `fn(u8) -> E {E::Fn}`
 help: use parentheses to construct this tuple variant
    |
 LL |     let _: E = E::Fn(/* u8 */);

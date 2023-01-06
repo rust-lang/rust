@@ -1,4 +1,4 @@
-error[E0599]: no method named `foo` found for fn item `fn() -> Foo {Foo::Tup}` in the current scope
+error[E0599]: no method named `foo` found for enum constructor `fn() -> Foo {Foo::Tup}` in the current scope
   --> $DIR/enum-variant.rs:14:15
    |
 LL |     thing.bar.foo();
