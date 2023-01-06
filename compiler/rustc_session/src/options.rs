@@ -272,7 +272,7 @@ macro_rules! options {
 
     mod $optmod {
     $(
-        pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> bool {
+        pub(super) fn $opt(cg: &mut super::$struct_name, v: Option<&str>) -> Result<(), $crate::options::ParseError> {
             super::parse::$parse(&mut redirect_field!(cg.$opt), v)
         }
     )*
@@ -302,7 +302,12 @@ macro_rules! redirect_field {
     };
 }
 
-type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> bool;
+type OptionSetter<O> = fn(&mut O, v: Option<&str>) -> Result<(), ParseError>;
+
+pub enum ParseError {
+    Invalid,
+}
+
 type OptionDescrs<O> = &'static [(&'static str, OptionSetter<O>, &'static str, &'static str)];
 
 fn build_options<O: Default>(
@@ -321,25 +326,24 @@ fn build_options<O: Default>(
 
         let option_to_lookup = key.replace('-', "_");
         match descrs.iter().find(|(name, ..)| *name == option_to_lookup) {
-            Some((_, setter, type_desc, _)) => {
-                if !setter(&mut op, value) {
-                    match value {
-                        None => early_error(
-                            error_format,
-                            &format!(
-                                "{0} option `{1}` requires {2} ({3} {1}=<value>)",
-                                outputname, key, type_desc, prefix
-                            ),
+            Some((_, setter, type_desc, _)) => match setter(&mut op, value) {
+                Ok(()) => {}
+                Err(ParseError::Invalid) => match value {
+                    None => early_error(
+                        error_format,
+                        &format!(
+                            "{0} option `{1}` requires {2} ({3} {1}=<value>)",
+                            outputname, key, type_desc, prefix
                         ),
-                        Some(value) => early_error(
-                            error_format,
-                            &format!(
-                                "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
-                            ),
+                    ),
+                    Some(value) => early_error(
+                        error_format,
+                        &format!(
+                            "incorrect value `{value}` for {outputname} option `{key}` - {type_desc} was expected"
                         ),
-                    }
-                }
-            }
+                    ),
+                },
+            },
             None => early_error(error_format, &format!("unknown {outputname} option: `{key}`")),
         }
     }
@@ -419,183 +423,207 @@ mod parse {
 
     /// This is for boolean options that don't take a value and start with
     /// `no-`. This style of option is deprecated.
-    pub(crate) fn parse_no_flag(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_no_flag(slot: &mut bool, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             None => {
                 *slot = true;
-                true
+                Ok(())
             }
-            Some(_) => false,
+            Some(_) => Err(ParseError::Invalid),
         }
     }
 
     /// Use this for any boolean option that has a static default.
-    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> bool {
+    pub(crate) fn parse_bool(slot: &mut bool, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             Some("y") | Some("yes") | Some("on") | None => {
                 *slot = true;
-                true
+                Ok(())
             }
             Some("n") | Some("no") | Some("off") => {
                 *slot = false;
-                true
+                Ok(())
             }
-            _ => false,
+            _ => Err(ParseError::Invalid),
         }
     }
 
     /// Use this for any boolean option that lacks a static default. (The
     /// actions taken when such an option is not specified will depend on
     /// other factors, such as other options, or target options.)
-    pub(crate) fn parse_opt_bool(slot: &mut Option<bool>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_bool(
+        slot: &mut Option<bool>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("y") | Some("yes") | Some("on") | None => {
                 *slot = Some(true);
-                true
+                Ok(())
             }
             Some("n") | Some("no") | Some("off") => {
                 *slot = Some(false);
-                true
+                Ok(())
             }
-            _ => false,
+            _ => Err(ParseError::Invalid),
         }
     }
 
     /// Use this for any string option that has a static default.
-    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string(slot: &mut String, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = s.to_string();
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
     /// Use this for any string option that lacks a static default.
-    pub(crate) fn parse_opt_string(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_string(
+        slot: &mut Option<String>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = Some(s.to_string());
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
     /// Parse an optional language identifier, e.g. `en-US` or `zh-CN`.
-    pub(crate) fn parse_opt_langid(slot: &mut Option<LanguageIdentifier>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_langid(
+        slot: &mut Option<LanguageIdentifier>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = rustc_errors::LanguageIdentifier::from_str(s).ok();
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_opt_pathbuf(slot: &mut Option<PathBuf>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_pathbuf(
+        slot: &mut Option<PathBuf>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = Some(PathBuf::from(s));
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_string_push(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_string_push(
+        slot: &mut Vec<String>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 slot.push(s.to_string());
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_list(slot: &mut Vec<String>, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 slot.extend(s.split_whitespace().map(|s| s.to_string()));
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
     pub(crate) fn parse_list_with_polarity(
         slot: &mut Vec<(String, bool)>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 for s in s.split(',') {
-                    let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return false };
+                    let Some(pass_name) = s.strip_prefix(&['+', '-'][..]) else { return Err(ParseError::Invalid) };
                     slot.push((pass_name.to_string(), &s[..1] == "+"));
                 }
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_location_detail(ld: &mut LocationDetail, v: Option<&str>) -> bool {
+    pub(crate) fn parse_location_detail(
+        ld: &mut LocationDetail,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         if let Some(v) = v {
             ld.line = false;
             ld.file = false;
             ld.column = false;
             if v == "none" {
-                return true;
+                return Ok(());
             }
             for s in v.split(',') {
                 match s {
                     "file" => ld.file = true,
                     "line" => ld.line = true,
                     "column" => ld.column = true,
-                    _ => return false,
+                    _ => return Err(ParseError::Invalid),
                 }
             }
-            true
+            Ok(())
         } else {
-            false
+            Err(ParseError::Invalid)
         }
     }
 
-    pub(crate) fn parse_opt_comma_list(slot: &mut Option<Vec<String>>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_opt_comma_list(
+        slot: &mut Option<Vec<String>>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 let mut v: Vec<_> = s.split(',').map(|s| s.to_string()).collect();
                 v.sort_unstable();
                 *slot = Some(v);
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> bool {
+    pub(crate) fn parse_threads(slot: &mut usize, v: Option<&str>) -> Result<(), ParseError> {
         match v.and_then(|s| s.parse().ok()) {
             Some(0) => {
                 *slot = std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
-                true
+                Ok(())
             }
             Some(i) => {
                 *slot = i;
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
     /// Use this for any numeric option that has a static default.
-    pub(crate) fn parse_number<T: Copy + FromStr>(slot: &mut T, v: Option<&str>) -> bool {
+    pub(crate) fn parse_number<T: Copy + FromStr>(
+        slot: &mut T,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| s.parse().ok()) {
             Some(i) => {
                 *slot = i;
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
@@ -603,30 +631,27 @@ mod parse {
     pub(crate) fn parse_opt_number<T: Copy + FromStr>(
         slot: &mut Option<T>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = s.parse().ok();
-                slot.is_some()
+                if slot.is_some() { Ok(()) } else { Err(ParseError::Invalid) }
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> bool {
+    pub(crate) fn parse_passes(slot: &mut Passes, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             Some("all") => {
                 *slot = Passes::All;
-                true
+                Ok(())
             }
             v => {
                 let mut passes = vec![];
-                if parse_list(&mut passes, v) {
-                    slot.extend(passes);
-                    true
-                } else {
-                    false
-                }
+                parse_list(&mut passes, v)?;
+                slot.extend(passes);
+                Ok(())
             }
         }
     }
@@ -634,45 +659,57 @@ mod parse {
     pub(crate) fn parse_opt_panic_strategy(
         slot: &mut Option<PanicStrategy>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v {
             Some("unwind") => *slot = Some(PanicStrategy::Unwind),
             Some("abort") => *slot = Some(PanicStrategy::Abort),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_panic_strategy(slot: &mut PanicStrategy, v: Option<&str>) -> bool {
+    pub(crate) fn parse_panic_strategy(
+        slot: &mut PanicStrategy,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("unwind") => *slot = PanicStrategy::Unwind,
             Some("abort") => *slot = PanicStrategy::Abort,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_oom_strategy(slot: &mut OomStrategy, v: Option<&str>) -> bool {
+    pub(crate) fn parse_oom_strategy(
+        slot: &mut OomStrategy,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("panic") => *slot = OomStrategy::Panic,
             Some("abort") => *slot = OomStrategy::Abort,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_relro_level(slot: &mut Option<RelroLevel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relro_level(
+        slot: &mut Option<RelroLevel>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => match s.parse::<RelroLevel>() {
                 Ok(level) => *slot = Some(level),
-                _ => return false,
+                _ => return Err(ParseError::Invalid),
             },
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_sanitizers(slot: &mut SanitizerSet, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizers(
+        slot: &mut SanitizerSet,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         if let Some(v) = v {
             for s in v.split(',') {
                 *slot |= match s {
@@ -685,49 +722,52 @@ mod parse {
                     "shadow-call-stack" => SanitizerSet::SHADOWCALLSTACK,
                     "thread" => SanitizerSet::THREAD,
                     "hwaddress" => SanitizerSet::HWADDRESS,
-                    _ => return false,
+                    _ => return Err(ParseError::Invalid),
                 }
             }
-            true
+            Ok(())
         } else {
-            false
+            Err(ParseError::Invalid)
         }
     }
 
-    pub(crate) fn parse_sanitizer_memory_track_origins(slot: &mut usize, v: Option<&str>) -> bool {
+    pub(crate) fn parse_sanitizer_memory_track_origins(
+        slot: &mut usize,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("2") | None => {
                 *slot = 2;
-                true
+                Ok(())
             }
             Some("1") => {
                 *slot = 1;
-                true
+                Ok(())
             }
             Some("0") => {
                 *slot = 0;
-                true
+                Ok(())
             }
-            Some(_) => false,
+            Some(_) => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> bool {
+    pub(crate) fn parse_strip(slot: &mut Strip, v: Option<&str>) -> Result<(), ParseError> {
         match v {
             Some("none") => *slot = Strip::None,
             Some("debuginfo") => *slot = Strip::Debuginfo,
             Some("symbols") => *slot = Strip::Symbols,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfguard(slot: &mut CFGuard, v: Option<&str>) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() { CFGuard::Checks } else { CFGuard::Disabled };
-                return true;
+                return Ok(());
             }
         }
 
@@ -735,17 +775,20 @@ mod parse {
             None => CFGuard::Checks,
             Some("checks") => CFGuard::Checks,
             Some("nochecks") => CFGuard::NoChecks,
-            Some(_) => return false,
+            Some(_) => return Err(ParseError::Invalid),
         };
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_cfprotection(slot: &mut CFProtection, v: Option<&str>) -> bool {
+    pub(crate) fn parse_cfprotection(
+        slot: &mut CFProtection,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() { CFProtection::Full } else { CFProtection::None };
-                return true;
+                return Ok(());
             }
         }
 
@@ -754,105 +797,117 @@ mod parse {
             Some("branch") => CFProtection::Branch,
             Some("return") => CFProtection::Return,
             Some("full") => CFProtection::Full,
-            Some(_) => return false,
+            Some(_) => return Err(ParseError::Invalid),
         };
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_linker_flavor(slot: &mut Option<LinkerFlavorCli>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_flavor(
+        slot: &mut Option<LinkerFlavorCli>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(LinkerFlavorCli::from_str) {
             Some(lf) => *slot = Some(lf),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_optimization_fuel(
         slot: &mut Option<(String, u64)>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v {
-            None => false,
+            None => Err(ParseError::Invalid),
             Some(s) => {
                 let parts = s.split('=').collect::<Vec<_>>();
                 if parts.len() != 2 {
-                    return false;
+                    return Err(ParseError::Invalid);
                 }
                 let crate_name = parts[0].to_string();
                 let fuel = parts[1].parse::<u64>();
                 if fuel.is_err() {
-                    return false;
+                    return Err(ParseError::Invalid);
                 }
                 *slot = Some((crate_name, fuel.unwrap()));
-                true
+                Ok(())
             }
         }
     }
 
-    pub(crate) fn parse_unpretty(slot: &mut Option<String>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_unpretty(
+        slot: &mut Option<String>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
-            None => false,
+            None => Err(ParseError::Invalid),
             Some(s) if s.split('=').count() <= 2 => {
                 *slot = Some(s.to_string());
-                true
+                Ok(())
             }
-            _ => false,
+            _ => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_mir_spanview(slot: &mut Option<MirSpanview>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_mir_spanview(
+        slot: &mut Option<MirSpanview>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() { Some(MirSpanview::Statement) } else { None };
-                return true;
+                return Ok(());
             }
         }
 
         let Some(v) = v else {
             *slot = Some(MirSpanview::Statement);
-            return true;
+            return Ok(());
         };
 
         *slot = Some(match v.trim_end_matches('s') {
             "statement" | "stmt" => MirSpanview::Statement,
             "terminator" | "term" => MirSpanview::Terminator,
             "block" | "basicblock" => MirSpanview::Block,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         });
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_dump_mono_stats(slot: &mut DumpMonoStatsFormat, v: Option<&str>) -> bool {
+    pub(crate) fn parse_dump_mono_stats(
+        slot: &mut DumpMonoStatsFormat,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
-            None => true,
+            None => Ok(()),
             Some("json") => {
                 *slot = DumpMonoStatsFormat::Json;
-                true
+                Ok(())
             }
             Some("markdown") => {
                 *slot = DumpMonoStatsFormat::Markdown;
-                true
+                Ok(())
             }
-            Some(_) => false,
+            Some(_) => Err(ParseError::Invalid),
         }
     }
 
     pub(crate) fn parse_instrument_coverage(
         slot: &mut Option<InstrumentCoverage>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() { Some(InstrumentCoverage::All) } else { None };
-                return true;
+                return Ok(());
             }
         }
 
         let Some(v) = v else {
             *slot = Some(InstrumentCoverage::All);
-            return true;
+            return Ok(());
         };
 
         *slot = Some(match v {
@@ -864,42 +919,48 @@ mod parse {
                 InstrumentCoverage::ExceptUnusedFunctions
             }
             "off" | "no" | "n" | "false" | "0" => InstrumentCoverage::Off,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         });
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_treat_err_as_bug(slot: &mut Option<NonZeroUsize>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_treat_err_as_bug(
+        slot: &mut Option<NonZeroUsize>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 *slot = s.parse().ok();
-                slot.is_some()
+                if slot.is_some() { Ok(()) } else { Err(ParseError::Invalid) }
             }
             None => {
                 *slot = NonZeroUsize::new(1);
-                true
+                Ok(())
             }
         }
     }
 
-    pub(crate) fn parse_trait_solver(slot: &mut TraitSolver, v: Option<&str>) -> bool {
+    pub(crate) fn parse_trait_solver(
+        slot: &mut TraitSolver,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("classic") => *slot = TraitSolver::Classic,
             Some("chalk") => *slot = TraitSolver::Chalk,
             Some("next") => *slot = TraitSolver::Next,
             // default trait solver is subject to change..
             Some("default") => *slot = TraitSolver::Classic,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> bool {
+    pub(crate) fn parse_lto(slot: &mut LtoCli, v: Option<&str>) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() { LtoCli::Yes } else { LtoCli::No };
-                return true;
+                return Ok(());
             }
         }
 
@@ -907,21 +968,24 @@ mod parse {
             None => LtoCli::NoParam,
             Some("thin") => LtoCli::Thin,
             Some("fat") => LtoCli::Fat,
-            Some(_) => return false,
+            Some(_) => return Err(ParseError::Invalid),
         };
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_linker_plugin_lto(slot: &mut LinkerPluginLto, v: Option<&str>) -> bool {
+    pub(crate) fn parse_linker_plugin_lto(
+        slot: &mut LinkerPluginLto,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         if v.is_some() {
             let mut bool_arg = None;
-            if parse_opt_bool(&mut bool_arg, v) {
+            if parse_opt_bool(&mut bool_arg, v).is_ok() {
                 *slot = if bool_arg.unwrap() {
                     LinkerPluginLto::LinkerPluginAuto
                 } else {
                     LinkerPluginLto::Disabled
                 };
-                return true;
+                return Ok(());
             }
         }
 
@@ -929,141 +993,165 @@ mod parse {
             None => LinkerPluginLto::LinkerPluginAuto,
             Some(path) => LinkerPluginLto::LinkerPlugin(PathBuf::from(path)),
         };
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_switch_with_opt_path(
         slot: &mut SwitchWithOptPath,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         *slot = match v {
             None => SwitchWithOptPath::Enabled(None),
             Some(path) => SwitchWithOptPath::Enabled(Some(PathBuf::from(path))),
         };
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_merge_functions(
         slot: &mut Option<MergeFunctions>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| MergeFunctions::from_str(s).ok()) {
             Some(mergefunc) => *slot = Some(mergefunc),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_relocation_model(slot: &mut Option<RelocModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_relocation_model(
+        slot: &mut Option<RelocModel>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| RelocModel::from_str(s).ok()) {
             Some(relocation_model) => *slot = Some(relocation_model),
             None if v == Some("default") => *slot = None,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_code_model(slot: &mut Option<CodeModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_code_model(
+        slot: &mut Option<CodeModel>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| CodeModel::from_str(s).ok()) {
             Some(code_model) => *slot = Some(code_model),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_tls_model(slot: &mut Option<TlsModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_tls_model(
+        slot: &mut Option<TlsModel>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| TlsModel::from_str(s).ok()) {
             Some(tls_model) => *slot = Some(tls_model),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_symbol_mangling_version(
         slot: &mut Option<SymbolManglingVersion>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         *slot = match v {
             Some("legacy") => Some(SymbolManglingVersion::Legacy),
             Some("v0") => Some(SymbolManglingVersion::V0),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         };
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_src_file_hash(
         slot: &mut Option<SourceFileHashAlgorithm>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| SourceFileHashAlgorithm::from_str(s).ok()) {
             Some(hash_kind) => *slot = Some(hash_kind),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_target_feature(slot: &mut String, v: Option<&str>) -> bool {
+    pub(crate) fn parse_target_feature(
+        slot: &mut String,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 if !slot.is_empty() {
                     slot.push(',');
                 }
                 slot.push_str(s);
-                true
+                Ok(())
             }
-            None => false,
+            None => Err(ParseError::Invalid),
         }
     }
 
-    pub(crate) fn parse_wasi_exec_model(slot: &mut Option<WasiExecModel>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_wasi_exec_model(
+        slot: &mut Option<WasiExecModel>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             Some("command") => *slot = Some(WasiExecModel::Command),
             Some("reactor") => *slot = Some(WasiExecModel::Reactor),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_split_debuginfo(
         slot: &mut Option<SplitDebuginfo>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| SplitDebuginfo::from_str(s).ok()) {
             Some(e) => *slot = Some(e),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_split_dwarf_kind(slot: &mut SplitDwarfKind, v: Option<&str>) -> bool {
+    pub(crate) fn parse_split_dwarf_kind(
+        slot: &mut SplitDwarfKind,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| SplitDwarfKind::from_str(s).ok()) {
             Some(e) => *slot = e,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_gcc_ld(slot: &mut Option<LdImpl>, v: Option<&str>) -> bool {
+    pub(crate) fn parse_gcc_ld(
+        slot: &mut Option<LdImpl>,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v {
             None => *slot = None,
             Some("lld") => *slot = Some(LdImpl::Lld),
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
-    pub(crate) fn parse_stack_protector(slot: &mut StackProtector, v: Option<&str>) -> bool {
+    pub(crate) fn parse_stack_protector(
+        slot: &mut StackProtector,
+        v: Option<&str>,
+    ) -> Result<(), ParseError> {
         match v.and_then(|s| StackProtector::from_str(s).ok()) {
             Some(ssp) => *slot = ssp,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_branch_protection(
         slot: &mut Option<BranchProtection>,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         match v {
             Some(s) => {
                 let slot = slot.get_or_insert_default();
@@ -1075,31 +1163,31 @@ mod parse {
                         }
                         "leaf" => match slot.pac_ret.as_mut() {
                             Some(pac) => pac.leaf = true,
-                            _ => return false,
+                            _ => return Err(ParseError::Invalid),
                         },
                         "b-key" => match slot.pac_ret.as_mut() {
                             Some(pac) => pac.key = PAuthKey::B,
-                            _ => return false,
+                            _ => return Err(ParseError::Invalid),
                         },
-                        _ => return false,
+                        _ => return Err(ParseError::Invalid),
                     };
                 }
             }
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         }
-        true
+        Ok(())
     }
 
     pub(crate) fn parse_proc_macro_execution_strategy(
         slot: &mut ProcMacroExecutionStrategy,
         v: Option<&str>,
-    ) -> bool {
+    ) -> Result<(), ParseError> {
         *slot = match v {
             Some("same-thread") => ProcMacroExecutionStrategy::SameThread,
             Some("cross-thread") => ProcMacroExecutionStrategy::CrossThread,
-            _ => return false,
+            _ => return Err(ParseError::Invalid),
         };
-        true
+        Ok(())
     }
 }
 
