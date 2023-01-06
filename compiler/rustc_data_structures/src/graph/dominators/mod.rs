@@ -135,7 +135,47 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // This loop computes the semi[w] for w.
         semi[w] = w;
         for v in graph.predecessors(pre_order_to_real[w]) {
-            // Reachable vertices may have unreachable predecessors, so ignore any of them
+            // TL;DR: Reachable vertices may have unreachable predecessors, so ignore any of them.
+            //
+            // Ignore blocks which are not connected to the entry block.
+            //
+            // The algorithm that was used to traverse the graph and build the
+            // `pre_order_to_real` and `real_to_pre_order` vectors does so by
+            // starting from the entry block and following the successors.
+            // Therefore, any blocks not reachable from the entry block will be
+            // set to `None` in the `pre_order_to_real` vector.
+            //
+            // For example, in this graph, A and B should be skipped:
+            //
+            //           ┌─────┐
+            //           │     │
+            //           └──┬──┘
+            //              │
+            //           ┌──▼──┐              ┌─────┐
+            //           │     │              │  A  │
+            //           └──┬──┘              └──┬──┘
+            //              │                    │
+            //      ┌───────┴───────┐            │
+            //      │               │            │
+            //   ┌──▼──┐         ┌──▼──┐      ┌──▼──┐
+            //   │     │         │     │      │  B  │
+            //   └──┬──┘         └──┬──┘      └──┬──┘
+            //      │               └──────┬─────┘
+            //   ┌──▼──┐                   │
+            //   │     │                   │
+            //   └──┬──┘                ┌──▼──┐
+            //      │                   │     │
+            //      │                   └─────┘
+            //   ┌──▼──┐
+            //   │     │
+            //   └──┬──┘
+            //      │
+            //   ┌──▼──┐
+            //   │     │
+            //   └─────┘
+            //
+            // ...this may be the case if a MirPass modifies the CFG to remove
+            // or rearrange certain blocks/edges.
             let Some(v) = real_to_pre_order[v] else {
                 continue
             };
