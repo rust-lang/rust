@@ -19,7 +19,7 @@ note: the following trait bounds were not satisfied:
 LL | impl<T> StreamExt for T where for<'a> &'a mut T: Stream {}
    |         ---------     -                          ^^^^^^ unsatisfied trait bound introduced here
 
-error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&'a u64) -> &'a u64 {identity::<u64>}>, [closure@issue-30786.rs:129:30]>`, but its trait bounds were not satisfied
+error[E0599]: the method `countx` exists for struct `Filter<Map<Repeat, fn(&u64) -> &u64 {identity::<u64>}>, [closure@issue-30786.rs:129:30]>`, but its trait bounds were not satisfied
   --> $DIR/issue-30786.rs:130:24
    |
 LL | pub struct Filter<S, F> {

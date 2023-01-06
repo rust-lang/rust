@@ -2070,6 +2070,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
             return true;
         }
 
+        if FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            return false;
+        }
+
         let identify_regions = self.tcx.sess.opts.unstable_opts.identify_regions;
 
         match *region {
