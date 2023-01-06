@@ -162,6 +162,9 @@ pub struct TestProps {
     pub stderr_per_bitwidth: bool,
     // The MIR opt to unit test, if any
     pub mir_unit_test: Option<String>,
+    // Whether to tell `rustc` to remap the "src base" directory to a fake
+    // directory.
+    pub remap_src_base: bool,
 }
 
 mod directives {
@@ -196,6 +199,7 @@ mod directives {
     pub const INCREMENTAL: &'static str = "incremental";
     pub const KNOWN_BUG: &'static str = "known-bug";
     pub const MIR_UNIT_TEST: &'static str = "unit-test";
+    pub const REMAP_SRC_BASE: &'static str = "remap-src-base";
     // This isn't a real directive, just one that is probably mistyped often
     pub const INCORRECT_COMPILER_FLAGS: &'static str = "compiler-flags";
 }
@@ -241,6 +245,7 @@ impl TestProps {
             should_ice: false,
             stderr_per_bitwidth: false,
             mir_unit_test: None,
+            remap_src_base: false,
         }
     }
 
@@ -433,6 +438,7 @@ impl TestProps {
                 config.set_name_value_directive(ln, MIR_UNIT_TEST, &mut self.mir_unit_test, |s| {
                     s.trim().to_string()
                 });
+                config.set_name_directive(ln, REMAP_SRC_BASE, &mut self.remap_src_base);
             });
         }
 
