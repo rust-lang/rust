@@ -1,11 +1,20 @@
+use crate::errors::{WhereClauseBeforeTupleStructBody, WhereClauseBeforeTupleStructBodySugg};
+
 use super::{ForceCollect, Parser, TrailingToken};
 
+use ast::token::Delimiter;
 use rustc_ast::token;
 use rustc_ast::{
     self as ast, AttrVec, GenericBounds, GenericParam, GenericParamKind, TyKind, WhereClause,
 };
 use rustc_errors::{Applicability, PResult};
-use rustc_span::symbol::kw;
+use rustc_span::symbol::{kw, Ident};
+use rustc_span::Span;
+
+enum PredicateOrStructBody {
+    Predicate(ast::WherePredicate),
+    StructBody(Vec<ast::FieldDef>),
+}
 
 impl<'a> Parser<'a> {
     /// Parses bounds of a lifetime parameter `BOUND + BOUND + BOUND`, possibly with trailing `+`.
@@ -240,23 +249,39 @@ impl<'a> Parser<'a> {
         })
     }
 
-    /// Parses an optional where-clause and places it in `generics`.
+    /// Parses an optional where-clause.
     ///
     /// ```ignore (only-for-syntax-highlight)
     /// where T : Trait<U, V> + 'b, 'a : 'b
     /// ```
     pub(super) fn parse_where_clause(&mut self) -> PResult<'a, WhereClause> {
+        self.parse_where_clause_common(None).map(|(clause, _)| clause)
+    }
+
+    pub(super) fn parse_struct_where_clause(
+        &mut self,
+        struct_name: Ident,
+        body_insertion_point: Span,
+    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
+        self.parse_where_clause_common(Some((struct_name, body_insertion_point)))
+    }
+
+    fn parse_where_clause_common(
+        &mut self,
+        struct_: Option<(Ident, Span)>,
+    ) -> PResult<'a, (WhereClause, Option<Vec<ast::FieldDef>>)> {
         let mut where_clause = WhereClause {
             has_where_token: false,
             predicates: Vec::new(),
             span: self.prev_token.span.shrink_to_hi(),
         };
+        let mut tuple_struct_body = None;
 
         if !self.eat_keyword(kw::Where) {
-            return Ok(where_clause);
+            return Ok((where_clause, None));
         }
         where_clause.has_where_token = true;
-        let lo = self.prev_token.span;
+        let where_lo = self.prev_token.span;
 
         // We are considering adding generics to the `where` keyword as an alternative higher-rank
         // parameter syntax (as in `where<'a>` or `where<T>`. To avoid that being a breaking
@@ -272,7 +297,8 @@ impl<'a> Parser<'a> {
         }
 
         loop {
-            let lo = self.token.span;
+            let where_sp = where_lo.to(self.prev_token.span);
+            let pred_lo = self.token.span;
             if self.check_lifetime() && self.look_ahead(1, |t| !t.is_like_plus()) {
                 let lifetime = self.expect_lifetime();
                 // Bounds starting with a colon are mandatory, but possibly empty.
@@ -280,13 +306,21 @@ impl<'a> Parser<'a> {
                 let bounds = self.parse_lt_param_bounds();
                 where_clause.predicates.push(ast::WherePredicate::RegionPredicate(
                     ast::WhereRegionPredicate {
-                        span: lo.to(self.prev_token.span),
+                        span: pred_lo.to(self.prev_token.span),
                         lifetime,
                         bounds,
                     },
                 ));
             } else if self.check_type() {
-                where_clause.predicates.push(self.parse_ty_where_predicate()?);
+                match self.parse_ty_where_predicate_or_recover_tuple_struct_body(
+                    struct_, pred_lo, where_sp,
+                )? {
+                    PredicateOrStructBody::Predicate(pred) => where_clause.predicates.push(pred),
+                    PredicateOrStructBody::StructBody(body) => {
+                        tuple_struct_body = Some(body);
+                        break;
+                    }
+                }
             } else {
                 break;
             }
@@ -297,7 +331,7 @@ impl<'a> Parser<'a> {
             if self.eat_keyword_noexpect(kw::Where) {
                 let msg = "cannot define duplicate `where` clauses on an item";
                 let mut err = self.struct_span_err(self.token.span, msg);
-                err.span_label(lo, "previous `where` clause starts here");
+                err.span_label(pred_lo, "previous `where` clause starts here");
                 err.span_suggestion_verbose(
                     prev_token.shrink_to_hi().to(self.prev_token.span),
                     "consider joining the two `where` clauses into one",
@@ -310,8 +344,72 @@ impl<'a> Parser<'a> {
             }
         }
 
-        where_clause.span = lo.to(self.prev_token.span);
-        Ok(where_clause)
+        where_clause.span = where_lo.to(self.prev_token.span);
+        Ok((where_clause, tuple_struct_body))
+    }
+
+    fn parse_ty_where_predicate_or_recover_tuple_struct_body(
+        &mut self,
+        struct_: Option<(Ident, Span)>,
+        pred_lo: Span,
+        where_sp: Span,
+    ) -> PResult<'a, PredicateOrStructBody> {
+        let mut snapshot = None;
+
+        if let Some(struct_) = struct_
+            && self.may_recover()
+            && self.token.kind == token::OpenDelim(Delimiter::Parenthesis)
+        {
+            snapshot = Some((struct_, self.create_snapshot_for_diagnostic()));
+        };
+
+        match self.parse_ty_where_predicate() {
+            Ok(pred) => Ok(PredicateOrStructBody::Predicate(pred)),
+            Err(type_err) => {
+                let Some(((struct_name, body_insertion_point), mut snapshot)) = snapshot else {
+                    return Err(type_err);
+                };
+
+                // Check if we might have encountered an out of place tuple struct body.
+                match snapshot.parse_tuple_struct_body() {
+                    // Since we don't know the exact reason why we failed to parse the
+                    // predicate (we might have stumbled upon something bogus like `(T): ?`),
+                    // employ a simple heuristic to weed out some pathological cases:
+                    // Look for a semicolon (strong indicator) or anything that might mark
+                    // the end of the item (weak indicator) following the body.
+                    Ok(body)
+                        if matches!(snapshot.token.kind, token::Semi | token::Eof)
+                            || snapshot.token.can_begin_item() =>
+                    {
+                        type_err.cancel();
+
+                        let body_sp = pred_lo.to(snapshot.prev_token.span);
+                        let map = self.sess.source_map();
+
+                        self.sess.emit_err(WhereClauseBeforeTupleStructBody {
+                            span: where_sp,
+                            name: struct_name.span,
+                            body: body_sp,
+                            sugg: map.span_to_snippet(body_sp).ok().map(|body| {
+                                WhereClauseBeforeTupleStructBodySugg {
+                                    left: body_insertion_point.shrink_to_hi(),
+                                    snippet: body,
+                                    right: map.end_point(where_sp).to(body_sp),
+                                }
+                            }),
+                        });
+
+                        self.restore_snapshot(snapshot);
+                        Ok(PredicateOrStructBody::StructBody(body))
+                    }
+                    Ok(_) => Err(type_err),
+                    Err(body_err) => {
+                        body_err.cancel();
+                        Err(type_err)
+                    }
+                }
+            }
+        }
     }
 
     fn parse_ty_where_predicate(&mut self) -> PResult<'a, ast::WherePredicate> {
