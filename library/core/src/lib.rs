@@ -194,6 +194,7 @@
 #![feature(cfg_target_has_atomic_equal_alignment)]
 #![feature(const_closures)]
 #![feature(const_fn_floating_point_arithmetic)]
+#![feature(const_for)]
 #![feature(const_mut_refs)]
 #![feature(const_precise_live_drops)]
 #![feature(const_refs_to_cell)]
