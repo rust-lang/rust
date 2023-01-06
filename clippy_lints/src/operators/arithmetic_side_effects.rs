@@ -2,7 +2,7 @@ use super::ARITHMETIC_SIDE_EFFECTS;
 use clippy_utils::{
     consts::{constant, constant_simple},
     diagnostics::span_lint,
-    peel_hir_expr_refs,
+    peel_hir_expr_refs, peel_hir_expr_unary,
 };
 use rustc_ast as ast;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -98,8 +98,11 @@ impl ArithmeticSideEffects {
     }
 
     /// If `expr` is not a literal integer like `1`, returns `None`.
+    ///
+    /// Returns the absolute value of the expression, if this is an integer literal.
     fn literal_integer(expr: &hir::Expr<'_>) -> Option<u128> {
-        if let hir::ExprKind::Lit(ref lit) = expr.kind && let ast::LitKind::Int(n, _) = lit.node {
+        let actual = peel_hir_expr_unary(expr).0;
+        if let hir::ExprKind::Lit(ref lit) = actual.kind && let ast::LitKind::Int(n, _) = lit.node {
             Some(n)
         }
         else {
@@ -123,12 +126,12 @@ impl ArithmeticSideEffects {
         if !matches!(
             op.node,
             hir::BinOpKind::Add
-                | hir::BinOpKind::Sub
-                | hir::BinOpKind::Mul
                 | hir::BinOpKind::Div
+                | hir::BinOpKind::Mul
                 | hir::BinOpKind::Rem
                 | hir::BinOpKind::Shl
                 | hir::BinOpKind::Shr
+                | hir::BinOpKind::Sub
         ) {
             return;
         };

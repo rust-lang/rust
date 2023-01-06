@@ -107,7 +107,7 @@ fn rhs_is_different() {
 fn unary() {
     // is explicitly on the list
     let _ = -OutOfNames;
-    // is specifically on the list
+    // is explicitly on the list
     let _ = -Foo;
     // not on the list
     let _ = -Bar;
