@@ -240,7 +240,7 @@ pub(crate) fn build_external_trait(cx: &mut DocContext<'_>, did: DefId) -> clean
     clean::Trait { def_id: did, generics, items: trait_items, bounds: supertrait_bounds }
 }
 
-fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<clean::Function> {
+fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> clean::Function {
     let sig = cx.tcx.fn_sig(did);
 
     let late_bound_regions = sig.bound_vars().into_iter().filter_map(|var| match var {
@@ -259,7 +259,7 @@ fn build_external_function<'tcx>(cx: &mut DocContext<'tcx>, did: DefId) -> Box<c
         let decl = clean_fn_decl_from_did_and_sig(cx, Some(did), sig);
         (generics, decl)
     });
-    Box::new(clean::Function { decl, generics })
+    clean::Function { decl, generics }
 }
 
 fn build_enum(cx: &mut DocContext<'_>, did: DefId) -> clean::Enum {

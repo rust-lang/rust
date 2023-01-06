@@ -1000,7 +1000,7 @@ fn clean_function<'tcx>(
     sig: &hir::FnSig<'tcx>,
     generics: &hir::Generics<'tcx>,
     args: FunctionArgs<'tcx>,
-) -> Box<Function> {
+) -> Function {
     let (generics, decl) = enter_impl_trait(cx, |cx| {
         // NOTE: generics must be cleaned before args
         let generics = clean_generics(generics, cx);
@@ -1018,7 +1018,7 @@ fn clean_function<'tcx>(
         }
         (generics, decl)
     });
-    Box::new(Function { decl, generics })
+    Function { decl, generics }
 }
 
 fn clean_args_from_types_and_names<'tcx>(
@@ -1069,7 +1069,7 @@ fn clean_fn_decl_with_args<'tcx>(
     args: Arguments,
 ) -> FnDecl {
     let output = match decl.output {
-        hir::FnRetTy::Return(typ) => Return(clean_ty(typ, cx)),
+        hir::FnRetTy::Return(typ) => Return(Box::new(clean_ty(typ, cx))),
         hir::FnRetTy::DefaultReturn(..) => DefaultReturn,
     };
     FnDecl { inputs: args, output, c_variadic: decl.c_variadic }
@@ -1086,7 +1086,7 @@ fn clean_fn_decl_from_did_and_sig<'tcx>(
     // but shouldn't change any code meaning.
     let output = match clean_middle_ty(sig.output(), cx, None) {
         Type::Tuple(inner) if inner.is_empty() => DefaultReturn,
-        ty => Return(ty),
+        ty => Return(Box::new(ty)),
     };
 
     FnDecl {
@@ -1276,9 +1276,9 @@ pub(crate) fn clean_middle_assoc_item<'tcx>(
                     ty::ImplContainer => Some(assoc_item.defaultness(tcx)),
                     ty::TraitContainer => None,
                 };
-                MethodItem(Box::new(Function { generics, decl }), defaultness)
+                MethodItem(Function { generics, decl }, defaultness)
             } else {
-                TyMethodItem(Box::new(Function { generics, decl }))
+                TyMethodItem(Function { generics, decl })
             }
         }
         ty::AssocKind::Type => {
@@ -1726,7 +1726,7 @@ pub(crate) fn clean_middle_ty<'tcx>(
             let decl = clean_fn_decl_from_did_and_sig(cx, None, sig);
             BareFunction(Box::new(BareFunctionDecl {
                 unsafety: sig.unsafety(),
-                generic_params: Vec::new(),
+                generic_params: ThinVec::new(),
                 decl,
                 abi: sig.abi(),
             }))
@@ -2499,7 +2499,7 @@ fn clean_maybe_renamed_foreign_item<'tcx>(
                     let decl = clean_fn_decl_with_args(cx, decl, args);
                     (generics, decl)
                 });
-                ForeignFunctionItem(Box::new(Function { decl, generics }))
+                ForeignFunctionItem(Function { decl, generics })
             }
             hir::ForeignItemKind::Static(ty, mutability) => {
                 ForeignStaticItem(Static { type_: clean_ty(ty, cx), mutability, expr: None })

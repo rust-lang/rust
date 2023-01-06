@@ -567,7 +567,7 @@ impl FromWithTcx<clean::FnDecl> for FnDecl {
                 .map(|arg| (arg.name.to_string(), arg.type_.into_tcx(tcx)))
                 .collect(),
             output: match output {
-                clean::FnRetTy::Return(t) => Some(t.into_tcx(tcx)),
+                clean::FnRetTy::Return(t) => Some((*t).into_tcx(tcx)),
                 clean::FnRetTy::DefaultReturn => None,
             },
             c_variadic,
@@ -632,12 +632,12 @@ impl FromWithTcx<clean::Impl> for Impl {
 }
 
 pub(crate) fn from_function(
-    function: Box<clean::Function>,
+    function: clean::Function,
     has_body: bool,
     header: rustc_hir::FnHeader,
     tcx: TyCtxt<'_>,
 ) -> Function {
-    let clean::Function { decl, generics } = *function;
+    let clean::Function { decl, generics } = function;
     Function {
         decl: decl.into_tcx(tcx),
         generics: generics.into_tcx(tcx),

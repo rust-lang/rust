@@ -1250,7 +1250,7 @@ impl clean::FnRetTy {
         cx: &'a Context<'tcx>,
     ) -> impl fmt::Display + 'a + Captures<'tcx> {
         display_fn(move |f| match self {
-            clean::Return(clean::Tuple(tys)) if tys.is_empty() => Ok(()),
+            clean::Return(box clean::Tuple(tys)) if tys.is_empty() => Ok(()),
             clean::Return(ty) if f.alternate() => {
                 write!(f, " -> {:#}", ty.print(cx))
             }

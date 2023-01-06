@@ -759,7 +759,7 @@ pub(crate) enum ItemKind {
     StructItem(Struct),
     UnionItem(Union),
     EnumItem(Enum),
-    FunctionItem(Box<Function>),
+    FunctionItem(Function),
     ModuleItem(Module),
     TypedefItem(Box<Typedef>),
     OpaqueTyItem(OpaqueTy),
@@ -769,15 +769,15 @@ pub(crate) enum ItemKind {
     TraitAliasItem(TraitAlias),
     ImplItem(Box<Impl>),
     /// A required method in a trait declaration meaning it's only a function signature.
-    TyMethodItem(Box<Function>),
+    TyMethodItem(Function),
     /// A method in a trait impl or a provided method in a trait declaration.
     ///
     /// Compared to [TyMethodItem], it also contains a method body.
-    MethodItem(Box<Function>, Option<hir::Defaultness>),
+    MethodItem(Function, Option<hir::Defaultness>),
     StructFieldItem(Type),
     VariantItem(Variant),
     /// `fn`s from an extern block
-    ForeignFunctionItem(Box<Function>),
+    ForeignFunctionItem(Function),
     /// `static`s from an extern block
     ForeignStaticItem(Static),
     /// `type`s from an extern block
@@ -1504,12 +1504,12 @@ impl FnDecl {
     /// functions.
     pub(crate) fn sugared_async_return_type(&self) -> FnRetTy {
         match &self.output {
-            FnRetTy::Return(Type::ImplTrait(bounds)) => match &bounds[0] {
+            FnRetTy::Return(box Type::ImplTrait(bounds)) => match &bounds[0] {
                 GenericBound::TraitBound(PolyTrait { trait_, .. }, ..) => {
                     let bindings = trait_.bindings().unwrap();
                     let ret_ty = bindings[0].term();
                     let ty = ret_ty.ty().expect("Unexpected constant return term");
-                    FnRetTy::Return(ty.clone())
+                    FnRetTy::Return(Box::new(ty.clone()))
                 }
                 _ => panic!("unexpected desugaring of async function"),
             },
@@ -1520,7 +1520,7 @@ impl FnDecl {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct Arguments {
-    pub(crate) values: Vec<Argument>,
+    pub(crate) values: ThinVec<Argument>,
 }
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
@@ -1558,14 +1558,14 @@ impl Argument {
 
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) enum FnRetTy {
-    Return(Type),
+    Return(Box<Type>),
     DefaultReturn,
 }
 
 impl FnRetTy {
     pub(crate) fn as_return(&self) -> Option<&Type> {
         match self {
-            Return(ret) => Some(ret),
+            Return(ret) => Some(&**ret),
             DefaultReturn => None,
         }
     }
@@ -2324,7 +2324,7 @@ pub(crate) struct OpaqueTy {
 #[derive(Clone, PartialEq, Eq, Debug, Hash)]
 pub(crate) struct BareFunctionDecl {
     pub(crate) unsafety: hir::Unsafety,
-    pub(crate) generic_params: Vec<GenericParamDef>,
+    pub(crate) generic_params: ThinVec<GenericParamDef>,
     pub(crate) decl: FnDecl,
     pub(crate) abi: Abi,
 }
