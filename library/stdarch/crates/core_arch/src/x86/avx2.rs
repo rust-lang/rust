@@ -527,7 +527,8 @@ pub unsafe fn _mm256_broadcastd_epi32(a: __m128i) -> __m256i {
 /// [Intel's documentation](https://software.intel.com/sites/landingpage/IntrinsicsGuide/#text=_mm_broadcastq_epi64)
 #[inline]
 #[target_feature(enable = "avx2")]
-// FIXME: https://github.com/rust-lang/stdarch/issues/791
+// Emits `vmovddup` instead of `vpbroadcastq`
+// See https://github.com/rust-lang/stdarch/issues/791
 #[cfg_attr(test, assert_instr(vmovddup))]
 #[stable(feature = "simd_x86", since = "1.27.0")]
 pub unsafe fn _mm_broadcastq_epi64(a: __m128i) -> __m128i {

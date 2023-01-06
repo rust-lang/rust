@@ -2349,10 +2349,6 @@ pub use i8x16_all_true as u8x16_all_true;
 #[doc(alias("i8x16.bitmask"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
 pub fn i8x16_bitmask(a: v128) -> u16 {
-    // FIXME(https://bugs.llvm.org/show_bug.cgi?id=50507) - this produces an
-    // extraneous `i32.and` instruction against a mask of 65535 when converting
-    // from the native intrinsic's i32 return value to our desired u16. This
-    // shouldn't be necessary, though, but requires upstream LLVM changes.
     unsafe { llvm_bitmask_i8x16(a.as_i8x16()) as u16 }
 }
 
@@ -3460,7 +3456,7 @@ pub use i32x4_extmul_high_u16x8 as u32x4_extmul_high_u16x8;
 
 /// Lane-wise wrapping absolute value.
 #[inline]
-// #[cfg_attr(test, assert_instr(i64x2.abs))] // FIXME llvm
+#[cfg_attr(test, assert_instr(i64x2.abs))]
 #[target_feature(enable = "simd128")]
 #[doc(alias("i64x2.abs"))]
 #[stable(feature = "wasm_simd", since = "1.54.0")]
