@@ -192,6 +192,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // buffered in the `MirBorrowckCtxt`.
 
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
+        let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
+            None;
 
         for nll_error in nll_errors.into_iter() {
             match nll_error {
@@ -234,13 +236,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    self.buffer_error(unexpected_hidden_region_diagnostic(
+                    let mut diag = unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
                         named_region,
                         named_key,
-                    ));
+                    );
+                    if last_unexpected_hidden_region != Some((span, named_ty, named_key)) {
+                        self.buffer_error(diag);
+                        last_unexpected_hidden_region = Some((span, named_ty, named_key));
+                    } else {
+                        diag.delay_as_bug();
+                    }
                 }
 
                 RegionErrorKind::BoundUniversalRegionError {
@@ -730,6 +738,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 Some(arg),
                 captures,
                 Some((param.param_ty_span, param.param_ty.to_string())),
+                self.infcx.tcx.is_suitable_region(f).map(|r| r.def_id),
             );
         }
     }
