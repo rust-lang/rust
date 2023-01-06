@@ -1325,7 +1325,7 @@ mod opt {
 }
 static EDITION_STRING: LazyLock<String> = LazyLock::new(|| {
     format!(
-        "Specify which edition of the compiler to use when compiling code.\
+        "Specify which edition of the compiler to use when compiling code. \
 The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."
     )
 });
