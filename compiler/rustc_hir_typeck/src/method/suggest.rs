@@ -214,13 +214,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                         if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
                             && let hir::def::Res::Local(hir_id) = path.res
-                            && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(hir_id)
-                            && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
-                            && let Some(hir::Node::Param(param)) = self.tcx.hir().find(parent_hir_id)
-                            && let parent_hir_id = self.tcx.hir().get_parent_node(param.hir_id)
-                            && let Some(node) = self.tcx.hir().find(parent_hir_id)
+                            && let Some(hir::Node::Pat(b)) = self.tcx.hir().find(hir_id)
+                            && let Some(hir::Node::Param(p)) = self.tcx.hir().find_parent(b.hir_id)
+                            && let Some(node) = self.tcx.hir().find_parent(p.hir_id)
                             && let Some(decl) = node.fn_decl()
-                            && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == param.ty_span)
+                            && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == p.ty_span)
                             && let hir::TyKind::Ref(_, mut_ty) = &ty.kind
                             && let hir::Mutability::Not = mut_ty.mutbl
                         {
