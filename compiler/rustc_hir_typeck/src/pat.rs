@@ -553,6 +553,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             (lhs, Some((true, rhs_ty, rhs_sp))) => one_side_err(rhs_sp, rhs_ty, lhs),
             _ => span_bug!(span, "Impossible, verified above."),
         }
+        if (lhs, rhs).references_error() {
+            err.downgrade_to_delayed_bug();
+        }
         if self.tcx.sess.teach(&err.get_code().unwrap()) {
             err.note(
                 "In a match expression, only numbers and characters can be matched \
