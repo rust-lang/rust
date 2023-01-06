@@ -1,4 +1,4 @@
-error[E0599]: no method named `iter` found for reference `&str` in the current scope
+error[E0599]: no method named `iter` found for reference `&'static str` in the current scope
   --> $DIR/suggest-using-chars.rs:2:19
    |
 LL |     let _ = "foo".iter();
@@ -9,7 +9,7 @@ help: because of the in-memory representation of `&str`, to obtain an `Iterator`
 LL |     let _ = "foo".chars();
    |                   ~~~~~
 
-error[E0599]: no method named `foo` found for reference `&str` in the current scope
+error[E0599]: no method named `foo` found for reference `&'static str` in the current scope
   --> $DIR/suggest-using-chars.rs:3:19
    |
 LL |     let _ = "foo".foo();

@@ -1,3 +1,5 @@
+// normalize-stderr-test: "long-type-\d+" -> "long-type-hash"
+
 // rust-lang/rust#30786: the use of `for<'b> &'b mut A: Stream<Item=T`
 // should act as assertion that item does not borrow from its stream;
 // but an earlier buggy rustc allowed `.map(|x: &_| x)` which does

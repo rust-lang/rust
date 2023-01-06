@@ -10,7 +10,7 @@ note: required by a bound in `Foo::Out`
 LL |     type Out: Default + ToString + ?Sized = dyn ToString;
    |               ^^^^^^^ required by this bound in `Foo::Out`
 
-error[E0599]: no function or associated item named `default` found for trait object `dyn ToString` in the current scope
+error[E0599]: no function or associated item named `default` found for trait object `(dyn ToString + 'static)` in the current scope
   --> $DIR/issue-43924.rs:14:39
    |
 LL |     assert_eq!(<() as Foo<u32>>::Out::default().to_string(), "false");

@@ -13,7 +13,7 @@ note: `X` defines an item `make_g`, perhaps you need to implement it
 LL | trait X {
    | ^^^^^^^
 
-error[E0599]: no function or associated item named `make_f` found for fn pointer `fn(&())` in the current scope
+error[E0599]: no function or associated item named `make_f` found for fn pointer `for<'a> fn(&'a ())` in the current scope
   --> $DIR/issue-57642-higher-ranked-subtype.rs:35:25
    |
 LL |     let x = <fn (&())>::make_f();

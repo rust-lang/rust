@@ -259,7 +259,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
         let rcvr_ty = self.resolve_vars_if_possible(rcvr_ty);
-        let ty_str = with_forced_trimmed_paths!(self.ty_to_string(rcvr_ty));
+        let (ty_str, ty_file) = tcx.short_ty_string(rcvr_ty);
+        let short_ty_str = with_forced_trimmed_paths!(rcvr_ty.to_string());
         let is_method = mode == Mode::MethodCall;
         let unsatisfied_predicates = &no_match_data.unsatisfied_predicates;
         let similar_candidate = no_match_data.similar_candidate;
@@ -276,11 +277,24 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         };
 
-        if self.suggest_wrapping_range_with_parens(tcx, rcvr_ty, source, span, item_name, &ty_str)
-            || self.suggest_constraining_numerical_ty(
-                tcx, rcvr_ty, source, span, item_kind, item_name, &ty_str,
-            )
-        {
+        // We could pass the file for long types into these two, but it isn't strictly necessary
+        // given how targetted they are.
+        if self.suggest_wrapping_range_with_parens(
+            tcx,
+            rcvr_ty,
+            source,
+            span,
+            item_name,
+            &short_ty_str,
+        ) || self.suggest_constraining_numerical_ty(
+            tcx,
+            rcvr_ty,
+            source,
+            span,
+            item_kind,
+            item_name,
+            &short_ty_str,
+        ) {
             return None;
         }
         span = item_name.span;
@@ -319,6 +333,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             rcvr_ty.prefix_string(self.tcx),
             ty_str_reported,
         );
+        let ty_str = if short_ty_str.len() < ty_str.len() && ty_str.len() > 10 {
+            short_ty_str
+        } else {
+            ty_str
+        };
+        if let Some(file) = ty_file {
+            err.note(&format!("the full type name has been written to '{}'", file.display(),));
+        }
         if rcvr_ty.references_error() {
             err.downgrade_to_delayed_bug();
         }
@@ -826,7 +848,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 let primary_message = primary_message.unwrap_or_else(|| {
                     format!(
                         "the {item_kind} `{item_name}` exists for {actual_prefix} `{ty_str}`, \
-                    but its trait bounds were not satisfied"
+                         but its trait bounds were not satisfied"
                     )
                 });
                 err.set_primary_message(&primary_message);
