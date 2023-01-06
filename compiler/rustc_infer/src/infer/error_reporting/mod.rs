@@ -1613,7 +1613,7 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                 {
                     format!("expected this to be `{}`", expected)
                 } else {
-                    terr.to_string(self.tcx)
+                    terr.to_string(self.tcx).to_string()
                 };
                 label_or_note(sp, &terr);
                 label_or_note(span, &msg);

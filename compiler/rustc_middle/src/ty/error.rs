@@ -86,7 +86,7 @@ impl TypeError<'_> {
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
 impl<'tcx> TypeError<'tcx> {
-    pub fn to_string(self, tcx: TyCtxt<'tcx>) -> String {
+    pub fn to_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         use self::TypeError::*;
         fn report_maybe_different(expected: &str, found: &str) -> String {
             // A naive approach to making sure that we're not reporting silly errors such as:
@@ -104,48 +104,52 @@ impl<'tcx> TypeError<'tcx> {
         };
 
         match self {
-            CyclicTy(_) => format!("cyclic type of infinite size"),
-            CyclicConst(_) => format!("encountered a self-referencing constant"),
-            Mismatch => format!("types differ"),
+            CyclicTy(_) => "cyclic type of infinite size".into(),
+            CyclicConst(_) => "encountered a self-referencing constant".into(),
+            Mismatch => "types differ".into(),
             ConstnessMismatch(values) => {
-                format!("expected {} bound, found {} bound", values.expected, values.found)
+                format!("expected {} bound, found {} bound", values.expected, values.found).into()
             }
             PolarityMismatch(values) => {
                 format!("expected {} polarity, found {} polarity", values.expected, values.found)
+                    .into()
             }
             UnsafetyMismatch(values) => {
-                format!("expected {} fn, found {} fn", values.expected, values.found)
+                format!("expected {} fn, found {} fn", values.expected, values.found).into()
             }
             AbiMismatch(values) => {
-                format!("expected {} fn, found {} fn", values.expected, values.found)
+                format!("expected {} fn, found {} fn", values.expected, values.found).into()
             }
-            ArgumentMutability(_) | Mutability => format!("types differ in mutability"),
+            ArgumentMutability(_) | Mutability => "types differ in mutability".into(),
             TupleSize(values) => format!(
                 "expected a tuple with {} element{}, found one with {} element{}",
                 values.expected,
                 pluralize!(values.expected),
                 values.found,
                 pluralize!(values.found)
-            ),
+            )
+            .into(),
             FixedArraySize(values) => format!(
                 "expected an array with a fixed size of {} element{}, found one with {} element{}",
                 values.expected,
                 pluralize!(values.expected),
                 values.found,
                 pluralize!(values.found)
-            ),
-            ArgCount => format!("incorrect number of function parameters"),
-            FieldMisMatch(adt, field) => format!("field type mismatch: {}.{}", adt, field),
-            RegionsDoesNotOutlive(..) => format!("lifetime mismatch"),
+            )
+            .into(),
+            ArgCount => "incorrect number of function parameters".into(),
+            FieldMisMatch(adt, field) => format!("field type mismatch: {}.{}", adt, field).into(),
+            RegionsDoesNotOutlive(..) => "lifetime mismatch".into(),
             // Actually naming the region here is a bit confusing because context is lacking
             RegionsInsufficientlyPolymorphic(..) => {
-                format!("one type is more general than the other")
+                "one type is more general than the other".into()
             }
             RegionsOverlyPolymorphic(br, _) => format!(
                 "expected concrete lifetime, found bound lifetime parameter{}",
                 br_string(br)
-            ),
-            RegionsPlaceholderMismatch => format!("one type is more general than the other"),
+            )
+            .into(),
+            RegionsPlaceholderMismatch => "one type is more general than the other".into(),
             ArgumentSorts(values, _) | Sorts(values) => {
                 let mut expected = values.expected.sort_string(tcx);
                 let mut found = values.found.sort_string(tcx);
@@ -153,7 +157,7 @@ impl<'tcx> TypeError<'tcx> {
                     expected = values.expected.sort_string(tcx);
                     found = values.found.sort_string(tcx);
                 }
-                report_maybe_different(&expected, &found)
+                report_maybe_different(&expected, &found).into()
             }
             Traits(values) => {
                 let (mut expected, mut found) = with_forced_trimmed_paths!((
@@ -165,6 +169,7 @@ impl<'tcx> TypeError<'tcx> {
                     found = tcx.def_path_str(values.found);
                 }
                 report_maybe_different(&format!("trait `{expected}`"), &format!("trait `{found}`"))
+                    .into()
             }
             IntMismatch(ref values) => {
                 let expected = match values.expected {
@@ -175,36 +180,38 @@ impl<'tcx> TypeError<'tcx> {
                     ty::IntVarValue::IntType(ty) => ty.name_str(),
                     ty::IntVarValue::UintType(ty) => ty.name_str(),
                 };
-                format!("expected `{}`, found `{}`", expected, found)
+                format!("expected `{}`, found `{}`", expected, found).into()
             }
-            FloatMismatch(ref values) => {
-                format!(
-                    "expected `{}`, found `{}`",
-                    values.expected.name_str(),
-                    values.found.name_str()
-                )
-            }
+            FloatMismatch(ref values) => format!(
+                "expected `{}`, found `{}`",
+                values.expected.name_str(),
+                values.found.name_str()
+            )
+            .into(),
             VariadicMismatch(ref values) => format!(
                 "expected {} fn, found {} function",
                 if values.expected { "variadic" } else { "non-variadic" },
                 if values.found { "variadic" } else { "non-variadic" }
-            ),
+            )
+            .into(),
             ProjectionMismatched(ref values) => format!(
                 "expected {}, found {}",
                 tcx.def_path_str(values.expected),
                 tcx.def_path_str(values.found)
-            ),
+            )
+            .into(),
             ExistentialMismatch(ref values) => report_maybe_different(
                 &format!("trait `{}`", values.expected),
                 &format!("trait `{}`", values.found),
-            ),
+            )
+            .into(),
             ConstMismatch(ref values) => {
-                format!("expected `{}`, found `{}`", values.expected, values.found)
+                format!("expected `{}`, found `{}`", values.expected, values.found).into()
             }
-            IntrinsicCast => format!("cannot coerce intrinsics to function pointers"),
-            TargetFeatureCast(_) => format!(
-                "cannot coerce functions with `#[target_feature]` to safe function pointers"
-            ),
+            IntrinsicCast => "cannot coerce intrinsics to function pointers".into(),
+            TargetFeatureCast(_) => {
+                "cannot coerce functions with `#[target_feature]` to safe function pointers".into()
+            }
         }
     }
 }
@@ -237,7 +244,7 @@ impl<'tcx> TypeError<'tcx> {
 }
 
 impl<'tcx> Ty<'tcx> {
-    pub fn sort_string(self, tcx: TyCtxt<'tcx>) -> String {
+    pub fn sort_string(self, tcx: TyCtxt<'tcx>) -> Cow<'static, str> {
         match *self.kind() {
             ty::Foreign(def_id) => format!("extern type `{}`", tcx.def_path_str(def_id)).into(),
             ty::FnDef(def_id, ..) => match tcx.def_kind(def_id) {
@@ -247,7 +254,7 @@ impl<'tcx> Ty<'tcx> {
             },
             ty::FnPtr(_) => "fn pointer".into(),
             ty::Dynamic(ref inner, ..) if let Some(principal) = inner.principal() => {
-                format!("`dyn {}`", tcx.def_path_str(principal.def_id()))
+                format!("`dyn {}`", tcx.def_path_str(principal.def_id())).into()
             }
             ty::Dynamic(..) => "trait object".into(),
             ty::Closure(..) => "closure".into(),
@@ -269,7 +276,7 @@ impl<'tcx> Ty<'tcx> {
             _ => {
                 let width = tcx.sess.diagnostic_width();
                 let length_limit = std::cmp::max(width / 4, 15);
-                format!("`{}`", tcx.ty_string_with_limit(self, length_limit))
+                format!("`{}`", tcx.ty_string_with_limit(self, length_limit)).into()
             }
         }
     }
