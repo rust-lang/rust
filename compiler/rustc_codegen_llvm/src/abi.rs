@@ -34,13 +34,6 @@ pub trait ArgAttributesExt {
     );
 }
 
-fn should_use_mutable_noalias(cx: &CodegenCx<'_, '_>) -> bool {
-    // LLVM prior to version 12 had known miscompiles in the presence of
-    // noalias attributes (see #54878), but we don't support earlier
-    // versions at all anymore. We now enable mutable noalias by default.
-    cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true)
-}
-
 const ABI_AFFECTING_ATTRIBUTES: [(ArgAttribute, llvm::AttributeKind); 1] =
     [(ArgAttribute::InReg, llvm::AttributeKind::InReg)];
 
@@ -87,9 +80,6 @@ fn get_attrs<'ll>(this: &ArgAttributes, cx: &CodegenCx<'ll, '_>) -> SmallVec<[&'
             if regular.contains(attr) {
                 attrs.push(llattr.create_attr(cx.llcx));
             }
-        }
-        if regular.contains(ArgAttribute::NoAliasMutRef) && should_use_mutable_noalias(cx) {
-            attrs.push(llvm::AttributeKind::NoAlias.create_attr(cx.llcx));
         }
     } else if cx.tcx.sess.opts.unstable_opts.sanitizer.contains(SanitizerSet::MEMORY) {
         // If we're not optimising, *but* memory sanitizer is on, emit noundef, since it affects
