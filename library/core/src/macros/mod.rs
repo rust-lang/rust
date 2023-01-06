@@ -1315,9 +1315,6 @@ pub(crate) mod builtin {
 
     /// Parses a file as an expression or an item according to the context.
     ///
-    /// <div class="example-wrap" style="display:inline-block">
-    /// <pre class="compile_fail" style="white-space:normal;font:inherit;">
-    ///
     /// **Warning**: For multi-file Rust projects, the `include!` macro is probably not what you
     /// are looking for. Usually, multi-file Rust projects use
     /// [modules](https://doc.rust-lang.org/reference/items/modules.html). Multi-file projects and
@@ -1325,9 +1322,6 @@ pub(crate) mod builtin {
     /// [here](https://doc.rust-lang.org/rust-by-example/mod/split.html) and the module system is
     /// explained in the Rust Book
     /// [here](https://doc.rust-lang.org/book/ch07-02-defining-modules-to-control-scope-and-privacy.html).
-    ///
-    /// </pre>
-    /// </div>
     ///
     /// The included file is placed in the surrounding code
     /// [unhygienically](https://doc.rust-lang.org/reference/macros-by-example.html#hygiene). If
