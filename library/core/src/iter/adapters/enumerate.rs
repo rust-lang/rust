@@ -4,7 +4,7 @@ use crate::iter::adapters::{
 use crate::iter::{FusedIterator, InPlaceIterable, TrustedLen};
 use crate::ops::Try;
 
-/// An iterator that yields the current count and the element during iteration.
+/// An iterator that yields the zero-based index and the element during iteration.
 ///
 /// This `struct` is created by the [`enumerate`] method on [`Iterator`]. See its
 /// documentation for more.
