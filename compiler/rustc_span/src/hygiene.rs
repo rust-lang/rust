@@ -961,6 +961,9 @@ pub struct ExpnData {
     /// Should debuginfo for the macro be collapsed to the outermost expansion site (in other
     /// words, was the macro definition annotated with `#[collapse_debuginfo]`)?
     pub collapse_debuginfo: bool,
+    /// If this expansion comes from a builtin macro, this is the macro's name. Used when emitting
+    /// diagnostics to hide the line "this error originates in...".
+    pub builtin_name: Option<Symbol>,
 }
 
 impl !PartialEq for ExpnData {}
@@ -979,6 +982,7 @@ impl ExpnData {
         allow_internal_unsafe: bool,
         local_inner_macros: bool,
         collapse_debuginfo: bool,
+        builtin_name: Option<Symbol>,
     ) -> ExpnData {
         ExpnData {
             kind,
@@ -993,6 +997,7 @@ impl ExpnData {
             allow_internal_unsafe,
             local_inner_macros,
             collapse_debuginfo,
+            builtin_name,
         }
     }
 
@@ -1017,6 +1022,7 @@ impl ExpnData {
             allow_internal_unsafe: false,
             local_inner_macros: false,
             collapse_debuginfo: false,
+            builtin_name: None,
         }
     }
 

@@ -124,7 +124,6 @@ note: inside `R1`
    |
 LL | pub static R1: &[()] = unsafe { from_ptr_range(ptr::null()..ptr::null()) };
    |                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: this error originates in the macro `assert` (in Nightly builds, run with -Z macro-backtrace for more info)
 
 error[E0080]: could not evaluate static initializer
   --> $SRC_DIR/core/src/ptr/const_ptr.rs:LL:COL

@@ -858,6 +858,7 @@ impl SyntaxExtension {
         descr: Symbol,
         macro_def_id: Option<DefId>,
         parent_module: Option<DefId>,
+        builtin_name: Option<Symbol>,
     ) -> ExpnData {
         ExpnData::new(
             ExpnKind::Macro(self.macro_kind(), descr),
@@ -871,6 +872,7 @@ impl SyntaxExtension {
             self.allow_internal_unsafe,
             self.local_inner_macros,
             self.collapse_debuginfo,
+            builtin_name,
         )
     }
 }

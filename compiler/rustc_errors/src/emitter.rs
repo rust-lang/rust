@@ -333,7 +333,9 @@ pub trait Emitter: Translate {
                     // are some which do actually involve macros.
                     ExpnKind::Inlined | ExpnKind::Desugaring(..) | ExpnKind::AstPass(..) => None,
 
-                    ExpnKind::Macro(macro_kind, name) => Some((macro_kind, name)),
+                    ExpnKind::Macro(macro_kind, name) => {
+                        Some((macro_kind, name, expn_data.builtin_name))
+                    }
                 }
             })
             .collect();
@@ -345,9 +347,9 @@ pub trait Emitter: Translate {
         self.render_multispans_macro_backtrace(span, children, backtrace);
 
         if !backtrace {
-            if let Some((macro_kind, name)) = has_macro_spans.first() {
+            if let Some((macro_kind, name, builtin_name)) = has_macro_spans.first() {
                 // Mark the actual macro this originates from
-                let and_then = if let Some((macro_kind, last_name)) = has_macro_spans.last()
+                let and_then = if let Some((macro_kind, last_name, _)) = has_macro_spans.last()
                     && last_name != name
                 {
                     let descr = macro_kind.descr();
@@ -364,12 +366,25 @@ pub trait Emitter: Translate {
                     (in Nightly builds, run with -Z macro-backtrace for more info)",
                 );
 
-                children.push(SubDiagnostic {
-                    level: Level::Note,
-                    message: vec![(DiagnosticMessage::Str(msg), Style::NoStyle)],
-                    span: MultiSpan::new(),
-                    render_span: None,
-                });
+                if let Some(
+                    "assert" | "bench" | "cfg" | "concat" | "concat_idents" | "env" | "format_args"
+                    | "format_args_nl" | "global_allocator" | "include_str" | "test",
+                ) = builtin_name.as_ref().map(|n| n.as_str())
+                {
+                    // We explicitly ignore these builtin macros and not show the line, as end
+                    // users will never care about these, the macros should be providing good
+                    // diagnostics always.
+                    // FIXME: we could include the builtin `derive` macros here, but we need to
+                    // audit every one of them before doing so to verify that they always produce
+                    // reasonable diagnostics that point at the macro use.
+                } else {
+                    children.push(SubDiagnostic {
+                        level: Level::Note,
+                        message: vec![(DiagnosticMessage::Str(msg), Style::NoStyle)],
+                        span: MultiSpan::new(),
+                        render_span: None,
+                    });
+                }
             }
         }
     }

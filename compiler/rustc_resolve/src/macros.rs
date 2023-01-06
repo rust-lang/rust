@@ -292,6 +292,7 @@ impl<'a> ResolverExpand for Resolver<'a> {
                 fast_print_path(path),
                 def_id,
                 def_id.map(|def_id| self.macro_def_scope(def_id).nearest_parent_mod()),
+                ext.builtin_name,
             ),
             self.create_stable_hashing_context(),
         );
