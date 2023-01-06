@@ -723,7 +723,7 @@ impl fmt::Debug for CString {
 }
 
 #[stable(feature = "cstring_into", since = "1.7.0")]
-impl From<CString> for Vec<u8> {
+impl From<CString> for Vec<u8, Global, DEFAULT_COOP_PREFERRED> {
     /// Converts a [`CString`] into a <code>[Vec]<[u8]></code>.
     ///
     /// The conversion consumes the [`CString`], and removes the terminating NUL byte.
