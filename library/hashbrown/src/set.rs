@@ -2794,7 +2794,7 @@ mod test_set {
         let mut a = HashSet::new();
         a.insert(1);
 
-        a.extend(&[2, 3, 4]);
+        a.extend([2, 3, 4]);
 
         assert_eq!(a.len(), 4);
         assert!(a.contains(&1));
