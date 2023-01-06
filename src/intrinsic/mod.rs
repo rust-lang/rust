@@ -1179,16 +1179,10 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
 
         // Type indicator for the exception being thrown.
         //
-        // The first value in this tuple is a pointer to the exception object
-        // being thrown.  The second value is a "selector" indicating which of
-        // the landing pad clauses the exception's type had been matched to.
-        // rust_try ignores the selector.
+        // The value is a pointer to the exception object
+        // being thrown.
         bx.switch_to_block(catch);
-        /*let lpad_ty = bx.type_struct(&[bx.type_i8p(), bx.type_i32()], false);
-        let vals = bx.landing_pad(lpad_ty, bx.eh_personality(), 1);
-        let tydesc = bx.const_null(bx.type_i8p());
-        bx.add_clause(vals, tydesc);
-        let ptr = bx.extract_value(vals, 0);*/
+        bx.set_personality_fn(bx.eh_personality());
 
         let eh_pointer_builtin = bx.cx.context.get_target_builtin_function("__builtin_eh_pointer");
         let zero = bx.cx.context.new_rvalue_zero(bx.int_type);

@@ -472,7 +472,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
         else {
             // FIXME: FIXME: FIXME: Seems like bad (_URC_NO_REASON) return code, perhaps because the cleanup pad was created properly.
-            // FIXME: Wrong personality function: __gcc_personality_v0
             println!("Try/catch in {:?}", self.current_func());
             self.block.add_try_catch(None, try_block, catch);
         }
@@ -1220,15 +1219,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         self.cleanup_blocks.borrow_mut().insert(self.block);
 
-        // FIXME: we're probably not creating a real cleanup pad here.
-        // FIXME: It seems to be the actual problem:
-        // libunwind finds a catch, so returns _URC_HANDLER_FOUND instead of _URC_CONTINUE_UNWIND.
-        // TODO: can we generate a goto from the finally to the cleanup landing pad?
-        // TODO: add this block to a cleanup_blocks variable and generate a try/finally instead if
-        // the catch block for it is a cleanup block.
-        // => NO, a cleanup is only called during unwinding.
-        //
-        // TODO: look at TRY_CATCH_IS_CLEANUP, CLEANUP_POINT_EXPR, WITH_CLEANUP_EXPR, CLEANUP_EH_ONLY.
         let eh_pointer_builtin = self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
         let zero = self.cx.context.new_rvalue_zero(self.int_type);
         let ptr = self.cx.context.new_call(None, eh_pointer_builtin, &[zero]);
@@ -1242,21 +1232,14 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         self.block.add_assignment(None, value.access_field(None, field1), ptr);
         self.block.add_assignment(None, value.access_field(None, field2), zero); // TODO: set the proper value here (the type of exception?).
 
-        /*
-        // Resume.
-        let param = self.context.new_parameter(None, ptr.get_type(), "exn");
-        // TODO: should we call __builtin_unwind_resume instead?
-        // FIXME: should probably not called resume because it could be executed (I believe) in
-        // normal (no exception) cases
-        let unwind_resume = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[param], "_Unwind_Resume", false);
-        self.block.add_eval(None, self.context.new_call(None, unwind_resume, &[ptr]));*/
-
         value.to_rvalue()
     }
 
     fn resume(&mut self, exn: RValue<'gcc>) {
+        // TODO: check if this is normal that we need to dereference the value.
+        let exn = exn.dereference(None).to_rvalue();
         let param = self.context.new_parameter(None, exn.get_type(), "exn");
-        // TODO: should we call __builtin_unwind_resume instead?
+        // TODO(antoyo): should we call __builtin_unwind_resume instead? This might actually be the same.
         let unwind_resume = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[param], "_Unwind_Resume", false);
         self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
         self.unreachable();
