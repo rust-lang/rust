@@ -1084,9 +1084,11 @@ pub trait PrettyPrinter<'tcx>:
             write!(self, "Sized")?;
         }
 
-        for re in lifetimes {
-            write!(self, " + ")?;
-            self = self.print_region(re)?;
+        if !FORCE_TRIMMED_PATH.with(|flag| flag.get()) {
+            for re in lifetimes {
+                write!(self, " + ")?;
+                self = self.print_region(re)?;
+            }
         }
 
         Ok(self)
