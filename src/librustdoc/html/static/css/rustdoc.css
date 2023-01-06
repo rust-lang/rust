@@ -538,8 +538,6 @@ ul.block, .block li {
 	overflow: initial;
 	text-align: right;
 	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
 	color: var(--src-line-numbers-span-color);
