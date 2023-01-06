@@ -344,6 +344,10 @@ fn map_path_prefix(mapping: &FilePathMapping, p: &str) -> String {
     mapping.map_prefix(path(p)).0.to_string_lossy().to_string()
 }
 
+fn reverse_map_prefix(mapping: &FilePathMapping, p: &str) -> Option<String> {
+    mapping.reverse_map_prefix_heuristically(&path(p)).map(|q| q.to_string_lossy().to_string())
+}
+
 #[test]
 fn path_prefix_remapping() {
     // Relative to relative
@@ -478,6 +482,45 @@ fn path_prefix_remapping_expand_to_absolute() {
         ),
         RealFileName::Remapped { local_path: None, virtual_name: path("XYZ/src/main.rs") }
     );
+}
+
+#[test]
+fn path_prefix_remapping_reverse() {
+    // Ignores options without alphanumeric chars.
+    {
+        let mapping =
+            &FilePathMapping::new(vec![(path("abc"), path("/")), (path("def"), path("."))]);
+
+        assert_eq!(reverse_map_prefix(mapping, "/hello.rs"), None);
+        assert_eq!(reverse_map_prefix(mapping, "./hello.rs"), None);
+    }
+
+    // Returns `None` if multiple options match.
+    {
+        let mapping = &FilePathMapping::new(vec![
+            (path("abc"), path("/redacted")),
+            (path("def"), path("/redacted")),
+        ]);
+
+        assert_eq!(reverse_map_prefix(mapping, "/redacted/hello.rs"), None);
+    }
+
+    // Distinct reverse mappings.
+    {
+        let mapping = &FilePathMapping::new(vec![
+            (path("abc"), path("/redacted")),
+            (path("def/ghi"), path("/fake/dir")),
+        ]);
+
+        assert_eq!(
+            reverse_map_prefix(mapping, "/redacted/path/hello.rs"),
+            Some(path_str("abc/path/hello.rs"))
+        );
+        assert_eq!(
+            reverse_map_prefix(mapping, "/fake/dir/hello.rs"),
+            Some(path_str("def/ghi/hello.rs"))
+        );
+    }
 }
 
 #[test]
