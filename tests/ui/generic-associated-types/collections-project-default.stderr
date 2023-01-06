@@ -9,6 +9,7 @@ LL |     res
    |
    = note: expected associated type `<C as Collection<i32>>::Sibling<f32>`
               found associated type `<<C as Collection<i32>>::Family as CollectionFamily>::Member<f32>`
+   = note: an associated type was expected, but a different one was found
 
 error: aborting due to previous error
 

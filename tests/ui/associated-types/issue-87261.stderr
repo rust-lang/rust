@@ -132,7 +132,7 @@ note: required by a bound in `accepts_generic_trait`
 LL | fn accepts_generic_trait<T: GenericTrait<(), Associated = ()>>(_: T) {}
    |                                              ^^^^^^^^^^^^^^^ required by this bound in `accepts_generic_trait`
 
-error[E0271]: type mismatch resolving `<impl Trait + 'static as Trait>::Associated == ()`
+error[E0271]: type mismatch resolving `<impl Trait as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:79:19
    |
 LL | fn returns_opaque() -> impl Trait + 'static {
@@ -155,7 +155,7 @@ help: consider constraining the associated type `<impl Trait + 'static as Trait>
 LL | fn returns_opaque() -> impl Trait<Associated = ()> + 'static {
    |                                  +++++++++++++++++
 
-error[E0271]: type mismatch resolving `<impl DerivedTrait + 'static as Trait>::Associated == ()`
+error[E0271]: type mismatch resolving `<impl DerivedTrait as Trait>::Associated == ()`
   --> $DIR/issue-87261.rs:82:19
    |
 LL | fn returns_opaque_derived() -> impl DerivedTrait + 'static {
@@ -222,7 +222,7 @@ note: required by a bound in `accepts_trait`
 LL | fn accepts_trait<T: Trait<Associated = ()>>(_: T) {}
    |                           ^^^^^^^^^^^^^^^ required by this bound in `accepts_trait`
 
-error[E0271]: type mismatch resolving `<impl GenericTrait<()> + 'static as GenericTrait<()>>::Associated == ()`
+error[E0271]: type mismatch resolving `<impl GenericTrait<()> as GenericTrait<()>>::Associated == ()`
   --> $DIR/issue-87261.rs:91:27
    |
 LL | fn returns_opaque_generic() -> impl GenericTrait<()> + 'static {

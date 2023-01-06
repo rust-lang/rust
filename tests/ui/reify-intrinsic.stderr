@@ -8,6 +8,7 @@ LL |     let _: unsafe extern "rust-intrinsic" fn(isize) -> usize = std::mem::tr
    |
    = note: expected fn pointer `unsafe extern "rust-intrinsic" fn(isize) -> usize`
                  found fn item `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}`
+   = note: when the arguments and return types match, functions can be coerced to function pointers
 
 error[E0606]: casting `unsafe extern "rust-intrinsic" fn(_) -> _ {transmute::<_, _>}` as `unsafe extern "rust-intrinsic" fn(isize) -> usize` is invalid
   --> $DIR/reify-intrinsic.rs:11:13

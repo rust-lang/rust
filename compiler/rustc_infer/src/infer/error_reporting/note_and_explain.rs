@@ -218,6 +218,13 @@ impl<T> Trait<T> for X {
                             );
                         }
                     }
+                    (ty::FnPtr(_), ty::FnDef(def, _))
+                    if let hir::def::DefKind::Fn = tcx.def_kind(def) => {
+                        diag.note(
+                            "when the arguments and return types match, functions can be coerced \
+                             to function pointers",
+                        );
+                    }
                     _ => {}
                 }
                 debug!(

@@ -1865,6 +1865,18 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         self.check_and_note_conflicting_crates(diag, terr);
 
         self.note_and_explain_type_err(diag, terr, cause, span, cause.body_id.to_def_id());
+        if let Some(exp_found) = exp_found
+            && let exp_found = TypeError::Sorts(exp_found)
+            && exp_found != terr
+        {
+            self.note_and_explain_type_err(
+                diag,
+                exp_found,
+                cause,
+                span,
+                cause.body_id.to_def_id(),
+            );
+        }
 
         if let Some(ValuePairs::PolyTraitRefs(exp_found)) = values
             && let ty::Closure(def_id, _) = exp_found.expected.skip_binder().self_ty().kind()
