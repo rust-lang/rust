@@ -32,7 +32,14 @@ pub enum TypeAnnotationNeeded {
     E0282,
     /// An implementation cannot be chosen unambiguously because of lack of information.
     /// ```compile_fail,E0283
-    /// let _ = Default::default();
+    /// struct Foo;
+    ///
+    /// impl Into<u32> for Foo {
+    ///    fn into(self) -> u32 { 1 }
+    /// }
+    ///
+    /// let foo = Foo;
+    /// let bar: u32 = foo.into() * 1u32;
     /// ```
     E0283,
     /// ```compile_fail,E0284
