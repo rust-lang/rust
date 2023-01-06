@@ -1121,36 +1121,23 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let Some(generics) = self.tcx.hir().get_generics(owner.def_id) else { return false };
         let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
         let ty::Param(param) = inner_ty.kind() else { return false };
-        let Some(generic_param) = generics.get_named(param.name) else { return false };
         let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() else { return false };
         let arg_node = self.tcx.hir().get(*arg_hir_id);
         let Node::Expr(Expr { kind: hir::ExprKind::Path(_), ..}) = arg_node else { return false };
 
         let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
-        let has_clone = self
-            .type_implements_trait(clone_trait, [ty], obligation.param_env)
-            .must_apply_modulo_regions();
+        let has_clone = |ty| {
+            self.type_implements_trait(clone_trait, [ty], obligation.param_env)
+                .must_apply_modulo_regions()
+        };
 
-        let trait_pred_and_suggested_ty =
-            trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty));
         let new_obligation = self.mk_trait_obligation_with_new_self_ty(
             obligation.param_env,
-            trait_pred_and_suggested_ty,
+            trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty)),
         );
 
-        if has_clone && self.predicate_may_hold(&new_obligation) {
-            let clone_bound = generics
-                .bounds_for_param(generic_param.def_id)
-                .flat_map(|bp| bp.bounds)
-                .any(|bound| {
-                    if let hir::GenericBound::Trait(hir::PolyTraitRef { trait_ref, .. }, ..) = bound
-                    {
-                        Some(clone_trait) == trait_ref.trait_def_id()
-                    } else {
-                        false
-                    }
-                });
-            if !clone_bound {
+        if self.predicate_may_hold(&new_obligation) && has_clone(ty) {
+            if !has_clone(param.to_ty(self.tcx)) {
                 suggest_constraining_type_param(
                     self.tcx,
                     generics,
