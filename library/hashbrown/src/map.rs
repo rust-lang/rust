@@ -7679,7 +7679,7 @@ mod test_map {
         let vec: Vec<_> = (100..200).map(|i| (i, i)).collect();
         a.extend(iter);
         a.extend(&vec);
-        a.extend(&create_arr::<i32, 100>(200, 1));
+        a.extend(create_arr::<i32, 100>(200, 1));
 
         assert_eq!(a.len(), 300);
 
