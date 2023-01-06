@@ -1699,20 +1699,20 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let [.., stmt] = block.stmts else {
-            err.span_help(block.span, "this empty block is missing a tail expression");
+            err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
         let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else { return; };
         if self.can_eq(self.param_env, expected_ty, ty).is_ok() {
-            err.span_suggestion_verbose(
+            err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
                 "",
                 Applicability::MachineApplicable,
             );
         } else {
-            err.span_help(block.span, "this block is missing a tail expression");
+            err.span_label(block.span, "this block is missing a tail expression");
         }
     }
 }

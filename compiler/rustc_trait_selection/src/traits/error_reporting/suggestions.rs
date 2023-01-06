@@ -1077,12 +1077,12 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             return;
         }
         let [.., stmt] = block.stmts else {
-            err.span_help(block.span, "this empty block is missing a tail expression");
+            err.span_label(block.span, "this empty block is missing a tail expression");
             return;
         };
         let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
         let Some(ty) = typeck.expr_ty_opt(tail_expr) else {
-            err.span_help(block.span, "this block is missing a tail expression");
+            err.span_label(block.span, "this block is missing a tail expression");
             return;
         };
         let ty = self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(ty));
@@ -1091,14 +1091,14 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         let new_obligation =
             self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
         if self.predicate_must_hold_modulo_regions(&new_obligation) {
-            err.span_suggestion_verbose(
+            err.span_suggestion_short(
                 stmt.span.with_lo(tail_expr.span.hi()),
                 "remove this semicolon",
                 "",
                 Applicability::MachineApplicable,
             );
         } else {
-            err.span_help(block.span, "this block is missing a tail expression");
+            err.span_label(block.span, "this block is missing a tail expression");
         }
     }
 
