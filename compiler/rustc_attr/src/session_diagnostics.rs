@@ -51,7 +51,7 @@ pub(crate) struct UnknownMetaItem<'a> {
 // Manual implementation to be able to format `expected` items correctly.
 impl<'a> IntoDiagnostic<'a> for UnknownMetaItem<'_> {
     fn into_diagnostic(self, handler: &'a Handler) -> DiagnosticBuilder<'a, ErrorGuaranteed> {
-        let expected = self.expected.iter().map(|name| format!("`{}`", name)).collect::<Vec<_>>();
+        let expected = self.expected.iter().map(|name| format!("`{name}`")).collect::<Vec<_>>();
         let mut diag = handler.struct_span_err_with_code(
             self.span,
             fluent::attr_unknown_meta_item,

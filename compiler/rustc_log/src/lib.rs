@@ -114,8 +114,7 @@ impl Display for Error {
         match self {
             Error::InvalidColorValue(value) => write!(
                 formatter,
-                "invalid log color value '{}': expected one of always, never, or auto",
-                value,
+                "invalid log color value '{value}': expected one of always, never, or auto",
             ),
             Error::NonUnicodeColorValue => write!(
                 formatter,

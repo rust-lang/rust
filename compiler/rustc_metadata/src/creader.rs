@@ -112,7 +112,7 @@ impl<'a> std::fmt::Debug for CrateDump<'a> {
         writeln!(fmt, "resolved crates:")?;
         for (cnum, data) in self.0.iter_crate_data() {
             writeln!(fmt, "  name: {}", data.name())?;
-            writeln!(fmt, "  cnum: {}", cnum)?;
+            writeln!(fmt, "  cnum: {cnum}")?;
             writeln!(fmt, "  hash: {}", data.hash())?;
             writeln!(fmt, "  reqd: {:?}", data.dep_kind())?;
             let CrateSource { dylib, rlib, rmeta } = data.source();
@@ -150,7 +150,7 @@ impl CStore {
     pub(crate) fn get_crate_data(&self, cnum: CrateNum) -> CrateMetadataRef<'_> {
         let cdata = self.metas[cnum]
             .as_ref()
-            .unwrap_or_else(|| panic!("Failed to get crate data for {:?}", cnum));
+            .unwrap_or_else(|| panic!("Failed to get crate data for {cnum:?}"));
         CrateMetadataRef { cdata, cstore: self }
     }
 

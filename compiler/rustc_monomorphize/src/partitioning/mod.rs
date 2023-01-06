@@ -285,7 +285,7 @@ where
         use std::fmt::Write;
 
         let s = &mut String::new();
-        let _ = writeln!(s, "{}", label);
+        let _ = writeln!(s, "{label}");
         for cgu in cgus {
             let _ =
                 writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
@@ -355,9 +355,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
             } else {
                 if mode_string != "lazy" {
                     let message = format!(
-                        "Unknown codegen-item collection mode '{}'. \
-                                           Falling back to 'lazy' mode.",
-                        mode_string
+                        "Unknown codegen-item collection mode '{mode_string}'. \
+                                           Falling back to 'lazy' mode."
                     );
                     tcx.sess.warn(&message);
                 }
@@ -470,7 +469,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         item_keys.sort();
 
         for item in item_keys {
-            println!("MONO_ITEM {}", item);
+            println!("MONO_ITEM {item}");
         }
     }
 
@@ -596,6 +595,6 @@ pub fn provide(providers: &mut Providers) {
         let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
-            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+            .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 }

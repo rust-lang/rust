@@ -119,7 +119,7 @@ impl HirId {
 
 impl fmt::Display for HirId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

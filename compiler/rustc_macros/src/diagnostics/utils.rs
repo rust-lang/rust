@@ -322,7 +322,7 @@ pub(crate) trait HasFieldMap {
                 None => {
                     span_err(
                         span.unwrap(),
-                        &format!("`{}` doesn't refer to a field on this type", field),
+                        &format!("`{field}` doesn't refer to a field on this type"),
                     )
                     .emit();
                     quote! {
@@ -603,8 +603,7 @@ impl SubdiagnosticKind {
                     if suggestion_kind != SuggestionKind::Normal {
                         invalid_attr(attr, &meta)
                             .help(format!(
-                                r#"Use `#[suggestion(..., style = "{}")]` instead"#,
-                                suggestion_kind
+                                r#"Use `#[suggestion(..., style = "{suggestion_kind}")]` instead"#
                             ))
                             .emit();
                     }
@@ -621,8 +620,7 @@ impl SubdiagnosticKind {
                     if suggestion_kind != SuggestionKind::Normal {
                         invalid_attr(attr, &meta)
                             .help(format!(
-                                r#"Use `#[multipart_suggestion(..., style = "{}")]` instead"#,
-                                suggestion_kind
+                                r#"Use `#[multipart_suggestion(..., style = "{suggestion_kind}")]` instead"#
                             ))
                             .emit();
                     }

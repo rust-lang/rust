@@ -177,12 +177,12 @@ impl Reg {
                 17..=32 => dl.i32_align.abi,
                 33..=64 => dl.i64_align.abi,
                 65..=128 => dl.i128_align.abi,
-                _ => panic!("unsupported integer: {:?}", self),
+                _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
-                _ => panic!("unsupported float: {:?}", self),
+                _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
         }
@@ -642,7 +642,7 @@ impl fmt::Display for AdjustForForeignAbiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {:?} does not support `extern {}` ABI", arch, abi)
+                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
             }
         }
     }
@@ -760,7 +760,7 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            _ => Err(format!("'{}' is not a valid value for entry function call convetion.", s)),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
         }
     }
 }

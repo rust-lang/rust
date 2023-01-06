@@ -270,17 +270,14 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
 
             eprintln!("[incremental]");
             eprintln!("[incremental] DepGraph Statistics");
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
             eprintln!("[incremental]");
             eprintln!("[incremental] Total Node Count: {}", status.total_node_count);
             eprintln!("[incremental] Total Edge Count: {}", status.total_edge_count);
 
             if cfg!(debug_assertions) {
-                eprintln!("[incremental] Total Edge Reads: {}", total_read_count);
-                eprintln!(
-                    "[incremental] Total Duplicate Edge Reads: {}",
-                    total_duplicate_read_count
-                );
+                eprintln!("[incremental] Total Edge Reads: {total_read_count}");
+                eprintln!("[incremental] Total Duplicate Edge Reads: {total_duplicate_read_count}");
             }
 
             eprintln!("[incremental]");
@@ -288,7 +285,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
                 "[incremental]  {:<36}| {:<17}| {:<12}| {:<17}|",
                 "Node Kind", "Node Frequency", "Node Count", "Avg. Edge Count"
             );
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
 
             for stat in stats {
                 let node_kind_ratio =
@@ -304,7 +301,7 @@ impl<K: DepKind + Encodable<FileEncoder>> GraphEncoder<K> {
                 );
             }
 
-            eprintln!("{}", SEPARATOR);
+            eprintln!("{SEPARATOR}");
             eprintln!("[incremental]");
         }
     }

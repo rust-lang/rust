@@ -120,7 +120,7 @@ pub trait DepNodeParams<Tcx: DepContext>: fmt::Debug + Sized {
     }
 
     fn to_debug_str(&self, _: Tcx) -> String {
-        format!("{:?}", self)
+        format!("{self:?}")
     }
 
     /// This method tries to recover the query key from the given `DepNode`,

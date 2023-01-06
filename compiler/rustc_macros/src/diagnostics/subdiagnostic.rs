@@ -198,8 +198,7 @@ impl<'parent, 'a> SubdiagnosticDeriveVariantBuilder<'parent, 'a> {
                 throw_span_err!(
                     attr.span().unwrap(),
                     &format!(
-                        "diagnostic slug must be first argument of a `#[{}(...)]` attribute",
-                        name
+                        "diagnostic slug must be first argument of a `#[{name}(...)]` attribute"
                     )
                 );
             };

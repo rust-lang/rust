@@ -360,7 +360,7 @@ fn get_source(input: &Input, sess: &Session) -> (String, FileName) {
 
 fn write_or_print(out: &str, ofile: Option<&Path>, sess: &Session) {
     match ofile {
-        None => print!("{}", out),
+        None => print!("{out}"),
         Some(p) => {
             if let Err(e) = std::fs::write(p, out) {
                 sess.emit_fatal(UnprettyDumpFail {
@@ -402,7 +402,7 @@ pub fn print_after_parsing(
         }
         AstTree(PpAstTreeMode::Normal) => {
             debug!("pretty printing AST tree");
-            format!("{:#?}", krate)
+            format!("{krate:#?}")
         }
         _ => unreachable!(),
     };
@@ -446,7 +446,7 @@ pub fn print_after_hir_lowering<'tcx>(
 
         AstTree(PpAstTreeMode::Expanded) => {
             debug!("pretty-printing expanded AST");
-            format!("{:#?}", krate)
+            format!("{krate:#?}")
         }
 
         Hir(s) => call_with_pp_support_hir(&s, tcx, move |annotation, hir_map| {

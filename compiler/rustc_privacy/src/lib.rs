@@ -915,7 +915,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
                     if level != Level::Direct {
                         error_msg.push_str(", ");
                     }
-                    error_msg.push_str(&format!("{:?}: {}", level, vis_str));
+                    error_msg.push_str(&format!("{level:?}: {vis_str}"));
                 }
             } else {
                 error_msg.push_str("not in the table");
