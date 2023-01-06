@@ -157,38 +157,38 @@ goto: "file://" + |DOC_PATH| + "/test_docs/struct.HeavilyDocumentedStruct.html"
 define-function: (
     "check-colors",
     (theme, heading_color, small_heading_color, heading_border_color),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("assert-css", (
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: (
             ".top-doc .docblock h2",
             {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             ".top-doc .docblock h3",
             {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             ".top-doc .docblock h4",
             {"color": |heading_color|, "border-bottom": "1px solid " + |heading_border_color|},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             ".top-doc .docblock h5",
             {"color": |small_heading_color|, "border-bottom-width": "0px"},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             "#implementations-list .docblock h4",
             {"color": |heading_color|, "border-bottom-width": "0px"},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             "#implementations-list .docblock h5",
             {"color": |small_heading_color|, "border-bottom-width": "0px"},
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             "#implementations-list .docblock h6",
             {"color": |small_heading_color|, "border-bottom-width": "0px"},
-        )),
-    ],
+        )
+    },
 )
 call-function: (
     "check-colors",
@@ -221,11 +221,11 @@ call-function: (
 define-function: (
     "check-since-color",
     (theme),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|}),
-        ("reload"),
-        ("assert-css", (".since", {"color": "rgb(128, 128, 128)"}, ALL)),
-    ],
+    block {
+        local-storage: {"rustdoc-theme": |theme|}
+        reload:
+        assert-css: (".since", {"color": "rgb(128, 128, 128)"}, ALL)
+    },
 )
 
 goto: "file://" + |DOC_PATH| + "/staged_api/struct.Foo.html"

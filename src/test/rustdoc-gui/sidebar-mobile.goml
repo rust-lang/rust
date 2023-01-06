@@ -58,17 +58,17 @@ show-text: true
 define-function: (
     "check-colors",
     (theme, color, background),
-    [
-        ("local-storage", {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}),
-        ("reload"),
+    block {
+        local-storage: {"rustdoc-use-system-theme": "false", "rustdoc-theme": |theme|}
+        reload:
 
         // Open the sidebar menu.
-        ("click", ".sidebar-menu-toggle"),
-        ("assert-css", (".sidebar", {
+        click: ".sidebar-menu-toggle"
+        assert-css: (".sidebar", {
             "background-color": |background|,
             "color": |color|,
-        })),
-    ],
+        })
+    },
 )
 
 call-function: ("check-colors", {
