@@ -60,4 +60,9 @@ mod in_path {
     //~| ERROR missing lifetime specifier
 }
 
+// This must not err, as the `&` actually resolves to `'a`.
+fn resolved_anonymous<'a, T>(f: impl Fn(&'a str) -> &T) {
+    f("f")
+}
+
 fn main() {}
