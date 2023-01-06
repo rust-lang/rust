@@ -1381,18 +1381,29 @@ impl<'a> Builder<'a> {
         // this), as well as #63012 which is the tracking issue for this
         // feature on the rustc side.
         cargo.arg("-Zbinary-dep-depinfo");
-        match mode {
-            Mode::ToolBootstrap => {
-                // Restrict the allowed features to those passed by rustbuild, so we don't depend on nightly accidentally.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo");
+        let allow_features = match mode {
+            Mode::ToolBootstrap | Mode::ToolStd => {
+                // Restrict the allowed features so we don't depend on nightly
+                // accidentally.
+                //
+                // binary-dep-depinfo is used by rustbuild itself for all
+                // compilations.
+                //
+                // Lots of tools depend on proc_macro2 and proc-macro-error.
+                // Those have build scripts which assume nightly features are
+                // available if the `rustc` version is "nighty" or "dev". See
+                // bin/rustc.rs for why that is a problem. Instead of labeling
+                // those features for each individual tool that needs them,
+                // just blanket allow them here.
+                //
+                // If this is ever removed, be sure to add something else in
+                // its place to keep the restrictions in place (or make a way
+                // to unset RUSTC_BOOTSTRAP).
+                "binary-dep-depinfo,proc_macro_span,proc_macro_span_shrink,proc_macro_diagnostic"
+                    .to_string()
             }
-            Mode::ToolStd => {
-                // Right now this is just compiletest and a few other tools that build on stable.
-                // Allow them to use `feature(test)`, but nothing else.
-                rustflags.arg("-Zallow-features=binary-dep-depinfo,test,proc_macro_internals,proc_macro_diagnostic,proc_macro_span");
-            }
-            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => {}
-        }
+            Mode::Std | Mode::Rustc | Mode::Codegen | Mode::ToolRustc => String::new(),
+        };
 
         cargo.arg("-j").arg(self.jobs().to_string());
 
@@ -1915,7 +1926,7 @@ impl<'a> Builder<'a> {
             }
         }
 
-        Cargo { command: cargo, rustflags, rustdocflags }
+        Cargo { command: cargo, rustflags, rustdocflags, allow_features }
     }
 
     /// Ensure that a given step is built, returning its output. This will
@@ -2094,6 +2105,7 @@ pub struct Cargo {
     command: Command,
     rustflags: Rustflags,
     rustdocflags: Rustflags,
+    allow_features: String,
 }
 
 impl Cargo {
@@ -2138,6 +2150,18 @@ impl Cargo {
         self.command.current_dir(dir);
         self
     }
+
+    /// Adds nightly-only features that this invocation is allowed to use.
+    ///
+    /// By default, all nightly features are allowed. Once this is called, it
+    /// will be restricted to the given set.
+    pub fn allow_features(&mut self, features: &str) -> &mut Cargo {
+        if !self.allow_features.is_empty() {
+            self.allow_features.push(',');
+        }
+        self.allow_features.push_str(features);
+        self
+    }
 }
 
 impl From<Cargo> for Command {
@@ -2150,6 +2174,10 @@ impl From<Cargo> for Command {
         let rustdocflags = &cargo.rustdocflags.0;
         if !rustdocflags.is_empty() {
             cargo.command.env("RUSTDOCFLAGS", rustdocflags);
+        }
+
+        if !cargo.allow_features.is_empty() {
+            cargo.command.env("RUSTC_ALLOW_FEATURES", cargo.allow_features);
         }
 
         cargo.command
