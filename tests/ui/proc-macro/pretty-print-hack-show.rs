@@ -1,11 +1,8 @@
 // aux-build:test-macros.rs
 // compile-flags: -Z span-debug
 // revisions: local remapped
-// [remapped]compile-flags: --remap-path-prefix={{src-base}}=remapped
-
-// The remapped paths are not normalized by compiletest.
-// normalize-stdout-test: "\\(proc-macro|pretty-print-hack)" -> "/$1"
-// normalize-stderr-test: "\\(proc-macro|pretty-print-hack)" -> "/$1"
+// [local] no-remap-src-base: The hack should work regardless of remapping.
+// [remapped] remap-src-base
 
 #![no_std] // Don't load unnecessary hygiene information from std
 extern crate std;

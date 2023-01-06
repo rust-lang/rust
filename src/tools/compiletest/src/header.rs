@@ -278,6 +278,9 @@ impl TestProps {
     /// `//[foo]`), then the property is ignored unless `cfg` is
     /// `Some("foo")`.
     fn load_from(&mut self, testfile: &Path, cfg: Option<&str>, config: &Config) {
+        // Mode-dependent defaults.
+        self.remap_src_base = config.mode == Mode::Ui && !config.suite.contains("rustdoc");
+
         let mut has_edition = false;
         if !testfile.is_dir() {
             let file = File::open(testfile).unwrap();

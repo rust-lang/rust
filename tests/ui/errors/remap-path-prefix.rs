@@ -1,4 +1,5 @@
 // compile-flags: --remap-path-prefix={{src-base}}=remapped
+// no-remap-src-base: Manually remap, so the remapped path remains in .stderr file.
 
 // The remapped paths are not normalized by compiletest.
 // normalize-stderr-test: "\\(errors)" -> "/$1"
