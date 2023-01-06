@@ -725,6 +725,10 @@ impl Config {
             && matches!(line.as_bytes().get(directive.len()), None | Some(&b' ') | Some(&b':'))
     }
 
+    fn parse_negative_name_directive(&self, line: &str, directive: &str) -> bool {
+        line.starts_with("no-") && self.parse_name_directive(&line[3..], directive)
+    }
+
     pub fn parse_name_value_directive(&self, line: &str, directive: &str) -> Option<String> {
         let colon = directive.len();
         if line.starts_with(directive) && line.as_bytes().get(colon) == Some(&b':') {
@@ -754,8 +758,17 @@ impl Config {
     }
 
     fn set_name_directive(&self, line: &str, directive: &str, value: &mut bool) {
-        if !*value {
-            *value = self.parse_name_directive(line, directive)
+        match value {
+            true => {
+                if self.parse_negative_name_directive(line, directive) {
+                    *value = false;
+                }
+            }
+            false => {
+                if self.parse_name_directive(line, directive) {
+                    *value = true;
+                }
+            }
         }
     }
 
