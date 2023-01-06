@@ -531,7 +531,7 @@ impl<T, A: Allocator + Clone> RawTable<T, A> {
     #[inline]
     #[cfg(feature = "raw")]
     pub fn allocation_info(&self) -> (NonNull<u8>, Layout) {
-        self.table.allocation_info(Self::TABLE_LAYOUT)
+        self.table.allocation_info_or_zero(Self::TABLE_LAYOUT)
     }
 
     /// Returns the index of a bucket from a `Bucket`.
@@ -1589,6 +1589,11 @@ impl<A: Allocator + Clone> RawTableInner<A> {
 
     #[inline]
     fn allocation_info(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
+        debug_assert!(
+            !self.is_empty_singleton(),
+            "this function can only be called on non-empty tables"
+        );
+
         // Avoid `Option::unwrap_or_else` because it bloats LLVM IR.
         let (layout, ctrl_offset) = match table_layout.calculate_layout_for(self.buckets()) {
             Some(lco) => lco,
@@ -1598,6 +1603,15 @@ impl<A: Allocator + Clone> RawTableInner<A> {
             unsafe { NonNull::new_unchecked(self.ctrl.as_ptr().sub(ctrl_offset)) },
             layout,
         )
+    }
+
+    #[cfg(feature = "raw")]
+    fn allocation_info_or_zero(&self, table_layout: TableLayout) -> (NonNull<u8>, Layout) {
+        if self.is_empty_singleton() {
+            (NonNull::dangling(), Layout::new::<()>())
+        } else {
+            self.allocation_info(table_layout)
+        }
     }
 
     /// Marks all table buckets as empty without dropping their contents.
