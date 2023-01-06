@@ -671,7 +671,7 @@ fn option_env_expand(
 
     let expanded = match get_env_inner(db, arg_id, &key) {
         None => quote! { #DOLLAR_CRATE::option::Option::None::<&str> },
-        Some(s) => quote! { #DOLLAR_CRATE::option::Some(#s) },
+        Some(s) => quote! { #DOLLAR_CRATE::option::Option::Some(#s) },
     };
 
     ExpandResult::ok(ExpandedEager::new(expanded))
