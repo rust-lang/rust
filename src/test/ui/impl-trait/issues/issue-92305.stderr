@@ -7,7 +7,7 @@ LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec> {
 help: add missing generic argument
    |
 LL | fn f<T>(data: &[T]) -> impl Iterator<Item = Vec<T>> {
-   |                                             ~~~~~~
+   |                                                +++
 
 error: aborting due to previous error
 
