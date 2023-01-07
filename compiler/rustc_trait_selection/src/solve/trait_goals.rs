@@ -13,8 +13,8 @@ use rustc_infer::traits::query::NoSolution;
 use rustc_infer::traits::util::supertraits;
 use rustc_infer::traits::ObligationCause;
 use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
-use rustc_middle::ty::TraitPredicate;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_middle::ty::{TraitPredicate, TypeVisitable};
 use rustc_span::DUMMY_SP;
 use rustc_target::spec::abi::Abi;
 
@@ -273,6 +273,53 @@ impl<'tcx> assembly::GoalKind<'tcx> for TraitPredicate<'tcx> {
             // FIXME: This needs to validate that `fn() -> TY` has `TY: Sized`.
             match_poly_trait_ref_against_goal(acx, goal, found_trait_ref, CandidateSource::Fn);
         })
+    }
+
+    fn consider_builtin_trait_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    ) {
+        let lang_items = acx.cx.tcx.lang_items();
+        let trait_def_id = goal.predicate.def_id();
+        let self_ty = goal.predicate.self_ty();
+
+        if Some(trait_def_id) == lang_items.sized_trait() {
+            if self_ty.is_trivially_sized(acx.cx.tcx) {
+                acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
+            }
+        } else if Some(trait_def_id) == lang_items.copy_trait()
+            || Some(trait_def_id) == lang_items.clone_trait()
+        {
+            // FIXME
+        } else if Some(trait_def_id) == lang_items.discriminant_kind_trait()
+            || Some(trait_def_id) == lang_items.pointee_trait()
+        {
+            // `Pointee` and `DiscriminantKind` are implemented by all traits unconditionally
+            acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
+        } else if Some(trait_def_id) == lang_items.tuple_trait() {
+            match *self_ty.kind() {
+                ty::Infer(ty::TyVar(_)) => todo!("ambiguous"),
+                ty::Tuple(_) => acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes),
+                _ => {}
+            }
+        } else if Some(trait_def_id) == lang_items.pointer_sized() {
+            let erased_self_ty = acx.cx.tcx.erase_regions(self_ty);
+            if erased_self_ty.has_non_region_infer() {
+                todo!("ambiguous")
+            }
+            let usize_layout =
+                acx.cx.tcx.layout_of(ty::ParamEnv::empty().and(acx.cx.tcx.types.usize)).unwrap();
+            if let Ok(layout) = acx.cx.tcx.layout_of(goal.param_env.and(self_ty))
+                && layout.layout.size() == usize_layout.layout.size()
+                && layout.layout.align().abi == usize_layout.layout.align().abi
+            {
+                acx.try_insert_candidate(CandidateSource::Builtin, Certainty::Yes);
+            }
+        } else if Some(trait_def_id) == lang_items.coerce_unsized_trait()
+            || Some(trait_def_id) == lang_items.unsize_trait()
+        {
+            // FIXME
+        }
     }
 }
 

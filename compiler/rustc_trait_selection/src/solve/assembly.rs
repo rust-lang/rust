@@ -80,6 +80,11 @@ pub(super) trait GoalKind<'tcx>: TypeFoldable<'tcx> + Copy {
         bound_sig: ty::PolyFnSig<'tcx>,
         tuple_arguments: TupleArgumentsFlag,
     );
+
+    fn consider_builtin_trait_candidates(
+        acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        goal: Goal<'tcx, Self>,
+    );
 }
 
 /// An abstraction which correctly deals with the canonical results for candidates.
@@ -114,6 +119,8 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
         acx.assemble_trait_alias_candidates(goal);
 
         acx.assemble_fn_like_candidates(goal);
+
+        G::consider_builtin_trait_candidates(&mut acx, goal);
 
         acx.candidates
     }

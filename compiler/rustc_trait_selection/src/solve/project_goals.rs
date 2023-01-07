@@ -257,6 +257,13 @@ impl<'tcx> assembly::GoalKind<'tcx> for ProjectionPredicate<'tcx> {
     ) {
         todo!()
     }
+
+    fn consider_builtin_trait_candidates(
+        _acx: &mut AssemblyCtxt<'_, 'tcx, Self>,
+        _goal: Goal<'tcx, Self>,
+    ) {
+        todo!();
+    }
 }
 
 /// This behavior is also implemented in `rustc_ty_utils` and in the old `project` code.
