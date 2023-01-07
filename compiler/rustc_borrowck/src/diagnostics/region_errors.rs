@@ -583,9 +583,11 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let err = FnMutError {
             span: *span,
             ty_err: match output_ty.kind() {
-                ty::Closure(_, _) => FnMutReturnTypeErr::ReturnClosure { span: *span },
                 ty::Generator(def, ..) if self.infcx.tcx.generator_is_async(*def) => {
                     FnMutReturnTypeErr::ReturnAsyncBlock { span: *span }
+                }
+                _ if output_ty.contains_closure() => {
+                    FnMutReturnTypeErr::ReturnClosure { span: *span }
                 }
                 _ => FnMutReturnTypeErr::ReturnRef { span: *span },
             },
@@ -997,7 +999,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
     fn suggest_move_on_borrowing_closure(&self, diag: &mut Diagnostic) {
         let map = self.infcx.tcx.hir();
         let body_id = map.body_owned_by(self.mir_def_id());
-        let expr = &map.body(body_id).value;
+        let expr = &map.body(body_id).value.peel_blocks();
         let mut closure_span = None::<rustc_span::Span>;
         match expr.kind {
             hir::ExprKind::MethodCall(.., args, _) => {
@@ -1012,20 +1014,14 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     }
                 }
             }
-            hir::ExprKind::Block(blk, _) => {
-                if let Some(expr) = blk.expr {
-                    // only when the block is a closure
-                    if let hir::ExprKind::Closure(hir::Closure {
-                        capture_clause: hir::CaptureBy::Ref,
-                        body,
-                        ..
-                    }) = expr.kind
-                    {
-                        let body = map.body(*body);
-                        if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
-                            closure_span = Some(expr.span.shrink_to_lo());
-                        }
-                    }
+            hir::ExprKind::Closure(hir::Closure {
+                capture_clause: hir::CaptureBy::Ref,
+                body,
+                ..
+            }) => {
+                let body = map.body(*body);
+                if !matches!(body.generator_kind, Some(hir::GeneratorKind::Async(..))) {
+                    closure_span = Some(expr.span.shrink_to_lo());
                 }
             }
             _ => {}
