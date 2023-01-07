@@ -2494,6 +2494,17 @@ impl Import {
     pub(crate) fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
         Self { kind: ImportKind::Glob, source, should_be_displayed }
     }
+
+    pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.source.did {
+            Some(did) => tcx
+                .get_attrs(did, sym::doc)
+                .filter_map(ast::Attribute::meta_item_list)
+                .flatten()
+                .has_word(sym::hidden),
+            None => false,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]

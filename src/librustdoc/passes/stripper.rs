@@ -248,6 +248,7 @@ pub(crate) struct ImportStripper<'tcx> {
 impl<'tcx> DocFolder for ImportStripper<'tcx> {
     fn fold_item(&mut self, i: Item) -> Option<Item> {
         match *i.kind {
+            clean::ImportItem(imp) if imp.imported_item_is_doc_hidden(self.tcx) => None,
             clean::ExternCrateItem { .. } | clean::ImportItem(..)
                 if i.visibility(self.tcx) != Some(Visibility::Public) =>
             {
