@@ -256,7 +256,8 @@ So, no need to manually enter those Unicode characters!
 
 ### Adding a warning block
 
-If you want to make a "warning" stand out in the documentation, you can wrap it like this:
+If you want to make a warning or similar note stand out in the documentation,
+you can wrap it like this:
 
 ```md
 /// documentation
