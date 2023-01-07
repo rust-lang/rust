@@ -512,6 +512,8 @@ impl<'a> InferenceContext<'a> {
     fn resolve_all(self) -> InferenceResult {
         let InferenceContext { mut table, mut result, .. } = self;
 
+        table.fallback_if_possible();
+
         // FIXME resolve obligations as well (use Guidance if necessary)
         table.resolve_obligations_as_possible();
 

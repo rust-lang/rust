@@ -557,6 +557,7 @@ version = "0.0.0"
 dependencies = [
  "arrayvec",
  "base-db",
+ "bitflags",
  "chalk-derive",
  "chalk-ir",
  "chalk-recursive",
