@@ -3,10 +3,11 @@ use rustc_index::bit_set::HybridBitSet;
 use rustc_index::interval::IntervalSet;
 use rustc_infer::infer::canonical::QueryRegionConstraints;
 use rustc_middle::mir::{BasicBlock, Body, ConstraintCategory, Local, Location};
-use rustc_middle::ty::{Ty, TypeVisitable};
+use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitable, TypeVisitor};
 use rustc_trait_selection::traits::query::dropck_outlives::DropckOutlivesResult;
 use rustc_trait_selection::traits::query::type_op::outlives::DropckOutlives;
 use rustc_trait_selection::traits::query::type_op::{TypeOp, TypeOpOutput};
+use std::ops::ControlFlow;
 use std::rc::Rc;
 
 use rustc_mir_dataflow::impls::MaybeInitializedPlaces;
@@ -551,16 +552,7 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             values::location_set_str(elements, live_at.iter()),
         );
 
-        let tcx = typeck.tcx();
-        tcx.for_each_free_region(&value, |live_region| {
-            let live_region_vid =
-                typeck.borrowck_context.universal_regions.to_region_vid(live_region);
-            typeck
-                .borrowck_context
-                .constraints
-                .liveness_constraints
-                .add_elements(live_region_vid, live_at);
-        });
+        value.visit_with(&mut LivenessMarker { live_at, typeck, outer_index: ty::INNERMOST });
     }
 
     fn compute_drop_data(
@@ -574,5 +566,60 @@ impl<'tcx> LivenessContext<'_, '_, '_, 'tcx> {
             param_env.and(DropckOutlives::new(dropped_ty)).fully_perform(typeck.infcx).unwrap();
 
         DropData { dropck_result: output, region_constraint_data: constraints }
+    }
+}
+
+struct LivenessMarker<'tcx, 'a, 'b, 'c> {
+    live_at: &'a IntervalSet<PointIndex>,
+    typeck: &'b mut TypeChecker<'c, 'tcx>,
+    outer_index: ty::DebruijnIndex,
+}
+
+impl<'tcx> TypeVisitor<'tcx> for LivenessMarker<'tcx, '_, '_, '_> {
+    type BreakTy = !;
+
+    fn visit_binder<T: TypeVisitable<'tcx>>(
+        &mut self,
+        t: &ty::Binder<'tcx, T>,
+    ) -> ControlFlow<Self::BreakTy> {
+        self.outer_index.shift_in(1);
+        let result = t.super_visit_with(self);
+        self.outer_index.shift_out(1);
+        result
+    }
+
+    fn visit_region(&mut self, r: ty::Region<'tcx>) -> ControlFlow<Self::BreakTy> {
+        match *r {
+            ty::ReLateBound(debruijn, _) if debruijn < self.outer_index => ControlFlow::CONTINUE,
+            _ => {
+                let live_region_vid =
+                    self.typeck.borrowck_context.universal_regions.to_region_vid(r);
+                self.typeck
+                    .borrowck_context
+                    .constraints
+                    .liveness_constraints
+                    .add_elements(live_region_vid, self.live_at);
+                ControlFlow::CONTINUE
+            }
+        }
+    }
+
+    fn visit_ty(&mut self, ty: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+        // We're only interested in types involving regions
+        if ty.has_free_regions() {
+            if let ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) = ty.kind() {
+                let variances = self.typeck.tcx().variances_of(def_id);
+                for (&v, s) in std::iter::zip(variances, *substs) {
+                    if v != ty::Bivariant {
+                        s.visit_with(self);
+                    }
+                }
+                ControlFlow::CONTINUE
+            } else {
+                ty.super_visit_with(self)
+            }
+        } else {
+            ControlFlow::CONTINUE
+        }
     }
 }

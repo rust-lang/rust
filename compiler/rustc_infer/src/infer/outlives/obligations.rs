@@ -446,7 +446,8 @@ where
         if approx_env_bounds.is_empty() && trait_bounds.is_empty() && (needs_infer || is_opaque) {
             debug!("no declared bounds");
 
-            self.substs_must_outlive(substs, origin, region);
+            let opt_variances = is_opaque.then(|| self.tcx.variances_of(def_id));
+            self.substs_must_outlive(substs, origin, region, opt_variances);
 
             return;
         }
@@ -498,22 +499,31 @@ where
         self.delegate.push_verify(origin, generic, region, verify_bound);
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn substs_must_outlive(
         &mut self,
         substs: SubstsRef<'tcx>,
         origin: infer::SubregionOrigin<'tcx>,
         region: ty::Region<'tcx>,
+        opt_variances: Option<&[ty::Variance]>,
     ) {
         let constraint = origin.to_constraint_category();
-        for k in substs {
+        for (index, k) in substs.iter().enumerate() {
             match k.unpack() {
                 GenericArgKind::Lifetime(lt) => {
-                    self.delegate.push_sub_region_constraint(
-                        origin.clone(),
-                        region,
-                        lt,
-                        constraint,
-                    );
+                    let variance = if let Some(variances) = opt_variances {
+                        variances[index]
+                    } else {
+                        ty::Invariant
+                    };
+                    if variance == ty::Invariant {
+                        self.delegate.push_sub_region_constraint(
+                            origin.clone(),
+                            region,
+                            lt,
+                            constraint,
+                        );
+                    }
                 }
                 GenericArgKind::Type(ty) => {
                     self.type_must_outlive(origin.clone(), ty, region, constraint);
