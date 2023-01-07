@@ -1,10 +1,11 @@
 //! Error Reporting for `impl` items that do not match the obligations from their `trait`.
 
+use crate::errors::{ConsiderBorrowingParamHelp, RelationshipHelp, TraitImplDiff};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::Subtype;
 use crate::traits::ObligationCauseCode::CompareImplItemObligation;
-use rustc_errors::{ErrorGuaranteed, MultiSpan};
+use rustc_errors::ErrorGuaranteed;
 use rustc_hir as hir;
 use rustc_hir::def::Res;
 use rustc_hir::def_id::DefId;
@@ -51,10 +52,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         trait_def_id: DefId,
     ) -> ErrorGuaranteed {
         let trait_sp = self.tcx().def_span(trait_def_id);
-        let mut err = self
-            .tcx()
-            .sess
-            .struct_span_err(sp, "`impl` item signature doesn't match `trait` item signature");
 
         // Mark all unnamed regions in the type with a number.
         // This diagnostic is called in response to lifetime errors, so be informative.
@@ -91,9 +88,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let found =
             self.cx.extract_inference_diagnostics_data(found.into(), Some(found_highlight)).name;
 
-        err.span_label(sp, &format!("found `{}`", found));
-        err.span_label(trait_sp, &format!("expected `{}`", expected));
-
         // Get the span of all the used type parameters in the method.
         let assoc_item = self.tcx().associated_item(trait_def_id);
         let mut visitor = TypeParamSpanVisitor { tcx: self.tcx(), types: vec![] };
@@ -110,26 +104,18 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             }
             _ => {}
         }
-        let mut type_param_span: MultiSpan = visitor.types.to_vec().into();
-        for &span in &visitor.types {
-            type_param_span
-                .push_span_label(span, "consider borrowing this type parameter in the trait");
-        }
 
-        err.note(&format!("expected `{}`\n   found `{}`", expected, found));
+        let diag = TraitImplDiff {
+            sp,
+            trait_sp,
+            note: (),
+            param_help: ConsiderBorrowingParamHelp { spans: visitor.types.to_vec() },
+            rel_help: visitor.types.is_empty().then_some(RelationshipHelp),
+            expected,
+            found,
+        };
 
-        err.span_help(
-            type_param_span,
-            "the lifetime requirements from the `impl` do not correspond to the requirements in \
-             the `trait`",
-        );
-        if visitor.types.is_empty() {
-            err.help(
-                "verify the lifetime relationships in the `trait` and `impl` between the `self` \
-                 argument, the other inputs and its output",
-            );
-        }
-        err.emit()
+        self.tcx().sess.emit_err(diag)
     }
 }
 
