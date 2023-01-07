@@ -982,7 +982,8 @@ pub struct Resolver<'a, 'tcx> {
     has_pub_restricted: bool,
     // trait def -> restriction scope
     impl_restrictions: FxHashMap<DefId, ty::Restriction>,
-    mut_restrictions: FxHashMap<LocalDefId, ty::Restriction>,
+    // field def -> restriction scope
+    mut_restrictions: FxHashMap<DefId, ty::Restriction>,
     used_imports: FxHashSet<NodeId>,
     maybe_unused_trait_imports: FxIndexSet<LocalDefId>,
 

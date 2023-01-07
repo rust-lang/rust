@@ -163,7 +163,7 @@ pub struct ResolverOutputs {
 pub struct ResolverGlobalCtxt {
     pub visibilities: FxHashMap<LocalDefId, Visibility>,
     pub impl_restrictions: FxHashMap<DefId, Restriction>,
-    pub mut_restrictions: FxHashMap<LocalDefId, Restriction>,
+    pub mut_restrictions: FxHashMap<DefId, Restriction>,
     /// This field is used to decide whether we should make `PRIVATE_IN_PUBLIC` a hard error.
     pub has_pub_restricted: bool,
     /// Item with a given `LocalDefId` was defined during macro expansion with ID `ExpnId`.
@@ -2199,7 +2199,6 @@ pub struct FieldDef {
     pub did: DefId,
     pub name: Symbol,
     pub vis: Visibility<DefId>,
-    pub mut_restriction: Restriction,
 }
 
 impl PartialEq for FieldDef {
@@ -2212,9 +2211,9 @@ impl PartialEq for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did: lhs_did, name: _, vis: _, mut_restriction: _ } = &self;
+        let Self { did: lhs_did, name: _, vis: _ } = &self;
 
-        let Self { did: rhs_did, name: _, vis: _, mut_restriction: _ } = other;
+        let Self { did: rhs_did, name: _, vis: _ } = other;
 
         let res = lhs_did == rhs_did;
 
@@ -2240,7 +2239,7 @@ impl Hash for FieldDef {
         // of `FieldDef` changes, a compile-error will be produced, reminding
         // us to revisit this assumption.
 
-        let Self { did, name: _, vis: _, mut_restriction: _ } = &self;
+        let Self { did, name: _, vis: _ } = &self;
 
         did.hash(s)
     }

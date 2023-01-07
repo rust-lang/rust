@@ -1713,8 +1713,9 @@ rustc_queries! {
         desc { "computing the uninhabited predicate of `{}`", key }
     }
 
-    query mut_restriction(def_id: LocalDefId) -> ty::Restriction {
-        desc { |tcx| "computing mut restriction for `{}`", tcx.def_path_str(def_id.to_def_id()) }
+    query mut_restriction(def_id: DefId) -> ty::Restriction {
+        desc { |tcx| "computing mut restriction for `{}`", tcx.def_path_str(def_id) }
+        separate_provide_extern
     }
 
     query check_mut_restriction(def_id: LocalDefId) {
