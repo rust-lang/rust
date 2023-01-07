@@ -31,6 +31,7 @@ Original by Dempfi (https://github.com/dempfi/ayu)
 	--codeblock-error-color: rgba(255, 0, 0, .5);
 	--codeblock-ignore-hover-color: rgb(255, 142, 0);
 	--codeblock-ignore-color: rgba(255, 142, 0, .6);
+	--warning-border-color: rgb(255, 142, 0);
 	--type-link-color: #ffa0a5;
 	--trait-link-color: #39afd7;
 	--assoc-item-link-color: #39afd7;
