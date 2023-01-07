@@ -1440,16 +1440,15 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     /// }
     /// ```
     ///
-    /// we will create a TAIT definition in the HIR like
+    /// we will create a TAIT definition in the HIR like and return a type like `TestReturn<'a, T>`,
+    /// so that the function looks like:
     ///
-    /// ```ignore (type alias is not used)
-    /// type TestReturn<'a, T, 'x> = impl Debug + 'x
-    /// ```
+    /// ```rust
+    /// #![feature(type_alias_impl_trait)]
+    /// use std::fmt::Debug;
+    /// type TestReturn<'x, 'a, T: Debug + 'a> = impl Debug + 'a;
+    /// fn test<'x, 'a, T: Debug>(x: &'a T) -> TestReturn<'x, 'a, T> { x }
     ///
-    /// and return a type like `TestReturn<'static, T, 'a>`, so that the function looks like:
-    ///
-    /// ```ignore (cannot compile TAIT example with 'static lifetime)
-    /// fn test<'a, T: Debug>(x: &'a T) -> TestReturn<'static, T, 'a>
     /// ```
     ///
     /// Note the subtlety around type parameters! The new TAIT, `TestReturn`, inherits all the

@@ -14,8 +14,8 @@ use rustc_middle::ty::{self, Region, TyCtxt};
 /// br - the bound region corresponding to the above region which is of type `BrAnon(_)`
 ///
 /// # Example
-/// ```compile_fail,E0623
-/// fn foo(x: &mut Vec<&u8>, y: &u8)
+/// ```
+/// fn foo<'a>(x: &mut Vec<&'a u8>, y: &'a u8)
 ///    { x.push(y); }
 /// ```
 /// The function returns the nested type corresponding to the anonymous region

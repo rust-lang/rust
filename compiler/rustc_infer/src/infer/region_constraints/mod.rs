@@ -238,9 +238,15 @@ pub enum VerifyBound<'tcx> {
 /// like this:
 ///
 /// ```rust
-/// fn foo<'a, 'b, T: SomeTrait<'a>>
+/// # trait SomeTrait<'a> {
+/// #    type Item;
+/// # }
+/// fn foo<'a, 'b, T: SomeTrait<'a>>()
 /// where
 ///    <T as SomeTrait<'a>>::Item: 'b
+/// {
+///
+/// }
 /// ```
 ///
 /// If we have an obligation like `<T as SomeTrait<'?x>>::Item: 'c`, then
@@ -253,7 +259,15 @@ pub enum VerifyBound<'tcx> {
 /// for cases like
 ///
 /// ```rust
-/// where for<'a> <T as SomeTrait<'a>::Item: 'a
+/// # trait SomeTrait<'a> {
+/// #    type Item;
+/// # }
+/// fn foo<'a, 'b, T: SomeTrait<'a>>()
+/// where
+///     <T as SomeTrait<'a>>::Item: 'a
+/// {
+///
+/// }
 /// ```
 ///
 /// The idea is that we have to find some instantiation of `'a` that can

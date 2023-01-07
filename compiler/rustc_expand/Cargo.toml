@@ -4,9 +4,6 @@ version = "0.0.0"
 edition = "2021"
 build = false
 
-[lib]
-doctest = false
-
 [dependencies]
 crossbeam-channel = "0.5.0"
 rustc_ast_passes = { path = "../rustc_ast_passes" }

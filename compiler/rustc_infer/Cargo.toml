@@ -3,9 +3,6 @@ name = "rustc_infer"
 version = "0.0.0"
 edition = "2021"
 
-[lib]
-doctest = false
-
 [dependencies]
 tracing = "0.1"
 rustc_middle = { path = "../rustc_middle" }

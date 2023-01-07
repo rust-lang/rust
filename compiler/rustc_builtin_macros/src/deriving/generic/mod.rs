@@ -1036,16 +1036,17 @@ impl<'a> MethodDef<'a> {
     /// ```
     /// But if the struct is `repr(packed)`, we can't use something like
     /// `&self.x` because that might cause an unaligned ref. So for any trait
-    /// method that takes a reference, we use a local block to force a copy.
-    /// This requires that the field impl `Copy`.
-    /// ```
+    /// method that takes a reference, if the struct impls `Copy` then we use a
+    /// local block to force a copy:
+    /// ```rust
     /// # struct A { x: u8, y: u8 }
     /// impl PartialEq for A {
     ///     fn eq(&self, other: &A) -> bool {
     ///         // Desugars to `{ self.x }.eq(&{ other.y }) && ...`
-    ///         { self.x } == { other.y } && { self.y } == { other.y }
+    ///         ({ self.x } == { other.y } && { self.y } == { other.y })
     ///     }
     /// }
+    /// # use std::hash::Hash;
     /// impl Hash for A {
     ///     fn hash<__H: ::core::hash::Hasher>(&self, state: &mut __H) -> () {
     ///         ::core::hash::Hash::hash(&{ self.x }, state);
