@@ -1,6 +1,7 @@
 use crate::walk::{filter_dirs, walk};
 use serde::Deserialize;
 use std::path::Path;
+use toml::Value;
 
 #[derive(Deserialize)]
 struct Config {}
@@ -12,7 +13,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         if filename != "triagebot.toml" {
             return;
         }
-        let conf: Result<Config, toml::de::Error> = toml::from_str(contents);
+        let conf = contents.parse::<Value>();
         match conf {
             Ok(_) => {}
             Err(_err) => {
