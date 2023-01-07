@@ -75,7 +75,7 @@ use crate::str::{self, from_utf8_unchecked_mut, Chars, Utf8Error};
 #[cfg(not(no_global_oom_handling))]
 use crate::str::{from_boxed_utf8_unchecked, FromStr};
 use crate::vec::Vec;
-use crate::vec::DEFAULT_COOP_PREFERRED;
+use crate::DEFAULT_COOP_PREFERRED;
 
 /// A UTF-8–encoded, growable string.
 ///
@@ -369,7 +369,8 @@ use crate::vec::DEFAULT_COOP_PREFERRED;
 #[derive(PartialOrd, Eq, Ord)]
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(test), lang = "String")]
-pub struct String<const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+pub struct String<const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()}>
 where
     [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
@@ -2639,7 +2640,8 @@ where
 /// [`Display`]: fmt::Display
 #[cfg_attr(not(test), rustc_diagnostic_item = "ToString")]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait ToString<const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+pub trait ToString<const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()}>
 where
     [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
@@ -3088,7 +3090,8 @@ where
 ///
 /// [`drain`]: String::drain
 #[stable(feature = "drain", since = "1.6.0")]
-pub struct Drain<'a, const COOP_PREFERRED: bool = DEFAULT_COOP_PREFERRED>
+#[allow(unused_braces)]
+pub struct Drain<'a, const COOP_PREFERRED: bool = {DEFAULT_COOP_PREFERRED!()}>
 where
     [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
 {
