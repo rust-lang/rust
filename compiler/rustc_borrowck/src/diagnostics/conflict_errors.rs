@@ -1,6 +1,4 @@
-use crate::diagnostics::mutability_errors::mut_borrow_of_mutable_ref;
 use either::Either;
-use hir::Closure;
 use rustc_const_eval::util::CallKind;
 use rustc_data_structures::captures::Captures;
 use rustc_data_structures::fx::FxHashSet;
@@ -8,6 +6,7 @@ use rustc_errors::{
     struct_span_err, Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan,
 };
 use rustc_hir as hir;
+use rustc_hir::def::Res;
 use rustc_hir::intravisit::{walk_block, walk_expr, Visitor};
 use rustc_hir::{AsyncGeneratorKind, GeneratorKind, LangItem};
 use rustc_infer::infer::TyCtxtInferExt;
@@ -31,6 +30,7 @@ use crate::borrowck_errors;
 
 use crate::diagnostics::conflict_errors::StorageDeadOrDrop::LocalStorageDead;
 use crate::diagnostics::find_all_local_uses;
+use crate::diagnostics::mutability_errors::mut_borrow_of_mutable_ref;
 use crate::{
     borrow_set::BorrowData, diagnostics::Instance, prefixes::IsPrefixOf,
     InitializationRequiringAction, MirBorrowckCtxt, PrefixSet, WriteKind,
@@ -40,8 +40,6 @@ use super::{
     explain_borrow::{BorrowExplanation, LaterUseKind},
     DescribePlaceOpt, RegionName, RegionNameSource, UseSpans,
 };
-
-use rustc_hir::def::Res;
 
 #[derive(Debug)]
 struct MoveSite {
@@ -1280,7 +1278,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         impl<'hir> Visitor<'hir> for ExpressionFinder<'hir> {
             fn visit_expr(&mut self, e: &'hir hir::Expr<'hir>) {
                 if e.span.contains(self.capture_span) {
-                    if let hir::ExprKind::Closure(&Closure {
+                    if let hir::ExprKind::Closure(&hir::Closure {
                             movability: None,
                             body,
                             fn_arg_span,
@@ -1311,7 +1309,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if let hir::Pat { kind: hir::PatKind::Binding(_, hir_id, _ident, _), .. } = local.pat &&
                     let Some(init) = local.init
                 {
-                    if let hir::Expr { kind: hir::ExprKind::Closure(&Closure {
+                    if let hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure {
                             movability: None,
                             ..
                         }), .. } = init &&
@@ -1328,11 +1326,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     let hir::QPath::Resolved(_, hir::Path { segments: [seg], ..}) = path &&
                     let Res::Local(hir_id) = seg.res &&
                         Some(hir_id) == self.closure_local_id {
-                        let mut arg_str = "self".to_string();
-                        if args.len() > 0 {
-                            arg_str.push_str(", ");
-                        }
-                        self.closure_call_changes.push((seg.ident.span, arg_str));
+                        let (span, arg_str) = if args.len() > 0 {
+                            (args[0].span.shrink_to_lo(), "self, ".to_string())
+                        } else {
+                            let span = e.span.trim_start(seg.ident.span).unwrap_or(e.span);
+                            (span, "(self)".to_string())
+                        };
+                        self.closure_call_changes.push((span, arg_str));
                 }
                 hir::intravisit::walk_stmt(self, s);
             }
@@ -1369,9 +1369,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             }
 
             for (span, suggest) in finder.closure_call_changes {
-                if  let Ok(span) = sm.span_extend_while(span, |c| c != '(') {
-                    sugg.push((sm.next_point(span).shrink_to_hi(), suggest));
-                }
+                sugg.push((span, suggest));
             }
 
             err.multipart_suggestion_verbose(
