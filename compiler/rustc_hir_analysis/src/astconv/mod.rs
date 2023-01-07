@@ -1199,17 +1199,26 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     (_, _) => {
                         let got = if let Some(_) = term.ty() { "type" } else { "constant" };
                         let expected = def_kind.descr(assoc_item_def_id);
-                        let reported = tcx
-                            .sess
-                            .struct_span_err(
+                        let mut err = tcx.sess.struct_span_err(
+                            binding.span,
+                            &format!("expected {expected} bound, found {got}"),
+                        );
+                        err.span_note(
+                            tcx.def_span(assoc_item_def_id),
+                            &format!("{expected} defined here"),
+                        );
+
+                        if let hir::def::DefKind::AssocConst = def_kind
+                          && let Some(t) = term.ty() && (t.is_enum() || t.references_error())
+                          && tcx.features().associated_const_equality {
+                            err.span_suggestion(
                                 binding.span,
-                                &format!("expected {expected} bound, found {got}"),
-                            )
-                            .span_note(
-                                tcx.def_span(assoc_item_def_id),
-                                &format!("{expected} defined here"),
-                            )
-                            .emit();
+                                "if equating a const, try wrapping with braces",
+                                format!("{} = {{ const }}", binding.item_name),
+                                Applicability::HasPlaceholders,
+                            );
+                        }
+                        let reported = err.emit();
                         term = match def_kind {
                             hir::def::DefKind::AssocTy => {
                                 tcx.ty_error_with_guaranteed(reported).into()
