@@ -1655,10 +1655,6 @@ in storage.js
 		margin-top: 1em;
 	}
 
-	.content {
-		margin-left: 0px;
-	}
-
 	.anchor {
 		display: none !important;
 	}
