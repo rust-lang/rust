@@ -157,7 +157,10 @@ impl<'a, 'tcx, G: GoalKind<'tcx>> AssemblyCtxt<'a, 'tcx, G> {
 
             // NOTE: Alternatively we could call `evaluate_goal` here and only have a `Normalized` candidate.
             // This doesn't work as long as we use `CandidateSource` in both winnowing and to resolve associated items.
-            let goal = goal.with(tcx, goal.predicate.with_self_ty(tcx, normalized_ty));
+            let goal = goal.with(
+                tcx,
+                goal.predicate.with_self_ty(tcx, self.infcx.shallow_resolve(normalized_ty)),
+            );
             let mut orig_values = OriginalQueryValues::default();
             let goal = self.infcx.canonicalize_query(goal, &mut orig_values);
             let normalized_candidates =
