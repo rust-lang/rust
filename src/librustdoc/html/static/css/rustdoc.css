@@ -1598,12 +1598,8 @@ in storage.js
 
 	.sidebar.shown,
 	.source-sidebar-expanded .source .sidebar,
-	.sidebar:focus-within {
+	.rustdoc:not(.source) .sidebar:focus-within {
 		left: 0;
-	}
-
-	.rustdoc.source > .sidebar {
-		width: 0;
 	}
 
 	.mobile-topbar h2 {

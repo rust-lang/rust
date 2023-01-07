@@ -171,15 +171,15 @@ assert-css: (
 
 // We now check that the scroll position is kept when opening the sidebar.
 click: "#src-sidebar-toggle"
-wait-for-css: (".sidebar", {"width": "0px"})
+wait-for-css: (".sidebar", {"left": "-1000px"})
 // We scroll to line 117 to change the scroll position.
 scroll-to: '//*[@id="117"]'
 assert-window-property: {"pageYOffset": "2542"}
 // Expanding the sidebar...
 click: "#src-sidebar-toggle"
-wait-for-css: (".sidebar", {"width": "500px"})
+wait-for-css: (".sidebar", {"left": "0px"})
 click: "#src-sidebar-toggle"
-wait-for-css: (".sidebar", {"width": "0px"})
+wait-for-css: (".sidebar", {"left": "-1000px"})
 // The "scrollTop" property should be the same.
 assert-window-property: {"pageYOffset": "2542"}
 
