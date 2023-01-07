@@ -20,13 +20,8 @@ impl<'tcx> MirPass<'tcx> for DeduplicateBlocks {
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-        // Basic blocks can get really big, so to avoid checking for duplicates in basic blocks
-        // that are unlikely to have duplicates, we stop early. The early bail number has been
-        // found experimentally by eprintln while compiling the crates in the rustc-perf suite.
-        let limit = if tcx.sess.mir_opt_level() < 3 { 3 } else { 10 };
-
         debug!("Running DeduplicateBlocks on `{:?}`", body.source);
-        let duplicates = find_duplicates(body, limit);
+        let duplicates = find_duplicates(body);
         let has_opts_to_apply = !duplicates.is_empty();
 
         if has_opts_to_apply {
@@ -59,7 +54,7 @@ impl<'tcx> MutVisitor<'tcx> for OptApplier<'tcx> {
     }
 }
 
-fn find_duplicates(body: &Body<'_>, limit: usize) -> FxHashMap<BasicBlock, BasicBlock> {
+fn find_duplicates(body: &Body<'_>) -> FxHashMap<BasicBlock, BasicBlock> {
     let mut duplicates = FxHashMap::default();
 
     let bbs_to_go_through =
@@ -77,10 +72,6 @@ fn find_duplicates(body: &Body<'_>, limit: usize) -> FxHashMap<BasicBlock, Basic
     // with replacement bb3.
     // When the duplicates are removed, we will end up with only bb3.
     for (bb, bbd) in body.basic_blocks.iter_enumerated().rev().filter(|(_, bbd)| !bbd.is_cleanup) {
-        if bbd.statements.len() > limit {
-            continue;
-        }
-
         let to_hash = BasicBlockHashable { basic_block_data: bbd };
         let entry = same_hashes.entry(to_hash);
         match entry {
