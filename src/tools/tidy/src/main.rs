@@ -27,6 +27,7 @@ fn main() {
     let src_path = root_path.join("src");
     let library_path = root_path.join("library");
     let compiler_path = root_path.join("compiler");
+    let librustdoc_path = src_path.join("librustdoc");
 
     let args: Vec<String> = env::args().skip(1).collect();
 
@@ -79,8 +80,7 @@ fn main() {
         check!(mir_opt_tests, &src_path, bless);
 
         // Checks that only make sense for the compiler.
-        check!(errors, &compiler_path);
-        check!(error_codes_check, &[&src_path, &compiler_path]);
+        check!(error_codes, &root_path, &[&compiler_path, &librustdoc_path], verbose);
 
         // Checks that only make sense for the std libs.
         check!(pal, &library_path);

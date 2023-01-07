@@ -35,6 +35,7 @@ use std::hash::Hash;
 use std::iter;
 use std::path::{Path, PathBuf};
 use std::str::{self, FromStr};
+use std::sync::LazyLock;
 
 pub mod sigpipe;
 
@@ -1322,7 +1323,12 @@ mod opt {
         unstable(longer(a, b), move |opts| opts.optmulti(a, b, c, d))
     }
 }
-
+static EDITION_STRING: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        "Specify which edition of the compiler to use when compiling code. \
+The default is {DEFAULT_EDITION} and the latest stable edition is {LATEST_STABLE_EDITION}."
+    )
+});
 /// Returns the "short" subset of the rustc command line options,
 /// including metadata for each option, such as whether the option is
 /// part of the stable long-term interface for rustc.
@@ -1355,7 +1361,7 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
         opt::opt_s(
             "",
             "edition",
-            "Specify which edition of the compiler to use when compiling code.",
+            &*EDITION_STRING,
             EDITION_NAME_LIST,
         ),
         opt::multi_s(

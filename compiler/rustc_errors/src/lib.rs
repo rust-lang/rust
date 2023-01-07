@@ -978,6 +978,7 @@ impl Handler {
         self.inner.borrow_mut().span_bug(span, msg)
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     pub fn delay_span_bug(
         &self,
@@ -1529,6 +1530,7 @@ impl HandlerInner {
         self.emit_diagnostic(diag.set_span(sp));
     }
 
+    /// For documentation on this, see `Session::delay_span_bug`.
     #[track_caller]
     fn delay_span_bug(
         &mut self,
