@@ -5,7 +5,7 @@
 fn main() {
     let _f = {
         let x = 0;
-        || x //~ ERROR `x` does not live long enough
+        || x //~ ERROR closure may outlive the current block, but it borrows `x`
     };
     _f;
 }
