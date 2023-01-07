@@ -10,7 +10,7 @@ pub struct MultipleReturnTerminators;
 
 impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
     fn is_enabled(&self, sess: &rustc_session::Session) -> bool {
-        sess.mir_opt_level() >= 4
+        sess.mir_opt_level() >= 1
     }
 
     fn run_pass(&self, tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
@@ -26,14 +26,15 @@ impl<'tcx> MirPass<'tcx> for MultipleReturnTerminators {
             }
         }
 
-        for bb in bbs {
+        for bb in 0..bbs.len() {
+            let bb = bb.into();
             if !tcx.consider_optimizing(|| format!("MultipleReturnTerminators {:?} ", def_id)) {
                 break;
             }
 
-            if let TerminatorKind::Goto { target } = bb.terminator().kind {
+            if let TerminatorKind::Goto { target } = bbs[bb].terminator().kind {
                 if bbs_simple_returns.contains(target) {
-                    bb.terminator_mut().kind = TerminatorKind::Return;
+                    *bbs[bb].terminator_mut() = bbs[target].terminator().clone();
                 }
             }
         }

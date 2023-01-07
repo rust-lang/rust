@@ -86,6 +86,7 @@ mod required_consts;
 mod reveal_all;
 mod separate_const_switch;
 mod shim;
+mod single_return_terminator;
 // This pass is public to allow external drivers to perform MIR cleanup
 pub mod simplify;
 mod simplify_branches;
@@ -577,7 +578,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
             &simplify::SimplifyLocals::new("final"),
-            &multiple_return_terminators::MultipleReturnTerminators,
+            &single_return_terminator::SingleReturnTerminator,
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.
             &add_call_guards::CriticalCallEdges,
