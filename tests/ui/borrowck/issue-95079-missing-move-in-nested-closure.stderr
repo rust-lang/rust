@@ -1,5 +1,5 @@
 error: captured variable cannot escape `FnMut` closure body
-  --> $DIR/issue-95079-missing-move-in-nested-closure.rs:3:29
+  --> $DIR/issue-95079-missing-move-in-nested-closure.rs:5:29
    |
 LL | fn foo1(s: &str) -> impl Iterator<Item = String> + '_ {
    |         - variable defined here
@@ -7,7 +7,7 @@ LL |     None.into_iter()
 LL |         .flat_map(move |()| s.chars().map(|c| format!("{}{}", c, s)))
    |                           - -^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
    |                           | |
-   |                           | returns a reference to a captured variable which escapes the closure body
+   |                           | returns a closure that contains a reference to a captured variable, which then escapes the closure body
    |                           | variable captured here
    |                           inferred to be a `FnMut` closure
    |
@@ -19,12 +19,12 @@ LL |         .flat_map(move |()| s.chars().map(move |c| format!("{}{}", c, s)))
    |                                           ++++
 
 error: lifetime may not live long enough
-  --> $DIR/issue-95079-missing-move-in-nested-closure.rs:9:15
+  --> $DIR/issue-95079-missing-move-in-nested-closure.rs:11:15
    |
 LL |     move |()| s.chars().map(|c| format!("{}{}", c, s))
    |     --------- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ returning this value requires that `'1` must outlive `'2`
    |     |       |
-   |     |       return type of closure `Map<Chars<'_>, [closure@$DIR/issue-95079-missing-move-in-nested-closure.rs:9:29: 9:32]>` contains a lifetime `'2`
+   |     |       return type of closure `Map<Chars<'_>, [closure@$DIR/issue-95079-missing-move-in-nested-closure.rs:11:29: 11:32]>` contains a lifetime `'2`
    |     lifetime `'1` represents this closure's body
    |
    = note: closure implements `Fn`, so references to captured variables can't escape the closure
@@ -33,5 +33,26 @@ help: consider adding 'move' keyword before the nested closure
 LL |     move |()| s.chars().map(move |c| format!("{}{}", c, s))
    |                             ++++
 
-error: aborting due to 2 previous errors
+error: captured variable cannot escape `FnMut` closure body
+  --> $DIR/issue-95079-missing-move-in-nested-closure.rs:21:9
+   |
+LL |     bar: &'a X,
+   |     --- variable defined here
+LL | ) -> impl Iterator<Item = ()> + 'a {
+LL |     Some(()).iter().flat_map(move |()| {
+   |                                      - inferred to be a `FnMut` closure
+LL |         Some(()).iter().map(|()| { bar; })
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^---^^^^
+   |         |                          |
+   |         |                          variable captured here
+   |         returns a closure that contains a reference to a captured variable, which then escapes the closure body
+   |
+   = note: `FnMut` closures only have access to their captured variables while they are executing...
+   = note: ...therefore, they cannot allow references to captured variables to escape
+help: consider adding 'move' keyword before the nested closure
+   |
+LL |         Some(()).iter().map(move |()| { bar; })
+   |                             ++++
+
+error: aborting due to 3 previous errors
 
