@@ -99,7 +99,7 @@ pub(crate) mod hack {
         b: Box<[T], A>,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
             COOP_PREFERRED,
         )]:,
     {
@@ -117,7 +117,7 @@ pub(crate) mod hack {
         alloc: A,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
             COOP_PREFERRED,
         )]:,
     {
@@ -132,7 +132,7 @@ pub(crate) mod hack {
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
             Self: Sized,
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
                 COOP_PREFERRED,
             )]:;
     }
@@ -145,13 +145,13 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
                 COOP_PREFERRED,
             )]:,
         {
             struct DropGuard<'a, T, A: Allocator, const COOP_PREFERRED: bool>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
                     COOP_PREFERRED,
                 )]:,
             {
@@ -160,7 +160,7 @@ pub(crate) mod hack {
             }
             impl<'a, T, A: Allocator, const COOP_PREFERRED: bool> Drop for DropGuard<'a, T, A, COOP_PREFERRED>
             where
-                [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+                [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
                     COOP_PREFERRED,
                 )]:,
             {
@@ -200,7 +200,7 @@ pub(crate) mod hack {
             alloc: A,
         ) -> Vec<Self, A, COOP_PREFERRED>
         where
-            [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+            [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
                 COOP_PREFERRED,
             )]:,
         {
@@ -484,7 +484,7 @@ impl<T> [T] {
     ) -> Vec<T, A, COOP_PREFERRED>
     where
         T: Clone,
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
             COOP_PREFERRED,
         )]:,
     {
@@ -513,7 +513,7 @@ impl<T> [T] {
         self: Box<Self, A>,
     ) -> Vec<T, A, COOP_PREFERRED>
     where
-        [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(
             COOP_PREFERRED,
         )]:,
     {
@@ -832,7 +832,7 @@ impl<T: Clone, V: Borrow<[T]>> Join<&[T]> for [V] {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> Borrow<[T]> for Vec<T, A, COOP_PREFERRED>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn borrow(&self) -> &[T] {
         &self[..]
@@ -842,7 +842,7 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A: Allocator, const COOP_PREFERRED: bool> BorrowMut<[T]> for Vec<T, A, COOP_PREFERRED>
 where
-    [(); core::alloc::co_alloc_metadata_num_slots_with_preference_specific::<A>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     fn borrow_mut(&mut self) -> &mut [T] {
         &mut self[..]
