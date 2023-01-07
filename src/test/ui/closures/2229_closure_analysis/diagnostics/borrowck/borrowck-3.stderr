@@ -1,18 +1,22 @@
-error[E0597]: `p` does not live long enough
-  --> $DIR/borrowck-3.rs:13:29
+error[E0373]: closure may outlive the current block, but it borrows `p`, which is owned by the current block
+  --> $DIR/borrowck-3.rs:11:9
    |
-LL |     let mut c = {
-   |         ----- borrow later stored here
-LL |         let mut p = Point {x: "1".to_string(), y: "2".to_string() };
 LL |         || {
-   |         -- value captured here
+   |         ^^ may outlive borrowed value `p`
 LL |            let x = &mut p.x;
 LL |            println!("{:?}", p);
-   |                             ^ borrowed value does not live long enough
-...
-LL |     };
-   |     - `p` dropped here while still borrowed
+   |                             - `p` is borrowed here
+   |
+note: block requires argument type to outlive `'1`
+  --> $DIR/borrowck-3.rs:9:9
+   |
+LL |     let mut c = {
+   |         ^^^^^
+help: to force the closure to take ownership of `p` (and any other referenced variables), use the `move` keyword
+   |
+LL |         move || {
+   |         ++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0373`.

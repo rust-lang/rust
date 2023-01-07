@@ -1,10 +1,8 @@
 #![allow(non_camel_case_types)]
 
-use rustc_errors::struct_span_err;
 use rustc_hir::LangItem;
 use rustc_middle::mir::interpret::ConstValue;
 use rustc_middle::ty::{self, layout::TyAndLayout, Ty, TyCtxt};
-use rustc_session::Session;
 use rustc_span::Span;
 
 use crate::base;
@@ -191,10 +189,6 @@ pub fn shift_mask_val<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         }
         _ => bug!("shift_mask_val: expected Integer or Vector, found {:?}", kind),
     }
-}
-
-pub fn span_invalid_monomorphization_error(a: &Session, b: Span, c: &str) {
-    struct_span_err!(a, b, E0511, "{}", c).emit();
 }
 
 pub fn asm_const_to_str<'tcx>(

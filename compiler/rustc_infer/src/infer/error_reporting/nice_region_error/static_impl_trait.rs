@@ -1,11 +1,15 @@
 //! Error Reporting for static impl Traits.
 
+use crate::errors::{
+    ButCallingIntroduces, ButNeedsToSatisfy, DynTraitConstraintSuggestion, MoreTargeted,
+    ReqIntroducedLocations,
+};
 use crate::infer::error_reporting::nice_region_error::NiceRegionError;
 use crate::infer::lexical_region_resolve::RegionResolutionError;
 use crate::infer::{SubregionOrigin, TypeTrace};
 use crate::traits::{ObligationCauseCode, UnifyReceiverContext};
 use rustc_data_structures::fx::FxIndexSet;
-use rustc_errors::{struct_span_err, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
+use rustc_errors::{AddToDiagnostic, Applicability, Diagnostic, ErrorGuaranteed, MultiSpan};
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::{walk_ty, Visitor};
 use rustc_hir::{
@@ -53,46 +57,32 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                     }
 
                     let param = self.find_param_with_region(*sup_r, *sub_r)?;
-                    let lifetime = if sup_r.has_name() {
-                        format!("lifetime `{}`", sup_r)
-                    } else {
-                        "an anonymous lifetime `'_`".to_string()
+                    let simple_ident = param.param.pat.simple_ident();
+
+                    let (has_impl_path, impl_path) = match ctxt.assoc_item.container {
+                        AssocItemContainer::TraitContainer => {
+                            let id = ctxt.assoc_item.container_id(tcx);
+                            (true, tcx.def_path_str(id))
+                        }
+                        AssocItemContainer::ImplContainer => (false, String::new()),
                     };
-                    let mut err = struct_span_err!(
-                        tcx.sess,
-                        cause.span,
-                        E0772,
-                        "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
-                         requirement",
-                        param
-                            .param
-                            .pat
-                            .simple_ident()
-                            .map(|s| format!("`{}`", s))
-                            .unwrap_or_else(|| "`fn` parameter".to_string()),
-                        lifetime,
-                        ctxt.assoc_item.name,
-                    );
-                    err.span_label(param.param_ty_span, &format!("this data with {}...", lifetime));
-                    err.span_label(
-                        cause.span,
-                        &format!(
-                            "...is used and required to live as long as `'static` here \
-                             because of an implicit lifetime bound on the {}",
-                            match ctxt.assoc_item.container {
-                                AssocItemContainer::TraitContainer => {
-                                    let id = ctxt.assoc_item.container_id(tcx);
-                                    format!("`impl` of `{}`", tcx.def_path_str(id))
-                                }
-                                AssocItemContainer::ImplContainer => "inherent `impl`".to_string(),
-                            },
-                        ),
-                    );
+
+                    let mut err = self.tcx().sess.create_err(ButCallingIntroduces {
+                        param_ty_span: param.param_ty_span,
+                        cause_span: cause.span,
+                        has_param_name: simple_ident.is_some(),
+                        param_name: simple_ident.map(|x| x.to_string()).unwrap_or_default(),
+                        has_lifetime: sup_r.has_name(),
+                        lifetime: sup_r.to_string(),
+                        assoc_item: ctxt.assoc_item.name,
+                        has_impl_path,
+                        impl_path,
+                    });
                     if self.find_impl_on_dyn_trait(&mut err, param.param_ty, &ctxt) {
                         let reported = err.emit();
                         return Some(reported);
                     } else {
-                        err.cancel();
+                        err.cancel()
                     }
                 }
                 return None;
@@ -108,25 +98,7 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         let sp = var_origin.span();
         let return_sp = sub_origin.span();
         let param = self.find_param_with_region(*sup_r, *sub_r)?;
-        let (lifetime_name, lifetime) = if sup_r.has_name() {
-            (sup_r.to_string(), format!("lifetime `{}`", sup_r))
-        } else {
-            ("'_".to_owned(), "an anonymous lifetime `'_`".to_string())
-        };
-        let param_name = param
-            .param
-            .pat
-            .simple_ident()
-            .map(|s| format!("`{}`", s))
-            .unwrap_or_else(|| "`fn` parameter".to_string());
-        let mut err = struct_span_err!(
-            tcx.sess,
-            sp,
-            E0759,
-            "{} has {} but it needs to satisfy a `'static` lifetime requirement",
-            param_name,
-            lifetime,
-        );
+        let lifetime_name = if sup_r.has_name() { sup_r.to_string() } else { "'_".to_owned() };
 
         let (mention_influencer, influencer_point) =
             if sup_origin.span().overlaps(param.param_ty_span) {
@@ -145,7 +117,6 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             } else {
                 (!sup_origin.span().overlaps(return_sp), param.param_ty_span)
             };
-        err.span_label(influencer_point, &format!("this data with {}...", lifetime));
 
         debug!("try_report_static_impl_trait: param_info={:?}", param);
 
@@ -159,31 +130,19 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         spans.dedup_by_key(|span| (span.lo(), span.hi()));
 
         // We try to make the output have fewer overlapping spans if possible.
-        let require_msg = if spans.is_empty() {
-            "...is used and required to live as long as `'static` here"
-        } else {
-            "...and is required to live as long as `'static` here"
-        };
         let require_span =
             if sup_origin.span().overlaps(return_sp) { sup_origin.span() } else { return_sp };
 
-        for span in &spans {
-            err.span_label(*span, "...is used here...");
-        }
-
-        if spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp) {
-            // If any of the "captured here" labels appears on the same line or after
-            // `require_span`, we put it on a note to ensure the text flows by appearing
-            // always at the end.
-            err.span_note(require_span, require_msg);
+        let spans_empty = spans.is_empty();
+        let require_as_note = spans.iter().any(|sp| sp.overlaps(return_sp) || *sp > return_sp);
+        let bound = if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
+            Some(*bound)
         } else {
-            // We don't need a note, it's already at the end, it can be shown as a `span_label`.
-            err.span_label(require_span, require_msg);
-        }
+            None
+        };
 
-        if let SubregionOrigin::RelateParamBound(_, _, Some(bound)) = sub_origin {
-            err.span_note(*bound, "`'static` lifetime requirement introduced by this bound");
-        }
+        let mut subdiag = None;
+
         if let SubregionOrigin::Subtype(box TypeTrace { cause, .. }) = sub_origin {
             if let ObligationCauseCode::ReturnValue(hir_id)
             | ObligationCauseCode::BlockTailExpression(hir_id) = cause.code()
@@ -191,32 +150,49 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
                 let parent_id = tcx.hir().get_parent_item(*hir_id);
                 if let Some(fn_decl) = tcx.hir().fn_decl_by_hir_id(parent_id.into()) {
                     let mut span: MultiSpan = fn_decl.output.span().into();
+                    let mut spans = Vec::new();
                     let mut add_label = true;
                     if let hir::FnRetTy::Return(ty) = fn_decl.output {
                         let mut v = StaticLifetimeVisitor(vec![], tcx.hir());
                         v.visit_ty(ty);
                         if !v.0.is_empty() {
                             span = v.0.clone().into();
-                            for sp in v.0 {
-                                span.push_span_label(sp, "`'static` requirement introduced here");
-                            }
+                            spans = v.0;
                             add_label = false;
                         }
                     }
-                    if add_label {
-                        span.push_span_label(
-                            fn_decl.output.span(),
-                            "requirement introduced by this return type",
-                        );
-                    }
-                    span.push_span_label(cause.span, "because of this returned expression");
-                    err.span_note(
+                    let fn_decl_span = fn_decl.output.span();
+
+                    subdiag = Some(ReqIntroducedLocations {
                         span,
-                        "`'static` lifetime requirement introduced by the return type",
-                    );
+                        spans,
+                        fn_decl_span,
+                        cause_span: cause.span,
+                        add_label,
+                    });
                 }
             }
         }
+
+        let diag = ButNeedsToSatisfy {
+            sp,
+            influencer_point,
+            spans: spans.clone(),
+            // If any of the "captured here" labels appears on the same line or after
+            // `require_span`, we put it on a note to ensure the text flows by appearing
+            // always at the end.
+            require_span_as_note: require_as_note.then_some(require_span),
+            // We don't need a note, it's already at the end, it can be shown as a `span_label`.
+            require_span_as_label: (!require_as_note).then_some(require_span),
+            req_introduces_loc: subdiag,
+
+            has_lifetime: sup_r.has_name(),
+            lifetime: sup_r.to_string(),
+            spans_empty,
+            bound,
+        };
+
+        let mut err = self.tcx().sess.create_err(diag);
 
         let fn_returns = tcx.return_type_impl_or_dyn_traits(anon_reg_sup.def_id);
 
@@ -251,12 +227,8 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
         }
         if let (Some(ident), true) = (override_error_code, fn_returns.is_empty()) {
             // Provide a more targeted error code and description.
-            err.code(rustc_errors::error_code!(E0772));
-            err.set_primary_message(&format!(
-                "{} has {} but calling `{}` introduces an implicit `'static` lifetime \
-                requirement",
-                param_name, lifetime, ident,
-            ));
+            let retarget_subdiag = MoreTargeted { ident };
+            retarget_subdiag.add_to_diagnostic(&mut err);
         }
 
         let arg = match param.param.pat.simple_ident() {
@@ -551,21 +523,9 @@ impl<'a, 'tcx> NiceRegionError<'a, 'tcx> {
             let mut traits = vec![];
             let mut hir_v = HirTraitObjectVisitor(&mut traits, *found_did);
             hir_v.visit_ty(&self_ty);
-            for span in &traits {
-                let mut multi_span: MultiSpan = vec![*span].into();
-                multi_span
-                    .push_span_label(*span, "this has an implicit `'static` lifetime requirement");
-                multi_span.push_span_label(
-                    ident.span,
-                    "calling this method introduces the `impl`'s 'static` requirement",
-                );
-                err.span_note(multi_span, "the used `impl` has a `'static` requirement");
-                err.span_suggestion_verbose(
-                    span.shrink_to_hi(),
-                    "consider relaxing the implicit `'static` requirement",
-                    " + '_",
-                    Applicability::MaybeIncorrect,
-                );
+            for &span in &traits {
+                let subdiag = DynTraitConstraintSuggestion { span, ident };
+                subdiag.add_to_diagnostic(err);
                 suggested = true;
             }
         }
