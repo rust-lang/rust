@@ -1,6 +1,9 @@
 // ignore-tidy-filelength
 
-use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
+use super::{
+    DefIdOrName, FindExprBySpan, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
@@ -195,6 +198,13 @@ pub trait TypeErrCtxtExt<'tcx> {
         err: &mut Diagnostic,
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
+
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
 
     fn suggest_add_reference_to_arg(
         &self,
@@ -1030,6 +1040,66 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             err.help(&format!("{msg}: `{name}({args})`"));
         }
         true
+    }
+
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let mut span = obligation.cause.span;
+        while span.from_expansion() {
+            // Remove all the desugaring and macro contexts.
+            span.remove_mark();
+        }
+        let mut expr_finder = FindExprBySpan::new(span);
+        let Some(hir::Node::Expr(body)) = self.tcx.hir().find(obligation.cause.body_id) else { return; };
+        expr_finder.visit_expr(&body);
+        let Some(expr) = expr_finder.result else { return; };
+        let Some(typeck) = &self.typeck_results else { return; };
+        let Some(ty) = typeck.expr_ty_adjusted_opt(expr) else { return; };
+        if !ty.is_unit() {
+            return;
+        };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else { return; };
+        let hir::def::Res::Local(hir_id) = path.res else { return; };
+        let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
+            return;
+        };
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find_parent(pat.hir_id) else { return; };
+        let hir::ExprKind::Block(block, None) = init.kind else { return; };
+        if block.expr.is_some() {
+            return;
+        }
+        let [.., stmt] = block.stmts else {
+            err.span_label(block.span, "this empty block is missing a tail expression");
+            return;
+        };
+        let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
+        let Some(ty) = typeck.expr_ty_opt(tail_expr) else {
+            err.span_label(block.span, "this block is missing a tail expression");
+            return;
+        };
+        let ty = self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(ty));
+        let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, ty));
+
+        let new_obligation =
+            self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
+        if self.predicate_must_hold_modulo_regions(&new_obligation) {
+            err.span_suggestion_short(
+                stmt.span.with_lo(tail_expr.span.hi()),
+                "remove this semicolon",
+                "",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.span_label(block.span, "this block is missing a tail expression");
+        }
     }
 
     fn suggest_add_reference_to_arg(

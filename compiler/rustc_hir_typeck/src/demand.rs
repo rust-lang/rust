@@ -83,6 +83,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
+        self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -1886,5 +1887,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sugg,
             Applicability::MachineApplicable,
         );
+    }
+
+    /// Identify when the type error is because `()` is found in a binding that was assigned a
+    /// block without a tail expression.
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if !checked_ty.is_unit() {
+            return;
+        }
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else { return; };
+        let hir::def::Res::Local(hir_id) = path.res else { return; };
+        let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
+            return;
+        };
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find_parent(pat.hir_id) else { return; };
+        let hir::ExprKind::Block(block, None) = init.kind else { return; };
+        if block.expr.is_some() {
+            return;
+        }
+        let [.., stmt] = block.stmts else {
+            err.span_label(block.span, "this empty block is missing a tail expression");
+            return;
+        };
+        let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
+        let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else { return; };
+        if self.can_eq(self.param_env, expected_ty, ty).is_ok() {
+            err.span_suggestion_short(
+                stmt.span.with_lo(tail_expr.span.hi()),
+                "remove this semicolon",
+                "",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.span_label(block.span, "this block is missing a tail expression");
+        }
     }
 }

@@ -224,14 +224,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ret_span: MultiSpan = semi_span.into();
         ret_span.push_span_label(
             expr.span,
-            "this could be implicitly returned but it is a statement, not a \
-                            tail expression",
+            "this could be implicitly returned but it is a statement, not a tail expression",
         );
         ret_span.push_span_label(ret, "the `match` arms can conform to this return type");
         ret_span.push_span_label(
             semi_span,
-            "the `match` is a statement because of this semicolon, consider \
-                            removing it",
+            "the `match` is a statement because of this semicolon, consider removing it",
         );
         diag.span_note(ret_span, "you might have meant to return the `match` expression");
         diag.tool_only_span_suggestion(
