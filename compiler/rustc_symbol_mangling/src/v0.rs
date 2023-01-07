@@ -609,7 +609,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
                     bits = val.unsigned_abs();
                 }
 
-                let _ = write!(self.out, "{:x}_", bits);
+                let _ = write!(self.out, "{bits:x}_");
             }
 
             // FIXME(valtrees): Remove the special case for `str`
@@ -637,7 +637,7 @@ impl<'tcx> Printer<'tcx> for &mut SymbolMangler<'tcx> {
 
                                 // FIXME(eddyb) use a specialized hex-encoding loop.
                                 for byte in s.bytes() {
-                                    let _ = write!(self.out, "{:02x}", byte);
+                                    let _ = write!(self.out, "{byte:02x}");
                                 }
 
                                 self.push("_");

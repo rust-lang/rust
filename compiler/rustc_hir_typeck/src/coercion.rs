@@ -1547,7 +1547,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         err.span_label(cause.span, "return type is not `()`");
                     }
                     ObligationCauseCode::BlockTailExpression(blk_id) => {
-                        let parent_id = fcx.tcx.hir().get_parent_node(blk_id);
+                        let parent_id = fcx.tcx.hir().parent_id(blk_id);
                         err = self.report_return_mismatched_types(
                             cause,
                             expected,
@@ -1578,7 +1578,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             None,
                         );
                         if !fcx.tcx.features().unsized_locals {
-                            let id = fcx.tcx.hir().get_parent_node(id);
+                            let id = fcx.tcx.hir().parent_id(id);
                             unsized_return = self.is_return_ty_unsized(fcx, id);
                         }
                     }
@@ -1668,7 +1668,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let mut pointing_at_return_type = false;
         let mut fn_output = None;
 
-        let parent_id = fcx.tcx.hir().get_parent_node(id);
+        let parent_id = fcx.tcx.hir().parent_id(id);
         let parent = fcx.tcx.hir().get(parent_id);
         if let Some(expr) = expression
             && let hir::Node::Expr(hir::Expr { kind: hir::ExprKind::Closure(&hir::Closure { body, .. }), .. }) = parent

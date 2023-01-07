@@ -182,7 +182,7 @@ impl TyCtxt<'_> {
             if hir.attrs(id).iter().any(|attr| Level::from_attr(attr).is_some()) {
                 return id;
             }
-            let next = hir.get_parent_node(id);
+            let next = hir.parent_id(id);
             if next == id {
                 bug!("lint traversal reached the root of the crate");
             }

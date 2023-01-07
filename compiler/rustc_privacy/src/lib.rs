@@ -915,7 +915,7 @@ impl<'tcx, 'a> TestReachabilityVisitor<'tcx, 'a> {
                     if level != Level::Direct {
                         error_msg.push_str(", ");
                     }
-                    error_msg.push_str(&format!("{:?}: {}", level, vis_str));
+                    error_msg.push_str(&format!("{level:?}: {vis_str}"));
                 }
             } else {
                 error_msg.push_str("not in the table");
@@ -2141,7 +2141,7 @@ fn check_private_in_public(tcx: TyCtxt<'_>, (): ()) {
             if !old_error_set_ancestry.insert(id) {
                 break;
             }
-            let parent = tcx.hir().get_parent_node(id);
+            let parent = tcx.hir().parent_id(id);
             if parent == id {
                 break;
             }

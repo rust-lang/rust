@@ -8,8 +8,9 @@ use std::convert::From;
 use std::fmt;
 
 use rustc_ast::ast;
-use rustc_hir::{def::CtorKind, def_id::DefId};
+use rustc_hir::{def::CtorKind, def::DefKind, def_id::DefId};
 use rustc_middle::ty::{self, TyCtxt};
+use rustc_span::symbol::sym;
 use rustc_span::{Pos, Symbol};
 use rustc_target::spec::abi::Abi as RustcAbi;
 
@@ -217,13 +218,27 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
 
     impl<'a> fmt::Display for DisplayDefId<'a> {
         fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-            let name = match self.2 {
+            let DisplayDefId(def_id, tcx, name) = self;
+            let name = match name {
                 Some(name) => format!(":{}", name.as_u32()),
-                None => self
-                    .1
-                    .opt_item_name(self.0)
-                    .map(|n| format!(":{}", n.as_u32()))
-                    .unwrap_or_default(),
+                None => {
+                    // We need this workaround because primitive types' DefId actually refers to
+                    // their parent module, which isn't present in the output JSON items. So
+                    // instead, we directly get the primitive symbol and convert it to u32 to
+                    // generate the ID.
+                    if matches!(tcx.def_kind(def_id), DefKind::Mod) &&
+                        let Some(prim) = tcx.get_attrs(*def_id, sym::doc)
+                            .flat_map(|attr| attr.meta_item_list().unwrap_or_default())
+                            .filter(|attr| attr.has_name(sym::primitive))
+                            .find_map(|attr| attr.value_str()) {
+                        format!(":{}", prim.as_u32())
+                    } else {
+                        tcx
+                        .opt_item_name(*def_id)
+                        .map(|n| format!(":{}", n.as_u32()))
+                        .unwrap_or_default()
+                    }
+                }
             };
             write!(f, "{}:{}{}", self.0.krate.as_u32(), u32::from(self.0.index), name)
         }
@@ -237,7 +252,7 @@ pub(crate) fn from_item_id_with_name(item_id: ItemId, tcx: TyCtxt<'_>, name: Opt
         ItemId::Auto { for_, trait_ } => {
             Id(format!("a:{}-{}", DisplayDefId(trait_, tcx, None), DisplayDefId(for_, tcx, name)))
         }
-        ItemId::Primitive(ty, krate) => Id(format!("p:{}:{}", krate.as_u32(), ty.as_sym())),
+        ItemId::Primitive(_, _) => unreachable!(),
     }
 }
 

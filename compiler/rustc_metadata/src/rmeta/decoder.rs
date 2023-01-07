@@ -462,7 +462,7 @@ impl<'a, 'tcx> Decodable<DecodeContext<'a, 'tcx>> for SyntaxContext {
                 .root
                 .syntax_contexts
                 .get(cdata, id)
-                .unwrap_or_else(|| panic!("Missing SyntaxContext {:?} for crate {:?}", id, cname))
+                .unwrap_or_else(|| panic!("Missing SyntaxContext {id:?} for crate {cname:?}"))
                 .decode((cdata, sess))
         })
     }
@@ -806,7 +806,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .def_span
             .get(self, index)
-            .unwrap_or_else(|| panic!("Missing span for {:?}", index))
+            .unwrap_or_else(|| panic!("Missing span for {index:?}"))
             .decode((self, sess))
     }
 
@@ -1249,7 +1249,7 @@ impl<'a, 'tcx> CrateMetadataRef<'a> {
             .tables
             .proc_macro_quoted_spans
             .get(self, index)
-            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {:?}", index))
+            .unwrap_or_else(|| panic!("Missing proc macro quoted span: {index:?}"))
             .decode((self, sess))
     }
 

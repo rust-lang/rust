@@ -44,7 +44,7 @@ LL |        "things"
 LL |              , UNUSED="args");
    |                       ^^^^^^ named argument never used
    |
-   = note: shell formatting not supported; see the documentation for `std::fmt`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
 
 error: aborting due to 4 previous errors
 

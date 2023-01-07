@@ -117,7 +117,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 Some(if movability.is_some() { "an async closure" } else { "a closure" })
             }),
             hir::Node::Expr(hir::Expr { .. }) => {
-                let parent_hid = hir.get_parent_node(hir_id);
+                let parent_hid = hir.parent_id(hir_id);
                 if parent_hid != hir_id { self.describe_enclosure(parent_hid) } else { None }
             }
             _ => None,

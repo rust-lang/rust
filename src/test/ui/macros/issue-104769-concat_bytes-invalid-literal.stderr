@@ -11,6 +11,8 @@ error: integer literal is too large
    |
 LL |     concat_bytes!(888888888888888888888888888888888888888);
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: value exceeds limit of `340282366920938463463374607431768211455`
 
 error: aborting due to 2 previous errors
 

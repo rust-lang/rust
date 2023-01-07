@@ -114,6 +114,12 @@ impl BestFailure {
 }
 
 impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 'matcher> {
+    type Failure = (Token, usize, &'static str);
+
+    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+        (tok, position, msg)
+    }
+
     fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc) {
         if self.remaining_matcher.is_none()
             || (parser.has_no_remaining_items_for_step() && *matcher != MatcherLoc::Eof)
@@ -122,7 +128,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
         }
     }
 
-    fn after_arm(&mut self, result: &NamedParseResult) {
+    fn after_arm(&mut self, result: &NamedParseResult<Self::Failure>) {
         match result {
             Success(_) => {
                 // Nonterminal parser recovery might turn failed matches into successful ones,
@@ -132,7 +138,7 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
                     "should not collect detailed info for successful macro match",
                 );
             }
-            Failure(token, approx_position, msg) => {
+            Failure((token, approx_position, msg)) => {
                 debug!(?token, ?msg, "a new failure of an arm");
 
                 if self
@@ -172,6 +178,21 @@ impl<'a, 'cx, 'matcher> Tracker<'matcher> for CollectTrackerAndEmitter<'a, 'cx, 
 impl<'a, 'cx> CollectTrackerAndEmitter<'a, 'cx, '_> {
     fn new(cx: &'a mut ExtCtxt<'cx>, root_span: Span) -> Self {
         Self { cx, remaining_matcher: None, best_failure: None, root_span, result: None }
+    }
+}
+
+/// Currently used by macro_rules! compilation to extract a little information from the `Failure` case.
+pub struct FailureForwarder;
+
+impl<'matcher> Tracker<'matcher> for FailureForwarder {
+    type Failure = (Token, usize, &'static str);
+
+    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure {
+        (tok, position, msg)
+    }
+
+    fn description() -> &'static str {
+        "failure-forwarder"
     }
 }
 

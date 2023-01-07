@@ -76,8 +76,6 @@
 }
 
 * {
-	-webkit-box-sizing: border-box;
-	-moz-box-sizing: border-box;
 	box-sizing: border-box;
 }
 
@@ -110,11 +108,7 @@ body {
 	/* Then override it with `anywhere`, which is required to make non-Safari browsers break
 	   more aggressively when we want them to. */
 	overflow-wrap: anywhere;
-
-	-webkit-font-feature-settings: "kern", "liga";
-	-moz-font-feature-settings: "kern", "liga";
 	font-feature-settings: "kern", "liga";
-
 	background-color: var(--main-background-color);
 	color: var(--main-color);
 }
@@ -358,6 +352,7 @@ img {
 .sub-logo-container, .logo-container {
 	/* zero text boxes so that computed line height = image height exactly */
 	line-height: 0;
+	display: block;
 }
 
 .sub-logo-container {
@@ -501,7 +496,7 @@ ul.block, .block li {
 	color: var(--sidebar-link-color);
 }
 .sidebar .current,
-.sidebar a:hover {
+.sidebar a:hover:not(.logo-container) {
 	background-color: var(--sidebar-current-link-background-color);
 }
 
@@ -543,8 +538,6 @@ ul.block, .block li {
 	overflow: initial;
 	text-align: right;
 	-webkit-user-select: none;
-	-moz-user-select: none;
-	-ms-user-select: none;
 	user-select: none;
 	padding: 14px 8px;
 	color: var(--src-line-numbers-span-color);
@@ -1374,7 +1367,7 @@ kbd {
 	vertical-align: middle;
 	border: solid 1px var(--border-color);
 	border-radius: 3px;
-	color: var(--kbd--color);
+	color: var(--kbd-color);
 	background-color: var(--kbd-background);
 	box-shadow: inset 0 -1px 0 var(--kbd-box-shadow-color);
 }
@@ -1576,7 +1569,7 @@ in storage.js
 
 	/* Hide the logo and item name from the sidebar. Those are displayed
 	   in the mobile-topbar instead. */
-	.sidebar .sidebar-logo,
+	.sidebar .logo-container,
 	.sidebar .location {
 		display: none;
 	}

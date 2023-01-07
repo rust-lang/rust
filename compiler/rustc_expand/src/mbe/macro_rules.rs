@@ -141,30 +141,39 @@ fn trace_macros_note(cx_expansions: &mut FxIndexMap<Span, Vec<String>>, sp: Span
 }
 
 pub(super) trait Tracker<'matcher> {
+    /// The contents of `ParseResult::Failure`.
+    type Failure;
+
+    /// Arm failed to match. If the token is `token::Eof`, it indicates an unexpected
+    /// end of macro invocation. Otherwise, it indicates that no rules expected the given token.
+    /// The usize is the approximate position of the token in the input token stream.
+    fn build_failure(tok: Token, position: usize, msg: &'static str) -> Self::Failure;
+
     /// This is called before trying to match next MatcherLoc on the current token.
-    fn before_match_loc(&mut self, parser: &TtParser, matcher: &'matcher MatcherLoc);
+    fn before_match_loc(&mut self, _parser: &TtParser, _matcher: &'matcher MatcherLoc) {}
 
     /// This is called after an arm has been parsed, either successfully or unsuccessfully. When this is called,
     /// `before_match_loc` was called at least once (with a `MatcherLoc::Eof`).
-    fn after_arm(&mut self, result: &NamedParseResult);
+    fn after_arm(&mut self, _result: &NamedParseResult<Self::Failure>) {}
 
     /// For tracing.
     fn description() -> &'static str;
 
-    fn recovery() -> Recovery;
+    fn recovery() -> Recovery {
+        Recovery::Forbidden
+    }
 }
 
 /// A noop tracker that is used in the hot path of the expansion, has zero overhead thanks to monomorphization.
 pub(super) struct NoopTracker;
 
 impl<'matcher> Tracker<'matcher> for NoopTracker {
-    fn before_match_loc(&mut self, _: &TtParser, _: &'matcher MatcherLoc) {}
-    fn after_arm(&mut self, _: &NamedParseResult) {}
+    type Failure = ();
+
+    fn build_failure(_tok: Token, _position: usize, _msg: &'static str) -> Self::Failure {}
+
     fn description() -> &'static str {
         "none"
-    }
-    fn recovery() -> Recovery {
-        Recovery::Forbidden
     }
 }
 
@@ -326,8 +335,8 @@ pub(super) fn try_match_macro<'matcher, T: Tracker<'matcher>>(
 
                 return Ok((i, named_matches));
             }
-            Failure(_, reached_position, _) => {
-                trace!(%reached_position, "Failed to match arm, trying the next one");
+            Failure(_) => {
+                trace!("Failed to match arm, trying the next one");
                 // Try the next arm.
             }
             Error(_, _) => {
@@ -381,11 +390,13 @@ pub fn compile_declarative_macro(
     let rhs_nm = Ident::new(sym::rhs, def.span);
     let tt_spec = Some(NonterminalKind::TT);
 
-    // Parse the macro_rules! invocation
-    let (macro_rules, body) = match &def.kind {
-        ast::ItemKind::MacroDef(def) => (def.macro_rules, def.body.tokens.clone()),
+    let macro_def = match &def.kind {
+        ast::ItemKind::MacroDef(def) => def,
         _ => unreachable!(),
     };
+    let macro_rules = macro_def.macro_rules;
+
+    // Parse the macro_rules! invocation
 
     // The pattern that macro_rules matches.
     // The grammar for macro_rules! is:
@@ -426,13 +437,32 @@ pub fn compile_declarative_macro(
     // Convert it into `MatcherLoc` form.
     let argument_gram = mbe::macro_parser::compute_locs(&argument_gram);
 
-    let parser = Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS);
+    let create_parser = || {
+        let body = macro_def.body.tokens.clone();
+        Parser::new(&sess.parse_sess, body, true, rustc_parse::MACRO_ARGUMENTS)
+    };
+
+    let parser = create_parser();
     let mut tt_parser =
         TtParser::new(Ident::with_dummy_span(if macro_rules { kw::MacroRules } else { kw::Macro }));
     let argument_map =
         match tt_parser.parse_tt(&mut Cow::Owned(parser), &argument_gram, &mut NoopTracker) {
             Success(m) => m,
-            Failure(token, _, msg) => {
+            Failure(()) => {
+                // The fast `NoopTracker` doesn't have any info on failure, so we need to retry it with another one
+                // that gives us the information we need.
+                // For this we need to reclone the macro body as the previous parser consumed it.
+                let retry_parser = create_parser();
+
+                let parse_result = tt_parser.parse_tt(
+                    &mut Cow::Owned(retry_parser),
+                    &argument_gram,
+                    &mut diagnostics::FailureForwarder,
+                );
+                let Failure((token, _, msg)) = parse_result else {
+                    unreachable!("matcher returned something other than Failure after retry");
+                };
+
                 let s = parse_failure_msg(&token);
                 let sp = token.span.substitute_dummy(def.span);
                 let mut err = sess.parse_sess.span_diagnostic.struct_span_err(sp, &s);

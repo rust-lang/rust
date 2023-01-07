@@ -205,13 +205,13 @@ pub(crate) fn run_in_thread_pool_with_globals<F: FnOnce() -> R + Send, R: Send>(
 
 fn load_backend_from_dylib(path: &Path) -> MakeBackendFn {
     let lib = unsafe { Library::new(path) }.unwrap_or_else(|err| {
-        let err = format!("couldn't load codegen backend {:?}: {}", path, err);
+        let err = format!("couldn't load codegen backend {path:?}: {err}");
         early_error(ErrorOutputType::default(), &err);
     });
 
     let backend_sym = unsafe { lib.get::<MakeBackendFn>(b"__rustc_codegen_backend") }
         .unwrap_or_else(|e| {
-            let err = format!("couldn't load codegen backend: {}", e);
+            let err = format!("couldn't load codegen backend: {e}");
             early_error(ErrorOutputType::default(), &err);
         });
 
@@ -304,8 +304,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
             .join("\n* ");
         let err = format!(
             "failed to find a `codegen-backends` folder \
-                           in the sysroot candidates:\n* {}",
-            candidates
+                           in the sysroot candidates:\n* {candidates}"
         );
         early_error(ErrorOutputType::default(), &err);
     });
@@ -325,7 +324,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
 
     let expected_names = &[
         format!("rustc_codegen_{}-{}", backend_name, env!("CFG_RELEASE")),
-        format!("rustc_codegen_{}", backend_name),
+        format!("rustc_codegen_{backend_name}"),
     ];
     for entry in d.filter_map(|e| e.ok()) {
         let path = entry.path();
@@ -354,7 +353,7 @@ fn get_codegen_sysroot(maybe_sysroot: &Option<PathBuf>, backend_name: &str) -> M
     match file {
         Some(ref s) => load_backend_from_dylib(s),
         None => {
-            let err = format!("unsupported builtin codegen backend `{}`", backend_name);
+            let err = format!("unsupported builtin codegen backend `{backend_name}`");
             early_error(ErrorOutputType::default(), &err);
         }
     }
@@ -389,7 +388,7 @@ pub(crate) fn check_attr_crate_type(
                             BuiltinLintDiagnostics::UnknownCrateTypes(
                                 span,
                                 "did you mean".to_string(),
-                                format!("\"{}\"", candidate),
+                                format!("\"{candidate}\""),
                             ),
                         );
                     } else {

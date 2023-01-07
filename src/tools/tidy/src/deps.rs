@@ -40,6 +40,8 @@ const EXCEPTIONS: &[(&str, &str)] = &[
     ("im-rc", "MPL-2.0+"),                                   // cargo
     ("sized-chunks", "MPL-2.0+"),                            // cargo via im-rc
     ("bitmaps", "MPL-2.0+"),                                 // cargo via im-rc
+    ("fiat-crypto", "MIT OR Apache-2.0 OR BSD-1-Clause"),    // cargo via pasetors
+    ("subtle", "BSD-3-Clause"),                              // cargo via pasetors
     ("instant", "BSD-3-Clause"), // rustc_driver/tracing-subscriber/parking_lot
     ("snap", "BSD-3-Clause"),    // rustc
     ("fluent-langneg", "Apache-2.0"), // rustc (fluent translations)
@@ -96,6 +98,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "autocfg",
     "bitflags",
     "block-buffer",
+    "bumpalo", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "cc",
     "cfg-if",
     "chalk-derive",
@@ -153,6 +156,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "itertools",
     "itoa",
     "jobserver",
+    "js-sys", // Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "lazy_static",
     "libc",
     "libloading",
@@ -222,6 +226,7 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "stable_deref_trait",
     "stacker",
     "static_assertions",
+    "subtle", // dependency of cargo (via pasetors)
     "syn",
     "synstructure",
     "tempfile",
@@ -264,6 +269,13 @@ const PERMITTED_RUSTC_DEPENDENCIES: &[&str] = &[
     "valuable",
     "version_check",
     "wasi",
+    // vvv Included in Cargo's dep graph but only activated on wasm32-*-unknown.
+    "wasm-bindgen",
+    "wasm-bindgen-backend",
+    "wasm-bindgen-macro",
+    "wasm-bindgen-macro-support",
+    "wasm-bindgen-shared",
+    // ^^^ Included in Cargo's dep graph but only activated on wasm32-*-unknown.
     "winapi",
     "winapi-i686-pc-windows-gnu",
     "winapi-util",

@@ -820,13 +820,12 @@ impl<'a> Resolver<'a> {
             // binding if it exists. What we really want here is having two separate scopes in
             // a module - one for non-globs and one for globs, but until that's done use this
             // hack to avoid inconsistent resolution ICEs during import validation.
-            let binding = [resolution.binding, resolution.shadowed_glob]
-                .into_iter()
-                .filter_map(|binding| match (binding, ignore_binding) {
+            let binding = [resolution.binding, resolution.shadowed_glob].into_iter().find_map(
+                |binding| match (binding, ignore_binding) {
                     (Some(binding), Some(ignored)) if ptr::eq(binding, ignored) => None,
                     _ => binding,
-                })
-                .next();
+                },
+            );
             let Some(binding) = binding else {
                 return Err((Determined, Weak::No));
             };

@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 trait Foo { }
 

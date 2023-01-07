@@ -6,7 +6,7 @@ LL |     c.read_to(v);
    |       |       |
    |       |       expected `&mut [u8]`, found struct `Vec`
    |       |       help: consider mutably borrowing here: `&mut v`
-   |       arguments to this function are incorrect
+   |       arguments to this method are incorrect
    |
    = note: expected mutable reference `&mut [u8]`
                          found struct `Vec<_>`

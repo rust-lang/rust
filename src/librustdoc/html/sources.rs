@@ -13,6 +13,7 @@ use rustc_middle::ty::TyCtxt;
 use rustc_session::Session;
 use rustc_span::source_map::FileName;
 
+use std::cell::RefCell;
 use std::ffi::OsStr;
 use std::fs;
 use std::path::{Component, Path, PathBuf};
@@ -72,12 +73,22 @@ impl LocalSourcesCollector<'_, '_> {
             return;
         }
 
-        let mut href = String::new();
-        clean_path(self.src_root, &p, false, |component| {
-            href.push_str(&component.to_string_lossy());
-            href.push('/');
-        });
+        let href = RefCell::new(PathBuf::new());
+        clean_path(
+            &self.src_root,
+            &p,
+            |component| {
+                href.borrow_mut().push(component);
+            },
+            || {
+                href.borrow_mut().pop();
+            },
+        );
 
+        let mut href = href.into_inner().to_string_lossy().to_string();
+        if let Some(c) = href.as_bytes().last() && *c != b'/' {
+            href.push('/');
+        }
         let mut src_fname = p.file_name().expect("source has no filename").to_os_string();
         src_fname.push(".html");
         href.push_str(&src_fname.to_string_lossy());
@@ -180,13 +191,28 @@ impl SourceCollector<'_, '_> {
 
         let shared = Rc::clone(&self.cx.shared);
         // Create the intermediate directories
-        let mut cur = self.dst.clone();
-        let mut root_path = String::from("../../");
-        clean_path(&shared.src_root, &p, false, |component| {
-            cur.push(component);
-            root_path.push_str("../");
-        });
+        let cur = RefCell::new(PathBuf::new());
+        let root_path = RefCell::new(PathBuf::new());
 
+        clean_path(
+            &shared.src_root,
+            &p,
+            |component| {
+                cur.borrow_mut().push(component);
+                root_path.borrow_mut().push("..");
+            },
+            || {
+                cur.borrow_mut().pop();
+                root_path.borrow_mut().pop();
+            },
+        );
+
+        let root_path = PathBuf::from("../../").join(root_path.into_inner());
+        let mut root_path = root_path.to_string_lossy();
+        if let Some(c) = root_path.as_bytes().last() && *c != b'/' {
+            root_path += "/";
+        }
+        let mut cur = self.dst.join(cur.into_inner());
         shared.ensure_dir(&cur)?;
 
         let src_fname = p.file_name().expect("source has no filename").to_os_string();
@@ -232,11 +258,13 @@ impl SourceCollector<'_, '_> {
 /// Takes a path to a source file and cleans the path to it. This canonicalizes
 /// things like ".." to components which preserve the "top down" hierarchy of a
 /// static HTML tree. Each component in the cleaned path will be passed as an
-/// argument to `f`. The very last component of the path (ie the file name) will
-/// be passed to `f` if `keep_filename` is true, and ignored otherwise.
-pub(crate) fn clean_path<F>(src_root: &Path, p: &Path, keep_filename: bool, mut f: F)
+/// argument to `f`. The very last component of the path (ie the file name) is ignored.
+/// If a `..` is encountered, the `parent` closure will be called to allow the callee to
+/// handle it.
+pub(crate) fn clean_path<F, P>(src_root: &Path, p: &Path, mut f: F, mut parent: P)
 where
     F: FnMut(&OsStr),
+    P: FnMut(),
 {
     // make it relative, if possible
     let p = p.strip_prefix(src_root).unwrap_or(p);
@@ -244,12 +272,12 @@ where
     let mut iter = p.components().peekable();
 
     while let Some(c) = iter.next() {
-        if !keep_filename && iter.peek().is_none() {
+        if iter.peek().is_none() {
             break;
         }
 
         match c {
-            Component::ParentDir => f("up".as_ref()),
+            Component::ParentDir => parent(),
             Component::Normal(c) => f(c),
             _ => continue,
         }

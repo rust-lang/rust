@@ -15,6 +15,7 @@ click: "#crate-search"
 press-key: "ArrowDown"
 press-key: "ArrowDown"
 press-key: "ArrowDown"
+press-key: "ArrowDown"
 press-key: "Enter"
 // Waiting for the search results to appear...
 wait-for: "#search-tabs"
@@ -36,6 +37,7 @@ assert-property: ("#crate-search", {"value": "lib2"})
 
 // Selecting back "All crates"
 click: "#crate-search"
+press-key: "ArrowUp"
 press-key: "ArrowUp"
 press-key: "ArrowUp"
 press-key: "ArrowUp"

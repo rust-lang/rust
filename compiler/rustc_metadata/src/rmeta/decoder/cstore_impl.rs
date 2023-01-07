@@ -230,7 +230,7 @@ provide! { tcx, def_id, other, cdata,
             .trait_impl_trait_tys
             .get(cdata, def_id.index)
             .map(|lazy| lazy.decode((cdata, tcx)))
-            .process_decoded(tcx, || panic!("{:?} does not have trait_impl_trait_tys", def_id)))
+            .process_decoded(tcx, || panic!("{def_id:?} does not have trait_impl_trait_tys")))
      }
 
     visibility => { cdata.get_visibility(def_id.index) }

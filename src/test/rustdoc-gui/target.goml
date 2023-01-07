@@ -8,14 +8,14 @@ assert: "#method\.a_method:target"
 define-function: (
     "check-style",
     (theme, background, border),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("assert-css", ("#method\.a_method:target", {
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: ("#method\.a_method:target", {
             "background-color": |background|,
             "border-right": "3px solid " + |border|,
-        })),
-    ],
+        })
+    },
 )
 
 call-function: ("check-style", {

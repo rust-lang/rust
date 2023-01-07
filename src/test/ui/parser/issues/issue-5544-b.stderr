@@ -3,6 +3,8 @@ error: integer literal is too large
    |
 LL |     let __isize = 0xffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff_ff;
    |                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+   |
+   = note: value exceeds limit of `0xffffffffffffffffffffffffffffffff`
 
 error: aborting due to previous error
 

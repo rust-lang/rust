@@ -1,5 +1,5 @@
 // check-pass
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 use std::fmt::Display;
 

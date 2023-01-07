@@ -5,11 +5,11 @@
 
 fn main() {
     let _: Result<(i32, i8), ()> = Ok(1, 2);
-    //~^ ERROR this enum variant takes 1 argument but 2 arguments were supplied
+    //~^ ERROR enum variant takes 1 argument but 2 arguments were supplied
     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
-    //~^ ERROR this enum variant takes 1 argument but 3 arguments were supplied
+    //~^ ERROR enum variant takes 1 argument but 3 arguments were supplied
     let _: Option<()> = Some();
-    //~^ ERROR this enum variant takes 1 argument but 0 arguments were supplied
+    //~^ ERROR enum variant takes 1 argument but 0 arguments were supplied
 
     let _: Option<(i32,)> = Some(3);
     //~^ ERROR mismatched types
@@ -17,9 +17,9 @@ fn main() {
     let _: Option<(i32,)> = Some((3));
     //~^ ERROR mismatched types
 
-    two_ints(1, 2); //~ ERROR this function takes 1 argument
+    two_ints(1, 2); //~ ERROR function takes 1 argument
 
-    with_generic(3, 4); //~ ERROR this function takes 1 argument
+    with_generic(3, 4); //~ ERROR function takes 1 argument
 }
 
 fn two_ints(_: (i32, i32)) {
@@ -28,6 +28,6 @@ fn two_ints(_: (i32, i32)) {
 fn with_generic<T: Copy + Send>((a, b): (i32, T)) {
     if false {
         // test generics/bound handling
-        with_generic(a, b); //~ ERROR this function takes 1 argument
+        with_generic(a, b); //~ ERROR function takes 1 argument
     }
 }

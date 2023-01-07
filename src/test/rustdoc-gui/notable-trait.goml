@@ -123,40 +123,40 @@ assert-count: ("//*[@class='notable popover']", 0)
 define-function: (
     "check-colors",
     (theme, header_color, content_color, type_color, trait_color),
-    [
-        ("goto", "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"),
+    block {
+        goto: "file://" + |DOC_PATH| + "/test_docs/struct.NotableStructWithLongName.html"
         // This is needed to ensure that the text color is computed.
-        ("show-text", true),
+        show-text: true
 
         // Setting the theme.
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
         // We reload the page so the local storage settings are being used.
-        ("reload"),
+        reload:
 
-        ("move-cursor-to", "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"),
-        ("assert-count", (".notable.popover", 1)),
+        move-cursor-to: "//*[@id='method.create_an_iterator_from_read']//*[@class='notable-traits']"
+        assert-count: (".notable.popover", 1)
 
-        ("assert-css", (
+        assert-css: (
              ".notable.popover h3",
              {"color": |header_color|},
              ALL,
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
              ".notable.popover pre",
              {"color": |content_color|},
              ALL,
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
              ".notable.popover pre a.struct",
              {"color": |type_color|},
              ALL,
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
              ".notable.popover pre a.trait",
              {"color": |trait_color|},
              ALL,
-        )),
-    ]
+        )
+    },
 )
 
 call-function: (

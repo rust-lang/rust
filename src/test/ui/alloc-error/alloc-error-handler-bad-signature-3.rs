@@ -7,7 +7,7 @@
 struct Layout;
 
 #[alloc_error_handler]
-fn oom() -> ! { //~ ERROR this function takes 0 arguments but 1 argument was supplied
+fn oom() -> ! { //~ ERROR function takes 0 arguments but 1 argument was supplied
     loop {}
 }
 

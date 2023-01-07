@@ -549,8 +549,7 @@ where
         // can be forced from `DepNode`.
         debug_assert!(
             !qcx.dep_context().fingerprint_style(dep_node.kind).reconstructible(),
-            "missing on-disk cache entry for {:?}",
-            dep_node
+            "missing on-disk cache entry for {dep_node:?}"
         );
     }
 
@@ -589,8 +588,7 @@ where
 {
     assert!(
         tcx.dep_graph().is_green(dep_node),
-        "fingerprint for green query instance not loaded from cache: {:?}",
-        dep_node,
+        "fingerprint for green query instance not loaded from cache: {dep_node:?}",
     );
 
     let new_hash = hash_result.map_or(Fingerprint::ZERO, |f| {
@@ -669,16 +667,16 @@ fn incremental_verify_ich_failed(sess: &Session, dep_node: DebugArg<'_>, result:
         sess.emit_err(crate::error::Reentrant);
     } else {
         let run_cmd = if let Some(crate_name) = &sess.opts.crate_name {
-            format!("`cargo clean -p {}` or `cargo clean`", crate_name)
+            format!("`cargo clean -p {crate_name}` or `cargo clean`")
         } else {
             "`cargo clean`".to_string()
         };
 
         sess.emit_err(crate::error::IncrementCompilation {
             run_cmd,
-            dep_node: format!("{:?}", dep_node),
+            dep_node: format!("{dep_node:?}"),
         });
-        panic!("Found unstable fingerprints for {:?}: {:?}", dep_node, result);
+        panic!("Found unstable fingerprints for {dep_node:?}: {result:?}");
     }
 
     INSIDE_VERIFY_PANIC.with(|in_panic| in_panic.set(old_in_panic));

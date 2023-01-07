@@ -102,14 +102,14 @@ use std::path::{Path, PathBuf};
 
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_data_structures::sync;
-use rustc_hir::def_id::DefIdSet;
+use rustc_hir::def_id::{DefIdSet, LOCAL_CRATE};
 use rustc_middle::mir;
 use rustc_middle::mir::mono::MonoItem;
 use rustc_middle::mir::mono::{CodegenUnit, Linkage};
 use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::TyCtxt;
-use rustc_session::config::SwitchWithOptPath;
+use rustc_session::config::{DumpMonoStatsFormat, SwitchWithOptPath};
 use rustc_span::symbol::Symbol;
 
 use crate::collector::InliningMap;
@@ -285,7 +285,7 @@ where
         use std::fmt::Write;
 
         let s = &mut String::new();
-        let _ = writeln!(s, "{}", label);
+        let _ = writeln!(s, "{label}");
         for cgu in cgus {
             let _ =
                 writeln!(s, "CodegenUnit {} estimated size {} :", cgu.name(), cgu.size_estimate());
@@ -355,9 +355,8 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
             } else {
                 if mode_string != "lazy" {
                     let message = format!(
-                        "Unknown codegen-item collection mode '{}'. \
-                                           Falling back to 'lazy' mode.",
-                        mode_string
+                        "Unknown codegen-item collection mode '{mode_string}'. \
+                                           Falling back to 'lazy' mode."
                     );
                     tcx.sess.warn(&message);
                 }
@@ -417,7 +416,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
     // Output monomorphization stats per def_id
     if let SwitchWithOptPath::Enabled(ref path) = tcx.sess.opts.unstable_opts.dump_mono_stats {
         if let Err(err) =
-            dump_mono_items_stats(tcx, &codegen_units, path, tcx.sess.opts.crate_name.as_deref())
+            dump_mono_items_stats(tcx, &codegen_units, path, tcx.crate_name(LOCAL_CRATE))
         {
             tcx.sess.emit_fatal(CouldntDumpMonoStats { error: err.to_string() });
         }
@@ -470,7 +469,7 @@ fn collect_and_partition_mono_items(tcx: TyCtxt<'_>, (): ()) -> (&DefIdSet, &[Co
         item_keys.sort();
 
         for item in item_keys {
-            println!("MONO_ITEM {}", item);
+            println!("MONO_ITEM {item}");
         }
     }
 
@@ -483,7 +482,7 @@ fn dump_mono_items_stats<'tcx>(
     tcx: TyCtxt<'tcx>,
     codegen_units: &[CodegenUnit<'tcx>],
     output_directory: &Option<PathBuf>,
-    crate_name: Option<&str>,
+    crate_name: Symbol,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let output_directory = if let Some(ref directory) = output_directory {
         fs::create_dir_all(directory)?;
@@ -492,9 +491,11 @@ fn dump_mono_items_stats<'tcx>(
         Path::new(".")
     };
 
-    let filename = format!("{}.mono_items.md", crate_name.unwrap_or("unknown-crate"));
+    let format = tcx.sess.opts.unstable_opts.dump_mono_stats_format;
+    let ext = format.extension();
+    let filename = format!("{crate_name}.mono_items.{ext}");
     let output_path = output_directory.join(&filename);
-    let file = File::create(output_path)?;
+    let file = File::create(&output_path)?;
     let mut file = BufWriter::new(file);
 
     // Gather instantiated mono items grouped by def_id
@@ -508,30 +509,44 @@ fn dump_mono_items_stats<'tcx>(
         }
     }
 
+    #[derive(serde::Serialize)]
+    struct MonoItem {
+        name: String,
+        instantiation_count: usize,
+        size_estimate: usize,
+        total_estimate: usize,
+    }
+
     // Output stats sorted by total instantiated size, from heaviest to lightest
     let mut stats: Vec<_> = items_per_def_id
         .into_iter()
         .map(|(def_id, items)| {
+            let name = with_no_trimmed_paths!(tcx.def_path_str(def_id));
             let instantiation_count = items.len();
             let size_estimate = items[0].size_estimate(tcx);
             let total_estimate = instantiation_count * size_estimate;
-            (def_id, instantiation_count, size_estimate, total_estimate)
+            MonoItem { name, instantiation_count, size_estimate, total_estimate }
         })
         .collect();
-    stats.sort_unstable_by_key(|(_, _, _, total_estimate)| cmp::Reverse(*total_estimate));
+    stats.sort_unstable_by_key(|item| cmp::Reverse(item.total_estimate));
 
     if !stats.is_empty() {
-        writeln!(
-            file,
-            "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
-        )?;
-        writeln!(file, "| --- | ---: | ---: | ---: |")?;
-        for (def_id, instantiation_count, size_estimate, total_estimate) in stats {
-            let item = with_no_trimmed_paths!(tcx.def_path_str(def_id));
-            writeln!(
-                file,
-                "| {item} | {instantiation_count} | {size_estimate} | {total_estimate} |"
-            )?;
+        match format {
+            DumpMonoStatsFormat::Json => serde_json::to_writer(file, &stats)?,
+            DumpMonoStatsFormat::Markdown => {
+                writeln!(
+                    file,
+                    "| Item | Instantiation count | Estimated Cost Per Instantiation | Total Estimated Cost |"
+                )?;
+                writeln!(file, "| --- | ---: | ---: | ---: |")?;
+
+                for MonoItem { name, instantiation_count, size_estimate, total_estimate } in stats {
+                    writeln!(
+                        file,
+                        "| `{name}` | {instantiation_count} | {size_estimate} | {total_estimate} |"
+                    )?;
+                }
+            }
         }
     }
 
@@ -580,6 +595,6 @@ pub fn provide(providers: &mut Providers) {
         let (_, all) = tcx.collect_and_partition_mono_items(());
         all.iter()
             .find(|cgu| cgu.name() == name)
-            .unwrap_or_else(|| panic!("failed to find cgu with name {:?}", name))
+            .unwrap_or_else(|| panic!("failed to find cgu with name {name:?}"))
     };
 }

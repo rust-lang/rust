@@ -7,6 +7,11 @@
 #[path = "src-links/mod.rs"]
 pub mod qux;
 
+// @has src/foo/src-links.rs.html
+// @has foo/fizz/index.html '//a/@href' '../src/foo/src-links/fizz.rs.html'
+#[path = "src-links/../src-links/fizz.rs"]
+pub mod fizz;
+
 // @has foo/bar/index.html '//a/@href' '../../src/foo/src-links.rs.html'
 pub mod bar {
 

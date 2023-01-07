@@ -61,7 +61,7 @@ impl<'tcx> InferCtxt<'tcx> {
                 .as_local()
                 .map_or(false, |def_id| self.opaque_type_origin(def_id, span).is_some())
         };
-        let value = value.fold_with(&mut ty::fold::BottomUpFolder {
+        let value = value.fold_with(&mut BottomUpFolder {
             tcx: self.tcx,
             lt_op: |lt| lt,
             ct_op: |ct| ct,

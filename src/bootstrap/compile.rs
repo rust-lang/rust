@@ -141,7 +141,14 @@ impl Step for Std {
             &compiler.host,
             target,
         ));
-        run_cargo(builder, cargo, &libstd_stamp(builder, compiler, target), target_deps, false);
+        run_cargo(
+            builder,
+            cargo,
+            &libstd_stamp(builder, compiler, target),
+            target_deps,
+            false,
+            false,
+        );
 
         builder.ensure(StdLink::from_std(
             self,
@@ -728,7 +735,14 @@ impl Step for Rustc {
             &compiler.host,
             target,
         ));
-        run_cargo(builder, cargo, &librustc_stamp(builder, compiler, target), vec![], false);
+        run_cargo(
+            builder,
+            cargo,
+            &librustc_stamp(builder, compiler, target),
+            vec![],
+            false,
+            true, // Only ship rustc_driver.so and .rmeta files, not all intermediate .rlib files.
+        );
 
         builder.ensure(RustcLink::from_rustc(
             self,
@@ -984,7 +998,7 @@ impl Step for CodegenBackend {
             "Building stage{} codegen backend {} ({} -> {})",
             compiler.stage, backend, &compiler.host, target
         ));
-        let files = run_cargo(builder, cargo, &tmp_stamp, vec![], false);
+        let files = run_cargo(builder, cargo, &tmp_stamp, vec![], false, false);
         if builder.config.dry_run() {
             return;
         }
@@ -1411,6 +1425,7 @@ pub fn run_cargo(
     stamp: &Path,
     additional_target_deps: Vec<(PathBuf, DependencyType)>,
     is_check: bool,
+    rlib_only_metadata: bool,
 ) -> Vec<PathBuf> {
     if builder.config.dry_run() {
         return Vec::new();
@@ -1444,13 +1459,35 @@ pub fn run_cargo(
         };
         for filename in filenames {
             // Skip files like executables
-            if !(filename.ends_with(".rlib")
-                || filename.ends_with(".lib")
+            let mut keep = false;
+            if filename.ends_with(".lib")
                 || filename.ends_with(".a")
                 || is_debug_info(&filename)
                 || is_dylib(&filename)
-                || (is_check && filename.ends_with(".rmeta")))
             {
+                // Always keep native libraries, rust dylibs and debuginfo
+                keep = true;
+            }
+            if is_check && filename.ends_with(".rmeta") {
+                // During check builds we need to keep crate metadata
+                keep = true;
+            } else if rlib_only_metadata {
+                if filename.contains("jemalloc_sys") || filename.contains("rustc_smir") {
+                    // jemalloc_sys and rustc_smir are not linked into librustc_driver.so,
+                    // so we need to distribute them as rlib to be able to use them.
+                    keep |= filename.ends_with(".rlib");
+                } else {
+                    // Distribute the rest of the rustc crates as rmeta files only to reduce
+                    // the tarball sizes by about 50%. The object files are linked into
+                    // librustc_driver.so, so it is still possible to link against them.
+                    keep |= filename.ends_with(".rmeta");
+                }
+            } else {
+                // In all other cases keep all rlibs
+                keep |= filename.ends_with(".rlib");
+            }
+
+            if !keep {
                 continue;
             }
 

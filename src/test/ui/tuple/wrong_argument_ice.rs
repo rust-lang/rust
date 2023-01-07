@@ -9,7 +9,7 @@ pub struct BuildPlanBuilder {
 impl BuildPlanBuilder {
     pub fn or(&mut self) -> &mut Self {
         self.acc.push_back(self.current_provides, self.current_requires);
-        //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+        //~^ ERROR method takes 1 argument but 2 arguments were supplied
         self
     }
 }

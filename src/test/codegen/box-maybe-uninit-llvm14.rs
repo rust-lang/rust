@@ -2,7 +2,7 @@
 
 // Once we're done with llvm 14 and earlier, this test can be deleted.
 
-#![crate_type="lib"]
+#![crate_type = "lib"]
 
 use std::mem::MaybeUninit;
 
@@ -17,8 +17,16 @@ pub fn box_uninitialized() -> Box<MaybeUninit<usize>> {
     Box::new(MaybeUninit::uninit())
 }
 
-// FIXME: add a test for a bigger box. Currently broken, see
-// https://github.com/rust-lang/rust/issues/58201.
+// https://github.com/rust-lang/rust/issues/58201
+#[no_mangle]
+pub fn box_uninitialized2() -> Box<MaybeUninit<[usize; 1024 * 1024]>> {
+    // CHECK-LABEL: @box_uninitialized2
+    // CHECK-NOT: store
+    // CHECK-NOT: alloca
+    // CHECK-NOT: memcpy
+    // CHECK-NOT: memset
+    Box::new(MaybeUninit::uninit())
+}
 
 // Hide the LLVM 15+ `allocalign` attribute in the declaration of __rust_alloc
 // from the CHECK-NOT above. We don't check the attributes here because we can't rely

@@ -74,7 +74,7 @@ impl SymbolNamesTest<'_> {
                 tcx.sess.emit_err(TestOutput {
                     span: attr.span,
                     kind: Kind::DemanglingAlt,
-                    content: format!("{:#}", demangling),
+                    content: format!("{demangling:#}"),
                 });
             }
         }

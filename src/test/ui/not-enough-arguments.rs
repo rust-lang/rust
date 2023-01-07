@@ -25,7 +25,7 @@ fn bar(
 
 fn main() {
   foo(1, 2, 3);
-  //~^ ERROR this function takes 4 arguments but 3
+  //~^ ERROR function takes 4 arguments but 3
   bar(1, 2, 3);
-  //~^ ERROR this function takes 6 arguments but 3
+  //~^ ERROR function takes 6 arguments but 3
 }

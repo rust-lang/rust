@@ -1051,7 +1051,7 @@ impl<'hir> LoweringContext<'_, 'hir> {
                     }
                     _ => {
                         // Replace the ident for bindings that aren't simple.
-                        let name = format!("__arg{}", index);
+                        let name = format!("__arg{index}");
                         let ident = Ident::from_str(&name);
 
                         (ident, false)

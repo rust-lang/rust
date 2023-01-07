@@ -21,24 +21,24 @@ define-function: (
         comment,
         doc_comment,
     ),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("assert-css", ("pre.rust .kw", {"color": |kw|}, ALL)),
-        ("assert-css", ("pre.rust .kw-2", {"color": |kw2|}, ALL)),
-        ("assert-css", ("pre.rust .prelude-ty", {"color": |prelude_ty|}, ALL)),
-        ("assert-css", ("pre.rust .prelude-val", {"color": |prelude_val|}, ALL)),
-        ("assert-css", ("pre.rust .lifetime", {"color": |lifetime|}, ALL)),
-        ("assert-css", ("pre.rust .number", {"color": |number|}, ALL)),
-        ("assert-css", ("pre.rust .string", {"color": |string|}, ALL)),
-        ("assert-css", ("pre.rust .bool-val", {"color": |bool_val|}, ALL)),
-        ("assert-css", ("pre.rust .self", {"color": |self|}, ALL)),
-        ("assert-css", ("pre.rust .attr", {"color": |attr|}, ALL)),
-        ("assert-css", ("pre.rust .macro", {"color": |macro|}, ALL)),
-        ("assert-css", ("pre.rust .question-mark", {"color": |question_mark|}, ALL)),
-        ("assert-css", ("pre.rust .comment", {"color": |comment|}, ALL)),
-        ("assert-css", ("pre.rust .doccomment", {"color": |doc_comment|}, ALL)),
-    ],
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        assert-css: ("pre.rust .kw", {"color": |kw|}, ALL)
+        assert-css: ("pre.rust .kw-2", {"color": |kw2|}, ALL)
+        assert-css: ("pre.rust .prelude-ty", {"color": |prelude_ty|}, ALL)
+        assert-css: ("pre.rust .prelude-val", {"color": |prelude_val|}, ALL)
+        assert-css: ("pre.rust .lifetime", {"color": |lifetime|}, ALL)
+        assert-css: ("pre.rust .number", {"color": |number|}, ALL)
+        assert-css: ("pre.rust .string", {"color": |string|}, ALL)
+        assert-css: ("pre.rust .bool-val", {"color": |bool_val|}, ALL)
+        assert-css: ("pre.rust .self", {"color": |self|}, ALL)
+        assert-css: ("pre.rust .attr", {"color": |attr|}, ALL)
+        assert-css: ("pre.rust .macro", {"color": |macro|}, ALL)
+        assert-css: ("pre.rust .question-mark", {"color": |question_mark|}, ALL)
+        assert-css: ("pre.rust .comment", {"color": |comment|}, ALL)
+        assert-css: ("pre.rust .doccomment", {"color": |doc_comment|}, ALL)
+    },
 )
 
 call-function: ("check-colors", {

@@ -444,8 +444,7 @@ impl<'tcx> LateLintPass<'tcx> for NonSnakeCase {
 
     fn check_pat(&mut self, cx: &LateContext<'_>, p: &hir::Pat<'_>) {
         if let PatKind::Binding(_, hid, ident, _) = p.kind {
-            if let hir::Node::PatField(field) = cx.tcx.hir().get(cx.tcx.hir().get_parent_node(hid))
-            {
+            if let hir::Node::PatField(field) = cx.tcx.hir().get_parent(hid) {
                 if !field.is_shorthand {
                     // Only check if a new name has been introduced, to avoid warning
                     // on both the struct definition and this pattern.

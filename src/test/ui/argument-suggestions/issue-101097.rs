@@ -13,7 +13,7 @@ fn f(
 ) {}
 
 fn main() {
-    f(C, A, A, A, B, B, C); //~ ERROR this function takes 6 arguments but 7 arguments were supplied [E0061]
+    f(C, A, A, A, B, B, C); //~ ERROR function takes 6 arguments but 7 arguments were supplied [E0061]
     f(C, C, A, A, B, B);  //~ ERROR arguments to this function are incorrect [E0308]
     f(A, A, D, D, B, B);  //~ arguments to this function are incorrect [E0308]
     f(C, C, B, B, A, A);  //~ arguments to this function are incorrect [E0308]

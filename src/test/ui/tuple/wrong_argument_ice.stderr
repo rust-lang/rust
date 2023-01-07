@@ -1,4 +1,4 @@
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
+error[E0061]: method takes 1 argument but 2 arguments were supplied
   --> $DIR/wrong_argument_ice.rs:11:18
    |
 LL |         self.acc.push_back(self.current_provides, self.current_requires);
