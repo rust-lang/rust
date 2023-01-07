@@ -444,6 +444,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
     /// First span returned points to the location of the conflicting use
     /// Second span if `Some` is returned in the case of closures and points
     /// to the use of the path
+    #[instrument(level = "debug", skip(self))]
     fn later_use_kind(
         &self,
         borrow: &BorrowData<'tcx>,
@@ -461,11 +462,18 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 let block = &self.body.basic_blocks[location.block];
 
                 let kind = if let Some(&Statement {
-                    kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), _)),
+                    kind: StatementKind::FakeRead(box (FakeReadCause::ForLet(_), place)),
                     ..
                 }) = block.statements.get(location.statement_index)
                 {
-                    LaterUseKind::FakeLetRead
+                    if let Some(l) = place.as_local()
+                        && let local_decl = &self.body.local_decls[l]
+                        && local_decl.ty.is_closure()
+                    {
+                        LaterUseKind::ClosureCapture
+                    } else {
+                        LaterUseKind::FakeLetRead
+                    }
                 } else if self.was_captured_by_trait_object(borrow) {
                     LaterUseKind::TraitCapture
                 } else if location.statement_index == block.statements.len() {

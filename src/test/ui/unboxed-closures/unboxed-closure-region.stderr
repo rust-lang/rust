@@ -1,16 +1,21 @@
-error[E0597]: `x` does not live long enough
-  --> $DIR/unboxed-closure-region.rs:8:12
+error[E0373]: closure may outlive the current block, but it borrows `x`, which is owned by the current block
+  --> $DIR/unboxed-closure-region.rs:8:9
+   |
+LL |         || x
+   |         ^^ - `x` is borrowed here
+   |         |
+   |         may outlive borrowed value `x`
+   |
+note: block requires argument type to outlive `'1`
+  --> $DIR/unboxed-closure-region.rs:6:9
    |
 LL |     let _f = {
-   |         -- borrow later stored here
-LL |         let x = 0;
-LL |         || x
-   |         -- ^ borrowed value does not live long enough
-   |         |
-   |         value captured here
-LL |     };
-   |     - `x` dropped here while still borrowed
+   |         ^^
+help: to force the closure to take ownership of `x` (and any other referenced variables), use the `move` keyword
+   |
+LL |         move || x
+   |         ++++
 
 error: aborting due to previous error
 
-For more information about this error, try `rustc --explain E0597`.
+For more information about this error, try `rustc --explain E0373`.
