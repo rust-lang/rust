@@ -20,7 +20,7 @@
           StorageLive(_4);                 // scope 0 at $DIR/slice_len.rs:+1:6: +1:19
           _9 = const _;                    // scope 0 at $DIR/slice_len.rs:+1:6: +1:19
                                            // mir::Constant
-                                           // + span: $DIR/slice_len.rs:6:6: 6:19
+                                           // + span: $DIR/slice_len.rs:7:6: 7:19
                                            // + literal: Const { ty: &[u32; 3], val: Unevaluated(main, [], Some(promoted[0])) }
           _4 = _9;                         // scope 0 at $DIR/slice_len.rs:+1:6: +1:19
           _3 = _4;                         // scope 0 at $DIR/slice_len.rs:+1:6: +1:19
@@ -33,7 +33,7 @@
 -         assert(move _8, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:+1:5: +1:33
 +         _7 = const 3_usize;              // scope 0 at $DIR/slice_len.rs:+1:5: +1:33
 +         _8 = const true;                 // scope 0 at $DIR/slice_len.rs:+1:5: +1:33
-+         assert(const true, "index out of bounds: the length is {} but the index is {}", const 3_usize, const 1_usize) -> bb1; // scope 0 at $DIR/slice_len.rs:+1:5: +1:33
++         assert(const true, "index out of bounds: the length is {} but the index is {}", move _7, _6) -> bb1; // scope 0 at $DIR/slice_len.rs:+1:5: +1:33
       }
   
       bb1: {
@@ -43,7 +43,7 @@
           StorageDead(_4);                 // scope 0 at $DIR/slice_len.rs:+1:33: +1:34
           StorageDead(_2);                 // scope 0 at $DIR/slice_len.rs:+1:33: +1:34
           StorageDead(_1);                 // scope 0 at $DIR/slice_len.rs:+1:33: +1:34
-          nop;                             // scope 0 at $DIR/slice_len.rs:+0:11: +2:2
+          _0 = const ();                   // scope 0 at $DIR/slice_len.rs:+0:11: +2:2
           return;                          // scope 0 at $DIR/slice_len.rs:+2:2: +2:2
       }
   }
