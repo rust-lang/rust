@@ -422,7 +422,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                         );
                         (desc, note)
                     }
-                    _ => panic!("Unexpected type {:?}", ty),
+                    _ => panic!("Unexpected type {ty:?}"),
                 };
                 diag.note(&format!("requirement occurs because of {desc}",));
                 diag.note(&note);
@@ -725,10 +725,10 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
             let lifetime = if f.has_name() { fr_name.name } else { kw::UnderscoreLifetime };
 
             let arg = match param.param.pat.simple_ident() {
-                Some(simple_ident) => format!("argument `{}`", simple_ident),
+                Some(simple_ident) => format!("argument `{simple_ident}`"),
                 None => "the argument".to_string(),
             };
-            let captures = format!("captures data from {}", arg);
+            let captures = format!("captures data from {arg}");
 
             return nice_region_error::suggest_new_region_bound(
                 self.infcx.tcx,
