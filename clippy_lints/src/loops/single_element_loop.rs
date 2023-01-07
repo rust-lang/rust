@@ -1,7 +1,7 @@
 use super::SINGLE_ELEMENT_LOOP;
 use clippy_utils::diagnostics::span_lint_and_sugg;
 use clippy_utils::source::{indent_of, snippet_with_applicability};
-use clippy_utils::visitors::for_each_expr;
+use clippy_utils::visitors::contains_break_or_continue;
 use if_chain::if_chain;
 use rustc_ast::util::parser::PREC_PREFIX;
 use rustc_ast::Mutability;
@@ -9,18 +9,6 @@ use rustc_errors::Applicability;
 use rustc_hir::{is_range_literal, BorrowKind, Expr, ExprKind, Pat};
 use rustc_lint::LateContext;
 use rustc_span::edition::Edition;
-use std::ops::ControlFlow;
-
-fn contains_break_or_continue(expr: &Expr<'_>) -> bool {
-    for_each_expr(expr, |e| {
-        if matches!(e.kind, ExprKind::Break(..) | ExprKind::Continue(..)) {
-            ControlFlow::Break(())
-        } else {
-            ControlFlow::Continue(())
-        }
-    })
-    .is_some()
-}
 
 pub(super) fn check<'tcx>(
     cx: &LateContext<'tcx>,
