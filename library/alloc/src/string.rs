@@ -2195,7 +2195,9 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "box_str2", since = "1.45.0")]
-impl Extend<Box<str>> for String {
+impl<const COOP_PREFERRED: bool> Extend<Box<str>> for String<COOP_PREFERRED>
+where [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     fn extend<I: IntoIterator<Item = Box<str>>>(&mut self, iter: I) {
         iter.into_iter().for_each(move |s| self.push_str(&s));
     }
@@ -2782,7 +2784,10 @@ where
 
 #[cfg(not(no_global_oom_handling))]
 #[stable(feature = "string_to_string_specialization", since = "1.17.0")]
-impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for String<COOP_PREFERRED> {
+impl<const COOP_PREFERRED: bool> ToString<COOP_PREFERRED> for String<COOP_PREFERRED>
+where
+    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     #[inline]
     fn to_string(&self) -> String<COOP_PREFERRED> {
         self.to_owned()
@@ -2870,7 +2875,9 @@ where
 // note: test pulls in std, which causes errors here
 #[cfg(not(test))]
 #[stable(feature = "string_from_box", since = "1.18.0")]
-impl From<Box<str>> for String {
+impl<const COOP_PREFERRED: bool> From<Box<str>> for String<COOP_PREFERRED>
+where     [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+{
     /// Converts the given boxed `str` slice to a [`String`].
     /// It is notable that the `str` slice is owned.
     ///
