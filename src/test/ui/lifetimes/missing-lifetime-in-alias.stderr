@@ -39,7 +39,7 @@ LL |     type Bar<'b>
 help: add missing lifetime argument
    |
 LL | type C<'a, 'b> = <A<'a> as Trait>::Bar<'a>;
-   |                                    ~~~~~~~
+   |                                       ++++
 
 error: aborting due to 3 previous errors
 

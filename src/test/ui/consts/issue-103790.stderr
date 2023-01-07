@@ -20,7 +20,7 @@ LL | struct S<const S: (), const S: S = { S }>;
 help: add missing generic argument
    |
 LL | struct S<const S: (), const S: S<S> = { S }>;
-   |                                ~~~~
+   |                                 +++
 
 error[E0391]: cycle detected when computing type of `S::S`
   --> $DIR/issue-103790.rs:4:32

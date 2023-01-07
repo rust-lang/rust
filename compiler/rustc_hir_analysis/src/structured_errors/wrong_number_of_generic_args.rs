@@ -597,11 +597,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let span = self.path_segment.ident.span;
 
                 // insert a suggestion of the form "Y<'a, 'b>"
-                let ident = self.path_segment.ident.name.to_ident_string();
-                let sugg = format!("{}<{}>", ident, suggested_args);
+                let sugg = format!("<{}>", suggested_args);
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    &msg,
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
             }
 
             AngleBrackets::Available => {
@@ -643,11 +647,15 @@ impl<'a, 'tcx> WrongNumberOfGenericArgs<'a, 'tcx> {
                 let span = self.path_segment.ident.span;
 
                 // insert a suggestion of the form "Y<T, U>"
-                let ident = self.path_segment.ident.name.to_ident_string();
-                let sugg = format!("{}<{}>", ident, suggested_args);
+                let sugg = format!("<{}>", suggested_args);
                 debug!("sugg: {:?}", sugg);
 
-                err.span_suggestion_verbose(span, &msg, sugg, Applicability::HasPlaceholders);
+                err.span_suggestion_verbose(
+                    span.shrink_to_hi(),
+                    &msg,
+                    sugg,
+                    Applicability::HasPlaceholders,
+                );
             }
             AngleBrackets::Available => {
                 let gen_args_span = self.gen_args.span().unwrap();

@@ -1168,7 +1168,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                     }
 
                     ty::PredicateKind::WellFormed(ty) => {
-                        if self.tcx.sess.opts.unstable_opts.trait_solver != TraitSolver::Chalk {
+                        if self.tcx.sess.opts.unstable_opts.trait_solver == TraitSolver::Classic {
                             // WF predicates cannot themselves make
                             // errors. They can only block due to
                             // ambiguity; otherwise, they always
@@ -1180,7 +1180,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                             // which bounds actually failed to hold.
                             self.tcx.sess.struct_span_err(
                                 span,
-                                &format!("the type `{}` is not well-formed (chalk)", ty),
+                                &format!("the type `{}` is not well-formed", ty),
                             )
                         }
                     }
