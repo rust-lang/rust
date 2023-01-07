@@ -557,6 +557,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
+            &simplify::SimplifyLocals::new("before-const-prop"),
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
@@ -575,7 +576,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
-            &simplify::SimplifyLocals,
+            &simplify::SimplifyLocals::new("final"),
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.

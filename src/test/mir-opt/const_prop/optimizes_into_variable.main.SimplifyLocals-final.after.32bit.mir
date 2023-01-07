@@ -1,4 +1,4 @@
-// MIR for `main` after SimplifyLocals
+// MIR for `main` after SimplifyLocals-final
 
 fn main() -> () {
     let mut _0: ();                      // return place in scope 0 at $DIR/optimizes_into_variable.rs:+0:11: +0:11

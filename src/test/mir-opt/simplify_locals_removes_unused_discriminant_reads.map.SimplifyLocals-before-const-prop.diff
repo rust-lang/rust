@@ -1,5 +1,5 @@
-- // MIR for `map` before SimplifyLocals
-+ // MIR for `map` after SimplifyLocals
+- // MIR for `map` before SimplifyLocals-before-const-prop
++ // MIR for `map` after SimplifyLocals-before-const-prop
   
   fn map(_1: Option<Box<()>>) -> Option<Box<()>> {
       debug x => _1;                       // in scope 0 at $DIR/simplify_locals_removes_unused_discriminant_reads.rs:+0:8: +0:9

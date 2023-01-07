@@ -1,3 +1,4 @@
+// unit-test: ConstProp
 // ignore-endian-big
 // EMIT_MIR_FOR_EACH_BIT_WIDTH
 // EMIT_MIR const_allocation2.main.ConstProp.after.mir
