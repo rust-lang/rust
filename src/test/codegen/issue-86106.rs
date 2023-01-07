@@ -1,14 +1,21 @@
 // min-llvm-version: 15.0
-// compile-flags: -C opt-level=3
+// compile-flags: -C opt-level=3 -Z merge-functions=disabled
 
 // The below two functions ensure that both `String::new()` and `"".to_string()`
 // produce the identical code.
 
 #![crate_type = "lib"]
 
-// CHECK-LABEL: @string_new = unnamed_addr alias void (ptr), ptr @empty_to_string
+// CHECK-LABEL: define void @string_new
 #[no_mangle]
 pub fn string_new() -> String {
+    // CHECK-NOT: load i8
+    // CHECK: store i{{32|64}}
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store ptr
+    // CHECK-NEXT: getelementptr
+    // CHECK-NEXT: store i{{32|64}}
+    // CHECK-NEXT: ret void
     String::new()
 }
 
