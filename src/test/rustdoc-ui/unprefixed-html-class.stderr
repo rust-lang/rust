@@ -1,0 +1,107 @@
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:4:27
+   |
+LL | /// Test with <div class="evil"></div>
+   |                           -^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+note: the lint level is defined here
+  --> $DIR/unprefixed-html-class.rs:2:9
+   |
+LL | #![deny(rustdoc::unprefixed_html_class)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:11:54
+   |
+LL | /// Test with <div class="unprefixed_html_class_evil evil"></div>
+   |                                                      -^^^
+   |                                                      |
+   |                                                      help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:15:27
+   |
+LL | /// Test with <div class="evil unprefixed_html_class_evil"></div>
+   |                           -^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:19:27
+   |
+LL | /// Test with <div class="evil genius"></div>
+   |                           -^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:19:32
+   |
+LL | /// Test with <div class="evil genius"></div>
+   |                                -^^^^^
+   |                                |
+   |                                help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:35:27
+   |
+LL | /// Test with <div class="deprecated"></div>
+   |                           -^^^^^^^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:39:27
+   |
+LL | /// Test with <div class="portability"></div>
+   |                           -^^^^^^^^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:46:31
+   |
+LL | /// Test unquoted: <div class=bad></div>
+   |                               -^^
+   |                               |
+   |                               help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:50:31
+   |
+LL | /// Test unquoted: <div class=bad title="Whatever"></div>
+   |                               -^^
+   |                               |
+   |                               help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:54:40
+   |
+LL | /// Test unquoted: <div disabled class=bad></div>
+   |                                        -^^
+   |                                        |
+   |                                        help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: aborting due to 10 previous errors
+

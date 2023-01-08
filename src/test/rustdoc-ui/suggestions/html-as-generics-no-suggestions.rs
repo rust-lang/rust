@@ -50,7 +50,7 @@ pub struct FullyQualifiedPathsDoNotCount3;
 // out if this is valid would require parsing the entire path grammar.
 pub struct FullyQualifiedPathsDoNotCount4;
 
-/// This Vec<i32 class="test"> thing!
+/// This Vec<i32 title="test"> thing!
 //~^ERROR unclosed HTML tag `i32`
 // HTML attributes shouldn't be treated as Rust syntax, so no suggestions.
 pub struct TagWithAttributes;

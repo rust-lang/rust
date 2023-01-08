@@ -205,6 +205,8 @@ pub(crate) static RUSTDOC_LINTS: Lazy<Vec<&'static Lint>> = Lazy::new(|| {
         INVALID_HTML_TAGS,
         BARE_URLS,
         MISSING_CRATE_LEVEL_DOCS,
+        UNPREFIXED_HTML_ID,
+        UNPREFIXED_HTML_CLASS,
     ]
 });
 

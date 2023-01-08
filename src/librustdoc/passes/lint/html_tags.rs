@@ -4,6 +4,7 @@ use crate::core::DocContext;
 use crate::html::markdown::main_body_opts;
 use crate::passes::source_span_for_markdown_range;
 
+use itertools::Itertools;
 use pulldown_cmark::{BrokenLink, Event, LinkType, Parser, Tag};
 
 use std::iter::Peekable;
@@ -177,8 +178,37 @@ fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
 }
 
-fn check_html_attr(name: &str, value: &str, report_diag: &ReportDiag<'_, '_>) {
-    let _ = (name, value, report_diag);
+fn check_html_attr(name: &str, value: &str, range: Range<usize>, report_diag: &ReportDiag<'_, '_>) {
+    match name {
+        "class" => {
+            let is_stab = value.split_ascii_whitespace().contains(&"stab");
+            let prefix = format!("{}_", report_diag.crate_name());
+            let has_prefix = |name: &str| name.starts_with(&prefix);
+            // Can't use `split_ascii_whitespace()`, because I need byte offsets to report suggestions.
+            let mut start = None;
+            for (i, c) in value.char_indices() {
+                if c.is_ascii_whitespace() {
+                    if let Some(start) = start && let class_name = &value[start..i] && !has_prefix(class_name) && !(is_stab && matches!(class_name, "stab" | "deprecated" | "portability")) {
+                        let range = (start + range.start)..(i + range.start);
+                        report_diag.unprefixed_html_class(&range);
+                    }
+                    start = None;
+                } else if start.is_none() {
+                    start = Some(i);
+                }
+            }
+            if let Some(start) = start && let class_name = &value[start..] && !has_prefix(class_name) && !(is_stab && matches!(class_name, "stab" | "deprecated" | "portability")) {
+                let range = (start + range.start)..range.end;
+                report_diag.unprefixed_html_class(&range);
+            }
+        }
+        "id" => {
+            if !value.starts_with(&format!("{}_", report_diag.crate_name())) {
+                report_diag.unprefixed_html_id(&range);
+            }
+        }
+        _ => {}
+    }
 }
 
 fn extract_html_tag(
@@ -217,13 +247,13 @@ fn extract_html_tag(
                 if is_closing {
                     // In case we have "</div >" or even "</div         >".
                     if c != '>' {
-                        if !c.is_whitespace() {
+                        if !c.is_ascii_whitespace() {
                             // It seems like it's not a valid HTML tag.
                             break;
                         }
                         let mut found = false;
                         for (new_pos, c) in text[pos..].char_indices() {
-                            if !c.is_whitespace() {
+                            if !c.is_ascii_whitespace() {
                                 if c == '>' {
                                     r.end = range.start + new_pos + 1;
                                     found = true;
@@ -250,8 +280,8 @@ fn extract_html_tag(
                         let cur_pos = pos + i;
                         match state {
                             HtmlAttrParseState::Start { start_pos } => {
-                                if c.is_whitespace() {
-                                    state = HtmlAttrParseState::Start { start_pos: cur_pos };
+                                if c.is_ascii_whitespace() {
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
                                 } else if c == '/' {
                                     state = HtmlAttrParseState::PotentiallySelfClosing;
                                 } else if c == '=' {
@@ -262,7 +292,7 @@ fn extract_html_tag(
                             HtmlAttrParseState::PotentiallySelfClosing => {
                                 if c == '>' {
                                     break;
-                                } else if !c.is_whitespace() {
+                                } else if !c.is_ascii_whitespace() {
                                     state = HtmlAttrParseState::Start { start_pos: cur_pos };
                                 }
                             }
@@ -276,8 +306,14 @@ fn extract_html_tag(
                                         quote_pos: cur_pos,
                                         quote: c,
                                     };
-                                } else if c.is_whitespace() {
-                                    check_html_attr(&text[start_pos..eq_pos], "", report_diag);
+                                } else if c.is_ascii_whitespace() {
+                                    check_html_attr(
+                                        &text[start_pos..eq_pos],
+                                        "",
+                                        (r.start + eq_pos)..(r.start + eq_pos),
+                                        report_diag,
+                                    );
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
                                 } else {
                                     state = HtmlAttrParseState::Unquoted { start_pos, eq_pos }
                                 }
@@ -287,6 +323,7 @@ fn extract_html_tag(
                                     check_html_attr(
                                         &text[start_pos..eq_pos],
                                         &text[(quote_pos + 1)..cur_pos],
+                                        (quote_pos + 1 + r.start)..(cur_pos + r.start),
                                         report_diag,
                                     );
                                     state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
@@ -297,13 +334,15 @@ fn extract_html_tag(
                                     check_html_attr(
                                         &text[start_pos..eq_pos],
                                         &text[(eq_pos + 1)..cur_pos],
+                                        (eq_pos + 1 + r.start)..(cur_pos + r.start),
                                         report_diag,
                                     );
                                     break;
-                                } else if c.is_whitespace() {
+                                } else if c.is_ascii_whitespace() {
                                     check_html_attr(
                                         &text[start_pos..eq_pos],
                                         &text[(eq_pos + 1)..cur_pos],
+                                        (eq_pos + 1 + r.start)..(cur_pos + r.start),
                                         report_diag,
                                     );
                                     state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
@@ -334,6 +373,7 @@ fn extract_html_tag(
                                 &qr,
                                 false,
                             );
+                            tags.push((tag_name, r));
                         }
                         _ => {
                             tags.push((tag_name, r));
@@ -470,6 +510,48 @@ impl<'cx, 'item> ReportDiag<'cx, 'item> {
                 );
             }
 
+            lint
+        });
+    }
+    fn crate_name(&self) -> rustc_span::Symbol {
+        self.cx.tcx.crate_name(self.item.item_id.krate())
+    }
+    fn unprefixed_html_class(&self, range: &Range<usize>) {
+        let ReportDiag { cx, ref dox, hir_id, item } = *self;
+        let tcx = cx.tcx;
+        let span = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs) {
+            Some(span) => span,
+            None => item.attr_span(tcx),
+        };
+        let msg = "unprefixed HTML `class` attribute";
+        tcx.struct_span_lint_hir(crate::lint::UNPREFIXED_HTML_CLASS, hir_id, span, msg, |lint| {
+            use rustc_lint_defs::Applicability;
+            lint.multipart_suggestion(
+                "add prefix",
+                vec![
+                    (span.shrink_to_lo(), format!("{}_", self.crate_name())),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+            lint.help("classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`");
+            lint
+        });
+    }
+    fn unprefixed_html_id(&self, range: &Range<usize>) {
+        let ReportDiag { cx, ref dox, hir_id, item } = *self;
+        let tcx = cx.tcx;
+        let span = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs) {
+            Some(span) => span,
+            None => item.attr_span(tcx),
+        };
+        let msg = "unprefixed HTML `id` attribute";
+        tcx.struct_span_lint_hir(crate::lint::UNPREFIXED_HTML_ID, hir_id, span, msg, |lint| {
+            use rustc_lint_defs::Applicability;
+            lint.multipart_suggestion(
+                "add prefix",
+                vec![(span.shrink_to_lo(), format!("{}_", self.crate_name()))],
+                Applicability::MachineApplicable,
+            );
             lint
         });
     }

@@ -37,7 +37,7 @@ LL | /// This Vec<Vec<i32> as IntoIter> thing!
 error: unclosed HTML tag `i32`
   --> $DIR/html-as-generics-no-suggestions.rs:53:13
    |
-LL | /// This Vec<i32 class="test"> thing!
+LL | /// This Vec<i32 title="test"> thing!
    |             ^^^^
 
 error: unopened HTML tag `i32`

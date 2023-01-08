@@ -1,0 +1,48 @@
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:4:24
+   |
+LL | /// Test with <div id="evil"></div>
+   |                        -^^^
+   |                        |
+   |                        help: add prefix: `unprefixed_html_id_`
+   |
+note: the lint level is defined here
+  --> $DIR/unprefixed-html-id.rs:2:9
+   |
+LL | #![deny(rustdoc::unprefixed_html_id)]
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:13:24
+   |
+LL | /// Test with <div id="stab"></div>
+   |                        -^^^
+   |                        |
+   |                        help: add prefix: `unprefixed_html_id_`
+
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:17:28
+   |
+LL | /// Test unquoted: <div id=stab></div>
+   |                            -^^^
+   |                            |
+   |                            help: add prefix: `unprefixed_html_id_`
+
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:21:28
+   |
+LL | /// Test unquoted: <div id=bad title="Whatever"></div>
+   |                            -^^
+   |                            |
+   |                            help: add prefix: `unprefixed_html_id_`
+
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:25:37
+   |
+LL | /// Test unquoted: <div disabled id=bad></div>
+   |                                     -^^
+   |                                     |
+   |                                     help: add prefix: `unprefixed_html_id_`
+
+error: aborting due to 5 previous errors
+
