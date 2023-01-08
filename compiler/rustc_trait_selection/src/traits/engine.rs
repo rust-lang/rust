@@ -191,8 +191,8 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
         let assumed_wf_types = tcx.assumed_wf_types(def_id);
         let mut implied_bounds = FxIndexSet::default();
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id);
-        for &(ty, ty_span) in assumed_wf_types {
-            let span = if ty_span.is_dummy() { span } else { ty_span };
+        let cause = ObligationCause::misc(span, hir_id);
+        for ty in assumed_wf_types {
             // FIXME(@lcnr): rustc currently does not check wf for types
             // pre-normalization, meaning that implied bounds are sometimes
             // incorrect. See #100910 for more details.
@@ -205,7 +205,7 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             // sound and then uncomment this line again.
 
             // implied_bounds.insert(ty);
-            let normalized = self.normalize(&ObligationCause::misc(span, hir_id), param_env, ty);
+            let normalized = self.normalize(&cause, param_env, ty);
             implied_bounds.insert(normalized);
         }
         implied_bounds

@@ -1,80 +1,33 @@
 use crate::rustc_middle::ty::DefIdTree;
-use rustc_hir::{self as hir, def::DefKind, def_id::DefId};
+use rustc_hir::{def::DefKind, def_id::DefId};
 use rustc_middle::ty::{self, Ty, TyCtxt};
-use rustc_span::{Span, DUMMY_SP};
 
 pub fn provide(providers: &mut ty::query::Providers) {
     *providers = ty::query::Providers { assumed_wf_types, ..*providers };
 }
 
-fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &[(Ty<'_>, Span)] {
+fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &ty::List<Ty<'_>> {
     match tcx.def_kind(def_id) {
         DefKind::Fn => {
             let sig = tcx.fn_sig(def_id);
             let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
-            if let Some(node) = tcx.hir().get_if_local(def_id)
-                && let Some(decl) = node.fn_decl()
-            {
-                assert_eq!(decl.inputs.len(), liberated_sig.inputs().len());
-                tcx.arena.alloc_from_iter(std::iter::zip(
-                    liberated_sig.inputs_and_output,
-                    decl.inputs.iter().map(|ty| ty.span).chain([decl.output.span()]),
-                ))
-            } else {
-                tcx.arena.alloc_from_iter(
-                    liberated_sig.inputs_and_output.iter().map(|ty| (ty, DUMMY_SP)),
-                )
-            }
+            liberated_sig.inputs_and_output
         }
         DefKind::AssocFn => {
             let sig = tcx.fn_sig(def_id);
             let liberated_sig = tcx.liberate_late_bound_regions(def_id, sig);
-            let assumed_wf_types = tcx.assumed_wf_types(tcx.parent(def_id));
-            if let Some(node) = tcx.hir().get_if_local(def_id)
-                && let Some(decl) = node.fn_decl()
-            {
-                assert_eq!(decl.inputs.len(), liberated_sig.inputs().len());
-                tcx.arena.alloc_from_iter(assumed_wf_types.iter().copied().chain(std::iter::zip(
-                    liberated_sig.inputs_and_output,
-                    decl.inputs.iter().map(|ty| ty.span).chain([decl.output.span()]),
-                )))
-            } else {
-                tcx.arena.alloc_from_iter(assumed_wf_types.iter().copied().chain(
-                    liberated_sig.inputs_and_output.iter().map(|ty| (ty, DUMMY_SP)),
-                ))
-            }
+            let mut assumed_wf_types: Vec<_> =
+                tcx.assumed_wf_types(tcx.parent(def_id)).as_slice().into();
+            assumed_wf_types.extend(liberated_sig.inputs_and_output);
+            tcx.intern_type_list(&assumed_wf_types)
         }
         DefKind::Impl => match tcx.impl_trait_ref(def_id) {
             Some(trait_ref) => {
                 let types: Vec<_> = trait_ref.substs.types().collect();
-                let self_span = if let Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl(impl_),
-                    ..
-                })) = tcx.hir().get_if_local(def_id)
-                {
-                    impl_.self_ty.span
-                } else {
-                    DUMMY_SP
-                };
-                tcx.arena.alloc_from_iter(std::iter::zip(
-                    types,
-                    // FIXME: reliable way of getting trait ref substs...
-                    [self_span].into_iter().chain(std::iter::repeat(DUMMY_SP)),
-                ))
+                tcx.intern_type_list(&types)
             }
             // Only the impl self type
-            None => {
-                let span = if let Some(hir::Node::Item(hir::Item {
-                    kind: hir::ItemKind::Impl(impl_),
-                    ..
-                })) = tcx.hir().get_if_local(def_id)
-                {
-                    impl_.self_ty.span
-                } else {
-                    DUMMY_SP
-                };
-                tcx.arena.alloc_from_iter([(tcx.type_of(def_id), span)])
-            }
+            None => tcx.intern_type_list(&[tcx.type_of(def_id)]),
         },
         DefKind::AssocConst | DefKind::AssocTy => tcx.assumed_wf_types(tcx.parent(def_id)),
         DefKind::Mod
@@ -103,6 +56,6 @@ fn assumed_wf_types(tcx: TyCtxt<'_>, def_id: DefId) -> &[(Ty<'_>, Span)] {
         | DefKind::LifetimeParam
         | DefKind::GlobalAsm
         | DefKind::Closure
-        | DefKind::Generator => &[],
+        | DefKind::Generator => ty::List::empty(),
     }
 }

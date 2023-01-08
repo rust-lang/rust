@@ -803,7 +803,7 @@ rustc_queries! {
     ///
     /// Note that we've liberated the late bound regions of function signatures, so
     /// this can not be used to check whether these types are well formed.
-    query assumed_wf_types(key: DefId) -> &'tcx [(Ty<'tcx>, Span)] {
+    query assumed_wf_types(key: DefId) -> &'tcx ty::List<Ty<'tcx>> {
         desc { |tcx| "computing the implied bounds of `{}`", tcx.def_path_str(key) }
     }
 
