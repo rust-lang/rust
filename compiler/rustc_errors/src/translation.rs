@@ -45,7 +45,10 @@ pub trait Translate {
         args: &FluentArgs<'_>,
     ) -> Cow<'_, str> {
         Cow::Owned(
-            messages.iter().map(|(m, _)| self.translate_message(m, args)).collect::<String>(),
+            messages
+                .iter()
+                .map(|(m, _)| self.translate_message(m, args).map_err(Report::new).unwrap())
+                .collect::<String>(),
         )
     }
 
@@ -54,11 +57,11 @@ pub trait Translate {
         &'a self,
         message: &'a DiagnosticMessage,
         args: &'a FluentArgs<'_>,
-    ) -> Cow<'_, str> {
+    ) -> Result<Cow<'_, str>, TranslateError<'_>> {
         trace!(?message, ?args);
         let (identifier, attr) = match message {
             DiagnosticMessage::Str(msg) | DiagnosticMessage::Eager(msg) => {
-                return Cow::Borrowed(msg);
+                return Ok(Cow::Borrowed(msg));
             }
             DiagnosticMessage::FluentIdentifier(identifier, attr) => (identifier, attr),
         };
@@ -86,7 +89,7 @@ pub trait Translate {
                 }
             };
 
-        let ret: Result<Cow<'_, str>, TranslateError<'_>> = try {
+        try {
             match self.fluent_bundle().map(|b| translate_with_bundle(b)) {
                 // The primary bundle was present and translation succeeded
                 Some(Ok(t)) => t,
@@ -104,8 +107,6 @@ pub trait Translate {
                 None => translate_with_bundle(self.fallback_fluent_bundle())
                     .map_err(|fallback| TranslateError::primary(identifier, args).and(fallback))?,
             }
-        };
-        ret.map_err(Report::new)
-            .expect("failed to find message in primary or fallback fluent bundles")
+        }
     }
 }

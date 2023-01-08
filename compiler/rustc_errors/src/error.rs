@@ -65,11 +65,14 @@ impl fmt::Display for TranslateError<'_> {
 
         match self {
             Self::One { id, args, kind } => {
-                writeln!(f, "\nfailed while formatting fluent string `{id}`: ")?;
+                writeln!(f, "failed while formatting fluent string `{id}`: ")?;
                 match kind {
                     MessageMissing => writeln!(f, "message was missing")?,
                     PrimaryBundleMissing => writeln!(f, "the primary bundle was missing")?,
-                    AttributeMissing { attr } => writeln!(f, "the attribute `{attr}` was missing")?,
+                    AttributeMissing { attr } => {
+                        writeln!(f, "the attribute `{attr}` was missing")?;
+                        writeln!(f, "help: add `.{attr} = <message>`")?;
+                    }
                     ValueMissing => writeln!(f, "the value was missing")?,
                     Fluent { errs } => {
                         for err in errs {
