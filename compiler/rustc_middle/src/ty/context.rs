@@ -2048,7 +2048,7 @@ impl<'tcx> TyCtxt<'tcx> {
     }
 
     pub fn mk_place_index(self, place: Place<'tcx>, index: Local) -> Place<'tcx> {
-        self.mk_place_elem(place, PlaceElem::Index(index))
+        self.mk_place_elem(place, PlaceElem::Index(index.into()))
     }
 
     /// This method copies `Place`'s projection, add an element and reintern it. Should not be used

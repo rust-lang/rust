@@ -128,13 +128,7 @@ impl<'tcx> MutVisitor<'tcx> for DerefArgVisitor<'tcx> {
                 self.tcx,
             );
         } else {
-            self.visit_local(&mut place.local, context, location);
-
-            for elem in place.projection.iter() {
-                if let PlaceElem::Index(local) = elem {
-                    assert_ne!(local, SELF_ARG);
-                }
-            }
+            self.super_place(place, context, location);
         }
     }
 }
@@ -167,13 +161,7 @@ impl<'tcx> MutVisitor<'tcx> for PinArgVisitor<'tcx> {
                 self.tcx,
             );
         } else {
-            self.visit_local(&mut place.local, context, location);
-
-            for elem in place.projection.iter() {
-                if let PlaceElem::Index(local) = elem {
-                    assert_ne!(local, SELF_ARG);
-                }
-            }
+            self.super_place(place, context, location);
         }
     }
 }

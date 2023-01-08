@@ -141,9 +141,9 @@ impl<'mir, 'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> LocalAnalyzer<'mir, 'a, 'tcx,
             // HACK(eddyb) this emulates the old `visit_projection_elem`, this
             // entire `visit_place`-like `process_place` method should be rewritten,
             // now that we have moved to the "slice of projections" representation.
-            if let mir::ProjectionElem::Index(local) = elem {
-                self.visit_local(
-                    local,
+            if let mir::ProjectionElem::Index(ref index) = elem {
+                self.visit_place(
+                    index,
                     PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                     location,
                 );

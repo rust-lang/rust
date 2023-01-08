@@ -956,7 +956,7 @@ pub enum ProjectionElem<V, T> {
 
 /// Alias for projections as they appear in places, where the base is a place
 /// and the index is a local.
-pub type PlaceElem<'tcx> = ProjectionElem<Local, Ty<'tcx>>;
+pub type PlaceElem<'tcx> = ProjectionElem<Place<'tcx>, Ty<'tcx>>;
 
 ///////////////////////////////////////////////////////////////////////////
 // Operands

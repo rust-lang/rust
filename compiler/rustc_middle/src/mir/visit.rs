@@ -1078,15 +1078,15 @@ macro_rules! visit_place_fns {
             location: Location,
         ) -> Option<PlaceElem<'tcx>> {
             match elem {
-                PlaceElem::Index(local) => {
-                    let mut new_local = local;
-                    self.visit_local(
-                        &mut new_local,
+                PlaceElem::Index(place) => {
+                    let mut new_place = place;
+                    self.visit_place(
+                        &mut new_place,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                         location,
                     );
 
-                    if new_local == local { None } else { Some(PlaceElem::Index(new_local)) }
+                    if new_place == place { None } else { Some(PlaceElem::Index(new_place)) }
                 }
                 PlaceElem::Field(field, ty) => {
                     let mut new_ty = ty;
@@ -1170,9 +1170,9 @@ macro_rules! visit_place_fns {
                 ProjectionElem::OpaqueCast(ty) | ProjectionElem::Field(_, ty) => {
                     self.visit_ty(ty, TyContext::Location(location));
                 }
-                ProjectionElem::Index(local) => {
-                    self.visit_local(
-                        local,
+                ProjectionElem::Index(ref place) => {
+                    self.visit_place(
+                        place,
                         PlaceContext::NonMutatingUse(NonMutatingUseContext::Copy),
                         location,
                     );

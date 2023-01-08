@@ -204,8 +204,8 @@ impl<'a, 'tcx> Visitor<'tcx> for TypeChecker<'a, 'tcx> {
         location: Location,
     ) {
         match elem {
-            ProjectionElem::Index(index) => {
-                let index_ty = self.body.local_decls[index].ty;
+            ProjectionElem::Index(ref index) => {
+                let index_ty = Place::ty(index, &self.body.local_decls, self.tcx).ty;
                 if index_ty != self.tcx.types.usize {
                     self.fail(location, format!("bad index ({:?} != usize)", index_ty))
                 }

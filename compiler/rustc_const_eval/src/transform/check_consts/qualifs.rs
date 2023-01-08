@@ -298,7 +298,9 @@ where
     let mut place = place;
     while let Some((place_base, elem)) = place.last_projection() {
         match elem {
-            ProjectionElem::Index(index) if in_local(index) => return true,
+            ProjectionElem::Index(index) if in_place::<Q, _>(cx, in_local, index.as_ref()) => {
+                return true;
+            }
 
             ProjectionElem::Deref
             | ProjectionElem::Field(_, _)

@@ -190,7 +190,7 @@ impl<'tcx, 'body> ParseCtxt<'tcx, 'body> {
                     _ => (*arg, PlaceElem::Deref),
                 )
             },
-            ExprKind::Index { lhs, index } => (*lhs, PlaceElem::Index(self.parse_local(*index)?)),
+            ExprKind::Index { lhs, index } => (*lhs, PlaceElem::Index(self.parse_place(*index)?)),
             ExprKind::Field { lhs, name: field, .. } => (*lhs, PlaceElem::Field(*field, expr.ty)),
             _ => {
                 let place = self.parse_local(expr_id).map(Place::from)?;

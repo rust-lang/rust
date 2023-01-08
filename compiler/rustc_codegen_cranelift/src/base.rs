@@ -851,8 +851,8 @@ pub(crate) fn codegen_place<'tcx>(
             PlaceElem::Field(field, _ty) => {
                 cplace = cplace.place_field(fx, field);
             }
-            PlaceElem::Index(local) => {
-                let index = fx.get_local_place(local).to_cvalue(fx).load_scalar(fx);
+            PlaceElem::Index(index) => {
+                let index = codegen_place(fx, index).to_cvalue(fx).load_scalar(fx);
                 cplace = cplace.place_index(fx, index);
             }
             PlaceElem::ConstantIndex { offset, min_length: _, from_end } => {

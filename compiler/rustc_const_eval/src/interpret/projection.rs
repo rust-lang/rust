@@ -360,9 +360,9 @@ where
             Field(field, _) => self.place_field(base, field.index())?,
             Downcast(_, variant) => self.place_downcast(base, variant)?,
             Deref => self.deref_operand(&self.place_to_op(base)?)?.into(),
-            Index(local) => {
+            Index(place) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.local_to_op(self.frame(), local, Some(layout))?;
+                let n = self.eval_place_to_op(place, Some(layout))?;
                 let n = self.read_machine_usize(&n)?;
                 self.place_index(base, n)?
             }
@@ -389,9 +389,9 @@ where
             Field(field, _) => self.operand_field(base, field.index())?,
             Downcast(_, variant) => self.operand_downcast(base, variant)?,
             Deref => self.deref_operand(base)?.into(),
-            Index(local) => {
+            Index(place) => {
                 let layout = self.layout_of(self.tcx.types.usize)?;
-                let n = self.local_to_op(self.frame(), local, Some(layout))?;
+                let n = self.eval_place_to_op(place, Some(layout))?;
                 let n = self.read_machine_usize(&n)?;
                 self.operand_index(base, n)?
             }

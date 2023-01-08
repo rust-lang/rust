@@ -46,6 +46,7 @@ pub(crate) use region_errors::{ErrorConstraintInfo, RegionErrorKind, RegionError
 pub(crate) use region_name::{RegionName, RegionNameSource};
 pub(crate) use rustc_const_eval::util::CallKind;
 
+#[derive(Copy, Clone)]
 pub(super) struct DescribePlaceOpt {
     pub including_downcast: bool,
 
@@ -265,7 +266,9 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 }
                 ProjectionElem::Index(index) => {
                     buf.push('[');
-                    if self.append_local_to_string(*index, &mut buf).is_err() {
+                    if let Some(index) = self.describe_place_with_options(index.as_ref(), opt) {
+                        buf.push_str(&index);
+                    } else {
                         buf.push('_');
                     }
                     buf.push(']');

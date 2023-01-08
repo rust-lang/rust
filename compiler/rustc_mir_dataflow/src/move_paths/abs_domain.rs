@@ -11,7 +11,7 @@
 //! `a[x]` would still overlap them both. But that is not this
 //! representation does today.)
 
-use rustc_middle::mir::{Local, Operand, PlaceElem, ProjectionElem};
+use rustc_middle::mir::{Local, Operand, Place, PlaceElem, ProjectionElem};
 use rustc_middle::ty::Ty;
 
 #[derive(Copy, Clone, PartialEq, Eq, Hash, Debug)]
@@ -31,6 +31,12 @@ impl<'tcx> Lift for Operand<'tcx> {
     }
 }
 impl Lift for Local {
+    type Abstract = AbstractOperand;
+    fn lift(&self) -> Self::Abstract {
+        AbstractOperand
+    }
+}
+impl<'tcx> Lift for Place<'tcx> {
     type Abstract = AbstractOperand;
     fn lift(&self) -> Self::Abstract {
         AbstractOperand

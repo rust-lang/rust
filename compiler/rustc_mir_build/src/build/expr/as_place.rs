@@ -308,7 +308,7 @@ impl<'tcx> PlaceBuilder<'tcx> {
     }
 
     fn index(self, index: Local) -> Self {
-        self.project(PlaceElem::Index(index))
+        self.project(PlaceElem::Index(index.into()))
     }
 
     pub(crate) fn project(mut self, elem: PlaceElem<'tcx>) -> Self {

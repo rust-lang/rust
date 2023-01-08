@@ -361,27 +361,28 @@ impl<'tcx> Validator<'_, 'tcx> {
 
                     ProjectionElem::ConstantIndex { .. } | ProjectionElem::Subslice { .. } => {}
 
-                    ProjectionElem::Index(local) => {
+                    ProjectionElem::Index(place) => {
                         let mut promotable = false;
                         // Only accept if we can predict the index and are indexing an array.
-                        let val =
-                            if let TempState::Defined { location: loc, .. } = self.temps[local] {
-                                let block = &self.body[loc.block];
-                                if loc.statement_index < block.statements.len() {
-                                    let statement = &block.statements[loc.statement_index];
-                                    match &statement.kind {
-                                        StatementKind::Assign(box (
-                                            _,
-                                            Rvalue::Use(Operand::Constant(c)),
-                                        )) => c.literal.try_eval_usize(self.tcx, self.param_env),
-                                        _ => None,
-                                    }
-                                } else {
-                                    None
+                        let val = if let Some(local) = place.as_local()
+                            && let TempState::Defined { location: loc, .. } = self.temps[local]
+                        {
+                            let block = &self.body[loc.block];
+                            if loc.statement_index < block.statements.len() {
+                                let statement = &block.statements[loc.statement_index];
+                                match &statement.kind {
+                                    StatementKind::Assign(box (
+                                        _,
+                                        Rvalue::Use(Operand::Constant(c)),
+                                    )) => c.literal.try_eval_usize(self.tcx, self.param_env),
+                                    _ => None,
                                 }
                             } else {
                                 None
-                            };
+                            }
+                        } else {
+                            None
+                        };
                         if let Some(idx) = val {
                             // Determine the type of the thing we are indexing.
                             let ty = place_base.ty(self.body, self.tcx).ty;
@@ -403,7 +404,7 @@ impl<'tcx> Validator<'_, 'tcx> {
                             return Err(Unpromotable);
                         }
 
-                        self.validate_local(local)?;
+                        self.validate_place(place.as_ref())?;
                     }
 
                     ProjectionElem::Field(..) => {
