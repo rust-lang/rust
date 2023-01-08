@@ -1645,9 +1645,7 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
         let e = substs_e.type_at(1);
         let f = substs_f.type_at(1);
         if fcx
-            .tcx
-            .infer_ctxt()
-            .build()
+            .infcx
             .type_implements_trait(
                 fcx.tcx.get_diagnostic_item(sym::Into).unwrap(),
                 [fcx.tcx.erase_regions(f), fcx.tcx.erase_regions(e)],
