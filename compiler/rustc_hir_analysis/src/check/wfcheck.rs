@@ -49,7 +49,7 @@ impl<'a, 'tcx> Deref for WfCheckingCtxt<'a, 'tcx> {
 
 impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     fn tcx(&self) -> TyCtxt<'tcx> {
-        self.ocx.infcx.tcx
+        self.ocx.tcx
     }
 
     // Convenience function to normalize during wfcheck. This performs
@@ -1894,7 +1894,7 @@ impl<'tcx> WfCheckingCtxt<'_, 'tcx> {
     /// aren't true.
     #[instrument(level = "debug", skip(self))]
     fn check_false_global_bounds(&mut self) {
-        let tcx = self.ocx.infcx.tcx;
+        let tcx = self.ocx.tcx;
         let mut span = self.span;
         let empty_env = ty::ParamEnv::empty();
 

@@ -720,7 +720,7 @@ impl<'a, 'tcx> ImplTraitInTraitCollector<'a, 'tcx> {
 
 impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
     fn tcx<'a>(&'a self) -> TyCtxt<'tcx> {
-        self.ocx.infcx.tcx
+        self.ocx.tcx
     }
 
     fn fold_ty(&mut self, ty: Ty<'tcx>) -> Ty<'tcx> {
@@ -735,7 +735,7 @@ impl<'tcx> TypeFolder<'tcx> for ImplTraitInTraitCollector<'_, 'tcx> {
                 bug!("FIXME(RPITIT): error here");
             }
             // Replace with infer var
-            let infer_ty = self.ocx.infcx.next_ty_var(TypeVariableOrigin {
+            let infer_ty = self.ocx.next_ty_var(TypeVariableOrigin {
                 span: self.span,
                 kind: TypeVariableOriginKind::MiscVariable,
             });

@@ -383,14 +383,14 @@ fn try_extract_error_from_fulfill_cx<'tcx>(
     // already run, but there's no point using `delay_span_bug`
     // when we're going to emit an error here anyway.
     let _errors = ocx.select_all_or_error();
-    let region_constraints = ocx.infcx.with_region_constraints(|r| r.clone());
+    let region_constraints = ocx.with_region_constraints(|r| r.clone());
     try_extract_error_from_region_constraints(
-        ocx.infcx,
+        ocx,
         placeholder_region,
         error_region,
         &region_constraints,
-        |vid| ocx.infcx.region_var_origin(vid),
-        |vid| ocx.infcx.universe_of_region(ocx.infcx.tcx.mk_region(ty::ReVar(vid))),
+        |vid| ocx.region_var_origin(vid),
+        |vid| ocx.universe_of_region(ocx.tcx.mk_region(ty::ReVar(vid))),
     )
 }
 

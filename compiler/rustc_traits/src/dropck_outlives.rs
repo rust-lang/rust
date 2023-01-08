@@ -26,7 +26,7 @@ fn dropck_outlives<'tcx>(
     debug!("dropck_outlives(goal={:#?})", canonical_goal);
 
     tcx.infer_ctxt().enter_canonical_trait_query(&canonical_goal, |ocx, goal| {
-        let tcx = ocx.infcx.tcx;
+        let tcx = ocx.tcx;
         let ParamEnvAnd { param_env, value: for_ty } = goal;
 
         let mut result = DropckOutlivesResult { kinds: vec![], overflows: vec![] };
@@ -100,7 +100,7 @@ fn dropck_outlives<'tcx>(
             // to push them onto the stack to be expanded.
             for ty in constraints.dtorck_types.drain(..) {
                 let Normalized { value: ty, obligations } =
-                    ocx.infcx.at(&cause, param_env).query_normalize(ty)?;
+                    ocx.at(&cause, param_env).query_normalize(ty)?;
                 ocx.register_obligations(obligations);
 
                 debug!("dropck_outlives: ty from dtorck_types = {:?}", ty);

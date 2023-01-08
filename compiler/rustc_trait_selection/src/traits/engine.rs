@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::fmt::Debug;
+use std::ops::Deref;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
@@ -225,5 +226,13 @@ impl<'a, 'tcx> ObligationCtxt<'a, 'tcx> {
             answer,
             &mut **self.engine.borrow_mut(),
         )
+    }
+}
+
+impl<'tcx> Deref for ObligationCtxt<'_, 'tcx> {
+    type Target = InferCtxt<'tcx>;
+
+    fn deref(&self) -> &InferCtxt<'tcx> {
+        self.infcx
     }
 }

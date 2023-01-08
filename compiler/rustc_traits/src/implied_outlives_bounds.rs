@@ -38,7 +38,7 @@ fn compute_implied_outlives_bounds<'tcx>(
     param_env: ty::ParamEnv<'tcx>,
     ty: Ty<'tcx>,
 ) -> Fallible<Vec<OutlivesBound<'tcx>>> {
-    let tcx = ocx.infcx.tcx;
+    let tcx = ocx.tcx;
 
     // Sometimes when we ask what it takes for T: WF, we get back that
     // U: WF is required; in that case, we push U onto this stack and
@@ -67,9 +67,8 @@ fn compute_implied_outlives_bounds<'tcx>(
         // FIXME(@lcnr): It's not really "always fine", having fewer implied
         // bounds can be backward incompatible, e.g. #101951 was caused by
         // us not dealing with inference vars in `TypeOutlives` predicates.
-        let obligations =
-            wf::obligations(ocx.infcx, param_env, hir::CRATE_HIR_ID, 0, arg, DUMMY_SP)
-                .unwrap_or_default();
+        let obligations = wf::obligations(ocx, param_env, hir::CRATE_HIR_ID, 0, arg, DUMMY_SP)
+            .unwrap_or_default();
 
         // While these predicates should all be implied by other parts of
         // the program, they are still relevant as they may constrain
@@ -128,7 +127,7 @@ fn compute_implied_outlives_bounds<'tcx>(
         .flat_map(|ty::OutlivesPredicate(a, r_b)| match a.unpack() {
             ty::GenericArgKind::Lifetime(r_a) => vec![OutlivesBound::RegionSubRegion(r_b, r_a)],
             ty::GenericArgKind::Type(ty_a) => {
-                let ty_a = ocx.infcx.resolve_vars_if_possible(ty_a);
+                let ty_a = ocx.resolve_vars_if_possible(ty_a);
                 let mut components = smallvec![];
                 push_outlives_components(tcx, ty_a, &mut components);
                 implied_bounds_from_components(r_b, components)

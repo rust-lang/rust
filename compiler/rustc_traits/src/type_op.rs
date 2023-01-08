@@ -58,7 +58,7 @@ pub fn type_op_ascribe_user_type_with_span<'tcx>(
     let span = span.unwrap_or(DUMMY_SP);
 
     let UserSubsts { user_self_ty, substs } = user_substs;
-    let tcx = ocx.infcx.tcx;
+    let tcx = ocx.tcx;
     let cause = ObligationCause::dummy_with_span(span);
 
     let ty = tcx.bound_type_of(def_id).subst(tcx, substs);
@@ -137,7 +137,7 @@ where
 {
     let (param_env, Normalize { value }) = key.into_parts();
     let Normalized { value, obligations } =
-        ocx.infcx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
+        ocx.at(&ObligationCause::dummy(), param_env).query_normalize(value)?;
     ocx.register_obligations(obligations);
     Ok(value)
 }
@@ -204,5 +204,5 @@ pub fn type_op_prove_predicate_with_cause<'tcx>(
     cause: ObligationCause<'tcx>,
 ) {
     let (param_env, ProvePredicate { predicate }) = key.into_parts();
-    ocx.register_obligation(Obligation::new(ocx.infcx.tcx, cause, param_env, predicate));
+    ocx.register_obligation(Obligation::new(ocx.tcx, cause, param_env, predicate));
 }
