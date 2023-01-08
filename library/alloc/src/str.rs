@@ -136,7 +136,7 @@ where
     T: Copy,
     B: AsRef<[T]> + ?Sized,
     S: Borrow<B>,
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     let sep_len = sep.len();
     let mut iter = slice.iter();

@@ -447,7 +447,7 @@ pub type WeVec<T, const weight: u8> = Vec<T, Global, { weight > 127 }>;
 
 impl<T, const COOP_PREFERRED: bool> Vec<T, Global, COOP_PREFERRED>
 where
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     /// Constructs a new, empty `Vec<T>`.
     ///
@@ -2060,9 +2060,11 @@ where
     /// assert_eq!(v, &[]);
     /// ```
     #[stable(feature = "drain", since = "1.6.0")]
-    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A>
+    pub fn drain<R>(&mut self, range: R) -> Drain<'_, T, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+
     {
         // Memory safety
         //
@@ -2557,7 +2559,7 @@ where
         // - `new_cap` refers to the same sized allocation as `cap` because
         // `new_cap * size_of::<T>()` == `cap * size_of::<[T; N]>()`
         // - `len` <= `cap`, so `len * N` <= `cap * N`.
-        unsafe { Vec::<T, A>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
+        unsafe { Vec::<T, A, COOP_PREFERRED>::from_raw_parts_in(ptr.cast(), new_len, new_cap, alloc) }
     }
 }
 
@@ -2886,9 +2888,11 @@ impl<T> FromIterator<T> for Vec<T, Global, {DEFAULT_COOP_PREFERRED!()}> {
 impl<T, A: Allocator, const COOP_PREFERRED: bool> IntoIterator for Vec<T, A, COOP_PREFERRED>
 where
     [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(SHORT_TERM_VEC_PREFERS_COOP!())]:,
+
 {
     type Item = T;
-    type IntoIter = IntoIter<T, A>;
+    type IntoIter = IntoIter<T, A, COOP_PREFERRED>;
 
     /// Creates a consuming iterator, that is, one that moves each value out of
     /// the vector (from start to end). The vector cannot be used after calling
@@ -3080,10 +3084,11 @@ where
     #[cfg(not(no_global_oom_handling))]
     #[inline]
     #[stable(feature = "vec_splice", since = "1.21.0")]
-    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A>
+    pub fn splice<R, I>(&mut self, range: R, replace_with: I) -> Splice<'_, I::IntoIter, A, COOP_PREFERRED>
     where
         R: RangeBounds<usize>,
         I: IntoIterator<Item = T>,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(true)]:,
     {
         Splice { drain: self.drain(range), replace_with: replace_with.into_iter() }
     }
@@ -3133,9 +3138,10 @@ where
     /// assert_eq!(odds, vec![1, 3, 5, 9, 11, 13, 15]);
     /// ```
     #[unstable(feature = "drain_filter", reason = "recently added", issue = "43244")]
-    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A>
+    pub fn drain_filter<F>(&mut self, filter: F) -> DrainFilter<'_, T, F, A, COOP_PREFERRED>
     where
         F: FnMut(&mut T) -> bool,
+        [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<A>(true)]:,
     {
         let old_len = self.len();
 
@@ -3228,7 +3234,7 @@ where
 #[rustc_const_unstable(feature = "const_default_impls", issue = "87864")]
 impl<T, const COOP_PREFERRED: bool> const Default for Vec<T, Global, COOP_PREFERRED>
 where
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     /// Creates an empty `Vec<T>`.
     ///

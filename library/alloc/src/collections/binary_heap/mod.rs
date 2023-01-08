@@ -1527,7 +1527,7 @@ unsafe impl<T: Ord> TrustedLen for IntoIterSorted<T> {}
 #[derive(Debug)]
 pub struct Drain<'a, T: 'a, const COOP_PREFERRED: bool>
 where
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     iter: vec::Drain<'a, T, Global, COOP_PREFERRED>,
 }
@@ -1535,7 +1535,7 @@ where
 #[stable(feature = "drain", since = "1.6.0")]
 impl<T, const COOP_PREFERRED: bool> Iterator for Drain<'_, T, COOP_PREFERRED>
 where
-    [(); crate::co_alloc_metadata_num_slots_with_preference_global(COOP_PREFERRED)]:,
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
 {
     type Item = T;
 
@@ -1551,7 +1551,10 @@ where
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREFERRED> {
+impl<T, const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, T, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[inline]
     fn next_back(&mut self) -> Option<T> {
         self.iter.next_back()
@@ -1559,14 +1562,20 @@ impl<T, const COOP_PREFERRED: bool> DoubleEndedIterator for Drain<'_, T, COOP_PR
 }
 
 #[stable(feature = "drain", since = "1.6.0")]
-impl<T, const COOP_PREFERRED: bool> ExactSizeIterator for Drain<'_, T, COOP_PREFERRED> {
+impl<T, const COOP_PREFERRED: bool> ExactSizeIterator for Drain<'_, T, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn is_empty(&self) -> bool {
         self.iter.is_empty()
     }
 }
 
 #[stable(feature = "fused", since = "1.26.0")]
-impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED> {}
+impl<T, const COOP_PREFERRED: bool> FusedIterator for Drain<'_, T, COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{}
 
 /// A draining iterator over the elements of a `BinaryHeap`.
 ///
