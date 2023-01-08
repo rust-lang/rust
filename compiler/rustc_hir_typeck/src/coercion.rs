@@ -45,7 +45,7 @@ use rustc_hir::intravisit::{self, Visitor};
 use rustc_hir::Expr;
 use rustc_hir_analysis::astconv::AstConv;
 use rustc_infer::infer::type_variable::{TypeVariableOrigin, TypeVariableOriginKind};
-use rustc_infer::infer::{Coercion, InferOk, InferResult};
+use rustc_infer::infer::{Coercion, InferOk, InferResult, TyCtxtInferExt};
 use rustc_infer::traits::Obligation;
 use rustc_middle::lint::in_external_macro;
 use rustc_middle::ty::adjustment::{
@@ -1565,6 +1565,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                             && let hir::ExprKind::Loop(loop_blk, ..) = expression.kind {
                               intravisit::walk_block(& mut visitor, loop_blk);
                         }
+                        if let Some(expr) = expression {
+                            self.note_result_coercion(fcx, &mut err, expr, expected, found);
+                        }
                     }
                     ObligationCauseCode::ReturnValue(id) => {
                         err = self.report_return_mismatched_types(
@@ -1580,6 +1583,9 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
                         if !fcx.tcx.features().unsized_locals {
                             let id = fcx.tcx.hir().parent_id(id);
                             unsized_return = self.is_return_ty_unsized(fcx, id);
+                        }
+                        if let Some(expr) = expression {
+                            self.note_result_coercion(fcx, &mut err, expr, expected, found);
                         }
                     }
                     _ => {
@@ -1619,6 +1625,47 @@ impl<'tcx, 'exprs, E: AsCoercionSite> CoerceMany<'tcx, 'exprs, E> {
             }
         }
     }
+
+    fn note_result_coercion(
+        &self,
+        fcx: &FnCtxt<'_, 'tcx>,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'tcx>,
+        expected: Ty<'tcx>,
+        found: Ty<'tcx>,
+    ) {
+        let ty::Adt(e, substs_e) = expected.kind() else { return; };
+        let ty::Adt(f, substs_f) = found.kind() else { return; };
+        if e.did() != f.did() {
+            return;
+        }
+        if Some(e.did()) != fcx.tcx.get_diagnostic_item(sym::Result) {
+            return;
+        }
+        let e = substs_e.type_at(1);
+        let f = substs_f.type_at(1);
+        if fcx
+            .tcx
+            .infer_ctxt()
+            .build()
+            .type_implements_trait(
+                fcx.tcx.get_diagnostic_item(sym::Into).unwrap(),
+                [fcx.tcx.erase_regions(f), fcx.tcx.erase_regions(e)],
+                fcx.param_env,
+            )
+            .must_apply_modulo_regions()
+        {
+            err.multipart_suggestion(
+                "you can rely on the implicit conversion that `?` does to transform the error type",
+                vec![
+                    (expr.span.shrink_to_lo(), "Ok(".to_string()),
+                    (expr.span.shrink_to_hi(), "?)".to_string()),
+                ],
+                Applicability::MaybeIncorrect,
+            );
+        }
+    }
+
     fn note_unreachable_loop_return(
         &self,
         err: &mut Diagnostic,
