@@ -436,6 +436,7 @@ E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
 E0715: include_str!("./error_codes/E0715.md"),
 E0716: include_str!("./error_codes/E0716.md"),
+E0711: include_str!("./error_codes/E0711.md"),
 E0717: include_str!("./error_codes/E0717.md"),
 E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
@@ -640,7 +641,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0711, // a feature has been declared with conflicting stability attributes, internal error code
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
