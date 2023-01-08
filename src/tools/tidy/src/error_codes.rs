@@ -33,8 +33,8 @@ const IGNORE_DOCTEST_CHECK: &[&str] = &["E0464", "E0570", "E0601", "E0602"];
 
 // Error codes that don't yet have a UI test. This list will eventually be removed.
 const IGNORE_UI_TEST_CHECK: &[&str] = &[
-    "E0313", "E0461", "E0465", "E0476", "E0490", "E0514", "E0523", "E0554", "E0640", "E0717",
-    "E0729", "E0789",
+    "E0461", "E0465", "E0476", "E0490", "E0514", "E0523", "E0554", "E0640", "E0717", "E0729",
+    "E0789",
 ];
 
 macro_rules! verbose_print {
