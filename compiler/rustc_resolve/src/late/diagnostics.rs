@@ -1462,7 +1462,7 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                                     .map(|span| {
                                         (
                                             *span,
-                                            if span.lo() == span.hi() { "pub " } else { "pub" }
+                                            if span.is_empty() { "pub " } else { "pub" }
                                                 .to_string(),
                                         )
                                     })
