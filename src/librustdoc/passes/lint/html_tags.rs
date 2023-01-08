@@ -17,92 +17,6 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
     else { return };
     let dox = item.attrs.collapsed_doc_value().unwrap_or_default();
     if !dox.is_empty() {
-        let report_diag = |msg: &str, range: &Range<usize>, is_open_tag: bool| {
-            let sp = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs) {
-                Some(sp) => sp,
-                None => item.attr_span(tcx),
-            };
-            tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
-                use rustc_lint_defs::Applicability;
-                // If a tag looks like `<this>`, it might actually be a generic.
-                // We don't try to detect stuff `<like, this>` because that's not valid HTML,
-                // and we don't try to detect stuff `<like this>` because that's not valid Rust.
-                let mut generics_end = range.end;
-                if let Some(Some(mut generics_start)) = (is_open_tag
-                    && dox[..generics_end].ends_with('>'))
-                .then(|| extract_path_backwards(&dox, range.start))
-                {
-                    while generics_start != 0
-                        && generics_end < dox.len()
-                        && dox.as_bytes()[generics_start - 1] == b'<'
-                        && dox.as_bytes()[generics_end] == b'>'
-                    {
-                        generics_end += 1;
-                        generics_start -= 1;
-                        if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
-                            generics_start = new_start;
-                        }
-                        if let Some(new_end) = extract_path_forward(&dox, generics_end) {
-                            generics_end = new_end;
-                        }
-                    }
-                    if let Some(new_end) = extract_path_forward(&dox, generics_end) {
-                        generics_end = new_end;
-                    }
-                    let generics_sp = match source_span_for_markdown_range(
-                        tcx,
-                        &dox,
-                        &(generics_start..generics_end),
-                        &item.attrs,
-                    ) {
-                        Some(sp) => sp,
-                        None => item.attr_span(tcx),
-                    };
-                    // Sometimes, we only extract part of a path. For example, consider this:
-                    //
-                    //     <[u32] as IntoIter<u32>>::Item
-                    //                       ^^^^^ unclosed HTML tag `u32`
-                    //
-                    // We don't have any code for parsing fully-qualified trait paths.
-                    // In theory, we could add it, but doing it correctly would require
-                    // parsing the entire path grammar, which is problematic because of
-                    // overlap between the path grammar and Markdown.
-                    //
-                    // The example above shows that ambiguity. Is `[u32]` intended to be an
-                    // intra-doc link to the u32 primitive, or is it intended to be a slice?
-                    //
-                    // If the below conditional were removed, we would suggest this, which is
-                    // not what the user probably wants.
-                    //
-                    //     <[u32] as `IntoIter<u32>`>::Item
-                    //
-                    // We know that the user actually wants to wrap the whole thing in a code
-                    // block, but the only reason we know that is because `u32` does not, in
-                    // fact, implement IntoIter. If the example looks like this:
-                    //
-                    //     <[Vec<i32>] as IntoIter<i32>::Item
-                    //
-                    // The ideal fix would be significantly different.
-                    if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
-                        || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
-                    {
-                        return lint;
-                    }
-                    // multipart form is chosen here because ``Vec<i32>`` would be confusing.
-                    lint.multipart_suggestion(
-                        "try marking as source code",
-                        vec![
-                            (generics_sp.shrink_to_lo(), String::from("`")),
-                            (generics_sp.shrink_to_hi(), String::from("`")),
-                        ],
-                        Applicability::MaybeIncorrect,
-                    );
-                }
-
-                lint
-            });
-        };
-
         let mut tags = Vec::new();
         let mut is_in_comment = None;
         let mut in_code_block = false;
@@ -132,6 +46,8 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
         let p = Parser::new_with_broken_link_callback(&dox, main_body_opts(), Some(&mut replacer))
             .into_offset_iter();
 
+        let report_diag = ReportDiag { cx, dox: dox.clone(), hir_id, item };
+
         for (event, range) in p {
             match event {
                 Event::Start(Tag::CodeBlock(_)) => in_code_block = true,
@@ -147,11 +63,11 @@ pub(crate) fn visit_item(cx: &DocContext<'_>, item: &Item) {
             let t = t.to_lowercase();
             !ALLOWED_UNCLOSED.contains(&t.as_str())
         }) {
-            report_diag(&format!("unclosed HTML tag `{}`", tag), range, true);
+            report_diag.invalid_html_tags(&format!("unclosed HTML tag `{}`", tag), range, true);
         }
 
         if let Some(range) = is_in_comment {
-            report_diag("Unclosed HTML comment", &range, false);
+            report_diag.invalid_html_tags("Unclosed HTML comment", &range, false);
         }
     }
 }
@@ -165,7 +81,7 @@ fn drop_tag(
     tags: &mut Vec<(String, Range<usize>)>,
     tag_name: String,
     range: Range<usize>,
-    f: &impl Fn(&str, &Range<usize>, bool),
+    report_diag: &ReportDiag<'_, '_>,
 ) {
     let tag_name_low = tag_name.to_lowercase();
     if let Some(pos) = tags.iter().rposition(|(t, _)| t.to_lowercase() == tag_name_low) {
@@ -186,14 +102,18 @@ fn drop_tag(
             // `tags` is used as a queue, meaning that everything after `pos` is included inside it.
             // So `<h2><h3></h2>` will look like `["h2", "h3"]`. So when closing `h2`, we will still
             // have `h3`, meaning the tag wasn't closed as it should have.
-            f(&format!("unclosed HTML tag `{}`", last_tag_name), &last_tag_span, true);
+            report_diag.invalid_html_tags(
+                &format!("unclosed HTML tag `{}`", last_tag_name),
+                &last_tag_span,
+                true,
+            );
         }
         // Remove the `tag_name` that was originally closed
         tags.pop();
     } else {
         // It can happen for example in this case: `<h2></script></h2>` (the `h2` tag isn't required
         // but it helps for the visualization).
-        f(&format!("unopened HTML tag `{}`", tag_name), &range, false);
+        report_diag.invalid_html_tags(&format!("unopened HTML tag `{}`", tag_name), &range, false);
     }
 }
 
@@ -257,13 +177,17 @@ fn is_valid_for_html_tag_name(c: char, is_empty: bool) -> bool {
     c.is_ascii_alphabetic() || !is_empty && (c == '-' || c.is_ascii_digit())
 }
 
+fn check_html_attr(name: &str, value: &str, report_diag: &ReportDiag<'_, '_>) {
+    let _ = (name, value, report_diag);
+}
+
 fn extract_html_tag(
     tags: &mut Vec<(String, Range<usize>)>,
     text: &str,
     range: &Range<usize>,
     start_pos: usize,
     iter: &mut Peekable<CharIndices<'_>>,
-    f: &impl Fn(&str, &Range<usize>, bool),
+    report_diag: &ReportDiag<'_, '_>,
 ) {
     let mut tag_name = String::new();
     let mut is_closing = false;
@@ -311,61 +235,109 @@ fn extract_html_tag(
                             break;
                         }
                     }
-                    drop_tag(tags, tag_name, r, f);
+                    drop_tag(tags, tag_name, r, report_diag);
                 } else {
-                    let mut is_self_closing = false;
-                    let mut quote_pos = None;
-                    if c != '>' {
-                        let mut quote = None;
-                        let mut after_eq = false;
-                        for (i, c) in text[pos..].char_indices() {
-                            if !c.is_whitespace() {
-                                if let Some(q) = quote {
-                                    if c == q {
-                                        quote = None;
-                                        quote_pos = None;
-                                        after_eq = false;
-                                    }
-                                } else if c == '>' {
-                                    break;
-                                } else if c == '/' && !after_eq {
-                                    is_self_closing = true;
-                                } else {
-                                    if is_self_closing {
-                                        is_self_closing = false;
-                                    }
-                                    if (c == '"' || c == '\'') && after_eq {
-                                        quote = Some(c);
-                                        quote_pos = Some(pos + i);
-                                    } else if c == '=' {
-                                        after_eq = true;
-                                    }
+                    #[derive(Clone, Copy, Eq, PartialEq)]
+                    enum HtmlAttrParseState {
+                        Start { start_pos: usize },
+                        PotentiallySelfClosing,
+                        AfterEq { start_pos: usize, eq_pos: usize },
+                        Quoted { start_pos: usize, eq_pos: usize, quote_pos: usize, quote: char },
+                        Unquoted { start_pos: usize, eq_pos: usize },
+                    }
+                    let mut state = HtmlAttrParseState::Start { start_pos: pos };
+                    for (i, c) in text[pos..].char_indices() {
+                        let cur_pos = pos + i;
+                        match state {
+                            HtmlAttrParseState::Start { start_pos } => {
+                                if c.is_whitespace() {
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos };
+                                } else if c == '/' {
+                                    state = HtmlAttrParseState::PotentiallySelfClosing;
+                                } else if c == '=' {
+                                    state =
+                                        HtmlAttrParseState::AfterEq { start_pos, eq_pos: cur_pos }
                                 }
-                            } else if quote.is_none() {
-                                after_eq = false;
+                            }
+                            HtmlAttrParseState::PotentiallySelfClosing => {
+                                if c == '>' {
+                                    break;
+                                } else if !c.is_whitespace() {
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos };
+                                }
+                            }
+                            HtmlAttrParseState::AfterEq { start_pos, eq_pos } => {
+                                if c == '>' {
+                                    break;
+                                } else if c == '"' || c == '\'' {
+                                    state = HtmlAttrParseState::Quoted {
+                                        start_pos,
+                                        eq_pos,
+                                        quote_pos: cur_pos,
+                                        quote: c,
+                                    };
+                                } else if c.is_whitespace() {
+                                    check_html_attr(&text[start_pos..eq_pos], "", report_diag);
+                                } else {
+                                    state = HtmlAttrParseState::Unquoted { start_pos, eq_pos }
+                                }
+                            }
+                            HtmlAttrParseState::Quoted { start_pos, eq_pos, quote_pos, quote } => {
+                                if c == quote {
+                                    check_html_attr(
+                                        &text[start_pos..eq_pos],
+                                        &text[(quote_pos + 1)..cur_pos],
+                                        report_diag,
+                                    );
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
+                                }
+                            }
+                            HtmlAttrParseState::Unquoted { start_pos, eq_pos } => {
+                                if c == '>' {
+                                    check_html_attr(
+                                        &text[start_pos..eq_pos],
+                                        &text[(eq_pos + 1)..cur_pos],
+                                        report_diag,
+                                    );
+                                    break;
+                                } else if c.is_whitespace() {
+                                    check_html_attr(
+                                        &text[start_pos..eq_pos],
+                                        &text[(eq_pos + 1)..cur_pos],
+                                        report_diag,
+                                    );
+                                    state = HtmlAttrParseState::Start { start_pos: cur_pos + 1 };
+                                }
                             }
                         }
                     }
-                    if let Some(quote_pos) = quote_pos {
-                        let qr = Range { start: quote_pos, end: quote_pos };
-                        f(
-                            &format!("unclosed quoted HTML attribute on tag `{}`", tag_name),
-                            &qr,
-                            false,
-                        );
-                    }
-                    if is_self_closing {
-                        // https://html.spec.whatwg.org/#parse-error-non-void-html-element-start-tag-with-trailing-solidus
-                        let valid = ALLOWED_UNCLOSED.contains(&&tag_name[..])
-                            || tags.iter().take(pos + 1).any(|(at, _)| {
-                                let at = at.to_lowercase();
-                                at == "svg" || at == "math"
-                            });
-                        if !valid {
-                            f(&format!("invalid self-closing HTML tag `{}`", tag_name), &r, false);
+                    match state {
+                        HtmlAttrParseState::PotentiallySelfClosing => {
+                            // https://html.spec.whatwg.org/#parse-error-non-void-html-element-start-tag-with-trailing-solidus
+                            let valid = ALLOWED_UNCLOSED.contains(&&tag_name[..])
+                                || tags.iter().take(pos + 1).any(|(at, _)| {
+                                    let at = at.to_lowercase();
+                                    at == "svg" || at == "math"
+                                });
+                            if !valid {
+                                report_diag.invalid_html_tags(
+                                    &format!("invalid self-closing HTML tag `{}`", tag_name),
+                                    &r,
+                                    false,
+                                );
+                            }
                         }
-                    } else {
-                        tags.push((tag_name, r));
+                        HtmlAttrParseState::Quoted { quote_pos, .. } => {
+                            let qr = Range { start: quote_pos, end: quote_pos };
+                            report_diag.invalid_html_tags(
+                                &format!("unclosed quoted HTML attribute on tag `{}`", tag_name),
+                                &qr,
+                                false,
+                            );
+                        }
+                        _ => {
+                            tags.push((tag_name, r));
+                        }
                     }
                 }
             }
@@ -380,7 +352,7 @@ fn extract_tags(
     text: &str,
     range: Range<usize>,
     is_in_comment: &mut Option<Range<usize>>,
-    f: &impl Fn(&str, &Range<usize>, bool),
+    report_diag: &ReportDiag<'_, '_>,
 ) {
     let mut iter = text.char_indices().peekable();
 
@@ -400,8 +372,105 @@ fn extract_tags(
                     end: range.start + start_pos + 3,
                 });
             } else {
-                extract_html_tag(tags, text, &range, start_pos, &mut iter, f);
+                extract_html_tag(tags, text, &range, start_pos, &mut iter, report_diag);
             }
         }
+    }
+}
+
+struct ReportDiag<'cx, 'item> {
+    cx: &'item DocContext<'cx>,
+    dox: String,
+    hir_id: rustc_hir::HirId,
+    item: &'item Item,
+}
+
+impl<'cx, 'item> ReportDiag<'cx, 'item> {
+    fn invalid_html_tags(&self, msg: &str, range: &Range<usize>, is_open_tag: bool) {
+        let ReportDiag { cx, ref dox, hir_id, item } = *self;
+        let tcx = cx.tcx;
+        let sp = match source_span_for_markdown_range(tcx, &dox, range, &item.attrs) {
+            Some(sp) => sp,
+            None => item.attr_span(tcx),
+        };
+        tcx.struct_span_lint_hir(crate::lint::INVALID_HTML_TAGS, hir_id, sp, msg, |lint| {
+            use rustc_lint_defs::Applicability;
+            // If a tag looks like `<this>`, it might actually be a generic.
+            // We don't try to detect stuff `<like, this>` because that's not valid HTML,
+            // and we don't try to detect stuff `<like this>` because that's not valid Rust.
+            let mut generics_end = range.end;
+            if let Some(Some(mut generics_start)) = (is_open_tag
+                && dox[..generics_end].ends_with('>'))
+            .then(|| extract_path_backwards(&dox, range.start))
+            {
+                while generics_start != 0
+                    && generics_end < dox.len()
+                    && dox.as_bytes()[generics_start - 1] == b'<'
+                    && dox.as_bytes()[generics_end] == b'>'
+                {
+                    generics_end += 1;
+                    generics_start -= 1;
+                    if let Some(new_start) = extract_path_backwards(&dox, generics_start) {
+                        generics_start = new_start;
+                    }
+                    if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                        generics_end = new_end;
+                    }
+                }
+                if let Some(new_end) = extract_path_forward(&dox, generics_end) {
+                    generics_end = new_end;
+                }
+                let generics_sp = match source_span_for_markdown_range(
+                    tcx,
+                    &dox,
+                    &(generics_start..generics_end),
+                    &item.attrs,
+                ) {
+                    Some(sp) => sp,
+                    None => item.attr_span(tcx),
+                };
+                // Sometimes, we only extract part of a path. For example, consider this:
+                //
+                //     <[u32] as IntoIter<u32>>::Item
+                //                       ^^^^^ unclosed HTML tag `u32`
+                //
+                // We don't have any code for parsing fully-qualified trait paths.
+                // In theory, we could add it, but doing it correctly would require
+                // parsing the entire path grammar, which is problematic because of
+                // overlap between the path grammar and Markdown.
+                //
+                // The example above shows that ambiguity. Is `[u32]` intended to be an
+                // intra-doc link to the u32 primitive, or is it intended to be a slice?
+                //
+                // If the below conditional were removed, we would suggest this, which is
+                // not what the user probably wants.
+                //
+                //     <[u32] as `IntoIter<u32>`>::Item
+                //
+                // We know that the user actually wants to wrap the whole thing in a code
+                // block, but the only reason we know that is because `u32` does not, in
+                // fact, implement IntoIter. If the example looks like this:
+                //
+                //     <[Vec<i32>] as IntoIter<i32>::Item
+                //
+                // The ideal fix would be significantly different.
+                if (generics_start > 0 && dox.as_bytes()[generics_start - 1] == b'<')
+                    || (generics_end < dox.len() && dox.as_bytes()[generics_end] == b'>')
+                {
+                    return lint;
+                }
+                // multipart form is chosen here because ``Vec<i32>`` would be confusing.
+                lint.multipart_suggestion(
+                    "try marking as source code",
+                    vec![
+                        (generics_sp.shrink_to_lo(), String::from("`")),
+                        (generics_sp.shrink_to_hi(), String::from("`")),
+                    ],
+                    Applicability::MaybeIncorrect,
+                );
+            }
+
+            lint
+        });
     }
 }

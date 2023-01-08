@@ -153,6 +153,26 @@ declare_rustdoc_lint! {
 }
 
 declare_rustdoc_lint! {
+    /// The `unprefixed_html_id` lint detects potential HTML ID conflicts. This is a
+    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unprefixed_html_ids
+    UNPREFIXED_HTML_ID,
+    Warn,
+    "detects HTML id attributes that do not start with the crate name"
+}
+
+declare_rustdoc_lint! {
+    /// The `unprefixed_html_class` lint detects potential HTML class conflicts. This is a
+    /// `rustdoc` only lint, see the documentation in the [rustdoc book].
+    ///
+    /// [rustdoc book]: ../../../rustdoc/lints.html#unprefixed_html_ids
+    UNPREFIXED_HTML_CLASS,
+    Warn,
+    "detects HTML class attributes that do not start with the crate name"
+}
+
+declare_rustdoc_lint! {
     /// The `bare_urls` lint detects when a URL is not a hyperlink.
     /// This is a `rustdoc` only lint, see the documentation in the [rustdoc book].
     ///
