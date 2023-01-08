@@ -382,10 +382,26 @@ impl<'a> DiagnosticDeriveVariantBuilder<'a> {
                     return Ok(quote! { #diag.subdiagnostic(#binding); });
                 }
             }
-            (Meta::List(_), "subdiagnostic") => {
-                throw_invalid_attr!(attr, &meta, |diag| {
-                    diag.help("`subdiagnostic` does not support nested attributes")
-                })
+            (Meta::List(MetaList { ref nested, .. }), "subdiagnostic") => {
+                if nested.len() == 1
+                    && let Some(NestedMeta::Meta(Meta::Path(path))) = nested.first()
+                    && path.is_ident("eager") {
+                        let handler = match &self.parent.kind {
+                            DiagnosticDeriveKind::Diagnostic { handler } => handler,
+                            DiagnosticDeriveKind::LintDiagnostic => {
+                                throw_invalid_attr!(attr, &meta, |diag| {
+                                    diag.help("eager subdiagnostics are not supported on lints")
+                                })
+                            }
+                        };
+                        return Ok(quote! { #diag.eager_subdiagnostic(#handler, #binding); });
+                } else {
+                    throw_invalid_attr!(attr, &meta, |diag| {
+                        diag.help(
+                            "`eager` is the only supported nested attribute for `subdiagnostic`",
+                        )
+                    })
+                }
             }
             _ => (),
         }

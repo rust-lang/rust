@@ -723,7 +723,6 @@ struct SubdiagnosticEagerLint {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerCorrect {
     #[subdiagnostic(eager)]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     note: Note,
 }
 
@@ -744,7 +743,6 @@ pub(crate) struct SubdiagnosticWithSuggestion {
 #[diag(compiletest_example)]
 struct SubdiagnosticEagerSuggestion {
     #[subdiagnostic(eager)]
-    //~^ ERROR `#[subdiagnostic(...)]` is not a valid attribute
     sub: SubdiagnosticWithSuggestion,
 }
 
