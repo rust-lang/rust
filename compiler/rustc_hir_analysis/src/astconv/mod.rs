@@ -2129,11 +2129,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     let infcx = tcx.infer_ctxt().build();
                     // We create a fresh `ty::ParamEnv` instead of the one for `self.item_def_id()`
                     // to avoid a cycle error in `src/test/ui/resolve/issue-102946.rs`.
-                    let param_env = ty::ParamEnv::new(
-                        ty::List::empty(),
-                        traits::Reveal::All,
-                        hir::Constness::NotConst,
-                    );
+                    let param_env = ty::ParamEnv::empty();
                     let traits: Vec<_> = self
                         .tcx()
                         .all_traits()
@@ -2141,17 +2137,16 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                             // Consider only traits with the associated type
                             tcx.associated_items(*trait_def_id)
                                 .in_definition_order()
-                                .find(|i| {
+                                .any(|i| {
                                     i.kind.namespace() == Namespace::TypeNS
                                         && i.ident(tcx).normalize_to_macros_2_0() == assoc_ident
                                         && matches!(i.kind, ty::AssocKind::Type)
                                 })
-                                .is_some()
                             // Consider only accessible traits
                             && tcx.visibility(*trait_def_id)
                                 .is_accessible_from(self.item_def_id(), tcx)
                             && tcx.all_impls(*trait_def_id)
-                                .filter(|impl_def_id| {
+                                .any(|impl_def_id| {
                                     let trait_ref = tcx.impl_trait_ref(impl_def_id);
                                     trait_ref.map_or(false, |impl_| {
                                         infcx
@@ -2164,8 +2159,6 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                     })
                                     && tcx.impl_polarity(impl_def_id) != ty::ImplPolarity::Negative
                                 })
-                                .next()
-                                .is_some()
                         })
                         .map(|trait_def_id| tcx.def_path_str(trait_def_id))
                         .collect();
@@ -2305,7 +2298,7 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                     .filter_map(|impl_def_id| tcx.impl_trait_ref(impl_def_id))
                     .map(|impl_| impl_.self_ty())
                     // We don't care about blanket impls.
-                    .filter(|self_ty| !self_ty.has_non_region_infer())
+                    .filter(|self_ty| !self_ty.has_non_region_param())
                     .map(|self_ty| tcx.erase_regions(self_ty).to_string())
                     .collect()
             };
