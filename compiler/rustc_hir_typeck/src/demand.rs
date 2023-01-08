@@ -1379,7 +1379,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     // If we've reached our target type with just removing `&`, then just print now.
-                    if steps == 0 {
+                    if steps == 0 && !remove.trim().is_empty() {
                         return Some((
                             prefix_span,
                             format!("consider removing the `{}`", remove.trim()),
@@ -1438,6 +1438,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
                         };
+                        if suggestion.trim().is_empty() {
+                            return None;
+                        }
 
                         return Some((
                             span,
