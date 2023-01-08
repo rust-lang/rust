@@ -6,19 +6,19 @@ use proc_macro::TokenStream;
 
 #[proc_macro]
 pub extern "C" fn abi(a: TokenStream) -> TokenStream {
-    //~^ ERROR proc macro functions may not be `extern
+    //~^ ERROR proc macro functions may not be `extern "C"`
     a
 }
 
 #[proc_macro]
 pub extern "system" fn abi2(a: TokenStream) -> TokenStream {
-    //~^ ERROR proc macro functions may not be `extern
+    //~^ ERROR proc macro functions may not be `extern "system"`
     a
 }
 
 #[proc_macro]
 pub extern fn abi3(a: TokenStream) -> TokenStream {
-    //~^ ERROR proc macro functions may not be `extern
+    //~^ ERROR proc macro functions may not be `extern "C"`
     a
 }
 

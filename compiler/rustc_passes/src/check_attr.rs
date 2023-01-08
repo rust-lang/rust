@@ -23,6 +23,7 @@ use rustc_hir::{
 use rustc_hir::{MethodKind, Target, Unsafety};
 use rustc_middle::hir::nested_filter;
 use rustc_middle::middle::resolve_lifetime::ObjectLifetimeDefault;
+use rustc_middle::ty::fast_reject::{DeepRejectCtxt, TreatParams};
 use rustc_middle::ty::query::Providers;
 use rustc_middle::ty::{ParamEnv, TyCtxt};
 use rustc_session::lint::builtin::{
@@ -84,6 +85,8 @@ impl IntoDiagnosticArg for ProcMacroKind {
 
 struct CheckAttrVisitor<'tcx> {
     tcx: TyCtxt<'tcx>,
+
+    // Whether or not this visitor should abort after finding errors
     abort: Cell<bool>,
 }
 
@@ -2084,6 +2087,9 @@ impl CheckAttrVisitor<'_> {
         );
     }
 
+    /// A best effort attempt to create an error for a mismatching proc macro signature.
+    ///
+    /// If this best effort goes wrong, it will just emit a worse error later (see #102923)
     fn check_proc_macro(&self, hir_id: HirId, target: Target, kind: ProcMacroKind) {
         let expected_input_count = match kind {
             ProcMacroKind::Attribute => 2,
@@ -2103,23 +2109,30 @@ impl CheckAttrVisitor<'_> {
             let id = hir_id.expect_owner();
             let hir_sig = tcx.hir().fn_sig_by_hir_id(hir_id).unwrap();
 
-            let sig = tcx.fn_sig(id);
+            let sig = tcx.liberate_late_bound_regions(id.to_def_id(), tcx.fn_sig(id));
+            let sig = tcx.normalize_erasing_regions(ParamEnv::empty(), sig);
 
-            if sig.abi() != Abi::Rust {
-                tcx.sess
-                    .emit_err(ProcMacroInvalidAbi { span: hir_sig.span, abi: sig.abi().name() });
+            // We don't currently require that the function signature is equal to
+            // `fn(TokenStream) -> TokenStream`, but instead monomorphizes to
+            // `fn(TokenStream) -> TokenStream` after some substitution of generic arguments.
+            //
+            // Properly checking this means pulling in additional `rustc` crates, so we don't.
+            let drcx = DeepRejectCtxt { treat_obligation_params: TreatParams::AsInfer };
+
+            if sig.abi != Abi::Rust {
+                tcx.sess.emit_err(ProcMacroInvalidAbi { span: hir_sig.span, abi: sig.abi.name() });
                 self.abort.set(true);
             }
 
-            if sig.unsafety() == Unsafety::Unsafe {
+            if sig.unsafety == Unsafety::Unsafe {
                 tcx.sess.emit_err(ProcMacroUnsafe { span: hir_sig.span });
                 self.abort.set(true);
             }
 
-            let output = sig.output().skip_binder();
+            let output = sig.output();
 
             // Typecheck the output
-            if tcx.normalize_erasing_regions(ParamEnv::empty(), output) != tokenstream {
+            if !drcx.types_may_unify(output, tokenstream) {
                 tcx.sess.emit_err(ProcMacroTypeError {
                     span: hir_sig.decl.output.span(),
                     found: output,
@@ -2129,11 +2142,22 @@ impl CheckAttrVisitor<'_> {
                 self.abort.set(true);
             }
 
-            // Typecheck "expected_input_count" inputs, emitting
-            // `ProcMacroMissingArguments` if there are not enough.
-            if let Some(args) = sig.inputs().skip_binder().get(0..expected_input_count) {
-                for (arg, input) in args.iter().zip(hir_sig.decl.inputs) {
-                    if tcx.normalize_erasing_regions(ParamEnv::empty(), *arg) != tokenstream {
+            if sig.inputs().len() < expected_input_count {
+                tcx.sess.emit_err(ProcMacroMissingArguments {
+                    expected_input_count,
+                    span: hir_sig.span,
+                    kind,
+                    expected_signature,
+                });
+                self.abort.set(true);
+            }
+
+            // Check that the inputs are correct, if there are enough.
+            if sig.inputs().len() >= expected_input_count {
+                for (arg, input) in
+                    sig.inputs().iter().zip(hir_sig.decl.inputs).take(expected_input_count)
+                {
+                    if !drcx.types_may_unify(*arg, tokenstream) {
                         tcx.sess.emit_err(ProcMacroTypeError {
                             span: input.span,
                             found: *arg,
@@ -2143,14 +2167,6 @@ impl CheckAttrVisitor<'_> {
                         self.abort.set(true);
                     }
                 }
-            } else {
-                tcx.sess.emit_err(ProcMacroMissingArguments {
-                    expected_input_count,
-                    span: hir_sig.span,
-                    kind,
-                    expected_signature,
-                });
-                self.abort.set(true);
             }
 
             // Check that there are not too many arguments
