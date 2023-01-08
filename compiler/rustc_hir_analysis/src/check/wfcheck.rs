@@ -97,21 +97,22 @@ pub(super) fn enter_wf_checking_ctxt<'tcx, F>(
     let infcx = &tcx.infer_ctxt().build();
     let ocx = ObligationCtxt::new(infcx);
 
-    let assumed_wf_types = ocx.assumed_wf_types(param_env, span, body_def_id);
-
     let mut wfcx = WfCheckingCtxt { ocx, span, body_id, param_env };
 
     if !tcx.features().trivial_bounds {
         wfcx.check_false_global_bounds()
     }
     f(&mut wfcx);
+
+    let assumed_wf_types = wfcx.ocx.assumed_wf_types(param_env, span, body_def_id);
+    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
+
     let errors = wfcx.select_all_or_error();
     if !errors.is_empty() {
         infcx.err_ctxt().report_fulfillment_errors(&errors, None);
         return;
     }
 
-    let implied_bounds = infcx.implied_bounds_tys(param_env, body_id, assumed_wf_types);
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(infcx), implied_bounds);
 
