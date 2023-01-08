@@ -192,6 +192,7 @@
 #![feature(unsized_fn_params)]
 #![feature(c_unwind)]
 #![feature(with_negative_coherence)]
+#![cfg_attr(test, feature(panic_update_hook))]
 //
 // Rustdoc features:
 #![feature(doc_cfg)]
@@ -254,4 +255,21 @@ pub mod vec;
 #[unstable(feature = "liballoc_internals", issue = "none", reason = "implementation detail")]
 pub mod __export {
     pub use core::format_args;
+}
+
+#[cfg(test)]
+#[allow(dead_code)] // Not used in all configurations
+pub(crate) mod test_helpers {
+    /// Copied from `std::test_helpers::test_rng`, since these tests rely on the
+    /// seed not being the same for every RNG invocation too.
+    pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
+        use std::hash::{BuildHasher, Hash, Hasher};
+        let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+        std::panic::Location::caller().hash(&mut hasher);
+        let hc64 = hasher.finish();
+        let seed_vec =
+            hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<crate::vec::Vec<u8>>();
+        let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
+        rand::SeedableRng::from_seed(seed)
+    }
 }

@@ -465,7 +465,7 @@ fn test_retain() {
 #[test]
 #[cfg(not(target_os = "emscripten"))]
 fn panic_safe() {
-    use rand::{seq::SliceRandom, thread_rng};
+    use rand::seq::SliceRandom;
     use std::cmp;
     use std::panic::{self, AssertUnwindSafe};
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -490,7 +490,7 @@ fn panic_safe() {
             self.0.partial_cmp(&other.0)
         }
     }
-    let mut rng = thread_rng();
+    let mut rng = crate::test_helpers::test_rng();
     const DATASZ: usize = 32;
     // Miri is too slow
     let ntest = if cfg!(miri) { 1 } else { 10 };

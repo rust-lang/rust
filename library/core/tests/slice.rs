@@ -1805,7 +1805,7 @@ fn brute_force_rotate_test_1() {
 fn sort_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
     use core::slice::heapsort;
-    use rand::{rngs::StdRng, seq::SliceRandom, Rng, SeedableRng};
+    use rand::{seq::SliceRandom, Rng};
 
     // Miri is too slow (but still need to `chain` to make the types match)
     let lens = if cfg!(miri) { (2..20).chain(0..0) } else { (2..25).chain(500..510) };
@@ -1813,7 +1813,7 @@ fn sort_unstable() {
 
     let mut v = [0; 600];
     let mut tmp = [0; 600];
-    let mut rng = StdRng::from_entropy();
+    let mut rng = crate::test_rng();
 
     for len in lens {
         let v = &mut v[0..len];
@@ -1879,11 +1879,10 @@ fn sort_unstable() {
 #[cfg_attr(miri, ignore)] // Miri is too slow
 fn select_nth_unstable() {
     use core::cmp::Ordering::{Equal, Greater, Less};
-    use rand::rngs::StdRng;
     use rand::seq::SliceRandom;
-    use rand::{Rng, SeedableRng};
+    use rand::Rng;
 
-    let mut rng = StdRng::from_entropy();
+    let mut rng = crate::test_rng();
 
     for len in (2..21).chain(500..501) {
         let mut orig = vec![0; len];
