@@ -28,6 +28,38 @@ help: you can rely on the implicit conversion that `?` does to transform the err
 LL |     return Ok(x?);
    |            +++ ++
 
-error: aborting due to 2 previous errors
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:15:9
+   |
+LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+LL |     if true {
+LL |         x
+   |         ^ expected struct `B`, found struct `A`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: you can rely on the implicit conversion that `?` does to transform the error type
+   |
+LL |         Ok(x?)
+   |         +++ ++
+
+error[E0308]: mismatched types
+  --> $DIR/coerce-result-return-value.rs:17:9
+   |
+LL | fn foo3(x: Result<(), A>) -> Result<(), B> {
+   |                              ------------- expected `Result<(), B>` because of return type
+...
+LL |         x
+   |         ^ expected struct `B`, found struct `A`
+   |
+   = note: expected enum `Result<_, B>`
+              found enum `Result<_, A>`
+help: you can rely on the implicit conversion that `?` does to transform the error type
+   |
+LL |         Ok(x?)
+   |         +++ ++
+
+error: aborting due to 4 previous errors
 
 For more information about this error, try `rustc --explain E0308`.

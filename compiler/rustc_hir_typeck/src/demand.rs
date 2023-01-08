@@ -713,6 +713,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if Some(e.did()) != self.tcx.get_diagnostic_item(sym::Result) {
             return false;
         }
+        let map = self.tcx.hir();
+        if let Some(hir::Node::Expr(expr)) = map.find_parent(expr.hir_id)
+            && let hir::ExprKind::Ret(_) = expr.kind
+        {
+            // `return foo;`
+        } else if map.get_return_block(expr.hir_id).is_some() {
+            // Function's tail expression.
+        } else {
+            return false;
+        }
         let e = substs_e.type_at(1);
         let f = substs_f.type_at(1);
         if self
