@@ -3,13 +3,16 @@ use std::hash::Hash;
 
 use rustdoc_json_types::{
     Constant, Crate, DynTrait, Enum, FnDecl, Function, FunctionPointer, GenericArg, GenericArgs,
-    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, Module, OpaqueTy, Path,
-    Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias, Type, TypeBinding,
-    TypeBindingKind, Typedef, Union, Variant, VariantKind, WherePredicate,
+    GenericBound, GenericParamDef, Generics, Id, Impl, Import, ItemEnum, ItemSummary, Module,
+    OpaqueTy, Path, Primitive, ProcMacro, Static, Struct, StructKind, Term, Trait, TraitAlias,
+    Type, TypeBinding, TypeBindingKind, Typedef, Union, Variant, VariantKind, WherePredicate,
 };
 use serde_json::Value;
 
 use crate::{item_kind::Kind, json_find, Error, ErrorKind};
+
+// This is a rustc implementation detail that we rely on here
+const LOCAL_CRATE_ID: u32 = 0;
 
 /// The Validator walks over the JSON tree, and ensures it is well formed.
 /// It is made of several parts.
@@ -53,11 +56,18 @@ impl<'a> Validator<'a> {
     }
 
     pub fn check_crate(&mut self) {
+        // Graph traverse the index
         let root = &self.krate.root;
         self.add_mod_id(root);
         while let Some(id) = set_remove(&mut self.todo) {
             self.seen_ids.insert(id);
             self.check_item(id);
+        }
+
+        let root_crate_id = self.krate.index[root].crate_id;
+        assert_eq!(root_crate_id, LOCAL_CRATE_ID, "LOCAL_CRATE_ID is wrong");
+        for (id, item_info) in &self.krate.paths {
+            self.check_item_info(id, item_info);
         }
     }
 
@@ -362,6 +372,19 @@ impl<'a> Validator<'a> {
     fn check_function_pointer(&mut self, fp: &'a FunctionPointer) {
         self.check_fn_decl(&fp.decl);
         fp.generic_params.iter().for_each(|gpd| self.check_generic_param_def(gpd));
+    }
+
+    fn check_item_info(&mut self, id: &Id, item_info: &ItemSummary) {
+        // FIXME: Their should be a better way to determine if an item is local, rather than relying on `LOCAL_CRATE_ID`,
+        // which encodes rustc implementation details.
+        if item_info.crate_id == LOCAL_CRATE_ID && !self.krate.index.contains_key(id) {
+            self.errs.push(Error {
+                id: id.clone(),
+                kind: ErrorKind::Custom(
+                    "Id for local item in `paths` but not in `index`".to_owned(),
+                ),
+            })
+        }
     }
 
     fn add_id_checked(&mut self, id: &'a Id, valid: fn(Kind) -> bool, expected: &str) {
