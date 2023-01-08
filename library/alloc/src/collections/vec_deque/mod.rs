@@ -636,6 +636,7 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
+    /// buf.push_back(6);
     /// assert_eq!(buf.get(1), Some(&4));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -661,10 +662,11 @@ impl<T, A: Allocator> VecDeque<T, A> {
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
+    /// buf.push_back(6);
+    /// assert_eq!(buf[1], 4);
     /// if let Some(elem) = buf.get_mut(1) {
     ///     *elem = 7;
     /// }
-    ///
     /// assert_eq!(buf[1], 7);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
