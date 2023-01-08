@@ -283,6 +283,8 @@ pub trait PrettyPrinter<'tcx>:
     /// This is typically the case for all non-`'_` regions.
     fn should_print_region(&self, region: ty::Region<'tcx>) -> bool;
 
+    fn reset_type_limit(&mut self) {}
+
     // Defaults (should not be overridden):
 
     /// If possible, this returns a global path resolving to `def_id` that is visible
@@ -1981,6 +1983,10 @@ impl<'tcx> PrettyPrinter<'tcx> for FmtPrinter<'_, 'tcx> {
         self.0.ty_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
 
+    fn reset_type_limit(&mut self) {
+        self.printed_type_count = 0;
+    }
+
     fn const_infer_name(&self, id: ty::ConstVid<'tcx>) -> Option<Symbol> {
         self.0.const_infer_name_resolver.as_ref().and_then(|func| func(id))
     }
@@ -2722,11 +2728,15 @@ define_print_and_forward_display! {
     }
 
     ty::SubtypePredicate<'tcx> {
-        p!(print(self.a), " <: ", print(self.b))
+        p!(print(self.a), " <: ");
+        cx.reset_type_limit();
+        p!(print(self.b))
     }
 
     ty::CoercePredicate<'tcx> {
-        p!(print(self.a), " -> ", print(self.b))
+        p!(print(self.a), " -> ");
+        cx.reset_type_limit();
+        p!(print(self.b))
     }
 
     ty::TraitPredicate<'tcx> {
@@ -2738,7 +2748,9 @@ define_print_and_forward_display! {
     }
 
     ty::ProjectionPredicate<'tcx> {
-        p!(print(self.projection_ty), " == ", print(self.term))
+        p!(print(self.projection_ty), " == ");
+        cx.reset_type_limit();
+        p!(print(self.term))
     }
 
     ty::Term<'tcx> {
