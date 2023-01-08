@@ -167,7 +167,7 @@ impl<'a> Resolver<'a> {
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
-                err.span_suggestion(span, msg, sugg, appl);
+                err.span_suggestion_verbose(span, msg, sugg, appl);
                 err.emit();
             } else if let [segment] = path.as_slice() && is_call {
                 err.stash(segment.ident.span, rustc_errors::StashKey::CallIntoMethod);
