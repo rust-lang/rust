@@ -53,7 +53,7 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
         ((_0 as Err).0: E) = move _8;    // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
         discriminant(_0) = 1;            // scope 4 at $DIR/try_identity_e2e.rs:+9:45: +9:51
         StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
-        goto -> bb6;                     // scope 0 at $DIR/try_identity_e2e.rs:+12:2: +12:2
+        return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:2: +12:2
     }
 
     bb4: {
@@ -66,10 +66,6 @@ fn new(_1: Result<T, E>) -> Result<T, E> {
         ((_0 as Ok).0: T) = move _7;     // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
         discriminant(_0) = 0;            // scope 0 at $DIR/try_identity_e2e.rs:+1:5: +11:6
         StorageDead(_2);                 // scope 0 at $DIR/try_identity_e2e.rs:+12:1: +12:2
-        goto -> bb6;                     // scope 0 at $DIR/try_identity_e2e.rs:+12:2: +12:2
-    }
-
-    bb6: {
         return;                          // scope 0 at $DIR/try_identity_e2e.rs:+12:2: +12:2
     }
 }

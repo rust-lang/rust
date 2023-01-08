@@ -111,7 +111,7 @@
 +         discriminant(_1) = 0;            // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         _11 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
 +         discriminant((*_11)) = 3;        // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
-+         goto -> bb1;                     // scope 6 at $DIR/inline_generator.rs:15:11: 15:39
++         goto -> bb1;                     // scope 0 at $DIR/inline_generator.rs:15:11: 15:39
 +     }
 + 
 +     bb7: {
@@ -122,7 +122,7 @@
 +         discriminant(_1) = 1;            // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         _12 = deref_copy (_2.0: &mut [generator@$DIR/inline_generator.rs:15:5: 15:8]); // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
 +         discriminant((*_12)) = 1;        // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
-+         goto -> bb1;                     // scope 6 at $DIR/inline_generator.rs:15:41: 15:41
++         goto -> bb1;                     // scope 0 at $DIR/inline_generator.rs:15:41: 15:41
 +     }
 + 
 +     bb8: {

@@ -72,6 +72,9 @@ pub struct FunctionCx<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>> {
     /// Cached unreachable block
     unreachable_block: Option<Bx::BasicBlock>,
 
+    /// Cached return block
+    return_block: Option<Bx::BasicBlock>,
+
     /// Cached double unwind guarding block
     double_unwind_guard: Option<Bx::BasicBlock>,
 
@@ -184,6 +187,7 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
         personality_slot: None,
         cached_llbbs,
         unreachable_block: None,
+        return_block: None,
         double_unwind_guard: None,
         cleanup_kinds,
         landing_pads: IndexVec::from_elem(None, &mir.basic_blocks),
@@ -255,6 +259,19 @@ pub fn codegen_mir<'a, 'tcx, Bx: BuilderMethods<'a, 'tcx>>(
 
     // Apply debuginfo to the newly allocated locals.
     fx.debug_introduce_locals(&mut start_bx);
+
+    if mir
+        .basic_blocks
+        .iter()
+        .filter(|block| matches!(block.terminator().kind, mir::TerminatorKind::Return))
+        .count()
+        > 1
+    {
+        let llbb = Bx::append_block(fx.cx, fx.llfn, "return");
+        let mut bx = Bx::build(fx.cx, llbb);
+        fx.codegen_return_terminator(&mut bx);
+        fx.return_block = Some(llbb);
+    }
 
     // Codegen the body of each block using reverse postorder
     for (bb, _) in traversal::reverse_postorder(&mir) {
