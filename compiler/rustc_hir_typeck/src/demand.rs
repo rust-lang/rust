@@ -719,7 +719,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .infcx
             .type_implements_trait(
                 self.tcx.get_diagnostic_item(sym::Into).unwrap(),
-                [self.tcx.erase_regions(f), self.tcx.erase_regions(e)],
+                [f, e],
                 self.param_env,
             )
             .must_apply_modulo_regions()
