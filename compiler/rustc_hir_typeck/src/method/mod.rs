@@ -132,18 +132,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         msg: &str,
         method_name: Ident,
         self_ty: Ty<'tcx>,
-        call_expr: &hir::Expr<'_>,
+        call_expr: &hir::Expr<'tcx>,
         span: Option<Span>,
     ) {
         let params = self
-            .probe_for_name(
-                probe::Mode::MethodCall,
+            .lookup_probe_for_diagnostic(
                 method_name,
-                None,
-                IsSuggestion(true),
                 self_ty,
-                call_expr.hir_id,
+                call_expr,
                 ProbeScope::TraitsInScope,
+                None,
             )
             .map(|pick| {
                 let sig = self.tcx.fn_sig(pick.item.def_id);
@@ -224,25 +222,30 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
 
             // We probe again, taking all traits into account (not only those in scope).
-            let candidates =
-                match self.lookup_probe(segment.ident, self_ty, call_expr, ProbeScope::AllTraits) {
-                    // If we find a different result the caller probably forgot to import a trait.
-                    Ok(ref new_pick) if pick.differs_from(new_pick) => {
-                        vec![new_pick.item.container_id(self.tcx)]
-                    }
-                    Err(Ambiguity(ref sources)) => sources
-                        .iter()
-                        .filter_map(|source| {
-                            match *source {
-                                // Note: this cannot come from an inherent impl,
-                                // because the first probing succeeded.
-                                CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
-                                CandidateSource::Trait(_) => None,
-                            }
-                        })
-                        .collect(),
-                    _ => Vec::new(),
-                };
+            let candidates = match self.lookup_probe_for_diagnostic(
+                segment.ident,
+                self_ty,
+                call_expr,
+                ProbeScope::AllTraits,
+                None,
+            ) {
+                // If we find a different result the caller probably forgot to import a trait.
+                Ok(ref new_pick) if pick.differs_from(new_pick) => {
+                    vec![new_pick.item.container_id(self.tcx)]
+                }
+                Err(Ambiguity(ref sources)) => sources
+                    .iter()
+                    .filter_map(|source| {
+                        match *source {
+                            // Note: this cannot come from an inherent impl,
+                            // because the first probing succeeded.
+                            CandidateSource::Impl(def) => self.tcx.trait_id_of_impl(def),
+                            CandidateSource::Trait(_) => None,
+                        }
+                    })
+                    .collect(),
+                _ => Vec::new(),
+            };
 
             return Err(IllegalSizedBound { candidates, needs_mut, bound_span: span, self_expr });
         }
@@ -255,7 +258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         &self,
         method_name: Ident,
         self_ty: Ty<'tcx>,
-        call_expr: &'tcx hir::Expr<'tcx>,
+        call_expr: &hir::Expr<'_>,
         scope: ProbeScope,
     ) -> probe::PickResult<'tcx> {
         let pick = self.probe_for_name(
@@ -268,6 +271,26 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             scope,
         )?;
         pick.maybe_emit_unstable_name_collision_hint(self.tcx, method_name.span, call_expr.hir_id);
+        Ok(pick)
+    }
+
+    pub fn lookup_probe_for_diagnostic(
+        &self,
+        method_name: Ident,
+        self_ty: Ty<'tcx>,
+        call_expr: &hir::Expr<'_>,
+        scope: ProbeScope,
+        return_type: Option<Ty<'tcx>>,
+    ) -> probe::PickResult<'tcx> {
+        let pick = self.probe_for_name(
+            probe::Mode::MethodCall,
+            method_name,
+            return_type,
+            IsSuggestion(true),
+            self_ty,
+            call_expr.hir_id,
+            scope,
+        )?;
         Ok(pick)
     }
 

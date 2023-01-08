@@ -2431,7 +2431,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn ban_private_field_access(
         &self,
-        expr: &hir::Expr<'_>,
+        expr: &hir::Expr<'tcx>,
         expr_t: Ty<'tcx>,
         field: Ident,
         base_did: DefId,
@@ -2462,7 +2462,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.emit();
     }
 
-    fn ban_take_value_of_method(&self, expr: &hir::Expr<'_>, expr_t: Ty<'tcx>, field: Ident) {
+    fn ban_take_value_of_method(&self, expr: &hir::Expr<'tcx>, expr_t: Ty<'tcx>, field: Ident) {
         let mut err = type_error_struct!(
             self.tcx().sess,
             field.span,

@@ -370,8 +370,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             self.suggest_fn_call(&mut err, rcvr_expr, rcvr_ty, |output_ty| {
                 let call_expr =
                     self.tcx.hir().expect_expr(self.tcx.hir().parent_id(rcvr_expr.hir_id));
-                let probe =
-                    self.lookup_probe(item_name, output_ty, call_expr, ProbeScope::AllTraits);
+                let probe = self.lookup_probe_for_diagnostic(
+                    item_name,
+                    output_ty,
+                    call_expr,
+                    ProbeScope::AllTraits,
+                    expected.only_has_type(self),
+                );
                 probe.is_ok()
             });
         }
@@ -1386,14 +1391,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let range_ty =
                         self.tcx.bound_type_of(range_def_id).subst(self.tcx, &[actual.into()]);
 
-                    let pick = self.probe_for_name(
-                        Mode::MethodCall,
+                    let pick = self.lookup_probe_for_diagnostic(
                         item_name,
-                        None,
-                        IsSuggestion(true),
                         range_ty,
-                        expr.hir_id,
+                        expr,
                         ProbeScope::AllTraits,
+                        None,
                     );
                     if pick.is_ok() {
                         let range_span = parent_expr.span.with_hi(expr.span.hi());
@@ -1573,11 +1576,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             && let Some(expr) = visitor.result
             && let Some(self_ty) = self.node_ty_opt(expr.hir_id)
         {
-            let probe = self.lookup_probe(
+            let probe = self.lookup_probe_for_diagnostic(
                 seg2.ident,
                 self_ty,
                 call_expr,
                 ProbeScope::TraitsInScope,
+                None,
             );
             if probe.is_ok() {
                 let sm = self.infcx.tcx.sess.source_map();
@@ -1624,14 +1628,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.check_for_nested_field_satisfying(
                         span,
                         &|_, field_ty| {
-                            self.probe_for_name(
-                                Mode::MethodCall,
+                            self.lookup_probe_for_diagnostic(
                                 item_name,
-                                return_type,
-                                IsSuggestion(true),
                                 field_ty,
-                                call_expr.hir_id,
+                                call_expr,
                                 ProbeScope::TraitsInScope,
+                                return_type,
                             )
                             .map_or(false, |pick| {
                                 !never_mention_traits
@@ -1697,9 +1699,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             return None;
                         }
 
-                        self.lookup_probe(item_name, field_ty, call_expr, ProbeScope::TraitsInScope)
-                            .ok()
-                            .map(|pick| (variant, field, pick))
+                        self.lookup_probe_for_diagnostic(
+                            item_name,
+                            field_ty,
+                            call_expr,
+                            ProbeScope::TraitsInScope,
+                            None,
+                        )
+                        .ok()
+                        .map(|pick| (variant, field, pick))
                     })
                     .collect();
 
@@ -1763,11 +1771,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ty::AdtKind::Struct | ty::AdtKind::Union => {
                 let [first] = ***substs else { return; };
                 let ty::GenericArgKind::Type(ty) = first.unpack() else { return; };
-                let Ok(pick) = self.lookup_probe(
+                let Ok(pick) = self.lookup_probe_for_diagnostic(
                     item_name,
                     ty,
                     call_expr,
                     ProbeScope::TraitsInScope,
+                    None,
                 )  else { return; };
 
                 let name = self.ty_to_value_string(actual);
@@ -2243,14 +2252,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
                 (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
-                match self.probe_for_name(
-                    Mode::MethodCall,
+                match self.lookup_probe_for_diagnostic(
                     item_name,
-                    return_type,
-                    IsSuggestion(true),
                     *rcvr_ty,
-                    rcvr.hir_id,
+                    rcvr,
                     ProbeScope::AllTraits,
+                    return_type,
                 ) {
                     Ok(pick) => {
                         // If the method is defined for the receiver we have, it likely wasn't `use`d.
@@ -2284,14 +2291,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty
-                        && let Ok(pick) = self.probe_for_name(
-                            Mode::MethodCall,
+                        && let Ok(pick) = self.lookup_probe_for_diagnostic(
                             item_name,
-                            return_type,
-                            IsSuggestion(true),
                             new_rcvr_t,
-                            rcvr.hir_id,
+                            rcvr,
                             ProbeScope::AllTraits,
+                            return_type,
                         )
                     {
                         debug!("try_alt_rcvr: pick candidate {:?}", pick);
@@ -2670,11 +2675,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 name: Symbol::intern(&format!("{}_else", method_name.as_str())),
                 span: method_name.span,
             };
-            let probe = self.lookup_probe(
+            let probe = self.lookup_probe_for_diagnostic(
                 new_name,
                 self_ty,
                 self_expr,
                 ProbeScope::TraitsInScope,
+                Some(expected),
             );
 
             // check the method arguments number
