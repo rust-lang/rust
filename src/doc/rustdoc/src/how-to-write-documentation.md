@@ -254,6 +254,134 @@ characters:
 
 So, no need to manually enter those Unicode characters!
 
+### Inline HTML
+
+As a standard Commonmark parser with no special restrictions, rustdoc allows
+you to write HTML whenever the regular markup isn't sufficient, such as
+advanced table layouts:
+
+```html
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Category</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>traits</td>
+            <td>static and dynamic dispatch</td>
+            <td>generics</td>
+        </tr>
+        <tr>
+            <td colspan="3">enums</td>
+        </tr>
+        <tr>
+            <td rowspan="2">doc comments</td>
+            <td colspan="2">reference documentation</td>
+        </tr>
+        <tr>
+            <td>markdown comments</td>
+            <td>attributes with custom syntax</td>
+        </tr>
+    </tbody>
+</table>
+```
+
+This will render the same way Markdown tables do, even though Markdown tables
+don't support `colspan`:
+
+<table>
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Category</th>
+        </tr>
+    </thead>
+    <tbody>
+        <tr>
+            <td>traits</td>
+            <td>static and dynamic dispatch</td>
+            <td>generics</td>
+        </tr>
+        <tr>
+            <td colspan="3">enums</td>
+        </tr>
+        <tr>
+            <td rowspan="2">doc comments</td>
+            <td colspan="2">reference documentation</td>
+        </tr>
+        <tr>
+            <td>markdown comments</td>
+            <td>attributes with custom syntax</td>
+        </tr>
+    </tbody>
+</table>
+
+HTML is not sanitized when included in the documentation, though
+improperly-nested tags will produce a build-time warning. It can be turned
+into an error by adding `#![deny(rustdoc::invalid_html_tags)]` to your crate.
+
+```text
+warning: unclosed HTML tag `h2`
+  --> $DIR/invalid-html-tags.rs:19:7
+   |
+LL | ///   <h2>
+   |       ^^^^
+
+warning: unclosed quoted HTML attribute on tag `p`
+  --> $DIR/invalid-html-self-closing-tag.rs:19:14
+   |
+LL | /// <p style="x/></p>
+   |              ^
+```
+
+Additionally, IDs and classes should be prefixed with your crate's name,
+followed by an underscore `_`. Since rustdoc sometimes includes excerpts
+of the documentation of your dependencies in your crate's documentation,
+this ensures you don't conflict with them. It can be turned into an error
+by adding `#![deny(rustdoc::unprefixed_html_class)]` and
+`#![deny(rustdoc::unprefixed_html_id)]`.
+
+```text
+error: unprefixed HTML `class` attribute
+  --> $DIR/unprefixed-html-class.rs:4:27
+   |
+LL | /// Test with <div class="evil"></div>
+   |                           -^^^
+   |                           |
+   |                           help: add prefix: `unprefixed_html_class_`
+   |
+   = help: classes should start with `{cratename}_`, or be: `stab`, `stab deprecated`, or `stab portability`
+
+error: unprefixed HTML `id` attribute
+  --> $DIR/unprefixed-html-id.rs:4:24
+   |
+LL | /// Test with <div id="evil"></div>
+   |                        -^^^
+   |                        |
+   |                        help: add prefix: `unprefixed_html_id_`
+   |
+
+warning: 2 warnings emitted
+```
+
+We recommend the following additional restrictions:
+
+  * Start all doc comments with a one-sentence summary that doesn't use
+    inline HTML. This summary will be used in contexts where arbitrary HTML
+    cannot, such as tooltips.
+  * Though JavaScript is allowed, many viewers won't run it. Ensure your docs
+    are readable without JavaScript.
+  * Do not embed CSS or JavaScript in doc comments to customize rustdoc's
+    UI. If you want to publish documentation with a customized UI, invoke
+    rustdoc with the `--html-in-header` [command-line parameter] to generate it
+    with your custom stylesheet or script, then publish the result as
+    pre-built HTML.
+
 [`backtrace`]: https://docs.rs/backtrace/0.3.50/backtrace/
 [commonmark markdown specification]: https://commonmark.org/
 [commonmark quick reference]: https://commonmark.org/help/
@@ -268,3 +396,4 @@ So, no need to manually enter those Unicode characters!
 [strikethrough]: https://github.github.com/gfm/#strikethrough-extension-
 [tables]: https://github.github.com/gfm/#tables-extension-
 [task list extension]: https://github.github.com/gfm/#task-list-items-extension-
+[command-line parameter]: command-line-arguments.md#--html-in-header-include-more-html-in
