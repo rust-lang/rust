@@ -529,16 +529,72 @@ fn virtual_call_violation_for_method<'tcx>(
 
     // NOTE: This check happens last, because it results in a lint, and not a
     // hard error.
-    if tcx
-        .predicates_of(method.def_id)
-        .predicates
-        .iter()
-        // A trait object can't claim to live more than the concrete type,
-        // so outlives predicates will always hold.
-        .cloned()
-        .filter(|(p, _)| p.to_opt_type_outlives().is_none())
-        .any(|pred| contains_illegal_self_type_reference(tcx, trait_def_id, pred))
-    {
+    if tcx.predicates_of(method.def_id).predicates.iter().any(|(pred, _span)| {
+        // dyn Trait is okay:
+        //
+        //     trait Trait {
+        //         fn f(&self) where Self: 'static;
+        //     }
+        //
+        // because a trait object can't claim to live longer than the
+        // concrete type. If the lifetime bound holds on dyn Trait then it's
+        // guaranteed to hold as well on the concrete type.
+        if pred.to_opt_type_outlives().is_some() {
+            return false;
+        }
+
+        if let ty::PredicateKind::Clause(ty::Clause::Trait(ty::TraitPredicate {
+            trait_ref: pred_trait_ref,
+            constness: ty::BoundConstness::NotConst,
+            polarity: ty::ImplPolarity::Positive,
+        })) = pred.kind().skip_binder()
+            && pred_trait_ref.self_ty() == tcx.types.self_param
+        {
+            let pred_trait_def = tcx.trait_def(pred_trait_ref.def_id);
+            let mut disregard_self_in_self_ty = false;
+
+            // dyn Trait is okay:
+            //
+            //     unsafe trait Bound {}
+            //
+            //     trait Trait {
+            //         fn f(&self) where Self: Bound;
+            //     }
+            //
+            // because we don't need to worry about a potential `unsafe impl
+            // Bound for dyn Trait`. Whoever wrote such an impl, it's their
+            // fault when f gets called on a !Bound concrete type.
+            if let hir::Unsafety::Unsafe = pred_trait_def.unsafety {
+                disregard_self_in_self_ty = true;
+            }
+
+            // dyn Trait is okay:
+            //
+            //     extern crate other_crate {
+            //         auto trait Bound {}
+            //     }
+            //
+            //     trait Trait {
+            //         fn f(&self) where Self: other_crate::Bound;
+            //     }
+            //
+            // because `impl Bound for dyn Trait` is impossible. Cross-crate
+            // traits with a default impl can only be implemented for a
+            // struct/enum type, not dyn Trait.
+            if pred_trait_def.has_auto_impl && pred_trait_def.def_id.krate != trait_def_id.krate {
+                disregard_self_in_self_ty = true;
+            }
+
+            if disregard_self_in_self_ty {
+                // Only check the rest of the bound's parameters. So `Self:
+                // Bound<Self>` is still considered illegal.
+                let rest_of_substs = &pred_trait_ref.substs[1..];
+                return contains_illegal_self_type_reference(tcx, trait_def_id, rest_of_substs);
+            }
+        }
+
+        contains_illegal_self_type_reference(tcx, trait_def_id, pred.clone())
+    }) {
         return Some(MethodViolationCode::WhereClauseReferencesSelf);
     }
 
