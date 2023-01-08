@@ -1026,7 +1026,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Basic usage
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// # use core::marker::PhantomPinned as Foo;
 /// use core::pin::{pin, Pin};
 ///
@@ -1044,7 +1043,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### Manually polling a `Future` (without `Unpin` bounds)
 ///
 /// ```rust
-/// #![feature(pin_macro)]
 /// use std::{
 ///     future::Future,
 ///     pin::pin,
@@ -1083,7 +1081,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// ### With `Generator`s
 ///
 /// ```rust
-/// #![feature(generators, generator_trait, pin_macro)]
+/// #![feature(generators, generator_trait)]
 /// use core::{
 ///     ops::{Generator, GeneratorState},
 ///     pin::pin,
@@ -1126,7 +1124,6 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// The following, for instance, fails to compile:
 ///
 /// ```rust,compile_fail
-/// #![feature(pin_macro)]
 /// use core::pin::{pin, Pin};
 /// # use core::{marker::PhantomPinned as Foo, mem::drop as stuff};
 ///
@@ -1168,7 +1165,7 @@ impl<P, U> DispatchFromDyn<Pin<U>> for Pin<P> where P: DispatchFromDyn<U> {}
 /// constructor.
 ///
 /// [`Box::pin`]: ../../std/boxed/struct.Box.html#method.pin
-#[unstable(feature = "pin_macro", issue = "93178")]
+#[stable(feature = "pin_macro", since = "CURRENT_RUSTC_VERSION")]
 #[rustc_macro_transparency = "semitransparent"]
 #[allow_internal_unstable(unsafe_pin_internals)]
 pub macro pin($value:expr $(,)?) {
