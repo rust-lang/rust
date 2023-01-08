@@ -25,16 +25,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
             infer::Reborrow(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_reborrow }.add_to_diagnostic(err)
             }
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                RegionOriginNote::WithName {
-                    span,
-                    msg: fluent::infer_reborrow,
-                    name: &var_name.to_string(),
-                    continues: false,
-                }
-                .add_to_diagnostic(err);
-            }
             infer::RelateObjectBound(span) => {
                 RegionOriginNote::Plain { span, msg: fluent::infer_relate_object_bound }
                     .add_to_diagnostic(err);
@@ -156,33 +146,6 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     self.tcx,
                     &mut err,
                     "...but the borrowed content is only valid for ",
-                    sup,
-                    "",
-                    None,
-                );
-                err
-            }
-            infer::ReborrowUpvar(span, ref upvar_id) => {
-                let var_name = self.tcx.hir().name(upvar_id.var_path.hir_id);
-                let mut err = struct_span_err!(
-                    self.tcx.sess,
-                    span,
-                    E0313,
-                    "lifetime of borrowed pointer outlives lifetime of captured variable `{}`...",
-                    var_name
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    "...the borrowed pointer is valid for ",
-                    sub,
-                    "...",
-                    None,
-                );
-                note_and_explain_region(
-                    self.tcx,
-                    &mut err,
-                    &format!("...but `{}` is only valid for ", var_name),
                     sup,
                     "",
                     None,
