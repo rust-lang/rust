@@ -1223,19 +1223,22 @@ impl<'tcx> Visitor<'tcx> for TypePrivacyVisitor<'tcx> {
                 self.tcx.types.never,
             );
 
-            for (trait_predicate, _, _) in bounds.trait_bounds {
-                if self.visit_trait(trait_predicate.skip_binder()).is_break() {
-                    return;
-                }
-            }
-
-            for (poly_predicate, _) in bounds.projection_bounds {
-                let pred = poly_predicate.skip_binder();
-                let poly_pred_term = self.visit(pred.term);
-                if poly_pred_term.is_break()
-                    || self.visit_projection_ty(pred.projection_ty).is_break()
-                {
-                    return;
+            for (pred, _) in bounds.predicates() {
+                match pred.kind().skip_binder() {
+                    ty::PredicateKind::Clause(ty::Clause::Trait(trait_predicate)) => {
+                        if self.visit_trait(trait_predicate.trait_ref).is_break() {
+                            return;
+                        }
+                    }
+                    ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) => {
+                        let term = self.visit(proj_predicate.term);
+                        if term.is_break()
+                            || self.visit_projection_ty(proj_predicate.projection_ty).is_break()
+                        {
+                            return;
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
