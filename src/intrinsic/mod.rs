@@ -1118,9 +1118,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
 }
 
 fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
-    // NOTE: the `|| true` here is to use the panic=abort strategy with panic=unwind too
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
-        // TODO(bjorn3): Properly implement unwinding and remove the `|| true` once this is done.
         bx.call(bx.type_void(), try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
         // we can never unwind.
@@ -1238,7 +1236,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
     )));
     // `unsafe fn(unsafe fn(*mut i8) -> (), *mut i8, unsafe fn(*mut i8, *mut i8) -> ()) -> i32`
     let rust_fn_sig = ty::Binder::dummy(cx.tcx.mk_fn_sig(
-        [try_fn_ty, i8p, catch_fn_ty].into_iter(),
+        [try_fn_ty, i8p, catch_fn_ty].iter(),
         &tcx.types.i32,
         false,
         rustc_hir::Unsafety::Unsafe,
@@ -1256,7 +1254,7 @@ fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig
     let (typ, _, _, _) = fn_abi.gcc_type(cx);
     // FIXME(eddyb) find a nicer way to do this.
     cx.linkage.set(FunctionType::Internal);
-    let func = cx.declare_fn(name, fn_abi, false);
+    let func = cx.declare_fn(name, fn_abi);
     let func_val = unsafe { std::mem::transmute(func) };
     cx.set_frame_pointer_type(func_val);
     cx.apply_target_cpu_attr(func_val);

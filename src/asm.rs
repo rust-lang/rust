@@ -352,7 +352,7 @@ impl<'a, 'gcc, 'tcx> AsmBuilderMethods<'tcx> for Builder<'a, 'gcc, 'tcx> {
                     inputs.push(AsmInOperand {
                         constraint: "X".into(),
                         rust_idx,
-                        val: get_fn(self.cx, instance, false).get_address(None),
+                        val: get_fn(self.cx, instance).get_address(None),
                     });
                 }
 
@@ -738,7 +738,7 @@ impl<'gcc, 'tcx> AsmMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                         }
 
                         GlobalAsmOperandRef::SymFn { instance } => {
-                            let function = get_fn(self, instance, false);
+                            let function = get_fn(self, instance);
                             self.add_used_function(function);
                             // TODO(@Amanieu): Additional mangling is needed on
                             // some targets to add a leading underscore (Mach-O)

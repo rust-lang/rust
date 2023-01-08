@@ -177,7 +177,7 @@ To have the correct file paths in `gdb` instead of `/usr/src/debug/gcc/libstdc++
 Maybe by calling the following at the beginning of gdb:
 
 ```
-set substitute-path /usr/src/debug/gcc /home/bouanto/Ordinateur/Programmation/Projets/gcc-repo/gcc
+set substitute-path /usr/src/debug/gcc /path/to/gcc-repo/gcc
 ```
 
 TODO: but that's not what I remember I was doing.

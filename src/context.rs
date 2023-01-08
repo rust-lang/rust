@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell};
 
-use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type, FnAttribute};
+use gccjit::{Block, CType, Context, Function, FunctionPtrType, FunctionType, LValue, RValue, Type};
 use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::traits::{
     BackendTypes,
@@ -259,8 +259,8 @@ impl<'gcc, 'tcx> CodegenCx<'gcc, 'tcx> {
     pub fn rvalue_as_function(&self, value: RValue<'gcc>) -> Function<'gcc> {
         let function: Function<'gcc> = unsafe { std::mem::transmute(value) };
         // FIXME: seems like self.functions get overwritten for rust_eh_personality.
-        /*debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
-            "{:?} is not a function", function);*/
+        debug_assert!(self.functions.borrow().values().find(|value| **value == function).is_some(),
+            "{:?} is not a function", function);
         function
     }
 
@@ -332,7 +332,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
     }
 
     fn get_fn(&self, instance: Instance<'tcx>) -> RValue<'gcc> {
-        let func = get_fn(self, instance, false);
+        let func = get_fn(self, instance);
         *self.current_func.borrow_mut() = Some(func);
         unsafe { std::mem::transmute(func) }
     }
@@ -345,7 +345,7 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                 self.intrinsics.borrow()[func_name].clone()
             }
             else {
-                get_fn(self, instance, false)
+                get_fn(self, instance)
             };
         let ptr = func.get_address(None);
 
@@ -386,8 +386,6 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
         let func =
             match tcx.lang_items().eh_personality() {
                 Some(def_id) if !wants_msvc_seh(self.sess()) => {
-                    // FIXME: this create an instance into self.functions and prevent the creating
-                    // of the function defined in std.
                     let instance =
                         ty::Instance::resolve(
                             tcx,
@@ -400,45 +398,19 @@ impl<'gcc, 'tcx> MiscMethods<'tcx> for CodegenCx<'gcc, 'tcx> {
                     let symbol_name = tcx.symbol_name(instance).name;
                     let fn_abi = self.fn_abi_of_instance(instance, ty::List::empty());
                     self.linkage.set(FunctionType::Extern);
-                    let func = self.declare_fn(symbol_name, &fn_abi, false);
-                    //func.add_attribute(FnAttribute::Weak);
-
-                    /*let block = func.new_block("eh_personality_block");
-                    // NOTE: it seems this function is overwritten by the standard library, so just
-                    // return a dummy value in this version.
-                    let zero = self.context.new_rvalue_zero(self.type_u32());
-                    block.end_with_return(None, zero);*/
-
-                    //*self.current_func.borrow_mut() = Some(func);
+                    let func = self.declare_fn(symbol_name, &fn_abi);
                     let func: RValue<'gcc> = unsafe { std::mem::transmute(func) };
                     func
-                    /*self.get_fn(
-                        ty::Instance::resolve(
-                            tcx,
-                            ty::ParamEnv::reveal_all(),
-                            def_id,
-                            tcx.intern_substs(&[]),
-                        )
-                        .unwrap().unwrap(),
-                    )*/
                 },
                 _ => {
-                    let name = if wants_msvc_seh(self.sess()) {
-                        "__CxxFrameHandler3"
-                    } else {
-                        "rust_eh_personality"
-                    };
+                    let name =
+                        if wants_msvc_seh(self.sess()) {
+                            "__CxxFrameHandler3"
+                        }
+                        else {
+                            "rust_eh_personality"
+                        };
                     let func = self.declare_func(name, self.type_i32(), &[], true);
-                    //*self.current_func.borrow_mut() = Some(func);
-                    // NOTE: this function is created multiple times and is overwritten by the
-                    // standard library, so mark it as weak.
-                    //func.add_attribute(FnAttribute::Weak);
-                    //self.functions.borrow_mut().insert(name.to_string(), func);
-                    /*let block = func.new_block("eh_personality_block");
-                    // NOTE: it seems this function is overwritten by the standard library, so just
-                    // return a dummy value in this version.
-                    let zero = self.context.new_rvalue_zero(self.type_i32());
-                    block.end_with_return(None, zero);*/
                     unsafe { std::mem::transmute(func) }
                 }
             };

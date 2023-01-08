@@ -1,11 +1,9 @@
 #[cfg(feature="master")]
 use gccjit::{FnAttribute, Visibility};
-use gccjit::{FunctionType, RValue, Function};
-use rustc_codegen_ssa::traits::BaseTypeMethods;
+use gccjit::{FunctionType, Function};
 use rustc_middle::ty::{self, Instance, TypeVisitable};
 use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 
-use crate::abi::FnAbiGccExt;
 use crate::attributes;
 use crate::context::CodegenCx;
 
@@ -16,7 +14,7 @@ use crate::context::CodegenCx;
 ///
 /// - `cx`: the crate context
 /// - `instance`: the instance to be instantiated
-pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, dont_cache: bool) -> Function<'gcc> {
+pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>) -> Function<'gcc> {
     let tcx = cx.tcx();
 
     assert!(!instance.substs.needs_infer());
@@ -31,7 +29,9 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, 
     let fn_abi = cx.fn_abi_of_instance(instance, ty::List::empty());
 
     let func =
-        if let Some(func) = cx.get_declared_value(&sym) {
+        if let Some(_func) = cx.get_declared_value(&sym) {
+            // FIXME: we never reach this because get_declared_value only returns global variables
+            // and here we try to get a function.
             unreachable!();
             /*
             // Create a fn pointer with the new signature.
@@ -70,10 +70,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, 
         }
         else {
             cx.linkage.set(FunctionType::Extern);
-            /*if sym == "rust_eh_personality" {
-                panic!();
-            }*/
-            let func = cx.declare_fn(&sym, &fn_abi, dont_cache);
+            let func = cx.declare_fn(&sym, &fn_abi);
 
             attributes::from_fn_attrs(cx, func, instance);
 
@@ -171,9 +168,7 @@ pub fn get_fn<'gcc, 'tcx>(cx: &CodegenCx<'gcc, 'tcx>, instance: Instance<'tcx>, 
             func
         };
 
-    //if !dont_cache {
-        cx.function_instances.borrow_mut().insert(instance, func);
-    //}
+    cx.function_instances.borrow_mut().insert(instance, func);
 
     func
 }

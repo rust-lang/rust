@@ -457,7 +457,7 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
 
         let current_block = self.block.clone();
         self.block = try_block;
-        let call = self.call(typ, func, args, None); // TODO: use funclet here?
+        let call = self.call(typ, func, args, None); // TODO(antoyo): use funclet here?
         self.block = current_block;
 
         let return_value = self.current_func()
@@ -471,8 +471,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
             self.block.add_try_finally(None, try_block, catch);
         }
         else {
-            // FIXME: FIXME: FIXME: Seems like bad (_URC_NO_REASON) return code, perhaps because the cleanup pad was created properly.
-            println!("Try/catch in {:?}", self.current_func());
             self.block.add_try_catch(None, try_block, catch);
         }
 
@@ -1197,26 +1195,16 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
     }
 
     fn set_personality_fn(&mut self, personality: RValue<'gcc>) {
-        let personality = self.rvalue_as_function(personality); // FIXME: why calling
-        //rvalue_as_function doesn't work?
-        //let personality = unsafe { std::mem::transmute(personality) };
+        let personality = self.rvalue_as_function(personality);
         #[cfg(feature="master")]
         self.current_func().set_personality_function(personality);
-        // FIXME: rustc manages to generate the symbol DW.ref.rust_eh_personality multiple times
-        // for the same asm file, which causes an assembler error.
     }
 
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         self.set_personality_fn(pers_fn);
 
-        /*
-         * Matching GCC exception handling with LLVM:
-         *
-         *    GCC                 LLVM
-         *    CATCH_EXPR          landing pad catch clause
-         *    TRY_FINALLY_EXPR    cleanup
-         */
-
+        // NOTE: insert the current block in a variable so that a later call to invoke knows to
+        // generate a try/finally instead of a try/catch for this block.
         self.cleanup_blocks.borrow_mut().insert(self.block);
 
         let eh_pointer_builtin = self.cx.context.get_target_builtin_function("__builtin_eh_pointer");
