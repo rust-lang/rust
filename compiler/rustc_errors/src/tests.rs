@@ -25,6 +25,11 @@ fn make_dummy(ftl: &'static str) -> Dummy {
     let resource = FluentResource::try_new(ftl.into()).expect("Failed to parse an FTL string.");
 
     let langid_en = langid!("en-US");
+
+    #[cfg(parallel_compiler)]
+    let mut bundle = FluentBundle::new_concurrent(vec![langid_en]);
+
+    #[cfg(not(parallel_compiler))]
     let mut bundle = FluentBundle::new(vec![langid_en]);
 
     bundle.add_resource(resource).expect("Failed to add FTL resources to the bundle.");
