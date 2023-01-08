@@ -59,8 +59,18 @@ impl FlagComputation {
     {
         let mut computation = FlagComputation::new();
 
-        if !value.bound_vars().is_empty() {
-            computation.flags = computation.flags | TypeFlags::HAS_RE_LATE_BOUND;
+        for bv in value.bound_vars() {
+            match bv {
+                ty::BoundVariableKind::Ty(_) => {
+                    computation.flags |= TypeFlags::HAS_TY_LATE_BOUND;
+                }
+                ty::BoundVariableKind::Region(_) => {
+                    computation.flags |= TypeFlags::HAS_RE_LATE_BOUND;
+                }
+                ty::BoundVariableKind::Const => {
+                    computation.flags |= TypeFlags::HAS_CT_LATE_BOUND;
+                }
+            }
         }
 
         f(&mut computation, value.skip_binder());
@@ -131,6 +141,7 @@ impl FlagComputation {
 
             &ty::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
+                self.add_flags(TypeFlags::HAS_TY_LATE_BOUND);
             }
 
             &ty::Placeholder(..) => {
@@ -303,6 +314,7 @@ impl FlagComputation {
             }
             ty::ConstKind::Bound(debruijn, _) => {
                 self.add_bound_var(debruijn);
+                self.add_flags(TypeFlags::HAS_CT_LATE_BOUND);
             }
             ty::ConstKind::Param(_) => {
                 self.add_flags(TypeFlags::HAS_CT_PARAM);

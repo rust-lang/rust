@@ -165,6 +165,14 @@ pub trait TypeVisitable<'tcx>: fmt::Debug + Clone {
     fn has_late_bound_regions(&self) -> bool {
         self.has_type_flags(TypeFlags::HAS_RE_LATE_BOUND)
     }
+    /// True if there are any late-bound non-region variables
+    fn has_non_region_late_bound(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND - TypeFlags::HAS_RE_LATE_BOUND)
+    }
+    /// True if there are any late-bound variables
+    fn has_late_bound_vars(&self) -> bool {
+        self.has_type_flags(TypeFlags::HAS_LATE_BOUND)
+    }
 
     /// Indicates whether this value still has parameters/placeholders/inference variables
     /// which could be replaced later, in a way that would change the results of `impl`
