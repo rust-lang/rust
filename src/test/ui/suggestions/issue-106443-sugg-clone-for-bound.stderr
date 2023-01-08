@@ -6,7 +6,7 @@ LL |     foo(s);
    |
 help: consider further restricting this bound
    |
-LL | fn bar<T: X + Clone>(s: &T)  {
+LL | fn bar<T: X + Clone>(s: &T) {
    |             +++++++
 help: consider using clone here
    |
