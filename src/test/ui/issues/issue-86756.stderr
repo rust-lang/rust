@@ -11,11 +11,6 @@ error[E0412]: cannot find type `dyn` in this scope
    |
 LL |     eq::<dyn, Foo>
    |          ^^^ not found in this scope
-   |
-help: you might be missing a type parameter
-   |
-LL | fn eq<A, B, dyn>() {
-   |           +++++
 
 warning: trait objects without an explicit `dyn` are deprecated
   --> $DIR/issue-86756.rs:5:15

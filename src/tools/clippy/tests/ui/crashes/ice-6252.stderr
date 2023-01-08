@@ -17,9 +17,12 @@ error[E0412]: cannot find type `VAL` in this scope
   --> $DIR/ice-6252.rs:10:63
    |
 LL | impl<N, M> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
-   |          -                                                    ^^^ not found in this scope
-   |          |
-   |          help: you might be missing a type parameter: `, VAL`
+   |                                                               ^^^ not found in this scope
+   |
+help: you might be missing a type parameter
+   |
+LL | impl<N, M, VAL> TypeVal<usize> for Multiply<N, M> where N: TypeVal<VAL> {}
+   |          +++++
 
 error[E0046]: not all trait items implemented, missing: `VAL`
   --> $DIR/ice-6252.rs:10:1
