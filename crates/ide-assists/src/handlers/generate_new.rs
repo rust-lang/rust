@@ -70,7 +70,7 @@ pub(crate) fn generate_new(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option
                 )?;
 
                 let expr = use_trivial_constructor(
-                    &ctx.sema.db,
+                    ctx.sema.db,
                     ide_db::helpers::mod_path_to_ast(&type_path),
                     &ty,
                 )?;

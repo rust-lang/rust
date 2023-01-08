@@ -67,7 +67,7 @@ pub(super) fn collect_defs(db: &dyn DefDatabase, mut def_map: DefMap, tree_id: T
         let dep_def_map = db.crate_def_map(dep.crate_id);
         let dep_root = dep_def_map.module_id(dep_def_map.root);
 
-        deps.insert(dep.as_name(), dep_root.into());
+        deps.insert(dep.as_name(), dep_root);
 
         if dep.is_prelude() && !tree_id.is_block() {
             def_map.extern_prelude.insert(dep.as_name(), dep_root);
@@ -1094,7 +1094,7 @@ impl DefCollector<'_> {
                         ast_id,
                         *expand_to,
                         self.def_map.krate,
-                        &resolver_def_id,
+                        resolver_def_id,
                         &mut |_err| (),
                     );
                     if let Ok(Ok(call_id)) = call_id {
@@ -1110,7 +1110,7 @@ impl DefCollector<'_> {
                         *derive_attr,
                         *derive_pos as u32,
                         self.def_map.krate,
-                        &resolver,
+                        resolver,
                     );
 
                     if let Ok((macro_id, def_id, call_id)) = id {
@@ -2085,7 +2085,7 @@ impl ModCollector<'_, '_> {
                                 .scope
                                 .get_legacy_macro(name)
                                 .and_then(|it| it.last())
-                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it.into()))
+                                .map(|&it| macro_id_to_def_id(self.def_collector.db, it))
                         },
                     )
                 })

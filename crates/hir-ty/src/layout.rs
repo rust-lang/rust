@@ -241,7 +241,7 @@ pub fn layout_of_ty(db: &dyn HirDatabase, ty: &Ty, krate: CrateId) -> Result<Lay
 
 fn layout_of_unit(cx: &LayoutCx<'_>, dl: &TargetDataLayout) -> Result<Layout, LayoutError> {
     cx.univariant::<RustcEnumVariantIdx, &&Layout>(
-        &dl,
+        dl,
         &[],
         &ReprOptions::default(),
         StructKind::AlwaysSized,

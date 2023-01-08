@@ -56,12 +56,11 @@ fn check_lsp_extensions_docs() {
             "
 lsp_ext.rs was changed without touching lsp-extensions.md.
 
-Expected hash: {:x}
-Actual hash:   {:x}
+Expected hash: {expected_hash:x}
+Actual hash:   {actual_hash:x}
 
 Please adjust docs/dev/lsp-extensions.md.
-",
-            expected_hash, actual_hash
+"
         )
     }
 }

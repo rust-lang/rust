@@ -118,13 +118,13 @@ pub(crate) fn extract_module(acc: &mut Assists, ctx: &AssistContext<'_>) -> Opti
 
             let mut body_items: Vec<String> = Vec::new();
             let mut items_to_be_processed: Vec<ast::Item> = module.body_items.clone();
-            let mut new_item_indent = old_item_indent + 1;
 
-            if impl_parent.is_some() {
-                new_item_indent = old_item_indent + 2;
+            let new_item_indent = if impl_parent.is_some() {
+                old_item_indent + 2
             } else {
                 items_to_be_processed = [module.use_items.clone(), items_to_be_processed].concat();
-            }
+                old_item_indent + 1
+            };
 
             for item in items_to_be_processed {
                 let item = item.indent(IndentLevel(1));

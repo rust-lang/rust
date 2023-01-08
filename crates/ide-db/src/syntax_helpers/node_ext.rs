@@ -452,7 +452,7 @@ pub fn parse_tt_as_comma_sep_paths(input: ast::TokenTree) -> Option<Vec<ast::Pat
     let input_expressions = tokens.group_by(|tok| tok.kind() == T![,]);
     let paths = input_expressions
         .into_iter()
-        .filter_map(|(is_sep, group)| (!is_sep).then(|| group))
+        .filter_map(|(is_sep, group)| (!is_sep).then_some(group))
         .filter_map(|mut tokens| {
             syntax::hacks::parse_expr_from_str(&tokens.join("")).and_then(|expr| match expr {
                 ast::Expr::PathExpr(it) => it.path(),

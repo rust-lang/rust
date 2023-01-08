@@ -182,7 +182,7 @@ impl server::TokenStream for RustAnalyzer {
             .map(|tree| match tree {
                 tt::TokenTree::Leaf(tt::Leaf::Ident(ident)) => {
                     bridge::TokenTree::Ident(bridge::Ident {
-                        sym: Symbol::intern(&ident.text.trim_start_matches("r#")),
+                        sym: Symbol::intern(ident.text.trim_start_matches("r#")),
                         is_raw: ident.text.starts_with("r#"),
                         span: ident.id,
                     })

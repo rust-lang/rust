@@ -234,8 +234,7 @@ impl TraitData {
         let item_tree = tree_id.item_tree(db);
         let tr_def = &item_tree[tree_id.value];
         let _cx = stdx::panic_context::enter(format!(
-            "trait_data_query({:?} -> {:?} -> {:?})",
-            tr, tr_loc, tr_def
+            "trait_data_query({tr:?} -> {tr_loc:?} -> {tr_def:?})"
         ));
         let name = tr_def.name.clone();
         let is_auto = tr_def.is_auto;
@@ -543,7 +542,7 @@ impl<'a> AssocItemCollector<'a> {
             if !attrs.is_cfg_enabled(self.expander.cfg_options()) {
                 self.inactive_diagnostics.push(DefDiagnostic::unconfigured_code(
                     self.module_id.local_id,
-                    InFile::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast()),
+                    InFile::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast()),
                     attrs.cfg().unwrap(),
                     self.expander.cfg_options().clone(),
                 ));
@@ -552,7 +551,7 @@ impl<'a> AssocItemCollector<'a> {
 
             'attrs: for attr in &*attrs {
                 let ast_id =
-                    AstId::new(self.expander.current_file_id(), item.ast_id(&item_tree).upcast());
+                    AstId::new(self.expander.current_file_id(), item.ast_id(item_tree).upcast());
                 let ast_id_with_path = AstIdWithPath { path: (*attr.path).clone(), ast_id };
 
                 if let Ok(ResolvedAttr::Macro(call_id)) = self.def_map.resolve_attr_macro(
@@ -619,10 +618,8 @@ impl<'a> AssocItemCollector<'a> {
 
                         let ast_id_map = self.db.ast_id_map(self.expander.current_file_id());
                         let call = ast_id_map.get(call.ast_id).to_node(&root);
-                        let _cx = stdx::panic_context::enter(format!(
-                            "collect_items MacroCall: {}",
-                            call
-                        ));
+                        let _cx =
+                            stdx::panic_context::enter(format!("collect_items MacroCall: {call}"));
                         let res = self.expander.enter_expand::<ast::MacroItems>(self.db, call);
 
                         if let Ok(ExpandResult { value: Some((mark, _)), .. }) = res {

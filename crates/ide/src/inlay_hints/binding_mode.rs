@@ -31,7 +31,7 @@ pub(super) fn hints(
         .last();
     let range =
         outer_paren_pat.as_ref().map_or_else(|| pat.syntax(), |it| it.syntax()).text_range();
-    let pattern_adjustments = sema.pattern_adjustments(&pat);
+    let pattern_adjustments = sema.pattern_adjustments(pat);
     pattern_adjustments.iter().for_each(|ty| {
         let reference = ty.is_reference();
         let mut_reference = ty.is_mutable_reference();

@@ -107,7 +107,7 @@ fn find_all_references(
 /// If no await expression is found, returns None.
 fn find_await_expression(ctx: &AssistContext<'_>, nameref: &NameRef) -> Option<ast::AwaitExpr> {
     // From the nameref, walk up the tree to the await expression.
-    let await_expr = if let Some(path) = full_path_of_name_ref(&nameref) {
+    let await_expr = if let Some(path) = full_path_of_name_ref(nameref) {
         // Function calls.
         path.syntax()
             .parent()

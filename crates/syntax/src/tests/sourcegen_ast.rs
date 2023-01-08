@@ -253,7 +253,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             matches!(kind, #(#kinds)|*)
                         }
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
-                            Self::can_cast(syntax.kind()).then(|| #name { syntax })
+                            Self::can_cast(syntax.kind()).then_some(#name { syntax })
                         }
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax

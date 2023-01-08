@@ -131,7 +131,7 @@ fn scalar_max(scalar: &Scalar) -> i128 {
             IntTy::I16 => i16::MAX as i128,
             IntTy::I32 => i32::MAX as i128,
             IntTy::I64 => i64::MAX as i128,
-            IntTy::I128 => i128::MAX as i128,
+            IntTy::I128 => i128::MAX,
         },
         Scalar::Uint(x) => match x {
             chalk_ir::UintTy::Usize => usize::MAX as i128,
@@ -139,7 +139,7 @@ fn scalar_max(scalar: &Scalar) -> i128 {
             chalk_ir::UintTy::U16 => u16::MAX as i128,
             chalk_ir::UintTy::U32 => u32::MAX as i128,
             chalk_ir::UintTy::U64 => u64::MAX as i128,
-            chalk_ir::UintTy::U128 => i128::MAX as i128, // ignore too big u128 for now
+            chalk_ir::UintTy::U128 => i128::MAX, // ignore too big u128 for now
         },
         Scalar::Float(_) => 0,
     }
@@ -404,7 +404,7 @@ pub(crate) fn path_to_const(
     args_lazy: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Option<Const> {
-    match resolver.resolve_path_in_value_ns_fully(db.upcast(), &path) {
+    match resolver.resolve_path_in_value_ns_fully(db.upcast(), path) {
         Some(ValueNs::GenericParam(p)) => {
             let ty = db.const_param_ty(p);
             let args = args_lazy();
@@ -511,10 +511,10 @@ pub(crate) fn const_eval_query_variant(
     )
 }
 
-pub(crate) fn eval_to_const<'a>(
+pub(crate) fn eval_to_const(
     expr: Idx<Expr>,
     mode: ParamLoweringMode,
-    ctx: &mut InferenceContext<'a>,
+    ctx: &mut InferenceContext<'_>,
     args: impl FnOnce() -> Generics,
     debruijn: DebruijnIndex,
 ) -> Const {

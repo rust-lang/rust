@@ -195,7 +195,7 @@ pub(crate) fn hover(
         // fallback to type hover if there aren't any other suggestions
         // this finds its own range instead of using the closest token's range
         .or_else(|| {
-            descended.iter().find_map(|token| hover_type_fallback(sema, config, token, &token))
+            descended.iter().find_map(|token| hover_type_fallback(sema, config, token, token))
         })
 }
 

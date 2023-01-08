@@ -393,8 +393,8 @@ impl Query {
 /// Searches dependencies of `krate` for an importable path matching `query`.
 ///
 /// This returns a list of items that could be imported from dependencies of `krate`.
-pub fn search_dependencies<'a>(
-    db: &'a dyn DefDatabase,
+pub fn search_dependencies(
+    db: &dyn DefDatabase,
     krate: CrateId,
     query: Query,
 ) -> FxHashSet<ItemInNs> {

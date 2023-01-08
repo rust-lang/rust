@@ -145,7 +145,7 @@ pub fn parse_exprs_with_sep(tt: &tt::Subtree, sep: char) -> Vec<tt::Subtree> {
     }
 
     if iter.peek_n(0).is_some() {
-        res.push(tt::Subtree { delimiter: None, token_trees: iter.into_iter().cloned().collect() });
+        res.push(tt::Subtree { delimiter: None, token_trees: iter.cloned().collect() });
     }
 
     res

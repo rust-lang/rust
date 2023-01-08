@@ -208,7 +208,7 @@ fn eager_macro_recur(
     // Collect replacement
     for child in children {
         let def = match child.path().and_then(|path| ModPath::from_src(db, path, hygiene)) {
-            Some(path) => macro_resolver(path.clone()).ok_or_else(|| UnresolvedMacro { path })?,
+            Some(path) => macro_resolver(path.clone()).ok_or(UnresolvedMacro { path })?,
             None => {
                 diagnostic_sink(ExpandError::Other("malformed macro invocation".into()));
                 continue;

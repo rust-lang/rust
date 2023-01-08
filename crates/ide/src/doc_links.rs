@@ -273,7 +273,7 @@ impl DocCommentToken {
             let (in_expansion_range, link, ns) =
                 extract_definitions_from_docs(&docs).into_iter().find_map(|(range, link, ns)| {
                     let mapped = doc_mapping.map(range)?;
-                    (mapped.value.contains(abs_in_expansion_offset)).then(|| (mapped.value, link, ns))
+                    (mapped.value.contains(abs_in_expansion_offset)).then_some((mapped.value, link, ns))
                 })?;
             // get the relative range to the doc/attribute in the expansion
             let in_expansion_relative_range = in_expansion_range - descended_prefix_len - token_start;
@@ -285,7 +285,7 @@ impl DocCommentToken {
     }
 }
 
-fn broken_link_clone_cb<'a>(link: BrokenLink<'a>) -> Option<(CowStr<'a>, CowStr<'a>)> {
+fn broken_link_clone_cb(link: BrokenLink<'_>) -> Option<(CowStr<'_>, CowStr<'_>)> {
     Some((/*url*/ link.reference.clone(), /*title*/ link.reference))
 }
 

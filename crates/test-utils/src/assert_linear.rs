@@ -100,7 +100,7 @@ impl Round {
 
         self.linear = rmse < 0.05 && max_error < 0.1 && a > -0.1;
 
-        fn normalize(xs: &mut Vec<f64>) {
+        fn normalize(xs: &mut [f64]) {
             let max = xs.iter().copied().max_by(|a, b| a.partial_cmp(b).unwrap()).unwrap();
             xs.iter_mut().for_each(|it| *it /= max);
         }

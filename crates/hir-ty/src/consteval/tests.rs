@@ -25,7 +25,6 @@ fn eval_goal(ra_fixture: &str) -> Result<ComputedExpr, ConstEvalError> {
     let scope = &def_map[module_id.local_id].scope;
     let const_id = scope
         .declarations()
-        .into_iter()
         .find_map(|x| match x {
             hir_def::ModuleDefId::ConstId(x) => {
                 if db.const_data(x).name.as_ref()?.to_string() == "GOAL" {

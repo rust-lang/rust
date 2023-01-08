@@ -364,11 +364,8 @@ mod tests {
             }
             Err(err) => {
                 if ra_fixture_after.starts_with("error:") {
-                    let error_message = ra_fixture_after
-                        .chars()
-                        .into_iter()
-                        .skip("error:".len())
-                        .collect::<String>();
+                    let error_message =
+                        ra_fixture_after.chars().skip("error:".len()).collect::<String>();
                     assert_eq!(error_message.trim(), err.to_string());
                 } else {
                     panic!("Rename to '{new_name}' failed unexpectedly: {err}")

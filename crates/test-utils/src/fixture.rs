@@ -135,11 +135,9 @@ impl Fixture {
             if line.contains("//-") {
                 assert!(
                     line.starts_with("//-"),
-                    "Metadata line {} has invalid indentation. \
+                    "Metadata line {ix} has invalid indentation. \
                      All metadata lines need to have the same indentation.\n\
-                     The offending line: {:?}",
-                    ix,
-                    line
+                     The offending line: {line:?}"
                 );
             }
 
@@ -222,9 +220,7 @@ impl Fixture {
         for prelude_dep in extern_prelude.iter().flatten() {
             assert!(
                 deps.contains(prelude_dep),
-                "extern-prelude {:?} must be a subset of deps {:?}",
-                extern_prelude,
-                deps
+                "extern-prelude {extern_prelude:?} must be a subset of deps {deps:?}"
             );
         }
 
@@ -348,11 +344,7 @@ impl MiniCore {
 
             let mut keep = true;
             for &region in &active_regions {
-                assert!(
-                    !region.starts_with(' '),
-                    "region marker starts with a space: {:?}",
-                    region
-                );
+                assert!(!region.starts_with(' '), "region marker starts with a space: {region:?}");
                 self.assert_valid_flag(region);
                 seen_regions.push(region);
                 keep &= self.has_flag(region);

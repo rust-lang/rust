@@ -449,7 +449,7 @@ fn concat_bytes_expand(
                 match token.kind() {
                     syntax::SyntaxKind::BYTE => bytes.push(token.text().to_string()),
                     syntax::SyntaxKind::BYTE_STRING => {
-                        let components = unquote_byte_string(lit).unwrap_or_else(Vec::new);
+                        let components = unquote_byte_string(lit).unwrap_or_default();
                         components.into_iter().for_each(|x| bytes.push(x.to_string()));
                     }
                     _ => {

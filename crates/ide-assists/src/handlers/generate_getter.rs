@@ -176,7 +176,7 @@ pub(crate) fn generate_getter_impl(
                 // for separating it from other assoc items, that needs
                 // to be handled spearately
                 let mut getter_buf =
-                    generate_getter_from_info(ctx, &getter_info, &record_field_info);
+                    generate_getter_from_info(ctx, &getter_info, record_field_info);
 
                 // Insert `$0` only for last getter we generate
                 if i == record_fields_count - 1 {
@@ -271,7 +271,7 @@ fn generate_getter_from_info(
     }}",
         vis,
         record_field_info.fn_name,
-        info.mutable.then(|| "mut ").unwrap_or_default(),
+        info.mutable.then_some("mut ").unwrap_or_default(),
         ty,
         body,
     );

@@ -12,8 +12,7 @@ use super::layout_of_ty;
 fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     // using unstable cargo features failed, fall back to using plain rustc
     let mut cmd = std::process::Command::new("rustc");
-    cmd.args(&["-Z", "unstable-options", "--print", "target-spec-json"])
-        .env("RUSTC_BOOTSTRAP", "1");
+    cmd.args(["-Z", "unstable-options", "--print", "target-spec-json"]).env("RUSTC_BOOTSTRAP", "1");
     let output = cmd.output().unwrap();
     assert!(output.status.success(), "{}", output.status);
     let stdout = String::from_utf8(output.stdout).unwrap();
@@ -30,7 +29,6 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
     let scope = &def_map[module_id.local_id].scope;
     let adt_id = scope
         .declarations()
-        .into_iter()
         .find_map(|x| match x {
             hir_def::ModuleDefId::AdtId(x) => {
                 let name = match x {
@@ -38,7 +36,7 @@ fn eval_goal(ra_fixture: &str, minicore: &str) -> Result<Layout, LayoutError> {
                     hir_def::AdtId::UnionId(x) => db.union_data(x).name.to_smol_str(),
                     hir_def::AdtId::EnumId(x) => db.enum_data(x).name.to_smol_str(),
                 };
-                (name == "Goal").then(|| x)
+                (name == "Goal").then_some(x)
             }
             _ => None,
         })

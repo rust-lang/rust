@@ -408,8 +408,7 @@ impl CargoHandle {
             Ok(())
         } else {
             Err(io::Error::new(io::ErrorKind::Other, format!(
-                "Cargo watcher failed, the command produced no valid metadata (exit code: {:?}):\n{}",
-                exit_status, error
+                "Cargo watcher failed, the command produced no valid metadata (exit code: {exit_status:?}):\n{error}"
             )))
         }
     }

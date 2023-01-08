@@ -505,8 +505,7 @@ fn rustc_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescripti
 fn clippy_code_description(code: Option<&str>) -> Option<lsp_types::CodeDescription> {
     code.and_then(|code| {
         lsp_types::Url::parse(&format!(
-            "https://rust-lang.github.io/rust-clippy/master/index.html#{}",
-            code
+            "https://rust-lang.github.io/rust-clippy/master/index.html#{code}"
         ))
         .ok()
         .map(|href| lsp_types::CodeDescription { href })

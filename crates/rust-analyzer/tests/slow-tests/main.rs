@@ -528,14 +528,13 @@ fn test_missing_module_code_action_in_json_project() {
     let code = format!(
         r#"
 //- /rust-project.json
-{PROJECT}
+{project}
 
 //- /src/lib.rs
 mod bar;
 
 fn main() {{}}
 "#,
-        PROJECT = project,
     );
 
     let server =
@@ -605,13 +604,12 @@ name = "foo"
 version = "0.0.0"
 
 //- /src/lib.rs
-{}
+{librs}
 
-{}
+{libs}
 
 fn main() {{}}
-"#,
-        librs, libs
+"#
     ))
     .with_config(serde_json::json!({
         "cargo": { "sysroot": "discover" }

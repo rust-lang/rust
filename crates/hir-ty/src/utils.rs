@@ -184,9 +184,7 @@ pub(crate) struct Generics {
 }
 
 impl Generics {
-    pub(crate) fn iter_id<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = Either<TypeParamId, ConstParamId>> + 'a {
+    pub(crate) fn iter_id(&self) -> impl Iterator<Item = Either<TypeParamId, ConstParamId>> + '_ {
         self.iter().map(|(id, data)| match data {
             TypeOrConstParamData::TypeParamData(_) => Either::Left(TypeParamId::from_unchecked(id)),
             TypeOrConstParamData::ConstParamData(_) => {
@@ -216,9 +214,9 @@ impl Generics {
     }
 
     /// Iterator over types and const params of parent.
-    pub(crate) fn iter_parent<'a>(
-        &'a self,
-    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &'a TypeOrConstParamData)> + 'a {
+    pub(crate) fn iter_parent(
+        &self,
+    ) -> impl DoubleEndedIterator<Item = (TypeOrConstParamId, &TypeOrConstParamData)> {
         self.parent_generics().into_iter().flat_map(|it| {
             let to_toc_id =
                 move |(local_id, p)| (TypeOrConstParamId { parent: it.def, local_id }, p);

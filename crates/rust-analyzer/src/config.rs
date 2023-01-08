@@ -1908,9 +1908,7 @@ fn field_props(field: &str, ty: &str, doc: &[&str], default: &str) -> serde_json
     let doc = doc.trim_end_matches('\n');
     assert!(
         doc.ends_with('.') && doc.starts_with(char::is_uppercase),
-        "bad docs for {}: {:?}",
-        field,
-        doc
+        "bad docs for {field}: {doc:?}"
     );
     let default = default.parse::<serde_json::Value>().unwrap();
 
@@ -2213,17 +2211,16 @@ fn manual(fields: &[(&'static str, &'static str, &[&str], &str)]) -> String {
             let doc = doc_comment_to_string(doc);
             if default.contains('\n') {
                 format!(
-                    r#"[[{}]]{}::
+                    r#"[[{name}]]{name}::
 +
 --
 Default:
 ----
-{}
+{default}
 ----
-{}
+{doc}
 --
-"#,
-                    name, name, default, doc
+"#
                 )
             } else {
                 format!("[[{name}]]{name} (default: `{default}`)::\n+\n--\n{doc}--\n")

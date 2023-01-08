@@ -153,8 +153,7 @@ pub(crate) fn complete_postfix(
                     "match",
                     "match expr {}",
                     &format!(
-                        "match {} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}",
-                        receiver_text
+                        "match {receiver_text} {{\n    Some(${{1:_}}) => {{$2}},\n    None => {{$0}},\n}}"
                     ),
                 )
                 .add_to(acc);

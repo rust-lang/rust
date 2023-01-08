@@ -514,7 +514,7 @@ fn fn_args(
 ///     vec!["foo_1".into(), "foo_2".into(), "bar_1".into(), "baz".into(), "bar_2".into()];
 /// assert_eq!(names, expected);
 /// ```
-fn deduplicate_arg_names(arg_names: &mut Vec<String>) {
+fn deduplicate_arg_names(arg_names: &mut [String]) {
     let mut arg_name_counts = FxHashMap::default();
     for name in arg_names.iter() {
         *arg_name_counts.entry(name).or_insert(0) += 1;

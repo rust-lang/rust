@@ -167,7 +167,7 @@ fn is_named_constructor(
         ast::PathSegmentKind::Type { type_ref: Some(ty), trait_ref: None } => ty.to_string(),
         _ => return None,
     };
-    (ctor_name == ty_name).then(|| ())
+    (ctor_name == ty_name).then_some(())
 }
 
 fn pat_is_enum_variant(db: &RootDatabase, bind_pat: &ast::IdentPat, pat_ty: &hir::Type) -> bool {

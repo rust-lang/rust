@@ -253,7 +253,7 @@ fn label_of_ty(
         ty: hir::Type,
         label_builder: &mut InlayHintLabelBuilder<'_>,
     ) {
-        let iter_item_type = hint_iterator(sema, &famous_defs, &ty);
+        let iter_item_type = hint_iterator(sema, famous_defs, &ty);
         match iter_item_type {
             Some(ty) => {
                 const LABEL_START: &str = "impl Iterator<Item = ";
@@ -279,7 +279,7 @@ fn label_of_ty(
         location_link_enabled: config.location_links,
         result: InlayHintLabel::default(),
     };
-    rec(sema, &famous_defs, config.max_length, ty, &mut label_builder);
+    rec(sema, famous_defs, config.max_length, ty, &mut label_builder);
     let r = label_builder.finish();
     Some(r)
 }
@@ -315,7 +315,7 @@ pub(crate) fn inlay_hints(
 
     let mut acc = Vec::new();
 
-    if let Some(scope) = sema.scope(&file) {
+    if let Some(scope) = sema.scope(file) {
         let famous_defs = FamousDefs(&sema, scope.krate());
 
         let hints = |node| hints(&mut acc, &famous_defs, config, file_id, node);

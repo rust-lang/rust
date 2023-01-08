@@ -30,7 +30,7 @@ fn check_punct_spacing(fixture: &str) {
     while !cursor.eof() {
         while let Some(token_tree) = cursor.token_tree() {
             if let TokenTreeRef::Leaf(Leaf::Punct(Punct { spacing, id, .. }), _) = token_tree {
-                if let Some(expected) = annotations.remove(&id) {
+                if let Some(expected) = annotations.remove(id) {
                     assert_eq!(expected, *spacing);
                 }
             }

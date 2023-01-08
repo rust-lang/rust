@@ -68,7 +68,7 @@ pub(crate) fn render_union_literal(
 
     item.set_documentation(ctx.docs(un))
         .set_deprecated(ctx.is_deprecated(un))
-        .detail(&detail)
+        .detail(detail)
         .set_relevance(ctx.completion_relevance());
 
     match ctx.snippet_cap() {

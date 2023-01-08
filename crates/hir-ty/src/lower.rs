@@ -780,7 +780,7 @@ impl<'a> TyLoweringContext<'a> {
                         |_, c, ty| {
                             const_or_path_to_chalk(
                                 self.db,
-                                &self.resolver,
+                                self.resolver,
                                 ty,
                                 c,
                                 self.type_param_mode,
@@ -1796,8 +1796,7 @@ pub(crate) fn impl_self_ty_query(db: &dyn HirDatabase, impl_id: ImplId) -> Binde
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
     let _cx = stdx::panic_context::enter(format!(
-        "impl_self_ty_query({:?} -> {:?} -> {:?})",
-        impl_id, impl_loc, impl_data
+        "impl_self_ty_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
     ));
     let generics = generics(db.upcast(), impl_id.into());
     let ctx =
@@ -1834,8 +1833,7 @@ pub(crate) fn impl_trait_query(db: &dyn HirDatabase, impl_id: ImplId) -> Option<
     let impl_data = db.impl_data(impl_id);
     let resolver = impl_id.resolver(db.upcast());
     let _cx = stdx::panic_context::enter(format!(
-        "impl_trait_query({:?} -> {:?} -> {:?})",
-        impl_id, impl_loc, impl_data
+        "impl_trait_query({impl_id:?} -> {impl_loc:?} -> {impl_data:?})"
     ));
     let ctx =
         TyLoweringContext::new(db, &resolver).with_type_param_mode(ParamLoweringMode::Variable);
@@ -1854,7 +1852,7 @@ pub(crate) fn return_type_impl_traits(
     let ctx_ret = TyLoweringContext::new(db, &resolver)
         .with_impl_trait_mode(ImplTraitLoweringMode::Opaque)
         .with_type_param_mode(ParamLoweringMode::Variable);
-    let _ret = (&ctx_ret).lower_ty(&data.ret_type);
+    let _ret = ctx_ret.lower_ty(&data.ret_type);
     let generics = generics(db.upcast(), def.into());
     let return_type_impl_traits =
         ReturnTypeImplTraits { impl_traits: ctx_ret.opaque_type_data.into_inner() };

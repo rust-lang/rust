@@ -646,8 +646,7 @@ fn main() {
             .format_with("\n", |v, f| f(&format!("Line {}: {}", line_number(v), &fmt_syntax(v))));
 
         let actual = format!(
-            "insertions:\n\n{}\n\nreplacements:\n\n{}\n\ndeletions:\n\n{}\n",
-            insertions, replacements, deletions
+            "insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n"
         );
         expected_diff.assert_eq(&actual);
 
