@@ -499,6 +499,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .probe_for_name(
                 Mode::MethodCall,
                 segment.ident,
+                expected.only_has_type(self),
                 IsSuggestion(true),
                 callee_ty,
                 call_expr.hir_id,

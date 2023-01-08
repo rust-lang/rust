@@ -560,6 +560,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .probe_for_name(
                 probe::Mode::MethodCall,
                 path.ident,
+                None,
                 probe::IsSuggestion(true),
                 self_ty,
                 deref.hir_id,
@@ -570,6 +571,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let in_scope_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
+            Some(expected),
             probe::IsSuggestion(true),
             self_ty,
             deref.hir_id,
@@ -581,6 +583,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let all_methods = self.probe_for_name_many(
             probe::Mode::MethodCall,
             path.ident,
+            Some(expected),
             probe::IsSuggestion(true),
             self_ty,
             deref.hir_id,
@@ -1850,10 +1853,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return;
         }
         let mut expr = end.expr;
+        let mut expectation = Some(expected_ty);
         while let hir::ExprKind::MethodCall(_, rcvr, ..) = expr.kind {
             // Getting to the root receiver and asserting it is a fn call let's us ignore cases in
             // `src/test/ui/methods/issues/issue-90315.stderr`.
             expr = rcvr;
+            // If we have more than one layer of calls, then the expected ty
+            // cannot guide the method probe.
+            expectation = None;
         }
         let hir::ExprKind::Call(method_name, _) = expr.kind else { return; };
         let ty::Adt(adt, _) = checked_ty.kind() else { return; };
@@ -1872,6 +1879,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let Ok(_pick) = self.probe_for_name(
             probe::Mode::MethodCall,
             *ident,
+            expectation,
             probe::IsSuggestion(true),
             self_ty,
             expr.hir_id,

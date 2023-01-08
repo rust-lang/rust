@@ -97,10 +97,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_ty: Ty<'tcx>,
         call_expr_id: hir::HirId,
         allow_private: bool,
+        return_type: Option<Ty<'tcx>>,
     ) -> bool {
         match self.probe_for_name(
             probe::Mode::MethodCall,
             method_name,
+            return_type,
             IsSuggestion(false),
             self_ty,
             call_expr_id,
@@ -118,7 +120,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
             Err(IllegalSizedBound { .. }) => true,
-            Err(BadReturnType) => bug!("no return type expectations but got BadReturnType"),
+            Err(BadReturnType) => false,
         }
     }
 
@@ -137,6 +139,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             .probe_for_name(
                 probe::Mode::MethodCall,
                 method_name,
+                None,
                 IsSuggestion(true),
                 self_ty,
                 call_expr.hir_id,
@@ -258,6 +261,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pick = self.probe_for_name(
             probe::Mode::MethodCall,
             method_name,
+            None,
             IsSuggestion(false),
             self_ty,
             call_expr.hir_id,
@@ -484,6 +488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let pick = self.probe_for_name(
             probe::Mode::Path,
             method_name,
+            None,
             IsSuggestion(false),
             self_ty,
             expr_id,

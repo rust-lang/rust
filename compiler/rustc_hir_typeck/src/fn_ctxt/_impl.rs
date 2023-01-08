@@ -841,6 +841,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         SelfSource::QPath(qself),
                         error,
                         None,
+                        Expectation::NoExpectation,
                     ) {
                         e.emit();
                     }

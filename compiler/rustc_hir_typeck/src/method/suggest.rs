@@ -2,6 +2,7 @@
 //! found or is otherwise invalid.
 
 use crate::errors;
+use crate::Expectation;
 use crate::FnCtxt;
 use rustc_ast::ast::Mutability;
 use rustc_data_structures::fx::{FxHashMap, FxHashSet};
@@ -108,6 +109,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         source: SelfSource<'tcx>,
         error: MethodError<'tcx>,
         args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
+        expected: Expectation<'tcx>,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         // Avoid suggestions when we don't know what's going on.
         if rcvr_ty.references_error() {
@@ -131,6 +133,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     args,
                     sugg_span,
                     &mut no_match_data,
+                    expected,
                 );
             }
 
@@ -250,6 +253,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         args: Option<(&'tcx hir::Expr<'tcx>, &'tcx [hir::Expr<'tcx>])>,
         sugg_span: Span,
         no_match_data: &mut NoMatchData<'tcx>,
+        expected: Expectation<'tcx>,
     ) -> Option<DiagnosticBuilder<'_, ErrorGuaranteed>> {
         let mode = no_match_data.mode;
         let tcx = self.tcx;
@@ -320,7 +324,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         if let Mode::MethodCall = mode && let SelfSource::MethodCall(cal) = source {
             self.suggest_await_before_method(
-                &mut err, item_name, rcvr_ty, cal, span,
+                &mut err, item_name, rcvr_ty, cal, span, expected.only_has_type(self),
             );
         }
         if let Some(span) =
@@ -898,7 +902,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // Don't suggest (for example) `expr.field.clone()` if `expr.clone()`
         // can't be called due to `typeof(expr): Clone` not holding.
         if unsatisfied_predicates.is_empty() {
-            self.suggest_calling_method_on_field(&mut err, source, span, rcvr_ty, item_name);
+            self.suggest_calling_method_on_field(
+                &mut err,
+                source,
+                span,
+                rcvr_ty,
+                item_name,
+                expected.only_has_type(self),
+            );
         }
 
         self.check_for_inner_self(&mut err, source, rcvr_ty, item_name);
@@ -922,6 +933,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 &unsatisfied_predicates,
                 &static_candidates,
                 unsatisfied_bounds,
+                expected.only_has_type(self),
             );
         }
 
@@ -987,7 +999,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             }
         }
 
-        self.check_for_deref_method(&mut err, source, rcvr_ty, item_name);
+        self.check_for_deref_method(&mut err, source, rcvr_ty, item_name, expected);
         return Some(err);
     }
 
@@ -1377,6 +1389,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     let pick = self.probe_for_name(
                         Mode::MethodCall,
                         item_name,
+                        None,
                         IsSuggestion(true),
                         range_ty,
                         expr.hir_id,
@@ -1587,6 +1600,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         span: Span,
         actual: Ty<'tcx>,
         item_name: Ident,
+        return_type: Option<Ty<'tcx>>,
     ) {
         if let SelfSource::MethodCall(expr) = source
         && let mod_id = self.tcx.parent_module(expr.hir_id).to_def_id()
@@ -1610,10 +1624,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     self.check_for_nested_field_satisfying(
                         span,
                         &|_, field_ty| {
-                            self.lookup_probe(
+                            self.probe_for_name(
+                                Mode::MethodCall,
                                 item_name,
+                                return_type,
+                                IsSuggestion(true),
                                 field_ty,
-                                call_expr,
+                                call_expr.hir_id,
                                 ProbeScope::TraitsInScope,
                             )
                             .map_or(false, |pick| {
@@ -2010,12 +2027,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self_source: SelfSource<'tcx>,
         rcvr_ty: Ty<'tcx>,
         item_name: Ident,
+        expected: Expectation<'tcx>,
     ) {
         let SelfSource::QPath(ty) = self_source else { return; };
         for (deref_ty, _) in self.autoderef(rustc_span::DUMMY_SP, rcvr_ty).skip(1) {
             if let Ok(pick) = self.probe_for_name(
                 Mode::Path,
                 item_name,
+                expected.only_has_type(self),
                 IsSuggestion(true),
                 deref_ty,
                 ty.hir_id,
@@ -2080,12 +2099,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         ty: Ty<'tcx>,
         call: &hir::Expr<'_>,
         span: Span,
+        return_type: Option<Ty<'tcx>>,
     ) {
         let output_ty = match self.get_impl_future_output_ty(ty) {
             Some(output_ty) => self.resolve_vars_if_possible(output_ty),
             _ => return,
         };
-        let method_exists = self.method_exists(item_name, output_ty, call.hir_id, true);
+        let method_exists =
+            self.method_exists(item_name, output_ty, call.hir_id, true, return_type);
         debug!("suggest_await_before_method: is_method_exist={}", method_exists);
         if method_exists {
             err.span_suggestion_verbose(
@@ -2199,6 +2220,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         )],
         static_candidates: &[CandidateSource],
         unsatisfied_bounds: bool,
+        return_type: Option<Ty<'tcx>>,
     ) {
         let mut alt_rcvr_sugg = false;
         if let (SelfSource::MethodCall(rcvr), false) = (source, unsatisfied_bounds) {
@@ -2221,7 +2243,15 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 (self.tcx.mk_mut_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&mut "),
                 (self.tcx.mk_imm_ref(self.tcx.lifetimes.re_erased, rcvr_ty), "&"),
             ] {
-                match self.lookup_probe(item_name, *rcvr_ty, rcvr, ProbeScope::AllTraits) {
+                match self.probe_for_name(
+                    Mode::MethodCall,
+                    item_name,
+                    return_type,
+                    IsSuggestion(true),
+                    *rcvr_ty,
+                    rcvr.hir_id,
+                    ProbeScope::AllTraits,
+                ) {
                     Ok(pick) => {
                         // If the method is defined for the receiver we have, it likely wasn't `use`d.
                         // We point at the method, but we just skip the rest of the check for arbitrary
@@ -2254,10 +2284,13 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     (self.tcx.mk_diagnostic_item(*rcvr_ty, sym::Rc), "Rc::new"),
                 ] {
                     if let Some(new_rcvr_t) = *rcvr_ty
-                        && let Ok(pick) = self.lookup_probe(
+                        && let Ok(pick) = self.probe_for_name(
+                            Mode::MethodCall,
                             item_name,
+                            return_type,
+                            IsSuggestion(true),
                             new_rcvr_t,
-                            rcvr,
+                            rcvr.hir_id,
                             ProbeScope::AllTraits,
                         )
                     {
