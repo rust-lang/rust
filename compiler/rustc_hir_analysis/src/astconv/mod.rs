@@ -2147,8 +2147,12 @@ impl<'o, 'tcx> dyn AstConv<'tcx> + 'o {
                                 .is_accessible_from(self.item_def_id(), tcx)
                             && tcx.all_impls(*trait_def_id)
                                 .any(|impl_def_id| {
-                                    let trait_ref = tcx.impl_trait_ref(impl_def_id);
-                                    trait_ref.map_or(false, |impl_| {
+                                    let trait_ref = tcx.bound_impl_trait_ref(impl_def_id);
+                                    trait_ref.map_or(false, |trait_ref| {
+                                        let impl_ = trait_ref.subst(
+                                            tcx,
+                                            infcx.fresh_substs_for_item(span, impl_def_id),
+                                        );
                                         infcx
                                             .can_eq(
                                                 param_env,
