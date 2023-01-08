@@ -331,7 +331,9 @@ impl<'a, 'b> BuildReducedGraphVisitor<'a, 'b> {
             .iter()
             .map(|field| respan(field.span, field.ident.map_or(kw::Empty, |ident| ident.name)))
             .collect();
+        let field_vis = vdata.fields().iter().map(|field| field.vis.span).collect();
         self.r.field_names.insert(def_id, field_names);
+        self.r.field_visibility_spans.insert(def_id, field_vis);
     }
 
     fn insert_field_names_extern(&mut self, def_id: DefId) {

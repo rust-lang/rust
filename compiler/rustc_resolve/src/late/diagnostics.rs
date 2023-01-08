@@ -1451,6 +1451,26 @@ impl<'a: 'ast, 'ast> LateResolutionVisitor<'a, '_, 'ast> {
                         .collect();
 
                     if non_visible_spans.len() > 0 {
+                        if let Some(visibility_spans) = self.r.field_visibility_spans.get(&def_id) {
+                            err.multipart_suggestion_verbose(
+                                &format!(
+                                    "consider making the field{} publicly accessible",
+                                    pluralize!(visibility_spans.len())
+                                ),
+                                visibility_spans
+                                    .iter()
+                                    .map(|span| {
+                                        (
+                                            *span,
+                                            if span.lo() == span.hi() { "pub " } else { "pub" }
+                                                .to_string(),
+                                        )
+                                    })
+                                    .collect(),
+                                Applicability::MaybeIncorrect,
+                            );
+                        }
+
                         let mut m: MultiSpan = non_visible_spans.clone().into();
                         non_visible_spans
                             .into_iter()
