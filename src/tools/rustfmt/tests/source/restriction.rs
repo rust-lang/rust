@@ -3,10 +3,6 @@ impl(crate)
 trait Foo {}
 
 pub
-impl
-trait Bar {}
-
-pub
 impl ( in foo
 ::
 bar )
@@ -15,12 +11,6 @@ trait Baz {}
 struct FooS {
     pub
     mut(crate)
-    field: (),
-}
-
-struct BarS {
-    pub
-    mut
     field: (),
 }
 
@@ -38,12 +28,6 @@ struct FooS2(
     (),
 );
 
-struct BarS2(
-    pub
-    mut
-    (),
-);
-
 struct BazS2(
     pub
     mut ( in foo
@@ -57,10 +41,6 @@ enum Enum {
         mut(crate)
         field: (),
     },
-    Bar {
-        mut
-        field: (),
-    },
     Baz {
         mut ( in foo
         ::
@@ -69,10 +49,6 @@ enum Enum {
     },
     FooT(
         mut(crate)
-        (),
-    ),
-    BarT(
-        mut
         (),
     ),
     BazT(
@@ -87,8 +63,6 @@ enum Enum {
 union Union {
     mut(crate)
     field1: (),
-    mut
-    field2: (),
     mut ( in foo
     ::
     bar )
