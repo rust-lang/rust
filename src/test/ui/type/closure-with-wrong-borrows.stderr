@@ -13,10 +13,6 @@ note: function defined here
    |
 LL | fn f(inner: fn(&str, &S)) {
    |    ^ -------------------
-help: consider removing the ``
-   |
-LL |     f(inner);
-   |
 
 error: aborting due to previous error
 
