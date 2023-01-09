@@ -34,25 +34,16 @@ use crate::{AssistContext, AssistId, AssistKind, Assists};
 // }
 // ```
 pub(crate) fn inline_macro(acc: &mut Assists, ctx: &AssistContext<'_>) -> Option<()> {
-    let tok = ctx.token_at_offset().right_biased()?;
+    let unexpanded = ctx.find_node_at_offset::<ast::MacroCall>()?;
+    let expanded = ctx.sema.expand(&unexpanded)?.clone_for_update();
 
-    let mut anc = tok.parent_ancestors();
-    let (_name, expanded, unexpanded) = loop {
-        let node = anc.next()?;
-        if let Some(mac) = ast::MacroCall::cast(node.clone()) {
-            break (
-                mac.path()?.segment()?.name_ref()?.to_string(),
-                ctx.sema.expand(&mac)?.clone_for_update(),
-                node,
-            );
-        }
-    };
+    let text_range = unexpanded.syntax().text_range();
 
     acc.add(
         AssistId("inline_macro", AssistKind::RefactorRewrite),
         format!("Inline macro"),
-        unexpanded.text_range(),
-        |builder| builder.replace(unexpanded.text_range(), expanded.to_string()),
+        text_range,
+        |builder| builder.replace(text_range, expanded.to_string()),
     )
 }
 
