@@ -13,30 +13,94 @@
 
 use core::num::{Saturating, Wrapping};
 
+#[derive(Clone, Copy)]
 pub struct Custom;
 
 macro_rules! impl_arith {
-    ( $( $_trait:ident, $ty:ty, $method:ident; )* ) => {
+    ( $( $_trait:ident, $lhs:ty, $rhs:ty, $method:ident; )* ) => {
         $(
-            impl core::ops::$_trait<$ty> for Custom {
-                type Output = Self;
-                fn $method(self, _: $ty) -> Self::Output { Self }
+            impl core::ops::$_trait<$lhs> for $rhs {
+                type Output = Custom;
+                fn $method(self, _: $lhs) -> Self::Output { todo!() }
+            }
+        )*
+    }
+}
+
+macro_rules! impl_assign_arith {
+    ( $( $_trait:ident, $lhs:ty, $rhs:ty, $method:ident; )* ) => {
+        $(
+            impl core::ops::$_trait<$lhs> for $rhs {
+                fn $method(&mut self, _: $lhs) {}
             }
         )*
     }
 }
 
 impl_arith!(
-    Add, i32, add;
-    Div, i32, div;
-    Mul, i32, mul;
-    Sub, i32, sub;
+    Add, Custom, Custom, add;
+    Div, Custom, Custom, div;
+    Mul, Custom, Custom, mul;
+    Rem, Custom, Custom, rem;
+    Sub, Custom, Custom, sub;
 
-    Add, f64, add;
-    Div, f64, div;
-    Mul, f64, mul;
-    Sub, f64, sub;
+    Add, Custom, &Custom, add;
+    Div, Custom, &Custom, div;
+    Mul, Custom, &Custom, mul;
+    Rem, Custom, &Custom, rem;
+    Sub, Custom, &Custom, sub;
+
+    Add, &Custom, Custom, add;
+    Div, &Custom, Custom, div;
+    Mul, &Custom, Custom, mul;
+    Rem, &Custom, Custom, rem;
+    Sub, &Custom, Custom, sub;
+
+    Add, &Custom, &Custom, add;
+    Div, &Custom, &Custom, div;
+    Mul, &Custom, &Custom, mul;
+    Rem, &Custom, &Custom, rem;
+    Sub, &Custom, &Custom, sub;
 );
+
+impl_assign_arith!(
+    AddAssign, Custom, Custom, add_assign;
+    DivAssign, Custom, Custom, div_assign;
+    MulAssign, Custom, Custom, mul_assign;
+    RemAssign, Custom, Custom, rem_assign;
+    SubAssign, Custom, Custom, sub_assign;
+
+    AddAssign, Custom, &Custom, add_assign;
+    DivAssign, Custom, &Custom, div_assign;
+    MulAssign, Custom, &Custom, mul_assign;
+    RemAssign, Custom, &Custom, rem_assign;
+    SubAssign, Custom, &Custom, sub_assign;
+
+    AddAssign, &Custom, Custom, add_assign;
+    DivAssign, &Custom, Custom, div_assign;
+    MulAssign, &Custom, Custom, mul_assign;
+    RemAssign, &Custom, Custom, rem_assign;
+    SubAssign, &Custom, Custom, sub_assign;
+
+    AddAssign, &Custom, &Custom, add_assign;
+    DivAssign, &Custom, &Custom, div_assign;
+    MulAssign, &Custom, &Custom, mul_assign;
+    RemAssign, &Custom, &Custom, rem_assign;
+    SubAssign, &Custom, &Custom, sub_assign;
+);
+
+impl core::ops::Neg for Custom {
+    type Output = Custom;
+    fn neg(self) -> Self::Output {
+        todo!()
+    }
+}
+impl core::ops::Neg for &Custom {
+    type Output = Custom;
+    fn neg(self) -> Self::Output {
+        todo!()
+    }
+}
 
 pub fn association_with_structures_should_not_trigger_the_lint() {
     enum Foo {
@@ -173,6 +237,7 @@ pub fn non_overflowing_ops_or_ops_already_handled_by_the_compiler_should_not_tri
 
 pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     let mut _n = i32::MAX;
+    let mut _custom = Custom;
 
     // Assign
     _n += 1;
@@ -195,6 +260,26 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _n %= &-0;
     _n *= -2;
     _n *= &-2;
+    _custom += Custom;
+    _custom += &Custom;
+    _custom -= Custom;
+    _custom -= &Custom;
+    _custom /= Custom;
+    _custom /= &Custom;
+    _custom %= Custom;
+    _custom %= &Custom;
+    _custom *= Custom;
+    _custom *= &Custom;
+    _custom += -Custom;
+    _custom += &-Custom;
+    _custom -= -Custom;
+    _custom -= &-Custom;
+    _custom /= -Custom;
+    _custom /= &-Custom;
+    _custom %= -Custom;
+    _custom %= &-Custom;
+    _custom *= -Custom;
+    _custom *= &-Custom;
 
     // Binary
     _n = _n + 1;
@@ -216,36 +301,31 @@ pub fn unknown_ops_or_runtime_ops_that_can_overflow() {
     _n = 23 + &85;
     _n = &23 + 85;
     _n = &23 + &85;
-
-    // Custom
-    let _ = Custom + 0;
-    let _ = Custom + 1;
-    let _ = Custom + 2;
-    let _ = Custom + 0.0;
-    let _ = Custom + 1.0;
-    let _ = Custom + 2.0;
-    let _ = Custom - 0;
-    let _ = Custom - 1;
-    let _ = Custom - 2;
-    let _ = Custom - 0.0;
-    let _ = Custom - 1.0;
-    let _ = Custom - 2.0;
-    let _ = Custom / 0;
-    let _ = Custom / 1;
-    let _ = Custom / 2;
-    let _ = Custom / 0.0;
-    let _ = Custom / 1.0;
-    let _ = Custom / 2.0;
-    let _ = Custom * 0;
-    let _ = Custom * 1;
-    let _ = Custom * 2;
-    let _ = Custom * 0.0;
-    let _ = Custom * 1.0;
-    let _ = Custom * 2.0;
+    _custom = _custom + _custom;
+    _custom = _custom + &_custom;
+    _custom = Custom + _custom;
+    _custom = &Custom + _custom;
+    _custom = _custom - Custom;
+    _custom = _custom - &Custom;
+    _custom = Custom - _custom;
+    _custom = &Custom - _custom;
+    _custom = _custom / Custom;
+    _custom = _custom / &Custom;
+    _custom = _custom % Custom;
+    _custom = _custom % &Custom;
+    _custom = _custom * Custom;
+    _custom = _custom * &Custom;
+    _custom = Custom * _custom;
+    _custom = &Custom * _custom;
+    _custom = Custom + &Custom;
+    _custom = &Custom + Custom;
+    _custom = &Custom + &Custom;
 
     // Unary
     _n = -_n;
     _n = -&_n;
+    _custom = -_custom;
+    _custom = -&_custom;
 }
 
 // Copied and pasted from the `integer_arithmetic` lint for comparison.
