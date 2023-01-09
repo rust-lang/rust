@@ -613,6 +613,7 @@ symbols! {
         dispatch_from_dyn,
         div,
         div_assign,
+        do_not_recommend,
         doc,
         doc_alias,
         doc_auto_cfg,
