@@ -45,7 +45,7 @@
 
 use crate::alloc::Global;
 
-use crate::vec::PlVec;
+use core::alloc;
 #[cfg(not(no_global_oom_handling))]
 use core::char::{decode_utf16, REPLACEMENT_CHARACTER};
 use core::error::Error;
@@ -413,8 +413,11 @@ where
 #[stable(feature = "rust1", since = "1.0.0")]
 #[cfg_attr(not(no_global_oom_handling), derive(Clone))]
 #[derive(Debug, PartialEq, Eq)]
-pub struct FromUtf8Error {
-    bytes: PlVec<u8>,
+pub struct FromUtf8Error<const COOP_PREFERRED: bool>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
+    bytes: Vec<u8, Global, COOP_PREFERRED>,
     error: Utf8Error,
 }
 
@@ -584,7 +587,7 @@ where
     /// [`into_bytes`]: String::into_bytes
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8(vec: Vec<u8, Global, COOP_PREFERRED>) -> Result<String, FromUtf8Error> {
+    pub fn from_utf8(vec: Vec<u8, Global, COOP_PREFERRED>) -> Result<String<COOP_PREFERRED>, FromUtf8Error<COOP_PREFERRED>> {
         match str::from_utf8(&vec) {
             Ok(..) => Ok(String { vec }),
             Err(e) => Err(FromUtf8Error { bytes: vec, error: e }),
@@ -1910,7 +1913,9 @@ where
     }
 }
 
-impl FromUtf8Error {
+impl <const COOP_PREFERRED: bool> FromUtf8Error<COOP_PREFERRED>
+where
+[(); alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:, {
     /// Returns a slice of [`u8`]s bytes that were attempted to convert to a `String`.
     ///
     /// # Examples
@@ -1951,7 +1956,7 @@ impl FromUtf8Error {
     /// ```
     #[must_use = "`self` will be dropped if the result is not used"]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn into_bytes<const COOP_PREFERRED: bool>(self) -> Vec<u8, Global, COOP_PREFERRED>
+    pub fn into_bytes(self) -> Vec<u8, Global, COOP_PREFERRED>
     where
         [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
     {
@@ -1989,7 +1994,10 @@ impl FromUtf8Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Display for FromUtf8Error {
+impl<const COOP_PREFERRED: bool> fmt::Display for FromUtf8Error<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         fmt::Display::fmt(&self.error, f)
     }
@@ -2003,7 +2011,10 @@ impl fmt::Display for FromUtf16Error {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl Error for FromUtf8Error {
+impl<const COOP_PREFERRED: bool> Error for FromUtf8Error<COOP_PREFERRED>
+where
+    [(); core::alloc::co_alloc_metadata_num_slots_with_preference::<Global>(COOP_PREFERRED)]:,
+{
     #[allow(deprecated)]
     fn description(&self) -> &str {
         "invalid utf-8"
