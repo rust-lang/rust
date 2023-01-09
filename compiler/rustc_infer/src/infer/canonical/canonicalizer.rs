@@ -6,8 +6,7 @@
 //! [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html
 
 use crate::infer::canonical::{
-    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, Canonicalized,
-    OriginalQueryValues,
+    Canonical, CanonicalTyVarKind, CanonicalVarInfo, CanonicalVarKind, OriginalQueryValues,
 };
 use crate::infer::InferCtxt;
 use rustc_middle::ty::flags::FlagComputation;
@@ -40,7 +39,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -59,7 +58,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -99,7 +98,7 @@ impl<'tcx> InferCtxt<'tcx> {
     /// out the [chapter in the rustc dev guide][c].
     ///
     /// [c]: https://rust-lang.github.io/chalk/book/canonical_queries/canonicalization.html#canonicalizing-the-query-result
-    pub fn canonicalize_response<V>(&self, value: V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_response<V>(&self, value: V) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -113,7 +112,7 @@ impl<'tcx> InferCtxt<'tcx> {
         )
     }
 
-    pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonicalized<'tcx, V>
+    pub fn canonicalize_user_type_annotation<V>(&self, value: V) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -135,7 +134,7 @@ impl<'tcx> InferCtxt<'tcx> {
         &self,
         value: V,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
@@ -524,7 +523,7 @@ impl<'cx, 'tcx> Canonicalizer<'cx, 'tcx> {
         tcx: TyCtxt<'tcx>,
         canonicalize_region_mode: &dyn CanonicalizeMode,
         query_state: &mut OriginalQueryValues<'tcx>,
-    ) -> Canonicalized<'tcx, V>
+    ) -> Canonical<'tcx, V>
     where
         V: TypeFoldable<'tcx>,
     {
