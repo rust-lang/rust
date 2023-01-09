@@ -1342,21 +1342,19 @@ fn suggest_impl_trait<'tcx>(
 fn impl_trait_ref(tcx: TyCtxt<'_>, def_id: DefId) -> Option<ty::EarlyBinder<ty::TraitRef<'_>>> {
     let icx = ItemCtxt::new(tcx, def_id);
     let item = tcx.hir().expect_item(def_id.expect_local());
-    match item.kind {
-        hir::ItemKind::Impl(ref impl_) => impl_
-            .of_trait
-            .as_ref()
-            .map(|ast_trait_ref| {
-                let selfty = tcx.type_of(def_id);
-                icx.astconv().instantiate_mono_trait_ref(
-                    ast_trait_ref,
-                    selfty,
-                    check_impl_constness(tcx, impl_.constness, ast_trait_ref),
-                )
-            })
-            .map(ty::EarlyBinder),
-        _ => bug!(),
-    }
+    let hir::ItemKind::Impl(impl_) = item.kind else { bug!() };
+    impl_
+        .of_trait
+        .as_ref()
+        .map(|ast_trait_ref| {
+            let selfty = tcx.type_of(def_id);
+            icx.astconv().instantiate_mono_trait_ref(
+                ast_trait_ref,
+                selfty,
+                check_impl_constness(tcx, impl_.constness, ast_trait_ref),
+            )
+        })
+        .map(ty::EarlyBinder)
 }
 
 fn check_impl_constness(

@@ -54,12 +54,9 @@ fn visit_implementation_of_drop(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
         _ => {}
     }
 
-    let sp = match tcx.hir().expect_item(impl_did).kind {
-        ItemKind::Impl(ref impl_) => impl_.self_ty.span,
-        _ => bug!("expected Drop impl item"),
-    };
+    let ItemKind::Impl(impl_) = tcx.hir().expect_item(impl_did).kind else { bug!("expected Drop impl item") };
 
-    tcx.sess.emit_err(DropImplOnWrongItem { span: sp });
+    tcx.sess.emit_err(DropImplOnWrongItem { span: impl_.self_ty.span });
 }
 
 fn visit_implementation_of_copy(tcx: TyCtxt<'_>, impl_did: LocalDefId) {
