@@ -1,7 +1,7 @@
 use syntax::ast::{self, AstNode, HasName};
 
 use crate::{
-    utils::{generate_impl_text, generate_trait_impl_text},
+    utils::{generate_impl_text, generate_trait_impl_text_intransitive},
     AssistContext, AssistId, AssistKind, Assists,
 };
 
@@ -89,11 +89,11 @@ pub(crate) fn generate_trait_impl(acc: &mut Assists, ctx: &AssistContext<'_>) ->
             let start_offset = nominal.syntax().text_range().end();
             match ctx.config.snippet_cap {
                 Some(cap) => {
-                    let snippet = generate_trait_impl_text(&nominal, "$0", "");
+                    let snippet = generate_trait_impl_text_intransitive(&nominal, "$0", "");
                     edit.insert_snippet(cap, start_offset, snippet);
                 }
                 None => {
-                    let text = generate_trait_impl_text(&nominal, "", "");
+                    let text = generate_trait_impl_text_intransitive(&nominal, "", "");
                     edit.insert(start_offset, text);
                 }
             }
