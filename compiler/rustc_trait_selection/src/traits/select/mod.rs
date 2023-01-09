@@ -2377,6 +2377,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let impl_substs = self.infcx.fresh_substs_for_item(obligation.cause.span, impl_def_id);
 
         let impl_trait_ref = impl_trait_ref.subst(self.tcx(), impl_substs);
+        if impl_trait_ref.references_error() {
+            return Err(());
+        }
 
         debug!(?impl_trait_ref);
 
