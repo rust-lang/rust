@@ -278,7 +278,10 @@ pub trait MutVisitor: Sized {
         noop_visit_vis(vis, self);
     }
 
-    fn visit_restriction(&mut self, restriction: &mut Restriction) {
+    fn visit_restriction<Kind: crate::RestrictionKind>(
+        &mut self,
+        restriction: &mut Restriction<Kind>,
+    ) {
         noop_visit_restriction(restriction, self);
     }
 
@@ -1567,8 +1570,11 @@ pub fn noop_visit_vis<T: MutVisitor>(visibility: &mut Visibility, vis: &mut T) {
     vis.visit_span(&mut visibility.span);
 }
 
-pub fn noop_visit_restriction<T: MutVisitor>(restriction: &mut Restriction, vis: &mut T) {
-    if let RestrictionKind::Restricted { path, id, shorthand: _ } = &mut restriction.kind {
+pub fn noop_visit_restriction<T: MutVisitor, Kind: crate::RestrictionKind>(
+    restriction: &mut Restriction<Kind>,
+    vis: &mut T,
+) {
+    if let RestrictionLevel::Restricted { path, id, shorthand: _ } = &mut restriction.level {
         vis.visit_path(path);
         vis.visit_id(id);
     }

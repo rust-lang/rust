@@ -16,7 +16,6 @@ pub use diagnostics::AttemptLocalParseRecovery;
 pub(crate) use item::FnParseMode;
 pub use pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 pub use path::PathStyle;
-use rustc_errors::struct_span_err;
 
 use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, Nonterminal, Token, TokenKind};
@@ -27,7 +26,8 @@ use rustc_ast::AttrId;
 use rustc_ast::DUMMY_NODE_ID;
 use rustc_ast::{self as ast, AnonConst, AttrStyle, Const, DelimArgs, Extern};
 use rustc_ast::{Async, AttrArgs, AttrArgsEq, Expr, ExprKind, MacDelimiter, Mutability, StrLit};
-use rustc_ast::{HasAttrs, HasTokens, Restriction, Unsafe, Visibility, VisibilityKind};
+use rustc_ast::{HasAttrs, HasTokens, Unsafe};
+use rustc_ast::{Restriction, RestrictionKind, Visibility, VisibilityKind};
 use rustc_ast_pretty::pprust;
 use rustc_data_structures::fx::FxHashMap;
 use rustc_data_structures::sync::Ordering;
@@ -44,7 +44,8 @@ use thin_vec::ThinVec;
 use tracing::debug;
 
 use crate::errors::{
-    self, IncorrectVisibilityRestriction, MismatchedClosingDelimiter, NonStringAbiLiteral,
+    self, IncorrectRestriction, IncorrectVisibilityRestriction, MismatchedClosingDelimiter,
+    NakedRestriction, NonStringAbiLiteral,
 };
 
 bitflags::bitflags! {
@@ -1459,16 +1460,13 @@ impl<'a> Parser<'a> {
         Ok(())
     }
 
-    /// Parses `kw(in path)` plus shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
+    /// Parses `kw`, `kw(in path)`, and shortcuts `kw(crate)` for `kw(in crate)`, `kw(self)` for
     /// `kw(in self)` and `kw(super)` for `kw(in super)`.
-    fn parse_restriction(
+    fn parse_restriction<Kind: ast::RestrictionKind>(
         &mut self,
-        kw: Symbol,
-        feature_gate: Option<Symbol>,
-        action: &str,
         fbt: FollowedByType,
-    ) -> PResult<'a, Restriction> {
-        if !self.eat_keyword(kw) {
+    ) -> PResult<'a, Restriction<Kind>> {
+        if !self.eat_keyword(Kind::KW_SYM) {
             // We need a span, but there's inherently no keyword to grab a span from for an implied
             // restriction. An empty span at the beginning of the current token is a reasonable
             // fallback.
@@ -1476,68 +1474,76 @@ impl<'a> Parser<'a> {
         }
 
         let gate = |span| {
-            if let Some(feature_gate) = feature_gate {
+            if let Some(feature_gate) = Kind::FEATURE_GATE {
                 self.sess.gated_spans.gate(feature_gate, span);
             }
             span
         };
 
-        let lo = self.prev_token.span;
+        let kw_span = self.prev_token.span;
 
-        self.expect(&token::OpenDelim(Delimiter::Parenthesis))?;
-
-        if self.check_keyword(kw::In) {
-            // Parse `kw(in path)`.
-            self.bump(); // `in`
-            let path = self.parse_path(PathStyle::Mod)?; // `path`
-            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-            return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
-                .with_span(lo.to(gate(lo.to(self.prev_token.span)))));
-        } else if self.look_ahead(1, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
-            && self.is_keyword_ahead(0, &[kw::Crate, kw::Super, kw::SelfLower])
-        {
-            // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
-            let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
-            self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
-            return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, true)
-                .with_span(gate(lo.to(self.prev_token.span))));
-        } else if let FollowedByType::No = fbt {
-            // Provide this diagnostic if a type cannot follow;
-            // in particular, if this is not a tuple struct.
-            self.recover_incorrect_restriction(kw.as_str(), action)?;
-            // Emit diagnostic, but continue unrestricted.
-            Ok(Restriction::implied())
+        if self.check(&token::OpenDelim(Delimiter::Parenthesis)) {
+            if self.is_keyword_ahead(1, &[kw::In]) {
+                // Parse `kw(in path)`.
+                self.bump(); // `(`
+                self.bump(); // `in`
+                let path = self.parse_path(PathStyle::Mod)?; // `path`
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, false)
+                    .with_span(gate(kw_span.to(kw_span.to(self.prev_token.span)))));
+            } else if self.look_ahead(2, |t| t == &token::CloseDelim(Delimiter::Parenthesis))
+                && self.is_keyword_ahead(1, &[kw::Crate, kw::Super, kw::SelfLower])
+            {
+                // Parse `kw(crate)`, `kw(self)`, or `kw(super)`.
+                self.bump(); // `(`
+                let path = self.parse_path(PathStyle::Mod)?; // `crate`/`super`/`self`
+                self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
+                return Ok(Restriction::restricted(P(path), ast::DUMMY_NODE_ID, true)
+                    .with_span(gate(kw_span.to(self.prev_token.span))));
+            } else {
+                if let FollowedByType::No = fbt {
+                    // Provide this diagnostic if a type cannot follow;
+                    // in particular, if this is not a tuple struct.
+                    self.recover_incorrect_restriction::<Kind>()?;
+                }
+                Ok(Restriction::implied())
+            }
         } else {
-            // FIXME(jhpratt) Is this case ever actually encountered?
-            Ok(Restriction::implied())
+            if !Kind::ALLOWS_KW_ONLY {
+                self.recover_naked_restriction::<Kind>(kw_span)?;
+            }
+            Ok(Restriction::unrestricted())
         }
     }
 
     /// Recovery for e.g. `kw(something) fn ...` or `struct X { kw(something) y: Z }`
-    fn recover_incorrect_restriction(&mut self, kw: &str, action: &str) -> PResult<'a, ()> {
+    fn recover_incorrect_restriction<Kind: RestrictionKind>(&mut self) -> PResult<'a, ()> {
         self.bump(); // `(`
         let path = self.parse_path(PathStyle::Mod)?;
         self.expect(&token::CloseDelim(Delimiter::Parenthesis))?; // `)`
 
-        let msg = "incorrect restriction";
-        let suggestion = format!(
-            r##"some possible restrictions are:\n\
-            `{kw}(crate)`: {action} only in the current crate\n\
-            `{kw}(super)`: {action} only in the current module's parent\n\
-            `{kw}(in path::to::module)`: {action} only in the specified path"##
-        );
+        self.sess.emit_err(IncorrectRestriction {
+            span: path.span,
+            path: pprust::path_to_string(&path),
+            kind: Kind::DESCRIPTION,
+            action: Kind::ACTION,
+            kw: Kind::KW_STR,
+        });
 
-        let path_str = pprust::path_to_string(&path);
+        Ok(())
+    }
 
-        struct_span_err!(self.sess.span_diagnostic, path.span, E0704, "{msg}")
-            .help(suggestion)
-            .span_suggestion(
-                path.span,
-                format!("make this {action} only to module `{path_str}` with `in`"),
-                format!("in {path_str}"),
-                Applicability::MachineApplicable,
-            )
-            .emit();
+    /// Recovery for `kw` when `kw(path)` is required.
+    fn recover_naked_restriction<Kind: RestrictionKind>(
+        &mut self,
+        kw_span: Span,
+    ) -> PResult<'a, ()> {
+        self.sess.emit_err(NakedRestriction {
+            span: kw_span,
+            kind: Kind::DESCRIPTION,
+            action: Kind::ACTION,
+            kw: Kind::KW_STR,
+        });
 
         Ok(())
     }

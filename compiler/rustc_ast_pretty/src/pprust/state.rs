@@ -883,8 +883,11 @@ pub trait PrintState<'a>: std::ops::Deref<Target = pp::Printer> + std::ops::Dere
         Self::to_string(|s| s.print_visibility(v))
     }
 
-    fn restriction_to_string(&self, kw: &'static str, restriction: &ast::Restriction) -> String {
-        Self::to_string(|s| s.print_restriction(kw, restriction))
+    fn restriction_to_string<Kind: ast::RestrictionKind>(
+        &self,
+        restriction: &ast::Restriction<Kind>,
+    ) -> String {
+        Self::to_string(|s| s.print_restriction(restriction))
     }
 
     fn block_to_string(&self, blk: &ast::Block) -> String {

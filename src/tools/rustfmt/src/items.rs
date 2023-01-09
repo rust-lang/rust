@@ -1131,7 +1131,7 @@ pub(crate) fn format_trait(
         let header = format!(
             "{}{}{}{}trait ",
             format_visibility(context, &item.vis),
-            format_restriction("impl", context, &impl_restriction),
+            format_restriction(context, &impl_restriction),
             format_unsafety(unsafety),
             format_auto(is_auto),
         );
@@ -1828,7 +1828,7 @@ pub(crate) fn rewrite_struct_field_prefix(
     field: &ast::FieldDef,
 ) -> Option<String> {
     let vis = format_visibility(context, &field.vis);
-    let mut_restriction = format_restriction("mut", context, &field.mut_restriction);
+    let mut_restriction = format_restriction(context, &field.mut_restriction);
     let type_annotation_spacing = type_annotation_spacing(context.config);
     Some(match field.ident {
         Some(name) => format!(

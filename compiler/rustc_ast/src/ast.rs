@@ -35,6 +35,7 @@ use rustc_span::source_map::{respan, Spanned};
 use rustc_span::symbol::{kw, sym, Ident, Symbol};
 use rustc_span::{Span, DUMMY_SP};
 use std::fmt;
+use std::marker::PhantomData;
 use std::mem;
 use thin_vec::{thin_vec, ThinVec};
 
@@ -2721,31 +2722,129 @@ impl VisibilityKind {
     }
 }
 
+pub mod restriction_kind {
+    use super::*;
+
+    /// Helper macro to generate the type, derive the relevant bounds, and implement the sealed
+    /// trait.
+    macro_rules! restriction {
+        (
+            name: $name:ident,
+            allows_kw_only: $allows_kw_only:literal,
+            kw_sym: $kw_sym:path,
+            kw_str: $kw_str:literal,
+            action: $action:literal,
+            description: $description:literal,
+            feature_gate: $feature_gate:expr $(,)?
+        ) => {
+            #[derive(Debug, Clone, Copy, Encodable, Decodable)]
+            pub enum $name {}
+
+            impl RestrictionKind for $name {
+                const ALLOWS_KW_ONLY: bool = $allows_kw_only;
+                const KW_SYM: Symbol = $kw_sym;
+                const KW_STR: &'static str = $kw_str;
+                const ACTION: &'static str = $action;
+                const DESCRIPTION: &'static str = $description;
+                const FEATURE_GATE: Option<Symbol> = $feature_gate;
+            }
+
+            impl sealed::Sealed for $name {}
+        };
+    }
+
+    // FIXME(jhpratt) After a bootstrap, replace this with the now-implemented native syntax.
+    mod sealed {
+        pub trait Sealed {}
+    }
+
+    pub trait RestrictionKind: sealed::Sealed {
+        const ALLOWS_KW_ONLY: bool;
+        const KW_SYM: Symbol;
+        const KW_STR: &'static str;
+        const ACTION: &'static str;
+        const DESCRIPTION: &'static str;
+        const FEATURE_GATE: Option<Symbol>;
+    }
+
+    restriction! {
+        name: Visibility,
+        allows_kw_only: true,
+        kw_sym: kw::Pub,
+        kw_str: "pub",
+        action: "visible",
+        description: "visibility",
+        feature_gate: None,
+    }
+    restriction! {
+        name: Impl,
+        allows_kw_only: false,
+        kw_sym: kw::Impl,
+        kw_str: "impl",
+        action: "implementable",
+        description: "impl",
+        feature_gate: Some(sym::impl_restriction),
+    }
+    restriction! {
+        name: Mut,
+        allows_kw_only: false,
+        kw_sym: kw::Mut,
+        kw_str: "mut",
+        action: "mutable",
+        description: "mut",
+        feature_gate: Some(sym::mut_restriction),
+    }
+}
+pub use restriction_kind::RestrictionKind;
+
+// FIXME(jhpratt) Replace the generic with an enum once ADT const generics are not incomplete.
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub struct Restriction {
-    pub kind: RestrictionKind,
+pub struct Restriction<Kind: RestrictionKind> {
+    pub level: RestrictionLevel,
     pub span: Span,
+    pub kind: PhantomData<Kind>,
+    pub tokens: Option<LazyAttrTokenStream>,
 }
 
 #[derive(Clone, Encodable, Decodable, Debug)]
-pub enum RestrictionKind {
+pub enum RestrictionLevel {
+    // kw
+    Unrestricted,
     // kw(path)
     Restricted { path: P<Path>, id: NodeId, shorthand: bool },
     // nothing
     Implied,
 }
 
-impl Restriction {
+impl<Kind: RestrictionKind> Restriction<Kind> {
+    pub fn unrestricted() -> Self {
+        Self {
+            level: RestrictionLevel::Unrestricted,
+            span: DUMMY_SP,
+            tokens: None,
+            kind: PhantomData,
+        }
+    }
+
     pub fn restricted(path: P<Path>, id: NodeId, shorthand: bool) -> Self {
-        Restriction { kind: RestrictionKind::Restricted { path, id, shorthand }, span: DUMMY_SP }
+        Self {
+            level: RestrictionLevel::Restricted { path, id, shorthand },
+            span: DUMMY_SP,
+            tokens: None,
+            kind: PhantomData,
+        }
     }
 
     pub fn implied() -> Self {
-        Restriction { kind: RestrictionKind::Implied, span: DUMMY_SP }
+        Self { level: RestrictionLevel::Implied, span: DUMMY_SP, tokens: None, kind: PhantomData }
     }
 
     pub fn with_span(self, span: Span) -> Self {
-        Restriction { span, ..self }
+        Self { span, ..self }
+    }
+
+    pub fn with_tokens(self, tokens: LazyAttrTokenStream) -> Self {
+        Self { tokens: Some(tokens), ..self }
     }
 }
 
@@ -2758,7 +2857,7 @@ pub struct FieldDef {
     pub id: NodeId,
     pub span: Span,
     pub vis: Visibility,
-    pub mut_restriction: Restriction,
+    pub mut_restriction: Restriction<restriction_kind::Mut>,
     pub ident: Option<Ident>,
 
     pub ty: P<Ty>,
@@ -2898,7 +2997,7 @@ impl Default for FnHeader {
 
 #[derive(Clone, Encodable, Decodable, Debug)]
 pub struct Trait {
-    pub impl_restriction: Restriction,
+    pub impl_restriction: Restriction<restriction_kind::Impl>,
     pub unsafety: Unsafe,
     pub is_auto: IsAuto,
     pub generics: Generics,

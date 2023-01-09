@@ -2,7 +2,7 @@ use std::borrow::Cow;
 
 use rustc_ast::ast::{
     self, Attribute, MetaItem, MetaItemKind, NestedMetaItem, NodeId, Path, Restriction,
-    RestrictionKind, Visibility, VisibilityKind,
+    RestrictionLevel, Visibility, VisibilityKind,
 };
 use rustc_ast::ptr;
 use rustc_ast_pretty::pprust;
@@ -75,17 +75,18 @@ pub(crate) fn format_visibility(
 }
 
 // Does not allocate in the common, implied case.
-pub(crate) fn format_restriction(
-    kw: &'static str,
+pub(crate) fn format_restriction<Kind: ast::RestrictionKind>(
     context: &RewriteContext<'_>,
-    restriction: &Restriction,
-) -> String {
-    match restriction.kind {
-        RestrictionKind::Restricted {
+    restriction: &Restriction<Kind>,
+) -> Cow<'static, str> {
+    match restriction.level {
+        RestrictionLevel::Unrestricted => Kind::KW_STR.into(),
+        RestrictionLevel::Restricted {
             ref path,
             id: _,
             shorthand,
         } => {
+            let kw = Kind::KW_STR;
             let Path { ref segments, .. } = **path;
             let mut segments_iter = segments.iter().map(|seg| rewrite_ident(context, seg.ident));
             if path.is_global() && segments_iter.next().is_none() {
@@ -96,9 +97,9 @@ pub(crate) fn format_restriction(
             let path = itertools::join(segments_iter, "::");
             let in_str = if shorthand { "" } else { "in " };
 
-            format!("{kw}({in_str}{path}) ")
+            format!("{kw}({in_str}{path}) ").into()
         }
-        RestrictionKind::Implied => String::new(),
+        RestrictionLevel::Implied => "".into(),
     }
 }
 

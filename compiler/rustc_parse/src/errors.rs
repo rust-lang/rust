@@ -822,6 +822,31 @@ pub(crate) struct IncorrectVisibilityRestriction {
 }
 
 #[derive(Diagnostic)]
+#[diag(parse_incorrect_restriction, code = "E0704")]
+#[help]
+pub(crate) struct IncorrectRestriction {
+    #[primary_span]
+    #[suggestion(code = "in {path}", applicability = "machine-applicable")]
+    pub span: Span,
+    pub path: String,
+    pub kind: &'static str,
+    pub action: &'static str,
+    pub kw: &'static str,
+}
+
+#[derive(Diagnostic)]
+#[diag(parse_naked_restriction, code = "E0704")]
+#[help]
+pub(crate) struct NakedRestriction {
+    #[primary_span]
+    #[suggestion(code = "{kw}(crate)", applicability = "machine-applicable")]
+    pub span: Span,
+    pub kind: &'static str,
+    pub action: &'static str,
+    pub kw: &'static str,
+}
+
+#[derive(Diagnostic)]
 #[diag(parse_assignment_else_not_allowed)]
 pub(crate) struct AssignmentElseNotAllowed {
     #[primary_span]

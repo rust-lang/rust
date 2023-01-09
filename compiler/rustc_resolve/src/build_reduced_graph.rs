@@ -325,23 +325,29 @@ impl<'a, 'b, 'tcx> BuildReducedGraphVisitor<'a, 'b, 'tcx> {
         self.r.field_def_ids.insert(def_id, self.r.tcx.arena.alloc_from_iter(def_ids));
     }
 
-    fn resolve_restriction(&mut self, restriction: &ast::Restriction) -> ty::Restriction {
+    fn resolve_restriction<Kind: ast::RestrictionKind>(
+        &mut self,
+        restriction: &ast::Restriction<Kind>,
+    ) -> ty::Restriction {
         self.try_resolve_restriction(restriction, true).unwrap_or_else(|err| {
             self.r.report_restriction_error(err);
             ty::Restriction::Unrestricted
         })
     }
 
-    fn try_resolve_restriction<'ast>(
+    fn try_resolve_restriction<'ast, Kind: ast::RestrictionKind>(
         &mut self,
-        restriction: &'ast ast::Restriction,
+        restriction: &'ast ast::Restriction<Kind>,
         finalize: bool,
     ) -> Result<ty::Restriction, RestrictionResolutionError<'ast>> {
         let parent_scope = &self.parent_scope;
-        match restriction.kind {
+        match restriction.level {
+            ast::RestrictionLevel::Unrestricted => Ok(ty::Restriction::Unrestricted),
+            // FIXME(jhpratt) create an "implied" level in rustc_middle. This will be useful for
+            // lints in addition to conversion to visibility.
             // If the restriction is implied, it has no effect when the item is otherwise visible.
-            ast::RestrictionKind::Implied => Ok(ty::Restriction::Unrestricted),
-            ast::RestrictionKind::Restricted { ref path, id, shorthand: _ } => {
+            ast::RestrictionLevel::Implied => Ok(ty::Restriction::Unrestricted),
+            ast::RestrictionLevel::Restricted { ref path, id, shorthand: _ } => {
                 // For restrictions we are not ready to provide correct implementation of "uniform
                 // paths" right now, so on 2018 edition we only allow module-relative paths for now.
                 // On 2015 edition visibilities are resolved as crate-relative by default,

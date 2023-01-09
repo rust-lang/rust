@@ -1,8 +1,8 @@
 error[E0704]: incorrect mut restriction
-  --> $DIR/naked-mut-restriction.rs:5:9
+  --> $DIR/in-path-rustfix.rs:8:13
    |
-LL |     pub mut x: u32,
-   |         ^^^ help: make this mutable only in the current crate: `mut(crate)`
+LL |         mut(crate::a) _foo: u8,
+   |             ^^^^^^^^ help: make this mutable only to module `crate::a` with `in`: `in crate::a`
    |
    = help: some possible mut restrictions are:
            `mut(crate)`: mutable only in the current crate

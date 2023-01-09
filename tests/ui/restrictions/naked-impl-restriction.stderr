@@ -1,8 +1,14 @@
-error: expected `(`, found keyword `trait`
-  --> $DIR/naked-impl-restriction.rs:4:10
+error[E0704]: incorrect impl restriction
+  --> $DIR/naked-impl-restriction.rs:4:5
    |
 LL | pub impl trait Foo {}
-   |          ^^^^^ expected `(`
+   |     ^^^^ help: make this implementable only in the current crate: `impl(crate)`
+   |
+   = help: some possible impl restrictions are:
+           `impl(crate)`: implementable only in the current crate
+           `impl(super)`: implementable only in the current module's parent
+           `impl(in path::to::module)`: implementable only in the specified path
 
 error: aborting due to previous error
 
+For more information about this error, try `rustc --explain E0704`.

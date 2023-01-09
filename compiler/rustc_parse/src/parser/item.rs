@@ -831,12 +831,7 @@ impl<'a> Parser<'a> {
 
     /// Parses `impl(in path)? unsafe? auto? trait Foo { ... }` or `trait Foo = Bar;`.
     fn parse_item_trait(&mut self, attrs: &mut AttrVec, lo: Span) -> PResult<'a, ItemInfo> {
-        let impl_restriction = self.parse_restriction(
-            kw::Impl,
-            Some(sym::impl_restriction),
-            "implementable",
-            FollowedByType::No,
-        )?;
+        let impl_restriction = self.parse_restriction(FollowedByType::No)?;
         let unsafety = self.parse_unsafety(Case::Sensitive);
         // Parse optional `auto` prefix.
         let is_auto = if self.eat_keyword(kw::Auto) { IsAuto::Yes } else { IsAuto::No };
@@ -863,7 +858,7 @@ impl<'a> Parser<'a> {
             self.expect_semi()?;
 
             let whole_span = lo.to(self.prev_token.span);
-            if !matches!(impl_restriction.kind, RestrictionKind::Implied) {
+            if !matches!(impl_restriction.level, RestrictionLevel::Implied) {
                 let msg = "trait aliases cannot be implemented";
                 self.struct_span_err(whole_span, msg).span_label(whole_span, msg).emit();
             }
@@ -1593,12 +1588,7 @@ impl<'a> Parser<'a> {
                         return Err(err);
                     }
                 };
-                let mut_restriction = match p.parse_restriction(
-                    kw::Mut,
-                    Some(sym::mut_restriction),
-                    "mutate",
-                    FollowedByType::Yes,
-                ) {
+                let mut_restriction = match p.parse_restriction(FollowedByType::Yes) {
                     Ok(mut_restriction) => mut_restriction,
                     Err(err) => {
                         if let Some(ref mut snapshot) = snapshot {
@@ -1643,12 +1633,7 @@ impl<'a> Parser<'a> {
         self.collect_tokens_trailing_token(attrs, ForceCollect::No, |this, attrs| {
             let lo = this.token.span;
             let vis = this.parse_visibility(FollowedByType::No)?;
-            let mut_restriction = this.parse_restriction(
-                kw::Mut,
-                Some(sym::mut_restriction),
-                "mutate",
-                FollowedByType::No,
-            )?;
+            let mut_restriction = this.parse_restriction(FollowedByType::No)?;
             Ok((
                 this.parse_single_struct_field(adt_ty, lo, vis, mut_restriction, attrs)?,
                 TrailingToken::None,
@@ -1662,7 +1647,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
-        mut_restriction: Restriction,
+        mut_restriction: Restriction<ast::restriction_kind::Mut>,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let mut seen_comma: bool = false;
@@ -1802,7 +1787,7 @@ impl<'a> Parser<'a> {
         adt_ty: &str,
         lo: Span,
         vis: Visibility,
-        mut_restriction: Restriction,
+        mut_restriction: Restriction<ast::restriction_kind::Mut>,
         attrs: AttrVec,
     ) -> PResult<'a, FieldDef> {
         let name = self.parse_field_ident(adt_ty, lo)?;

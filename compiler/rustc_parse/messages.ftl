@@ -519,6 +519,20 @@ parse_missing_comma_after_match_arm = expected `,` following `match` arm
 parse_missing_const_type = missing type for `{$kind}` item
     .suggestion = provide a type for the item
 
+parse_incorrect_restriction = incorrect {$kind} restriction
+    .help = some possible {$kind} restrictions are:
+            `{$kw}(crate)`: {$action} only in the current crate
+            `{$kw}(super)`: {$action} only in the current module's parent
+            `{$kw}(in path::to::module)`: {$action} only in the specified path
+    .suggestion = make this {$action} only to module `{$path}` with `in`
+
+parse_naked_restriction = incorrect {$kind} restriction
+    .help = some possible {$kind} restrictions are:
+            `{$kw}(crate)`: {$action} only in the current crate
+            `{$kw}(super)`: {$action} only in the current module's parent
+            `{$kw}(in path::to::module)`: {$action} only in the specified path
+    .suggestion = make this {$action} only in the current crate
+
 parse_missing_expression_in_for_loop = missing expression to iterate on in `for` loop
     .suggestion = try adding an expression to the `for` loop
 

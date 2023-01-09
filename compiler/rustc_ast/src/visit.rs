@@ -227,7 +227,10 @@ pub trait Visitor<'ast>: Sized {
     fn visit_vis(&mut self, vis: &'ast Visibility) {
         walk_vis(self, vis)
     }
-    fn visit_restriction(&mut self, restriction: &'ast Restriction) {
+    fn visit_restriction<Kind: crate::RestrictionKind>(
+        &mut self,
+        restriction: &'ast Restriction<Kind>,
+    ) {
         walk_restriction(self, restriction)
     }
     fn visit_fn_ret_ty(&mut self, ret_ty: &'ast FnRetTy) {
@@ -961,8 +964,11 @@ pub fn walk_vis<'a, V: Visitor<'a>>(visitor: &mut V, vis: &'a Visibility) {
     }
 }
 
-pub fn walk_restriction<'a, V: Visitor<'a>>(visitor: &mut V, restriction: &'a Restriction) {
-    if let RestrictionKind::Restricted { ref path, id, shorthand: _ } = restriction.kind {
+pub fn walk_restriction<'a, V: Visitor<'a>, Kind: crate::RestrictionKind>(
+    visitor: &mut V,
+    restriction: &'a Restriction<Kind>,
+) {
+    if let RestrictionLevel::Restricted { ref path, id, shorthand: _ } = restriction.level {
         visitor.visit_path(path, id);
     }
 }

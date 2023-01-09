@@ -324,7 +324,7 @@ impl<'a> State<'a> {
             }) => {
                 self.head("");
                 self.print_visibility(&item.vis);
-                self.print_restriction("impl", impl_restriction);
+                self.print_restriction(impl_restriction);
                 self.print_unsafety(*unsafety);
                 self.print_is_auto(*is_auto);
                 self.word_nbsp("trait");
@@ -430,11 +430,14 @@ impl<'a> State<'a> {
         }
     }
 
-    // FIXME(jhpratt) make `kw` into a const generic when #![feature(adt_consts_params)] is no
-    // longer incomplete
-    pub(crate) fn print_restriction(&mut self, kw: &'static str, restriction: &ast::Restriction) {
-        match restriction.kind {
-            ast::RestrictionKind::Restricted { ref path, id: _, shorthand } => {
+    pub(crate) fn print_restriction<Kind: ast::RestrictionKind>(
+        &mut self,
+        restriction: &ast::Restriction<Kind>,
+    ) {
+        match restriction.level {
+            ast::RestrictionLevel::Unrestricted => self.word_nbsp(Kind::KW_STR),
+            ast::RestrictionLevel::Restricted { ref path, id: _, shorthand } => {
+                let kw = Kind::KW_STR;
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
                 if shorthand {
                     self.word_nbsp(format!("{kw}({path})"))
@@ -442,7 +445,7 @@ impl<'a> State<'a> {
                     self.word_nbsp(format!("{kw}(in {path})"))
                 }
             }
-            ast::RestrictionKind::Implied => {}
+            ast::RestrictionLevel::Implied => {}
         }
     }
 
@@ -465,7 +468,7 @@ impl<'a> State<'a> {
                 self.maybe_print_comment(field.span.lo());
                 self.print_outer_attributes(&field.attrs);
                 self.print_visibility(&field.vis);
-                self.print_restriction("mut", &field.mut_restriction);
+                self.print_restriction(&field.mut_restriction);
                 self.print_ident(field.ident.unwrap());
                 self.word_nbsp(":");
                 self.print_type(&field.ty);
