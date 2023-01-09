@@ -159,18 +159,20 @@ impl<'tcx> chalk_ir::interner::Interner for RustInterner<'tcx> {
             }
             chalk_ir::TyKind::Array(ty, len) => Some(write!(fmt, "[{:?}; {:?}]", ty, len)),
             chalk_ir::TyKind::Slice(ty) => Some(write!(fmt, "[{:?}]", ty)),
-            chalk_ir::TyKind::Tuple(len, substs) => Some((|| {
-                write!(fmt, "(")?;
-                for (idx, substitution) in substs.interned().iter().enumerate() {
-                    if idx == *len && *len != 1 {
-                        // Don't add a trailing comma if the tuple has more than one element
-                        write!(fmt, "{:?}", substitution)?;
-                    } else {
-                        write!(fmt, "{:?},", substitution)?;
+            chalk_ir::TyKind::Tuple(len, substs) => Some(
+                try {
+                    write!(fmt, "(")?;
+                    for (idx, substitution) in substs.interned().iter().enumerate() {
+                        if idx == *len && *len != 1 {
+                            // Don't add a trailing comma if the tuple has more than one element
+                            write!(fmt, "{:?}", substitution)?;
+                        } else {
+                            write!(fmt, "{:?},", substitution)?;
+                        }
                     }
-                }
-                write!(fmt, ")")
-            })()),
+                    write!(fmt, ")")?;
+                },
+            ),
             _ => None,
         }
     }

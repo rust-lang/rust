@@ -47,42 +47,22 @@ pub(super) fn compare_impl_method<'tcx>(
 
     let impl_m_span = tcx.def_span(impl_m.def_id);
 
-    if let Err(_) = compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref) {
-        return;
-    }
-
-    if let Err(_) = compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span, false) {
-        return;
-    }
-
-    if let Err(_) = compare_generic_param_kinds(tcx, impl_m, trait_m, false) {
-        return;
-    }
-
-    if let Err(_) =
-        compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)
-    {
-        return;
-    }
-
-    if let Err(_) = compare_synthetic_generics(tcx, impl_m, trait_m) {
-        return;
-    }
-
-    if let Err(_) = compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span) {
-        return;
-    }
-
-    if let Err(_) = compare_method_predicate_entailment(
-        tcx,
-        impl_m,
-        impl_m_span,
-        trait_m,
-        impl_trait_ref,
-        CheckImpliedWfMode::Check,
-    ) {
-        return;
-    }
+    let _: Result<_, ErrorGuaranteed> = try {
+        compare_self_type(tcx, impl_m, impl_m_span, trait_m, impl_trait_ref)?;
+        compare_number_of_generics(tcx, impl_m, trait_m, trait_item_span, false)?;
+        compare_generic_param_kinds(tcx, impl_m, trait_m, false)?;
+        compare_number_of_method_arguments(tcx, impl_m, impl_m_span, trait_m, trait_item_span)?;
+        compare_synthetic_generics(tcx, impl_m, trait_m)?;
+        compare_asyncness(tcx, impl_m, impl_m_span, trait_m, trait_item_span)?;
+        compare_method_predicate_entailment(
+            tcx,
+            impl_m,
+            impl_m_span,
+            trait_m,
+            impl_trait_ref,
+            CheckImpliedWfMode::Check,
+        )?;
+    };
 }
 
 /// This function is best explained by example. Consider a trait:
@@ -1493,7 +1473,7 @@ fn compare_synthetic_generics<'tcx>(
                 // explicit generics
                 (true, false) => {
                     err.span_label(impl_span, "expected generic parameter, found `impl Trait`");
-                    (|| {
+                    let _: Option<_> = try {
                         // try taking the name from the trait impl
                         // FIXME: this is obviously suboptimal since the name can already be used
                         // as another generic argument
@@ -1526,14 +1506,13 @@ fn compare_synthetic_generics<'tcx>(
                             ],
                             Applicability::MaybeIncorrect,
                         );
-                        Some(())
-                    })();
+                    };
                 }
                 // The case where the trait method uses `impl Trait`, but the impl method uses
                 // explicit generics.
                 (false, true) => {
                     err.span_label(impl_span, "expected `impl Trait`, found generic parameter");
-                    (|| {
+                    let _: Option<_> = try {
                         let impl_m = impl_m.def_id.as_local()?;
                         let impl_m = tcx.hir().expect_impl_item(impl_m);
                         let input_tys = match impl_m.kind {
@@ -1573,8 +1552,7 @@ fn compare_synthetic_generics<'tcx>(
                             ],
                             Applicability::MaybeIncorrect,
                         );
-                        Some(())
-                    })();
+                    };
                 }
                 _ => unreachable!(),
             }
@@ -1799,7 +1777,7 @@ pub(super) fn compare_impl_ty<'tcx>(
 ) {
     debug!("compare_impl_type(impl_trait_ref={:?})", impl_trait_ref);
 
-    let _: Result<(), ErrorGuaranteed> = (|| {
+    let _: Result<(), ErrorGuaranteed> = try {
         compare_number_of_generics(tcx, impl_ty, trait_ty, trait_item_span, false)?;
 
         compare_generic_param_kinds(tcx, impl_ty, trait_ty, false)?;
@@ -1807,8 +1785,8 @@ pub(super) fn compare_impl_ty<'tcx>(
         let sp = tcx.def_span(impl_ty.def_id);
         compare_type_predicate_entailment(tcx, impl_ty, sp, trait_ty, impl_trait_ref)?;
 
-        check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)
-    })();
+        check_type_bounds(tcx, trait_ty, impl_ty, impl_ty_span, impl_trait_ref)?;
+    };
 }
 
 /// The equivalent of [compare_method_predicate_entailment], but for associated types
