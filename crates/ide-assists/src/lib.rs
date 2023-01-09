@@ -202,6 +202,7 @@ mod handlers {
     mod unnecessary_async;
     mod unwrap_block;
     mod unwrap_result_return_type;
+    mod unqualify_method_call;
     mod wrap_return_type_in_result;
 
     pub(crate) fn all() -> &'static [Handler] {
@@ -308,6 +309,7 @@ mod handlers {
             unwrap_block::unwrap_block,
             unwrap_result_return_type::unwrap_result_return_type,
             unwrap_tuple::unwrap_tuple,
+            unqualify_method_call::unqualify_method_call,
             wrap_return_type_in_result::wrap_return_type_in_result,
             // These are manually sorted for better priorities. By default,
             // priority is determined by the size of the target range (smaller

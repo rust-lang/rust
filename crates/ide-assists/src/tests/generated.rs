@@ -2567,6 +2567,25 @@ pub async fn bar() { foo() }
 }
 
 #[test]
+fn doctest_unqualify_method_call() {
+    check_doc_test(
+        "unqualify_method_call",
+        r#####"
+fn main() {
+    std::ops::Add::add$0(1, 2);
+}
+mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
+"#####,
+        r#####"
+fn main() {
+    1.add(2);
+}
+mod std { pub mod ops { pub trait Add { fn add(self, _: Self) {} } impl Add for i32 {} } }
+"#####,
+    )
+}
+
+#[test]
 fn doctest_unwrap_block() {
     check_doc_test(
         "unwrap_block",
