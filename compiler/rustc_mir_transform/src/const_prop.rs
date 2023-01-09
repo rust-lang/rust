@@ -655,11 +655,7 @@ impl<'mir, 'tcx> ConstPropagator<'mir, 'tcx> {
             return None;
         }
 
-        if self.tcx.sess.mir_opt_level() >= 4 {
-            self.eval_rvalue_with_identities(rvalue, place)
-        } else {
-            self.use_ecx(|this| this.ecx.eval_rvalue_into_place(rvalue, place))
-        }
+        self.eval_rvalue_with_identities(rvalue, place)
     }
 
     // Attempt to use algebraic identities to eliminate constant expressions
