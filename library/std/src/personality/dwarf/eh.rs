@@ -102,6 +102,8 @@ pub unsafe fn find_eh_action(lsda: *const u8, context: &EHContext<'_>) -> Result
                             (action_table as *mut u8).offset(cs_action_entry as isize - 1);
                         let mut action_reader = DwarfReader::new(action_record);
                         let ttype_index = action_reader.read_sleb128();
+                        // Normally, if ttype_index < 0, meaning the catch type is exception specification.
+                        // Since we only care about if ttype_index is zero, so casting ttype_index to u64 makes sense.
                         return Ok(interpret_cs_action(ttype_index as u64, lpad));
                     }
                 }
