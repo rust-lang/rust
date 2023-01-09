@@ -21,7 +21,6 @@
       }
   
       bb1: {
-          nop;                             // scope 0 at $DIR/simplify_match.rs:+3:18: +3:20
           goto -> bb3;                     // scope 0 at $DIR/simplify_match.rs:+3:18: +3:20
       }
   

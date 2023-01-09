@@ -5,7 +5,7 @@ goto: "file://" + |DOC_PATH| + "/test_docs/index.html"
 write: (".search-input", "test")
 // To be SURE that the search will be run.
 press-key: 'Enter'
-wait-for: "#search h1" // The search element is empty before the first search 
+wait-for: "#search h1" // The search element is empty before the first search
 // Check that the currently displayed element is search.
 wait-for: "#alternative-display #search"
 assert-attribute: ("#main-content", {"class": "content hidden"})

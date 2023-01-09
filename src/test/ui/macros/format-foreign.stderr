@@ -8,7 +8,7 @@ LL |     println!("%.*3$s %s!\n", "Hello,", "World", 4);
    |              |               argument never used
    |              multiple missing formatting specifiers
    |
-   = note: printf formatting not supported; see the documentation for `std::fmt`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL |     println!("{:.2$} {}!\n", "Hello,", "World", 4);
@@ -22,7 +22,7 @@ LL |     println!("%1$*2$.*3$f", 123.456);
    |               |
    |               help: format specifiers use curly braces: `{0:1$.2$}`
    |
-   = note: printf formatting not supported; see the documentation for `std::fmt`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 
 error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:6:7
@@ -37,7 +37,7 @@ LL | | "###, "Hello,", "World", 4);
    | |____|  argument never used
    |      multiple missing formatting specifiers
    |
-   = note: printf formatting not supported; see the documentation for `std::fmt`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL ~     println!(r###"{:.2$}
@@ -60,7 +60,7 @@ LL |     println!("Hi there, $NAME.", NAME="Tim");
    |                         |
    |                         help: format specifiers use curly braces: `{NAME}`
    |
-   = note: shell formatting not supported; see the documentation for `std::fmt`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
 
 error: multiple unused formatting arguments
   --> $DIR/format-foreign.rs:15:32
@@ -72,7 +72,7 @@ LL |     println!("$1 $0 $$ $NAME", 1, 2, NAME=3);
    |              |                 argument never used
    |              multiple missing formatting specifiers
    |
-   = note: shell formatting not supported; see the documentation for `std::fmt`
+   = note: shell formatting is not supported; see the documentation for `std::fmt`
 help: format specifiers use curly braces
    |
 LL |     println!("{1} {0} $$ {NAME}", 1, 2, NAME=3);

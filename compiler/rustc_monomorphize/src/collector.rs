@@ -526,7 +526,7 @@ fn collect_items_rec<'tcx>(
         let formatted_item = with_no_trimmed_paths!(starting_point.node.to_string());
         tcx.sess.span_note_without_error(
             starting_point.span,
-            &format!("the above error was encountered while instantiating `{}`", formatted_item),
+            &format!("the above error was encountered while instantiating `{formatted_item}`"),
         );
     }
     inlining_map.lock_mut().record_accesses(starting_point.node, &neighbors.items);

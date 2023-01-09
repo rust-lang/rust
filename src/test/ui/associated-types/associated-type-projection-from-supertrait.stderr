@@ -32,7 +32,7 @@ error[E0308]: mismatched types
 LL | fn f() { ModelT.chip_paint(Blue); }
    |                 ---------- ^^^^ expected struct `Black`, found struct `Blue`
    |                 |
-   |                 arguments to this function are incorrect
+   |                 arguments to this method are incorrect
    |
 note: associated function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8
@@ -46,7 +46,7 @@ error[E0308]: mismatched types
 LL | fn g() { ModelU.chip_paint(Black); }
    |                 ---------- ^^^^^ expected struct `Blue`, found struct `Black`
    |                 |
-   |                 arguments to this function are incorrect
+   |                 arguments to this method are incorrect
    |
 note: associated function defined here
   --> $DIR/associated-type-projection-from-supertrait.rs:12:8

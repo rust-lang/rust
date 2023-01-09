@@ -9,9 +9,9 @@ impl S {
 
 fn main() {
     let _: Result<(), String> = Ok(); //~ ERROR this enum variant takes
-    foo(); //~ ERROR this function takes
-    foo(()); //~ ERROR this function takes
-    bar(); //~ ERROR this function takes
-    S.baz(); //~ ERROR this function takes
-    S.generic::<()>(); //~ ERROR this function takes
+    foo(); //~ ERROR function takes
+    foo(()); //~ ERROR function takes
+    bar(); //~ ERROR function takes
+    S.baz(); //~ ERROR this method takes
+    S.generic::<()>(); //~ ERROR this method takes
 }

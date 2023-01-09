@@ -590,7 +590,19 @@ impl Session {
     pub fn warn(&self, msg: impl Into<DiagnosticMessage>) {
         self.diagnostic().warn(msg)
     }
-    /// Delay a span_bug() call until abort_if_errors()
+
+    /// Ensures that compilation cannot succeed.
+    ///
+    /// If this function has been called but no errors have been emitted and
+    /// compilation succeeds, it will cause an internal compiler error (ICE).
+    ///
+    /// This can be used in code paths that should never run on successful compilations.
+    /// For example, it can be used to create an [`ErrorGuaranteed`]
+    /// (but you should prefer threading through the [`ErrorGuaranteed`] from an error emission directly).
+    ///
+    /// If no span is available, use [`DUMMY_SP`].
+    ///
+    /// [`DUMMY_SP`]: rustc_span::DUMMY_SP
     #[track_caller]
     pub fn delay_span_bug<S: Into<MultiSpan>>(
         &self,

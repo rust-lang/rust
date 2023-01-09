@@ -6,29 +6,29 @@ define-function: (
     "check-colors",
     (theme, highlight, highlight_focus, help_border, help_color, help_hover_border,
      help_hover_color),
-    [
-        ("local-storage", { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }),
-        ("reload"),
-        ("wait-for", ".more-examples-toggle"),
-        ("assert-css", (".scraped-example .example-wrap .rust span.highlight:not(.focus)", {
+    block {
+        local-storage: { "rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false", }
+        reload:
+        wait-for: ".more-examples-toggle"
+        assert-css: (".scraped-example .example-wrap .rust span.highlight:not(.focus)", {
             "background-color": |highlight|,
-        }, ALL)),
-        ("assert-css", (".scraped-example .example-wrap .rust span.highlight.focus", {
+        }, ALL)
+        assert-css: (".scraped-example .example-wrap .rust span.highlight.focus", {
             "background-color": |highlight_focus|,
-        }, ALL)),
+        }, ALL)
 
-        ("assert-css", (".scraped-example-list .scrape-help", {
+        assert-css: (".scraped-example-list .scrape-help", {
             "border-color": |help_border|,
             "color": |help_color|,
-        })),
-        ("move-cursor-to", ".scraped-example-list .scrape-help"),
-        ("assert-css", (".scraped-example-list .scrape-help:hover", {
+        })
+        move-cursor-to: ".scraped-example-list .scrape-help"
+        assert-css: (".scraped-example-list .scrape-help:hover", {
             "border-color": |help_hover_border|,
             "color": |help_hover_color|,
-        })),
+        })
         // Moving the cursor to another item to not break next runs.
-        ("move-cursor-to", ".search-input"),
-    ]
+        move-cursor-to: ".search-input"
+    }
 )
 
 call-function: ("check-colors", {

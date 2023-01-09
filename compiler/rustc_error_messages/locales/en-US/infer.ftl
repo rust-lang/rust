@@ -172,3 +172,142 @@ infer_msl_unmet_req = because this has an unmet lifetime requirement
 infer_msl_trait_note = this has an implicit `'static` lifetime requirement
 infer_msl_trait_sugg = consider relaxing the implicit `'static` requirement
 infer_suggest_add_let_for_letchains = consider adding `let`
+
+infer_explicit_lifetime_required_with_ident = explicit lifetime required in the type of `{$simple_ident}`
+    .label = lifetime `{$named}` required
+
+infer_explicit_lifetime_required_with_param_type = explicit lifetime required in parameter type
+    .label = lifetime `{$named}` required
+
+infer_explicit_lifetime_required_sugg_with_ident = add explicit lifetime `{$named}` to the type of `{$simple_ident}`
+
+infer_explicit_lifetime_required_sugg_with_param_type = add explicit lifetime `{$named}` to type
+
+infer_actual_impl_expl_expected_signature_two = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_signature_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_signature_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_signature_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}closure with signature `{$ty_or_sig}` must implement `{$trait_path}`
+infer_actual_impl_expl_expected_passive_two = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_passive_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_passive_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_passive_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$trait_path}` would have to be implemented for the type `{$ty_or_sig}`
+infer_actual_impl_expl_expected_other_two = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any two lifetimes `'{$lifetime_1}` and `'{$lifetime_2}`...
+infer_actual_impl_expl_expected_other_any = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for any lifetime `'{$lifetime_1}`...
+infer_actual_impl_expl_expected_other_some = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`, for some specific lifetime `'{lifetime_1}`...
+infer_actual_impl_expl_expected_other_nothing = {$leading_ellipsis ->
+    [true] ...
+    *[false] {""}
+}`{$ty_or_sig}` must implement `{$trait_path}`
+
+infer_actual_impl_expl_but_actually_implements_trait = ...but it actually implements `{$trait_path}`{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+infer_actual_impl_expl_but_actually_implemented_for_ty = ...but `{$trait_path}` is actually implemented for the type `{$ty}`{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+infer_actual_impl_expl_but_actually_ty_implements = ...but `{$ty}` actually implements `{$trait_path}`{$has_lifetime ->
+    [true] , for some specific lifetime `'{$lifetime}`
+    *[false] {""}
+}
+
+infer_trait_placeholder_mismatch = implementation of `{$trait_def_id}` is not general enough
+    .label_satisfy = doesn't satisfy where-clause
+    .label_where = due to a where-clause on `{$def_id}`...
+    .label_dup = implementation of `{$trait_def_id}` is not general enough
+
+infer_trait_impl_diff = `impl` item signature doesn't match `trait` item signature
+    .found = found `{$found}`
+    .expected = expected `{$expected}`
+    .expected_found = expected signature `{$expected}`
+               {"   "}found signature `{$found}`
+
+infer_tid_rel_help = verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
+infer_tid_consider_borrowing = consider borrowing this type parameter in the trait
+infer_tid_param_help = the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
+
+infer_dtcs_has_lifetime_req_label = this has an implicit `'static` lifetime requirement
+infer_dtcs_introduces_requirement = calling this method introduces the `impl`'s 'static` requirement
+infer_dtcs_has_req_note = the used `impl` has a `'static` requirement
+infer_dtcs_suggestion = consider relaxing the implicit `'static` requirement
+
+infer_but_calling_introduces = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$lifetime_kind ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but calling `{assoc_item}` introduces an implicit `'static` lifetime requirement
+    .label1 = {$has_lifetime ->
+        [named] lifetime `{lifetime}`
+        *[anon] an anonymous lifetime `'_`
+    }
+    .label2 = ...is used and required to live as long as `'static` here because of an implicit lifetime bound on the {$has_impl_path ->
+        [named] `impl` of `{$impl_path}`
+        *[anon] inherent `impl`
+    }
+
+infer_but_needs_to_satisfy = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$has_lifetime ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but it needs to satisfy a `'static` lifetime requirement
+    .influencer = this data with {$has_lifetime ->
+        [named] lifetime `{lifetime}`
+        *[anon] an anonymous lifetime `'_`
+    }...
+    .require = {$spans_empty ->
+        *[true] ...is used and required to live as long as `'static` here
+        [false] ...and is required to live as long as `'static` here
+    }
+    .used_here = ...is used here...
+    .introduced_by_bound = 'static` lifetime requirement introduced by this bound
+
+infer_more_targeted = {$has_param_name ->
+    [true] `{$param_name}`
+    *[false] `fn` parameter
+} has {$has_lifetime ->
+    [named] lifetime `{lifetime}`
+    *[anon] an anonymous lifetime `'_`
+} but calling `{$ident}` introduces an implicit `'static` lifetime requirement
+
+infer_ril_introduced_here = `'static` requirement introduced here
+infer_ril_introduced_by = requirement introduced by this return type
+infer_ril_because_of = because of this returned expression
+infer_ril_static_introduced_by = "`'static` lifetime requirement introduced by the return type

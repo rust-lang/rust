@@ -427,3 +427,15 @@ impl<'tcx> ToTrace<'tcx> for ty::AliasTy<'tcx> {
         }
     }
 }
+
+impl<'tcx> ToTrace<'tcx> for ty::FnSig<'tcx> {
+    fn to_trace(
+        _: TyCtxt<'tcx>,
+        cause: &ObligationCause<'tcx>,
+        a_is_expected: bool,
+        a: Self,
+        b: Self,
+    ) -> TypeTrace<'tcx> {
+        TypeTrace { cause: cause.clone(), values: Sigs(ExpectedFound::new(a_is_expected, a, b)) }
+    }
+}

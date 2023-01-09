@@ -755,7 +755,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     // contain the "'static" lifetime (any other lifetime
                     // would either be late-bound or local), so it is guaranteed
                     // to outlive any other lifetime
-                    if pred.0.is_global() && !pred.0.has_late_bound_regions() {
+                    if pred.0.is_global() && !pred.0.has_late_bound_vars() {
                         Ok(EvaluatedToOk)
                     } else {
                         Ok(EvaluatedToOkModuloRegions)
@@ -1785,9 +1785,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         // Check if a bound would previously have been removed when normalizing
         // the param_env so that it can be given the lowest priority. See
         // #50825 for the motivation for this.
-        let is_global = |cand: &ty::PolyTraitPredicate<'tcx>| {
-            cand.is_global() && !cand.has_late_bound_regions()
-        };
+        let is_global =
+            |cand: &ty::PolyTraitPredicate<'tcx>| cand.is_global() && !cand.has_late_bound_vars();
 
         // (*) Prefer `BuiltinCandidate { has_nested: false }`, `PointeeCandidate`,
         // `DiscriminantKindCandidate`, `ConstDestructCandidate`

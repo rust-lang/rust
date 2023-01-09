@@ -251,7 +251,7 @@ LL |     struct Ty<A, B>;
 help: add missing generic arguments
    |
 LL |     type A = Ty<A, B>;
-   |              ~~~~~~~~
+   |                ++++++
 
 error[E0107]: this struct takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:30:14
@@ -315,7 +315,7 @@ LL |     struct Ty<'a, T>;
 help: add missing generic argument
    |
 LL |     type A = Ty<T>;
-   |              ~~~~~
+   |                +++
 
 error[E0107]: this struct takes 1 generic argument but 0 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:54:14
@@ -391,7 +391,7 @@ LL |     struct Ty<A, B, C = &'static str>;
 help: add missing generic arguments
    |
 LL |     type A = Ty<A, B>;
-   |              ~~~~~~~~
+   |                ++++++
 
 error[E0107]: this struct takes at least 2 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:84:14
@@ -483,7 +483,7 @@ LL |     trait GenericType<A> {
 help: add missing generic argument
    |
 LL |     type D = Box<dyn GenericType<A>>;
-   |                      ~~~~~~~~~~~~~~
+   |                                 +++
 
 error[E0107]: this trait takes 1 generic argument but 2 generic arguments were supplied
   --> $DIR/wrong-number-of-args.rs:133:22
@@ -892,7 +892,7 @@ LL |         type A = HashMap;
 help: add missing generic arguments
    |
 LL |         type A = HashMap<K, V>;
-   |                  ~~~~~~~~~~~~~
+   |                         ++++++
 
 error[E0107]: this struct takes at least 2 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:314:18
@@ -954,7 +954,7 @@ LL |         type A = Result;
 help: add missing generic arguments
    |
 LL |         type A = Result<T, E>;
-   |                  ~~~~~~~~~~~~
+   |                        ++++++
 
 error[E0107]: this enum takes 2 generic arguments but 1 generic argument was supplied
   --> $DIR/wrong-number-of-args.rs:338:18

@@ -1268,7 +1268,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::In { reg, ref expr } => {
                     s.word("in");
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(expr);
@@ -1276,7 +1276,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::Out { reg, late, ref expr } => {
                     s.word(if late { "lateout" } else { "out" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     match expr {
@@ -1287,7 +1287,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::InOut { reg, late, ref expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(expr);
@@ -1295,7 +1295,7 @@ impl<'a> State<'a> {
                 hir::InlineAsmOperand::SplitInOut { reg, late, ref in_expr, ref out_expr } => {
                     s.word(if late { "inlateout" } else { "inout" });
                     s.popen();
-                    s.word(format!("{}", reg));
+                    s.word(format!("{reg}"));
                     s.pclose();
                     s.space();
                     s.print_expr(in_expr);

@@ -26,7 +26,7 @@
 // [r9] needs-llvm-components: aarch64
 // [r10] compile-flags: --target aarch64-apple-ios
 // [r10] needs-llvm-components: aarch64
-// [r11] compile-flags: --target aarch64-fuchsia
+// [r11] compile-flags: --target aarch64-unknown-fuchsia
 // [r11] needs-llvm-components: aarch64
 // [r12] compile-flags: --target aarch64-linux-android
 // [r12] needs-llvm-components: aarch64
@@ -156,7 +156,7 @@
 // [r74] needs-llvm-components: x86
 // [r75] compile-flags:--target x86_64-fortanix-unknown-sgx
 // [r75] needs-llvm-components: x86
-// [r76] compile-flags:--target x86_64-fuchsia
+// [r76] compile-flags:--target x86_64-unknown-fuchsia
 // [r76] needs-llvm-components: x86
 // [r77] compile-flags:--target x86_64-linux-android
 // [r77] needs-llvm-components: x86

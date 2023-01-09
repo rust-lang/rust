@@ -71,8 +71,7 @@ where
         // This should return just one element, otherwise it's a bug
         assert!(
             filter.next().is_none(),
-            "Collection {:#?} should have just one matching element",
-            self
+            "Collection {self:#?} should have just one matching element"
         );
         Some(value)
     }

@@ -1,13 +1,16 @@
 // ignore-tidy-filelength
 
-use super::{DefIdOrName, Obligation, ObligationCause, ObligationCauseCode, PredicateObligation};
+use super::{
+    DefIdOrName, FindExprBySpan, Obligation, ObligationCause, ObligationCauseCode,
+    PredicateObligation,
+};
 
 use crate::autoderef::Autoderef;
 use crate::infer::InferCtxt;
 use crate::traits::{NormalizeExt, ObligationCtxt};
 
 use hir::def::CtorOf;
-use hir::HirId;
+use hir::{Expr, HirId};
 use rustc_data_structures::fx::FxHashSet;
 use rustc_data_structures::stack::ensure_sufficient_stack;
 use rustc_errors::{
@@ -196,6 +199,20 @@ pub trait TypeErrCtxtExt<'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool;
 
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    );
+
+    fn suggest_add_clone_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool;
+
     fn suggest_add_reference_to_arg(
         &self,
         obligation: &PredicateObligation<'tcx>,
@@ -248,7 +265,7 @@ pub trait TypeErrCtxtExt<'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
         obligation: &PredicateObligation<'tcx>,
     );
 
@@ -838,8 +855,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
         let hir = self.tcx.hir();
         let hir_id = hir.local_def_id_to_hir_id(def_id.as_local()?);
-        let parent_node = hir.get_parent_node(hir_id);
-        match hir.find(parent_node) {
+        match hir.find_parent(hir_id) {
             Some(hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(local), .. })) => {
                 get_name(err, &local.pat.kind)
             }
@@ -1031,6 +1047,115 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             err.help(&format!("{msg}: `{name}({args})`"));
         }
         true
+    }
+
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) {
+        let mut span = obligation.cause.span;
+        while span.from_expansion() {
+            // Remove all the desugaring and macro contexts.
+            span.remove_mark();
+        }
+        let mut expr_finder = FindExprBySpan::new(span);
+        let Some(hir::Node::Expr(body)) = self.tcx.hir().find(obligation.cause.body_id) else { return; };
+        expr_finder.visit_expr(&body);
+        let Some(expr) = expr_finder.result else { return; };
+        let Some(typeck) = &self.typeck_results else { return; };
+        let Some(ty) = typeck.expr_ty_adjusted_opt(expr) else { return; };
+        if !ty.is_unit() {
+            return;
+        };
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else { return; };
+        let hir::def::Res::Local(hir_id) = path.res else { return; };
+        let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
+            return;
+        };
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find_parent(pat.hir_id) else { return; };
+        let hir::ExprKind::Block(block, None) = init.kind else { return; };
+        if block.expr.is_some() {
+            return;
+        }
+        let [.., stmt] = block.stmts else {
+            err.span_label(block.span, "this empty block is missing a tail expression");
+            return;
+        };
+        let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
+        let Some(ty) = typeck.expr_ty_opt(tail_expr) else {
+            err.span_label(block.span, "this block is missing a tail expression");
+            return;
+        };
+        let ty = self.resolve_numeric_literals_with_default(self.resolve_vars_if_possible(ty));
+        let trait_pred_and_self = trait_pred.map_bound(|trait_pred| (trait_pred, ty));
+
+        let new_obligation =
+            self.mk_trait_obligation_with_new_self_ty(obligation.param_env, trait_pred_and_self);
+        if self.predicate_must_hold_modulo_regions(&new_obligation) {
+            err.span_suggestion_short(
+                stmt.span.with_lo(tail_expr.span.hi()),
+                "remove this semicolon",
+                "",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.span_label(block.span, "this block is missing a tail expression");
+        }
+    }
+
+    fn suggest_add_clone_to_arg(
+        &self,
+        obligation: &PredicateObligation<'tcx>,
+        err: &mut Diagnostic,
+        trait_pred: ty::PolyTraitPredicate<'tcx>,
+    ) -> bool {
+        let self_ty = self.resolve_vars_if_possible(trait_pred.self_ty());
+        let ty = self.tcx.erase_late_bound_regions(self_ty);
+        let owner = self.tcx.hir().get_parent_item(obligation.cause.body_id);
+        let Some(generics) = self.tcx.hir().get_generics(owner.def_id) else { return false };
+        let ty::Ref(_, inner_ty, hir::Mutability::Not) = ty.kind() else { return false };
+        let ty::Param(param) = inner_ty.kind() else { return false };
+        let ObligationCauseCode::FunctionArgumentObligation { arg_hir_id, .. } = obligation.cause.code() else { return false };
+        let arg_node = self.tcx.hir().get(*arg_hir_id);
+        let Node::Expr(Expr { kind: hir::ExprKind::Path(_), ..}) = arg_node else { return false };
+
+        let clone_trait = self.tcx.require_lang_item(LangItem::Clone, None);
+        let has_clone = |ty| {
+            self.type_implements_trait(clone_trait, [ty], obligation.param_env)
+                .must_apply_modulo_regions()
+        };
+
+        let new_obligation = self.mk_trait_obligation_with_new_self_ty(
+            obligation.param_env,
+            trait_pred.map_bound(|trait_pred| (trait_pred, *inner_ty)),
+        );
+
+        if self.predicate_may_hold(&new_obligation) && has_clone(ty) {
+            if !has_clone(param.to_ty(self.tcx)) {
+                suggest_constraining_type_param(
+                    self.tcx,
+                    generics,
+                    err,
+                    param.name.as_str(),
+                    "Clone",
+                    Some(clone_trait),
+                );
+            }
+            err.span_suggestion_verbose(
+                obligation.cause.span.shrink_to_hi(),
+                "consider using clone here",
+                ".clone()".to_string(),
+                Applicability::MaybeIncorrect,
+            );
+            return true;
+        }
+        false
     }
 
     fn suggest_add_reference_to_arg(
@@ -1421,7 +1546,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         trait_pred: ty::PolyTraitPredicate<'tcx>,
     ) -> bool {
         let hir = self.tcx.hir();
-        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let parent_node = hir.parent_id(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, _, body_id), .. })) = node
             && let hir::ExprKind::Block(blk, _) = &hir.body(*body_id).value.kind
@@ -1458,7 +1583,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn return_type_span(&self, obligation: &PredicateObligation<'tcx>) -> Option<Span> {
         let hir = self.tcx.hir();
-        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let parent_node = hir.parent_id(obligation.cause.body_id);
         let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(sig, ..), .. })) = hir.find(parent_node) else {
             return None;
         };
@@ -1483,7 +1608,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let fn_hir_id = hir.get_parent_node(obligation.cause.body_id);
+        let fn_hir_id = hir.parent_id(obligation.cause.body_id);
         let node = hir.find(fn_hir_id);
         let Some(hir::Node::Item(hir::Item {
             kind: hir::ItemKind::Fn(sig, _, body_id),
@@ -1686,7 +1811,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
 
     fn point_at_returns_when_relevant(
         &self,
-        err: &mut Diagnostic,
+        err: &mut DiagnosticBuilder<'tcx, ErrorGuaranteed>,
         obligation: &PredicateObligation<'tcx>,
     ) {
         match obligation.cause.code().peel_derives() {
@@ -1695,7 +1820,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         }
 
         let hir = self.tcx.hir();
-        let parent_node = hir.get_parent_node(obligation.cause.body_id);
+        let parent_node = hir.parent_id(obligation.cause.body_id);
         let node = hir.find(parent_node);
         if let Some(hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, _, body_id), .. })) =
             node
@@ -1708,7 +1833,15 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             for expr in &visitor.returns {
                 if let Some(returned_ty) = typeck_results.node_type_opt(expr.hir_id) {
                     let ty = self.resolve_vars_if_possible(returned_ty);
-                    err.span_label(expr.span, &format!("this returned value is of type `{}`", ty));
+                    if ty.references_error() {
+                        // don't print out the [type error] here
+                        err.delay_as_bug();
+                    } else {
+                        err.span_label(
+                            expr.span,
+                            &format!("this returned value is of type `{}`", ty),
+                        );
+                    }
                 }
             }
         }
@@ -2291,7 +2424,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                         let expr = hir.expect_expr(expr_id);
                         debug!("target_ty evaluated from {:?}", expr);
 
-                        let parent = hir.get_parent_node(expr_id);
+                        let parent = hir.parent_id(expr_id);
                         if let Some(hir::Node::Expr(e)) = hir.find(parent) {
                             let parent_span = hir.span(parent);
                             let parent_did = parent.owner.to_def_id();
@@ -2512,7 +2645,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
                 }
             }
             ObligationCauseCode::VariableType(hir_id) => {
-                let parent_node = self.tcx.hir().get_parent_node(hir_id);
+                let parent_node = self.tcx.hir().parent_id(hir_id);
                 match self.tcx.hir().find(parent_node) {
                     Some(Node::Local(hir::Local { ty: Some(ty), .. })) => {
                         err.span_suggestion_verbose(
@@ -2992,7 +3125,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
         span: Span,
     ) {
         let body_hir_id = obligation.cause.body_id;
-        let item_id = self.tcx.hir().get_parent_node(body_hir_id);
+        let item_id = self.tcx.hir().parent_id(body_hir_id);
 
         if let Some(body_id) =
             self.tcx.hir().maybe_body_owned_by(self.tcx.hir().local_def_id(item_id))
@@ -3219,7 +3352,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
                 && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
-                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
+                && let parent_hir_id = self.tcx.hir().parent_id(binding.hir_id)
                 && let Some(hir::Node::Local(local)) = self.tcx.hir().find(parent_hir_id)
                 && let Some(binding_expr) = local.init
             {
@@ -3287,8 +3420,7 @@ impl<'tcx> TypeErrCtxtExt<'tcx> for TypeErrCtxt<'_, 'tcx> {
             if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind
                 && let hir::Path { res: hir::def::Res::Local(hir_id), .. } = path
                 && let Some(hir::Node::Pat(binding)) = self.tcx.hir().find(*hir_id)
-                && let parent_hir_id = self.tcx.hir().get_parent_node(binding.hir_id)
-                && let Some(parent) = self.tcx.hir().find(parent_hir_id)
+                && let Some(parent) = self.tcx.hir().find_parent(binding.hir_id)
             {
                 // We've reached the root of the method call chain...
                 if let hir::Node::Local(local) = parent

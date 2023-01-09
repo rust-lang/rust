@@ -309,7 +309,7 @@ impl<'tcx> Context<'tcx> {
 
     pub(crate) fn href_from_span(&self, span: clean::Span, with_lines: bool) -> Option<String> {
         let mut root = self.root_path();
-        let mut path = String::new();
+        let mut path: String;
         let cnum = span.cnum(self.sess());
 
         // We can safely ignore synthetic `SourceFile`s.
@@ -340,10 +340,24 @@ impl<'tcx> Context<'tcx> {
                 ExternalLocation::Unknown => return None,
             };
 
-            sources::clean_path(&src_root, file, false, |component| {
-                path.push_str(&component.to_string_lossy());
+            let href = RefCell::new(PathBuf::new());
+            sources::clean_path(
+                &src_root,
+                file,
+                |component| {
+                    href.borrow_mut().push(component);
+                },
+                || {
+                    href.borrow_mut().pop();
+                },
+            );
+
+            path = href.into_inner().to_string_lossy().to_string();
+
+            if let Some(c) = path.as_bytes().last() && *c != b'/' {
                 path.push('/');
-            });
+            }
+
             let mut fname = file.file_name().expect("source has no filename").to_os_string();
             fname.push(".html");
             path.push_str(&fname.to_string_lossy());

@@ -1,6 +1,6 @@
 // FIXME(chalk): should fail, see comments
 // check-fail
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 #![feature(trivial_bounds)]
 
@@ -25,6 +25,6 @@ fn foo<T: Foo>() {
 fn main() {
     // For some reason, the error is duplicated...
 
-    foo::<S>() //~ ERROR the type `S` is not well-formed (chalk)
-    //~^ ERROR the type `S` is not well-formed (chalk)
+    foo::<S>() //~ ERROR the type `S` is not well-formed
+    //~^ ERROR the type `S` is not well-formed
 }

@@ -1091,7 +1091,7 @@ impl<T: Idx> ToString for BitSet<T> {
                 assert!(mask <= 0xFF);
                 let byte = word & mask;
 
-                result.push_str(&format!("{}{:02x}", sep, byte));
+                result.push_str(&format!("{sep}{byte:02x}"));
 
                 if remain <= 8 {
                     break;

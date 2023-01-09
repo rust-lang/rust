@@ -7,7 +7,7 @@ LL | fn fn1(0: Box) {}
 help: add missing generic argument
    |
 LL | fn fn1(0: Box<T>) {}
-   |           ~~~~~~
+   |              +++
 
 error: aborting due to previous error
 

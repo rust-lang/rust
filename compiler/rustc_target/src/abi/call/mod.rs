@@ -71,12 +71,7 @@ mod attr_impl {
             const NonNull   = 1 << 3;
             const ReadOnly  = 1 << 4;
             const InReg     = 1 << 5;
-            // Due to past miscompiles in LLVM, we use a separate attribute for
-            // &mut arguments, so that the codegen backend can decide whether
-            // or not to actually emit the attribute. It can also be controlled
-            // with the `-Zmutable-noalias` debugging option.
-            const NoAliasMutRef = 1 << 6;
-            const NoUndef = 1 << 7;
+            const NoUndef = 1 << 6;
         }
     }
 }
@@ -177,12 +172,12 @@ impl Reg {
                 17..=32 => dl.i32_align.abi,
                 33..=64 => dl.i64_align.abi,
                 65..=128 => dl.i128_align.abi,
-                _ => panic!("unsupported integer: {:?}", self),
+                _ => panic!("unsupported integer: {self:?}"),
             },
             RegKind::Float => match self.size.bits() {
                 32 => dl.f32_align.abi,
                 64 => dl.f64_align.abi,
-                _ => panic!("unsupported float: {:?}", self),
+                _ => panic!("unsupported float: {self:?}"),
             },
             RegKind::Vector => dl.vector_align(self.size).abi,
         }
@@ -642,7 +637,7 @@ impl fmt::Display for AdjustForForeignAbiError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Unsupported { arch, abi } => {
-                write!(f, "target architecture {:?} does not support `extern {}` ABI", arch, abi)
+                write!(f, "target architecture {arch:?} does not support `extern {abi}` ABI")
             }
         }
     }
@@ -760,7 +755,7 @@ impl FromStr for Conv {
             "AmdGpuKernel" => Ok(Conv::AmdGpuKernel),
             "AvrInterrupt" => Ok(Conv::AvrInterrupt),
             "AvrNonBlockingInterrupt" => Ok(Conv::AvrNonBlockingInterrupt),
-            _ => Err(format!("'{}' is not a valid value for entry function call convetion.", s)),
+            _ => Err(format!("'{s}' is not a valid value for entry function call convetion.")),
         }
     }
 }

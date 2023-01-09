@@ -170,7 +170,7 @@ LL |     format!("foo %s baz", "bar");
    |                  |
    |                  help: format specifiers use curly braces: `{}`
    |
-   = note: printf formatting not supported; see the documentation for `std::fmt`
+   = note: printf formatting is not supported; see the documentation for `std::fmt`
 
 error: invalid format string: expected `'}'`, found `'t'`
   --> $DIR/ifmt-bad-arg.rs:75:1

@@ -5,5 +5,5 @@ fn arg<T>() -> T { todo!() }
 fn main() {
     let x = arg(); // `x` must be inferred
     // The reference on `&x` is important to reproduce the ICE
-    f(&x, ""); //~ ERROR this function takes 3 arguments but 2 arguments were supplied
+    f(&x, ""); //~ ERROR function takes 3 arguments but 2 arguments were supplied
 }

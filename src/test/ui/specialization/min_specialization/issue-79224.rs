@@ -15,8 +15,10 @@ impl ToString for Cow<'_, str> {
     }
 }
 
-impl<B: ?Sized> Display for Cow<'_, B> { //~ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { //~ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
+impl<B: ?Sized> Display for Cow<'_, B> {
+    //~^ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        //~^ ERROR: the trait bound `B: Clone` is not satisfied [E0277]
         write!(f, "foo")
     }
 }

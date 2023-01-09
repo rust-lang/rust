@@ -411,9 +411,9 @@ impl<'a> State<'a> {
             ast::VisibilityKind::Restricted { path, shorthand, .. } => {
                 let path = Self::to_string(|s| s.print_path(path, false, 0));
                 if *shorthand && (path == "crate" || path == "self" || path == "super") {
-                    self.word_nbsp(format!("pub({})", path))
+                    self.word_nbsp(format!("pub({path})"))
                 } else {
-                    self.word_nbsp(format!("pub(in {})", path))
+                    self.word_nbsp(format!("pub(in {path})"))
                 }
             }
             ast::VisibilityKind::Inherited => {}

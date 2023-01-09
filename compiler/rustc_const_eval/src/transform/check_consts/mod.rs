@@ -115,7 +115,7 @@ fn is_parent_const_stable_trait(tcx: TyCtxt<'_>, def_id: DefId) -> bool {
     let local_def_id = def_id.expect_local();
     let hir_id = tcx.local_def_id_to_hir_id(local_def_id);
 
-    let Some(parent) = tcx.hir().find_parent_node(hir_id) else { return false };
+    let Some(parent) = tcx.hir().opt_parent_id(hir_id) else { return false };
     let parent_def = tcx.hir().get(parent);
 
     if !matches!(

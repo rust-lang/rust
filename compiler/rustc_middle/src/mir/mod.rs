@@ -2506,7 +2506,7 @@ impl<'tcx> ConstantKind<'tcx> {
         }
 
         let hir_id = tcx.hir().local_def_id_to_hir_id(def.did);
-        let parent_substs = if let Some(parent_hir_id) = tcx.hir().find_parent_node(hir_id) {
+        let parent_substs = if let Some(parent_hir_id) = tcx.hir().opt_parent_id(hir_id) {
             if let Some(parent_did) = tcx.hir().opt_local_def_id(parent_hir_id) {
                 InternalSubsts::identity_for_item(tcx, parent_did.to_def_id())
             } else {

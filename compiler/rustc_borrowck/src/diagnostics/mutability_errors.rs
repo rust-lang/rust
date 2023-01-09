@@ -344,20 +344,25 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     } else {
                         err.span_help(source_info.span, "try removing `&mut` here");
                     }
-                } else if decl.mutability == Mutability::Not
-                    && !matches!(
+                } else if decl.mutability == Mutability::Not {
+                    if matches!(
                         decl.local_info,
                         Some(box LocalInfo::User(ClearCrossCrate::Set(BindingForm::ImplicitSelf(
                             hir::ImplicitSelfKind::MutRef
-                        ))))
-                    )
-                {
-                    err.span_suggestion_verbose(
-                        decl.source_info.span.shrink_to_lo(),
-                        "consider making the binding mutable",
-                        "mut ",
-                        Applicability::MachineApplicable,
-                    );
+                        ),)))
+                    ) {
+                        err.note(
+                            "as `Self` may be unsized, this call attempts to take `&mut &mut self`",
+                        );
+                        err.note("however, `&mut self` expands to `self: &mut Self`, therefore `self` cannot be borrowed mutably");
+                    } else {
+                        err.span_suggestion_verbose(
+                            decl.source_info.span.shrink_to_lo(),
+                            "consider making the binding mutable",
+                            "mut ",
+                            Applicability::MachineApplicable,
+                        );
+                    };
                 }
             }
 
@@ -1004,7 +1009,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         let hir = self.infcx.tcx.hir();
         let closure_id = self.mir_hir_id();
         let closure_span = self.infcx.tcx.def_span(self.mir_def_id());
-        let fn_call_id = hir.get_parent_node(closure_id);
+        let fn_call_id = hir.parent_id(closure_id);
         let node = hir.get(fn_call_id);
         let def_id = hir.enclosing_body_owner(fn_call_id);
         let mut look_at_return = true;

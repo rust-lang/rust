@@ -296,7 +296,7 @@ impl std::fmt::Display for ImplTraitPosition {
             ImplTraitPosition::ImplReturn => "`impl` method return",
         };
 
-        write!(f, "{}", name)
+        write!(f, "{name}")
     }
 }
 
@@ -503,7 +503,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
 
     fn orig_local_def_id(&self, node: NodeId) -> LocalDefId {
         self.orig_opt_local_def_id(node)
-            .unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+            .unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
     /// Given the id of some node in the AST, finds the `LocalDefId` associated with it by the name
@@ -524,7 +524,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     }
 
     fn local_def_id(&self, node: NodeId) -> LocalDefId {
-        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{:?}`", node))
+        self.opt_local_def_id(node).unwrap_or_else(|| panic!("no entry for node id: `{node:?}`"))
     }
 
     /// Get the previously recorded `to` local def id given the `from` local def id, obtained using
@@ -2197,7 +2197,7 @@ impl<'a, 'hir> LoweringContext<'a, 'hir> {
     fn lower_trait_ref(&mut self, p: &TraitRef, itctx: &ImplTraitContext) -> hir::TraitRef<'hir> {
         let path = match self.lower_qpath(p.ref_id, &None, &p.path, ParamMode::Explicit, itctx) {
             hir::QPath::Resolved(None, path) => path,
-            qpath => panic!("lower_trait_ref: unexpected QPath `{:?}`", qpath),
+            qpath => panic!("lower_trait_ref: unexpected QPath `{qpath:?}`"),
         };
         hir::TraitRef { path, hir_ref_id: self.lower_node_id(p.ref_id) }
     }

@@ -1,9 +1,11 @@
 use crate::FnCtxt;
 use rustc_ast::util::parser::PREC_POSTFIX;
+use rustc_data_structures::fx::FxHashMap;
 use rustc_errors::MultiSpan;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed};
 use rustc_hir as hir;
 use rustc_hir::def::CtorKind;
+use rustc_hir::intravisit::Visitor;
 use rustc_hir::lang_items::LangItem;
 use rustc_hir::{is_range_literal, Node};
 use rustc_infer::infer::InferOk;
@@ -11,11 +13,14 @@ use rustc_middle::lint::in_external_macro;
 use rustc_middle::middle::stability::EvalResult;
 use rustc_middle::ty::adjustment::AllowTwoPhase;
 use rustc_middle::ty::error::{ExpectedFound, TypeError};
-use rustc_middle::ty::print::with_no_trimmed_paths;
-use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut};
+use rustc_middle::ty::fold::{BottomUpFolder, TypeFolder};
+use rustc_middle::ty::print::{with_forced_trimmed_paths, with_no_trimmed_paths};
+use rustc_middle::ty::relate::TypeRelation;
+use rustc_middle::ty::{self, Article, AssocItem, Ty, TypeAndMut, TypeVisitable};
 use rustc_span::symbol::{sym, Symbol};
 use rustc_span::{BytePos, Span};
 use rustc_trait_selection::infer::InferCtxtExt as _;
+use rustc_trait_selection::traits::error_reporting::method_chain::CollectAllMismatches;
 use rustc_trait_selection::traits::ObligationCause;
 
 use super::method::probe;
@@ -40,7 +45,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.annotate_alternative_method_deref(err, expr, error);
 
         // Use `||` to give these suggestions a precedence
-        let _ = self.suggest_missing_parentheses(err, expr)
+        let suggested = self.suggest_missing_parentheses(err, expr)
             || self.suggest_remove_last_method_call(err, expr, expected)
             || self.suggest_associated_const(err, expr, expected)
             || self.suggest_deref_ref_or_into(err, expr, expected, expr_ty, expected_ty_expr)
@@ -52,8 +57,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             || self.suggest_boxing_when_appropriate(err, expr, expected, expr_ty)
             || self.suggest_block_to_brackets_peeling_refs(err, expr, expr_ty, expected)
             || self.suggest_copied_or_cloned(err, expr, expr_ty, expected)
+            || self.suggest_clone_for_ref(err, expr, expr_ty, expected)
             || self.suggest_into(err, expr, expr_ty, expected)
             || self.suggest_floating_point_literal(err, expr, expected);
+        if !suggested {
+            self.point_at_expr_source_of_inferred_type(err, expr, expr_ty, expected);
+        }
     }
 
     pub fn emit_coerce_suggestions(
@@ -75,6 +84,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.note_need_for_fn_pointer(err, expected, expr_ty);
         self.note_internal_mutation_in_method(err, expr, expected, expr_ty);
         self.check_for_range_as_method_call(err, expr, expr_ty, expected);
+        self.check_for_binding_assigned_block_without_tail_expression(err, expr, expr_ty, expected);
     }
 
     /// Requires that the two types unify, and prints an error message if
@@ -205,13 +215,222 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         (expected, Some(err))
     }
 
+    pub fn point_at_expr_source_of_inferred_type(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        found: Ty<'tcx>,
+        expected: Ty<'tcx>,
+    ) -> bool {
+        let map = self.tcx.hir();
+
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, p)) = expr.kind else { return false; };
+        let [hir::PathSegment { ident, args: None, .. }] = p.segments else { return false; };
+        let hir::def::Res::Local(hir_id) = p.res else { return false; };
+        let Some(hir::Node::Pat(pat)) = map.find(hir_id) else { return false; };
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = map.find_parent(pat.hir_id) else { return false; };
+        let Some(ty) = self.node_ty_opt(init.hir_id) else { return false; };
+        if ty.is_closure() || init.span.overlaps(expr.span) || pat.span.from_expansion() {
+            return false;
+        }
+
+        // Locate all the usages of the relevant binding.
+        struct FindExprs<'hir> {
+            hir_id: hir::HirId,
+            uses: Vec<&'hir hir::Expr<'hir>>,
+        }
+        impl<'v> Visitor<'v> for FindExprs<'v> {
+            fn visit_expr(&mut self, ex: &'v hir::Expr<'v>) {
+                if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = ex.kind
+                    && let hir::def::Res::Local(hir_id) = path.res
+                    && hir_id == self.hir_id
+                {
+                    self.uses.push(ex);
+                }
+                hir::intravisit::walk_expr(self, ex);
+            }
+        }
+
+        let mut expr_finder = FindExprs { hir_id, uses: vec![] };
+        let id = map.get_parent_item(hir_id);
+        let hir_id: hir::HirId = id.into();
+
+        let Some(node) = map.find(hir_id) else { return false; };
+        let Some(body_id) = node.body_id() else { return false; };
+        let body = map.body(body_id);
+        expr_finder.visit_expr(body.value);
+        // Hack to make equality checks on types with inference variables and regions useful.
+        let mut eraser = BottomUpFolder {
+            tcx: self.tcx,
+            lt_op: |_| self.tcx.lifetimes.re_erased,
+            ct_op: |c| c,
+            ty_op: |t| match *t.kind() {
+                ty::Infer(ty::TyVar(vid)) => self.tcx.mk_ty_infer(ty::TyVar(self.root_var(vid))),
+                ty::Infer(ty::IntVar(_)) => {
+                    self.tcx.mk_ty_infer(ty::IntVar(ty::IntVid { index: 0 }))
+                }
+                ty::Infer(ty::FloatVar(_)) => {
+                    self.tcx.mk_ty_infer(ty::FloatVar(ty::FloatVid { index: 0 }))
+                }
+                _ => t,
+            },
+        };
+        let mut prev = eraser.fold_ty(ty);
+        let mut prev_span = None;
+
+        for binding in expr_finder.uses {
+            // In every expression where the binding is referenced, we will look at that
+            // expression's type and see if it is where the incorrect found type was fully
+            // "materialized" and point at it. We will also try to provide a suggestion there.
+            if let Some(hir::Node::Expr(expr)
+            | hir::Node::Stmt(hir::Stmt {
+                kind: hir::StmtKind::Expr(expr) | hir::StmtKind::Semi(expr),
+                ..
+            })) = &map.find_parent(binding.hir_id)
+                && let hir::ExprKind::MethodCall(segment, rcvr, args, _span) = expr.kind
+                && rcvr.hir_id == binding.hir_id
+                && let Some(def_id) = self.typeck_results.borrow().type_dependent_def_id(expr.hir_id)
+            {
+                // We special case methods, because they can influence inference through the
+                // call's arguments and we can provide a more explicit span.
+                let sig = self.tcx.fn_sig(def_id);
+                let def_self_ty = sig.input(0).skip_binder();
+                let rcvr_ty = self.node_ty(rcvr.hir_id);
+                // Get the evaluated type *after* calling the method call, so that the influence
+                // of the arguments can be reflected in the receiver type. The receiver
+                // expression has the type *before* theis analysis is done.
+                let ty = match self.lookup_probe(
+                    segment.ident,
+                    rcvr_ty,
+                    expr,
+                    probe::ProbeScope::TraitsInScope,
+                ) {
+                    Ok(pick) => pick.self_ty,
+                    Err(_) => rcvr_ty,
+                };
+                // Remove one layer of references to account for `&mut self` and
+                // `&self`, so that we can compare it against the binding.
+                let (ty, def_self_ty) = match (ty.kind(), def_self_ty.kind()) {
+                    (ty::Ref(_, ty, a), ty::Ref(_, self_ty, b)) if a == b => (*ty, *self_ty),
+                    _ => (ty, def_self_ty),
+                };
+                let mut param_args = FxHashMap::default();
+                let mut param_expected = FxHashMap::default();
+                let mut param_found = FxHashMap::default();
+                if self.can_eq(self.param_env, ty, found).is_ok() {
+                    // We only point at the first place where the found type was inferred.
+                    for (i, param_ty) in sig.inputs().skip_binder().iter().skip(1).enumerate() {
+                        if def_self_ty.contains(*param_ty) && let ty::Param(_) = param_ty.kind() {
+                            // We found an argument that references a type parameter in `Self`,
+                            // so we assume that this is the argument that caused the found
+                            // type, which we know already because of `can_eq` above was first
+                            // inferred in this method call.
+                            let arg = &args[i];
+                            let arg_ty = self.node_ty(arg.hir_id);
+                            err.span_label(
+                                arg.span,
+                                &format!(
+                                    "this is of type `{arg_ty}`, which causes `{ident}` to be \
+                                     inferred as `{ty}`",
+                                ),
+                            );
+                            param_args.insert(param_ty, (arg, arg_ty));
+                        }
+                    }
+                }
+
+                // Here we find, for a type param `T`, the type that `T` is in the current
+                // method call *and* in the original expected type. That way, we can see if we
+                // can give any structured suggestion for the function argument.
+                let mut c = CollectAllMismatches {
+                    infcx: &self.infcx,
+                    param_env: self.param_env,
+                    errors: vec![],
+                };
+                let _ = c.relate(def_self_ty, ty);
+                for error in c.errors {
+                    if let TypeError::Sorts(error) = error {
+                        param_found.insert(error.expected, error.found);
+                    }
+                }
+                c.errors = vec![];
+                let _ = c.relate(def_self_ty, expected);
+                for error in c.errors {
+                    if let TypeError::Sorts(error) = error {
+                        param_expected.insert(error.expected, error.found);
+                    }
+                }
+                for (param, (arg, arg_ty)) in param_args.iter() {
+                    let Some(expected) = param_expected.get(param) else { continue; };
+                    let Some(found) = param_found.get(param) else { continue; };
+                    if self.can_eq(self.param_env, *arg_ty, *found).is_err() { continue; }
+                    self.emit_coerce_suggestions(err, arg, *found, *expected, None, None);
+                }
+
+                let ty = eraser.fold_ty(ty);
+                if ty.references_error() {
+                    break;
+                }
+                if ty != prev
+                    && param_args.is_empty()
+                    && self.can_eq(self.param_env, ty, found).is_ok()
+                {
+                    // We only point at the first place where the found type was inferred.
+                    err.span_label(
+                        segment.ident.span,
+                        with_forced_trimmed_paths!(format!(
+                            "here the type of `{ident}` is inferred to be `{ty}`",
+                        )),
+                    );
+                    break;
+                } else if !param_args.is_empty() {
+                    break;
+                }
+                prev = ty;
+            } else {
+                let ty = eraser.fold_ty(self.node_ty(binding.hir_id));
+                if ty.references_error() {
+                    break;
+                }
+                if ty != prev
+                    && let Some(span) = prev_span
+                    && self.can_eq(self.param_env, ty, found).is_ok()
+                {
+                    // We only point at the first place where the found type was inferred.
+                    // We use the *previous* span because if the type is known *here* it means
+                    // it was *evaluated earlier*. We don't do this for method calls because we
+                    // evaluate the method's self type eagerly, but not in any other case.
+                    err.span_label(
+                        span,
+                        with_forced_trimmed_paths!(format!(
+                            "here the type of `{ident}` is inferred to be `{ty}`",
+                        )),
+                    );
+                    break;
+                }
+                prev = ty;
+            }
+            if binding.hir_id == expr.hir_id {
+                // Do not look at expressions that come after the expression we were originally
+                // evaluating and had a type error.
+                break;
+            }
+            prev_span = Some(binding.span);
+        }
+        true
+    }
+
     fn annotate_expected_due_to_let_ty(
         &self,
         err: &mut Diagnostic,
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
-        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let parent = self.tcx.hir().parent_id(expr.hir_id);
         match (self.tcx.hir().find(parent), error) {
             (Some(hir::Node::Local(hir::Local { ty: Some(ty), init: Some(init), .. })), _)
                 if init.hir_id == expr.hir_id =>
@@ -258,10 +477,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         hir::Path { res: hir::def::Res::Local(hir_id), .. },
                     )) => {
                         if let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(*hir_id) {
-                            let parent = self.tcx.hir().get_parent_node(pat.hir_id);
                             primary_span = pat.span;
                             secondary_span = pat.span;
-                            match self.tcx.hir().find(parent) {
+                            match self.tcx.hir().find_parent(pat.hir_id) {
                                 Some(hir::Node::Local(hir::Local { ty: Some(ty), .. })) => {
                                     primary_span = ty.span;
                                     post_message = " type";
@@ -326,7 +544,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         expr: &hir::Expr<'_>,
         error: Option<TypeError<'tcx>>,
     ) {
-        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let parent = self.tcx.hir().parent_id(expr.hir_id);
         let Some(TypeError::Sorts(ExpectedFound { expected, .. })) = error else {return;};
         let Some(hir::Node::Expr(hir::Expr {
                     kind: hir::ExprKind::Assign(lhs, rhs, _), ..
@@ -510,7 +728,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
                 // Unroll desugaring, to make sure this works for `for` loops etc.
                 loop {
-                    parent = self.tcx.hir().get_parent_node(id);
+                    parent = self.tcx.hir().parent_id(id);
                     if let Some(parent_span) = self.tcx.hir().opt_span(parent) {
                         if parent_span.find_ancestor_inside(expr.span).is_some() {
                             // The parent node is part of the same span, so is the result of the
@@ -790,12 +1008,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let local_parent = self.tcx.hir().get_parent_node(local_id);
+        let local_parent = self.tcx.hir().parent_id(local_id);
         let Some(Node::Param(hir::Param { hir_id: param_hir_id, .. })) = self.tcx.hir().find(local_parent) else {
             return None;
         };
 
-        let param_parent = self.tcx.hir().get_parent_node(*param_hir_id);
+        let param_parent = self.tcx.hir().parent_id(*param_hir_id);
         let Some(Node::Expr(hir::Expr {
             hir_id: expr_hir_id,
             kind: hir::ExprKind::Closure(hir::Closure { fn_decl: closure_fn_decl, .. }),
@@ -804,7 +1022,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             return None;
         };
 
-        let expr_parent = self.tcx.hir().get_parent_node(*expr_hir_id);
+        let expr_parent = self.tcx.hir().parent_id(*expr_hir_id);
         let hir = self.tcx.hir().find(expr_parent);
         let closure_params_len = closure_fn_decl.inputs.len();
         let (
@@ -857,7 +1075,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             _ => None,
         }?;
 
-        match hir.find(hir.get_parent_node(expr.hir_id))? {
+        match hir.find_parent(expr.hir_id)? {
             Node::ExprField(field) => {
                 if field.ident.name == local.name && field.is_shorthand {
                     return Some(local.name);
@@ -883,7 +1101,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Returns whether the given expression is an `else if`.
     pub(crate) fn is_else_if_block(&self, expr: &hir::Expr<'_>) -> bool {
         if let hir::ExprKind::If(..) = expr.kind {
-            let parent_id = self.tcx.hir().get_parent_node(expr.hir_id);
+            let parent_id = self.tcx.hir().parent_id(expr.hir_id);
             if let Some(Node::Expr(hir::Expr {
                 kind: hir::ExprKind::If(_, _, Some(else_expr)),
                 ..
@@ -1040,7 +1258,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         if let Some(hir::Node::Expr(hir::Expr {
                             kind: hir::ExprKind::Assign(..),
                             ..
-                        })) = self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
+                        })) = self.tcx.hir().find_parent(expr.hir_id)
                         {
                             if mutability.is_mut() {
                                 // Suppressing this diagnostic, we'll properly print it in `check_expr_assign`
@@ -1162,7 +1380,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         }
                     }
                     // If we've reached our target type with just removing `&`, then just print now.
-                    if steps == 0 {
+                    if steps == 0 && !remove.trim().is_empty() {
                         return Some((
                             prefix_span,
                             format!("consider removing the `{}`", remove.trim()),
@@ -1221,6 +1439,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         } else {
                             (prefix_span, format!("{}{}", prefix, "*".repeat(steps)))
                         };
+                        if suggestion.trim().is_empty() {
+                            return None;
+                        }
 
                         return Some((
                             span,
@@ -1267,9 +1488,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
         let mut sugg = vec![];
 
-        if let Some(hir::Node::ExprField(field)) =
-            self.tcx.hir().find(self.tcx.hir().get_parent_node(expr.hir_id))
-        {
+        if let Some(hir::Node::ExprField(field)) = self.tcx.hir().find_parent(expr.hir_id) {
             // `expr` is a literal field for a struct, only suggest if appropriate
             if field.is_shorthand {
                 // This is a field literal
@@ -1625,7 +1844,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             [start, end],
             _,
         ) = expr.kind else { return; };
-        let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+        let parent = self.tcx.hir().parent_id(expr.hir_id);
         if let Some(hir::Node::ExprField(_)) = self.tcx.hir().find(parent) {
             // Ignore `Foo { field: a..Default::default() }`
             return;
@@ -1672,5 +1891,49 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             sugg,
             Applicability::MachineApplicable,
         );
+    }
+
+    /// Identify when the type error is because `()` is found in a binding that was assigned a
+    /// block without a tail expression.
+    fn check_for_binding_assigned_block_without_tail_expression(
+        &self,
+        err: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        checked_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) {
+        if !checked_ty.is_unit() {
+            return;
+        }
+        let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = expr.kind else { return; };
+        let hir::def::Res::Local(hir_id) = path.res else { return; };
+        let Some(hir::Node::Pat(pat)) = self.tcx.hir().find(hir_id) else {
+            return;
+        };
+        let Some(hir::Node::Local(hir::Local {
+            ty: None,
+            init: Some(init),
+            ..
+        })) = self.tcx.hir().find_parent(pat.hir_id) else { return; };
+        let hir::ExprKind::Block(block, None) = init.kind else { return; };
+        if block.expr.is_some() {
+            return;
+        }
+        let [.., stmt] = block.stmts else {
+            err.span_label(block.span, "this empty block is missing a tail expression");
+            return;
+        };
+        let hir::StmtKind::Semi(tail_expr) = stmt.kind else { return; };
+        let Some(ty) = self.node_ty_opt(tail_expr.hir_id) else { return; };
+        if self.can_eq(self.param_env, expected_ty, ty).is_ok() {
+            err.span_suggestion_short(
+                stmt.span.with_lo(tail_expr.span.hi()),
+                "remove this semicolon",
+                "",
+                Applicability::MachineApplicable,
+            );
+        } else {
+            err.span_label(block.span, "this block is missing a tail expression");
+        }
     }
 }

@@ -21,12 +21,6 @@ note: erroneous constant used
 LL |     let _: &'static _ = &C;
    |                         ^^
 
-note: erroneous constant used
-  --> $DIR/invalid-union.rs:43:25
-   |
-LL |     let _: &'static _ = &C;
-   |                         ^^
-
 error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0080`.

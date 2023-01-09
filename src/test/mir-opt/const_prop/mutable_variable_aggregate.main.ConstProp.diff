@@ -21,7 +21,6 @@
           StorageLive(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:9: +3:10
 -         _2 = _1;                         // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
 +         _2 = const (42_i32, 99_i32);     // scope 1 at $DIR/mutable_variable_aggregate.rs:+3:13: +3:14
-          nop;                             // scope 0 at $DIR/mutable_variable_aggregate.rs:+0:11: +4:2
           StorageDead(_2);                 // scope 1 at $DIR/mutable_variable_aggregate.rs:+4:1: +4:2
           StorageDead(_1);                 // scope 0 at $DIR/mutable_variable_aggregate.rs:+4:1: +4:2
           return;                          // scope 0 at $DIR/mutable_variable_aggregate.rs:+4:2: +4:2

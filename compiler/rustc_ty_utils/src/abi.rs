@@ -256,6 +256,11 @@ fn adjust_for_rust_scalar<'tcx>(
             // See https://github.com/rust-lang/unsafe-code-guidelines/issues/326
             let noalias_for_box = cx.tcx.sess.opts.unstable_opts.box_noalias.unwrap_or(true);
 
+            // LLVM prior to version 12 had known miscompiles in the presence of noalias attributes
+            // (see #54878), so it was conditionally disabled, but we don't support earlier
+            // versions at all anymore. We still support turning it off using -Zmutable-noalias.
+            let noalias_mut_ref = cx.tcx.sess.opts.unstable_opts.mutable_noalias.unwrap_or(true);
+
             // `&mut` pointer parameters never alias other parameters,
             // or mutable global data
             //
@@ -263,15 +268,9 @@ fn adjust_for_rust_scalar<'tcx>(
             // and can be marked as both `readonly` and `noalias`, as
             // LLVM's definition of `noalias` is based solely on memory
             // dependencies rather than pointer equality
-            //
-            // Due to past miscompiles in LLVM, we apply a separate NoAliasMutRef attribute
-            // for UniqueBorrowed arguments, so that the codegen backend can decide whether
-            // or not to actually emit the attribute. It can also be controlled with the
-            // `-Zmutable-noalias` debugging option.
             let no_alias = match kind {
-                PointerKind::SharedMutable
-                | PointerKind::UniqueBorrowed
-                | PointerKind::UniqueBorrowedPinned => false,
+                PointerKind::SharedMutable | PointerKind::UniqueBorrowedPinned => false,
+                PointerKind::UniqueBorrowed => noalias_mut_ref,
                 PointerKind::UniqueOwned => noalias_for_box,
                 PointerKind::Frozen => true,
             };
@@ -283,10 +282,6 @@ fn adjust_for_rust_scalar<'tcx>(
 
             if kind == PointerKind::Frozen && !is_return {
                 attrs.set(ArgAttribute::ReadOnly);
-            }
-
-            if kind == PointerKind::UniqueBorrowed && !is_return {
-                attrs.set(ArgAttribute::NoAliasMutRef);
             }
         }
     }

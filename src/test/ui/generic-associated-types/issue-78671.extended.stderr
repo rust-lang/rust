@@ -12,7 +12,7 @@ LL |     type Member<T>;
 help: add missing generic argument
    |
 LL |     Box::new(Family) as &dyn CollectionFamily<Member<T>=usize>
-   |                                               ~~~~~~~~~
+   |                                                     +++
 
 error: aborting due to previous error
 

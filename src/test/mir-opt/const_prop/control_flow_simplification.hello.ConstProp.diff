@@ -25,7 +25,6 @@
       }
   
       bb2: {
-          nop;                             // scope 0 at $DIR/control_flow_simplification.rs:+3:6: +3:6
           StorageDead(_1);                 // scope 0 at $DIR/control_flow_simplification.rs:+3:5: +3:6
           return;                          // scope 0 at $DIR/control_flow_simplification.rs:+4:2: +4:2
       }

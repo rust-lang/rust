@@ -8,7 +8,6 @@
     -Z                       branch-protection=val -- set options for branch target identification and pointer authentication on AArch64
     -Z                           cf-protection=val -- instrument control-flow architecture protection
     -Z               cgu-partitioning-strategy=val -- the codegen unit partitioning strategy to use
-    -Z                                   chalk=val -- enable the experimental Chalk-based trait solving engine
     -Z                         codegen-backend=val -- the backend to use
     -Z                             combine-cgu=val -- combine CGUs into a single one
     -Z                              crate-attr=val -- inject the given attribute in the crate
@@ -35,7 +34,8 @@
     -Z            dump-mir-exclude-pass-number=val -- exclude the pass number when dumping MIR (used in tests) (default: no)
     -Z                       dump-mir-graphviz=val -- in addition to `.mir` files, create graphviz `.dot` files (and with `-Z instrument-coverage`, also create a `.dot` file for the MIR-derived coverage graph) (default: no)
     -Z                       dump-mir-spanview=val -- in addition to `.mir` files, create `.html` files to view spans for all `statement`s (including terminators), only `terminator` spans, or computed `block` spans (one span encompassing a block's terminator and all statements). If `-Z instrument-coverage` is also enabled, create an additional `.html` file showing the computed coverage spans.
-    -Z                         dump-mono-stats=val -- output statistics about monomorphization collection (format: markdown)
+    -Z                         dump-mono-stats=val -- output statistics about monomorphization collection
+    -Z                  dump-mono-stats-format=val -- the format to use for -Z dump-mono-stats (`markdown` (default) or `json`)
     -Z                           dwarf-version=val -- version of DWARF debug information to emit (default: 2 or 4, depending on platform)
     -Z                               dylib-lto=val -- enables LTO for dylib crate type
     -Z                        emit-stack-sizes=val -- emit a section containing stack size metadata (default: no)
@@ -174,6 +174,7 @@
     -Z                               tls-model=val -- choose the TLS model to use (`rustc --print tls-models` for details)
     -Z                            trace-macros=val -- for every macro invocation, print its name and arguments (default: no)
     -Z                       track-diagnostics=val -- tracks where in rustc a diagnostic was emitted
+    -Z                            trait-solver=val -- specify the trait solver mode used by rustc (default: classic)
     -Z                translate-additional-ftl=val -- additional fluent translation to preferentially use (for testing translation)
     -Z        translate-directionality-markers=val -- emit directionality isolation markers in translated diagnostics
     -Z                          translate-lang=val -- language identifier for diagnostic output

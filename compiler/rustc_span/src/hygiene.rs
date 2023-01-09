@@ -110,7 +110,7 @@ fn assert_default_hashing_controls<CTX: HashStableContext>(ctx: &CTX, msg: &str)
         // Such configuration must not be used for metadata.
         HashingControls { hash_spans }
             if hash_spans == !ctx.unstable_opts_incremental_ignore_spans() => {}
-        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {:?}", other),
+        other => panic!("Attempted hashing of {msg} with non-default HashingControls: {other:?}"),
     }
 }
 
@@ -629,7 +629,7 @@ pub fn update_dollar_crate_names(mut get_name: impl FnMut(SyntaxContext) -> Symb
 pub fn debug_hygiene_data(verbose: bool) -> String {
     HygieneData::with(|data| {
         if verbose {
-            format!("{:#?}", data)
+            format!("{data:#?}")
         } else {
             let mut s = String::from("Expansions:");
             let mut debug_expn_data = |(id, expn_data): (&ExpnId, &ExpnData)| {
@@ -1067,9 +1067,9 @@ impl ExpnKind {
         match *self {
             ExpnKind::Root => kw::PathRoot.to_string(),
             ExpnKind::Macro(macro_kind, name) => match macro_kind {
-                MacroKind::Bang => format!("{}!", name),
-                MacroKind::Attr => format!("#[{}]", name),
-                MacroKind::Derive => format!("#[derive({})]", name),
+                MacroKind::Bang => format!("{name}!"),
+                MacroKind::Attr => format!("#[{name}]"),
+                MacroKind::Derive => format!("#[derive({name})]"),
             },
             ExpnKind::AstPass(kind) => kind.descr().to_string(),
             ExpnKind::Desugaring(kind) => format!("desugaring of {}", kind.descr()),
@@ -1466,11 +1466,7 @@ impl<D: Decoder> Decodable<D> for SyntaxContext {
 /// collisions are only possible between `ExpnId`s within the same crate.
 fn update_disambiguator(expn_data: &mut ExpnData, mut ctx: impl HashStableContext) -> ExpnHash {
     // This disambiguator should not have been set yet.
-    assert_eq!(
-        expn_data.disambiguator, 0,
-        "Already set disambiguator for ExpnData: {:?}",
-        expn_data
-    );
+    assert_eq!(expn_data.disambiguator, 0, "Already set disambiguator for ExpnData: {expn_data:?}");
     assert_default_hashing_controls(&ctx, "ExpnData (disambiguator)");
     let mut expn_hash = expn_data.hash_expn(&mut ctx);
 

@@ -1,4 +1,4 @@
-error[E0061]: this enum variant takes 1 argument but 2 arguments were supplied
+error[E0061]: enum variant takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:7:36
    |
 LL |     let _: Result<(i32, i8), ()> = Ok(1, 2);
@@ -11,7 +11,7 @@ help: wrap these arguments in parentheses to construct a tuple
 LL |     let _: Result<(i32, i8), ()> = Ok((1, 2));
    |                                       +    +
 
-error[E0061]: this enum variant takes 1 argument but 3 arguments were supplied
+error[E0061]: enum variant takes 1 argument but 3 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:9:46
    |
 LL |     let _: Option<(i32, i8, &'static str)> = Some(1, 2, "hi");
@@ -71,7 +71,7 @@ help: use a trailing comma to create a tuple with one element
 LL |     let _: Option<(i32,)> = Some((3,));
    |                                    +
 
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
+error[E0061]: function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:20:5
    |
 LL |     two_ints(1, 2);
@@ -87,7 +87,7 @@ help: wrap these arguments in parentheses to construct a tuple
 LL |     two_ints((1, 2));
    |              +    +
 
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
+error[E0061]: function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:22:5
    |
 LL |     with_generic(3, 4);
@@ -103,7 +103,7 @@ help: wrap these arguments in parentheses to construct a tuple
 LL |     with_generic((3, 4));
    |                  +    +
 
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
+error[E0061]: function takes 1 argument but 2 arguments were supplied
   --> $DIR/args-instead-of-tuple.rs:31:9
    |
 LL |         with_generic(a, b);

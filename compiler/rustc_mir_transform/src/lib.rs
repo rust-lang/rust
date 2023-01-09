@@ -524,11 +524,8 @@ fn run_runtime_lowering_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
 
 /// Returns the sequence of passes that do the initial cleanup of runtime MIR.
 fn run_runtime_cleanup_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
-    let passes: &[&dyn MirPass<'tcx>] = &[
-        &elaborate_box_derefs::ElaborateBoxDerefs,
-        &lower_intrinsics::LowerIntrinsics,
-        &simplify::SimplifyCfg::new("elaborate-drops"),
-    ];
+    let passes: &[&dyn MirPass<'tcx>] =
+        &[&lower_intrinsics::LowerIntrinsics, &simplify::SimplifyCfg::new("elaborate-drops")];
 
     pm::run_passes(tcx, body, passes, Some(MirPhase::Runtime(RuntimePhase::PostCleanup)));
 }
@@ -560,6 +557,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &multiple_return_terminators::MultipleReturnTerminators,
             &instcombine::InstCombine,
             &separate_const_switch::SeparateConstSwitch,
+            &simplify::SimplifyLocals::new("before-const-prop"),
             //
             // FIXME(#70073): This pass is responsible for both optimization as well as some lints.
             &const_prop::ConstProp,
@@ -578,7 +576,7 @@ fn run_optimization_passes<'tcx>(tcx: TyCtxt<'tcx>, body: &mut Body<'tcx>) {
             &o1(remove_noop_landing_pads::RemoveNoopLandingPads),
             &o1(simplify::SimplifyCfg::new("final")),
             &nrvo::RenameReturnPlace,
-            &simplify::SimplifyLocals,
+            &simplify::SimplifyLocals::new("final"),
             &multiple_return_terminators::MultipleReturnTerminators,
             &deduplicate_blocks::DeduplicateBlocks,
             // Some cleanup necessary at least for LLVM and potentially other codegen backends.

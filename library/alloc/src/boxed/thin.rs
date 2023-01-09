@@ -226,24 +226,45 @@ impl<H> WithHeader<H> {
     // - Assumes that either `value` can be dereferenced, or is the
     //   `NonNull::dangling()` we use when both `T` and `H` are ZSTs.
     unsafe fn drop<T: ?Sized>(&self, value: *mut T) {
+        struct DropGuard<H> {
+            ptr: NonNull<u8>,
+            value_layout: Layout,
+            _marker: PhantomData<H>,
+        }
+
+        impl<H> Drop for DropGuard<H> {
+            fn drop(&mut self) {
+                unsafe {
+                    // SAFETY: Layout must have been computable if we're in drop
+                    let (layout, value_offset) =
+                        WithHeader::<H>::alloc_layout(self.value_layout).unwrap_unchecked();
+
+                    // Note: Don't deallocate if the layout size is zero, because the pointer
+                    // didn't come from the allocator.
+                    if layout.size() != 0 {
+                        alloc::dealloc(self.ptr.as_ptr().sub(value_offset), layout);
+                    } else {
+                        debug_assert!(
+                            value_offset == 0
+                                && mem::size_of::<H>() == 0
+                                && self.value_layout.size() == 0
+                        );
+                    }
+                }
+            }
+        }
+
         unsafe {
-            let value_layout = Layout::for_value_raw(value);
-            // SAFETY: Layout must have been computable if we're in drop
-            let (layout, value_offset) = Self::alloc_layout(value_layout).unwrap_unchecked();
+            // `_guard` will deallocate the memory when dropped, even if `drop_in_place` unwinds.
+            let _guard = DropGuard {
+                ptr: self.0,
+                value_layout: Layout::for_value_raw(value),
+                _marker: PhantomData::<H>,
+            };
 
             // We only drop the value because the Pointee trait requires that the metadata is copy
             // aka trivially droppable.
             ptr::drop_in_place::<T>(value);
-
-            // Note: Don't deallocate if the layout size is zero, because the pointer
-            // didn't come from the allocator.
-            if layout.size() != 0 {
-                alloc::dealloc(self.0.as_ptr().sub(value_offset), layout);
-            } else {
-                debug_assert!(
-                    value_offset == 0 && mem::size_of::<H>() == 0 && value_layout.size() == 0
-                );
-            }
         }
     }
 

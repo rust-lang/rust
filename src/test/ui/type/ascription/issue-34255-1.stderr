@@ -28,7 +28,7 @@ LL |         input_cells: Vec::new()
 help: add missing generic argument
    |
 LL |         input_cells: Vec<T>::new()
-   |                      ~~~~~~
+   |                         +++
 
 error: aborting due to 3 previous errors
 

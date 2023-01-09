@@ -11,19 +11,19 @@ assert-false: "pre.example-line-numbers"
 define-function: (
     "check-colors",
     (theme, color),
-    [
+    block {
         // We now set the setting to show the line numbers on code examples.
-        ("local-storage", {
+        local-storage: {
             "rustdoc-theme": |theme|,
             "rustdoc-use-system-theme": "false",
             "rustdoc-line-numbers": "true"
-        }),
+        }
         // We reload to make the line numbers appear and change theme.
-        ("reload"),
+        reload:
         // We wait for them to be added into the DOM by the JS...
-        ("wait-for", "pre.example-line-numbers"),
+        wait-for: "pre.example-line-numbers"
         // If the test didn't fail, it means that it was found!
-        ("assert-css", (
+        assert-css: (
             "pre.example-line-numbers",
             {
                 "color": |color|,
@@ -32,8 +32,8 @@ define-function: (
                 "text-align": "right",
             },
             ALL,
-        )),
-    ],
+        )
+    },
 )
 call-function: ("check-colors", {
     "theme": "ayu",

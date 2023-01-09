@@ -234,6 +234,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             ) => self.check_expr_path(qpath, expr, args),
             _ => self.check_expr_kind(expr, expected),
         });
+        let ty = self.resolve_vars_if_possible(ty);
 
         // Warn for non-block expressions with diverging children.
         match expr.kind {
@@ -920,7 +921,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         original_expr_id: HirId,
         then: impl FnOnce(&hir::Expr<'_>),
     ) {
-        let mut parent = self.tcx.hir().get_parent_node(original_expr_id);
+        let mut parent = self.tcx.hir().parent_id(original_expr_id);
         while let Some(node) = self.tcx.hir().find(parent) {
             match node {
                 hir::Node::Expr(hir::Expr {
@@ -943,7 +944,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 }) => {
                     // Check if our original expression is a child of the condition of a while loop
                     let expr_is_ancestor = std::iter::successors(Some(original_expr_id), |id| {
-                        self.tcx.hir().find_parent_node(*id)
+                        self.tcx.hir().opt_parent_id(*id)
                     })
                     .take_while(|id| *id != parent)
                     .any(|id| id == expr.hir_id);
@@ -959,7 +960,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 | hir::Node::TraitItem(_)
                 | hir::Node::Crate(_) => break,
                 _ => {
-                    parent = self.tcx.hir().get_parent_node(parent);
+                    parent = self.tcx.hir().parent_id(parent);
                 }
             }
         }
@@ -1083,7 +1084,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Do not suggest `if let x = y` as `==` is way more likely to be the intention.
                 let hir = self.tcx.hir();
                 if let hir::Node::Expr(hir::Expr { kind: ExprKind::If { .. }, .. }) =
-                    hir.get(hir.get_parent_node(hir.get_parent_node(expr.hir_id)))
+                    hir.get_parent(hir.parent_id(expr.hir_id))
                 {
                     err.span_suggestion_verbose(
                         expr.span.shrink_to_lo(),
@@ -2216,7 +2217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
                             return field_ty;
                         }
-                        private_candidate = Some((adjustments, base_def.did(), field_ty));
+                        private_candidate = Some((adjustments, base_def.did()));
                     }
                 }
                 ty::Tuple(tys) => {
@@ -2239,12 +2240,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
-        if let Some((adjustments, did, field_ty)) = private_candidate {
+        if let Some((adjustments, did)) = private_candidate {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
             // creating erroneous projection.
             self.apply_adjustments(base, adjustments);
             self.ban_private_field_access(expr, base_ty, field, did);
-            return field_ty;
+            return self.tcx().ty_error();
         }
 
         if field.name == kw::Empty {
@@ -2462,7 +2463,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         err.span_label(field.span, "method, not a field");
         let expr_is_call =
             if let hir::Node::Expr(hir::Expr { kind: ExprKind::Call(callee, _args), .. }) =
-                self.tcx.hir().get(self.tcx.hir().get_parent_node(expr.hir_id))
+                self.tcx.hir().get_parent(expr.hir_id)
             {
                 expr.hir_id == callee.hir_id
             } else {

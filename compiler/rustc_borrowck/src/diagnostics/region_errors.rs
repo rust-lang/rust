@@ -4,9 +4,9 @@
 
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_errors::{Applicability, Diagnostic, DiagnosticBuilder, ErrorGuaranteed, MultiSpan};
+use rustc_hir as hir;
 use rustc_hir::def_id::DefId;
 use rustc_hir::intravisit::Visitor;
-use rustc_hir::{self as hir, Item, ItemKind, Node};
 use rustc_infer::infer::{
     error_reporting::nice_region_error::{
         self, find_anon_type, find_param_with_region, suggest_adding_lifetime_params,
@@ -192,6 +192,8 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         // buffered in the `MirBorrowckCtxt`.
 
         let mut outlives_suggestion = OutlivesSuggestionBuilder::default();
+        let mut last_unexpected_hidden_region: Option<(Span, Ty<'_>, ty::OpaqueTypeKey<'tcx>)> =
+            None;
 
         for nll_error in nll_errors.into_iter() {
             match nll_error {
@@ -234,13 +236,19 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                     let named_ty = self.regioncx.name_regions(self.infcx.tcx, hidden_ty);
                     let named_key = self.regioncx.name_regions(self.infcx.tcx, key);
                     let named_region = self.regioncx.name_regions(self.infcx.tcx, member_region);
-                    self.buffer_error(unexpected_hidden_region_diagnostic(
+                    let mut diag = unexpected_hidden_region_diagnostic(
                         self.infcx.tcx,
                         span,
                         named_ty,
                         named_region,
                         named_key,
-                    ));
+                    );
+                    if last_unexpected_hidden_region != Some((span, named_ty, named_key)) {
+                        self.buffer_error(diag);
+                        last_unexpected_hidden_region = Some((span, named_ty, named_key));
+                    } else {
+                        diag.delay_as_bug();
+                    }
                 }
 
                 RegionErrorKind::BoundUniversalRegionError {
@@ -289,71 +297,6 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
 
         // Emit one outlives suggestions for each MIR def we borrowck
         outlives_suggestion.add_suggestion(self);
-    }
-
-    fn get_impl_ident_and_self_ty_from_trait(
-        &self,
-        def_id: DefId,
-        trait_objects: &FxIndexSet<DefId>,
-    ) -> Option<(Ident, &'tcx hir::Ty<'tcx>)> {
-        let tcx = self.infcx.tcx;
-        match tcx.hir().get_if_local(def_id) {
-            Some(Node::ImplItem(impl_item)) => {
-                match tcx.hir().find_by_def_id(tcx.hir().get_parent_item(impl_item.hir_id()).def_id)
-                {
-                    Some(Node::Item(Item {
-                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                        ..
-                    })) => Some((impl_item.ident, self_ty)),
-                    _ => None,
-                }
-            }
-            Some(Node::TraitItem(trait_item)) => {
-                let trait_did = tcx.hir().get_parent_item(trait_item.hir_id());
-                match tcx.hir().find_by_def_id(trait_did.def_id) {
-                    Some(Node::Item(Item { kind: ItemKind::Trait(..), .. })) => {
-                        // The method being called is defined in the `trait`, but the `'static`
-                        // obligation comes from the `impl`. Find that `impl` so that we can point
-                        // at it in the suggestion.
-                        let trait_did = trait_did.to_def_id();
-                        match tcx
-                            .hir()
-                            .trait_impls(trait_did)
-                            .iter()
-                            .filter_map(|&impl_did| {
-                                match tcx.hir().get_if_local(impl_did.to_def_id()) {
-                                    Some(Node::Item(Item {
-                                        kind: ItemKind::Impl(hir::Impl { self_ty, .. }),
-                                        ..
-                                    })) if trait_objects.iter().all(|did| {
-                                        // FIXME: we should check `self_ty` against the receiver
-                                        // type in the `UnifyReceiver` context, but for now, use
-                                        // this imperfect proxy. This will fail if there are
-                                        // multiple `impl`s for the same trait like
-                                        // `impl Foo for Box<dyn Bar>` and `impl Foo for dyn Bar`.
-                                        // In that case, only the first one will get suggestions.
-                                        let mut traits = vec![];
-                                        let mut hir_v = HirTraitObjectVisitor(&mut traits, *did);
-                                        hir_v.visit_ty(self_ty);
-                                        !traits.is_empty()
-                                    }) =>
-                                    {
-                                        Some(self_ty)
-                                    }
-                                    _ => None,
-                                }
-                            })
-                            .next()
-                        {
-                            Some(self_ty) => Some((trait_item.ident, self_ty)),
-                            _ => None,
-                        }
-                    }
-                    _ => None,
-                }
-            }
-            _ => None,
-        }
     }
 
     /// Report an error because the universal region `fr` was required to outlive
@@ -795,6 +738,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
                 Some(arg),
                 captures,
                 Some((param.param_ty_span, param.param_ty.to_string())),
+                self.infcx.tcx.is_suitable_region(f).map(|r| r.def_id),
             );
         }
     }
@@ -850,7 +794,7 @@ impl<'a, 'tcx> MirBorrowckCtxt<'a, 'tcx> {
         visitor.visit_ty(param.param_ty);
 
         let Some((ident, self_ty)) =
-            self.get_impl_ident_and_self_ty_from_trait(instance.def_id(), &visitor.0) else {return};
+            NiceRegionError::get_impl_ident_and_self_ty_from_trait(tcx, instance.def_id(), &visitor.0) else { return; };
 
         self.suggest_constrain_dyn_trait_in_impl(diag, &visitor.0, ident, self_ty);
     }

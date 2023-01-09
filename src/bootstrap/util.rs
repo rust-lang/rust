@@ -255,35 +255,6 @@ pub enum CiEnv {
     GitHubActions,
 }
 
-impl CiEnv {
-    /// Obtains the current CI environment.
-    pub fn current() -> CiEnv {
-        if env::var("TF_BUILD").map_or(false, |e| e == "True") {
-            CiEnv::AzurePipelines
-        } else if env::var("GITHUB_ACTIONS").map_or(false, |e| e == "true") {
-            CiEnv::GitHubActions
-        } else {
-            CiEnv::None
-        }
-    }
-
-    pub fn is_ci() -> bool {
-        Self::current() != CiEnv::None
-    }
-
-    /// If in a CI environment, forces the command to run with colors.
-    pub fn force_coloring_in_ci(self, cmd: &mut Command) {
-        if self != CiEnv::None {
-            // Due to use of stamp/docker, the output stream of rustbuild is not
-            // a TTY in CI, so coloring is by-default turned off.
-            // The explicit `TERM=xterm` environment is needed for
-            // `--color always` to actually work. This env var was lost when
-            // compiling through the Makefile. Very strange.
-            cmd.env("TERM", "xterm").args(&["--color", "always"]);
-        }
-    }
-}
-
 pub fn forcing_clang_based_tests() -> bool {
     if let Some(var) = env::var_os("RUSTBUILD_FORCE_CLANG_BASED_TESTS") {
         match &var.to_string_lossy().to_lowercase()[..] {
@@ -439,6 +410,23 @@ pub fn output(cmd: &mut Command) -> String {
         );
     }
     String::from_utf8(output.stdout).unwrap()
+}
+
+pub fn output_result(cmd: &mut Command) -> Result<String, String> {
+    let output = match cmd.stderr(Stdio::inherit()).output() {
+        Ok(status) => status,
+        Err(e) => return Err(format!("failed to run command: {:?}: {}", cmd, e)),
+    };
+    if !output.status.success() {
+        return Err(format!(
+            "command did not execute successfully: {:?}\n\
+             expected success, got: {}\n{}",
+            cmd,
+            output.status,
+            String::from_utf8(output.stderr).map_err(|err| format!("{err:?}"))?
+        ));
+    }
+    Ok(String::from_utf8(output.stdout).map_err(|err| format!("{err:?}"))?)
 }
 
 /// Returns the last-modified time for `path`, or zero if it doesn't exist.

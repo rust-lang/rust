@@ -1,5 +1,5 @@
 // run-pass
-// compile-flags: -Z chalk
+// compile-flags: -Z trait-solver=chalk
 
 // Test that `Clone` is correctly implemented for builtin types.
 

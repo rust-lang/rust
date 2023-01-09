@@ -25,7 +25,7 @@ pub fn arg_expand_all(at_args: &[String]) -> Vec<String> {
             Ok(arg) => args.extend(arg),
             Err(err) => rustc_session::early_error(
                 rustc_session::config::ErrorOutputType::default(),
-                &format!("Failed to load argument file: {}", err),
+                &format!("Failed to load argument file: {err}"),
             ),
         }
     }
@@ -42,8 +42,8 @@ impl fmt::Display for Error {
     fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Error::Utf8Error(None) => write!(fmt, "Utf8 error"),
-            Error::Utf8Error(Some(path)) => write!(fmt, "Utf8 error in {}", path),
-            Error::IOError(path, err) => write!(fmt, "IO Error: {}: {}", path, err),
+            Error::Utf8Error(Some(path)) => write!(fmt, "Utf8 error in {path}"),
+            Error::IOError(path, err) => write!(fmt, "IO Error: {path}: {err}"),
         }
     }
 }

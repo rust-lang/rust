@@ -200,7 +200,7 @@ impl<'tcx> MirBorrowckCtxt<'_, 'tcx> {
     /// increment the counter.
     ///
     /// This is _not_ idempotent. Call `give_region_a_name` when possible.
-    fn synthesize_region_name(&self) -> Symbol {
+    pub(crate) fn synthesize_region_name(&self) -> Symbol {
         let c = self.next_region_name.replace_with(|counter| *counter + 1);
         Symbol::intern(&format!("'{:?}", c))
     }

@@ -597,8 +597,7 @@ impl<Id> Res<Id> {
     where
         Id: Debug,
     {
-        self.opt_def_id()
-            .unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {:?}", self))
+        self.opt_def_id().unwrap_or_else(|| panic!("attempted .def_id() on invalid res: {self:?}"))
     }
 
     /// Return `Some(..)` with the `DefId` of this `Res` if it has a ID, else `None`.

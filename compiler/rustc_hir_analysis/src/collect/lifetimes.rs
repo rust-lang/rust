@@ -682,7 +682,7 @@ impl<'a, 'tcx> Visitor<'tcx> for LifetimeContext<'a, 'tcx> {
                     };
                     let hir_id = self.tcx.hir().local_def_id_to_hir_id(def_id);
                     // Ensure that the parent of the def is an item, not HRTB
-                    let parent_id = self.tcx.hir().get_parent_node(hir_id);
+                    let parent_id = self.tcx.hir().parent_id(hir_id);
                     if !parent_id.is_owner() {
                         struct_span_err!(
                             self.tcx.sess,
@@ -1195,8 +1195,10 @@ impl<'a, 'tcx> LifetimeContext<'a, 'tcx> {
                     // Fresh lifetimes in APIT used to be allowed in async fns and forbidden in
                     // regular fns.
                     if let Some(hir::PredicateOrigin::ImplTrait) = where_bound_origin
-                        && let hir::LifetimeName::Param(_) = lifetime_ref.res
-                        && lifetime_ref.is_anonymous()
+                        && let hir::LifetimeName::Param(param_id) = lifetime_ref.res
+                        && let Some(generics) = self.tcx.hir().get_generics(self.tcx.local_parent(param_id))
+                        && let Some(param) = generics.params.iter().find(|p| p.def_id == param_id)
+                        && param.is_elided_lifetime()
                         && let hir::IsAsync::NotAsync = self.tcx.asyncness(lifetime_ref.hir_id.owner.def_id)
                         && !self.tcx.features().anonymous_lifetime_in_impl_trait
                     {

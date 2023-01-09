@@ -1,3 +1,13 @@
+/// A macro for triggering an ICE.
+/// Calling `bug` instead of panicking will result in a nicer error message and should
+/// therefore be prefered over `panic`/`unreachable` or others.
+///
+/// If you have a span available, you should use [`span_bug`] instead.
+///
+/// If the bug should only be emitted when compilation didn't fail, [`Session::delay_span_bug`] may be useful.
+///
+/// [`Session::delay_span_bug`]: rustc_session::Session::delay_span_bug
+/// [`span_bug`]: crate::span_bug
 #[macro_export]
 macro_rules! bug {
     () => ( $crate::bug!("impossible case reached") );
@@ -8,6 +18,14 @@ macro_rules! bug {
     });
 }
 
+/// A macro for triggering an ICE with a span.
+/// Calling `span_bug!` instead of panicking will result in a nicer error message and point
+/// at the code the compiler was compiling when it ICEd. This is the preferred way to trigger
+/// ICEs.
+///
+/// If the bug should only be emitted when compilation didn't fail, [`Session::delay_span_bug`] may be useful.
+///
+/// [`Session::delay_span_bug`]: rustc_session::Session::delay_span_bug
 #[macro_export]
 macro_rules! span_bug {
     ($span:expr, $msg:expr) => ({ $crate::util::bug::span_bug_fmt($span, ::std::format_args!($msg)) });

@@ -57,7 +57,12 @@ pub enum MethodError<'tcx> {
     PrivateMatch(DefKind, DefId, Vec<DefId>),
 
     // Found a `Self: Sized` bound where `Self` is a trait object.
-    IllegalSizedBound(Vec<DefId>, bool, Span),
+    IllegalSizedBound {
+        candidates: Vec<DefId>,
+        needs_mut: bool,
+        bound_span: Span,
+        self_expr: &'tcx hir::Expr<'tcx>,
+    },
 
     // Found a match, but the return type is wrong
     BadReturnType,
@@ -112,7 +117,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Err(NoMatch(..)) => false,
             Err(Ambiguity(..)) => true,
             Err(PrivateMatch(..)) => allow_private,
-            Err(IllegalSizedBound(..)) => true,
+            Err(IllegalSizedBound { .. }) => true,
             Err(BadReturnType) => bug!("no return type expectations but got BadReturnType"),
         }
     }
@@ -236,7 +241,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     _ => Vec::new(),
                 };
 
-            return Err(IllegalSizedBound(candidates, needs_mut, span));
+            return Err(IllegalSizedBound { candidates, needs_mut, bound_span: span, self_expr });
         }
 
         Ok(result.callee)
