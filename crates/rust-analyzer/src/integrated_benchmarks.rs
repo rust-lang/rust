@@ -48,7 +48,7 @@ fn integrated_highlighting_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {}", path))
+        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
     {
@@ -102,7 +102,7 @@ fn integrated_completion_benchmark() {
     let file_id = {
         let file = workspace_to_load.join(file);
         let path = VfsPath::from(AbsPathBuf::assert(file));
-        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {}", path))
+        vfs.file_id(&path).unwrap_or_else(|| panic!("can't find virtual file for {path}"))
     };
 
     {

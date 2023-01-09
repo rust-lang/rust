@@ -63,7 +63,7 @@ fn test_fn_like_macro_clone_raw_ident() {
         "r#async",
         expect![[r#"
             SUBTREE $
-              IDENT   async 4294967295"#]],
+              IDENT   r#async 4294967295"#]],
     );
 }
 
@@ -86,15 +86,13 @@ fn test_fn_like_mk_literals() {
 
 #[test]
 fn test_fn_like_mk_idents() {
-    // FIXME: this test is wrong: raw should be 'r#raw' but ABIs 1.64 and below
-    // simply ignore `is_raw` when implementing the `Ident` interface.
     assert_expand(
         "fn_like_mk_idents",
         r#""#,
         expect![[r#"
             SUBTREE $
               IDENT   standard 4294967295
-              IDENT   raw 4294967295"#]],
+              IDENT   r#raw 4294967295"#]],
     );
 }
 

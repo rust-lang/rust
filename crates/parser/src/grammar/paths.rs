@@ -83,11 +83,12 @@ fn path_segment(p: &mut Parser<'_>, mode: Mode, first: bool) {
         }
         p.expect(T![>]);
     } else {
-        let mut empty = true;
-        if first {
+        let empty = if first {
             p.eat(T![::]);
-            empty = false;
-        }
+            false
+        } else {
+            true
+        };
         match p.current() {
             IDENT => {
                 name_ref(p);

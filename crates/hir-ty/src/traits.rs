@@ -18,7 +18,7 @@ use crate::{
 };
 
 /// This controls how much 'time' we give the Chalk solver before giving up.
-const CHALK_SOLVER_FUEL: i32 = 100;
+const CHALK_SOLVER_FUEL: i32 = 1000;
 
 #[derive(Debug, Copy, Clone)]
 pub(crate) struct ChalkContext<'a> {
@@ -55,13 +55,10 @@ impl TraitEnvironment {
         }
     }
 
-    pub fn traits_in_scope_from_clauses<'a>(
-        &'a self,
-        ty: Ty,
-    ) -> impl Iterator<Item = TraitId> + 'a {
+    pub fn traits_in_scope_from_clauses(&self, ty: Ty) -> impl Iterator<Item = TraitId> + '_ {
         self.traits_from_clauses
             .iter()
-            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then(|| *trait_id))
+            .filter_map(move |(self_ty, trait_id)| (*self_ty == ty).then_some(*trait_id))
     }
 }
 
@@ -130,7 +127,7 @@ fn solve(
 
     let mut solve = || {
         let _ctx = if is_chalk_debug() || is_chalk_print() {
-            Some(panic_context::enter(format!("solving {:?}", goal)))
+            Some(panic_context::enter(format!("solving {goal:?}")))
         } else {
             None
         };

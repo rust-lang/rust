@@ -115,7 +115,8 @@ pub fn pseudo_derive_attr_expansion(
     };
 
     let mut token_trees = Vec::new();
-    for tt in (&args.token_trees)
+    for tt in args
+        .token_trees
         .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(tt::Punct { char: ',', .. }))))
     {
         token_trees.push(mk_leaf('#'));

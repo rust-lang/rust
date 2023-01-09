@@ -140,8 +140,8 @@ pub fn parse_format_exprs(input: &str) -> Result<(String, Vec<Arg>), ()> {
                         output.push_str(trimmed);
                     } else if matches!(state, State::Expr) {
                         extracted_expressions.push(Arg::Expr(trimmed.into()));
-                    } else {
-                        extracted_expressions.push(Arg::Ident(trimmed.into()));
+                    } else if matches!(state, State::Ident) {
+                        output.push_str(trimmed);
                     }
 
                     output.push(chr);
@@ -205,7 +205,7 @@ mod tests {
     fn check(input: &str, expect: &Expect) {
         let (output, exprs) = parse_format_exprs(input).unwrap_or(("-".to_string(), vec![]));
         let outcome_repr = if !exprs.is_empty() {
-            format!("{}; {}", output, with_placeholders(exprs).join(", "))
+            format!("{output}; {}", with_placeholders(exprs).join(", "))
         } else {
             output
         };
@@ -218,9 +218,9 @@ mod tests {
         let test_vector = &[
             ("no expressions", expect![["no expressions"]]),
             (r"no expressions with \$0$1", expect![r"no expressions with \\\$0\$1"]),
-            ("{expr} is {2 + 2}", expect![["{} is {}; expr, 2 + 2"]]),
-            ("{expr:?}", expect![["{:?}; expr"]]),
-            ("{expr:1$}", expect![[r"{:1\$}; expr"]]),
+            ("{expr} is {2 + 2}", expect![["{expr} is {}; 2 + 2"]]),
+            ("{expr:?}", expect![["{expr:?}"]]),
+            ("{expr:1$}", expect![[r"{expr:1\$}"]]),
             ("{:1$}", expect![[r"{:1\$}; $1"]]),
             ("{:>padding$}", expect![[r"{:>padding\$}; $1"]]),
             ("{}, {}, {0}", expect![[r"{}, {}, {0}; $1, $2"]]),
@@ -230,8 +230,8 @@ mod tests {
             ("malformed}", expect![["-"]]),
             ("{{correct", expect![["{{correct"]]),
             ("correct}}", expect![["correct}}"]]),
-            ("{correct}}}", expect![["{}}}; correct"]]),
-            ("{correct}}}}}", expect![["{}}}}}; correct"]]),
+            ("{correct}}}", expect![["{correct}}}"]]),
+            ("{correct}}}}}", expect![["{correct}}}}}"]]),
             ("{incorrect}}", expect![["-"]]),
             ("placeholders {} {}", expect![["placeholders {} {}; $1, $2"]]),
             ("mixed {} {2 + 2} {}", expect![["mixed {} {} {}; $1, 2 + 2, $2"]]),
@@ -239,7 +239,7 @@ mod tests {
                 "{SomeStruct { val_a: 0, val_b: 1 }}",
                 expect![["{}; SomeStruct { val_a: 0, val_b: 1 }"]],
             ),
-            ("{expr:?} is {2.32f64:.5}", expect![["{:?} is {:.5}; expr, 2.32f64"]]),
+            ("{expr:?} is {2.32f64:.5}", expect![["{expr:?} is {:.5}; 2.32f64"]]),
             (
                 "{SomeStruct { val_a: 0, val_b: 1 }:?}",
                 expect![["{:?}; SomeStruct { val_a: 0, val_b: 1 }"]],
@@ -262,8 +262,6 @@ mod tests {
                 .unwrap()
                 .1,
             vec![
-                Arg::Ident("_ident".to_owned()),
-                Arg::Ident("r#raw_ident".to_owned()),
                 Arg::Expr("expr.obj".to_owned()),
                 Arg::Expr("name {thing: 42}".to_owned()),
                 Arg::Placeholder

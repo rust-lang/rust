@@ -616,7 +616,7 @@ fn main() {
 
         let fmt_syntax = |syn: &SyntaxElement| match syn.kind() {
             SyntaxKind::WHITESPACE => format!("{:?}", syn.to_string()),
-            _ => format!("{}", syn),
+            _ => format!("{syn}"),
         };
 
         let insertions =
@@ -637,7 +637,7 @@ fn main() {
             .iter()
             .sorted_by_key(|(syntax, _)| syntax.text_range().start())
             .format_with("\n", |(k, v), f| {
-                f(&format!("Line {}: {:?} -> {}", line_number(k), k, fmt_syntax(v)))
+                f(&format!("Line {}: {k:?} -> {}", line_number(k), fmt_syntax(v)))
             });
 
         let deletions = diff
@@ -646,8 +646,7 @@ fn main() {
             .format_with("\n", |v, f| f(&format!("Line {}: {}", line_number(v), &fmt_syntax(v))));
 
         let actual = format!(
-            "insertions:\n\n{}\n\nreplacements:\n\n{}\n\ndeletions:\n\n{}\n",
-            insertions, replacements, deletions
+            "insertions:\n\n{insertions}\n\nreplacements:\n\n{replacements}\n\ndeletions:\n\n{deletions}\n"
         );
         expected_diff.assert_eq(&actual);
 

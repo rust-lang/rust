@@ -56,12 +56,11 @@ fn check_lsp_extensions_docs() {
             "
 lsp_ext.rs was changed without touching lsp-extensions.md.
 
-Expected hash: {:x}
-Actual hash:   {:x}
+Expected hash: {expected_hash:x}
+Actual hash:   {actual_hash:x}
 
 Please adjust docs/dev/lsp-extensions.md.
-",
-            expected_hash, actual_hash
+"
         )
     }
 }
@@ -194,6 +193,7 @@ MIT OR Apache-2.0
 MIT OR Apache-2.0 OR Zlib
 MIT OR Zlib OR Apache-2.0
 MIT/Apache-2.0
+Unlicense OR MIT
 Unlicense/MIT
 Zlib OR Apache-2.0 OR MIT
 "
@@ -216,18 +216,18 @@ Zlib OR Apache-2.0 OR MIT
         diff.push_str("New Licenses:\n");
         for &l in licenses.iter() {
             if !expected.contains(&l) {
-                diff += &format!("  {}\n", l)
+                diff += &format!("  {l}\n")
             }
         }
 
         diff.push_str("\nMissing Licenses:\n");
         for &l in expected.iter() {
             if !licenses.contains(&l) {
-                diff += &format!("  {}\n", l)
+                diff += &format!("  {l}\n")
             }
         }
 
-        panic!("different set of licenses!\n{}", diff);
+        panic!("different set of licenses!\n{diff}");
     }
     assert_eq!(licenses, expected);
 }
@@ -316,7 +316,7 @@ fn check_test_attrs(path: &Path, text: &str) {
         "ide-assists/src/tests/generated.rs",
     ];
     if text.contains("#[ignore") && !need_ignore.iter().any(|p| path.ends_with(p)) {
-        panic!("\ndon't `#[ignore]` tests, see:\n\n    {}\n\n   {}\n", ignore_rule, path.display(),)
+        panic!("\ndon't `#[ignore]` tests, see:\n\n    {ignore_rule}\n\n   {}\n", path.display(),)
     }
 
     let panic_rule =
@@ -438,7 +438,7 @@ impl TidyMarks {
             self.hits.symmetric_difference(&self.checks).map(|it| it.as_str()).collect();
 
         if !diff.is_empty() {
-            panic!("unpaired marks: {:?}", diff)
+            panic!("unpaired marks: {diff:?}")
         }
     }
 }

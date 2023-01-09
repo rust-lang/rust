@@ -34,6 +34,13 @@ xflags::xflags! {
         cmd dist {
             optional --client-patch-version version: String
         }
+        /// Read a changelog AsciiDoc file and update the GitHub Releases entry in Markdown.
+        cmd publish-release-notes {
+            /// Only run conversion and show the result.
+            optional --dry-run
+            /// Target changelog file.
+            required changelog: String
+        }
         cmd metrics {
             optional --dry-run
         }
@@ -59,6 +66,7 @@ pub enum XtaskCmd {
     Release(Release),
     Promote(Promote),
     Dist(Dist),
+    PublishReleaseNotes(PublishReleaseNotes),
     Metrics(Metrics),
     Bb(Bb),
 }
@@ -88,6 +96,13 @@ pub struct Promote {
 #[derive(Debug)]
 pub struct Dist {
     pub client_patch_version: Option<String>,
+}
+
+#[derive(Debug)]
+pub struct PublishReleaseNotes {
+    pub changelog: String,
+
+    pub dry_run: bool,
 }
 
 #[derive(Debug)]

@@ -176,7 +176,7 @@ pub(crate) fn generate_getter_impl(
                 // for separating it from other assoc items, that needs
                 // to be handled spearately
                 let mut getter_buf =
-                    generate_getter_from_info(ctx, &getter_info, &record_field_info);
+                    generate_getter_from_info(ctx, &getter_info, record_field_info);
 
                 // Insert `$0` only for last getter we generate
                 if i == record_fields_count - 1 {
@@ -235,7 +235,7 @@ fn generate_getter_from_info(
 ) -> String {
     let mut buf = String::with_capacity(512);
 
-    let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{} ", v));
+    let vis = info.strukt.visibility().map_or(String::new(), |v| format!("{v} "));
     let (ty, body) = if info.mutable {
         (
             format!("&mut {}", record_field_info.field_ty),
@@ -271,7 +271,7 @@ fn generate_getter_from_info(
     }}",
         vis,
         record_field_info.fn_name,
-        info.mutable.then(|| "mut ").unwrap_or_default(),
+        info.mutable.then_some("mut ").unwrap_or_default(),
         ty,
         body,
     );

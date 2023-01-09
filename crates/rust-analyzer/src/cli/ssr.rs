@@ -70,7 +70,7 @@ impl flags::Search {
                 let sr = db.source_root(root);
                 for file_id in sr.iter() {
                     for debug_info in match_finder.debug_where_text_equal(file_id, debug_snippet) {
-                        println!("{:#?}", debug_info);
+                        println!("{debug_info:#?}");
                     }
                 }
             }

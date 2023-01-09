@@ -53,7 +53,7 @@ pub(crate) fn generate_default_from_new(acc: &mut Assists, ctx: &AssistContext<'
         return None;
     }
 
-    let impl_ = fn_node.syntax().ancestors().into_iter().find_map(ast::Impl::cast)?;
+    let impl_ = fn_node.syntax().ancestors().find_map(ast::Impl::cast)?;
     if is_default_implemented(ctx, &impl_) {
         cov_mark::hit!(default_block_is_already_present);
         cov_mark::hit!(struct_in_module_with_default);

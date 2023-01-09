@@ -136,3 +136,52 @@ macro_rules! m { ($($i:ident)? $vis:vis) => () }
 "#]],
     )
 }
+
+// For this test and the one below, see rust-lang/rust#86730.
+#[test]
+fn expr_dont_match_let_expr() {
+    check(
+        r#"
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    foo!(let a = 3);
+}
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    /* error: no rule matches input tokens */missing;
+}
+"#]],
+    );
+}
+
+#[test]
+fn expr_dont_match_inline_const() {
+    check(
+        r#"
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    foo!(const { 3 });
+}
+"#,
+        expect![[r#"
+macro_rules! foo {
+    ($e:expr) => { $e }
+}
+
+fn test() {
+    /* error: no rule matches input tokens */missing;
+}
+"#]],
+    );
+}

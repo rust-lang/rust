@@ -1,8 +1,10 @@
+import * as anser from "anser";
 import * as lc from "vscode-languageclient/node";
 import * as vscode from "vscode";
 import * as ra from "../src/lsp_ext";
 import * as Is from "vscode-languageclient/lib/common/utils/is";
 import { assert } from "./util";
+import * as diagnostics from "./diagnostics";
 import { WorkspaceEdit } from "vscode";
 import { Config, substituteVSCodeVariables } from "./config";
 import { randomUUID } from "crypto";
@@ -100,13 +102,32 @@ export async function createClient(
                     }
                 },
             },
+            async provideInlayHints(document, viewPort, token, next) {
+                const inlays = await next(document, viewPort, token);
+                if (!inlays) {
+                    return inlays;
+                }
+                // U+200C is a zero-width non-joiner to prevent the editor from forming a ligature
+                // between code and hints
+                for (const inlay of inlays) {
+                    if (typeof inlay.label === "string") {
+                        inlay.label = `\u{200c}${inlay.label}\u{200c}`;
+                    } else if (Array.isArray(inlay.label)) {
+                        for (const it of inlay.label) {
+                            it.value = `\u{200c}${it.value}\u{200c}`;
+                        }
+                    }
+                }
+                return inlays;
+            },
             async handleDiagnostics(
                 uri: vscode.Uri,
-                diagnostics: vscode.Diagnostic[],
+                diagnosticList: vscode.Diagnostic[],
                 next: lc.HandleDiagnosticsSignature
             ) {
                 const preview = config.previewRustcOutput;
-                diagnostics.forEach((diag, idx) => {
+                const errorCode = config.useRustcErrorCode;
+                diagnosticList.forEach((diag, idx) => {
                     // Abuse the fact that VSCode leaks the LSP diagnostics data field through the
                     // Diagnostic class, if they ever break this we are out of luck and have to go
                     // back to the worst diagnostics experience ever:)
@@ -119,23 +140,33 @@ export async function createClient(
                         ?.rendered;
                     if (rendered) {
                         if (preview) {
-                            const index = rendered.match(/^(note|help):/m)?.index || 0;
-                            diag.message = rendered
+                            const decolorized = anser.ansiToText(rendered);
+                            const index =
+                                decolorized.match(/^(note|help):/m)?.index || rendered.length;
+                            diag.message = decolorized
                                 .substring(0, index)
                                 .replace(/^ -->[^\n]+\n/m, "");
                         }
+                        let value;
+                        if (errorCode) {
+                            if (typeof diag.code === "string" || typeof diag.code === "number") {
+                                value = diag.code;
+                            } else {
+                                value = diag.code?.value;
+                            }
+                        }
                         diag.code = {
                             target: vscode.Uri.from({
-                                scheme: "rust-analyzer-diagnostics-view",
-                                path: "/diagnostic message",
+                                scheme: diagnostics.URI_SCHEME,
+                                path: `/diagnostic message [${idx.toString()}]`,
                                 fragment: uri.toString(),
                                 query: idx.toString(),
                             }),
-                            value: "Click for full compiler diagnostic",
+                            value: value ?? "Click for full compiler diagnostic",
                         };
                     }
                 });
-                return next(uri, diagnostics);
+                return next(uri, diagnosticList);
             },
             async provideHover(
                 document: vscode.TextDocument,
@@ -302,6 +333,7 @@ class ExperimentalFeatures implements lc.StaticFeature {
         caps.codeActionGroup = true;
         caps.hoverActions = true;
         caps.serverStatusNotification = true;
+        caps.colorDiagnosticOutput = true;
         caps.commands = {
             commands: [
                 "rust-analyzer.runSingle",

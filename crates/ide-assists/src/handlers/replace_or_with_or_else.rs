@@ -75,7 +75,7 @@ fn into_closure(param: &Expr) -> Expr {
     (|| {
         if let ast::Expr::CallExpr(call) = param {
             if call.arg_list()?.args().count() == 0 {
-                Some(call.expr()?.clone())
+                Some(call.expr()?)
             } else {
                 None
             }
@@ -151,7 +151,7 @@ fn into_call(param: &Expr) -> Expr {
     (|| {
         if let ast::Expr::ClosureExpr(closure) = param {
             if closure.param_list()?.params().count() == 0 {
-                Some(closure.body()?.clone())
+                Some(closure.body()?)
             } else {
                 None
             }

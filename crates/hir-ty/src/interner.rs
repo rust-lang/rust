@@ -143,7 +143,7 @@ impl chalk_ir::interner::Interner for Interner {
 
     fn debug_goal(goal: &Goal<Interner>, fmt: &mut fmt::Formatter<'_>) -> Option<fmt::Result> {
         let goal_data = goal.data(Interner);
-        Some(write!(fmt, "{:?}", goal_data))
+        Some(write!(fmt, "{goal_data:?}"))
     }
 
     fn debug_goals(
@@ -228,7 +228,7 @@ impl chalk_ir::interner::Interner for Interner {
         Interned::new(InternedWrapper(chalk_ir::TyData { kind, flags }))
     }
 
-    fn ty_data<'a>(self, ty: &'a Self::InternedType) -> &'a chalk_ir::TyData<Self> {
+    fn ty_data(self, ty: &Self::InternedType) -> &chalk_ir::TyData<Self> {
         &ty.0
     }
 
@@ -236,10 +236,7 @@ impl chalk_ir::interner::Interner for Interner {
         Interned::new(InternedWrapper(lifetime))
     }
 
-    fn lifetime_data<'a>(
-        self,
-        lifetime: &'a Self::InternedLifetime,
-    ) -> &'a chalk_ir::LifetimeData<Self> {
+    fn lifetime_data(self, lifetime: &Self::InternedLifetime) -> &chalk_ir::LifetimeData<Self> {
         &lifetime.0
     }
 
@@ -247,7 +244,7 @@ impl chalk_ir::interner::Interner for Interner {
         Interned::new(InternedWrapper(constant))
     }
 
-    fn const_data<'a>(self, constant: &'a Self::InternedConst) -> &'a chalk_ir::ConstData<Self> {
+    fn const_data(self, constant: &Self::InternedConst) -> &chalk_ir::ConstData<Self> {
         &constant.0
     }
 
@@ -267,10 +264,10 @@ impl chalk_ir::interner::Interner for Interner {
         parameter
     }
 
-    fn generic_arg_data<'a>(
+    fn generic_arg_data(
         self,
-        parameter: &'a Self::InternedGenericArg,
-    ) -> &'a chalk_ir::GenericArgData<Self> {
+        parameter: &Self::InternedGenericArg,
+    ) -> &chalk_ir::GenericArgData<Self> {
         parameter
     }
 
@@ -285,11 +282,11 @@ impl chalk_ir::interner::Interner for Interner {
         data.into_iter().collect()
     }
 
-    fn goal_data<'a>(self, goal: &'a Self::InternedGoal) -> &'a GoalData<Self> {
+    fn goal_data(self, goal: &Self::InternedGoal) -> &GoalData<Self> {
         goal
     }
 
-    fn goals_data<'a>(self, goals: &'a Self::InternedGoals) -> &'a [Goal<Interner>] {
+    fn goals_data(self, goals: &Self::InternedGoals) -> &[Goal<Interner>] {
         goals
     }
 
@@ -300,10 +297,7 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn substitution_data<'a>(
-        self,
-        substitution: &'a Self::InternedSubstitution,
-    ) -> &'a [GenericArg] {
+    fn substitution_data(self, substitution: &Self::InternedSubstitution) -> &[GenericArg] {
         &substitution.as_ref().0
     }
 
@@ -314,10 +308,10 @@ impl chalk_ir::interner::Interner for Interner {
         data
     }
 
-    fn program_clause_data<'a>(
+    fn program_clause_data(
         self,
-        clause: &'a Self::InternedProgramClause,
-    ) -> &'a chalk_ir::ProgramClauseData<Self> {
+        clause: &Self::InternedProgramClause,
+    ) -> &chalk_ir::ProgramClauseData<Self> {
         clause
     }
 
@@ -328,10 +322,10 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn program_clauses_data<'a>(
+    fn program_clauses_data(
         self,
-        clauses: &'a Self::InternedProgramClauses,
-    ) -> &'a [chalk_ir::ProgramClause<Self>] {
+        clauses: &Self::InternedProgramClauses,
+    ) -> &[chalk_ir::ProgramClause<Self>] {
         clauses
     }
 
@@ -342,10 +336,10 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn quantified_where_clauses_data<'a>(
+    fn quantified_where_clauses_data(
         self,
-        clauses: &'a Self::InternedQuantifiedWhereClauses,
-    ) -> &'a [chalk_ir::QuantifiedWhereClause<Self>] {
+        clauses: &Self::InternedQuantifiedWhereClauses,
+    ) -> &[chalk_ir::QuantifiedWhereClause<Self>] {
         clauses
     }
 
@@ -356,10 +350,10 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn variable_kinds_data<'a>(
+    fn variable_kinds_data(
         self,
-        parameter_kinds: &'a Self::InternedVariableKinds,
-    ) -> &'a [chalk_ir::VariableKind<Self>] {
+        parameter_kinds: &Self::InternedVariableKinds,
+    ) -> &[chalk_ir::VariableKind<Self>] {
         &parameter_kinds.as_ref().0
     }
 
@@ -370,10 +364,10 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn canonical_var_kinds_data<'a>(
+    fn canonical_var_kinds_data(
         self,
-        canonical_var_kinds: &'a Self::InternedCanonicalVarKinds,
-    ) -> &'a [chalk_ir::CanonicalVarKind<Self>] {
+        canonical_var_kinds: &Self::InternedCanonicalVarKinds,
+    ) -> &[chalk_ir::CanonicalVarKind<Self>] {
         canonical_var_kinds
     }
 
@@ -384,10 +378,10 @@ impl chalk_ir::interner::Interner for Interner {
         data.into_iter().collect()
     }
 
-    fn constraints_data<'a>(
+    fn constraints_data(
         self,
-        constraints: &'a Self::InternedConstraints,
-    ) -> &'a [chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
+        constraints: &Self::InternedConstraints,
+    ) -> &[chalk_ir::InEnvironment<chalk_ir::Constraint<Self>>] {
         constraints
     }
     fn debug_closure_id(
@@ -410,10 +404,7 @@ impl chalk_ir::interner::Interner for Interner {
         Ok(Interned::new(InternedWrapper(data.into_iter().collect::<Result<_, _>>()?)))
     }
 
-    fn variances_data<'a>(
-        self,
-        variances: &'a Self::InternedVariances,
-    ) -> &'a [chalk_ir::Variance] {
+    fn variances_data(self, variances: &Self::InternedVariances) -> &[chalk_ir::Variance] {
         variances
     }
 }

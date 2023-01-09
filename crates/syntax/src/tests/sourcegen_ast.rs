@@ -253,7 +253,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
                             matches!(kind, #(#kinds)|*)
                         }
                         fn cast(syntax: SyntaxNode) -> Option<Self> {
-                            Self::can_cast(syntax.kind()).then(|| #name { syntax })
+                            Self::can_cast(syntax.kind()).then_some(#name { syntax })
                         }
                         fn syntax(&self) -> &SyntaxNode {
                             &self.syntax
@@ -328,7 +328,7 @@ fn generate_nodes(kinds: KindsSrc<'_>, grammar: &AstSrc) -> String {
 
 fn write_doc_comment(contents: &[String], dest: &mut String) {
     for line in contents {
-        writeln!(dest, "///{}", line).unwrap();
+        writeln!(dest, "///{line}").unwrap();
     }
 }
 
@@ -501,7 +501,7 @@ fn to_pascal_case(s: &str) -> String {
 }
 
 fn pluralize(s: &str) -> String {
-    format!("{}s", s)
+    format!("{s}s")
 }
 
 impl Field {
@@ -637,7 +637,7 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
             let mut name = grammar[*token].name.clone();
             if name != "int_number" && name != "string" {
                 if "[]{}()".contains(&name) {
-                    name = format!("'{}'", name);
+                    name = format!("'{name}'");
                 }
                 let field = Field::Token(name);
                 acc.push(field);
@@ -651,7 +651,7 @@ fn lower_rule(acc: &mut Vec<Field>, grammar: &Grammar, label: Option<&String>, r
                 acc.push(field);
                 return;
             }
-            panic!("unhandled rule: {:?}", rule)
+            panic!("unhandled rule: {rule:?}")
         }
         Rule::Labeled { label: l, rule } => {
             assert!(label.is_none());

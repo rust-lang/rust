@@ -137,7 +137,7 @@ impl SubtreeRepr {
             1 => Some(tt::DelimiterKind::Parenthesis),
             2 => Some(tt::DelimiterKind::Brace),
             3 => Some(tt::DelimiterKind::Bracket),
-            other => panic!("bad kind {}", other),
+            other => panic!("bad kind {other}"),
         };
         SubtreeRepr { id: TokenId(id), kind, tt: [lo, len] }
     }
@@ -164,7 +164,7 @@ impl PunctRepr {
         let spacing = match spacing {
             0 => tt::Spacing::Alone,
             1 => tt::Spacing::Joint,
-            other => panic!("bad spacing {}", other),
+            other => panic!("bad spacing {other}"),
         };
         PunctRepr { id: TokenId(id), char: char.try_into().unwrap(), spacing }
     }
@@ -210,7 +210,7 @@ impl<'a> Writer<'a> {
             let idx_tag = match child {
                 tt::TokenTree::Subtree(it) => {
                     let idx = self.enqueue(it);
-                    idx << 2 | 0b00
+                    idx << 2
                 }
                 tt::TokenTree::Leaf(leaf) => match leaf {
                     tt::Leaf::Literal(lit) => {
@@ -312,7 +312,7 @@ impl Reader {
                                 })
                                 .into()
                             }
-                            other => panic!("bad tag: {}", other),
+                            other => panic!("bad tag: {other}"),
                         }
                     })
                     .collect(),

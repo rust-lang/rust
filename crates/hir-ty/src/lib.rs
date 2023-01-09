@@ -27,6 +27,8 @@ pub mod display;
 pub mod method_resolution;
 pub mod primitive;
 pub mod traits;
+pub mod layout;
+pub mod lang_items;
 
 #[cfg(test)]
 mod tests;
@@ -38,7 +40,7 @@ use std::sync::Arc;
 use chalk_ir::{
     fold::{Shift, TypeFoldable},
     interner::HasInterner,
-    NoSolution, UniverseIndex,
+    NoSolution,
 };
 use hir_def::{expr::ExprId, type_ref::Rawness, TypeOrConstParamId};
 use hir_expand::name;
@@ -46,7 +48,9 @@ use itertools::Either;
 use traits::FnTrait;
 use utils::Generics;
 
-use crate::{consteval::unknown_const, db::HirDatabase, utils::generics};
+use crate::{
+    consteval::unknown_const, db::HirDatabase, infer::unify::InferenceTable, utils::generics,
+};
 
 pub use autoderef::autoderef;
 pub use builder::{ParamKind, TyBuilder};
@@ -511,7 +515,7 @@ where
     let mut error_replacer = ErrorReplacer { vars: 0 };
     let value = match t.clone().try_fold_with(&mut error_replacer, DebruijnIndex::INNERMOST) {
         Ok(t) => t,
-        Err(_) => panic!("Encountered unbound or inference vars in {:?}", t),
+        Err(_) => panic!("Encountered unbound or inference vars in {t:?}"),
     };
     let kinds = (0..error_replacer.vars).map(|_| {
         chalk_ir::CanonicalVarKind::new(
@@ -531,54 +535,31 @@ pub fn callable_sig_from_fnonce(
     let fn_once_trait = FnTrait::FnOnce.get_id(db, krate)?;
     let output_assoc_type = db.trait_data(fn_once_trait).associated_type_by_name(&name![Output])?;
 
+    let mut table = InferenceTable::new(db, env.clone());
     let b = TyBuilder::trait_ref(db, fn_once_trait);
     if b.remaining() != 2 {
         return None;
     }
-    let fn_once = b.push(self_ty.clone()).fill_with_bound_vars(DebruijnIndex::INNERMOST, 0).build();
-    let kinds = fn_once
-        .substitution
-        .iter(Interner)
-        .skip(1)
-        .map(|x| {
-            let vk = match x.data(Interner) {
-                chalk_ir::GenericArgData::Ty(_) => {
-                    chalk_ir::VariableKind::Ty(chalk_ir::TyVariableKind::General)
-                }
-                chalk_ir::GenericArgData::Lifetime(_) => chalk_ir::VariableKind::Lifetime,
-                chalk_ir::GenericArgData::Const(c) => {
-                    chalk_ir::VariableKind::Const(c.data(Interner).ty.clone())
-                }
-            };
-            chalk_ir::WithKind::new(vk, UniverseIndex::ROOT)
-        })
-        .collect::<Vec<_>>();
 
-    // FIXME: chalk refuses to solve `<Self as FnOnce<^0.0>>::Output == ^0.1`, so we first solve
-    // `<Self as FnOnce<^0.0>>` and then replace `^0.0` with the concrete argument tuple.
-    let trait_env = env.env.clone();
-    let obligation = InEnvironment { goal: fn_once.cast(Interner), environment: trait_env };
-    let canonical =
-        Canonical { binders: CanonicalVarKinds::from_iter(Interner, kinds), value: obligation };
-    let subst = match db.trait_solve(krate, canonical) {
-        Some(Solution::Unique(vars)) => vars.value.subst,
-        _ => return None,
-    };
-    let args = subst.at(Interner, 0).ty(Interner)?;
-    let params = match args.kind(Interner) {
-        chalk_ir::TyKind::Tuple(_, subst) => {
-            subst.iter(Interner).filter_map(|arg| arg.ty(Interner).cloned()).collect::<Vec<_>>()
-        }
-        _ => return None,
-    };
+    // Register two obligations:
+    // - Self: FnOnce<?args_ty>
+    // - <Self as FnOnce<?args_ty>>::Output == ?ret_ty
+    let args_ty = table.new_type_var();
+    let trait_ref = b.push(self_ty.clone()).push(args_ty.clone()).build();
+    let projection = TyBuilder::assoc_type_projection(
+        db,
+        output_assoc_type,
+        Some(trait_ref.substitution.clone()),
+    )
+    .build();
+    table.register_obligation(trait_ref.cast(Interner));
+    let ret_ty = table.normalize_projection_ty(projection);
 
-    let fn_once =
-        TyBuilder::trait_ref(db, fn_once_trait).push(self_ty.clone()).push(args.clone()).build();
-    let projection =
-        TyBuilder::assoc_type_projection(db, output_assoc_type, Some(fn_once.substitution.clone()))
-            .build();
+    let ret_ty = table.resolve_completely(ret_ty);
+    let args_ty = table.resolve_completely(args_ty);
 
-    let ret_ty = db.normalize_projection(projection, env);
+    let params =
+        args_ty.as_tuple()?.iter(Interner).map(|it| it.assert_ty_ref(Interner)).cloned().collect();
 
-    Some(CallableSig::from_params_and_return(params, ret_ty.clone(), false, Safety::Safe))
+    Some(CallableSig::from_params_and_return(params, ret_ty, false, Safety::Safe))
 }
