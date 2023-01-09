@@ -124,6 +124,7 @@ target | std | notes
 -------|:---:|-------
 `aarch64-apple-ios` | ✓ | ARM64 iOS
 [`aarch64-apple-ios-sim`](platform-support/aarch64-apple-ios-sim.md) | ✓ | Apple iOS Simulator on ARM64
+`aarch64-fuchsia` | ✓ | Alias for `aarch64-unknown-fuchsia`
 `aarch64-unknown-fuchsia` | ✓ | ARM64 Fuchsia
 [`aarch64-linux-android`](platform-support/android.md) | ✓ | ARM64 Android
 `aarch64-unknown-none-softfloat` | * | Bare ARM64, softfloat
@@ -177,6 +178,7 @@ target | std | notes
 `wasm32-wasi` | ✓ | WebAssembly with WASI
 `x86_64-apple-ios` | ✓ | 64-bit x86 iOS
 [`x86_64-fortanix-unknown-sgx`](platform-support/x86_64-fortanix-unknown-sgx.md) | ✓ | [Fortanix ABI] for 64-bit Intel SGX
+`x86_64-fuchsia` | ✓ | Alias for `x86_64-unknown-fuchsia`
 `x86_64-unknown-fuchsia` | ✓ | 64-bit Fuchsia
 [`x86_64-linux-android`](platform-support/android.md) | ✓ | 64-bit x86 Android
 `x86_64-pc-solaris` | ✓ | 64-bit Solaris 10/11, illumos
