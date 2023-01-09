@@ -981,7 +981,7 @@ impl fmt::Display for StackProtector {
 }
 
 macro_rules! supported_targets {
-    ( $(($triple:literal, $module:ident ),)+ ) => {
+    ( $(($triple:literal, $module:ident),)+ ) => {
         $(mod $module;)+
 
         /// List of supported targets
@@ -1109,7 +1109,11 @@ supported_targets! {
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
+    // FIXME(#106649): Remove aarch64-fuchsia in favor of aarch64-unknown-fuchsia
+    ("aarch64-fuchsia", aarch64_fuchsia),
     ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
+    // FIXME(#106649): Remove x86_64-fuchsia in favor of x86_64-unknown-fuchsia
+    ("x86_64-fuchsia", x86_64_fuchsia),
     ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
     ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
