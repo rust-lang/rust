@@ -2217,7 +2217,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             self.tcx.check_stability(field.did, Some(expr.hir_id), expr.span, None);
                             return field_ty;
                         }
-                        private_candidate = Some((adjustments, base_def.did(), field_ty));
+                        private_candidate = Some((adjustments, base_def.did()));
                     }
                 }
                 ty::Tuple(tys) => {
@@ -2240,12 +2240,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
         self.structurally_resolved_type(autoderef.span(), autoderef.final_ty(false));
 
-        if let Some((adjustments, did, field_ty)) = private_candidate {
+        if let Some((adjustments, did)) = private_candidate {
             // (#90483) apply adjustments to avoid ExprUseVisitor from
             // creating erroneous projection.
             self.apply_adjustments(base, adjustments);
             self.ban_private_field_access(expr, base_ty, field, did);
-            return field_ty;
+            return self.tcx().ty_error();
         }
 
         if field.name == kw::Empty {

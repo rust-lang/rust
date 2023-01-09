@@ -9,12 +9,6 @@ LL |     println!("{}", check_ptr_exist!(item, name));
    |
    = note: this error originates in the macro `check_ptr_exist` (in Nightly builds, run with -Z macro-backtrace for more info)
 
-error[E0616]: field `name` of struct `CObj` is private
-  --> $DIR/issue-25386.rs:26:43
-   |
-LL |     println!("{}", check_ptr_exist!(item, name));
-   |                                           ^^^^ private field
-
-error: aborting due to 2 previous errors
+error: aborting due to previous error
 
 For more information about this error, try `rustc --explain E0616`.
