@@ -557,9 +557,119 @@
                     }
                 },
                 "rust-analyzer.checkOnSave": {
-                    "markdownDescription": "Run the flycheck command for diagnostics on save.",
+                    "markdownDescription": "Run the check command for diagnostics on save.",
                     "default": true,
                     "type": "boolean"
+                },
+                "rust-analyzer.check.allTargets": {
+                    "markdownDescription": "Check all targets and tests (`--all-targets`).",
+                    "default": true,
+                    "type": "boolean"
+                },
+                "rust-analyzer.check.command": {
+                    "markdownDescription": "Cargo command to use for `cargo check`.",
+                    "default": "check",
+                    "type": "string"
+                },
+                "rust-analyzer.check.extraArgs": {
+                    "markdownDescription": "Extra arguments for `cargo check`.",
+                    "default": [],
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rust-analyzer.check.extraEnv": {
+                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.\nExtends `#rust-analyzer.cargo.extraEnv#`.",
+                    "default": {},
+                    "type": "object"
+                },
+                "rust-analyzer.check.features": {
+                    "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to Cargo.",
+                    "default": null,
+                    "anyOf": [
+                        {
+                            "type": "string",
+                            "enum": [
+                                "all"
+                            ],
+                            "enumDescriptions": [
+                                "Pass `--all-features` to cargo"
+                            ]
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        {
+                            "type": "null"
+                        }
+                    ]
+                },
+                "rust-analyzer.check.invocationLocation": {
+                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "workspace",
+                    "type": "string",
+                    "enum": [
+                        "workspace",
+                        "root"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed in the corresponding workspace root.",
+                        "The command will be executed in the project root."
+                    ]
+                },
+                "rust-analyzer.check.invocationStrategy": {
+                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
+                    "default": "per_workspace",
+                    "type": "string",
+                    "enum": [
+                        "per_workspace",
+                        "once"
+                    ],
+                    "enumDescriptions": [
+                        "The command will be executed for each workspace.",
+                        "The command will be executed once."
+                    ]
+                },
+                "rust-analyzer.check.noDefaultFeatures": {
+                    "markdownDescription": "Whether to pass `--no-default-features` to Cargo. Defaults to\n`#rust-analyzer.cargo.noDefaultFeatures#`.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "boolean"
+                    ]
+                },
+                "rust-analyzer.check.overrideCommand": {
+                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
+                    "default": null,
+                    "type": [
+                        "null",
+                        "array"
+                    ],
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "rust-analyzer.check.targets": {
+                    "markdownDescription": "Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.\n\nCan be a single target, e.g. `\"x86_64-unknown-linux-gnu\"` or a list of targets, e.g.\n`[\"aarch64-apple-darwin\", \"x86_64-apple-darwin\"]`.\n\nAliased as `\"checkOnSave.targets\"`.",
+                    "default": null,
+                    "anyOf": [
+                        {
+                            "type": "null"
+                        },
+                        {
+                            "type": "string"
+                        },
+                        {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    ]
                 },
                 "rust-analyzer.completion.autoimport.enable": {
                     "markdownDescription": "Toggles the additional completions that automatically add imports when completed.\nNote that your client must specify the `additionalTextEdits` LSP client capability to truly have this feature enabled.",
@@ -700,116 +810,6 @@
                     "enumDescriptions": [
                         "Use the client (editor) to watch files for changes",
                         "Use server-side file watching"
-                    ]
-                },
-                "rust-analyzer.flycheck.allTargets": {
-                    "markdownDescription": "Check all targets and tests (`--all-targets`).",
-                    "default": true,
-                    "type": "boolean"
-                },
-                "rust-analyzer.flycheck.command": {
-                    "markdownDescription": "Cargo command to use for `cargo check`.",
-                    "default": "check",
-                    "type": "string"
-                },
-                "rust-analyzer.flycheck.extraArgs": {
-                    "markdownDescription": "Extra arguments for `cargo check`.",
-                    "default": [],
-                    "type": "array",
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rust-analyzer.flycheck.extraEnv": {
-                    "markdownDescription": "Extra environment variables that will be set when running `cargo check`.\nExtends `#rust-analyzer.cargo.extraEnv#`.",
-                    "default": {},
-                    "type": "object"
-                },
-                "rust-analyzer.flycheck.features": {
-                    "markdownDescription": "List of features to activate. Defaults to\n`#rust-analyzer.cargo.features#`.\n\nSet to `\"all\"` to pass `--all-features` to Cargo.",
-                    "default": null,
-                    "anyOf": [
-                        {
-                            "type": "string",
-                            "enum": [
-                                "all"
-                            ],
-                            "enumDescriptions": [
-                                "Pass `--all-features` to cargo"
-                            ]
-                        },
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        },
-                        {
-                            "type": "null"
-                        }
-                    ]
-                },
-                "rust-analyzer.flycheck.invocationLocation": {
-                    "markdownDescription": "Specifies the working directory for running checks.\n- \"workspace\": run checks for workspaces in the corresponding workspaces' root directories.\n    This falls back to \"root\" if `#rust-analyzer.cargo.checkOnSave.invocationStrategy#` is set to `once`.\n- \"root\": run checks in the project's root directory.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
-                    "default": "workspace",
-                    "type": "string",
-                    "enum": [
-                        "workspace",
-                        "root"
-                    ],
-                    "enumDescriptions": [
-                        "The command will be executed in the corresponding workspace root.",
-                        "The command will be executed in the project root."
-                    ]
-                },
-                "rust-analyzer.flycheck.invocationStrategy": {
-                    "markdownDescription": "Specifies the invocation strategy to use when running the checkOnSave command.\nIf `per_workspace` is set, the command will be executed for each workspace.\nIf `once` is set, the command will be executed once.\nThis config only has an effect when `#rust-analyzer.cargo.buildScripts.overrideCommand#`\nis set.",
-                    "default": "per_workspace",
-                    "type": "string",
-                    "enum": [
-                        "per_workspace",
-                        "once"
-                    ],
-                    "enumDescriptions": [
-                        "The command will be executed for each workspace.",
-                        "The command will be executed once."
-                    ]
-                },
-                "rust-analyzer.flycheck.noDefaultFeatures": {
-                    "markdownDescription": "Whether to pass `--no-default-features` to Cargo. Defaults to\n`#rust-analyzer.cargo.noDefaultFeatures#`.",
-                    "default": null,
-                    "type": [
-                        "null",
-                        "boolean"
-                    ]
-                },
-                "rust-analyzer.flycheck.overrideCommand": {
-                    "markdownDescription": "Override the command rust-analyzer uses instead of `cargo check` for\ndiagnostics on save. The command is required to output json and\nshould therefore include `--message-format=json` or a similar option.\n\nIf you're changing this because you're using some tool wrapping\nCargo, you might also want to change\n`#rust-analyzer.cargo.buildScripts.overrideCommand#`.\n\nIf there are multiple linked projects, this command is invoked for\neach of them, with the working directory being the project root\n(i.e., the folder containing the `Cargo.toml`).\n\nAn example command would be:\n\n```bash\ncargo check --workspace --message-format=json --all-targets\n```\n.",
-                    "default": null,
-                    "type": [
-                        "null",
-                        "array"
-                    ],
-                    "items": {
-                        "type": "string"
-                    }
-                },
-                "rust-analyzer.flycheck.targets": {
-                    "markdownDescription": "Check for specific targets. Defaults to `#rust-analyzer.cargo.target#` if empty.\n\nCan be a single target, e.g. `\"x86_64-unknown-linux-gnu\"` or a list of targets, e.g.\n`[\"aarch64-apple-darwin\", \"x86_64-apple-darwin\"]`.\n\nAliased as `\"checkOnSave.targets\"`.",
-                    "default": null,
-                    "anyOf": [
-                        {
-                            "type": "null"
-                        },
-                        {
-                            "type": "string"
-                        },
-                        {
-                            "type": "array",
-                            "items": {
-                                "type": "string"
-                            }
-                        }
                     ]
                 },
                 "rust-analyzer.highlightRelated.breakPoints.enable": {

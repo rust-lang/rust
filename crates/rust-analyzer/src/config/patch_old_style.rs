@@ -108,9 +108,9 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
         merge(json, json!({ "cargo": { "features": "all" } }));
     }
 
-    // checkOnSave_allFeatures, checkOnSave_features -> flycheck_features
+    // checkOnSave_allFeatures, checkOnSave_features -> check_features
     if let Some(Value::Bool(true)) = copy.pointer("/checkOnSave/allFeatures") {
-        merge(json, json!({ "flycheck": { "features": "all" } }));
+        merge(json, json!({ "check": { "features": "all" } }));
     }
 
     // completion_addCallArgumentSnippets completion_addCallParenthesis -> completion_callable_snippets
@@ -126,13 +126,13 @@ pub(super) fn patch_json_for_outdated_configs(json: &mut Value) {
     merge(json, json!({ "completion": { "callable": {"snippets": res }} }));
 
     // We need to do this due to the checkOnSave_enable -> checkOnSave change, as that key now can either be an object or a bool
-    // checkOnSave_* -> flycheck_*
+    // checkOnSave_* -> check_*
     if let Some(Value::Object(obj)) = copy.pointer("/checkOnSave") {
         // checkOnSave_enable -> checkOnSave
         if let Some(b @ Value::Bool(_)) = obj.get("enable") {
             merge(json, json!({ "checkOnSave": b }));
         }
-        merge(json, json!({ "flycheck": obj }));
+        merge(json, json!({ "check": obj }));
     }
 }
 
