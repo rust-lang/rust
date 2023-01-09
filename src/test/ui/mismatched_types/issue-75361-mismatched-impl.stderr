@@ -7,8 +7,8 @@ LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType>>;
 LL |   fn adjacent_edges(&self) -> Box<dyn MyTrait<Item = &Self::EdgeType> + '_> {
    |   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ found `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`
    |
-   = note: expected `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + 'static)>`
-              found `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`
+   = note: expected signature `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + 'static)>`
+              found signature `fn(&'1 T) -> Box<(dyn MyTrait<Item = &'1 T> + '1)>`
 help: the lifetime requirements from the `impl` do not correspond to the requirements in the `trait`
   --> $DIR/issue-75361-mismatched-impl.rs:12:55
    |

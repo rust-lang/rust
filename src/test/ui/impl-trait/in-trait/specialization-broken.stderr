@@ -15,8 +15,8 @@ note: type in trait
    |
 LL |     fn bar(&self) -> impl Sized;
    |                      ^^^^^^^^^^
-   = note: expected fn pointer `fn(&U) -> impl Sized`
-              found fn pointer `fn(&U) -> U`
+   = note: expected signature `fn(&U) -> impl Sized`
+              found signature `fn(&U) -> U`
 
 error: aborting due to previous error
 

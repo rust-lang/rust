@@ -12,8 +12,8 @@ note: type in trait
    |
 LL |     fn owo(x: ()) -> impl Sized;
    |               ^^
-   = note: expected fn pointer `fn(())`
-              found fn pointer `fn(u8)`
+   = note: expected signature `fn(())`
+              found signature `fn(u8)`
 
 error[E0053]: method `owo` has an incompatible type for trait
   --> $DIR/method-signature-matches.rs:20:21
@@ -39,8 +39,8 @@ note: type in trait
    |
 LL |     async fn owo(x: ()) {}
    |                     ^^
-   = note: expected fn pointer `fn(()) -> _`
-              found fn pointer `fn(u8) -> _`
+   = note: expected signature `fn(()) -> _`
+              found signature `fn(u8) -> _`
 
 error[E0050]: method `calm_down_please` has 3 parameters but the declaration in trait `TooMuch::calm_down_please` has 0
   --> $DIR/method-signature-matches.rs:29:28
@@ -75,8 +75,8 @@ note: type in trait
    |
 LL |     fn early<'early, T>(x: &'early T) -> impl Sized;
    |                            ^^^^^^^^^
-   = note: expected fn pointer `fn(&'early T)`
-              found fn pointer `fn(&())`
+   = note: expected signature `fn(&'early T)`
+              found signature `fn(&())`
 
 error: aborting due to 5 previous errors
 

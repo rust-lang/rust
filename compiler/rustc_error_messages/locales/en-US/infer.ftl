@@ -253,8 +253,8 @@ infer_trait_placeholder_mismatch = implementation of `{$trait_def_id}` is not ge
 infer_trait_impl_diff = `impl` item signature doesn't match `trait` item signature
     .found = found `{$found}`
     .expected = expected `{$expected}`
-    .expected_found = expected `{$expected}`
-               {"   "}found `{$found}`
+    .expected_found = expected signature `{$expected}`
+               {"   "}found signature `{$found}`
 
 infer_tid_rel_help = verify the lifetime relationships in the `trait` and `impl` between the `self` argument, the other inputs and its output
 infer_tid_consider_borrowing = consider borrowing this type parameter in the trait
