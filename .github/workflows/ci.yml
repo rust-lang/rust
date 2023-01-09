@@ -19,9 +19,9 @@ jobs:
       fail-fast: false
       matrix:
         libgccjit_version:
-          - { gcc: "libgccjit.so", extra: "", artifacts_branch: "master" }
-          - { gcc: "libgccjit_without_int128.so", extra: "", artifacts_branch: "master-without-128bit-integers" }
-          - { gcc: "libgccjit12.so", extra: "--no-default-features", artifacts_branch: "gcc12" }
+          - { gcc: "libgccjit.so", extra: "", env_extra: "", artifacts_branch: "master" }
+          - { gcc: "libgccjit_without_int128.so", extra: "", env_extra: "", artifacts_branch: "master-without-128bit-integers" }
+          - { gcc: "libgccjit12.so", extra: "--no-default-features", env_extra: "TEST_FLAGS='-Cpanic=abort -Zpanic-abort-tests'", artifacts_branch: "gcc12" }
         commands: [
           "--mini-tests",
           "--std-tests",
@@ -120,7 +120,7 @@ jobs:
     - name: Build
       run: |
         ./prepare_build.sh
-        ./build.sh ${{ matrix.libgccjit_version.extra }}
+        ${{ matrix.libgccjit_version.env_extra }} ./build.sh ${{ matrix.libgccjit_version.extra }}
         cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
 
@@ -143,7 +143,7 @@ jobs:
 
     - name: Run tests
       run: |
-        ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
+        ${{ matrix.libgccjit_version.env_extra }} ./test.sh --release --clean --build-sysroot ${{ matrix.commands }} ${{ matrix.libgccjit_version.extra }}
 
   duplicates:
     runs-on: ubuntu-latest

@@ -13,7 +13,7 @@ use gccjit::{
     RValue,
     ToRValue,
     Type,
-    UnaryOp, FunctionType,
+    UnaryOp,
 };
 use rustc_codegen_ssa::MemFlags;
 use rustc_codegen_ssa::common::{AtomicOrdering, AtomicRmwBinOp, IntPredicate, RealPredicate, SynchronizationScope};
@@ -475,11 +475,6 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         }
 
         self.block.end_with_jump(None, then);
-
-        // NOTE: since jumps were added in a place rustc does not expect, the current blocks in the
-        // state need to be updated.
-        // FIXME: not sure it's actually needed.
-        self.switch_to_block(then);
 
         return_value.to_rvalue()
     }
@@ -1194,12 +1189,15 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         aggregate_value
     }
 
-    fn set_personality_fn(&mut self, personality: RValue<'gcc>) {
-        let personality = self.rvalue_as_function(personality);
+    fn set_personality_fn(&mut self, _personality: RValue<'gcc>) {
         #[cfg(feature="master")]
-        self.current_func().set_personality_function(personality);
+        {
+            let personality = self.rvalue_as_function(_personality);
+            self.current_func().set_personality_function(personality);
+        }
     }
 
+    #[cfg(feature="master")]
     fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, pers_fn: RValue<'gcc>) -> RValue<'gcc> {
         self.set_personality_fn(pers_fn);
 
@@ -1223,13 +1221,30 @@ impl<'a, 'gcc, 'tcx> BuilderMethods<'a, 'tcx> for Builder<'a, 'gcc, 'tcx> {
         value.to_rvalue()
     }
 
+    #[cfg(not(feature="master"))]
+    fn cleanup_landing_pad(&mut self, _ty: Type<'gcc>, _pers_fn: RValue<'gcc>) -> RValue<'gcc> {
+        let field1 = self.context.new_field(None, self.u8_type.make_pointer(), "landing_pad_field_1");
+        let field2 = self.context.new_field(None, self.i32_type, "landing_pad_field_1");
+        let struct_type = self.context.new_struct_type(None, "landing_pad", &[field1, field2]);
+        self.current_func().new_local(None, struct_type.as_type(), "landing_pad")
+            .to_rvalue()
+    }
+
+    #[cfg(feature="master")]
     fn resume(&mut self, exn: RValue<'gcc>) {
         // TODO: check if this is normal that we need to dereference the value.
+        // NOTE: the type is wrong, so in order to get a pointer for parameter, cast it to a
+        // pointer of pointer that is later dereferenced.
+        let exn_type = exn.get_type().make_pointer();
+        let exn = self.context.new_cast(None, exn, exn_type);
         let exn = exn.dereference(None).to_rvalue();
-        let param = self.context.new_parameter(None, exn.get_type(), "exn");
-        // TODO(antoyo): should we call __builtin_unwind_resume instead? This might actually be the same.
-        let unwind_resume = self.context.new_function(None, FunctionType::Extern, self.type_void(), &[param], "_Unwind_Resume", false);
+        let unwind_resume = self.context.get_target_builtin_function("__builtin_unwind_resume");
         self.llbb().add_eval(None, self.context.new_call(None, unwind_resume, &[exn]));
+        self.unreachable();
+    }
+
+    #[cfg(not(feature="master"))]
+    fn resume(&mut self, _exn: RValue<'gcc>) {
         self.unreachable();
     }
 

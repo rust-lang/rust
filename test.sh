@@ -191,11 +191,11 @@ function std_tests() {
     $RUN_WRAPPER ./target/out/std_example --target $TARGET_TRIPLE
 
     echo "[AOT] subslice-patterns-const-eval"
-    $RUSTC example/subslice-patterns-const-eval.rs --crate-type bin --target $TARGET_TRIPLE
+    $RUSTC example/subslice-patterns-const-eval.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
     $RUN_WRAPPER ./target/out/subslice-patterns-const-eval
 
     echo "[AOT] track-caller-attribute"
-    $RUSTC example/track-caller-attribute.rs --crate-type bin --target $TARGET_TRIPLE
+    $RUSTC example/track-caller-attribute.rs --crate-type bin $TEST_FLAGS --target $TARGET_TRIPLE
     $RUN_WRAPPER ./target/out/track-caller-attribute
 
     echo "[BUILD] mod_bench"
@@ -338,10 +338,9 @@ function test_rustc() {
 
     git checkout -- src/test/ui/issues/auxiliary/issue-3136-a.rs # contains //~ERROR, but shouldn't be removed
 
-    rm -r src/test/ui/{abi*,extern/,panic-runtime/,panics/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,*lto*.rs,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
+    rm -r src/test/ui/{abi*,extern/,unsized-locals/,proc-macro/,threads-sendsync/,thinlto/,borrowck/,chalkify/bugs/,test*,*lto*.rs,consts/const-float-bits-reject-conv.rs,consts/issue-miri-1910.rs} || true
     rm src/test/ui/mir/mir_heavy_promoted.rs # this tests is oom-killed in the CI.
-    # TODO: re-enable panics tests.
-    for test in $(rg --files-with-matches "catch_unwind|should_panic|thread|lto" src/test/ui); do
+    for test in $(rg --files-with-matches "thread|lto" src/test/ui); do
       rm $test
     done
     git checkout src/test/ui/lto/auxiliary/dylib.rs

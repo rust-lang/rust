@@ -1,6 +1,7 @@
 pub mod llvm;
 mod simd;
 
+#[cfg(feature="master")]
 use std::iter;
 
 use gccjit::{ComparisonOp, Function, RValue, ToRValue, Type, UnaryOp, FunctionType};
@@ -9,16 +10,24 @@ use rustc_codegen_ssa::base::wants_msvc_seh;
 use rustc_codegen_ssa::common::{IntPredicate, span_invalid_monomorphization_error};
 use rustc_codegen_ssa::mir::operand::{OperandRef, OperandValue};
 use rustc_codegen_ssa::mir::place::PlaceRef;
-use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, DerivedTypeMethods, IntrinsicCallMethods, MiscMethods};
+use rustc_codegen_ssa::traits::{ArgAbiMethods, BaseTypeMethods, BuilderMethods, ConstMethods, IntrinsicCallMethods};
+#[cfg(feature="master")]
+use rustc_codegen_ssa::traits::{DerivedTypeMethods, MiscMethods};
 use rustc_middle::bug;
 use rustc_middle::ty::{self, Instance, Ty};
-use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt, LayoutOf};
+use rustc_middle::ty::layout::LayoutOf;
+#[cfg(feature="master")]
+use rustc_middle::ty::layout::{FnAbiOf, HasTyCtxt};
 use rustc_span::{Span, Symbol, symbol::kw, sym};
 use rustc_target::abi::HasDataLayout;
 use rustc_target::abi::call::{ArgAbi, FnAbi, PassMode};
-use rustc_target::spec::{abi::Abi, PanicStrategy};
+use rustc_target::spec::PanicStrategy;
+#[cfg(feature="master")]
+use rustc_target::spec::abi::Abi;
 
-use crate::abi::{FnAbiGccExt, GccType};
+use crate::abi::GccType;
+#[cfg(feature="master")]
+use crate::abi::FnAbiGccExt;
 use crate::builder::Builder;
 use crate::common::{SignType, TypeReflection};
 use crate::context::CodegenCx;
@@ -1117,7 +1126,7 @@ impl<'a, 'gcc, 'tcx> Builder<'a, 'gcc, 'tcx> {
     }
 }
 
-fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
+fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_func: RValue<'gcc>, data: RValue<'gcc>, _catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
     if bx.sess().panic_strategy() == PanicStrategy::Abort {
         bx.call(bx.type_void(), try_func, &[data], None);
         // Return 0 unconditionally from the intrinsic call;
@@ -1129,7 +1138,10 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_fu
         unimplemented!();
     }
     else {
-        codegen_gnu_try(bx, try_func, data, catch_func, dest);
+        #[cfg(feature="master")]
+        codegen_gnu_try(bx, try_func, data, _catch_func, dest);
+        #[cfg(not(feature="master"))]
+        unimplemented!();
     }
 }
 
@@ -1144,6 +1156,7 @@ fn try_intrinsic<'a, 'b, 'gcc, 'tcx>(bx: &'b mut Builder<'a, 'gcc, 'tcx>, try_fu
 // function calling it, and that function may already have other personality
 // functions in play. By calling a shim we're guaranteed that our shim will have
 // the right personality function.
+#[cfg(feature="master")]
 fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>, data: RValue<'gcc>, catch_func: RValue<'gcc>, dest: RValue<'gcc>) {
     //use std::ops::Deref;
     //let cx: &CodegenCx<'gcc, '_> = bx.deref();
@@ -1210,6 +1223,7 @@ fn codegen_gnu_try<'gcc>(bx: &mut Builder<'_, 'gcc, '_>, try_func: RValue<'gcc>,
 // catch exceptions.
 //
 // This function is only generated once and is then cached.
+#[cfg(feature="master")]
 fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>)) -> (Type<'gcc>, Function<'gcc>) {
     if let Some(llfn) = cx.rust_try_fn.get() {
         return llfn;
@@ -1249,6 +1263,7 @@ fn get_rust_try_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, codegen: &mut 
 
 // Helper function to give a Block to a closure to codegen a shim function.
 // This is currently primarily used for the `try` intrinsic functions above.
+#[cfg(feature="master")]
 fn gen_fn<'a, 'gcc, 'tcx>(cx: &'a CodegenCx<'gcc, 'tcx>, name: &str, rust_fn_sig: ty::PolyFnSig<'tcx>, codegen: &mut dyn FnMut(Builder<'a, 'gcc, 'tcx>)) -> (Type<'gcc>, Function<'gcc>) {
     let fn_abi = cx.fn_abi_of_fn_ptr(rust_fn_sig, ty::List::empty());
     let (typ, _, _, _) = fn_abi.gcc_type(cx);
