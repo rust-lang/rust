@@ -3,12 +3,12 @@
 
 #![feature(impl_restriction)]
 
-extern crate external_impl_restriction;
+extern crate external_impl_restriction as external;
 
 struct LocalType; // needed to avoid orphan rule errors
 
-impl external_impl_restriction::TopLevel for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
-impl external_impl_restriction::inner::Inner for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
+impl external::TopLevel for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
+impl external::inner::Inner for LocalType {} //~ ERROR trait cannot be implemented outside `external_impl_restriction`
 
 pub mod foo {
     pub mod bar {
