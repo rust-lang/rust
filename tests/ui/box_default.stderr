@@ -84,5 +84,11 @@ error: `Box::new(_)` of default value
 LL |     let _: Box<dyn Read> = Box::new(ImplementsDefault::default());
    |                            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<ImplementsDefault>::default()`
 
-error: aborting due to 14 previous errors
+error: `Box::new(_)` of default value
+  --> $DIR/box_default.rs:65:17
+   |
+LL |         let _ = Box::new(WeirdPathed::default());
+   |                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ help: try: `Box::<WeirdPathed>::default()`
+
+error: aborting due to 15 previous errors
 
