@@ -160,7 +160,9 @@ config_data! {
         check_noDefaultFeatures | checkOnSave_noDefaultFeatures: Option<bool>         = "null",
         /// Override the command rust-analyzer uses instead of `cargo check` for
         /// diagnostics on save. The command is required to output json and
-        /// should therefore include `--message-format=json` or a similar option.
+        /// should therefore include `--message-format=json` or a similar option
+        /// (if your client supports the `colorDiagnosticOutput` experimental
+        /// capability, you can use `--message-format=json-diagnostic-rendered-ansi`).
         ///
         /// If you're changing this because you're using some tool wrapping
         /// Cargo, you might also want to change
@@ -1006,6 +1008,11 @@ impl Config {
         self.experimental("serverStatusNotification")
     }
 
+    /// Whether the client supports colored output for full diagnostics from `checkOnSave`.
+    pub fn color_diagnostic_output(&self) -> bool {
+        self.experimental("colorDiagnosticOutput")
+    }
+
     pub fn publish_diagnostics(&self) -> bool {
         self.data.diagnostics_enable
     }
@@ -1204,6 +1211,7 @@ impl Config {
                 },
                 extra_args: self.data.check_extraArgs.clone(),
                 extra_env: self.check_on_save_extra_env(),
+                ansi_color_output: self.color_diagnostic_output(),
             },
         }
     }

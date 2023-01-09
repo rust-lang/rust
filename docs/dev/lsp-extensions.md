@@ -792,3 +792,29 @@ export interface ClientCommandOptions {
     commands: string[];
 }
 ```
+
+## Colored Diagnostic Output
+
+**Experimental Client Capability:** `{ "colorDiagnosticOutput": boolean }`
+
+If this capability is set, the "full compiler diagnostics" provided by `checkOnSave`
+will include ANSI color and style codes to render the diagnostic in a similar manner
+as `cargo`. This is translated into `--message-format=json-diagnostic-rendered-ansi`
+when flycheck is run, instead of the default `--message-format=json`.
+
+The full compiler rendered diagnostics are included in the server response
+regardless of this capability:
+
+```typescript
+// https://microsoft.github.io/language-server-protocol/specifications/specification-current#diagnostic
+export interface Diagnostic {
+    ...
+    data?: {
+        /**
+         * The human-readable compiler output as it would be printed to a terminal.
+         * Includes ANSI color and style codes if the client has set the experimental
+         * `colorDiagnosticOutput` capability.
+         */
+        rendered?: string;
+    };
+}
