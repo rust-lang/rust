@@ -219,7 +219,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, ref generics, _), .. })) => {
+            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(_, generics, _), .. })) => {
                 Some(generics.where_clause_span)
             }
             _ => {
@@ -241,7 +241,7 @@ fn check_main_fn_ty(tcx: TyCtxt<'_>, main_def_id: DefId) {
         }
         let hir_id = tcx.hir().local_def_id_to_hir_id(def_id.expect_local());
         match tcx.hir().find(hir_id) {
-            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(ref fn_sig, _, _), .. })) => {
+            Some(Node::Item(hir::Item { kind: hir::ItemKind::Fn(fn_sig, _, _), .. })) => {
                 Some(fn_sig.decl.output.span())
             }
             _ => {
@@ -371,7 +371,7 @@ fn check_start_fn_ty(tcx: TyCtxt<'_>, start_def_id: DefId) {
     match start_t.kind() {
         ty::FnDef(..) => {
             if let Some(Node::Item(it)) = tcx.hir().find(start_id) {
-                if let hir::ItemKind::Fn(ref sig, ref generics, _) = it.kind {
+                if let hir::ItemKind::Fn(sig, generics, _) = &it.kind {
                     let mut error = false;
                     if !generics.params.is_empty() {
                         struct_span_err!(

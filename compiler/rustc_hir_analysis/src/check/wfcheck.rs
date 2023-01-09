@@ -178,7 +178,7 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         //
         // won't be allowed unless there's an *explicit* implementation of `Send`
         // for `T`
-        hir::ItemKind::Impl(ref impl_) => {
+        hir::ItemKind::Impl(impl_) => {
             let is_auto = tcx
                 .impl_trait_ref(def_id)
                 .map_or(false, |trait_ref| tcx.trait_is_auto(trait_ref.skip_binder().def_id));
@@ -224,15 +224,15 @@ fn check_item<'tcx>(tcx: TyCtxt<'tcx>, item: &'tcx hir::Item<'tcx>) {
         hir::ItemKind::Const(ty, ..) => {
             check_item_type(tcx, def_id, ty.span, false);
         }
-        hir::ItemKind::Struct(_, ref ast_generics) => {
+        hir::ItemKind::Struct(_, ast_generics) => {
             check_type_defn(tcx, item, false);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Union(_, ref ast_generics) => {
+        hir::ItemKind::Union(_, ast_generics) => {
             check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
-        hir::ItemKind::Enum(_, ref ast_generics) => {
+        hir::ItemKind::Enum(_, ast_generics) => {
             check_type_defn(tcx, item, true);
             check_variances_for_type_defn(tcx, item, ast_generics);
         }
@@ -1247,8 +1247,8 @@ fn check_impl<'tcx>(
     constness: hir::Constness,
 ) {
     enter_wf_checking_ctxt(tcx, item.span, item.owner_id.def_id, |wfcx| {
-        match *ast_trait_ref {
-            Some(ref ast_trait_ref) => {
+        match ast_trait_ref {
+            Some(ast_trait_ref) => {
                 // `#[rustc_reservation_impl]` impls are not real impls and
                 // therefore don't need to be WF (the trait's `Self: Trait` predicate
                 // won't hold).

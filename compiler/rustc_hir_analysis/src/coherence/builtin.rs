@@ -502,12 +502,11 @@ pub fn coerce_unsized_info<'tcx>(tcx: TyCtxt<'tcx>, impl_did: DefId) -> CoerceUn
                 return err_info;
             } else if diff_fields.len() > 1 {
                 let item = tcx.hir().expect_item(impl_did);
-                let span =
-                    if let ItemKind::Impl(hir::Impl { of_trait: Some(ref t), .. }) = item.kind {
-                        t.path.span
-                    } else {
-                        tcx.def_span(impl_did)
-                    };
+                let span = if let ItemKind::Impl(hir::Impl { of_trait: Some(t), .. }) = &item.kind {
+                    t.path.span
+                } else {
+                    tcx.def_span(impl_did)
+                };
 
                 struct_span_err!(
                     tcx.sess,

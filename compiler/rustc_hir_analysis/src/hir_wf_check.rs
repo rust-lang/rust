@@ -128,7 +128,7 @@ fn diagnostic_hir_wf_check<'tcx>(
             },
             hir::Node::Item(item) => match item.kind {
                 hir::ItemKind::Static(ty, _, _) | hir::ItemKind::Const(ty, _) => vec![ty],
-                hir::ItemKind::Impl(ref impl_) => match &impl_.of_trait {
+                hir::ItemKind::Impl(impl_) => match &impl_.of_trait {
                     Some(t) => t
                         .path
                         .segments

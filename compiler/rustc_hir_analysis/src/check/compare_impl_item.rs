@@ -1513,8 +1513,7 @@ fn compare_synthetic_generics<'tcx>(
                         impl<'v> intravisit::Visitor<'v> for Visitor {
                             fn visit_ty(&mut self, ty: &'v hir::Ty<'v>) {
                                 intravisit::walk_ty(self, ty);
-                                if let hir::TyKind::Path(hir::QPath::Resolved(None, ref path)) =
-                                    ty.kind
+                                if let hir::TyKind::Path(hir::QPath::Resolved(None, path)) = ty.kind
                                     && let Res::Def(DefKind::TyParam, def_id) = path.res
                                     && def_id == self.1.to_def_id()
                                 {
