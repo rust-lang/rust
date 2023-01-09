@@ -1103,7 +1103,8 @@ impl CStr {
                   without modifying the original"]
     #[stable(feature = "cstr_to_str", since = "1.4.0")]
     pub fn to_string_lossy(&self) -> Cow<'_, str> {
-        String::from_utf8_lossy(self.to_bytes())
+        // false = no need for co-alloc metadata, since it would get lost once converted to the slice.
+        String::<false>::from_utf8_lossy(self.to_bytes())
     }
 
     /// Converts a <code>[Box]<[CStr]></code> into a [`CString`] without copying or allocating.
