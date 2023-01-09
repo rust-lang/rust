@@ -132,5 +132,5 @@ LL | #[stable(feature = "a", since = "1.0.0")]
 
 error: aborting due to 20 previous errors
 
-Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549.
+Some errors have detailed explanations: E0539, E0541, E0542, E0543, E0544, E0546, E0547, E0549, E0711.
 For more information about an error, try `rustc --explain E0539`.
