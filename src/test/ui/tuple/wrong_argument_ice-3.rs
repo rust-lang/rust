@@ -7,7 +7,7 @@ fn test(process: &Process, groups: Vec<Group>) -> Vec<Group> {
 
     if groups.capacity() == 0 {
         groups.push(new_group, vec![process]);
-        //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+        //~^ ERROR this method takes 1 argument but 2 arguments were supplied
         return groups;
     }
 

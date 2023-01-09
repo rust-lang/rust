@@ -361,6 +361,7 @@ pub enum ValuePairs<'tcx> {
     Terms(ExpectedFound<ty::Term<'tcx>>),
     TraitRefs(ExpectedFound<ty::TraitRef<'tcx>>),
     PolyTraitRefs(ExpectedFound<ty::PolyTraitRef<'tcx>>),
+    Sigs(ExpectedFound<ty::FnSig<'tcx>>),
 }
 
 impl<'tcx> ValuePairs<'tcx> {
@@ -408,9 +409,6 @@ pub enum SubregionOrigin<'tcx> {
 
     /// Creating a pointer `b` to contents of another reference
     Reborrow(Span),
-
-    /// Creating a pointer `b` to contents of an upvar
-    ReborrowUpvar(Span, ty::UpvarId),
 
     /// Data with type `Ty<'tcx>` was borrowed
     DataBorrowed(Ty<'tcx>, Span),
@@ -1954,7 +1952,6 @@ impl<'tcx> SubregionOrigin<'tcx> {
             RelateParamBound(a, ..) => a,
             RelateRegionParamBound(a) => a,
             Reborrow(a) => a,
-            ReborrowUpvar(a, _) => a,
             DataBorrowed(_, a) => a,
             ReferenceOutlivesReferent(_, a) => a,
             CompareImplItemObligation { span, .. } => span,

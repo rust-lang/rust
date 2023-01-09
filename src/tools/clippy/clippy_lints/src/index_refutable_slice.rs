@@ -251,7 +251,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 let map = cx.tcx.hir();
 
                 // Checking for slice indexing
-                let parent_id = map.get_parent_node(expr.hir_id);
+                let parent_id = map.parent_id(expr.hir_id);
                 if let Some(hir::Node::Expr(parent_expr)) = map.find(parent_id);
                 if let hir::ExprKind::Index(_, index_expr) = parent_expr.kind;
                 if let Some((Constant::Int(index_value), _)) = constant(cx, cx.typeck_results(), index_expr);
@@ -259,7 +259,7 @@ impl<'a, 'tcx> Visitor<'tcx> for SliceIndexLintingVisitor<'a, 'tcx> {
                 if index_value < max_suggested_slice;
 
                 // Make sure that this slice index is read only
-                let maybe_addrof_id = map.get_parent_node(parent_id);
+                let maybe_addrof_id = map.parent_id(parent_id);
                 if let Some(hir::Node::Expr(maybe_addrof_expr)) = map.find(maybe_addrof_id);
                 if let hir::ExprKind::AddrOf(_kind, hir::Mutability::Not, _inner_expr) = maybe_addrof_expr.kind;
                 then {

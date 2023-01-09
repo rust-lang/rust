@@ -3,6 +3,7 @@ use std::fmt::Debug;
 
 use super::TraitEngine;
 use super::{ChalkFulfillmentContext, FulfillmentContext};
+use crate::solve::FulfillmentCtxt as NextFulfillmentCtxt;
 use crate::traits::NormalizeExt;
 use rustc_data_structures::fx::FxIndexSet;
 use rustc_hir::def_id::{DefId, LocalDefId};
@@ -20,6 +21,7 @@ use rustc_middle::ty::error::TypeError;
 use rustc_middle::ty::ToPredicate;
 use rustc_middle::ty::TypeFoldable;
 use rustc_middle::ty::{self, Ty, TyCtxt};
+use rustc_session::config::TraitSolver;
 use rustc_span::Span;
 
 pub trait TraitEngineExt<'tcx> {
@@ -29,18 +31,18 @@ pub trait TraitEngineExt<'tcx> {
 
 impl<'tcx> TraitEngineExt<'tcx> for dyn TraitEngine<'tcx> {
     fn new(tcx: TyCtxt<'tcx>) -> Box<Self> {
-        if tcx.sess.opts.unstable_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new())
-        } else {
-            Box::new(FulfillmentContext::new())
+        match tcx.sess.opts.unstable_opts.trait_solver {
+            TraitSolver::Classic => Box::new(FulfillmentContext::new()),
+            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new()),
+            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
         }
     }
 
     fn new_in_snapshot(tcx: TyCtxt<'tcx>) -> Box<Self> {
-        if tcx.sess.opts.unstable_opts.chalk {
-            Box::new(ChalkFulfillmentContext::new_in_snapshot())
-        } else {
-            Box::new(FulfillmentContext::new_in_snapshot())
+        match tcx.sess.opts.unstable_opts.trait_solver {
+            TraitSolver::Classic => Box::new(FulfillmentContext::new_in_snapshot()),
+            TraitSolver::Chalk => Box::new(ChalkFulfillmentContext::new_in_snapshot()),
+            TraitSolver::Next => Box::new(NextFulfillmentCtxt::new()),
         }
     }
 }

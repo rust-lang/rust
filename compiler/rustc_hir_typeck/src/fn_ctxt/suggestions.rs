@@ -32,7 +32,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         self.typeck_results
             .borrow()
             .liberated_fn_sigs()
-            .get(self.tcx.hir().get_parent_node(self.body_id))
+            .get(self.tcx.hir().parent_id(self.body_id))
             .copied()
     }
 
@@ -642,7 +642,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 // Check if the parent expression is a call to Pin::new.  If it
                 // is and we were expecting a Box, ergo Pin<Box<expected>>, we
                 // can suggest Box::pin.
-                let parent = self.tcx.hir().get_parent_node(expr.hir_id);
+                let parent = self.tcx.hir().parent_id(expr.hir_id);
                 let Some(Node::Expr(Expr { kind: ExprKind::Call(fn_name, _), .. })) = self.tcx.hir().find(parent) else {
                     return false;
                 };
@@ -1012,6 +1012,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 _ => break false,
             }
         }
+    }
+
+    pub(crate) fn suggest_clone_for_ref(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
+            && let Some(clone_trait_def) = self.tcx.lang_items().clone_trait()
+            && expected_ty == *inner_ty
+            && self
+                .infcx
+                .type_implements_trait(
+                    clone_trait_def,
+                    [self.tcx.erase_regions(expected_ty)],
+                    self.param_env
+                )
+                .must_apply_modulo_regions()
+          {
+              diag.span_suggestion_verbose(
+                  expr.span.shrink_to_hi(),
+                  "consider using clone here",
+                  ".clone()",
+                  Applicability::MachineApplicable,
+              );
+              return true;
+          }
+        false
     }
 
     pub(crate) fn suggest_copied_or_cloned(

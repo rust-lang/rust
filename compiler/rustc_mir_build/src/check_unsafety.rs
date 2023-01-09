@@ -5,6 +5,7 @@ use rustc_middle::thir::visit::{self, Visitor};
 use rustc_hir as hir;
 use rustc_middle::mir::BorrowKind;
 use rustc_middle::thir::*;
+use rustc_middle::ty::print::with_no_trimmed_paths;
 use rustc_middle::ty::{self, ParamEnv, Ty, TyCtxt};
 use rustc_session::lint::builtin::{UNSAFE_OP_IN_UNSAFE_FN, UNUSED_UNSAFE};
 use rustc_session::lint::Level;
@@ -524,17 +525,19 @@ impl UnsafeOpKind {
         hir_id: hir::HirId,
         span: Span,
     ) {
+        // FIXME: ideally we would want to trim the def paths, but this is not
+        // feasible with the current lint emission API (see issue #106126).
         match self {
-            CallToUnsafeFunction(did) if did.is_some() => tcx.emit_spanned_lint(
+            CallToUnsafeFunction(Some(did)) => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
                 UnsafeOpInUnsafeFnCallToUnsafeFunctionRequiresUnsafe {
                     span,
-                    function: &tcx.def_path_str(did.unwrap()),
+                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
                 },
             ),
-            CallToUnsafeFunction(..) => tcx.emit_spanned_lint(
+            CallToUnsafeFunction(None) => tcx.emit_spanned_lint(
                 UNSAFE_OP_IN_UNSAFE_FN,
                 hir_id,
                 span,
@@ -594,7 +597,7 @@ impl UnsafeOpKind {
                 span,
                 UnsafeOpInUnsafeFnCallToFunctionWithRequiresUnsafe {
                     span,
-                    function: &tcx.def_path_str(*did),
+                    function: &with_no_trimmed_paths!(tcx.def_path_str(*did)),
                 },
             ),
         }
@@ -607,24 +610,24 @@ impl UnsafeOpKind {
         unsafe_op_in_unsafe_fn_allowed: bool,
     ) {
         match self {
-            CallToUnsafeFunction(did) if did.is_some() && unsafe_op_in_unsafe_fn_allowed => {
+            CallToUnsafeFunction(Some(did)) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeUnsafeOpInUnsafeFnAllowed {
                     span,
-                    function: &tcx.def_path_str(did.unwrap()),
+                    function: &tcx.def_path_str(*did),
                 });
             }
-            CallToUnsafeFunction(did) if did.is_some() => {
+            CallToUnsafeFunction(Some(did)) => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafe {
                     span,
-                    function: &tcx.def_path_str(did.unwrap()),
+                    function: &tcx.def_path_str(*did),
                 });
             }
-            CallToUnsafeFunction(..) if unsafe_op_in_unsafe_fn_allowed => {
+            CallToUnsafeFunction(None) if unsafe_op_in_unsafe_fn_allowed => {
                 tcx.sess.emit_err(
                     CallToUnsafeFunctionRequiresUnsafeNamelessUnsafeOpInUnsafeFnAllowed { span },
                 );
             }
-            CallToUnsafeFunction(..) => {
+            CallToUnsafeFunction(None) => {
                 tcx.sess.emit_err(CallToUnsafeFunctionRequiresUnsafeNameless { span });
             }
             UseOfInlineAssembly if unsafe_op_in_unsafe_fn_allowed => {

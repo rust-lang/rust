@@ -27,7 +27,6 @@
       bb1: {
           StorageDead(_3);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:14: +2:15
           StorageDead(_2);                 // scope 1 at $DIR/scalar_literal_propagation.rs:+2:15: +2:16
-          nop;                             // scope 0 at $DIR/scalar_literal_propagation.rs:+0:11: +3:2
           StorageDead(_1);                 // scope 0 at $DIR/scalar_literal_propagation.rs:+3:1: +3:2
           return;                          // scope 0 at $DIR/scalar_literal_propagation.rs:+3:2: +3:2
       }

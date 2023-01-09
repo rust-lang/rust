@@ -28,6 +28,9 @@ use crate::borrow::ToOwned;
 use crate::boxed::Box;
 use crate::vec::Vec;
 
+#[cfg(test)]
+mod tests;
+
 #[unstable(feature = "slice_range", issue = "76393")]
 pub use core::slice::range;
 #[unstable(feature = "array_chunks", issue = "74985")]

@@ -260,9 +260,11 @@ pub(crate) struct InvalidFloatLiteralSuffix {
 
 #[derive(Diagnostic)]
 #[diag(session_int_literal_too_large)]
+#[note]
 pub(crate) struct IntLiteralTooLarge {
     #[primary_span]
     pub span: Span,
+    pub limit: String,
 }
 
 #[derive(Diagnostic)]
@@ -361,8 +363,15 @@ pub fn report_lit_error(sess: &ParseSess, err: LitError, lit: token::Lit, span: 
                 _ => unreachable!(),
             };
         }
-        LitError::IntTooLarge => {
-            sess.emit_err(IntLiteralTooLarge { span });
+        LitError::IntTooLarge(base) => {
+            let max = u128::MAX;
+            let limit = match base {
+                2 => format!("{max:#b}"),
+                8 => format!("{max:#o}"),
+                16 => format!("{max:#x}"),
+                _ => format!("{max}"),
+            };
+            sess.emit_err(IntLiteralTooLarge { span, limit });
         }
     }
 }

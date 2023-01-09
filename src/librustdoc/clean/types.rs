@@ -2111,7 +2111,6 @@ impl Union {
 /// only as a variant in an enum.
 #[derive(Clone, Debug)]
 pub(crate) struct VariantStruct {
-    pub(crate) ctor_kind: Option<CtorKind>,
     pub(crate) fields: Vec<Item>,
 }
 
@@ -2494,6 +2493,17 @@ impl Import {
 
     pub(crate) fn new_glob(source: ImportSource, should_be_displayed: bool) -> Self {
         Self { kind: ImportKind::Glob, source, should_be_displayed }
+    }
+
+    pub(crate) fn imported_item_is_doc_hidden(&self, tcx: TyCtxt<'_>) -> bool {
+        match self.source.did {
+            Some(did) => tcx
+                .get_attrs(did, sym::doc)
+                .filter_map(ast::Attribute::meta_item_list)
+                .flatten()
+                .has_word(sym::hidden),
+            None => false,
+        }
     }
 }
 

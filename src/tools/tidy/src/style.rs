@@ -15,6 +15,7 @@
 //!
 //! A number of these checks can be opted-out of with various directives of the form:
 //! `// ignore-tidy-CHECK-NAME`.
+// ignore-tidy-dbg
 
 use crate::walk::{filter_dirs, walk};
 use regex::{Regex, RegexSet};
@@ -24,6 +25,7 @@ use std::path::Path;
 /// displayed on the console with --example.
 const ERROR_CODE_COLS: usize = 80;
 const COLS: usize = 100;
+const GOML_COLS: usize = 120;
 
 const LINES: usize = 3000;
 
@@ -229,7 +231,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl"];
+        let extensions =
+            [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl", ".goml"];
         if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
             return;
         }
@@ -254,8 +257,15 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let extension = file.extension().unwrap().to_string_lossy();
         let is_error_code = extension == "md" && is_in(file, "src", "error_codes");
+        let is_goml_code = extension == "goml";
 
-        let max_columns = if is_error_code { ERROR_CODE_COLS } else { COLS };
+        let max_columns = if is_error_code {
+            ERROR_CODE_COLS
+        } else if is_goml_code {
+            GOML_COLS
+        } else {
+            COLS
+        };
 
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")
@@ -278,6 +288,7 @@ pub fn check(path: &Path, bad: &mut bool) {
         let mut skip_leading_newlines =
             contains_ignore_directive(can_contain, &contents, "leading-newlines");
         let mut skip_copyright = contains_ignore_directive(can_contain, &contents, "copyright");
+        let mut skip_dbg = contains_ignore_directive(can_contain, &contents, "dbg");
         let mut leading_new_lines = false;
         let mut trailing_new_lines = 0;
         let mut lines = 0;
@@ -306,6 +317,21 @@ pub fn check(path: &Path, bad: &mut bool) {
             let mut err = |msg: &str| {
                 tidy_error!(bad, "{}:{}: {}", file.display(), i + 1, msg);
             };
+
+            if trimmed.contains("dbg!")
+                && !trimmed.starts_with("//")
+                && !file
+                    .ancestors()
+                    .any(|a| a.ends_with("src/test") || a.ends_with("library/alloc/tests"))
+                && filename != "tests.rs"
+            {
+                suppressible_tidy_err!(
+                    err,
+                    skip_dbg,
+                    "`dbg!` macro is intended as a debugging tool. It should not be in version control."
+                )
+            }
+
             if !under_rustfmt
                 && line.chars().count() > max_columns
                 && !long_line_is_ok(&extension, is_error_code, max_columns, line)

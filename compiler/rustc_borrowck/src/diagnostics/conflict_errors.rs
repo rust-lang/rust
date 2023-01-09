@@ -394,7 +394,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     }
                 }
                 let typeck = self.infcx.tcx.typeck(self.mir_def_id());
-                let hir_id = hir.get_parent_node(expr.hir_id);
+                let hir_id = hir.parent_id(expr.hir_id);
                 if let Some(parent) = hir.find(hir_id) {
                     let (def_id, args, offset) = if let hir::Node::Expr(parent_expr) = parent
                         && let hir::ExprKind::MethodCall(_, _, args, _) = parent_expr.kind
@@ -527,26 +527,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // that are *partially* initialized by assigning to a field of an uninitialized
             // binding. We differentiate between them for more accurate wording here.
             "isn't fully initialized"
-        } else if spans
-            .iter()
-            .filter(|i| {
-                // We filter these to avoid misleading wording in cases like the following,
-                // where `x` has an `init`, but it is in the same place we're looking at:
-                // ```
-                // let x;
-                // x += 1;
-                // ```
-                !i.contains(span)
-                    // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
-                        && !visitor
-                            .errors
-                            .iter()
-                            .map(|(sp, _)| *sp)
-                            .any(|sp| span < sp && !sp.contains(span))
-            })
-            .count()
-            == 0
-        {
+        } else if !spans.iter().any(|i| {
+            // We filter these to avoid misleading wording in cases like the following,
+            // where `x` has an `init`, but it is in the same place we're looking at:
+            // ```
+            // let x;
+            // x += 1;
+            // ```
+            !i.contains(span)
+            // We filter these to avoid incorrect main message on `match-cfg-fake-edges.rs`
+            && !visitor
+                .errors
+                .iter()
+                .map(|(sp, _)| *sp)
+                .any(|sp| span < sp && !sp.contains(span))
+        }) {
             show_assign_sugg = true;
             "isn't initialized"
         } else {
@@ -1430,6 +1425,21 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             // and `move` will not help here.
             (
                 Some(name),
+                BorrowExplanation::UsedLater(LaterUseKind::ClosureCapture, var_or_use_span, _),
+            ) => self.report_escaping_closure_capture(
+                borrow_spans,
+                borrow_span,
+                &RegionName {
+                    name: self.synthesize_region_name(),
+                    source: RegionNameSource::Static,
+                },
+                ConstraintCategory::CallArgument(None),
+                var_or_use_span,
+                &format!("`{}`", name),
+                "block",
+            ),
+            (
+                Some(name),
                 BorrowExplanation::MustBeValidFor {
                     category:
                         category @ (ConstraintCategory::Return(_)
@@ -1448,6 +1458,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                     category,
                     span,
                     &format!("`{}`", name),
+                    "function",
                 ),
             (
                 name,
@@ -1900,6 +1911,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         Some(err)
     }
 
+    #[instrument(level = "debug", skip(self))]
     fn report_escaping_closure_capture(
         &mut self,
         use_span: UseSpans<'tcx>,
@@ -1908,6 +1920,7 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
         category: ConstraintCategory<'tcx>,
         constraint_span: Span,
         captured_var: &str,
+        scope: &str,
     ) -> DiagnosticBuilder<'cx, ErrorGuaranteed> {
         let tcx = self.infcx.tcx;
         let args_span = use_span.args_or_use();
@@ -1938,8 +1951,13 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
             None => "closure",
         };
 
-        let mut err =
-            self.cannot_capture_in_long_lived_closure(args_span, kind, captured_var, var_span);
+        let mut err = self.cannot_capture_in_long_lived_closure(
+            args_span,
+            kind,
+            captured_var,
+            var_span,
+            scope,
+        );
         err.span_suggestion_verbose(
             sugg_span,
             &format!(
@@ -1961,10 +1979,10 @@ impl<'cx, 'tcx> MirBorrowckCtxt<'cx, 'tcx> {
                 if matches!(use_span.generator_kind(), Some(GeneratorKind::Async(_))) {
                     err.note(
                         "async blocks are not executed immediately and must either take a \
-                    reference or ownership of outside variables they use",
+                         reference or ownership of outside variables they use",
                     );
                 } else {
-                    let msg = format!("function requires argument type to outlive `{}`", fr_name);
+                    let msg = format!("{scope} requires argument type to outlive `{fr_name}`");
                     err.span_note(constraint_span, &msg);
                 }
             }

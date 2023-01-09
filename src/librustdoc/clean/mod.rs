@@ -1960,7 +1960,6 @@ pub(crate) fn clean_variant_def<'tcx>(variant: &ty::VariantDef, cx: &mut DocCont
             variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         ),
         None => VariantKind::Struct(VariantStruct {
-            ctor_kind: None,
             fields: variant.fields.iter().map(|field| clean_middle_field(field, cx)).collect(),
         }),
     };
@@ -1985,7 +1984,6 @@ fn clean_variant_data<'tcx>(
 
     let kind = match variant {
         hir::VariantData::Struct(..) => VariantKind::Struct(VariantStruct {
-            ctor_kind: None,
             fields: variant.fields().iter().map(|x| clean_field(x, cx)).collect(),
         }),
         hir::VariantData::Tuple(..) => {

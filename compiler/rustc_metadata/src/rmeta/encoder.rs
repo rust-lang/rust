@@ -145,7 +145,7 @@ impl<'a, 'tcx, I, T> Encodable<EncodeContext<'a, 'tcx>> for LazyTable<I, T> {
 impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for CrateNum {
     fn encode(&self, s: &mut EncodeContext<'a, 'tcx>) {
         if *self != LOCAL_CRATE && s.is_proc_macro {
-            panic!("Attempted to encode non-local CrateNum {:?} for proc-macro crate", self);
+            panic!("Attempted to encode non-local CrateNum {self:?} for proc-macro crate");
         }
         s.emit_u32(self.as_u32());
     }
@@ -276,7 +276,7 @@ impl<'a, 'tcx> Encodable<EncodeContext<'a, 'tcx>> for Span {
                 // Introduce a new scope so that we drop the 'lock()' temporary
                 match &*source_file.external_src.lock() {
                     ExternalSource::Foreign { metadata_index, .. } => *metadata_index,
-                    src => panic!("Unexpected external source {:?}", src),
+                    src => panic!("Unexpected external source {src:?}"),
                 }
             };
 
@@ -733,12 +733,9 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
             let prefix = "meta-stats";
             let perc = |bytes| (bytes * 100) as f64 / total_bytes as f64;
 
-            eprintln!("{} METADATA STATS", prefix);
+            eprintln!("{prefix} METADATA STATS");
             eprintln!("{} {:<23}{:>10}", prefix, "Section", "Size");
-            eprintln!(
-                "{} ----------------------------------------------------------------",
-                prefix
-            );
+            eprintln!("{prefix} ----------------------------------------------------------------");
             for (label, size) in stats {
                 eprintln!(
                     "{} {:<23}{:>10} ({:4.1}%)",
@@ -748,10 +745,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                     perc(size)
                 );
             }
-            eprintln!(
-                "{} ----------------------------------------------------------------",
-                prefix
-            );
+            eprintln!("{prefix} ----------------------------------------------------------------");
             eprintln!(
                 "{} {:<23}{:>10} (of which {:.1}% are zero bytes)",
                 prefix,
@@ -759,7 +753,7 @@ impl<'a, 'tcx> EncodeContext<'a, 'tcx> {
                 to_readable_str(total_bytes),
                 perc(zero_bytes)
             );
-            eprintln!("{}", prefix);
+            eprintln!("{prefix}");
         }
 
         root

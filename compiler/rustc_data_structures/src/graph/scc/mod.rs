@@ -233,10 +233,9 @@ where
             .map(G::Node::new)
             .map(|node| match this.start_walk_from(node) {
                 WalkReturn::Complete { scc_index } => scc_index,
-                WalkReturn::Cycle { min_depth } => panic!(
-                    "`start_walk_node({:?})` returned cycle with depth {:?}",
-                    node, min_depth
-                ),
+                WalkReturn::Cycle { min_depth } => {
+                    panic!("`start_walk_node({node:?})` returned cycle with depth {min_depth:?}")
+                }
             })
             .collect();
 
@@ -272,8 +271,7 @@ where
             NodeState::NotVisited => return None,
 
             NodeState::InCycleWith { parent } => panic!(
-                "`find_state` returned `InCycleWith({:?})`, which ought to be impossible",
-                parent
+                "`find_state` returned `InCycleWith({parent:?})`, which ought to be impossible"
             ),
         })
     }
@@ -369,7 +367,7 @@ where
                     previous_node = previous;
                 }
                 // Only InCycleWith nodes were added to the reverse linked list.
-                other => panic!("Invalid previous link while compressing cycle: {:?}", other),
+                other => panic!("Invalid previous link while compressing cycle: {other:?}"),
             }
 
             debug!("find_state: parent_state = {:?}", node_state);
@@ -394,7 +392,7 @@ where
                 // NotVisited can not be part of a cycle since it should
                 // have instead gotten explored.
                 NodeState::NotVisited | NodeState::InCycleWith { .. } => {
-                    panic!("invalid parent state: {:?}", node_state)
+                    panic!("invalid parent state: {node_state:?}")
                 }
             }
         }

@@ -40,20 +40,20 @@ impl<T: Write> JsonFormatter<T> {
         extra: Option<&str>,
     ) -> io::Result<()> {
         // A doc test's name includes a filename which must be escaped for correct json.
-        self.write_message(&*format!(
+        self.write_message(&format!(
             r#"{{ "type": "{}", "name": "{}", "event": "{}""#,
             ty,
             EscapedString(name),
             evt
         ))?;
         if let Some(exec_time) = exec_time {
-            self.write_message(&*format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
+            self.write_message(&format!(r#", "exec_time": {}"#, exec_time.0.as_secs_f64()))?;
         }
         if let Some(stdout) = stdout {
-            self.write_message(&*format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
+            self.write_message(&format!(r#", "stdout": "{}""#, EscapedString(stdout)))?;
         }
         if let Some(extra) = extra {
-            self.write_message(&*format!(r#", {extra}"#))?;
+            self.write_message(&format!(r#", {extra}"#))?;
         }
         self.writeln_message(" }")
     }
@@ -66,13 +66,13 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
         } else {
             String::new()
         };
-        self.writeln_message(&*format!(
+        self.writeln_message(&format!(
             r#"{{ "type": "suite", "event": "started", "test_count": {test_count}{shuffle_seed_json} }}"#
         ))
     }
 
     fn write_test_start(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.writeln_message(&*format!(
+        self.writeln_message(&format!(
             r#"{{ "type": "test", "event": "started", "name": "{}" }}"#,
             EscapedString(desc.name.as_slice())
         ))
@@ -151,20 +151,20 @@ impl<T: Write> OutputFormatter for JsonFormatter<T> {
                     mbps
                 );
 
-                self.writeln_message(&*line)
+                self.writeln_message(&line)
             }
         }
     }
 
     fn write_timeout(&mut self, desc: &TestDesc) -> io::Result<()> {
-        self.writeln_message(&*format!(
+        self.writeln_message(&format!(
             r#"{{ "type": "test", "event": "timeout", "name": "{}" }}"#,
             EscapedString(desc.name.as_slice())
         ))
     }
 
     fn write_run_finish(&mut self, state: &ConsoleTestState) -> io::Result<bool> {
-        self.write_message(&*format!(
+        self.write_message(&format!(
             "{{ \"type\": \"suite\", \
              \"event\": \"{}\", \
              \"passed\": {}, \

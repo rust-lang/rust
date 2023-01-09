@@ -1,4 +1,3 @@
-// ignore-tidy-filelength
 //! Error Reporting Code for the inference engine
 //!
 //! Because of the way inference, and in particular region inference,
@@ -303,6 +302,7 @@ pub fn unexpected_hidden_region_diagnostic<'tcx>(
                     None,
                     format!("captures `{}`", hidden_region),
                     None,
+                    Some(reg_info.def_id),
                 )
             }
         }
@@ -1428,8 +1428,8 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
         impl<'tcx> OpaqueTypesVisitor<'tcx> {
             fn visit_expected_found(
                 tcx: TyCtxt<'tcx>,
-                expected: Ty<'tcx>,
-                found: Ty<'tcx>,
+                expected: impl TypeVisitable<'tcx>,
+                found: impl TypeVisitable<'tcx>,
                 ignore_span: Span,
             ) -> Self {
                 let mut types_visitor = OpaqueTypesVisitor {
@@ -1568,6 +1568,11 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                             }
                             _ => (false, Mismatch::Fixed("type")),
                         }
+                    }
+                    ValuePairs::Sigs(infer::ExpectedFound { expected, found }) => {
+                        OpaqueTypesVisitor::visit_expected_found(self.tcx, expected, found, span)
+                            .report(diag);
+                        (false, Mismatch::Fixed("signature"))
                     }
                     ValuePairs::TraitRefs(_) | ValuePairs::PolyTraitRefs(_) => {
                         (false, Mismatch::Fixed("trait"))
@@ -2039,6 +2044,17 @@ impl<'tcx> TypeErrCtxt<'_, 'tcx> {
                     }
                     ret => ret,
                 }
+            }
+            infer::Sigs(exp_found) => {
+                let exp_found = self.resolve_vars_if_possible(exp_found);
+                if exp_found.references_error() {
+                    return None;
+                }
+                let (exp, fnd) = self.cmp_fn_sig(
+                    &ty::Binder::dummy(exp_found.expected),
+                    &ty::Binder::dummy(exp_found.found),
+                );
+                Some((exp, fnd, None, None))
             }
         }
     }

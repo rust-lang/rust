@@ -7,35 +7,35 @@ define-function: (
     (theme, background, background_selected, background_hover, border_bottom,
      border_bottom_selected, border_bottom_hover, border_top, border_top_selected,
      border_top_hover),
-    [
+    block {
         // Setting the theme.
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
 
         // These two commands are used to be sure the search will be run.
-        ("focus", ".search-input"),
-        ("press-key", "Enter"),
+        focus: ".search-input"
+        press-key: "Enter"
 
-        ("wait-for", "#search-tabs"),
-        ("assert-css", ("#search-tabs > button:not(.selected)", {
+        wait-for: "#search-tabs"
+        assert-css: ("#search-tabs > button:not(.selected)", {
             "background-color": |background|,
             "border-bottom": |border_bottom|,
             "border-top": |border_top|,
-        })),
-        ("assert-css", ("#search-tabs > button.selected", {
+        })
+        assert-css: ("#search-tabs > button.selected", {
             "background-color": |background_selected|,
             "border-bottom": |border_bottom_selected|,
             "border-top": |border_top_selected|,
-        })),
-        ("move-cursor-to", "#search-tabs > button:not(.selected)"),
-        ("assert-css", ("#search-tabs > button:not(.selected):hover", {
+        })
+        move-cursor-to: "#search-tabs > button:not(.selected)"
+        assert-css: ("#search-tabs > button:not(.selected):hover", {
             "background-color": |background_hover|,
             "border-bottom": |border_bottom_hover|,
             "border-top": |border_top_hover|,
-        })),
+        })
         // To prevent disrupting next run of this function.
-        ("move-cursor-to", ".search-input"),
-    ],
+        move-cursor-to: ".search-input"
+    },
 )
 
 call-function: ("check-colors", {

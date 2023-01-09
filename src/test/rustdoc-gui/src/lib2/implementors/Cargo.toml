@@ -5,3 +5,6 @@ edition = "2018"
 
 [lib]
 path = "lib.rs"
+
+[dependencies]
+http = { path = "../http/" }

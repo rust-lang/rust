@@ -10,6 +10,8 @@ impl Whatever for Struct {
     type Foo = u8;
 }
 
+impl http::HttpTrait for Struct {}
+
 mod traits {
     pub trait TraitToReexport {
         fn method() {}

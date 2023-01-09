@@ -486,11 +486,8 @@ impl Compilation {
 
 fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
     let upper_cased_code = code.to_ascii_uppercase();
-    let normalised = if upper_cased_code.starts_with('E') {
-        upper_cased_code
-    } else {
-        format!("E{0:0>4}", code)
-    };
+    let normalised =
+        if upper_cased_code.starts_with('E') { upper_cased_code } else { format!("E{code:0>4}") };
     match registry.try_find_description(&normalised) {
         Ok(Some(description)) => {
             let mut is_in_code_block = false;
@@ -513,14 +510,14 @@ fn handle_explain(registry: Registry, code: &str, output: ErrorOutputType) {
             if io::stdout().is_terminal() {
                 show_content_with_pager(&text);
             } else {
-                print!("{}", text);
+                print!("{text}");
             }
         }
         Ok(None) => {
-            early_error(output, &format!("no extended information for {}", code));
+            early_error(output, &format!("no extended information for {code}"));
         }
         Err(InvalidErrorCode) => {
-            early_error(output, &format!("{} is not a valid error code", code));
+            early_error(output, &format!("{code} is not a valid error code"));
         }
     }
 }
@@ -552,7 +549,7 @@ fn show_content_with_pager(content: &str) {
     // If pager fails for whatever reason, we should still print the content
     // to standard output
     if fallback_to_println {
-        print!("{}", content);
+        print!("{content}");
     }
 }
 
@@ -672,7 +669,7 @@ fn print_crate_info(
                 );
                 let id = rustc_session::output::find_crate_name(sess, attrs, input);
                 if *req == PrintRequest::CrateName {
-                    println!("{}", id);
+                    println!("{id}");
                     continue;
                 }
                 let crate_types = collect_crate_types(sess, attrs);
@@ -704,7 +701,7 @@ fn print_crate_info(
                         }
 
                         if let Some(value) = value {
-                            Some(format!("{}=\"{}\"", name, value))
+                            Some(format!("{name}=\"{value}\""))
                         } else {
                             Some(name.to_string())
                         }
@@ -713,7 +710,7 @@ fn print_crate_info(
 
                 cfgs.sort();
                 for cfg in cfgs {
-                    println!("{}", cfg);
+                    println!("{cfg}");
                 }
             }
             CallingConventions => {
@@ -739,7 +736,7 @@ fn print_crate_info(
                     let stable = sess.target.options.supported_split_debuginfo.contains(split);
                     let unstable_ok = sess.unstable_options();
                     if stable || unstable_ok {
-                        println!("{}", split);
+                        println!("{split}");
                     }
                 }
             }
@@ -776,14 +773,14 @@ pub fn version_at_macro_invocation(
 ) {
     let verbose = matches.opt_present("verbose");
 
-    println!("{} {}", binary, version);
+    println!("{binary} {version}");
 
     if verbose {
-        println!("binary: {}", binary);
-        println!("commit-hash: {}", commit_hash);
-        println!("commit-date: {}", commit_date);
+        println!("binary: {binary}");
+        println!("commit-hash: {commit_hash}");
+        println!("commit-date: {commit_date}");
         println!("host: {}", config::host_triple());
-        println!("release: {}", release);
+        println!("release: {release}");
 
         let debug_flags = matches.opt_strs("Z");
         let backend_name = debug_flags.iter().find_map(|x| x.strip_prefix("codegen-backend="));
@@ -1037,7 +1034,7 @@ pub fn handle_options(args: &[String]) -> Option<getopts::Matches> {
                 .map(|&(name, ..)| ('C', name))
                 .chain(Z_OPTIONS.iter().map(|&(name, ..)| ('Z', name)))
                 .find(|&(_, name)| *opt == name.replace('_', "-"))
-                .map(|(flag, _)| format!("{}. Did you mean `-{} {}`?", e, flag, opt)),
+                .map(|(flag, _)| format!("{e}. Did you mean `-{flag} {opt}`?")),
             _ => None,
         };
         early_error(ErrorOutputType::default(), &msg.unwrap_or_else(|| e.to_string()));
@@ -1148,7 +1145,7 @@ fn extra_compiler_flags() -> Option<(Vec<String>, bool)> {
             } else {
                 result.push(a.to_string());
                 match ICE_REPORT_COMPILER_FLAGS_STRIP_VALUE.iter().find(|s| option == **s) {
-                    Some(s) => result.push(format!("{}=[REDACTED]", s)),
+                    Some(s) => result.push(format!("{s}=[REDACTED]")),
                     None => result.push(content),
                 }
             }
@@ -1246,7 +1243,7 @@ pub fn report_ice(info: &panic::PanicInfo<'_>, bug_report_url: &str) {
 
     let mut xs: Vec<Cow<'static, str>> = vec![
         "the compiler unexpectedly panicked. this is a bug.".into(),
-        format!("we would appreciate a bug report: {}", bug_report_url).into(),
+        format!("we would appreciate a bug report: {bug_report_url}").into(),
         format!(
             "rustc {} running on {}",
             util::version_str!().unwrap_or("unknown_version"),
@@ -1379,7 +1376,7 @@ pub fn main() -> ! {
                 arg.into_string().unwrap_or_else(|arg| {
                     early_error(
                         ErrorOutputType::default(),
-                        &format!("argument {} is not valid Unicode: {:?}", i, arg),
+                        &format!("argument {i} is not valid Unicode: {arg:?}"),
                     )
                 })
             })

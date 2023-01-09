@@ -18,11 +18,11 @@ fn permuted(_x: X, _y: Y, _z: Z) {}
 
 fn main() {
     invalid(1.0); //~ ERROR mismatched types
-    extra(""); //~ ERROR this function takes
-    missing(); //~ ERROR this function takes
+    extra(""); //~ ERROR function takes
+    missing(); //~ ERROR function takes
     swapped("", 1); //~ ERROR arguments to this function are incorrect
     permuted(Y {}, Z {}, X {}); //~ ERROR arguments to this function are incorrect
 
     let closure = |x| x;
-    closure(); //~ ERROR this function takes
+    closure(); //~ ERROR function takes
 }

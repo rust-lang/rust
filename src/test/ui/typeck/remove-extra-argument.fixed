@@ -4,6 +4,6 @@ fn l(_a: Vec<u8>) {}
 
 fn main() {
     l(vec![])
-    //~^ ERROR this function takes 1 argument but 2 arguments were supplied
+    //~^ ERROR function takes 1 argument but 2 arguments were supplied
     //~| HELP remove the extra argument
 }

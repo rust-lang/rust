@@ -1,4 +1,4 @@
-error[E0061]: this function takes 1 argument but 2 arguments were supplied
+error[E0061]: this method takes 1 argument but 2 arguments were supplied
   --> $DIR/wrong_argument_ice-3.rs:9:16
    |
 LL |         groups.push(new_group, vec![process]);

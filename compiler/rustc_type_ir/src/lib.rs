@@ -241,22 +241,30 @@ bitflags! {
         /// Basically anything but `ReLateBound` and `ReErased`.
         const HAS_FREE_REGIONS            = 1 << 14;
 
-        /// Does this have any `ReLateBound` regions? Used to check
-        /// if a global bound is safe to evaluate.
+        /// Does this have any `ReLateBound` regions?
         const HAS_RE_LATE_BOUND           = 1 << 15;
+        /// Does this have any `Bound` types?
+        const HAS_TY_LATE_BOUND           = 1 << 16;
+        /// Does this have any `ConstKind::Bound` consts?
+        const HAS_CT_LATE_BOUND           = 1 << 17;
+        /// Does this have any bound variables?
+        /// Used to check if a global bound is safe to evaluate.
+        const HAS_LATE_BOUND              = TypeFlags::HAS_RE_LATE_BOUND.bits
+                                          | TypeFlags::HAS_TY_LATE_BOUND.bits
+                                          | TypeFlags::HAS_CT_LATE_BOUND.bits;
 
         /// Does this have any `ReErased` regions?
-        const HAS_RE_ERASED               = 1 << 16;
+        const HAS_RE_ERASED               = 1 << 18;
 
         /// Does this value have parameters/placeholders/inference variables which could be
         /// replaced later, in a way that would change the results of `impl` specialization?
-        const STILL_FURTHER_SPECIALIZABLE = 1 << 17;
+        const STILL_FURTHER_SPECIALIZABLE = 1 << 19;
 
         /// Does this value have `InferTy::FreshTy/FreshIntTy/FreshFloatTy`?
-        const HAS_TY_FRESH                = 1 << 18;
+        const HAS_TY_FRESH                = 1 << 20;
 
         /// Does this value have `InferConst::Fresh`?
-        const HAS_CT_FRESH                = 1 << 19;
+        const HAS_CT_FRESH                = 1 << 21;
     }
 }
 
@@ -718,9 +726,9 @@ impl fmt::Debug for InferTy {
             TyVar(ref v) => v.fmt(f),
             IntVar(ref v) => v.fmt(f),
             FloatVar(ref v) => v.fmt(f),
-            FreshTy(v) => write!(f, "FreshTy({:?})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({:?})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({:?})", v),
+            FreshTy(v) => write!(f, "FreshTy({v:?})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v:?})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v:?})"),
         }
     }
 }
@@ -743,9 +751,9 @@ impl fmt::Display for InferTy {
             TyVar(_) => write!(f, "_"),
             IntVar(_) => write!(f, "{}", "{integer}"),
             FloatVar(_) => write!(f, "{}", "{float}"),
-            FreshTy(v) => write!(f, "FreshTy({})", v),
-            FreshIntTy(v) => write!(f, "FreshIntTy({})", v),
-            FreshFloatTy(v) => write!(f, "FreshFloatTy({})", v),
+            FreshTy(v) => write!(f, "FreshTy({v})"),
+            FreshIntTy(v) => write!(f, "FreshIntTy({v})"),
+            FreshFloatTy(v) => write!(f, "FreshFloatTy({v})"),
         }
     }
 }

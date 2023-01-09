@@ -271,7 +271,7 @@ pub const MAIN_SEPARATOR: char = crate::sys::path::MAIN_SEP;
 /// The primary separator of path components for the current platform.
 ///
 /// For example, `/` on Unix and `\` on Windows.
-#[unstable(feature = "main_separator_str", issue = "94071")]
+#[stable(feature = "main_separator_str", since = "CURRENT_RUSTC_VERSION")]
 pub const MAIN_SEPARATOR_STR: &str = crate::sys::path::MAIN_SEP_STR;
 
 ////////////////////////////////////////////////////////////////////////////////

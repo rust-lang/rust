@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Call `tidy --bless` before git push
+# Call `tidy` before git push
 # Copy this script to .git/hooks to activate,
 # and remove it from .git/hooks to deactivate.
 #

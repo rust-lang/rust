@@ -1392,7 +1392,7 @@ declare_lint! {
     ///
     /// The attribute must be used in conjunction with the
     /// [`closure_track_caller` feature flag]. Otherwise, the `#[track_caller]`
-    /// annotation will function as as no-op.
+    /// annotation will function as a no-op.
     ///
     /// [`closure_track_caller` feature flag]: https://doc.rust-lang.org/beta/unstable-book/language-features/closure-track-caller.html
     UNGATED_ASYNC_FN_TRACK_CALLER,
@@ -1526,7 +1526,7 @@ impl<'tcx> LateLintPass<'tcx> for UnreachablePub {
 
     fn check_field_def(&mut self, cx: &LateContext<'_>, field: &hir::FieldDef<'_>) {
         let map = cx.tcx.hir();
-        if matches!(map.get(map.get_parent_node(field.hir_id)), Node::Variant(_)) {
+        if matches!(map.get_parent(field.hir_id), Node::Variant(_)) {
             return;
         }
         self.perform_lint(cx, "field", field.def_id, field.vis_span, false);

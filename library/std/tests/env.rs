@@ -1,12 +1,24 @@
 use std::env::*;
 use std::ffi::{OsStr, OsString};
 
-use rand::distributions::Alphanumeric;
-use rand::{thread_rng, Rng};
+use rand::distributions::{Alphanumeric, DistString};
 
+/// Copied from `std::test_helpers::test_rng`, since these tests rely on the
+/// seed not being the same for every RNG invocation too.
+#[track_caller]
+pub(crate) fn test_rng() -> rand_xorshift::XorShiftRng {
+    use core::hash::{BuildHasher, Hash, Hasher};
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    core::panic::Location::caller().hash(&mut hasher);
+    let hc64 = hasher.finish();
+    let seed_vec = hc64.to_le_bytes().into_iter().chain(0u8..8).collect::<Vec<u8>>();
+    let seed: [u8; 16] = seed_vec.as_slice().try_into().unwrap();
+    rand::SeedableRng::from_seed(seed)
+}
+
+#[track_caller]
 fn make_rand_name() -> OsString {
-    let rng = thread_rng();
-    let n = format!("TEST{}", rng.sample_iter(&Alphanumeric).take(10).collect::<String>());
+    let n = format!("TEST{}", Alphanumeric.sample_string(&mut test_rng(), 10));
     let n = OsString::from(n);
     assert!(var_os(&n).is_none());
     n

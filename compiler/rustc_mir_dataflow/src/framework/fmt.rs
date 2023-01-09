@@ -143,7 +143,7 @@ where
             ", "
         };
 
-        write!(f, "{}", delim)?;
+        write!(f, "{delim}")?;
         idx.fmt_with(ctxt, f)?;
         first = false;
     }
@@ -164,7 +164,7 @@ where
             ", "
         };
 
-        write!(f, "{}", delim)?;
+        write!(f, "{delim}")?;
         idx.fmt_with(ctxt, f)?;
         first = false;
     }

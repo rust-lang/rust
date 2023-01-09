@@ -2011,7 +2011,7 @@ impl<'test> TestCx<'test> {
                 rustc.args(&["-Zpolonius"]);
             }
             Some(CompareMode::Chalk) => {
-                rustc.args(&["-Zchalk"]);
+                rustc.args(&["-Ztrait-solver=chalk"]);
             }
             Some(CompareMode::SplitDwarf) if self.config.target.contains("windows") => {
                 rustc.args(&["-Csplit-debuginfo=unpacked", "-Zunstable-options"]);

@@ -76,7 +76,7 @@ impl Arch {
 
 fn pre_link_args(os: &'static str, arch: Arch, abi: &'static str) -> LinkArgs {
     let platform_name: StaticCow<str> = match abi {
-        "sim" => format!("{}-simulator", os).into(),
+        "sim" => format!("{os}-simulator").into(),
         "macabi" => "mac-catalyst".into(),
         _ => os.into(),
     };
@@ -193,7 +193,7 @@ fn macos_deployment_target(arch: Arch) -> (u32, u32) {
 
 fn macos_lld_platform_version(arch: Arch) -> String {
     let (major, minor) = macos_deployment_target(arch);
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn macos_llvm_target(arch: Arch) -> String {
@@ -252,7 +252,7 @@ pub fn ios_llvm_target(arch: Arch) -> String {
 
 fn ios_lld_platform_version() -> String {
     let (major, minor) = ios_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn ios_sim_llvm_target(arch: Arch) -> String {
@@ -266,7 +266,7 @@ fn tvos_deployment_target() -> (u32, u32) {
 
 fn tvos_lld_platform_version() -> String {
     let (major, minor) = tvos_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 fn watchos_deployment_target() -> (u32, u32) {
@@ -275,7 +275,7 @@ fn watchos_deployment_target() -> (u32, u32) {
 
 fn watchos_lld_platform_version() -> String {
     let (major, minor) = watchos_deployment_target();
-    format!("{}.{}", major, minor)
+    format!("{major}.{minor}")
 }
 
 pub fn watchos_sim_llvm_target(arch: Arch) -> String {

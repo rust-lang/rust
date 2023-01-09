@@ -174,7 +174,7 @@ pub fn find_binding_init<'tcx>(cx: &LateContext<'tcx>, hir_id: HirId) -> Option<
     if_chain! {
         if let Some(Node::Pat(pat)) = hir.find(hir_id);
         if matches!(pat.kind, PatKind::Binding(BindingAnnotation::NONE, ..));
-        let parent = hir.get_parent_node(hir_id);
+        let parent = hir.parent_id(hir_id);
         if let Some(Node::Local(local)) = hir.find(parent);
         then {
             return local.init;
@@ -1287,7 +1287,7 @@ pub fn contains_return(expr: &hir::Expr<'_>) -> bool {
 
 /// Gets the parent node, if any.
 pub fn get_parent_node(tcx: TyCtxt<'_>, id: HirId) -> Option<Node<'_>> {
-    tcx.hir().parent_iter(id).next().map(|(_, node)| node)
+    tcx.hir().find_parent(id)
 }
 
 /// Gets the parent expression, if any –- this is useful to constrain a lint.
@@ -2075,7 +2075,7 @@ pub fn is_no_core_crate(cx: &LateContext<'_>) -> bool {
 /// }
 /// ```
 pub fn is_trait_impl_item(cx: &LateContext<'_>, hir_id: HirId) -> bool {
-    if let Some(Node::Item(item)) = cx.tcx.hir().find(cx.tcx.hir().get_parent_node(hir_id)) {
+    if let Some(Node::Item(item)) = cx.tcx.hir().find_parent(hir_id) {
         matches!(item.kind, ItemKind::Impl(hir::Impl { of_trait: Some(_), .. }))
     } else {
         false

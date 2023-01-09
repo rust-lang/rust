@@ -24,6 +24,8 @@ use crate::util::get_clang_cl_resource_dir;
 use crate::util::{self, exe, output, t, up_to_date};
 use crate::{CLang, GitRepo};
 
+use build_helper::ci::CiEnv;
+
 #[derive(Clone)]
 pub struct LlvmResult {
     /// Path to llvm-config binary.
@@ -63,13 +65,13 @@ impl LdFlags {
     }
 }
 
-// This returns whether we've already previously built LLVM.
-//
-// It's used to avoid busting caches during x.py check -- if we've already built
-// LLVM, it's fine for us to not try to avoid doing so.
-//
-// This will return the llvm-config if it can get it (but it will not build it
-// if not).
+/// This returns whether we've already previously built LLVM.
+///
+/// It's used to avoid busting caches during x.py check -- if we've already built
+/// LLVM, it's fine for us to not try to avoid doing so.
+///
+/// This will return the llvm-config if it can get it (but it will not build it
+/// if not).
 pub fn prebuilt_llvm_config(
     builder: &Builder<'_>,
     target: TargetSelection,
@@ -217,7 +219,7 @@ pub(crate) fn is_ci_llvm_available(config: &Config, asserts: bool) -> bool {
         return false;
     }
 
-    if crate::util::CiEnv::is_ci() {
+    if CiEnv::is_ci() {
         // We assume we have access to git, so it's okay to unconditionally pass
         // `true` here.
         let llvm_sha = detect_llvm_sha(config, true);
@@ -823,8 +825,21 @@ impl Step for Lld {
         }
         let target = self.target;
 
-        let LlvmResult { llvm_config, llvm_cmake_dir } =
-            builder.ensure(Llvm { target: self.target });
+        let LlvmResult { llvm_config, llvm_cmake_dir } = builder.ensure(Llvm { target });
+
+        // The `dist` step packages LLD next to LLVM's binaries for download-ci-llvm. The root path
+        // we usually expect here is `./build/$triple/ci-llvm/`, with the binaries in its `bin`
+        // subfolder. We check if that's the case, and if LLD's binary already exists there next to
+        // `llvm-config`: if so, we can use it instead of building LLVM/LLD from source.
+        let ci_llvm_bin = llvm_config.parent().unwrap();
+        if ci_llvm_bin.is_dir() && ci_llvm_bin.file_name().unwrap() == "bin" {
+            let lld_path = ci_llvm_bin.join(exe("lld", target));
+            if lld_path.exists() {
+                // The following steps copying `lld` as `rust-lld` to the sysroot, expect it in the
+                // `bin` subfolder of this step's out dir.
+                return ci_llvm_bin.parent().unwrap().to_path_buf();
+            }
+        }
 
         let out_dir = builder.lld_out(target);
         let done_stamp = out_dir.join("lld-finished-building");
@@ -1072,12 +1087,12 @@ fn supported_sanitizers(
 
     match &*target.triple {
         "aarch64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
-        "aarch64-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
+        "aarch64-unknown-fuchsia" => common_libs("fuchsia", "aarch64", &["asan"]),
         "aarch64-unknown-linux-gnu" => {
             common_libs("linux", "aarch64", &["asan", "lsan", "msan", "tsan", "hwasan"])
         }
         "x86_64-apple-darwin" => darwin_libs("osx", &["asan", "lsan", "tsan"]),
-        "x86_64-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
+        "x86_64-unknown-fuchsia" => common_libs("fuchsia", "x86_64", &["asan"]),
         "x86_64-unknown-freebsd" => common_libs("freebsd", "x86_64", &["asan", "msan", "tsan"]),
         "x86_64-unknown-netbsd" => {
             common_libs("netbsd", "x86_64", &["asan", "lsan", "msan", "tsan"])

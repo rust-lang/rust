@@ -98,8 +98,7 @@ fn add_rust_attribute_on_codeblock(explanation: &str) -> String {
 
 fn render_html(output_path: &Path) -> Result<(), Box<dyn Error>> {
     let mut introduction = format!(
-        "<script src='redirect.js'></script>
-# Rust error codes index
+        "# Rust error codes index
 
 This page lists all the error codes emitted by the Rust compiler.
 
@@ -149,7 +148,12 @@ This page lists all the error codes emitted by the Rust compiler.
     book.book.sections.push(BookItem::Chapter(chapter));
     book.build()?;
 
-    // We can't put this content into another file, otherwise `mbdbook` will also put it into the
+    // The error-index used to be generated manually (without mdbook), and the
+    // index was located at the top level. Now that it is generated with
+    // mdbook, error-index.html has moved to error_codes/error-index.html.
+    // This adds a redirect so that old links go to the new location.
+    //
+    // We can't put this content into another file, otherwise `mdbook` will also put it into the
     // output directory, making a duplicate.
     fs::write(
         output_path.join("error-index.html"),
@@ -163,13 +167,9 @@ This page lists all the error codes emitted by the Rust compiler.
     </head>
     <body>
         <div>If you are not automatically redirected to the error code index, please <a id="index-link" href="./error_codes/error-index.html">here</a>.
-        <script>document.getElementById("index-link").click()</script>
     </body>
 </html>"#,
     )?;
-
-    // No need for a 404 file, it's already handled by the server.
-    fs::remove_file(output_path.join("error_codes/404.html"))?;
 
     Ok(())
 }

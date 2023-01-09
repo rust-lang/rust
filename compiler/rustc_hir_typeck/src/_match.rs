@@ -224,14 +224,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let mut ret_span: MultiSpan = semi_span.into();
         ret_span.push_span_label(
             expr.span,
-            "this could be implicitly returned but it is a statement, not a \
-                            tail expression",
+            "this could be implicitly returned but it is a statement, not a tail expression",
         );
         ret_span.push_span_label(ret, "the `match` arms can conform to this return type");
         ret_span.push_span_label(
             semi_span,
-            "the `match` is a statement because of this semicolon, consider \
-                            removing it",
+            "the `match` is a statement because of this semicolon, consider removing it",
         );
         diag.span_note(ret_span, "you might have meant to return the `match` expression");
         diag.tool_only_span_suggestion(
@@ -289,15 +287,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     fn maybe_get_coercion_reason(&self, hir_id: hir::HirId, sp: Span) -> Option<(Span, String)> {
         let node = {
-            let rslt = self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(hir_id));
+            let rslt = self.tcx.hir().parent_id(self.tcx.hir().parent_id(hir_id));
             self.tcx.hir().get(rslt)
         };
         if let hir::Node::Block(block) = node {
             // check that the body's parent is an fn
-            let parent = self
-                .tcx
-                .hir()
-                .get(self.tcx.hir().get_parent_node(self.tcx.hir().get_parent_node(block.hir_id)));
+            let parent = self.tcx.hir().get_parent(self.tcx.hir().parent_id(block.hir_id));
             if let (Some(expr), hir::Node::Item(hir::Item { kind: hir::ItemKind::Fn(..), .. })) =
                 (&block.expr, parent)
             {
@@ -526,7 +521,6 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                         None
                     }
                 })?;
-                let opaque_ty = self.tcx.mk_opaque(rpit_def_id, substs);
 
                 if !self.can_coerce(first_ty, expected) || !self.can_coerce(second_ty, expected) {
                     return None;
@@ -540,13 +534,22 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     {
                         let pred = pred.kind().rebind(match pred.kind().skip_binder() {
                             ty::PredicateKind::Clause(ty::Clause::Trait(trait_pred)) => {
-                                assert_eq!(trait_pred.trait_ref.self_ty(), opaque_ty);
+                                // FIXME(rpitit): This will need to be fixed when we move to associated types
+                                assert!(matches!(
+                                    *trait_pred.trait_ref.self_ty().kind(),
+                                    ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                                    if def_id == rpit_def_id && substs == substs
+                                ));
                                 ty::PredicateKind::Clause(ty::Clause::Trait(
                                     trait_pred.with_self_ty(self.tcx, ty),
                                 ))
                             }
                             ty::PredicateKind::Clause(ty::Clause::Projection(mut proj_pred)) => {
-                                assert_eq!(proj_pred.projection_ty.self_ty(), opaque_ty);
+                                assert!(matches!(
+                                    *proj_pred.projection_ty.self_ty().kind(),
+                                    ty::Alias(_, ty::AliasTy { def_id, substs, .. })
+                                    if def_id == rpit_def_id && substs == substs
+                                ));
                                 proj_pred = proj_pred.with_self_ty(self.tcx, ty);
                                 ty::PredicateKind::Clause(ty::Clause::Projection(proj_pred))
                             }

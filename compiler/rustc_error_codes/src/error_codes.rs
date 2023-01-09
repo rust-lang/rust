@@ -579,8 +579,7 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0300, // unexpanded macro
 //  E0304, // expected signed integer constant
 //  E0305, // expected constant
-    E0313, // lifetime of borrowed pointer outlives lifetime of captured
-           // variable
+//  E0313, // removed: found unreachable
 //  E0314, // closure outlives stack frame
 //  E0315, // cannot invoke closure outside of its lifetime
 //  E0319, // trait impls for defaulted traits allowed just for structs/enums

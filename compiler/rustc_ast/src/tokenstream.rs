@@ -258,8 +258,7 @@ impl AttrTokenStream {
 
                         assert!(
                             found,
-                            "Failed to find trailing delimited group in: {:?}",
-                            target_tokens
+                            "Failed to find trailing delimited group in: {target_tokens:?}"
                         );
                     }
                     let mut flat: SmallVec<[_; 1]> = SmallVec::new();

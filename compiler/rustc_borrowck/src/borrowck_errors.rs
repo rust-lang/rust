@@ -440,15 +440,14 @@ impl<'cx, 'tcx> crate::MirBorrowckCtxt<'cx, 'tcx> {
         closure_kind: &str,
         borrowed_path: &str,
         capture_span: Span,
+        scope: &str,
     ) -> DiagnosticBuilder<'tcx, ErrorGuaranteed> {
         let mut err = struct_span_err!(
             self,
             closure_span,
             E0373,
-            "{} may outlive the current function, but it borrows {}, which is owned by the current \
-             function",
-            closure_kind,
-            borrowed_path,
+            "{closure_kind} may outlive the current {scope}, but it borrows {borrowed_path}, \
+             which is owned by the current {scope}",
         );
         err.span_label(capture_span, format!("{} is borrowed here", borrowed_path))
             .span_label(closure_span, format!("may outlive borrowed value {}", borrowed_path));

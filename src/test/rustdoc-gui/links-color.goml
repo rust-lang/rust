@@ -8,29 +8,29 @@ define-function: (
     "check-colors",
     (theme, mod, macro, struct, enum, trait, fn, type, union, keyword,
      sidebar, sidebar_current, sidebar_current_background),
-    [
-        ("local-storage", {
+    block {
+        local-storage: {
             "rustdoc-theme": |theme|,
             "rustdoc-use-system-theme": "false",
-        }),
-        ("reload"),
+        }
+        reload:
         // Checking results colors.
-        ("assert-css", (".item-table .mod", {"color": |mod|}, ALL)),
-        ("assert-css", (".item-table .macro", {"color": |macro|}, ALL)),
-        ("assert-css", (".item-table .struct", {"color": |struct|}, ALL)),
-        ("assert-css", (".item-table .enum", {"color": |enum|}, ALL)),
-        ("assert-css", (".item-table .trait", {"color": |trait|}, ALL)),
-        ("assert-css", (".item-table .fn", {"color": |fn|}, ALL)),
-        ("assert-css", (".item-table .type", {"color": |type|}, ALL)),
-        ("assert-css", (".item-table .union", {"color": |union|}, ALL)),
-        ("assert-css", (".item-table .keyword", {"color": |keyword|}, ALL)),
+        assert-css: (".item-table .mod", {"color": |mod|}, ALL)
+        assert-css: (".item-table .macro", {"color": |macro|}, ALL)
+        assert-css: (".item-table .struct", {"color": |struct|}, ALL)
+        assert-css: (".item-table .enum", {"color": |enum|}, ALL)
+        assert-css: (".item-table .trait", {"color": |trait|}, ALL)
+        assert-css: (".item-table .fn", {"color": |fn|}, ALL)
+        assert-css: (".item-table .type", {"color": |type|}, ALL)
+        assert-css: (".item-table .union", {"color": |union|}, ALL)
+        assert-css: (".item-table .keyword", {"color": |keyword|}, ALL)
         // Checking sidebar elements.
-        ("assert-css", (
+        assert-css: (
             ".sidebar-elems a:not(.current)",
             {"color": |sidebar|, "background-color": "rgba(0, 0, 0, 0)", "font-weight": "400"},
             ALL,
-        )),
-        ("assert-css", (
+        )
+        assert-css: (
             ".sidebar-elems a.current",
             {
                 "color": |sidebar_current|,
@@ -38,8 +38,8 @@ define-function: (
                 "font-weight": "500",
             },
             ALL,
-        )),
-    ],
+        )
+    },
 )
 
 call-function: (

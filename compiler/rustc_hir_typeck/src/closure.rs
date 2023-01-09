@@ -13,7 +13,7 @@ use rustc_infer::infer::{InferOk, InferResult};
 use rustc_macros::{TypeFoldable, TypeVisitable};
 use rustc_middle::ty::subst::InternalSubsts;
 use rustc_middle::ty::visit::TypeVisitable;
-use rustc_middle::ty::{self, Ty};
+use rustc_middle::ty::{self, Ty, TypeSuperVisitable, TypeVisitor};
 use rustc_span::source_map::Span;
 use rustc_target::spec::abi::Abi;
 use rustc_trait_selection::traits;
@@ -21,6 +21,7 @@ use rustc_trait_selection::traits::error_reporting::ArgKind;
 use rustc_trait_selection::traits::error_reporting::InferCtxtExt as _;
 use std::cmp;
 use std::iter;
+use std::ops::ControlFlow;
 
 /// What signature do we *expect* the closure to have from context?
 #[derive(Debug, Clone, TypeFoldable, TypeVisitable)]
@@ -54,7 +55,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         // closure sooner rather than later, so first examine the expected
         // type, and see if can glean a closure kind from there.
         let (expected_sig, expected_kind) = match expected.to_option(self) {
-            Some(ty) => self.deduce_expectations_from_expected_type(ty),
+            Some(ty) => self.deduce_closure_signature(ty),
             None => (None, None),
         };
         let body = self.tcx.hir().body(closure.body);
@@ -162,13 +163,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// Given the expected type, figures out what it can about this closure we
     /// are about to type check:
     #[instrument(skip(self), level = "debug")]
-    fn deduce_expectations_from_expected_type(
+    fn deduce_closure_signature(
         &self,
         expected_ty: Ty<'tcx>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         match *expected_ty.kind() {
             ty::Alias(ty::Opaque, ty::AliasTy { def_id, substs, .. }) => self
-                .deduce_signature_from_predicates(
+                .deduce_closure_signature_from_predicates(
+                    expected_ty,
                     self.tcx.bound_explicit_item_bounds(def_id).subst_iter_copied(self.tcx, substs),
                 ),
             ty::Dynamic(ref object_type, ..) => {
@@ -181,7 +183,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                     .and_then(|did| self.tcx.fn_trait_kind_from_def_id(did));
                 (sig, kind)
             }
-            ty::Infer(ty::TyVar(vid)) => self.deduce_signature_from_predicates(
+            ty::Infer(ty::TyVar(vid)) => self.deduce_closure_signature_from_predicates(
+                self.tcx.mk_ty_var(self.root_var(vid)),
                 self.obligations_for_self_ty(vid).map(|obl| (obl.predicate, obl.cause.span)),
             ),
             ty::FnPtr(sig) => {
@@ -192,8 +195,9 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
-    fn deduce_signature_from_predicates(
+    fn deduce_closure_signature_from_predicates(
         &self,
+        expected_ty: Ty<'tcx>,
         predicates: impl DoubleEndedIterator<Item = (ty::Predicate<'tcx>, Span)>,
     ) -> (Option<ExpectedSig<'tcx>>, Option<ty::ClosureKind>) {
         let mut expected_sig = None;
@@ -214,13 +218,33 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             if expected_sig.is_none()
                 && let ty::PredicateKind::Clause(ty::Clause::Projection(proj_predicate)) = bound_predicate.skip_binder()
             {
-                expected_sig = self.normalize(
+                let inferred_sig = self.normalize(
                     obligation.cause.span,
                     self.deduce_sig_from_projection(
                     Some(obligation.cause.span),
                         bound_predicate.rebind(proj_predicate),
                     ),
                 );
+                // Make sure that we didn't infer a signature that mentions itself.
+                // This can happen when we elaborate certain supertrait bounds that
+                // mention projections containing the `Self` type. See #105401.
+                struct MentionsTy<'tcx> {
+                    expected_ty: Ty<'tcx>,
+                }
+                impl<'tcx> TypeVisitor<'tcx> for MentionsTy<'tcx> {
+                    type BreakTy = ();
+
+                    fn visit_ty(&mut self, t: Ty<'tcx>) -> ControlFlow<Self::BreakTy> {
+                        if t == self.expected_ty {
+                            ControlFlow::BREAK
+                        } else {
+                            t.super_visit_with(self)
+                        }
+                    }
+                }
+                if inferred_sig.visit_with(&mut MentionsTy { expected_ty }).is_continue() {
+                    expected_sig = inferred_sig;
+                }
             }
 
             // Even if we can't infer the full signature, we may be able to

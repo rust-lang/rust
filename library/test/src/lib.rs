@@ -789,7 +789,7 @@ fn run_test_in_spawned_subprocess(
         }
     });
     let record_result2 = record_result.clone();
-    panic::set_hook(Box::new(move |info| record_result2(Some(&info))));
+    panic::set_hook(Box::new(move |info| record_result2(Some(info))));
     if let Err(message) = testfn() {
         panic!("{}", message);
     }

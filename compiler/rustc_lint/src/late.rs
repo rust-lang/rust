@@ -40,7 +40,7 @@ macro_rules! lint_callback { ($cx:expr, $f:ident, $($args:expr),*) => ({
     $cx.pass.$f(&$cx.context, $($args),*);
 }) }
 
-/// Implements the AST traversal for late lint passes. `T` provides the the
+/// Implements the AST traversal for late lint passes. `T` provides the
 /// `check_*` methods.
 pub struct LateContextAndPass<'tcx, T: LateLintPass<'tcx>> {
     context: LateContext<'tcx>,

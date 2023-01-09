@@ -1503,12 +1503,13 @@ impl<'a> Parser<'a> {
                 prior_type_ascription: self.last_type_ascription,
             });
             (lo.to(self.prev_token.span), ExprKind::MacCall(mac))
-        } else if self.check(&token::OpenDelim(Delimiter::Brace)) &&
-            let Some(expr) = self.maybe_parse_struct_expr(&qself, &path) {
-                if qself.is_some() {
-                    self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
-                }
-                return expr;
+        } else if self.check(&token::OpenDelim(Delimiter::Brace))
+            && let Some(expr) = self.maybe_parse_struct_expr(&qself, &path)
+        {
+            if qself.is_some() {
+                self.sess.gated_spans.gate(sym::more_qualified_paths, path.span);
+            }
+            return expr;
         } else {
             (path.span, ExprKind::Path(qself, path))
         };

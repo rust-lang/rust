@@ -82,7 +82,7 @@ pub(crate) fn should_have_doc_example(cx: &DocContext<'_>, item: &clean::Item) -
     let hir_id = cx.tcx.hir().local_def_id_to_hir_id(item.item_id.expect_def_id().expect_local());
 
     // check if parent is trait impl
-    if let Some(parent_hir_id) = cx.tcx.hir().find_parent_node(hir_id) {
+    if let Some(parent_hir_id) = cx.tcx.hir().opt_parent_id(hir_id) {
         if let Some(parent_node) = cx.tcx.hir().find(parent_hir_id) {
             if matches!(
                 parent_node,

@@ -247,14 +247,14 @@ impl<'p, 'tcx> MatchVisitor<'_, 'p, 'tcx> {
 
     fn check_let_chain(&mut self, cx: &mut MatchCheckCtxt<'p, 'tcx>, pat_id: HirId) -> bool {
         let hir = self.tcx.hir();
-        let parent = hir.get_parent_node(pat_id);
+        let parent = hir.parent_id(pat_id);
 
         // First, figure out if the given pattern is part of a let chain,
         // and if so, obtain the top node of the chain.
         let mut top = parent;
         let mut part_of_chain = false;
         loop {
-            let new_top = hir.get_parent_node(top);
+            let new_top = hir.parent_id(top);
             if let hir::Node::Expr(
                 hir::Expr {
                     kind: hir::ExprKind::Binary(Spanned { node: hir::BinOpKind::And, .. }, lhs, rhs),
@@ -1054,7 +1054,7 @@ pub enum LetSource {
 fn let_source(tcx: TyCtxt<'_>, pat_id: HirId) -> LetSource {
     let hir = tcx.hir();
 
-    let parent = hir.get_parent_node(pat_id);
+    let parent = hir.parent_id(pat_id);
     let_source_parent(tcx, parent, Some(pat_id))
 }
 
@@ -1073,7 +1073,7 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
         _ => {}
     }
 
-    let parent_parent = hir.get_parent_node(parent);
+    let parent_parent = hir.parent_id(parent);
     let parent_parent_node = hir.get(parent_parent);
     match parent_parent_node {
         hir::Node::Stmt(hir::Stmt { kind: hir::StmtKind::Local(_), .. }) => {
@@ -1085,8 +1085,8 @@ fn let_source_parent(tcx: TyCtxt<'_>, parent: HirId, pat_id: Option<HirId>) -> L
         _ => {}
     }
 
-    let parent_parent_parent = hir.get_parent_node(parent_parent);
-    let parent_parent_parent_parent = hir.get_parent_node(parent_parent_parent);
+    let parent_parent_parent = hir.parent_id(parent_parent);
+    let parent_parent_parent_parent = hir.parent_id(parent_parent_parent);
     let parent_parent_parent_parent_node = hir.get(parent_parent_parent_parent);
 
     if let hir::Node::Expr(hir::Expr {

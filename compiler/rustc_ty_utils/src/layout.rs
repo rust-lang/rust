@@ -155,17 +155,37 @@ fn layout_of_uncached<'tcx>(
             }
 
             let unsized_part = tcx.struct_tail_erasing_lifetimes(pointee, param_env);
-            let metadata = match unsized_part.kind() {
-                ty::Foreign(..) => {
+
+            let metadata = if let Some(metadata_def_id) = tcx.lang_items().metadata_type() {
+                let metadata_ty = tcx.normalize_erasing_regions(
+                    param_env,
+                    tcx.mk_projection(metadata_def_id, [pointee]),
+                );
+                let metadata_layout = cx.layout_of(metadata_ty)?;
+                // If the metadata is a 1-zst, then the pointer is thin.
+                if metadata_layout.is_zst() && metadata_layout.align.abi.bytes() == 1 {
                     return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)));
                 }
-                ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
-                ty::Dynamic(..) => {
-                    let mut vtable = scalar_unit(Pointer);
-                    vtable.valid_range_mut().start = 1;
-                    vtable
+
+                let Abi::Scalar(metadata) = metadata_layout.abi else {
+                    return Err(LayoutError::Unknown(unsized_part));
+                };
+                metadata
+            } else {
+                match unsized_part.kind() {
+                    ty::Foreign(..) => {
+                        return Ok(tcx.intern_layout(LayoutS::scalar(cx, data_ptr)));
+                    }
+                    ty::Slice(_) | ty::Str => scalar_unit(Int(dl.ptr_sized_integer(), false)),
+                    ty::Dynamic(..) => {
+                        let mut vtable = scalar_unit(Pointer);
+                        vtable.valid_range_mut().start = 1;
+                        vtable
+                    }
+                    _ => {
+                        return Err(LayoutError::Unknown(unsized_part));
+                    }
                 }
-                _ => return Err(LayoutError::Unknown(unsized_part)),
             };
 
             // Effectively a (ptr, meta) tuple.

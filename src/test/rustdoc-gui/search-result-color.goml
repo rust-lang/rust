@@ -3,53 +3,32 @@
 define-function: (
     "check-result-color",
     (result_kind, color, hover_color),
-    [
-        (
-            "assert-css",
-            (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL),
-        ),
-        (
-            "assert-css",
-            (
-                ".result-" + |result_kind|,
-                {"color": |entry_color|, "background-color": |background_color|},
-            ),
-        ),
-        (
-            "move-cursor-to",
+    block {
+        assert-css: (".result-" + |result_kind| + " ." + |result_kind|, {"color": |color|}, ALL)
+        assert-css: (
             ".result-" + |result_kind|,
-        ),
-        (
-            "assert-css",
-            (
-                ".result-" + |result_kind| + ":hover",
-                {"color": |hover_entry_color|, "background-color": |hover_background_color|},
-            ),
-        ),
-        (
-            "assert-css",
-            (".result-" + |result_kind| + ":hover ." + |result_kind|, {"color": |hover_color|}),
-        ),
-        (
-            "move-cursor-to",
-            ".search-input",
-        ),
-        (
-            "focus",
-            ".result-" + |result_kind|,
-        ),
-        (
-            "assert-css",
-            (
-                ".result-" + |result_kind| + ":focus",
-                {"color": |hover_entry_color|, "background-color": |hover_background_color|},
-            ),
-        ),
-        (
-            "assert-css",
-            (".result-" + |result_kind| + ":focus ." + |result_kind|, {"color": |hover_color|}),
-        ),
-    ],
+            {"color": |entry_color|, "background-color": |background_color|},
+        )
+        move-cursor-to: ".result-" + |result_kind|
+        assert-css: (
+            ".result-" + |result_kind| + ":hover",
+            {"color": |hover_entry_color|, "background-color": |hover_background_color|},
+        )
+        assert-css: (
+            ".result-" + |result_kind| + ":hover ." + |result_kind|,
+            {"color": |hover_color|},
+        )
+        move-cursor-to: ".search-input"
+        focus: ".result-" + |result_kind|
+        assert-css: (
+            ".result-" + |result_kind| + ":focus",
+            {"color": |hover_entry_color|, "background-color": |hover_background_color|},
+        )
+        assert-css: (
+            ".result-" + |result_kind| + ":focus ." + |result_kind|,
+            {"color": |hover_color|},
+        )
+    },
 )
 
 goto: "file://" + |DOC_PATH| + "/test_docs/index.html?search=coo"
@@ -389,20 +368,20 @@ show-text: true
 define-function: (
     "check-alias",
     (theme, alias, grey),
-    [
-        ("local-storage", {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}),
-        ("reload"),
-        ("write", (".search-input", "thisisanalias")),
+    block {
+        local-storage: {"rustdoc-theme": |theme|, "rustdoc-use-system-theme": "false"}
+        reload:
+        write: (".search-input", "thisisanalias")
         // To be SURE that the search will be run.
-        ("press-key", 'Enter'),
+        press-key: 'Enter'
         // Waiting for the search results to appear...
-        ("wait-for", "#search-tabs"),
+        wait-for: "#search-tabs"
         // Checking that the colors for the alias element are the ones expected.
-        ("assert-css", (".result-name > .alias", {"color": |alias|})),
-        ("assert-css", (".result-name > .alias > .grey", {"color": |grey|})),
+        assert-css: (".result-name > .alias", {"color": |alias|})
+        assert-css: (".result-name > .alias > .grey", {"color": |grey|})
         // Leave the search results to prevent reloading with an already filled search input.
-        ("press-key", "Escape"),
-    ],
+        press-key: "Escape"
+    },
 )
 
 call-function: ("check-alias", {

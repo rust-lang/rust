@@ -47,7 +47,7 @@ impl TestName {
         match *self {
             StaticTestName(s) => s,
             DynTestName(ref s) => s,
-            AlignedTestName(ref s, _) => &*s,
+            AlignedTestName(ref s, _) => s,
         }
     }
 

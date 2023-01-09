@@ -24,7 +24,7 @@ impl fmt::Debug for Byte {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match &self {
             Self::Uninit => f.write_str("??u8"),
-            Self::Init(b) => write!(f, "{:#04x}u8", b),
+            Self::Init(b) => write!(f, "{b:#04x}u8"),
         }
     }
 }

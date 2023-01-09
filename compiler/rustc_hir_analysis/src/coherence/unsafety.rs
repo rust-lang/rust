@@ -21,7 +21,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             (Unsafety::Normal, None, Unsafety::Unsafe, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
                     tcx.sess,
-                    item.span,
+                    tcx.def_span(def_id),
                     E0199,
                     "implementing the trait `{}` is not unsafe",
                     trait_ref.print_only_trait_path()
@@ -38,7 +38,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             (Unsafety::Unsafe, _, Unsafety::Normal, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
                     tcx.sess,
-                    item.span,
+                    tcx.def_span(def_id),
                     E0200,
                     "the trait `{}` requires an `unsafe impl` declaration",
                     trait_ref.print_only_trait_path()
@@ -61,7 +61,7 @@ pub(super) fn check_item(tcx: TyCtxt<'_>, def_id: LocalDefId) {
             (Unsafety::Normal, Some(attr_name), Unsafety::Normal, hir::ImplPolarity::Positive) => {
                 struct_span_err!(
                     tcx.sess,
-                    item.span,
+                    tcx.def_span(def_id),
                     E0569,
                     "requires an `unsafe impl` declaration due to `#[{}]` attribute",
                     attr_name

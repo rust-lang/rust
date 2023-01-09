@@ -111,7 +111,7 @@ impl<T: Debug> IntoSelfProfilingString for T {
         &self,
         builder: &mut QueryKeyStringBuilder<'_, '_>,
     ) -> StringId {
-        let s = format!("{:?}", self);
+        let s = format!("{self:?}");
         builder.profiler.alloc_string(&s[..])
     }
 }

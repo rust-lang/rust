@@ -1,10 +1,10 @@
-error: the type `S` is not well-formed (chalk)
+error: the type `S` is not well-formed
   --> $DIR/recursive_where_clause_on_type.rs:28:11
    |
 LL |     foo::<S>()
    |           ^
 
-error: the type `S` is not well-formed (chalk)
+error: the type `S` is not well-formed
   --> $DIR/recursive_where_clause_on_type.rs:28:5
    |
 LL |     foo::<S>()

@@ -12,7 +12,7 @@ LL |     type VRefCont<'a>: RefCont<'a, V> where Self: 'a;
 help: add missing lifetime argument
    |
 LL |         as Box<dyn MapLike<u8, u8, VRefCont<'a> = dyn RefCont<'_, u8>>>;
-   |                                    ~~~~~~~~~~~~
+   |                                            ++++
 
 error[E0271]: type mismatch resolving `<BTreeMap<u8, u8> as MapLike<u8, u8>>::VRefCont<'_> == (dyn RefCont<'_, u8> + 'static)`
   --> $DIR/issue-79422.rs:44:13

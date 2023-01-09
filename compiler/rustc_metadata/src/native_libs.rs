@@ -45,7 +45,7 @@ pub fn find_native_static_library(
 
     for path in search_paths {
         for (prefix, suffix) in &formats {
-            let test = path.join(format!("{}{}{}", prefix, name, suffix));
+            let test = path.join(format!("{prefix}{name}{suffix}"));
             if test.exists() {
                 return test;
             }

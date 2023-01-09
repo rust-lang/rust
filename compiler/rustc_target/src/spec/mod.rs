@@ -840,7 +840,7 @@ impl fmt::Display for SanitizerSet {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut first = true;
         for s in *self {
-            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {:?}", s));
+            let name = s.as_str().unwrap_or_else(|| panic!("unrecognized sanitizer {s:?}"));
             if !first {
                 f.write_str(", ")?;
             }
@@ -1109,8 +1109,8 @@ supported_targets! {
     ("x86_64-apple-darwin", x86_64_apple_darwin),
     ("i686-apple-darwin", i686_apple_darwin),
 
-    ("aarch64-fuchsia", aarch64_fuchsia),
-    ("x86_64-fuchsia", x86_64_fuchsia),
+    ("aarch64-unknown-fuchsia", aarch64_unknown_fuchsia),
+    ("x86_64-unknown-fuchsia", x86_64_unknown_fuchsia),
 
     ("avr-unknown-gnu-atmega328", avr_unknown_gnu_atmega328),
 
@@ -1240,6 +1240,8 @@ supported_targets! {
     ("armv6k-nintendo-3ds", armv6k_nintendo_3ds),
 
     ("aarch64-nintendo-switch-freestanding", aarch64_nintendo_switch_freestanding),
+
+    ("armv7-sony-vita-newlibeabihf", armv7_sony_vita_newlibeabihf),
 
     ("armv7-unknown-linux-uclibceabi", armv7_unknown_linux_uclibceabi),
     ("armv7-unknown-linux-uclibceabihf", armv7_unknown_linux_uclibceabihf),
@@ -2072,7 +2074,7 @@ impl Target {
         let mut get_req_field = |name: &str| {
             obj.remove(name)
                 .and_then(|j| j.as_str().map(str::to_string))
-                .ok_or_else(|| format!("Field {} in target specification is required", name))
+                .ok_or_else(|| format!("Field {name} in target specification is required"))
         };
 
         let mut base = Target {
@@ -2478,7 +2480,7 @@ impl Target {
             if let Some(s) = fp.as_str() {
                 base.frame_pointer = s
                     .parse()
-                    .map_err(|()| format!("'{}' is not a valid value for frame-pointer", s))?;
+                    .map_err(|()| format!("'{s}' is not a valid value for frame-pointer"))?;
             } else {
                 incorrect_type.push("frame-pointer".into())
             }
@@ -2670,7 +2672,7 @@ impl Target {
                     return load_file(&p);
                 }
 
-                Err(format!("Could not find specification for target {:?}", target_triple))
+                Err(format!("Could not find specification for target {target_triple:?}"))
             }
             TargetTriple::TargetJson { ref contents, .. } => {
                 let obj = serde_json::from_str(contents).map_err(|e| e.to_string())?;
@@ -2934,7 +2936,7 @@ impl TargetTriple {
         let contents = std::fs::read_to_string(&canonicalized_path).map_err(|err| {
             io::Error::new(
                 io::ErrorKind::InvalidInput,
-                format!("target path {:?} is not a valid file: {}", canonicalized_path, err),
+                format!("target path {canonicalized_path:?} is not a valid file: {err}"),
             )
         })?;
         let triple = canonicalized_path
@@ -2969,7 +2971,7 @@ impl TargetTriple {
                 let mut hasher = DefaultHasher::new();
                 content.hash(&mut hasher);
                 let hash = hasher.finish();
-                format!("{}-{}", triple, hash)
+                format!("{triple}-{hash}")
             }
         }
     }
