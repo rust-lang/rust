@@ -161,7 +161,7 @@ impl<'a> Resolver<'a> {
                     found_use,
                     DiagnosticMode::Normal,
                     path,
-                    None,
+                    "",
                 );
                 err.emit();
             } else if let Some((span, msg, sugg, appl)) = suggestion {
@@ -691,7 +691,7 @@ impl<'a> Resolver<'a> {
                         FoundUse::Yes,
                         DiagnosticMode::Pattern,
                         vec![],
-                        None,
+                        "",
                     );
                 }
                 err
@@ -1346,7 +1346,7 @@ impl<'a> Resolver<'a> {
             FoundUse::Yes,
             DiagnosticMode::Normal,
             vec![],
-            None,
+            "",
         );
 
         if macro_kind == MacroKind::Derive && (ident.name == sym::Send || ident.name == sym::Sync) {
@@ -2328,7 +2328,7 @@ pub(crate) fn import_candidates(
     use_placement_span: Option<Span>,
     candidates: &[ImportSuggestion],
     mode: DiagnosticMode,
-    append: Option<&str>,
+    append: &str,
 ) {
     show_candidates(
         session,
@@ -2358,12 +2358,11 @@ fn show_candidates(
     found_use: FoundUse,
     mode: DiagnosticMode,
     path: Vec<Segment>,
-    append: Option<&str>,
+    append: &str,
 ) {
     if candidates.is_empty() {
         return;
     }
-    let append = append.unwrap_or("");
 
     let mut accessible_path_strings: Vec<(String, &str, Option<DefId>, &Option<String>)> =
         Vec::new();

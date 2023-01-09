@@ -554,7 +554,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                         Some(err.span),
                         &candidates,
                         DiagnosticMode::Import,
-                        (source != target).then(|| format!(" as {target}")).as_deref(),
+                        (source != target)
+                            .then(|| format!(" as {target}"))
+                            .as_deref()
+                            .unwrap_or(""),
                     ),
                     ImportKind::Single { nested: true, source, target, .. } => {
                         import_candidates(
@@ -564,7 +567,10 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                             None,
                             &candidates,
                             DiagnosticMode::Normal,
-                            (source != target).then(|| format!(" as {target}")).as_deref(),
+                            (source != target)
+                                .then(|| format!(" as {target}"))
+                                .as_deref()
+                                .unwrap_or(""),
                         );
                     }
                     _ => {}
