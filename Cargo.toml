@@ -22,10 +22,10 @@ default = ["master"]
 master = ["gccjit/master"]
 
 [dependencies]
-#gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
+gccjit = { git = "https://github.com/antoyo/gccjit.rs" }
 
 # Local copy.
-gccjit = { path = "../gccjit.rs" }
+#gccjit = { path = "../gccjit.rs" }
 
 smallvec = { version = "1.6.1", features = ["union", "may_dangle"] }
 target-lexicon = "0.10.0"
