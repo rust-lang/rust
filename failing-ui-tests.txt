@@ -51,8 +51,6 @@ src/test/ui/fmt/format-args-capture.rs
 src/test/ui/generator/panic-drops-resume.rs
 src/test/ui/generator/panic-drops.rs
 src/test/ui/generator/panic-safe.rs
-src/test/ui/intrinsics/panic-uninitialized-zeroed.rs#mir
-src/test/ui/intrinsics/panic-uninitialized-zeroed.rs#strict
-src/test/ui/intrinsics/panic-uninitialized-zeroed.rs#thir
+src/test/ui/intrinsics/panic-uninitialized-zeroed.rs
 src/test/ui/issues/issue-14875.rs
 src/test/ui/issues/issue-29948.rs
