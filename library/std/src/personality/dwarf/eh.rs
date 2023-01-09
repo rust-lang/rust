@@ -131,10 +131,12 @@ unsafe fn interpret_cs_action(
     lpad: usize,
 ) -> EHAction {
     if cs_action_entry == 0 {
-        // If cs_action is 0 then this is a cleanup (Drop::drop). We run these
+        // If cs_action_entry is 0 then this is a cleanup (Drop::drop). We run these
         // for both Rust panics and foreign exceptions.
         EHAction::Cleanup(lpad)
     } else {
+        // If lpad != 0 and cs_action_entry != 0, we have to check ttype_index.
+        // If ttype_index == 0 under the condition, we take cleanup action.
         let action_record = (action_table as *mut u8).offset(cs_action_entry as isize - 1);
         let mut action_reader = DwarfReader::new(action_record);
         let ttype_index = action_reader.read_sleb128();
