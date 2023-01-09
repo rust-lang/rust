@@ -1523,29 +1523,10 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             };
 
             let mut result = ProbeResult::Match;
+            let mut xform_ret_ty = probe.xform_ret_ty;
+            debug!(?xform_ret_ty);
+
             let cause = traits::ObligationCause::misc(self.span, self.body_id);
-
-            let xform_ret_ty = if let Some(xform_ret_ty) = probe.xform_ret_ty {
-                // `xform_ret_ty` hasn't been normalized yet, only `xform_self_ty`,
-                // see the reasons mentioned in the comments in `assemble_inherent_impl_probe`
-                // for why this is necessary
-                let InferOk {
-                    value: normalized_xform_ret_ty,
-                    obligations: normalization_obligations,
-                } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
-                debug!("xform_ret_ty after normalization: {:?}", normalized_xform_ret_ty);
-
-                for o in normalization_obligations {
-                    if !self.predicate_may_hold(&o) {
-                        possibly_unsatisfied_predicates.push((o.predicate, None, Some(o.cause)));
-                        result = ProbeResult::NoMatch;
-                    }
-                }
-
-                Some(normalized_xform_ret_ty)
-            } else {
-                None
-            };
 
             let mut parent_pred = None;
 
@@ -1555,6 +1536,16 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
             // don't have enough information to fully evaluate).
             match probe.kind {
                 InherentImplCandidate(ref substs, ref ref_obligations) => {
+                    // `xform_ret_ty` hasn't been normalized yet, only `xform_self_ty`,
+                    // see the reasons mentioned in the comments in `assemble_inherent_impl_probe`
+                    // for why this is necessary
+                    let InferOk {
+                        value: normalized_xform_ret_ty,
+                        obligations: normalization_obligations,
+                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
+                    xform_ret_ty = normalized_xform_ret_ty;
+                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
+
                     // Check whether the impl imposes obligations we have to worry about.
                     let impl_def_id = probe.item.container_id(self.tcx);
                     let impl_bounds = self.tcx.predicates_of(impl_def_id);
@@ -1572,7 +1563,8 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
                     let candidate_obligations = impl_obligations
                         .chain(norm_obligations.into_iter())
-                        .chain(ref_obligations.iter().cloned());
+                        .chain(ref_obligations.iter().cloned())
+                        .chain(normalization_obligations.into_iter());
 
                     // Evaluate those obligations to see if they might possibly hold.
                     for o in candidate_obligations {
@@ -1668,8 +1660,33 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
 
             if let ProbeResult::Match = result
                 && let Some(return_ty) = self.return_type
-                && let Some(xform_ret_ty) = xform_ret_ty
+                && let Some(mut xform_ret_ty) = xform_ret_ty
             {
+                // `xform_ret_ty` has only been normalized for `InherentImplCandidate`.
+                // We don't normalize the other candidates for perf/backwards-compat reasons...
+                // but `self.return_type` is only set on the diagnostic-path, so we
+                // should be okay doing it here.
+                if !matches!(probe.kind, InherentImplCandidate(..)) {
+                    let InferOk {
+                        value: normalized_xform_ret_ty,
+                        obligations: normalization_obligations,
+                    } = self.fcx.at(&cause, self.param_env).normalize(xform_ret_ty);
+                    xform_ret_ty = normalized_xform_ret_ty;
+                    debug!("xform_ret_ty after normalization: {:?}", xform_ret_ty);
+                    // Evaluate those obligations to see if they might possibly hold.
+                    for o in normalization_obligations {
+                        let o = self.resolve_vars_if_possible(o);
+                        if !self.predicate_may_hold(&o) {
+                            result = ProbeResult::NoMatch;
+                            possibly_unsatisfied_predicates.push((
+                                o.predicate,
+                                None,
+                                Some(o.cause),
+                            ));
+                        }
+                    }
+                }
+
                 debug!(
                     "comparing return_ty {:?} with xform ret ty {:?}",
                     return_ty, xform_ret_ty
@@ -1681,7 +1698,7 @@ impl<'a, 'tcx> ProbeContext<'a, 'tcx> {
                     .sup(return_ty, xform_ret_ty)
                     .is_err()
                 {
-                    return ProbeResult::BadReturnType;
+                    result = ProbeResult::BadReturnType;
                 }
             }
 

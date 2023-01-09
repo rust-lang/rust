@@ -17,13 +17,6 @@ LL | impl<'a, T: Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
    |          ^                            -----------     -------------
    |          |
    |          unsatisfied trait bound introduced here
-   = note: the following trait bounds were not satisfied:
-           `&Victim<'_, Self>: VictimTrait`
-           `&mut Victim<'_, Self>: VictimTrait`
-help: consider relaxing the type parameter's implicit `Sized` bound
-   |
-LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
-   |             ++++++++
 help: consider relaxing the type parameter's implicit `Sized` bound
    |
 LL | impl<'a, T: ?Sized + Perpetrator /*+ ?Sized*/> VictimTrait for Victim<'a, T> {
