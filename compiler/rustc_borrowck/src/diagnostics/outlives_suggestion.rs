@@ -209,14 +209,14 @@ impl OutlivesSuggestionBuilder {
         let mut diag = if suggested.len() == 1 {
             mbcx.infcx.tcx.sess.diagnostic().struct_help(&match suggested.last().unwrap() {
                 SuggestedConstraint::Outlives(a, bs) => {
-                    let bs: SmallVec<[String; 2]> = bs.iter().map(|r| format!("{}", r)).collect();
-                    format!("add bound `{}: {}`", a, bs.join(" + "))
+                    let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
+                    format!("add bound `{a}: {}`", bs.join(" + "))
                 }
 
                 SuggestedConstraint::Equal(a, b) => {
-                    format!("`{}` and `{}` must be the same: replace one with the other", a, b)
+                    format!("`{a}` and `{b}` must be the same: replace one with the other")
                 }
-                SuggestedConstraint::Static(a) => format!("replace `{}` with `'static`", a),
+                SuggestedConstraint::Static(a) => format!("replace `{a}` with `'static`"),
             })
         } else {
             // Create a new diagnostic.
@@ -231,18 +231,16 @@ impl OutlivesSuggestionBuilder {
             for constraint in suggested {
                 match constraint {
                     SuggestedConstraint::Outlives(a, bs) => {
-                        let bs: SmallVec<[String; 2]> =
-                            bs.iter().map(|r| format!("{}", r)).collect();
-                        diag.help(&format!("add bound `{}: {}`", a, bs.join(" + ")));
+                        let bs: SmallVec<[String; 2]> = bs.iter().map(|r| r.to_string()).collect();
+                        diag.help(&format!("add bound `{a}: {}`", bs.join(" + ")));
                     }
                     SuggestedConstraint::Equal(a, b) => {
                         diag.help(&format!(
-                            "`{}` and `{}` must be the same: replace one with the other",
-                            a, b
+                            "`{a}` and `{b}` must be the same: replace one with the other",
                         ));
                     }
                     SuggestedConstraint::Static(a) => {
-                        diag.help(&format!("replace `{}` with `'static`", a));
+                        diag.help(&format!("replace `{a}` with `'static`"));
                     }
                 }
             }
