@@ -1,5 +1,6 @@
-// stderr-per-bitwidth
-// normalize-stderr-test "╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼" -> "╾ALLOC_ID$2╼"
+// Strip out raw byte dumps to make comparison platform-independent:
+// normalize-stderr-test "(the raw bytes of the constant) \(size: [0-9]*, align: [0-9]*\)" -> "$1 (size: $$SIZE, align: $$ALIGN)"
+// normalize-stderr-test "([0-9a-f][0-9a-f] |╾─*a(lloc)?[0-9]+(\+[a-z0-9]+)?─*╼ )+ *│.*" -> "HEX_DUMP"
 // normalize-stderr-test "alloc\d+" -> "allocN"
 // error-pattern: could not evaluate static initializer
 #![feature(
@@ -78,7 +79,7 @@ pub static R8: &[u64] = unsafe {
 pub static R9: &[u32] = unsafe { from_ptr_range(&D0..(&D0 as *const u32).add(1)) };
 pub static R10: &[u32] = unsafe { from_ptr_range(&D0..&D0) };
 
-const D0: u32 = 0x11;
+const D0: u32 = 0x11111111; // Constant chosen for endianness-independent behavior.
 const D1: MaybeUninit<&u32> = MaybeUninit::uninit();
 const D2: Struct = Struct { a: 1, b: 2, c: 3, d: 4 };
 const D3: &u32 = &42;
