@@ -105,7 +105,7 @@ Git has two ways to update your branch with the newest changes: merging and reba
 Rust [uses rebasing][no-merge-policy]. If you make a merge commit, it's not too hard to fix:
 `git rebase -i upstream/master`.
 
-See [Rebasing][#rebasing] for more about rebasing.
+See [Rebasing](#rebasing) for more about rebasing.
 
 ### I deleted my fork on GitHub!
 
