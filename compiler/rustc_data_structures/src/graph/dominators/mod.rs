@@ -135,7 +135,10 @@ pub fn dominators<G: ControlFlowGraph>(graph: G) -> Dominators<G::Node> {
         // This loop computes the semi[w] for w.
         semi[w] = w;
         for v in graph.predecessors(pre_order_to_real[w]) {
-            let v = real_to_pre_order[v].unwrap();
+            // Reachable vertices may have unreachable predecessors, so ignore any of them
+            let Some(v) = real_to_pre_order[v] else {
+                continue
+            };
 
             // eval returns a vertex x from which semi[x] is minimum among
             // vertices semi[v] +> x *> v.

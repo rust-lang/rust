@@ -1,6 +1,8 @@
 //! Validates the MIR to ensure that invariants are upheld.
 
-use rustc_data_structures::fx::FxHashSet;
+use std::collections::hash_map::Entry;
+
+use rustc_data_structures::fx::{FxHashMap, FxHashSet};
 use rustc_index::bit_set::BitSet;
 use rustc_infer::traits::Reveal;
 use rustc_middle::mir::interpret::Scalar;
@@ -18,7 +20,7 @@ use rustc_mir_dataflow::storage::always_storage_live_locals;
 use rustc_mir_dataflow::{Analysis, ResultsCursor};
 use rustc_target::abi::{Size, VariantIdx};
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 enum EdgeKind {
     Unwind,
     Normal,
@@ -57,7 +59,7 @@ impl<'tcx> MirPass<'tcx> for Validator {
             .iterate_to_fixpoint()
             .into_results_cursor(body);
 
-        TypeChecker {
+        let mut checker = TypeChecker {
             when: &self.when,
             body,
             tcx,
@@ -67,8 +69,9 @@ impl<'tcx> MirPass<'tcx> for Validator {
             storage_liveness,
             place_cache: Vec::new(),
             value_cache: Vec::new(),
-        }
-        .visit_body(body);
+        };
+        checker.visit_body(body);
+        checker.check_cleanup_control_flow();
     }
 }
 
@@ -131,6 +134,55 @@ impl<'a, 'tcx> TypeChecker<'a, 'tcx> {
             }
         } else {
             self.fail(location, format!("encountered jump to invalid basic block {:?}", bb))
+        }
+    }
+
+    fn check_cleanup_control_flow(&self) {
+        let doms = self.body.basic_blocks.dominators();
+        let mut post_contract_node = FxHashMap::default();
+        let mut get_post_contract_node = |mut bb| {
+            if let Some(res) = post_contract_node.get(&bb) {
+                return *res;
+            }
+            let mut dom_path = vec![];
+            while self.body.basic_blocks[bb].is_cleanup {
+                dom_path.push(bb);
+                bb = doms.immediate_dominator(bb);
+            }
+            let root = *dom_path.last().unwrap();
+            for bb in dom_path {
+                post_contract_node.insert(bb, root);
+            }
+            root
+        };
+
+        let mut parent = FxHashMap::default();
+        for (bb, bb_data) in self.body.basic_blocks.iter_enumerated() {
+            if !bb_data.is_cleanup || !self.reachable_blocks.contains(bb) {
+                continue;
+            }
+            let bb = get_post_contract_node(bb);
+            for s in bb_data.terminator().successors() {
+                let s = get_post_contract_node(s);
+                if s == bb {
+                    continue;
+                }
+                match parent.entry(bb) {
+                    Entry::Vacant(e) => {
+                        e.insert(s);
+                    }
+                    Entry::Occupied(e) if s != *e.get() => self.fail(
+                        Location { block: bb, statement_index: 0 },
+                        format!(
+                            "Cleanup control flow violation: The blocks dominated by {:?} have edges to both {:?} and {:?}",
+                            bb,
+                            s,
+                            *e.get()
+                        )
+                    ),
+                    Entry::Occupied(_) => (),
+                }
+            }
         }
     }
 
