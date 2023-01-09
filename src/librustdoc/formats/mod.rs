@@ -53,12 +53,6 @@ impl Impl {
             ItemId::Blanket { impl_id, .. } => impl_id,
             ItemId::Auto { trait_, .. } => trait_,
             ItemId::DefId(def_id) => def_id,
-            ItemId::Primitive(_, _) => {
-                panic!(
-                    "Unexpected ItemId::Primitive in expect_def_id: {:?}",
-                    self.impl_item.item_id
-                )
-            }
         }
     }
 
