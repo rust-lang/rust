@@ -101,17 +101,23 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         self.eval_context_mut().write_c_str(bytes, ptr, size)
     }
 
-    /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what
-    /// the Windows APIs usually handle. This function returns `Ok((false, length))` without trying
-    /// to write if `size` is not large enough to fit the contents of `os_string` plus a null
-    /// terminator. It returns `Ok((true, length))` if the writing process was successful. The
-    /// string length returned does include the null terminator. Length is measured in units of
-    /// `u16.`
+    /// Helper function to write an OsStr as a 0x0000-terminated u16-sequence, which is what the
+    /// Windows APIs usually handle.
+    ///
+    /// If `truncate == false` (the usual mode of operation), this function returns `Ok((false,
+    /// length))` without trying to write if `size` is not large enough to fit the contents of
+    /// `os_string` plus a null terminator. It returns `Ok((true, length))` if the writing process
+    /// was successful. The string length returned does include the null terminator. Length is
+    /// measured in units of `u16.`
+    ///
+    /// If `truncate == true`, then in case `size` is not large enough it *will* write the first
+    /// `size.saturating_sub(1)` many items, followed by a null terminator (if `size > 0`).
     fn write_os_str_to_wide_str(
         &mut self,
         os_str: &OsStr,
         ptr: Pointer<Option<Provenance>>,
         size: u64,
+        truncate: bool,
     ) -> InterpResult<'tcx, (bool, u64)> {
         #[cfg(windows)]
         fn os_str_to_u16vec<'tcx>(os_str: &OsStr) -> InterpResult<'tcx, Vec<u16>> {
@@ -129,7 +135,15 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         }
 
         let u16_vec = os_str_to_u16vec(os_str)?;
-        self.eval_context_mut().write_wide_str(&u16_vec, ptr, size)
+        let (written, size_needed) = self.eval_context_mut().write_wide_str(&u16_vec, ptr, size)?;
+        if truncate && !written && size > 0 {
+            // Write the truncated part that fits.
+            let truncated_data = &u16_vec[..size.saturating_sub(1).try_into().unwrap()];
+            let (written, written_len) =
+                self.eval_context_mut().write_wide_str(truncated_data, ptr, size)?;
+            assert!(written && written_len == size);
+        }
+        Ok((written, size_needed))
     }
 
     /// Allocate enough memory to store the given `OsStr` as a null-terminated sequence of bytes.
@@ -143,7 +157,8 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let arg_type = this.tcx.mk_array(this.tcx.types.u8, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
-        assert!(self.write_os_str_to_c_str(os_str, arg_place.ptr, size).unwrap().0);
+        let (written, _) = self.write_os_str_to_c_str(os_str, arg_place.ptr, size).unwrap();
+        assert!(written);
         Ok(arg_place.ptr)
     }
 
@@ -158,7 +173,9 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
 
         let arg_type = this.tcx.mk_array(this.tcx.types.u16, size);
         let arg_place = this.allocate(this.layout_of(arg_type).unwrap(), memkind)?;
-        assert!(self.write_os_str_to_wide_str(os_str, arg_place.ptr, size).unwrap().0);
+        let (written, _) =
+            self.write_os_str_to_wide_str(os_str, arg_place.ptr, size, /*truncate*/ false).unwrap();
+        assert!(written);
         Ok(arg_place.ptr)
     }
 
@@ -212,11 +229,12 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         path: &Path,
         ptr: Pointer<Option<Provenance>>,
         size: u64,
+        truncate: bool,
     ) -> InterpResult<'tcx, (bool, u64)> {
         let this = self.eval_context_mut();
         let os_str =
             this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
-        this.write_os_str_to_wide_str(&os_str, ptr, size)
+        this.write_os_str_to_wide_str(&os_str, ptr, size, truncate)
     }
 
     /// Allocate enough memory to store a Path as a null-terminated sequence of bytes,
@@ -230,6 +248,19 @@ pub trait EvalContextExt<'mir, 'tcx: 'mir>: crate::MiriInterpCxExt<'mir, 'tcx> {
         let os_str =
             this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
         this.alloc_os_str_as_c_str(&os_str, memkind)
+    }
+
+    /// Allocate enough memory to store a Path as a null-terminated sequence of `u16`s,
+    /// adjusting path separators if needed.
+    fn alloc_path_as_wide_str(
+        &mut self,
+        path: &Path,
+        memkind: MemoryKind<MiriMemoryKind>,
+    ) -> InterpResult<'tcx, Pointer<Option<Provenance>>> {
+        let this = self.eval_context_mut();
+        let os_str =
+            this.convert_path(Cow::Borrowed(path.as_os_str()), PathConversion::HostToTarget);
+        this.alloc_os_str_as_wide_str(&os_str, memkind)
     }
 
     #[allow(clippy::get_first)]

@@ -88,11 +88,7 @@ impl fmt::Display for InvalidationCause {
         match self {
             InvalidationCause::Access(kind) => write!(f, "{kind}"),
             InvalidationCause::Retag(perm, kind) =>
-                if *kind == RetagCause::FnEntry {
-                    write!(f, "{perm:?} FnEntry retag")
-                } else {
-                    write!(f, "{perm:?} retag")
-                },
+                write!(f, "{perm:?} {retag}", retag = kind.summary()),
         }
     }
 }
@@ -193,7 +189,7 @@ struct RetagOp {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum RetagCause {
     Normal,
-    FnReturn,
+    FnReturnPlace,
     FnEntry,
     TwoPhase,
 }
@@ -495,8 +491,8 @@ impl RetagCause {
     fn summary(&self) -> String {
         match self {
             RetagCause::Normal => "retag",
-            RetagCause::FnEntry => "FnEntry retag",
-            RetagCause::FnReturn => "FnReturn retag",
+            RetagCause::FnEntry => "function-entry retag",
+            RetagCause::FnReturnPlace => "return-place retag",
             RetagCause::TwoPhase => "two-phase retag",
         }
         .to_string()
