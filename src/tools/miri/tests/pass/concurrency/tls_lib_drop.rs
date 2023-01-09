@@ -186,8 +186,65 @@ fn join_orders_after_tls_destructors() {
     }
 }
 
+fn dtors_in_dtors_in_dtors() {
+    use std::cell::UnsafeCell;
+    use std::sync::{Arc, Condvar, Mutex};
+
+    #[derive(Clone, Default)]
+    struct Signal(Arc<(Mutex<bool>, Condvar)>);
+
+    impl Signal {
+        fn notify(&self) {
+            let (set, cvar) = &*self.0;
+            *set.lock().unwrap() = true;
+            cvar.notify_one();
+        }
+
+        fn wait(&self) {
+            let (set, cvar) = &*self.0;
+            let mut set = set.lock().unwrap();
+            while !*set {
+                set = cvar.wait(set).unwrap();
+            }
+        }
+    }
+
+    struct NotifyOnDrop(Signal);
+
+    impl Drop for NotifyOnDrop {
+        fn drop(&mut self) {
+            let NotifyOnDrop(ref f) = *self;
+            f.notify();
+        }
+    }
+
+    struct S1(Signal);
+    thread_local!(static K1: UnsafeCell<Option<S1>> = UnsafeCell::new(None));
+    thread_local!(static K2: UnsafeCell<Option<NotifyOnDrop>> = UnsafeCell::new(None));
+
+    impl Drop for S1 {
+        fn drop(&mut self) {
+            let S1(ref signal) = *self;
+            unsafe {
+                let _ = K2.try_with(|s| *s.get() = Some(NotifyOnDrop(signal.clone())));
+            }
+        }
+    }
+
+    let signal = Signal::default();
+    let signal2 = signal.clone();
+    let _t = thread::spawn(move || unsafe {
+        let mut signal = Some(signal2);
+        K1.with(|s| *s.get() = Some(S1(signal.take().unwrap())));
+    });
+    // Note that this test will deadlock if TLS destructors aren't run (this
+    // requires the destructor to be run to pass the test).
+    signal.wait();
+}
+
 fn main() {
     check_destructors();
     check_blocking();
     join_orders_after_tls_destructors();
+    dtors_in_dtors_in_dtors();
 }
