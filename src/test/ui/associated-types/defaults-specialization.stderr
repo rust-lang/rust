@@ -22,8 +22,8 @@ note: type in trait
    |
 LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
-   = note: expected fn pointer `fn() -> <A<T> as Tr>::Ty`
-              found fn pointer `fn() -> u8`
+   = note: expected signature `fn() -> <A<T> as Tr>::Ty`
+              found signature `fn() -> u8`
 
 error[E0053]: method `make` has an incompatible type for trait
   --> $DIR/defaults-specialization.rs:35:18
@@ -42,8 +42,8 @@ note: type in trait
    |
 LL |     fn make() -> Self::Ty {
    |                  ^^^^^^^^
-   = note: expected fn pointer `fn() -> <B<T> as Tr>::Ty`
-              found fn pointer `fn() -> bool`
+   = note: expected signature `fn() -> <B<T> as Tr>::Ty`
+              found signature `fn() -> bool`
 
 error[E0308]: mismatched types
   --> $DIR/defaults-specialization.rs:10:9
