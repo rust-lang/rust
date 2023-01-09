@@ -1,5 +1,6 @@
 // run-rustfix
 #![deny(clippy::trait_duplication_in_bounds)]
+#![allow(clippy::impl_trait_param)]
 #![allow(unused)]
 
 fn bad_foo<T: Clone + Clone + Clone + Copy, U: Clone + Copy>(arg0: T, argo1: U) {

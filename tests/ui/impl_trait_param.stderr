@@ -1,0 +1,25 @@
+error: 'impl Trait' in the function's parameters
+  --> $DIR/impl_trait_param.rs:7:13
+   |
+LL | pub fn a(_: impl Trait) {}
+   |             ^^^^^^^^^^
+   |
+   = note: `-D clippy::impl-trait-param` implied by `-D warnings`
+help: create a generic type here and replace that 'impl Trait' with `T`
+   |
+LL | pub fn a<T: Trait>(_: impl Trait) {}
+   |         ++++++++++
+
+error: 'impl Trait' in the function's parameters
+  --> $DIR/impl_trait_param.rs:8:29
+   |
+LL | pub fn c<C: Trait>(_: C, _: impl Trait) {}
+   |                             ^^^^^^^^^^
+   |
+help: create a generic type here and replace that `impl Trait` with `T`
+   |
+LL | pub fn c<C: Trait, T: Trait>(_: C, _: impl Trait) {}
+   |                  ++++++++++
+
+error: aborting due to 2 previous errors
+

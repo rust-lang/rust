@@ -1,3 +1,4 @@
+#![allow(clippy::impl_trait_param)]
 use crate::consts::constant_simple;
 use crate::macros::macro_backtrace;
 use crate::source::snippet_opt;

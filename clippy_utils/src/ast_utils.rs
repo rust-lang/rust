@@ -2,7 +2,12 @@
 //!
 //! - The `eq_foobar` functions test for semantic equality but ignores `NodeId`s and `Span`s.
 
-#![allow(clippy::similar_names, clippy::wildcard_imports, clippy::enum_glob_use)]
+#![allow(
+    clippy::similar_names,
+    clippy::wildcard_imports,
+    clippy::enum_glob_use,
+    clippy::impl_trait_param
+)]
 
 use crate::{both, over};
 use rustc_ast::ptr::P;

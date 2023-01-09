@@ -7,7 +7,8 @@
     clippy::no_effect,
     clippy::option_map_unit_fn,
     clippy::redundant_closure_call,
-    clippy::uninlined_format_args
+    clippy::uninlined_format_args,
+    clippy::impl_trait_param
 )]
 
 use std::path::{Path, PathBuf};

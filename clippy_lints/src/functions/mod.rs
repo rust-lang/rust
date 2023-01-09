@@ -1,3 +1,4 @@
+mod impl_trait_param;
 mod misnamed_getters;
 mod must_use;
 mod not_unsafe_ptr_arg_deref;
@@ -327,6 +328,32 @@ declare_clippy_lint! {
     "getter method returning the wrong field"
 }
 
+declare_clippy_lint! {
+    /// ### What it does
+    /// Lints when `impl Trait` is being used in a function's paremeters.
+    /// ### Why is this bad?
+    /// Turbofish syntax (`::<>`) cannot be used when `impl Trait` is being used, making `impl Trait` less powerful. Readability may also be a factor.
+    ///
+    /// ### Example
+    /// ```rust
+    /// trait MyTrait {}
+    /// fn foo(a: impl MyTrait) {
+    /// 	// [...]
+    /// }
+    /// ```
+    /// Use instead:
+    /// ```rust
+    /// trait MyTrait {}
+    /// fn foo<T: A>(a: A) {
+    /// 	// [...]
+    /// }
+    /// ```
+    #[clippy::version = "1.68.0"]
+    pub IMPL_TRAIT_PARAM,
+    style,
+    "`impl Trait` is used in the function's parameters"
+}
+
 #[derive(Copy, Clone)]
 pub struct Functions {
     too_many_arguments_threshold: u64,
@@ -354,6 +381,7 @@ impl_lint_pass!(Functions => [
     RESULT_UNIT_ERR,
     RESULT_LARGE_ERR,
     MISNAMED_GETTERS,
+    IMPL_TRAIT_PARAM,
 ]);
 
 impl<'tcx> LateLintPass<'tcx> for Functions {
@@ -371,6 +399,7 @@ impl<'tcx> LateLintPass<'tcx> for Functions {
         too_many_lines::check_fn(cx, kind, span, body, self.too_many_lines_threshold);
         not_unsafe_ptr_arg_deref::check_fn(cx, kind, decl, body, def_id);
         misnamed_getters::check_fn(cx, kind, decl, body, span);
+        impl_trait_param::check_fn(cx, &kind, body, hir_id);
     }
 
     fn check_item(&mut self, cx: &LateContext<'tcx>, item: &'tcx hir::Item<'_>) {

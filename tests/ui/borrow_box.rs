@@ -1,6 +1,6 @@
 #![deny(clippy::borrowed_box)]
 #![allow(dead_code, unused_variables)]
-#![allow(clippy::uninlined_format_args, clippy::disallowed_names)]
+#![allow(clippy::uninlined_format_args, clippy::disallowed_names, clippy::impl_trait_param)]
 
 use std::fmt::Display;
 

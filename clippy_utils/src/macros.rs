@@ -1,4 +1,4 @@
-#![allow(clippy::similar_names)] // `expr` and `expn`
+#![allow(clippy::similar_names, clippy::impl_trait_param)] // `expr` and `expn`
 
 use crate::source::snippet_opt;
 use crate::visitors::{for_each_expr, Descend};

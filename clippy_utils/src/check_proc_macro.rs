@@ -1,3 +1,4 @@
+#![allow(clippy::impl_trait_param)]
 //! This module handles checking if the span given is from a proc-macro or not.
 //!
 //! Proc-macros are capable of setting the span of every token they output to a few possible spans.

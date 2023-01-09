@@ -1,4 +1,5 @@
 #![deny(clippy::trait_duplication_in_bounds)]
+#![allow(clippy::impl_trait_param)]
 
 use std::collections::BTreeMap;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Sub, SubAssign};
