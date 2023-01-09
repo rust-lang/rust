@@ -109,7 +109,7 @@ fn main() {
 
         check!(x_version, &root_path, &cargo);
 
-        check!(triagebot, &src_path);
+        check!(triagebot, &root_path);
 
         let collected = {
             drain_handles(&mut handles);
