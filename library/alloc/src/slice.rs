@@ -1109,13 +1109,16 @@ where
     // shallow copies of the contents of `v` without risking the dtors running on copies if
     // `is_less` panics. When merging two sorted runs, this buffer holds a copy of the shorter run,
     // which will always have length at most `len / 2`.
-    let mut buf = Vec::with_capacity(len / 2);
+    // `buf` is temporary = not passed around too much => using COOP_PREFERRED=true.
+    // @FIXME move definitions of `buf` and `runs` down, after while end > 0 {...}, just before they are used. Then benchmark if it makes (cache-related) difference.
+    let mut buf = Vec::<T, Global, true>::with_capacity(len / 2);
 
     // In order to identify natural runs in `v`, we traverse it backwards. That might seem like a
     // strange decision, but consider the fact that merges more often go in the opposite direction
     // (forwards). According to benchmarks, merging forwards is slightly faster than merging
     // backwards. To conclude, identifying runs by traversing backwards improves performance.
-    let mut runs = vec![];
+    // `runs` is temporary = not passed around too much => using COOP_PREFERRED=true.
+    let mut runs: Vec<_, Global, true> = vec![];
     let mut end = len;
     while end > 0 {
         // Find the next natural run, and reverse it if it's strictly descending.
