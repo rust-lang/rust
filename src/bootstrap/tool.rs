@@ -72,7 +72,7 @@ impl Step for ToolBuild {
 
         builder.info(&format!("Building stage{} tool {} ({})", compiler.stage, tool, target));
         let mut duplicates = Vec::new();
-        let is_expected = compile::stream_cargo(builder, cargo, &mut |msg| {
+        let is_expected = compile::stream_cargo(builder, cargo, vec![], &mut |msg| {
             // Only care about big things like the RLS/Cargo for now
             match tool {
                 "rls" | "cargo" | "clippy-driver" | "miri" | "rustfmt" => {}
