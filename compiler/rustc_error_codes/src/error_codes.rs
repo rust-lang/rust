@@ -110,6 +110,7 @@ E0204: include_str!("./error_codes/E0204.md"),
 E0205: include_str!("./error_codes/E0205.md"),
 E0206: include_str!("./error_codes/E0206.md"),
 E0207: include_str!("./error_codes/E0207.md"),
+E0208: include_str!("./error_codes/E0208.md"),
 E0210: include_str!("./error_codes/E0210.md"),
 E0211: include_str!("./error_codes/E0211.md"),
 E0212: include_str!("./error_codes/E0212.md"),
@@ -387,6 +388,7 @@ E0636: include_str!("./error_codes/E0636.md"),
 E0637: include_str!("./error_codes/E0637.md"),
 E0638: include_str!("./error_codes/E0638.md"),
 E0639: include_str!("./error_codes/E0639.md"),
+E0640: include_str!("./error_codes/E0640.md"),
 E0641: include_str!("./error_codes/E0641.md"),
 E0642: include_str!("./error_codes/E0642.md"),
 E0643: include_str!("./error_codes/E0643.md"),
@@ -434,6 +436,8 @@ E0713: include_str!("./error_codes/E0713.md"),
 E0714: include_str!("./error_codes/E0714.md"),
 E0715: include_str!("./error_codes/E0715.md"),
 E0716: include_str!("./error_codes/E0716.md"),
+E0711: include_str!("./error_codes/E0711.md"),
+E0717: include_str!("./error_codes/E0717.md"),
 E0718: include_str!("./error_codes/E0718.md"),
 E0719: include_str!("./error_codes/E0719.md"),
 E0720: include_str!("./error_codes/E0720.md"),
@@ -540,7 +544,6 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0190, // deprecated: can only cast a &-pointer to an &-object
 //  E0194, // merged into E0403
 //  E0196, // cannot determine a type for this closure
-    E0208, // internal error code
 //  E0209, // builtin traits can only be implemented on structs or enums
 //  E0213, // associated types are not accepted in this context
 //  E0215, // angle-bracket notation is not stable with `Fn`
@@ -633,14 +636,11 @@ E0791: include_str!("./error_codes/E0791.md"),
 //  E0629, // missing 'feature' (rustc_const_unstable)
 //  E0630, // rustc_const_unstable attribute must be paired with stable/unstable
            // attribute
-    E0640, // infer outlives requirements, internal error code
 //  E0645, // trait aliases not finished
 //  E0694, // an unknown tool name found in scoped attributes
 //  E0702, // replaced with a generic attribute input check
 //  E0707, // multiple elided lifetimes used in arguments of `async fn`
 //  E0709, // multiple different lifetimes used in arguments of `async fn`
-    E0711, // a feature has been declared with conflicting stability attributes, internal error code
-    E0717, // rustc_promotable without stability attribute, internal error code
 //  E0721, // `await` keyword
 //  E0723, // unstable feature in `const` context
 //  E0738, // Removed; errored on `#[track_caller] fn`s in `extern "Rust" { ... }`.
