@@ -263,6 +263,18 @@ fn expr_has_unnecessary_safety_comment<'tcx>(
     expr: &'tcx hir::Expr<'tcx>,
     comment_pos: BytePos,
 ) -> Option<Span> {
+    if cx.tcx.hir().parent_iter(expr.hir_id).any(|(_, ref node)| {
+        matches!(
+            node,
+            Node::Block(&Block {
+                rules: BlockCheckMode::UnsafeBlock(UnsafeSource::UserProvided),
+                ..
+            }),
+        )
+    }) {
+        return None;
+    }
+
     // this should roughly be the reverse of `block_parents_have_safety_comment`
     if for_each_expr_with_closures(cx, expr, |expr| match expr.kind {
         hir::ExprKind::Block(
