@@ -9,8 +9,8 @@ note: type in trait
    |
 LL |     fn foo(&self) -> Pin<Box<dyn Future<Output = i32> + '_>>;
    |                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-   = note: expected fn pointer `fn(&i32) -> Pin<Box<dyn Future<Output = i32>>>`
-              found fn pointer `fn(&i32) -> impl Future<Output = i32>`
+   = note: expected signature `fn(&i32) -> Pin<Box<dyn Future<Output = i32>>>`
+              found signature `fn(&i32) -> impl Future<Output = i32>`
 
 error: aborting due to previous error
 

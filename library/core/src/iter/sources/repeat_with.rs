@@ -1,3 +1,4 @@
+use crate::fmt;
 use crate::iter::{FusedIterator, TrustedLen};
 use crate::ops::Try;
 
@@ -71,10 +72,17 @@ pub fn repeat_with<A, F: FnMut() -> A>(repeater: F) -> RepeatWith<F> {
 ///
 /// This `struct` is created by the [`repeat_with()`] function.
 /// See its documentation for more.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone)]
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]
 pub struct RepeatWith<F> {
     repeater: F,
+}
+
+#[stable(feature = "iterator_repeat_with_debug", since = "CURRENT_RUSTC_VERSION")]
+impl<F> fmt::Debug for RepeatWith<F> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RepeatWith").finish_non_exhaustive()
+    }
 }
 
 #[stable(feature = "iterator_repeat_with", since = "1.28.0")]

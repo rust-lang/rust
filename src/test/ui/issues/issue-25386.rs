@@ -24,5 +24,4 @@ macro_rules! check_ptr_exist {
 fn main() {
     let item = stuff::Item::new();
     println!("{}", check_ptr_exist!(item, name));
-    //~^ ERROR field `name` of struct `CObj` is private
 }

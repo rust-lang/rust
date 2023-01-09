@@ -4,8 +4,8 @@ error[E0308]: method not compatible with trait
 LL |     fn foo(x: Foo<'b,'a>) {
    |     ^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected fn pointer `fn(Foo<'a, 'b>)`
-              found fn pointer `fn(Foo<'b, 'a>)`
+   = note: expected signature `fn(Foo<'a, 'b>)`
+              found signature `fn(Foo<'b, 'a>)`
 note: the lifetime `'b` as defined here...
   --> $DIR/matching-lifetimes.rs:13:9
    |
@@ -23,8 +23,8 @@ error[E0308]: method not compatible with trait
 LL |     fn foo(x: Foo<'b,'a>) {
    |     ^^^^^^^^^^^^^^^^^^^^^ lifetime mismatch
    |
-   = note: expected fn pointer `fn(Foo<'a, 'b>)`
-              found fn pointer `fn(Foo<'b, 'a>)`
+   = note: expected signature `fn(Foo<'a, 'b>)`
+              found signature `fn(Foo<'b, 'a>)`
 note: the lifetime `'a` as defined here...
   --> $DIR/matching-lifetimes.rs:13:6
    |

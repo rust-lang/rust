@@ -1014,6 +1014,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         }
     }
 
+    pub(crate) fn suggest_clone_for_ref(
+        &self,
+        diag: &mut Diagnostic,
+        expr: &hir::Expr<'_>,
+        expr_ty: Ty<'tcx>,
+        expected_ty: Ty<'tcx>,
+    ) -> bool {
+        if let ty::Ref(_, inner_ty, hir::Mutability::Not) = expr_ty.kind()
+            && let Some(clone_trait_def) = self.tcx.lang_items().clone_trait()
+            && expected_ty == *inner_ty
+            && self
+                .infcx
+                .type_implements_trait(
+                    clone_trait_def,
+                    [self.tcx.erase_regions(expected_ty)],
+                    self.param_env
+                )
+                .must_apply_modulo_regions()
+          {
+              diag.span_suggestion_verbose(
+                  expr.span.shrink_to_hi(),
+                  "consider using clone here",
+                  ".clone()",
+                  Applicability::MachineApplicable,
+              );
+              return true;
+          }
+        false
+    }
+
     pub(crate) fn suggest_copied_or_cloned(
         &self,
         diag: &mut Diagnostic,

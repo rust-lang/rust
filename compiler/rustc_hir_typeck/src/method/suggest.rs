@@ -176,10 +176,18 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 err.emit();
             }
 
-            MethodError::IllegalSizedBound(candidates, needs_mut, bound_span) => {
-                let msg = format!("the `{}` method cannot be invoked on a trait object", item_name);
+            MethodError::IllegalSizedBound { candidates, needs_mut, bound_span, self_expr } => {
+                let msg = if needs_mut {
+                    with_forced_trimmed_paths!(format!(
+                        "the `{item_name}` method cannot be invoked on `{rcvr_ty}`"
+                    ))
+                } else {
+                    format!("the `{item_name}` method cannot be invoked on a trait object")
+                };
                 let mut err = self.sess().struct_span_err(span, &msg);
-                err.span_label(bound_span, "this has a `Sized` requirement");
+                if !needs_mut {
+                    err.span_label(bound_span, "this has a `Sized` requirement");
+                }
                 if !candidates.is_empty() {
                     let help = format!(
                         "{an}other candidate{s} {were} found in the following trait{s}, perhaps \
@@ -197,7 +205,32 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                             *region,
                             ty::TypeAndMut { ty: *t_type, mutbl: mutability.invert() },
                         );
-                        err.note(&format!("you need `{}` instead of `{}`", trait_type, rcvr_ty));
+                        let msg = format!("you need `{}` instead of `{}`", trait_type, rcvr_ty);
+                        let mut kind = &self_expr.kind;
+                        while let hir::ExprKind::AddrOf(_, _, expr)
+                        | hir::ExprKind::Unary(hir::UnOp::Deref, expr) = kind
+                        {
+                            kind = &expr.kind;
+                        }
+                        if let hir::ExprKind::Path(hir::QPath::Resolved(None, path)) = kind
+                            && let hir::def::Res::Local(hir_id) = path.res
+                            && let Some(hir::Node::Pat(b)) = self.tcx.hir().find(hir_id)
+                            && let Some(hir::Node::Param(p)) = self.tcx.hir().find_parent(b.hir_id)
+                            && let Some(node) = self.tcx.hir().find_parent(p.hir_id)
+                            && let Some(decl) = node.fn_decl()
+                            && let Some(ty) = decl.inputs.iter().find(|ty| ty.span == p.ty_span)
+                            && let hir::TyKind::Ref(_, mut_ty) = &ty.kind
+                            && let hir::Mutability::Not = mut_ty.mutbl
+                        {
+                            err.span_suggestion_verbose(
+                                mut_ty.ty.span.shrink_to_lo(),
+                                &msg,
+                                "mut ",
+                                Applicability::MachineApplicable,
+                            );
+                        } else {
+                            err.help(&msg);
+                        }
                     }
                 }
                 err.emit();

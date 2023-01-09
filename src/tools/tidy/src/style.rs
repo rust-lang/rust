@@ -25,6 +25,7 @@ use std::path::Path;
 /// displayed on the console with --example.
 const ERROR_CODE_COLS: usize = 80;
 const COLS: usize = 100;
+const GOML_COLS: usize = 120;
 
 const LINES: usize = 3000;
 
@@ -230,7 +231,8 @@ pub fn check(path: &Path, bad: &mut bool) {
     walk(path, &mut skip, &mut |entry, contents| {
         let file = entry.path();
         let filename = file.file_name().unwrap().to_string_lossy();
-        let extensions = [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl"];
+        let extensions =
+            [".rs", ".py", ".js", ".sh", ".c", ".cpp", ".h", ".md", ".css", ".ftl", ".goml"];
         if extensions.iter().all(|e| !filename.ends_with(e)) || filename.starts_with(".#") {
             return;
         }
@@ -255,8 +257,15 @@ pub fn check(path: &Path, bad: &mut bool) {
 
         let extension = file.extension().unwrap().to_string_lossy();
         let is_error_code = extension == "md" && is_in(file, "src", "error_codes");
+        let is_goml_code = extension == "goml";
 
-        let max_columns = if is_error_code { ERROR_CODE_COLS } else { COLS };
+        let max_columns = if is_error_code {
+            ERROR_CODE_COLS
+        } else if is_goml_code {
+            GOML_COLS
+        } else {
+            COLS
+        };
 
         let can_contain = contents.contains("// ignore-tidy-")
             || contents.contains("# ignore-tidy-")

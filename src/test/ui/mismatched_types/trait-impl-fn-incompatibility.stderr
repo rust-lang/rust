@@ -12,8 +12,8 @@ note: type in trait
    |
 LL |     fn foo(x: u16);
    |               ^^^
-   = note: expected fn pointer `fn(u16)`
-              found fn pointer `fn(i16)`
+   = note: expected signature `fn(u16)`
+              found signature `fn(i16)`
 
 error[E0053]: method `bar` has an incompatible type for trait
   --> $DIR/trait-impl-fn-incompatibility.rs:10:28
@@ -29,8 +29,8 @@ note: type in trait
    |
 LL |     fn bar(&mut self, bar: &mut Bar);
    |                            ^^^^^^^^
-   = note: expected fn pointer `fn(&mut Bar, &mut Bar)`
-              found fn pointer `fn(&mut Bar, &Bar)`
+   = note: expected signature `fn(&mut Bar, &mut Bar)`
+              found signature `fn(&mut Bar, &Bar)`
 
 error: aborting due to 2 previous errors
 
