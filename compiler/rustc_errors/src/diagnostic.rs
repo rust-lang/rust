@@ -7,7 +7,6 @@ use rustc_data_structures::fx::FxHashMap;
 use rustc_error_messages::fluent_value_from_str_list_sep_by_and;
 use rustc_error_messages::FluentValue;
 use rustc_lint_defs::{Applicability, LintExpectationId};
-use rustc_span::edition::LATEST_STABLE_EDITION;
 use rustc_span::symbol::Symbol;
 use rustc_span::{Span, DUMMY_SP};
 use std::borrow::Cow;
@@ -552,18 +551,6 @@ impl Diagnostic {
         msg: impl Into<SubdiagnosticMessage>,
     ) -> &mut Self {
         self.sub(Level::Help, msg, sp.into(), None);
-        self
-    }
-
-    /// Help the user upgrade to the latest edition.
-    /// This is factored out to make sure it does the right thing with `Cargo.toml`.
-    pub fn help_use_latest_edition(&mut self) -> &mut Self {
-        if std::env::var_os("CARGO").is_some() {
-            self.help(&format!("set `edition = \"{}\"` in `Cargo.toml`", LATEST_STABLE_EDITION));
-        } else {
-            self.help(&format!("pass `--edition {}` to `rustc`", LATEST_STABLE_EDITION));
-        }
-        self.note("for more on editions, read https://doc.rust-lang.org/edition-guide");
         self
     }
 

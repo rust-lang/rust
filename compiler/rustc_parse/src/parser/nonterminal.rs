@@ -2,9 +2,11 @@ use rustc_ast::ptr::P;
 use rustc_ast::token::{self, Delimiter, NonterminalKind, Token};
 use rustc_ast::HasTokens;
 use rustc_ast_pretty::pprust;
+use rustc_errors::IntoDiagnostic;
 use rustc_errors::PResult;
 use rustc_span::symbol::{kw, Ident};
 
+use crate::errors::UnexpectedNonterminal;
 use crate::parser::pat::{CommaRecoveryMode, RecoverColon, RecoverComma};
 use crate::parser::{FollowedByType, ForceCollect, NtOrTt, Parser, PathStyle};
 
@@ -113,7 +115,8 @@ impl<'a> Parser<'a> {
             NonterminalKind::Item => match self.parse_item(ForceCollect::Yes)? {
                 Some(item) => token::NtItem(item),
                 None => {
-                    return Err(self.struct_span_err(self.token.span, "expected an item keyword"));
+                    return Err(UnexpectedNonterminal::Item(self.token.span)
+                               .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
             NonterminalKind::Block => {
@@ -124,7 +127,8 @@ impl<'a> Parser<'a> {
             NonterminalKind::Stmt => match self.parse_stmt(ForceCollect::Yes)? {
                 Some(s) => token::NtStmt(P(s)),
                 None => {
-                    return Err(self.struct_span_err(self.token.span, "expected a statement"));
+                    return Err(UnexpectedNonterminal::Statement(self.token.span)
+                               .into_diagnostic(&self.sess.span_diagnostic));
                 }
             },
             NonterminalKind::PatParam { .. } | NonterminalKind::PatWithOr { .. } => {
@@ -160,9 +164,10 @@ impl<'a> Parser<'a> {
                 token::NtIdent(ident, is_raw)
             }
             NonterminalKind::Ident => {
-                let token_str = pprust::token_to_string(&self.token);
-                let msg = &format!("expected ident, found {}", &token_str);
-                return Err(self.struct_span_err(self.token.span, msg));
+                return Err(UnexpectedNonterminal::Ident {
+                    span: self.token.span,
+                    token: self.token.clone(),
+                }.into_diagnostic(&self.sess.span_diagnostic));
             }
             NonterminalKind::Path => token::NtPath(
                 P(self.collect_tokens_no_attrs(|this| this.parse_path(PathStyle::Type))?),
@@ -175,9 +180,10 @@ impl<'a> Parser<'a> {
                 if self.check_lifetime() {
                     token::NtLifetime(self.expect_lifetime().ident)
                 } else {
-                    let token_str = pprust::token_to_string(&self.token);
-                    let msg = &format!("expected a lifetime, found `{}`", &token_str);
-                    return Err(self.struct_span_err(self.token.span, msg));
+                    return Err(UnexpectedNonterminal::Lifetime {
+                        span: self.token.span,
+                        token: self.token.clone(),
+                    }.into_diagnostic(&self.sess.span_diagnostic));
                 }
             }
         };

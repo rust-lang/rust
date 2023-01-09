@@ -46,3 +46,7 @@ hir_typeck_add_missing_parentheses_in_range = you must surround the range in par
 
 hir_typeck_op_trait_generic_params =
     `{$method_name}` must not have any generic parameters
+
+hir_typeck_help_set_edition_cargo = set `edition = "{$edition}"` in `Cargo.toml`
+hir_typeck_help_set_edition_standalone = pass `--edition {$edition}` to `rustc`
+hir_typeck_note_edition_guide = for more on editions, read https://doc.rust-lang.org/edition-guide
