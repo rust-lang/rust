@@ -1,9 +1,14 @@
 [package]
 name = "intern"
 version = "0.0.0"
+description = "TBD"
+license = "MIT OR Apache-2.0"
 edition = "2021"
+rust-version = "1.65"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+[lib]
+doctest = false
+
 
 [dependencies]
 # We need to freeze the version of the crate, as the raw-api feature is considered unstable

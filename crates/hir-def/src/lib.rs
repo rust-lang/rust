@@ -941,7 +941,7 @@ pub fn macro_id_to_def_id(db: &dyn db::DefDatabase, id: MacroId) -> MacroDefId {
 fn derive_macro_as_call_id(
     db: &dyn db::DefDatabase,
     item_attr: &AstIdWithPath<ast::Adt>,
-    derive_attr: AttrId,
+    derive_attr_index: AttrId,
     derive_pos: u32,
     krate: CrateId,
     resolver: impl Fn(path::ModPath) -> Option<(MacroId, MacroDefId)>,
@@ -954,7 +954,7 @@ fn derive_macro_as_call_id(
         MacroCallKind::Derive {
             ast_id: item_attr.ast_id,
             derive_index: derive_pos,
-            derive_attr_index: derive_attr.ast_index,
+            derive_attr_index,
         },
     );
     Ok((macro_id, def_id, call_id))
@@ -982,7 +982,7 @@ fn attr_macro_as_call_id(
         MacroCallKind::Attr {
             ast_id: item_attr.ast_id,
             attr_args: Arc::new(arg),
-            invoc_attr_index: macro_attr.id.ast_index,
+            invoc_attr_index: macro_attr.id,
             is_derive,
         },
     );

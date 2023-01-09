@@ -785,7 +785,7 @@ fn precise_macro_call_location(
             let token = (|| {
                 let derive_attr = node
                     .doc_comments_and_attrs()
-                    .nth(*derive_attr_index as usize)
+                    .nth(derive_attr_index.ast_index())
                     .and_then(Either::left)?;
                 let token_tree = derive_attr.meta()?.token_tree()?;
                 let group_by = token_tree
@@ -813,9 +813,11 @@ fn precise_macro_call_location(
             let node = ast_id.to_node(db.upcast());
             let attr = node
                 .doc_comments_and_attrs()
-                .nth((*invoc_attr_index) as usize)
+                .nth(invoc_attr_index.ast_index())
                 .and_then(Either::left)
-                .unwrap_or_else(|| panic!("cannot find attribute #{invoc_attr_index}"));
+                .unwrap_or_else(|| {
+                    panic!("cannot find attribute #{}", invoc_attr_index.ast_index())
+                });
 
             (
                 ast_id.with_value(SyntaxNodePtr::from(AstPtr::new(&attr))),

@@ -168,7 +168,9 @@ pub fn expand_speculative(
                 // Attributes may have an input token tree, build the subtree and map for this as well
                 // then try finding a token id for our token if it is inside this input subtree.
                 let item = ast::Item::cast(speculative_args.clone())?;
-                item.doc_comments_and_attrs().nth(invoc_attr_index as usize).and_then(Either::left)
+                item.doc_comments_and_attrs()
+                    .nth(invoc_attr_index.ast_index())
+                    .and_then(Either::left)
             }?;
             match attr.token_tree() {
                 Some(token_tree) => {
@@ -321,6 +323,7 @@ fn macro_arg(
 }
 
 fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<SyntaxNode> {
+    // FIXME: handle `cfg_attr`
     (|| {
         let censor = match loc.kind {
             MacroCallKind::FnLike { .. } => return None,
@@ -328,7 +331,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                 cov_mark::hit!(derive_censoring);
                 ast::Item::cast(node.clone())?
                     .attrs()
-                    .take(derive_attr_index as usize + 1)
+                    .take(derive_attr_index.ast_index() + 1)
                     // FIXME, this resolution should not be done syntactically
                     // derive is a proper macro now, no longer builtin
                     // But we do not have resolution at this stage, this means
@@ -343,7 +346,7 @@ fn censor_for_macro_input(loc: &MacroCallLoc, node: &SyntaxNode) -> FxHashSet<Sy
                 cov_mark::hit!(attribute_macro_attr_censoring);
                 ast::Item::cast(node.clone())?
                     .doc_comments_and_attrs()
-                    .nth(invoc_attr_index as usize)
+                    .nth(invoc_attr_index.ast_index())
                     .and_then(Either::left)
                     .map(|attr| attr.syntax().clone())
                     .into_iter()

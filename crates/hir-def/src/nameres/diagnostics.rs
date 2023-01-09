@@ -31,9 +31,9 @@ pub enum DefDiagnosticKind {
 
     UnimplementedBuiltinMacro { ast: AstId<ast::Macro> },
 
-    InvalidDeriveTarget { ast: AstId<ast::Item>, id: u32 },
+    InvalidDeriveTarget { ast: AstId<ast::Item>, id: usize },
 
-    MalformedDerive { ast: AstId<ast::Adt>, id: u32 },
+    MalformedDerive { ast: AstId<ast::Adt>, id: usize },
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -119,7 +119,7 @@ impl DefDiagnostic {
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index },
+            kind: DefDiagnosticKind::InvalidDeriveTarget { ast, id: id.ast_index() },
         }
     }
 
@@ -130,7 +130,7 @@ impl DefDiagnostic {
     ) -> Self {
         Self {
             in_module: container,
-            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index },
+            kind: DefDiagnosticKind::MalformedDerive { ast, id: id.ast_index() },
         }
     }
 }

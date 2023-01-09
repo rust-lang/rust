@@ -1,3 +1,4 @@
+//! A higher level attributes based on TokenTree, with also some shortcuts.
 use std::{fmt, ops, sync::Arc};
 
 use base_db::CrateId;
@@ -65,14 +66,16 @@ impl RawAttrs {
             (None, entries @ Some(_)) => Self { entries },
             (Some(entries), None) => Self { entries: Some(entries.clone()) },
             (Some(a), Some(b)) => {
-                let last_ast_index = a.last().map_or(0, |it| it.id.ast_index + 1);
+                let last_ast_index = a.last().map_or(0, |it| it.id.ast_index() + 1) as u32;
                 Self {
                     entries: Some(
                         a.iter()
                             .cloned()
                             .chain(b.iter().map(|it| {
                                 let mut it = it.clone();
-                                it.id.ast_index += last_ast_index;
+                                it.id.id = it.id.ast_index() as u32 + last_ast_index
+                                    | (it.id.cfg_attr_index().unwrap_or(0) as u32)
+                                        << AttrId::AST_INDEX_BITS;
                                 it
                             }))
                             .collect(),
@@ -83,6 +86,7 @@ impl RawAttrs {
     }
 
     /// Processes `cfg_attr`s, returning the resulting semantic `Attrs`.
+    // FIXME: This should return a different type
     pub fn filter(self, db: &dyn AstDatabase, krate: CrateId) -> RawAttrs {
         let has_cfg_attrs = self
             .iter()
@@ -106,27 +110,22 @@ impl RawAttrs {
                     _ => return smallvec![attr.clone()],
                 };
 
-                // Input subtree is: `(cfg, $(attr),+)`
-                // Split it up into a `cfg` subtree and the `attr` subtrees.
-                // FIXME: There should be a common API for this.
-                let mut parts = subtree.token_trees.split(|tt| {
-                    matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. })))
-                });
-                let cfg = match parts.next() {
+                let (cfg, parts) = match parse_cfg_attr_input(subtree) {
                     Some(it) => it,
-                    None => return smallvec![],
+                    None => return smallvec![attr.clone()],
                 };
-                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
-                let cfg = CfgExpr::parse(&cfg);
                 let index = attr.id;
-                let attrs = parts.filter(|a| !a.is_empty()).filter_map(|attr| {
-                    let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
-                    // FIXME hygiene
-                    let hygiene = Hygiene::new_unhygienic();
-                    Attr::from_tt(db, &tree, &hygiene, index)
-                });
+                let attrs =
+                    parts.enumerate().take(1 << AttrId::CFG_ATTR_BITS).filter_map(|(idx, attr)| {
+                        let tree = Subtree { delimiter: None, token_trees: attr.to_vec() };
+                        // FIXME hygiene
+                        let hygiene = Hygiene::new_unhygienic();
+                        Attr::from_tt(db, &tree, &hygiene, index.with_cfg_attr(idx))
+                    });
 
                 let cfg_options = &crate_graph[krate].cfg_options;
+                let cfg = Subtree { delimiter: subtree.delimiter, token_trees: cfg.to_vec() };
+                let cfg = CfgExpr::parse(&cfg);
                 if cfg_options.check(&cfg) == Some(false) {
                     smallvec![]
                 } else {
@@ -143,7 +142,32 @@ impl RawAttrs {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct AttrId {
-    pub ast_index: u32,
+    id: u32,
+}
+
+// FIXME: This only handles a single level of cfg_attr nesting
+// that is `#[cfg_attr(all(), cfg_attr(all(), cfg(any())))]` breaks again
+impl AttrId {
+    const CFG_ATTR_BITS: usize = 7;
+    const AST_INDEX_MASK: usize = 0x00FF_FFFF;
+    const AST_INDEX_BITS: usize = Self::AST_INDEX_MASK.count_ones() as usize;
+    const CFG_ATTR_SET_BITS: u32 = 1 << 31;
+
+    pub fn ast_index(&self) -> usize {
+        self.id as usize & Self::AST_INDEX_MASK
+    }
+
+    pub fn cfg_attr_index(&self) -> Option<usize> {
+        if self.id & Self::CFG_ATTR_SET_BITS == 0 {
+            None
+        } else {
+            Some(self.id as usize >> Self::AST_INDEX_BITS)
+        }
+    }
+
+    pub fn with_cfg_attr(self, idx: usize) -> AttrId {
+        AttrId { id: self.id | (idx as u32) << Self::AST_INDEX_BITS | Self::CFG_ATTR_SET_BITS }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -272,10 +296,7 @@ pub fn collect_attrs(
             Either::Left(attr) => attr.kind().is_outer(),
             Either::Right(comment) => comment.is_outer(),
         });
-    outer_attrs
-        .chain(inner_attrs)
-        .enumerate()
-        .map(|(id, attr)| (AttrId { ast_index: id as u32 }, attr))
+    outer_attrs.chain(inner_attrs).enumerate().map(|(id, attr)| (AttrId { id: id as u32 }, attr))
 }
 
 fn inner_attributes(
@@ -310,4 +331,16 @@ fn inner_attributes(
         Either::Right(comment) => comment.is_inner(),
     });
     Some(attrs)
+}
+
+// Input subtree is: `(cfg, $(attr),+)`
+// Split it up into a `cfg` subtree and the `attr` subtrees.
+pub fn parse_cfg_attr_input(
+    subtree: &Subtree,
+) -> Option<(&[tt::TokenTree], impl Iterator<Item = &[tt::TokenTree]>)> {
+    let mut parts = subtree
+        .token_trees
+        .split(|tt| matches!(tt, tt::TokenTree::Leaf(tt::Leaf::Punct(Punct { char: ',', .. }))));
+    let cfg = parts.next()?;
+    Some((cfg, parts.filter(|it| !it.is_empty())))
 }

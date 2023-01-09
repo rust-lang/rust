@@ -546,7 +546,7 @@ impl AttrSourceMap {
     }
 
     fn source_of_id(&self, id: AttrId) -> InFile<&Either<ast::Attr, ast::Comment>> {
-        let ast_idx = id.ast_index as usize;
+        let ast_idx = id.ast_index();
         let file_id = match self.mod_def_site_file_id {
             Some((file_id, def_site_cut)) if def_site_cut <= ast_idx => file_id,
             _ => self.file_id,

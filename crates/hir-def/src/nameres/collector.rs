@@ -452,7 +452,7 @@ impl DefCollector<'_> {
                         MacroCallKind::Attr {
                             ast_id: ast_id.ast_id,
                             attr_args: Default::default(),
-                            invoc_attr_index: attr.id.ast_index,
+                            invoc_attr_index: attr.id,
                             is_derive: false,
                         },
                         attr.path().clone(),
@@ -1407,7 +1407,7 @@ impl DefCollector<'_> {
                         directive.module_id,
                         MacroCallKind::Derive {
                             ast_id: ast_id.ast_id,
-                            derive_attr_index: derive_attr.ast_index,
+                            derive_attr_index: *derive_attr,
                             derive_index: *derive_pos as u32,
                         },
                         ast_id.path.clone(),
