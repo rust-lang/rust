@@ -1,6 +1,6 @@
 //! A bunch of methods and structures more or less related to resolving imports.
 
-use crate::diagnostics::{import_candidates, Suggestion};
+use crate::diagnostics::{import_candidates, DiagnosticMode, Suggestion};
 use crate::Determinacy::{self, *};
 use crate::Namespace::*;
 use crate::{module_to_string, names_to_string, ImportSuggestion};
@@ -402,7 +402,7 @@ struct UnresolvedImportError {
     label: Option<String>,
     note: Option<String>,
     suggestion: Option<Suggestion>,
-    candidate: Option<Vec<ImportSuggestion>>,
+    candidates: Option<Vec<ImportSuggestion>>,
 }
 
 pub struct ImportResolver<'a, 'b> {
@@ -475,12 +475,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     errors = vec![];
                 }
                 if seen_spans.insert(err.span) {
-                    let path = import_path_to_string(
-                        &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
-                        &import.kind,
-                        err.span,
-                    );
-                    errors.push((path, err));
+                    errors.push((import, err));
                     prev_root_id = import.root_id;
                 }
             } else if is_indeterminate {
@@ -494,10 +489,12 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     label: None,
                     note: None,
                     suggestion: None,
-                    candidate: None,
+                    candidates: None,
                 };
+                // FIXME: there should be a better way of doing this than
+                // formatting this as a string then checking for `::`
                 if path.contains("::") {
-                    errors.push((path, err))
+                    errors.push((import, err))
                 }
             }
         }
@@ -507,7 +504,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         }
     }
 
-    fn throw_unresolved_import_error(&self, errors: Vec<(String, UnresolvedImportError)>) {
+    fn throw_unresolved_import_error(&self, errors: Vec<(&Import<'_>, UnresolvedImportError)>) {
         if errors.is_empty() {
             return;
         }
@@ -516,7 +513,17 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
         const MAX_LABEL_COUNT: usize = 10;
 
         let span = MultiSpan::from_spans(errors.iter().map(|(_, err)| err.span).collect());
-        let paths = errors.iter().map(|(path, _)| format!("`{}`", path)).collect::<Vec<_>>();
+        let paths = errors
+            .iter()
+            .map(|(import, err)| {
+                let path = import_path_to_string(
+                    &import.module_path.iter().map(|seg| seg.ident).collect::<Vec<_>>(),
+                    &import.kind,
+                    err.span,
+                );
+                format!("`{path}`")
+            })
+            .collect::<Vec<_>>();
         let msg = format!("unresolved import{} {}", pluralize!(paths.len()), paths.join(", "),);
 
         let mut diag = struct_span_err!(self.r.session, span, E0432, "{}", &msg);
@@ -525,7 +532,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
             diag.note(note);
         }
 
-        for (_, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
+        for (import, err) in errors.into_iter().take(MAX_LABEL_COUNT) {
             if let Some(label) = err.label {
                 diag.span_label(err.span, label);
             }
@@ -538,14 +545,36 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 diag.multipart_suggestion(&msg, suggestions, applicability);
             }
 
-            if let Some(candidate) = &err.candidate {
-                import_candidates(
-                    self.r.session,
-                    &self.r.untracked.source_span,
-                    &mut diag,
-                    Some(err.span),
-                    &candidate,
-                )
+            if let Some(candidates) = &err.candidates {
+                match &import.kind {
+                    ImportKind::Single { nested: false, source, target, .. } => import_candidates(
+                        self.r.session,
+                        &self.r.untracked.source_span,
+                        &mut diag,
+                        Some(err.span),
+                        &candidates,
+                        DiagnosticMode::Import,
+                        (source != target)
+                            .then(|| format!(" as {target}"))
+                            .as_deref()
+                            .unwrap_or(""),
+                    ),
+                    ImportKind::Single { nested: true, source, target, .. } => {
+                        import_candidates(
+                            self.r.session,
+                            &self.r.untracked.source_span,
+                            &mut diag,
+                            None,
+                            &candidates,
+                            DiagnosticMode::Normal,
+                            (source != target)
+                                .then(|| format!(" as {target}"))
+                                .as_deref()
+                                .unwrap_or(""),
+                        );
+                    }
+                    _ => {}
+                }
             }
         }
 
@@ -707,14 +736,14 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 String::from("a similar path exists"),
                                 Applicability::MaybeIncorrect,
                             )),
-                            candidate: None,
+                            candidates: None,
                         },
                         None => UnresolvedImportError {
                             span,
                             label: Some(label),
                             note: None,
                             suggestion,
-                            candidate: None,
+                            candidates: None,
                         },
                     };
                     return Some(err);
@@ -761,7 +790,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                                 )),
                                 note: None,
                                 suggestion: None,
-                                candidate: None,
+                                candidates: None,
                             });
                         }
                     }
@@ -873,7 +902,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                 let resolutions = resolutions.as_ref().into_iter().flat_map(|r| r.iter());
                 let names = resolutions
                     .filter_map(|(BindingKey { ident: i, .. }, resolution)| {
-                        if *i == ident {
+                        if i.name == ident.name {
                             return None;
                         } // Never suggest the same name
                         match *resolution.borrow() {
@@ -943,7 +972,7 @@ impl<'a, 'b> ImportResolver<'a, 'b> {
                     label: Some(label),
                     note,
                     suggestion,
-                    candidate: if !parent_suggestion.is_empty() {
+                    candidates: if !parent_suggestion.is_empty() {
                         Some(parent_suggestion)
                     } else {
                         None
