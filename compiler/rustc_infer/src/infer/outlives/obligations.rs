@@ -60,7 +60,6 @@
 //! imply that `'b: 'a`.
 
 use crate::infer::outlives::components::{push_outlives_components, Component};
-use crate::infer::outlives::env::OutlivesEnvironment;
 use crate::infer::outlives::env::RegionBoundPairs;
 use crate::infer::outlives::verify::VerifyBoundCx;
 use crate::infer::{
@@ -68,9 +67,7 @@ use crate::infer::{
 };
 use crate::traits::{ObligationCause, ObligationCauseCode};
 use rustc_data_structures::undo_log::UndoLogs;
-use rustc_errors::ErrorGuaranteed;
 use rustc_hir::def_id::DefId;
-use rustc_hir::def_id::LocalDefId;
 use rustc_middle::mir::ConstraintCategory;
 use rustc_middle::ty::subst::GenericArgKind;
 use rustc_middle::ty::{self, Region, SubstsRef, Ty, TyCtxt, TypeVisitable};
@@ -116,7 +113,7 @@ impl<'tcx> InferCtxt<'tcx> {
         std::mem::take(&mut self.inner.borrow_mut().region_obligations)
     }
 
-    /// NOTE: Prefer using [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// NOTE: Prefer using `TypeErrCtxt::check_region_obligations_and_report_errors`
     /// instead of calling this directly.
     ///
     /// Process the region obligations that must be proven (during
@@ -169,22 +166,6 @@ impl<'tcx> InferCtxt<'tcx> {
             let category = origin.to_constraint_category();
             outlives.type_must_outlive(origin, sup_type, sub_region, category);
         }
-    }
-
-    /// Processes registered region obliations and resolves regions, reporting
-    /// any errors if any were raised. Prefer using this function over manually
-    /// calling `resolve_regions_and_report_errors`.
-    pub fn check_region_obligations_and_report_errors(
-        &self,
-        generic_param_scope: LocalDefId,
-        outlives_env: &OutlivesEnvironment<'tcx>,
-    ) -> Result<(), ErrorGuaranteed> {
-        self.process_registered_region_obligations(
-            outlives_env.region_bound_pairs(),
-            outlives_env.param_env,
-        );
-
-        self.err_ctxt().resolve_regions_and_report_errors(generic_param_scope, outlives_env)
     }
 }
 

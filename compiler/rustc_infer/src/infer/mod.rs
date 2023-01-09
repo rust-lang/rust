@@ -1679,13 +1679,29 @@ impl<'tcx> InferCtxt<'tcx> {
 }
 
 impl<'tcx> TypeErrCtxt<'_, 'tcx> {
+    /// Processes registered region obliations and resolves regions, reporting
+    /// any errors if any were raised. Prefer using this function over manually
+    /// calling `resolve_regions_and_report_errors`.
+    pub fn check_region_obligations_and_report_errors(
+        &self,
+        generic_param_scope: LocalDefId,
+        outlives_env: &OutlivesEnvironment<'tcx>,
+    ) -> Result<(), ErrorGuaranteed> {
+        self.process_registered_region_obligations(
+            outlives_env.region_bound_pairs(),
+            outlives_env.param_env,
+        );
+
+        self.resolve_regions_and_report_errors(generic_param_scope, outlives_env)
+    }
+
     /// Process the region constraints and report any errors that
     /// result. After this, no more unification operations should be
     /// done -- or the compiler will panic -- but it is legal to use
     /// `resolve_vars_if_possible` as well as `fully_resolve`.
     ///
     /// Make sure to call [`InferCtxt::process_registered_region_obligations`]
-    /// first, or preferably use [`InferCtxt::check_region_obligations_and_report_errors`]
+    /// first, or preferably use [`TypeErrCtxt::check_region_obligations_and_report_errors`]
     /// to do both of these operations together.
     pub fn resolve_regions_and_report_errors(
         &self,

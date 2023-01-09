@@ -615,7 +615,7 @@ pub(super) fn collect_return_position_impl_trait_in_trait_tys<'tcx>(
         Some(infcx),
         infcx.implied_bounds_tys(param_env, impl_m_hir_id, wf_tys),
     );
-    infcx.check_region_obligations_and_report_errors(
+    infcx.err_ctxt().check_region_obligations_and_report_errors(
         impl_m.def_id.expect_local(),
         &outlives_environment,
     )?;
@@ -1643,8 +1643,9 @@ pub(super) fn compare_impl_const_raw(
     }
 
     let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
-
+    infcx
+        .err_ctxt()
+        .check_region_obligations_and_report_errors(impl_const_item_def, &outlives_environment)?;
     Ok(())
 }
 
@@ -1752,7 +1753,7 @@ fn compare_type_predicate_entailment<'tcx>(
     // Finally, resolve all regions. This catches wily misuses of
     // lifetime parameters.
     let outlives_environment = OutlivesEnvironment::new(param_env);
-    infcx.check_region_obligations_and_report_errors(
+    infcx.err_ctxt().check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
     )?;
@@ -1966,7 +1967,7 @@ pub(super) fn check_type_bounds<'tcx>(
     let outlives_environment =
         OutlivesEnvironment::with_bounds(param_env, Some(&infcx), implied_bounds);
 
-    infcx.check_region_obligations_and_report_errors(
+    infcx.err_ctxt().check_region_obligations_and_report_errors(
         impl_ty.def_id.expect_local(),
         &outlives_environment,
     )?;
