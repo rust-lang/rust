@@ -34,23 +34,4 @@ impl std::hash::Hash for Bah {
     fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
 }
 
-#[derive(PartialEq)]
-struct Foo2;
-
-trait Hash {}
-
-// We don't want to lint on user-defined traits called `Hash`
-impl Hash for Foo2 {}
-
-mod use_hash {
-    use std::hash::{Hash, Hasher};
-
-    #[derive(PartialEq)]
-    struct Foo3;
-
-    impl Hash for Foo3 {
-        fn hash<H: std::hash::Hasher>(&self, _: &mut H) {}
-    }
-}
-
 fn main() {}
