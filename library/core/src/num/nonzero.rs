@@ -1147,8 +1147,6 @@ macro_rules! nonzero_min_max_unsigned {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_min_max)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), 1", stringify!($Int), ");")]
                 /// ```
@@ -1162,8 +1160,6 @@ macro_rules! nonzero_min_max_unsigned {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_min_max)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
@@ -1189,8 +1185,6 @@ macro_rules! nonzero_min_max_signed {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_min_max)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MIN.get(), ", stringify!($Int), "::MIN);")]
                 /// ```
@@ -1208,8 +1202,6 @@ macro_rules! nonzero_min_max_signed {
                 /// # Examples
                 ///
                 /// ```
-                /// #![feature(nonzero_min_max)]
-                ///
                 #[doc = concat!("# use std::num::", stringify!($Ty), ";")]
                 #[doc = concat!("assert_eq!(", stringify!($Ty), "::MAX.get(), ", stringify!($Int), "::MAX);")]
                 /// ```
