@@ -1000,6 +1000,23 @@
                     "default": false,
                     "type": "boolean"
                 },
+                "rust-analyzer.inlayHints.expressionAdjustmentHints.mode": {
+                    "markdownDescription": "Whether to show inlay hints as postfix ops (`.*` instead of `*`, etc).",
+                    "default": "prefix",
+                    "type": "string",
+                    "enum": [
+                        "prefix",
+                        "postfix",
+                        "prefer_prefix",
+                        "prefer_postfix"
+                    ],
+                    "enumDescriptions": [
+                        "Always show adjustment hints as prefix (`*expr`).",
+                        "Always show adjustment hints as postfix (`expr.*`).",
+                        "Show prefix or postfix depending on which uses less parenthesis, prefering prefix.",
+                        "Show prefix or postfix depending on which uses less parenthesis, prefering postfix."
+                    ]
+                },
                 "rust-analyzer.inlayHints.lifetimeElisionHints.enable": {
                     "markdownDescription": "Whether to show inlay type hints for elided lifetimes in function signatures.",
                     "default": "never",
