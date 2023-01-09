@@ -22,18 +22,18 @@ where
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, crate::vec::IntoIter<T>>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, crate::vec::IntoIter<T, A, COOP_PREFERRED>>
     for VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
 {
     #[inline]
-    fn spec_from_iter(iterator: crate::vec::IntoIter<T>) -> Self {
+    fn spec_from_iter(iterator: crate::vec::IntoIter<T, A, COOP_PREFERRED>) -> Self {
         iterator.into_vecdeque()
     }
 }
 
-impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T>>
+impl<T, A: Allocator, const COOP_PREFERRED: bool> SpecFromIter<T, IntoIter<T, A, COOP_PREFERRED>>
     for VecDeque<T, A, COOP_PREFERRED>
 where
     [(); alloc::co_alloc_metadata_num_slots_with_preference::<A>(COOP_PREFERRED)]:,
