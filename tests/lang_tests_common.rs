@@ -50,6 +50,11 @@ pub fn main_inner(profile: Profile) {
                 "-o", exe.to_str().expect("to_str"),
                 path.to_str().expect("to_str"),
             ]);
+            if let Some(flags) = option_env!("TEST_FLAGS") {
+                for flag in flags.split_whitespace() {
+                    compiler.arg(&flag);
+                }
+            }
             match profile {
                 Profile::Debug => {}
                 Profile::Release => {

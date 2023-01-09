@@ -121,7 +121,7 @@ jobs:
       run: |
         ./prepare_build.sh
         ${{ matrix.libgccjit_version.env_extra }} ./build.sh ${{ matrix.libgccjit_version.extra }}
-        cargo test ${{ matrix.libgccjit_version.extra }}
+        ${{ matrix.libgccjit_version.env_extra }} cargo test ${{ matrix.libgccjit_version.extra }}
         ./clean_all.sh
 
     - name: Prepare dependencies
